@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.orithos.modules.cappedpricing.mapper.CappedPriceMapper">
+
+    <resultMap id="CappedPriceRowMap" type="com.orithos.modules.cappedpricing.CappedPriceRow">
+        <id property="id" column="id"/>
+        <result property="productId" column="product_id"/>
+        <result property="priceId" column="price_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="priceSetName" column="price_set_name"/>
+        <result property="source" column="source"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="startDate" column="start_date"/>
+        <result property="endDate" column="end_date"/>
+        <result property="quantity" column="quantity"/>
+        <result property="cappedPrice" column="capped_price"/>
+        <result property="currentPrice" column="current_price"/>
+        <result property="cost" column="cost"/>
+    </resultMap>
+
+    <select id="list" resultMap="CappedPriceRowMap">
+        SELECT cp.id,
+               cp.product_id,
+               cp.source,
+               cp.source_type,
+               COALESCE(cp.price_set_name, ps.name, 'Default Price Set') AS price_set_name,
+               cp.start_date,
+               cp.end_date,
+               cp.quantity,
+               cp.capped_price,
+               p.name AS product_name,
+               p.cost,
+               pp.id AS price_id,
+               pp.price AS current_price
+        FROM capped_price cp
+        INNER JOIN product p ON p.id = cp.product_id AND p.deleted_at IS NULL
+        LEFT JOIN (
+            SELECT pp1.*
+            FROM product_price pp1
+            INNER JOIN (
+                SELECT product_id, MIN(id) AS min_id
+                FROM product_price
+                GROUP BY product_id
+            ) first_pp ON first_pp.min_id = pp1.id
+        ) pp ON pp.product_id = p.id
+        LEFT JOIN price_set ps ON ps.id = pp.price_set_id
+        <where>
+            <if test="q.sourceType != null and q.sourceType != '' and q.sourceType != 'ALL'">
+                cp.source_type = #{q.sourceType}
+            </if>
+        </where>
+        ORDER BY cp.id DESC
+        <if test="q.size > 0">
+            LIMIT #{q.size} OFFSET #{q.offset}
+        </if>
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM capped_price cp
+        INNER JOIN product p ON p.id = cp.product_id AND p.deleted_at IS NULL
+        <where>
+            <if test="q.sourceType != null and q.sourceType != '' and q.sourceType != 'ALL'">
+                cp.source_type = #{q.sourceType}
+            </if>
+        </where>
+    </select>
+</mapper>

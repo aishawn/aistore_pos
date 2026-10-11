@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.orithos.modules.product.mapper.ProductMapper">
+
+    <resultMap id="ProductMap" type="com.orithos.modules.product.Product">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="type" column="type"/>
+        <result property="status" column="status"/>
+        <result property="description" column="description"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="brandId" column="brand_id"/>
+        <result property="familyId" column="family_id"/>
+        <result property="taxRateId" column="tax_rate_id"/>
+        <result property="costTaxRateId" column="cost_tax_rate_id"/>
+        <result property="cost" column="cost"/>
+        <result property="caseQuantity" column="case_quantity"/>
+        <result property="costPercentage" column="cost_percentage"/>
+        <result property="preventManualDiscounts" column="prevent_manual_discounts"/>
+        <result property="requestPrice" column="request_price"/>
+        <result property="requestQuantity" column="request_quantity"/>
+        <result property="trackInventory" column="track_inventory"/>
+        <result property="showShortcuts" column="show_shortcuts"/>
+        <result property="abv" column="abv"/>
+        <result property="volumeMl" column="volume_ml"/>
+        <result property="region" column="region"/>
+        <result property="vintage" column="vintage"/>
+        <result property="image" column="image"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="brandName" column="brand_name"/>
+        <result property="price" column="price"/>
+        <result property="stockQuantity" column="stock_quantity"/>
+    </resultMap>
+
+    <sql id="filters">
+        <where>
+            p.deleted_at IS NULL
+            <if test="q.name != null and q.name != ''">
+                AND (
+                    p.name LIKE CONCAT('%', #{q.name}, '%')
+                    OR EXISTS (
+                        SELECT 1 FROM product_barcode pb
+                        WHERE pb.product_id = p.id AND pb.code LIKE CONCAT('%', #{q.name}, '%')
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM product_supplier psk
+                        WHERE psk.product_id = p.id
+                          AND psk.code IS NOT NULL
+                          AND psk.code LIKE CONCAT('%', #{q.name}, '%')
+                    )
+                    OR p.region LIKE CONCAT('%', #{q.name}, '%')
+                    OR p.vintage LIKE CONCAT('%', #{q.name}, '%')
+                )
+            </if>
+            <if test="q.categoryId != null">
+                AND p.category_id = #{q.categoryId}
+            </if>
+            <if test="q.brandId != null">
+                AND p.brand_id = #{q.brandId}
+            </if>
+            <if test="q.withoutBrand != null and q.withoutBrand">
+                AND p.brand_id IS NULL
+            </if>
+            <if test="q.excludeBrandId != null">
+                AND (p.brand_id IS NULL OR p.brand_id != #{q.excludeBrandId})
+            </if>
+            <if test="q.familyId != null">
+                AND p.family_id = #{q.familyId}
+            </if>
+            <if test="q.statuses != null and q.statuses != ''">
+                AND p.status IN
+                <foreach collection="q.statusList" item="s" open="(" separator="," close=")">
+                    #{s}
+                </foreach>
+            </if>
+            <if test="(q.statuses == null or q.statuses == '') and q.status != null and q.status != ''">
+                AND p.status = #{q.status}
+            </if>
+            <if test="q.type != null and q.type != ''">
+                AND p.type = #{q.type}
+            </if>
+            <if test="q.tagId != null">
+                AND EXISTS (SELECT 1 FROM product_tag pt
+                            WHERE pt.product_id = p.id AND pt.tag_id = #{q.tagId})
+            </if>
+            <if test="q.taxRateId != null">
+                AND p.tax_rate_id = #{q.taxRateId}
+            </if>
+            <if test="q.costTaxRateId != null">
+                AND p.cost_tax_rate_id = #{q.costTaxRateId}
+            </if>
+            <if test="q.supplierId != null">
+                AND EXISTS (SELECT 1 FROM product_supplier ps
+                            WHERE ps.product_id = p.id AND ps.supplier_id = #{q.supplierId})
+            </if>
+            <if test="q.excludeSupplierId != null">
+                AND NOT EXISTS (SELECT 1 FROM product_supplier ps
+                                WHERE ps.product_id = p.id AND ps.supplier_id = #{q.excludeSupplierId})
+            </if>
+        </where>
+    </sql>
+
+    <select id="page" resultMap="ProductMap">
+        SELECT p.*,
+               c.name AS category_name,
+               b.name AS brand_name,
+               (SELECT pp.price FROM product_price pp
+                 WHERE pp.product_id = p.id ORDER BY pp.quantity LIMIT 1) AS price,
+               COALESCE(inv.total_qty, 0) AS stock_quantity
+        FROM product p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN brand b ON b.id = p.brand_id
+        LEFT JOIN (
+            SELECT product_id, SUM(quantity) AS total_qty
+            FROM product_inventory
+            GROUP BY product_id
+        ) inv ON inv.product_id = p.id
+        <include refid="filters"/>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{q.size} OFFSET #{q.offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM product p
+        <include refid="filters"/>
+    </select>
+
+    <select id="findById" resultMap="ProductMap">
+        SELECT p.*,
+               c.name AS category_name,
+               b.name AS brand_name,
+               (SELECT pp.price FROM product_price pp
+                 WHERE pp.product_id = p.id ORDER BY pp.quantity LIMIT 1) AS price
+        FROM product p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN brand b ON b.id = p.brand_id
+        WHERE p.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="p.id">
+        INSERT INTO product ( name, type, status, description, category_id, brand_id, family_id,
+                             tax_rate_id, cost_tax_rate_id, cost, case_quantity, cost_percentage,
+                             prevent_manual_discounts, request_price, request_quantity,
+                             track_inventory, show_shortcuts, abv, volume_ml, region, vintage, image)
+        VALUES ( #{p.name}, #{p.type}, #{p.status}, #{p.description}, #{p.categoryId},
+                #{p.brandId}, #{p.familyId}, #{p.taxRateId}, #{p.costTaxRateId}, #{p.cost},
+                #{p.caseQuantity}, #{p.costPercentage}, #{p.preventManualDiscounts},
+                #{p.requestPrice}, #{p.requestQuantity}, #{p.trackInventory},
+                #{p.showShortcuts}, #{p.abv}, #{p.volumeMl}, #{p.region}, #{p.vintage}, #{p.image})
+    </insert>
+
+    <update id="update">
+        UPDATE product
+        SET name = #{p.name}, status = #{p.status}, description = #{p.description},
+            category_id = #{p.categoryId}, brand_id = #{p.brandId}, family_id = #{p.familyId},
+            tax_rate_id = #{p.taxRateId}, cost_tax_rate_id = #{p.costTaxRateId},
+            cost = #{p.cost}, case_quantity = #{p.caseQuantity},
+            cost_percentage = #{p.costPercentage},
+            prevent_manual_discounts = #{p.preventManualDiscounts},
+            request_price = #{p.requestPrice}, request_quantity = #{p.requestQuantity},
+            track_inventory = #{p.trackInventory}, show_shortcuts = #{p.showShortcuts},
+            abv = #{p.abv}, volume_ml = #{p.volumeMl},
+            region = #{p.region}, vintage = #{p.vintage}, image = #{p.image}
+        WHERE id = #{p.id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE product SET status = #{status} WHERE id = #{id} AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE product SET deleted_at = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="bulkSoftDelete">
+        UPDATE product SET deleted_at = NOW() WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="assignBrandProducts">
+        UPDATE product SET brand_id = #{brandId} WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="assignCategoryProducts">
+        UPDATE product SET category_id = #{categoryId} WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="assignFamilyProducts">
+        UPDATE product SET family_id = #{familyId} WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <insert id="assignTagProducts">
+        INSERT INTO product_tag (product_id, tag_id) VALUES
+        <foreach collection="ids" item="id" separator=",">
+            (#{id}, #{tagId})
+        </foreach>
+    </insert>
+
+    <insert id="assignSupplierProducts">
+        INSERT INTO product_supplier (product_id, supplier_id) VALUES
+        <foreach collection="ids" item="id" separator=",">
+            (#{id}, #{supplierId})
+        </foreach>
+    </insert>
+
+    <!-- Sell-pad folder browse: stem matches category or family name prefix. -->
+    <select id="browseForSell" resultMap="ProductMap">
+        SELECT p.id, p.name,
+               c.name AS category_name,
+               (SELECT pp.price FROM product_price pp
+                 WHERE pp.product_id = p.id ORDER BY pp.quantity LIMIT 1) AS price
+        FROM product p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN family f ON f.id = p.family_id
+        WHERE p.deleted_at IS NULL
+          AND p.status = 'ACTIVE'
+          <if test="stem != null and stem != ''">
+            AND (
+              c.name LIKE CONCAT(#{stem}, '%')
+              OR f.name LIKE CONCAT(#{stem}, '%')
+            )
+          </if>
+          <if test="q != null and q != ''">
+            AND p.name LIKE CONCAT('%', #{q}, '%')
+          </if>
+        ORDER BY p.name ASC, p.id ASC
+        LIMIT 500
+    </select>
+</mapper>

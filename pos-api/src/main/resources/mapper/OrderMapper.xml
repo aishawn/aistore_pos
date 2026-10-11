@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.orithos.modules.order.OrderMapper">
+
+    <resultMap id="OrderListMap" type="com.orithos.modules.order.Order">
+        <id property="id" column="id"/>
+        <result property="type" column="type"/>
+        <result property="status" column="status"/>
+        <result property="fromId" column="from_id"/>
+        <result property="toId" column="to_id"/>
+        <result property="orderDate" column="order_date"/>
+        <result property="dueDate" column="due_date"/>
+        <result property="enteredAs" column="entered_as"/>
+        <result property="invoiceNumber" column="invoice_number"/>
+        <result property="reference" column="reference"/>
+        <result property="notes" column="notes"/>
+        <result property="internalNotes" column="internal_notes"/>
+        <result property="includeFreight" column="include_freight"/>
+        <result property="totalCost" column="total_cost"/>
+        <result property="expectedTotal" column="expected_total"/>
+        <result property="feePercentage" column="fee_percentage"/>
+        <result property="lineCount" column="line_count"/>
+        <result property="createdById" column="created_by_id"/>
+        <result property="sentById" column="sent_by_id"/>
+        <result property="receivedById" column="received_by_id"/>
+        <result property="mergedIntoId" column="merged_into_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="sentAt" column="sent_at"/>
+        <result property="receivedAt" column="received_at"/>
+        <result property="fromName" column="from_name"/>
+        <result property="toName" column="to_name"/>
+    </resultMap>
+
+    <sql id="listSelect">
+        SELECT po.*,
+               (SELECT COUNT(*) FROM order_product op WHERE op.order_id = po.id) AS line_count,
+               COALESCE(sup.name, from_outlet.name) AS from_name,
+               CASE
+                   WHEN po.type = 'RETURN' THEN to_sup.name
+                   WHEN po.type = 'CREDIT' AND to_outlet.id IS NULL THEN COALESCE(to_sup.name, tr.name)
+                   ELSE COALESCE(to_outlet.name, tr.name)
+               END AS to_name
+        FROM purchase_order po
+        LEFT JOIN supplier sup ON sup.id = po.from_id AND po.type = 'ORDER'
+        LEFT JOIN outlet from_outlet ON from_outlet.id = po.from_id AND po.type IN ('TRANSFER', 'RETURN', 'RECEIVE', 'CREDIT')
+        LEFT JOIN outlet to_outlet ON to_outlet.id = po.to_id AND po.type &lt;&gt; 'RETURN'
+        LEFT JOIN supplier to_sup ON to_sup.id = po.to_id AND po.type IN ('RETURN', 'CREDIT')
+        LEFT JOIN transferee tr ON tr.id = po.to_id AND tr.deleted_at IS NULL
+    </sql>
+
+    <sql id="filters">
+        <where>
+            <if test="q.outstanding">
+                AND po.status IN ('OPEN', 'SENT')
+            </if>
+            <if test="q.status != null and q.status != ''">
+                AND po.status = #{q.status}
+            </if>
+            <if test="q.type != null and q.type != ''">
+                AND po.type = #{q.type}
+            </if>
+            <if test="q.supplierId != null">
+                AND po.from_id = #{q.supplierId}
+            </if>
+            <if test="q.transferorId != null">
+                AND po.to_id = #{q.transferorId}
+            </if>
+            <if test="q.outletId != null">
+                AND po.to_id = #{q.outletId}
+            </if>
+            <if test="q.invoiceNumber != null and q.invoiceNumber != ''">
+                AND po.invoice_number LIKE CONCAT('%', #{q.invoiceNumber}, '%')
+            </if>
+            <if test="q.reference != null and q.reference != ''">
+                AND po.reference LIKE CONCAT('%', #{q.reference}, '%')
+            </if>
+            <if test="q.orderDate != null">
+                AND po.order_date = #{q.orderDate}
+            </if>
+            <if test="q.dueDate != null">
+                AND po.due_date = #{q.dueDate}
+            </if>
+            <if test="q.createdById != null">
+                AND po.created_by_id = #{q.createdById}
+            </if>
+            <if test="q.sentById != null">
+                AND po.sent_by_id = #{q.sentById}
+            </if>
+            <if test="q.receivedById != null">
+                AND po.received_by_id = #{q.receivedById}
+            </if>
+            <if test="q.productId != null">
+                AND EXISTS (
+                    SELECT 1 FROM order_product op
+                    WHERE op.order_id = po.id AND op.product_id = #{q.productId}
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="page" resultMap="OrderListMap">
+        <include refid="listSelect"/>
+        <include refid="filters"/>
+        ORDER BY po.created_at DESC
+        LIMIT #{q.size} OFFSET #{q.offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM purchase_order po
+        <include refid="filters"/>
+    </select>
+
+    <select id="findById" resultMap="OrderListMap">
+        <include refid="listSelect"/>
+        WHERE po.id = #{id}
+    </select>
+
+</mapper>

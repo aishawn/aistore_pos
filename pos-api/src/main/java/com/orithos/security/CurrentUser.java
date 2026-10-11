@@ -1,0 +1,27 @@
+package com.orithos.security;
+
+import org.springframework.security.core.context.SecurityContextHolder;
+
+/** Convenience accessor for the current authenticated principal. */
+public final class CurrentUser {
+    private CurrentUser() {}
+
+    public static AuthUser get() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof AuthUser u) {
+            return u;
+        }
+        return null;
+    }
+
+    public static Long id() {
+        AuthUser u = get();
+        return u == null ? null : u.id();
+    }
+
+    /** SaaS tenant id (outlet). */
+    public static Long outletId() {
+        AuthUser u = get();
+        return u == null ? null : u.outletId();
+    }
+}

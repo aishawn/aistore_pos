@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.orithos.modules.stocklist.mapper.StockListMapper">
+
+    <resultMap id="StockListRowMap" type="com.orithos.modules.stocklist.StockListRow">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="priceSetName" column="price_set_name"/>
+        <result property="caseQuantity" column="case_quantity"/>
+        <result property="casesOnHand" column="cases_on_hand"/>
+        <result property="itemsOnHand" column="items_on_hand"/>
+        <result property="priceQuantity" column="price_quantity"/>
+        <result property="priceId" column="price_id"/>
+        <result property="cost" column="cost"/>
+        <result property="price" column="price"/>
+    </resultMap>
+
+    <sql id="fromJoins">
+        FROM product p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN (
+            SELECT pp1.*
+            FROM product_price pp1
+            INNER JOIN (
+                SELECT product_id, MIN(id) AS min_id
+                FROM product_price
+                GROUP BY product_id
+            ) first_pp ON first_pp.min_id = pp1.id
+        ) pp ON pp.product_id = p.id
+        LEFT JOIN price_set ps ON ps.id = pp.price_set_id
+        LEFT JOIN (
+            SELECT product_id, SUM(quantity) AS total_qty
+            FROM product_inventory
+            GROUP BY product_id
+        ) inv ON inv.product_id = p.id
+    </sql>
+
+    <sql id="filters">
+        <where>
+            p.deleted_at IS NULL
+            <if test="q.search != null and q.search != ''">
+                AND (
+                    p.name LIKE CONCAT('%', #{q.search}, '%')
+                    OR c.name LIKE CONCAT('%', #{q.search}, '%')
+                )
+            </if>
+            <if test="q.categoryId != null">
+                AND p.category_id = #{q.categoryId}
+            </if>
+            <if test="q.inStockOnly != null and q.inStockOnly">
+                AND COALESCE(inv.total_qty, 0) &gt; 0
+            </if>
+        </where>
+    </sql>
+
+    <select id="page" resultMap="StockListRowMap">
+        SELECT p.id,
+               p.name,
+               c.name AS category_name,
+               ps.name AS price_set_name,
+               p.case_quantity,
+               COALESCE(inv.total_qty, 0) AS items_on_hand,
+               CASE
+                   WHEN p.case_quantity IS NOT NULL AND p.case_quantity &gt; 0
+                   THEN FLOOR(COALESCE(inv.total_qty, 0) / p.case_quantity)
+                   ELSE 0
+               END AS cases_on_hand,
+               pp.quantity AS price_quantity,
+               pp.id AS price_id,
+               p.cost,
+               pp.price
+        <include refid="fromJoins"/>
+        <include refid="filters"/>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{q.size} OFFSET #{q.offset}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        <include refid="fromJoins"/>
+        <include refid="filters"/>
+    </select>
+
+    <select id="export" resultMap="StockListRowMap">
+        SELECT p.id,
+               p.name,
+               c.name AS category_name,
+               ps.name AS price_set_name,
+               p.case_quantity,
+               COALESCE(inv.total_qty, 0) AS items_on_hand,
+               CASE
+                   WHEN p.case_quantity IS NOT NULL AND p.case_quantity &gt; 0
+                   THEN FLOOR(COALESCE(inv.total_qty, 0) / p.case_quantity)
+                   ELSE 0
+               END AS cases_on_hand,
+               pp.quantity AS price_quantity,
+               pp.id AS price_id,
+               p.cost,
+               pp.price
+        <include refid="fromJoins"/>
+        <include refid="filters"/>
+        ORDER BY p.created_at DESC, p.id DESC
+    </select>
+</mapper>

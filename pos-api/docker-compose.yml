@@ -1,0 +1,85 @@
+# Self-contained stack for the Orithos backend: API + MySQL 8 + Redis 7.
+# Run from pos-api/:  docker compose up --build
+#
+# The schema + seed SQL are mounted into MySQL's init dir, so the database is
+# created automatically the first time the mysql volume is empty.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: orithos-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-orithos}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Runs once, in filename order, only when the data dir is empty:
+      - ./src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./src/main/resources/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./src/main/resources/db/migration_outlet_id_tenant.sql:/docker-entrypoint-initdb.d/03-outlet-tenant.sql:ro
+      - ./src/main/resources/db/migration_ai_report_views.sql:/docker-entrypoint-initdb.d/04-ai-report-views.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: orithos-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-orithos-redis}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-orithos-redis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: orithos-backend:latest
+    container_name: orithos-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-orithos}
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-orithos-redis}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-32-byte-plus-production-secret-0123456789}
+      # Schema is loaded by MySQL's init dir above, so keep Spring's init off:
+      SQL_INIT_MODE: never
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+      # AI assistant (DashScope). Defaults off; set AI_ENABLED=true + key in .env
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}
+      AI_DASHSCOPE_MODEL: ${AI_DASHSCOPE_MODEL:-qwen-plus}
+      AI_DASHSCOPE_BASE_URL: ${AI_DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
+      AI_TRANSCRIPTION_MODEL: ${AI_TRANSCRIPTION_MODEL:-qwen3-asr-flash}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen-vl-plus}
+      AI_REPORT_RO_USER: ${AI_REPORT_RO_USER:-orithos_ai_ro}
+      AI_REPORT_RO_PASSWORD: ${AI_REPORT_RO_PASSWORD:-orithos-ai-ro}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+volumes:
+  mysql-data:
+  redis-data:

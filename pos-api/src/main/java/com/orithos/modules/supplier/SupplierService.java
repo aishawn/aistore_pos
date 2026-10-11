@@ -1,0 +1,204 @@
+package com.orithos.modules.supplier;
+
+import com.orithos.common.BusinessException;
+import com.orithos.modules.customer.Contact;
+import com.orithos.modules.customer.mapper.ContactMapper;
+import com.orithos.modules.supplier.mapper.SupplierAdditionalContactMapper;
+import com.orithos.modules.supplier.mapper.SupplierAuthenticationMapper;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+public class SupplierService {
+
+    private final SupplierMapper supplierMapper;
+    private final ContactMapper contactMapper;
+    private final SupplierAuthenticationMapper authenticationMapper;
+    private final SupplierAdditionalContactMapper additionalContactMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    public SupplierService(SupplierMapper supplierMapper,
+                           ContactMapper contactMapper,
+                           SupplierAuthenticationMapper authenticationMapper,
+                           SupplierAdditionalContactMapper additionalContactMapper,
+                           PasswordEncoder passwordEncoder) {
+        this.supplierMapper = supplierMapper;
+        this.contactMapper = contactMapper;
+        this.authenticationMapper = authenticationMapper;
+        this.additionalContactMapper = additionalContactMapper;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    public SupplierDetail getDetail(Long id) {
+        SupplierDetail detail = supplierMapper.findDetailById(id);
+        if (detail == null) {
+            throw new BusinessException("Supplier not found.");
+        }
+        attachAuthentication(detail);
+        attachAdditionalContacts(detail);
+        return sanitizeForResponse(detail);
+    }
+
+    @Transactional
+    public SupplierDetail create(SupplierDetail input) {
+        SupplierDetail detail = prepareForSave(input);
+        applyPersistableDefaults(detail);
+        detail.setContactId(upsertContact(null, toContact(detail)));
+        supplierMapper.insertDetail(detail);
+        saveAuthentication(detail.getId(), detail, null);
+        saveAdditionalContacts(detail.getId(), detail.getAdditionalContacts());
+        return getDetail(detail.getId());
+    }
+
+    @Transactional
+    public SupplierDetail update(Long id, SupplierDetail input) {
+        SupplierDetail existing = supplierMapper.findDetailById(id);
+        if (existing == null) {
+            throw new BusinessException("Supplier not found.");
+        }
+
+        SupplierDetail detail = prepareForSave(input);
+        detail.setId(id);
+        ensurePersistableDefaults(detail, existing);
+        detail.setContactId(upsertContact(existing.getContactId(), toContact(detail)));
+        supplierMapper.updateDetail(detail);
+        saveAuthentication(id, detail, authenticationMapper.findBySupplierId(id));
+        saveAdditionalContacts(id, detail.getAdditionalContacts());
+        return getDetail(id);
+    }
+
+    private SupplierDetail prepareForSave(SupplierDetail input) {
+        SupplierDetail detail = normalize(input);
+        applyPersistableDefaults(detail);
+        return detail;
+    }
+
+    private static SupplierDetail normalize(SupplierDetail detail) {
+        if (detail.getName() == null || detail.getName().isBlank()) {
+            throw new BusinessException("Name is required.");
+        }
+        detail.setName(detail.getName().trim());
+        return detail;
+    }
+
+    private static void applyPersistableDefaults(SupplierDetail detail) {
+        if (detail.getOrderAutomaticEmail() == null) detail.setOrderAutomaticEmail(false);
+        if (detail.getFreightIncludedOnInvoices() == null) detail.setFreightIncludedOnInvoices(true);
+        if (detail.getAllowOrderBelowMinimum() == null) detail.setAllowOrderBelowMinimum(false);
+        if (detail.getStatus() == null || detail.getStatus().isBlank()) detail.setStatus("ACTIVE");
+    }
+
+    private static void ensurePersistableDefaults(SupplierDetail detail, SupplierDetail existing) {
+        if (detail.getOrderAutomaticEmail() == null) {
+            detail.setOrderAutomaticEmail(
+                    existing.getOrderAutomaticEmail() != null ? existing.getOrderAutomaticEmail() : false);
+        }
+        if (detail.getFreightIncludedOnInvoices() == null) {
+            detail.setFreightIncludedOnInvoices(
+                    existing.getFreightIncludedOnInvoices() != null ? existing.getFreightIncludedOnInvoices() : true);
+        }
+        if (detail.getAllowOrderBelowMinimum() == null) {
+            detail.setAllowOrderBelowMinimum(
+                    existing.getAllowOrderBelowMinimum() != null ? existing.getAllowOrderBelowMinimum() : false);
+        }
+    }
+
+    private void attachAuthentication(SupplierDetail detail) {
+        SupplierAuthentication auth = authenticationMapper.findBySupplierId(detail.getId());
+        if (auth == null) return;
+        detail.setAuthAccountNumber(auth.getAccountNumber());
+        detail.setUsername(auth.getUsername());
+        detail.setAdditionalAuth(auth.getAdditionalAuth());
+    }
+
+    private void attachAdditionalContacts(SupplierDetail detail) {
+        detail.setAdditionalContacts(additionalContactMapper.findBySupplierId(detail.getId()));
+    }
+
+    private SupplierDetail sanitizeForResponse(SupplierDetail detail) {
+        detail.setPassword(null);
+        return detail;
+    }
+
+    private void saveAuthentication(Long supplierId, SupplierDetail input, SupplierAuthentication existing) {
+        SupplierAuthentication auth = new SupplierAuthentication();
+        auth.setSupplierId(supplierId);
+        auth.setAccountNumber(trimToNull(input.getAuthAccountNumber()));
+        auth.setUsername(trimToNull(input.getUsername()));
+        auth.setAdditionalAuth(trimToNull(input.getAdditionalAuth()));
+
+        String password = trimToNull(input.getPassword());
+        if (password != null) {
+            auth.setPasswordHash(passwordEncoder.encode(password));
+        } else if (existing != null) {
+            auth.setPasswordHash(existing.getPasswordHash());
+        }
+
+        if (auth.isBlank()) {
+            authenticationMapper.deleteBySupplierId(supplierId);
+            return;
+        }
+
+        if (existing == null) {
+            authenticationMapper.insert(auth);
+        } else {
+            authenticationMapper.update(auth);
+        }
+    }
+
+    private void saveAdditionalContacts(Long supplierId, List<SupplierAdditionalContact> contacts) {
+        additionalContactMapper.deleteBySupplierId(supplierId);
+        if (contacts == null || contacts.isEmpty()) return;
+
+        int order = 0;
+        for (SupplierAdditionalContact contact : contacts) {
+            if (contact == null || contact.isBlank()) continue;
+            SupplierAdditionalContact row = new SupplierAdditionalContact();
+            row.setSupplierId(supplierId);
+            row.setName(trimToNull(contact.getName()));
+            row.setEmail(trimToNull(contact.getEmail()));
+            row.setPhone(trimToNull(contact.getPhone()));
+            row.setSortOrder(order++);
+            additionalContactMapper.insert(row);
+        }
+    }
+
+    private Long upsertContact(Long existingId, Contact contact) {
+        if (existingId == null) {
+            if (contact.isBlank()) return null;
+            contactMapper.insert(contact);
+            return contact.getId();
+        }
+        contact.setId(existingId);
+        contactMapper.update(contact);
+        return existingId;
+    }
+
+    private static Contact toContact(SupplierDetail detail) {
+        Contact contact = new Contact();
+        contact.setEmail(trimToNull(detail.getEmail()));
+        contact.setFax(trimToNull(detail.getFax()));
+        contact.setPhone(trimToNull(detail.getPhone()));
+        contact.setMobile(trimToNull(detail.getMobile()));
+        contact.setWebsite(trimToNull(detail.getWebsite()));
+        contact.setTwitter(trimToNull(detail.getTwitter()));
+        contact.setFacebook(trimToNull(detail.getFacebook()));
+        contact.setAddressStreet1(trimToNull(detail.getStreetAddress1()));
+        contact.setAddressStreet2(trimToNull(detail.getStreetAddress2()));
+        contact.setAddressSuburb(trimToNull(detail.getSuburb()));
+        contact.setAddressCity(trimToNull(detail.getCity()));
+        contact.setAddressPostcode(trimToNull(detail.getPostCode()));
+        contact.setAddressRegion(trimToNull(detail.getRegion()));
+        contact.setAddressCountry(trimToNull(detail.getCountry()));
+        return contact;
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+}

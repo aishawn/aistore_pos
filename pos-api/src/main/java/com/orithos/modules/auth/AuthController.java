@@ -1,0 +1,113 @@
+package com.orithos.modules.auth;
+
+import com.orithos.common.ApiResult;
+import com.orithos.common.BusinessException;
+import com.orithos.modules.auth.dto.LoginRequest;
+import com.orithos.modules.auth.dto.TokenResponse;
+import com.orithos.modules.user.UserService;
+import com.orithos.modules.user.entity.User;
+import com.orithos.security.CurrentUser;
+import com.orithos.security.JwtProperties;
+import com.orithos.security.JwtService;
+import com.orithos.security.TokenStore;
+import io.jsonwebtoken.Claims;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    private final UserService userService;
+    private final JwtService jwtService;
+    private final TokenStore tokenStore;
+    private final JwtProperties props;
+
+    public AuthController(UserService userService, JwtService jwtService,
+                          TokenStore tokenStore, JwtProperties props) {
+        this.userService = userService;
+        this.jwtService = jwtService;
+        this.tokenStore = tokenStore;
+        this.props = props;
+    }
+
+    @PostMapping("/login")
+    public ApiResult<TokenResponse> login(@Valid @RequestBody LoginRequest req) {
+        User u = userService.authenticate(req.username(), req.password());
+        if (u.getOutletId() == null) {
+            throw new BusinessException(40104, "User is not bound to an outlet");
+        }
+        List<String> authorities = userService.authorities(u);
+
+        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), authorities);
+        var refresh = jwtService.issueRefresh(u.getId(), u.getUsername());
+        tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
+
+        var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId());
+        return ApiResult.ok(new TokenResponse(access.token(), refresh.token(),
+                props.getAccessTokenTtlMinutes() * 60, info));
+    }
+
+    @PostMapping("/refresh")
+    public ApiResult<TokenResponse> refresh(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+        if (refreshToken == null) throw new BusinessException(40102, "Missing refreshToken");
+        Claims claims;
+        try {
+            claims = jwtService.parse(refreshToken);
+        } catch (Exception e) {
+            throw new BusinessException(40103, "Invalid refresh token");
+        }
+        Long userId = Long.parseLong(claims.getSubject());
+        if (!"refresh".equals(claims.get("type", String.class))
+                || !tokenStore.refreshValid(userId, claims.getId())) {
+            throw new BusinessException(40103, "Refresh token expired or revoked");
+        }
+        User u = userService.require(userId);
+        if (u.getOutletId() == null) {
+            throw new BusinessException(40104, "User is not bound to an outlet");
+        }
+        List<String> authorities = userService.authorities(u);
+        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), authorities);
+        var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId());
+        return ApiResult.ok(new TokenResponse(access.token(), refreshToken,
+                props.getAccessTokenTtlMinutes() * 60, info));
+    }
+
+    @PostMapping("/logout")
+    public ApiResult<Void> logout(@RequestHeader(value = "Authorization", required = false) String header) {
+        if (header != null && header.startsWith("Bearer ")) {
+            try {
+                Claims claims = jwtService.parse(header.substring(7));
+                tokenStore.blacklist(claims.getId(), claims.getExpiration());
+                tokenStore.revokeRefresh(Long.parseLong(claims.getSubject()));
+            } catch (Exception ignored) {
+            }
+        }
+        return ApiResult.ok();
+    }
+
+    /** Current user info — mirrors the live /user/info shape. */
+    @GetMapping("/me")
+    public ApiResult<Map<String, Object>> me() {
+        Long id = CurrentUser.id();
+        if (id == null) throw new BusinessException(40100, "Unauthorized");
+        User u = userService.require(id);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", u.getId());
+        body.put("name", u.getName());
+        body.put("username", u.getUsername());
+        body.put("isAdmin", Boolean.TRUE.equals(u.getIsAdmin()));
+        body.put("darkMode", u.getDarkMode() == null ? "default" : u.getDarkMode());
+        body.put("outletId", u.getOutletId());
+        return ApiResult.ok(body);
+    }
+}

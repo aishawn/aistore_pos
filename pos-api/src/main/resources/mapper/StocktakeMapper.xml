@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.orithos.modules.stocktake.StocktakeMapper">
+
+    <resultMap id="StocktakeProductLineMap" type="com.orithos.modules.stocktake.StocktakeProductLine">
+        <id property="id" column="id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productName" column="product_name"/>
+        <result property="cost" column="cost"/>
+        <result property="price" column="price"/>
+        <result property="caseQuantity" column="case_quantity"/>
+        <result property="scanned" column="scanned"/>
+        <result property="expectedCount" column="expected_count"/>
+        <result property="expectedValue" column="expected_value"/>
+        <result property="actualCount" column="actual_count"/>
+        <result property="actualValue" column="actual_value"/>
+    </resultMap>
+
+    <resultMap id="StocktakeProductSearchHitMap" type="com.orithos.modules.stocktake.StocktakeProductSearchHit">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="price" column="price"/>
+        <result property="barcode" column="barcode"/>
+    </resultMap>
+
+    <select id="findProductLines" resultMap="StocktakeProductLineMap">
+        SELECT sp.id,
+               sp.product_id,
+               p.name AS product_name,
+               sp.cost,
+               (SELECT pp.price
+                FROM product_price pp
+                WHERE pp.product_id = p.id
+                ORDER BY pp.id
+                LIMIT 1) AS price,
+               sp.case_quantity,
+               sp.scanned,
+               sp.expected_count,
+               sp.expected_value,
+               sp.actual_count,
+               sp.actual_value
+        FROM stocktake_product sp
+        INNER JOIN product p ON p.id = sp.product_id AND p.deleted_at IS NULL
+        WHERE sp.stocktake_id = #{stocktakeId}
+        ORDER BY sp.id DESC
+    </select>
+
+    <select id="searchProducts" resultMap="StocktakeProductSearchHitMap">
+        SELECT p.id,
+               p.name,
+               (SELECT pp.price
+                FROM product_price pp
+                WHERE pp.product_id = p.id
+                ORDER BY pp.id
+                LIMIT 1) AS price,
+               (SELECT pb.code
+                FROM product_barcode pb
+                WHERE pb.product_id = p.id
+                ORDER BY pb.id
+                LIMIT 1) AS barcode
+        FROM product p
+        WHERE p.deleted_at IS NULL
+          AND p.status = 'ACTIVE'
+          AND (
+              p.name LIKE CONCAT('%', #{query}, '%')
+              OR EXISTS (
+                  SELECT 1 FROM product_barcode pb
+                  WHERE pb.product_id = p.id AND pb.code LIKE CONCAT('%', #{query}, '%')
+              )
+          )
+        ORDER BY p.name
+        LIMIT #{limit}
+    </select>
+
+    <select id="findProductByBarcode" resultType="com.orithos.modules.product.Product">
+        SELECT p.*
+        FROM product p
+        INNER JOIN product_barcode pb ON pb.product_id = p.id
+        WHERE pb.code = #{code}
+          AND p.deleted_at IS NULL
+          AND p.status = 'ACTIVE'
+        LIMIT 1
+    </select>
+
+    <select id="findInventoryQuantity" resultType="java.math.BigDecimal">
+        SELECT quantity
+        FROM product_inventory
+        WHERE product_id = #{productId}
+          AND outlet_id = #{outletId}
+    </select>
+
+    <update id="incrementActualCount">
+        UPDATE stocktake_product
+        SET actual_count = COALESCE(actual_count, 0) + #{increment},
+            scanned = 1
+        WHERE stocktake_id = #{stocktakeId}
+          AND product_id = #{productId}
+    </update>
+
+</mapper>

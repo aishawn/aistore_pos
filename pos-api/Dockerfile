@@ -1,0 +1,32 @@
+# ============================================
+# Stage 1: Build the Spring Boot fat JAR
+# ============================================
+FROM maven:3.9-eclipse-temurin-21 AS builder
+
+WORKDIR /build
+
+# Cache dependencies first (only re-downloads when pom.xml changes)
+COPY pom.xml ./
+RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
+
+# Build
+COPY src ./src
+RUN --mount=type=cache,target=/root/.m2 mvn -q clean package -DskipTests
+
+# ============================================
+# Stage 2: Run the JAR on a slim JRE
+# ============================================
+FROM eclipse-temurin:21-jre AS runner
+
+WORKDIR /app
+
+# Non-root user
+RUN useradd -r -u 1001 spring
+USER spring
+
+COPY --from=builder /build/target/pos-api-*.jar app.jar
+
+ENV SERVER_PORT=8080
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
