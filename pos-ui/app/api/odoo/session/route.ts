@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -72,7 +73,7 @@ function publicUser(info: OdooSessionInfo) {
     name: info.partner_display_name || info.name || info.username,
     username: info.username,
     isAdmin: false,
-    allowedCompanyIds: info.user_context?.allowed_company_ids ?? [],
+    allowedCompanyIds: getOdooAllowedCompanyIds(info),
   };
 }
 

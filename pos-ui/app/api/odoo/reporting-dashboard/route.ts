@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
     const sessionPayload = await sessionResponse.json() as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     const session = sessionPayload.result;
     if (sessionPayload.error || !session?.uid) throw new OdooSessionExpiredError();
-    const companyIds = (session.user_context?.allowed_company_ids ?? []).filter(Number.isInteger);
+    const companyIds = getOdooAllowedCompanyIds(session);
     const companyId = companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
 
