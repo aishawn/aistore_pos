@@ -44,7 +44,8 @@ export function OdooRegisterPage() {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<{ reference: string; total: number; gst: number } | null>(null);
+  const [receipt, setReceipt] = useState<{ reference: string; total: number; gst: number; change: number } | null>(null);
+  const [cashTendered, setCashTendered] = useState("");
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
   const searchRevision = useRef(0);
@@ -115,11 +116,14 @@ export function OdooRegisterPage() {
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const total = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity, 0) * 100) / 100, [lines]);
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
+  const isCashPayment = selectedPayment?.type === "cash";
   const applyRounding = Boolean(selectedConfig?.cashRounding && (!selectedConfig.onlyRoundCashMethod || selectedPayment?.is_cash_count));
   const amountToCollect = applyRounding && selectedConfig?.cashRounding
     ? roundedTotal(total, selectedConfig.cashRounding.rounding, selectedConfig.cashRounding.rounding_method)
     : total;
   const quantity = lines.reduce((sum, line) => sum + line.quantity, 0);
+  const tenderedAmount = isCashPayment && cashTendered.trim() ? Number(cashTendered) : amountToCollect;
+  const changeDue = isCashPayment && Number.isFinite(tenderedAmount) ? Math.max(0, Math.round((tenderedAmount - amountToCollect) * 100) / 100) : 0;
 
   function addProduct(product: OdooProductRecord) {
     setLines((current) => {
@@ -174,6 +178,7 @@ export function OdooRegisterPage() {
       const fingerprint = JSON.stringify({
         configId: selectedConfig.id,
         paymentMethodId,
+        tendered: tenderedAmount,
         customerId: customer?.id ?? null,
         lines: lines.map((line) => [line.product.id, line.quantity]),
       });
@@ -188,13 +193,14 @@ export function OdooRegisterPage() {
         paymentMethodId,
         orderUuid: stableOrderUuid,
         customerId: customer?.id ?? null,
-        tendered: amountToCollect,
+        tendered: tenderedAmount,
         lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
       });
-      setReceipt({ reference: result.receipt, total: result.total, gst: result.gst });
+      setReceipt({ reference: result.receipt, total: result.total, gst: result.gst, change: result.change });
       setLines([]);
       setCustomer(null);
       setCustomerQuery("");
+      setCashTendered("");
       orderUuid.current = null;
       checkoutFingerprint.current = null;
     } catch (cause) {
@@ -227,6 +233,7 @@ export function OdooRegisterPage() {
           <select aria-label="Register" value={configId ?? ""} onChange={(event) => {
             const id = Number(event.target.value);
             setConfigId(id);
+            setCashTendered("");
             const config = bootstrap?.configs.find((item) => item.id === id);
             setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
           }} className="h-10 max-w-[220px] rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
@@ -275,8 +282,9 @@ export function OdooRegisterPage() {
           </div>
           <div className="shrink-0 border-t border-[var(--oh-border)] p-4">
             <div className="mb-3 flex items-end justify-between"><div><p className="text-xs text-[var(--oh-muted)]">{quantity} {quantity === 1 ? "item" : "items"}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">GST included where configured in Odoo</p>{amountToCollect !== total && <p className="mt-1 text-xs font-medium text-[var(--oh-muted)]">Cash rounding {money(amountToCollect - total)}</p>}</div><div className="text-right"><p className="text-xs uppercase tracking-wide text-[var(--oh-muted)]">Total</p><p className="text-3xl font-semibold tabular-nums text-[var(--oh-text)]">{money(amountToCollect)}</p></div></div>
-            <div className="mb-3 grid grid-cols-[1fr_1.3fr] gap-2"><label className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Payment method<select value={paymentMethodId ?? ""} onChange={(event) => setPaymentMethodId(Number(event.target.value) || null)} disabled={!paymentMethods.length} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">{paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</select></label><div className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Sale details<div className="flex h-10 items-center rounded-md bg-[var(--oh-surface)] px-3 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">{selectedConfig?.session?.name ?? "No open session"}</div></div></div>
-            <button type="button" onClick={() => void checkout()} disabled={!lines.length || !selectedConfig?.session || !paymentMethodId || busy} className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--sf-link-blue)] text-lg font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-[#bdbdbd]">
+            <div className="mb-3 grid grid-cols-[1fr_1.3fr] gap-2"><label className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Payment method<select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">{paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</select></label><div className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Sale details<div className="flex h-10 items-center rounded-md bg-[var(--oh-surface)] px-3 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">{selectedConfig?.session?.name ?? "No open session"}</div></div></div>
+            {isCashPayment && <div className="mb-3 rounded-md border border-[var(--oh-border)] bg-[#fbfcfb] p-3"><label htmlFor="cash-tendered" className="flex items-center justify-between gap-3 text-sm font-medium text-[var(--oh-text)]"><span>Cash received</span><span className="text-xs font-normal text-[var(--oh-muted)]">Due {money(amountToCollect)}</span></label><div className="mt-2 flex items-center gap-2"><span className="text-sm text-[var(--oh-muted)]">$</span><input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="h-10 min-w-0 flex-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-base tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange)]/20" /></div><div className="mt-2 flex flex-wrap gap-2">{[5, 10, 20, 50].filter((amount) => amount >= amountToCollect).slice(0, 3).map((amount) => <button key={amount} type="button" onClick={() => setCashTendered(String(amount))} className="min-h-9 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-medium text-[var(--oh-text)] hover:border-[var(--oh-orange)]">${amount}</button>)}<button type="button" onClick={() => setCashTendered(amountToCollect.toFixed(2))} className="min-h-9 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-medium text-[var(--oh-text)] hover:border-[var(--oh-orange)]">Exact</button></div><p role="status" className={`mt-2 text-sm font-semibold tabular-nums ${tenderedAmount + 0.001 < amountToCollect || !Number.isFinite(tenderedAmount) ? "text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{tenderedAmount + 0.001 < amountToCollect || !Number.isFinite(tenderedAmount) ? "Cash received must cover the total." : `Change due ${money(changeDue)}`}</p></div>}
+            <button type="button" onClick={() => void checkout()} disabled={!lines.length || !selectedConfig?.session || !paymentMethodId || busy || !Number.isFinite(tenderedAmount) || tenderedAmount + 0.001 < amountToCollect} className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--sf-link-blue)] text-lg font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-[#bdbdbd]">
               {busy ? <><LoaderCircle size={18} className="animate-spin" /> Processing…</> : <>Finalise · {money(amountToCollect)}</>}
             </button>
           </div>
@@ -290,6 +298,7 @@ export function OdooRegisterPage() {
           <p className="mt-2 text-sm text-[var(--oh-muted)]">Receipt {receipt.reference}</p>
           <p className="mt-3 text-3xl font-semibold">{money(receipt.total)}</p>
           <p className="mt-1 text-xs text-[var(--oh-muted)]">GST {money(receipt.gst)} · {selectedConfig?.session?.name}</p>
+          {receipt.change > 0 && <p className="mt-2 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">Change due {money(receipt.change)}</p>}
           <button onClick={() => setReceipt(null)} className="mt-6 h-11 w-full rounded-md bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">New sale</button>
         </section>
       </div>}

@@ -38,7 +38,7 @@ type OdooCustomer = {
 };
 
 type TaxTotals = { total_excluded: number; total_included: number };
-type OdooPaymentMethod = { id: number; name: string; is_cash_count: boolean };
+type OdooPaymentMethod = { id: number; name: string; is_cash_count: boolean; type: string };
 type OdooCashRounding = { id: number; rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" };
 
 class OdooSessionExpiredError extends Error {}
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
     ], ["id", "state"], 1);
     if (!sessions.length) throw new OdooCheckoutError("The POS session has closed. Refresh the register and try again.", 409);
 
-    const paymentMethods = await searchRead<OdooPaymentMethod>(odooSession, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "name", "is_cash_count"], 1);
+    const paymentMethods = await searchRead<OdooPaymentMethod>(odooSession, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "name", "is_cash_count", "type"], 1);
     const paymentMethod = paymentMethods[0];
     if (!paymentMethod) throw new OdooCheckoutError("The selected payment method is unavailable.", 409);
     let cashRounding: OdooCashRounding | null = null;
@@ -248,13 +248,14 @@ export async function POST(request: NextRequest) {
     }
     const roundedTender = Math.round(tendered * 100) / 100;
     if (roundedTender + 0.001 < total) throw new OdooCheckoutError("Payment is less than the sale total.");
-    if (roundedTender > total + 0.001) throw new OdooCheckoutError("Overpayment and change are not enabled for this checkout yet.");
+    if (roundedTender > total + 0.001 && paymentMethod.type !== "cash") throw new OdooCheckoutError("Only a cash payment can include change. Enter the exact total for this payment method.");
+    const change = Math.round(Math.max(0, roundedTender - total) * 100) / 100;
 
     const date = new Date().toISOString().slice(0, 19).replace("T", " ");
     const uuid = body.orderUuid;
     const order = {
-      amount_paid: total,
-      amount_return: 0,
+      amount_paid: roundedTender,
+      amount_return: change,
       amount_tax: Math.round((total - subtotal) * 100) / 100,
       amount_total: total,
       date_order: date,
@@ -266,7 +267,7 @@ export async function POST(request: NextRequest) {
       partner_id: customer?.id || false,
       session_id: sessionId,
       payment_ids: [[0, 0, {
-        amount: total,
+        amount: roundedTender,
         name: date,
         payment_method_id: body.paymentMethodId,
       }]],
@@ -285,6 +286,7 @@ export async function POST(request: NextRequest) {
       receipt: saved.pos_reference || saved.name,
       total: saved.amount_total,
       gst: saved.amount_tax,
+      change,
       session: sessionName,
     }, { status: 201 });
   } catch (error) {
