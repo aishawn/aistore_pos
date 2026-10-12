@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,11 +57,6 @@ function getOdooBaseUrl() {
   return value;
 }
 
-function sameOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
-}
-
 async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
   const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
@@ -87,7 +83,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 class OdooSessionExpiredError extends Error {}
 
 export async function GET(request: NextRequest) {
-  if (!sameOrigin(request)) {
+  if (!isSameOrigin(request)) {
     return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;

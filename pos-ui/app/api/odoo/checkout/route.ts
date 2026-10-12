@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,11 +57,6 @@ function getBaseUrl() {
   return value;
 }
 
-function sameOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
-}
-
 function roundCashTotal(amount: number, rounding: OdooCashRounding) {
   if (!Number.isFinite(rounding.rounding) || rounding.rounding <= 0) {
     throw new OdooCheckoutError("This register has an invalid cash rounding setting.", 409);
@@ -103,7 +99,7 @@ async function searchRead<T>(sessionId: string, model: string, domain: unknown[]
 }
 
 export async function POST(request: NextRequest) {
-  if (!sameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
   if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
 

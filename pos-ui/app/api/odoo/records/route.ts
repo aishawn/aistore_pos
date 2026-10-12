@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,11 +68,6 @@ const RECORD_TYPES = {
 
 type RecordType = keyof typeof RECORD_TYPES;
 
-function sameOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
-}
-
 function getOdooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
   if (!value) throw new Error("Odoo connection is not configured");
@@ -83,7 +79,7 @@ function getOdooBaseUrl() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!sameOrigin(request)) {
+  if (!isSameOrigin(request)) {
     return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
