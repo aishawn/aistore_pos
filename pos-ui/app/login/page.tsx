@@ -197,9 +197,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 border-t border-[#e8ece8] pt-5 text-xs leading-5 text-[#76837b]">
-            Access is managed by your store administrator. If you can’t sign in, contact them for help.
-          </p>
+          <div className="mt-6 grid gap-2 border-t border-[#e8ece8] pt-5 text-xs leading-5 text-[#76837b]">
+            <p>Access is managed by your store administrator. If you can’t sign in, contact them for help.</p>
+            <p>
+              Looking for a product tour?{" "}
+              <a
+                href="https://orithos.com.au/apply-for-pilot?request=demo"
+                className="font-semibold text-[#8b4a00] underline decoration-[#d8a14b] underline-offset-2 transition-colors hover:text-[var(--oh-orange-dark)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange-dark)]"
+              >
+                Request a guided demo
+              </a>
+              .
+            </p>
+          </div>
         </section>
       </div>
 
