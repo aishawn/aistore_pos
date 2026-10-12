@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isSameOrigin, postAuthBackend, REFRESH_COOKIE, respondWithAuthTokens, setRefreshCookie } from "@/lib/server-auth";
+import { ACCESS_COOKIE, clearAuthCookies, isSameOrigin, postAuthBackend, REFRESH_COOKIE, respondWithAuthTokens } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,12 +13,13 @@ async function isUnauthorized(response: Response) {
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
     const rejected = NextResponse.json({ code: 40300, message: "Cross-origin logout is not allowed", data: null }, { status: 403 });
-    setRefreshCookie(rejected, null);
+    clearAuthCookies(rejected);
     return rejected;
   }
 
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
-  let authorization = request.headers.get("authorization");
+  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
+  let authorization = accessToken ? `Bearer ${accessToken}` : null;
   try {
     let logoutResponse = authorization
       ? await postAuthBackend("logout", undefined, authorization)
@@ -26,10 +27,10 @@ export async function POST(request: NextRequest) {
 
     if ((!logoutResponse || await isUnauthorized(logoutResponse)) && refreshToken) {
       const refreshResponse = await postAuthBackend("refresh", { refreshToken });
+      const refreshPayload = await refreshResponse.clone().json().catch(() => null) as { code?: number; data?: { accessToken?: string } } | null;
       const refreshed = await respondWithAuthTokens(refreshResponse, true);
-      const body = await refreshed.clone().json().catch(() => null) as { code?: number; data?: { accessToken?: string } } | null;
-      if (refreshed.ok && body?.code === 0 && body.data?.accessToken) {
-        authorization = `Bearer ${body.data.accessToken}`;
+      if (refreshed.ok && refreshPayload?.code === 0 && refreshPayload.data?.accessToken) {
+        authorization = `Bearer ${refreshPayload.data.accessToken}`;
         logoutResponse = await postAuthBackend("logout", undefined, authorization);
       }
     }
@@ -40,11 +41,11 @@ export async function POST(request: NextRequest) {
     const response = logoutResponse && logoutResponse.ok
       ? await respondWithAuthTokens(logoutResponse, true)
       : NextResponse.json({ code: 0, message: "ok", data: null }, { status: 200 });
-    setRefreshCookie(response, null);
+    clearAuthCookies(response);
     return response;
   } catch {
     const response = NextResponse.json({ code: 0, message: "ok", data: null }, { status: 200 });
-    setRefreshCookie(response, null);
+    clearAuthCookies(response);
     return response;
   }
 }

@@ -30,12 +30,14 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: lanDevOrigins(),
   // Browser calls same-origin /api/*; Next.js proxies to the Spring Boot backend.
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    return {
+      fallback: [
+        {
+          source: "/api/:path*",
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+    };
   },
   turbopack: {
     root: path.dirname(fileURLToPath(import.meta.url)),

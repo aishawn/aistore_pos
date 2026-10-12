@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, getToken, registerAuthFailureHandler, setToken } from "@/lib/api";
+import { api, registerAuthFailureHandler } from "@/lib/api";
 
 export interface AuthUser {
   id: string;
@@ -15,9 +15,13 @@ export interface AuthUser {
 }
 
 interface LoginResponse {
-  accessToken: string;
-  expiresIn: number;
-  user: AuthUser;
+  user: CurrentUserResponse;
+}
+
+type CurrentUserResponse = Omit<AuthUser, "id"> & { id: string | number };
+
+function normalizeUser(user: CurrentUserResponse): AuthUser {
+  return { ...user, id: String(user.id) };
 }
 
 interface AuthState {
@@ -41,35 +45,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Restore session from a previous login if a token is present. Done after
-    // mount (not in a lazy initializer) to avoid an SSR hydration mismatch.
+    // Revalidate the HttpOnly-cookie session after mount to avoid an SSR
+    // hydration mismatch and stale local user data.
     /* eslint-disable react-hooks/set-state-in-effect */
-    if (getToken() && typeof localStorage !== "undefined") {
-      const cached = localStorage.getItem(USER_KEY);
-      if (cached) {
-        try {
-          setUser(JSON.parse(cached));
-        } catch {
-          /* ignore */
-        }
-      }
+    let active = true;
+    const cached = typeof localStorage !== "undefined" ? localStorage.getItem(USER_KEY) : null;
+    if (cached) {
+      try { setUser(JSON.parse(cached) as AuthUser); } catch { localStorage.removeItem(USER_KEY); }
     }
-    setReady(true);
+    void api.get<CurrentUserResponse>("/api/auth/me")
+      .then((current) => {
+        if (!active) return;
+        const normalized = normalizeUser(current);
+        setUser(normalized);
+        localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+      })
+      .catch(() => {
+        // A 401 handler clears the cached identity; keep it for transient 5xx/network outages.
+      })
+      .finally(() => { if (active) setReady(true); });
     /* eslint-enable react-hooks/set-state-in-effect */
+    return () => { active = false; };
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const res = await api.post<LoginResponse>("/api/auth/login", { username, password });
-    setToken(res.accessToken);
-    setUser(res.user);
-    if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    const normalized = normalizeUser(res.user);
+    setUser(normalized);
+    if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   }, []);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     const res = await api.post<LoginResponse>("/api/auth/change-password", { currentPassword, newPassword });
-    setToken(res.accessToken);
-    setUser(res.user);
-    if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    const normalized = normalizeUser(res.user);
+    setUser(normalized);
+    if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
   }, []);
 
   const logout = useCallback(async () => {
@@ -78,7 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore network errors on logout */
     }
-    setToken(null);
     setUser(null);
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
   }, []);

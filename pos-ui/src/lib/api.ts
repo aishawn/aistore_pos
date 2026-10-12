@@ -1,21 +1,16 @@
 /**
  * Typed client for the Orithos Spring Boot backend.
- * Unwraps the `{ code, message, data }` envelope and attaches the JWT.
+ * Unwraps the `{ code, message, data }` envelope. The same-origin Next BFF
+ * attaches the HttpOnly access token before forwarding API requests.
  */
 
 /**
  * Resolve the API base URL.
- * - Docker / production: leave NEXT_PUBLIC_API_BASE_URL empty; browser uses same-origin /api (rewrites).
- * - Local dev with separate backend: set NEXT_PUBLIC_API_BASE_URL=http://localhost:8080 in .env.local
+ * Business API calls always go through the same-origin BFF, including in local
+ * development, so browser JavaScript never needs access to the JWT.
  */
 function getApiBase(): string {
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
-  }
-  if (typeof window !== "undefined") {
-    return "";
-  }
-  return process.env.BACKEND_URL || "http://localhost:8080";
+  return "";
 }
 
 const TOKEN_COOKIE = "sf_token";
@@ -50,9 +45,9 @@ export function apiFailureMessage(e: unknown, fallback: string, unauthorized: st
 
 // ---- token helpers (cookie-based so it survives reloads) ----
 export function getToken(): string | null {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match(/(?:^|;\s*)sf_token=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+  // Expire the legacy JavaScript-readable token left by older releases.
+  setToken(null);
+  return null;
 }
 
 export function setToken(token: string | null) {
@@ -115,8 +110,7 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
     // Keep credential-bearing endpoints on this origin so Next can hold the
     // refresh token in an HttpOnly cookie, even when business APIs use a
     // separately configured backend origin.
-    const authBff = /^\/api\/auth\/(login|refresh|logout|change-password)$/.test(path);
-    const base = authBff ? "" : getApiBase();
+    const base = path.startsWith("/api/") ? "" : getApiBase();
     url = base
       ? new URL(path, base.endsWith("/") ? base : `${base}/`)
       : new URL(
@@ -145,11 +139,9 @@ async function refreshAccessToken(): Promise<boolean> {
         cache: "no-store",
       });
       const payload = await response.json().catch(() => null) as
-        | { code?: number; data?: { accessToken?: string } }
+        | { code?: number }
         | null;
-      if (!response.ok || payload?.code !== 0 || !payload.data?.accessToken) return false;
-      setToken(payload.data.accessToken);
-      return true;
+      return response.ok && payload?.code === 0;
     } catch {
       return false;
     }
@@ -163,15 +155,13 @@ async function request<T>(
   opts: { query?: Record<string, QueryValue>; body?: unknown } = {},
   retriedAfterRefresh = false,
 ): Promise<T> {
-  const token = getToken();
+  getToken();
   const res = await fetch(buildUrl(path, opts.query), {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     cache: "no-store",
+    credentials: "same-origin",
   });
 
   let json: { code: number; message: string; data: T } | null = null;
