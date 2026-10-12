@@ -92,6 +92,10 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+      # Used by the server-side Odoo session/data bridge. Keep credentials out
+      # of the browser bundle; staff authenticate with their own Odoo users.
+      ODOO_BASE_URL: ${ODOO_BASE_URL:-}
+      ODOO_DATABASE: ${ODOO_DATABASE:-}
 
 volumes:
   mysql-data:

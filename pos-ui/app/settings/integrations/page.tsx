@@ -1,12 +1,15 @@
-import { SettingsScaffold, ToggleRow, SelectRow } from "@/components/admin/SettingsScaffold";
+import { SettingsScaffold } from "@/components/admin/SettingsScaffold";
+import { OdooPosConnectionCard } from "@/components/OdooPosConnectionCard";
 
 export default function IntegrationsPage() {
   return (
     <SettingsScaffold title="Integrations" sectionTitle="Integrations">
-      <ToggleRow label="Xero accounting sync" />
-      <ToggleRow label="MYOB sync" />
-      <ToggleRow label="Tyro EFTPOS" on />
-      <SelectRow label="Sync frequency" value="Every 15 minutes" />
+      <div className="grid gap-4">
+        <OdooPosConnectionCard />
+        <p className="px-1 text-xs leading-5 text-[var(--oh-muted)]">
+          Odoo sign-in is held in a protected server cookie. The POS server must have ODOO_BASE_URL and ODOO_DATABASE configured before connecting.
+        </p>
+      </div>
     </SettingsScaffold>
   );
 }

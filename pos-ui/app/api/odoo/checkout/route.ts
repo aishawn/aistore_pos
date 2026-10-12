@@ -1,0 +1,300 @@
+import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const SESSION_COOKIE = "orithos_odoo_session";
+const MAX_LINES = 80;
+
+type RpcResult<T> = { result?: T; error?: { message?: string; data?: { message?: string } } };
+type Relation = [number, string] | false;
+
+type OdooConfig = {
+  id: number;
+  name: string;
+  company_id: Relation;
+  current_session_id: Relation;
+  payment_method_ids: number[];
+  pricelist_id: Relation;
+  default_fiscal_position_id: Relation;
+  currency_id: Relation;
+  cash_rounding: boolean;
+  only_round_cash_method: boolean;
+  rounding_method: Relation;
+};
+
+type OdooProduct = {
+  id: number;
+  name: string;
+  lst_price: number;
+  taxes_id: number[];
+  available_in_pos: boolean;
+};
+
+type OdooCustomer = {
+  id: number;
+  property_product_pricelist: Relation;
+  property_account_position_id: Relation;
+};
+
+type TaxTotals = { total_excluded: number; total_included: number };
+type OdooPaymentMethod = { id: number; name: string; is_cash_count: boolean };
+type OdooCashRounding = { id: number; rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" };
+
+class OdooSessionExpiredError extends Error {}
+class OdooCheckoutError extends Error {
+  constructor(message: string, public readonly status = 422) { super(message); }
+}
+
+function getBaseUrl() {
+  const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
+  if (!value) throw new OdooCheckoutError("Odoo connection is not configured on the POS server.", 503);
+  const parsed = new URL(value);
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
+    throw new OdooCheckoutError("Odoo connection must use HTTPS.", 503);
+  }
+  return value;
+}
+
+function sameOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return !origin || origin === new URL(request.url).origin;
+}
+
+function roundCashTotal(amount: number, rounding: OdooCashRounding) {
+  if (!Number.isFinite(rounding.rounding) || rounding.rounding <= 0) {
+    throw new OdooCheckoutError("This register has an invalid cash rounding setting.", 409);
+  }
+  const ratio = amount / rounding.rounding;
+  const rounded = rounding.rounding_method === "UP"
+    ? Math.ceil(ratio - 1e-9)
+    : rounding.rounding_method === "DOWN"
+      ? Math.floor(ratio + 1e-9)
+      : Math.floor(ratio + 0.5 + 1e-9);
+  return Math.round(rounded * rounding.rounding * 100) / 100;
+}
+
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+  const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "call",
+      params: { model, method, args, kwargs },
+      id: Date.now(),
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new OdooCheckoutError("Odoo did not accept the POS request.", 502);
+  const payload = (await response.json()) as RpcResult<T>;
+  if (payload.error) {
+    const detail = payload.error.data?.message || payload.error.message || "";
+    if (/session|log in|authenticate/i.test(detail)) throw new OdooSessionExpiredError();
+    throw new OdooCheckoutError("Odoo rejected the POS request. Check register, tax and payment configuration.");
+  }
+  if (payload.result === undefined) throw new OdooCheckoutError("Odoo returned an empty POS response.", 502);
+  return payload.result;
+}
+
+async function searchRead<T>(sessionId: string, model: string, domain: unknown[], fields: string[], limit = 100) {
+  return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit });
+}
+
+export async function POST(request: NextRequest) {
+  if (!sameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+
+  let body: {
+    configId?: number;
+    paymentMethodId?: number;
+    orderUuid?: string;
+    customerId?: number | null;
+    tendered?: number;
+    lines?: { productId: number; quantity: number }[];
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ message: "Invalid checkout request" }, { status: 400 });
+  }
+
+  if (!Number.isInteger(body.configId) || !Number.isInteger(body.paymentMethodId)) {
+    return NextResponse.json({ message: "Choose an Odoo register and payment method." }, { status: 400 });
+  }
+  if (!body.orderUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.orderUuid)) {
+    return NextResponse.json({ message: "A valid order id is required so retries cannot create a duplicate sale." }, { status: 400 });
+  }
+  if (!Array.isArray(body.lines) || body.lines.length === 0 || body.lines.length > MAX_LINES) {
+    return NextResponse.json({ message: `A sale must contain between 1 and ${MAX_LINES} items.` }, { status: 400 });
+  }
+  if (body.lines.some((line) => !Number.isInteger(line.productId) || !Number.isFinite(line.quantity) || line.quantity <= 0 || line.quantity > 1000)) {
+    return NextResponse.json({ message: "Sale quantities or product ids are invalid." }, { status: 400 });
+  }
+  const tendered = Number(body.tendered);
+  if (!Number.isFinite(tendered) || tendered <= 0 || tendered > 1_000_000) {
+    return NextResponse.json({ message: "The payment amount is invalid." }, { status: 400 });
+  }
+
+  try {
+    const sessionInfoResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSession}` },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    const sessionInfo = (await sessionInfoResponse.json()) as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
+    const uid = sessionInfo.result?.uid;
+    const companyIds = (sessionInfo.result?.user_context?.allowed_company_ids ?? []).filter((id) => Number.isInteger(id));
+    if (!sessionInfoResponse.ok || sessionInfo.error || !uid) throw new OdooSessionExpiredError();
+    if (!companyIds.length) throw new OdooCheckoutError("This Odoo user has no accessible company.", 403);
+
+    const configs = await searchRead<OdooConfig>(odooSession, "pos.config", [
+      ["id", "=", body.configId],
+      ["company_id", "in", companyIds],
+    ], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1);
+    const config = configs[0];
+    if (!config) throw new OdooCheckoutError("This register is not available to your Odoo user.", 403);
+    if (!Array.isArray(config.current_session_id)) throw new OdooCheckoutError("This register has no open POS session. Open a session in Odoo first.", 409);
+    if (!config.payment_method_ids.includes(body.paymentMethodId!)) throw new OdooCheckoutError("That payment method is not enabled for this register.", 403);
+    const [sessionId, sessionName] = config.current_session_id;
+    const sessions = await searchRead<{ id: number; state: string }>(odooSession, "pos.session", [
+      ["id", "=", sessionId],
+      ["state", "=", "opened"],
+      ["config_id", "=", config.id],
+    ], ["id", "state"], 1);
+    if (!sessions.length) throw new OdooCheckoutError("The POS session has closed. Refresh the register and try again.", 409);
+
+    const paymentMethods = await searchRead<OdooPaymentMethod>(odooSession, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "name", "is_cash_count"], 1);
+    const paymentMethod = paymentMethods[0];
+    if (!paymentMethod) throw new OdooCheckoutError("The selected payment method is unavailable.", 409);
+    let cashRounding: OdooCashRounding | null = null;
+    if (config.cash_rounding) {
+      const roundingId = Array.isArray(config.rounding_method) ? config.rounding_method[0] : null;
+      if (!roundingId) throw new OdooCheckoutError("This register has cash rounding enabled but no rounding rule configured.", 409);
+      const roundingMethods = await searchRead<OdooCashRounding>(odooSession, "account.cash.rounding", [["id", "=", roundingId]], ["id", "rounding", "rounding_method"], 1);
+      cashRounding = roundingMethods[0] ?? null;
+      if (!cashRounding) throw new OdooCheckoutError("The register cash rounding rule is unavailable.", 409);
+    }
+
+    const pricelist = Array.isArray(config.pricelist_id) ? config.pricelist_id[0] : null;
+    if (pricelist) {
+      const pricelists = await searchRead<{ id: number; currency_id: Relation }>(odooSession, "product.pricelist", [["id", "=", pricelist]], ["id", "currency_id"], 1);
+      const configuredCurrencyId = Array.isArray(config.currency_id) ? config.currency_id[0] : null;
+      const pricelistCurrencyId = Array.isArray(pricelists[0]?.currency_id) ? pricelists[0].currency_id[0] : null;
+      if (configuredCurrencyId && pricelistCurrencyId && configuredCurrencyId !== pricelistCurrencyId) {
+        throw new OdooCheckoutError("This register uses a different-currency pricelist. Currency conversion must be connected before checkout.", 409);
+      }
+      const rules = await searchRead<{ id: number }>(odooSession, "product.pricelist.item", [["pricelist_id", "=", pricelist]], ["id"], 1);
+      if (rules.length) throw new OdooCheckoutError("This register uses pricing rules that are not yet supported by the custom POS checkout. Use the configured Odoo POS until pricing rules are connected.", 409);
+    }
+
+    const productIds = [...new Set(body.lines.map((line) => line.productId))];
+    const products = await searchRead<OdooProduct>(odooSession, "product.product", [
+      ["id", "in", productIds],
+      ["available_in_pos", "=", true],
+    ], ["id", "name", "lst_price", "taxes_id", "available_in_pos"], MAX_LINES);
+    if (products.length !== productIds.length) throw new OdooCheckoutError("One or more products are no longer available in this POS.", 409);
+    const productsById = new Map(products.map((product) => [product.id, product]));
+
+    let customer: OdooCustomer | null = null;
+    if (body.customerId != null) {
+      if (!Number.isInteger(body.customerId)) throw new OdooCheckoutError("The customer selection is invalid.", 400);
+      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId]], ["id", "property_product_pricelist", "property_account_position_id"], 1);
+      customer = customers[0] ?? null;
+      if (!customer) throw new OdooCheckoutError("The selected customer is no longer available.", 409);
+      if (pricelist && Array.isArray(customer.property_product_pricelist) && customer.property_product_pricelist[0] !== pricelist) {
+        throw new OdooCheckoutError("This customer uses a different pricelist. Customer-specific pricing must be connected before checkout.", 409);
+      }
+    }
+
+    const fiscalPosition = customer?.property_account_position_id || config.default_fiscal_position_id;
+    const fiscalPositionId = Array.isArray(fiscalPosition) ? fiscalPosition[0] : null;
+    const lineCommands: unknown[] = [];
+    let subtotal = 0;
+    let total = 0;
+    for (const inputLine of body.lines) {
+      const product = productsById.get(inputLine.productId)!;
+      const priceUnit = Number(product.lst_price);
+      if (!Number.isFinite(priceUnit) || priceUnit < 0) throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
+      let taxIds = product.taxes_id;
+      if (fiscalPositionId && taxIds.length) {
+        taxIds = await rpc<number[]>(odooSession, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds]);
+      }
+      const totals = taxIds.length
+        ? await rpc<TaxTotals>(odooSession, "account.tax", "compute_all", [taxIds, priceUnit, config.currency_id && Array.isArray(config.currency_id) ? config.currency_id[0] : undefined, inputLine.quantity, product.id, body.customerId ?? false])
+        : { total_excluded: priceUnit * inputLine.quantity, total_included: priceUnit * inputLine.quantity };
+      if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
+      subtotal += totals.total_excluded;
+      total += totals.total_included;
+      lineCommands.push([0, 0, {
+        product_id: product.id,
+        qty: inputLine.quantity,
+        price_unit: priceUnit,
+        price_subtotal: totals.total_excluded,
+        price_subtotal_incl: totals.total_included,
+        tax_ids: [[6, 0, taxIds]],
+        pack_lot_ids: [],
+      }]);
+    }
+
+    subtotal = Math.round(subtotal * 100) / 100;
+    total = Math.round(total * 100) / 100;
+    if (cashRounding && (!config.only_round_cash_method || paymentMethod.is_cash_count)) {
+      total = roundCashTotal(total, cashRounding);
+    }
+    const roundedTender = Math.round(tendered * 100) / 100;
+    if (roundedTender + 0.001 < total) throw new OdooCheckoutError("Payment is less than the sale total.");
+    if (roundedTender > total + 0.001) throw new OdooCheckoutError("Overpayment and change are not enabled for this checkout yet.");
+
+    const date = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const uuid = body.orderUuid;
+    const order = {
+      amount_paid: total,
+      amount_return: 0,
+      amount_tax: Math.round((total - subtotal) * 100) / 100,
+      amount_total: total,
+      date_order: date,
+      fiscal_position_id: fiscalPositionId || false,
+      pricelist_id: pricelist || false,
+      name: `Order ${uuid}`,
+      last_order_preparation_change: "{}",
+      lines: lineCommands,
+      partner_id: customer?.id || false,
+      session_id: sessionId,
+      payment_ids: [[0, 0, {
+        amount: total,
+        name: date,
+        payment_method_id: body.paymentMethodId,
+      }]],
+      uuid,
+      user_id: uid,
+      to_invoice: false,
+    };
+    const synced = await rpc<{
+      "pos.order"?: { id: number; name: string; pos_reference?: string; amount_total: number; amount_tax: number }[];
+    }>(odooSession, "pos.order", "sync_from_ui", [[order]]);
+    const saved = synced["pos.order"]?.[0];
+    if (!saved) throw new OdooCheckoutError("Odoo did not confirm the sale. Check the order history before retrying.", 502);
+
+    return NextResponse.json({
+      saleId: saved.id,
+      receipt: saved.pos_reference || saved.name,
+      total: saved.amount_total,
+      gst: saved.amount_tax,
+      session: sessionName,
+    }, { status: 201 });
+  } catch (error) {
+    if (error instanceof OdooSessionExpiredError) {
+      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
+    const status = error instanceof OdooCheckoutError ? error.status : 502;
+    const message = error instanceof Error ? error.message : "Odoo checkout failed.";
+    return NextResponse.json({ message }, { status });
+  }
+}

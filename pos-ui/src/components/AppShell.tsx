@@ -16,6 +16,18 @@ import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/
 /** Routes that render standalone, without the app chrome + auth guard. */
 const CHROMELESS = ["/login"];
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
+const ODOO_REGISTER_PATH = "/register/odoo";
+
+function safeInternalPath(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  try {
+    const target = new URL(value, window.location.origin);
+    if (target.origin !== window.location.origin || target.pathname === "/login") return null;
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Orithos application shell — persistent sidebar + white header + content area.
@@ -47,7 +59,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setUiModeState(mode);
     if (!ready) return;
     if (!user && !chromeless) {
-      router.replace("/login");
+      const next = `${pathname}${window.location.search}`;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
+      return;
+    }
+    if (user && pathname === "/login") {
+      const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
+      router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
       return;
     }
     if (user && mode === "mobile" && !isMobileAllowedPath(pathname) && pathname !== "/login") {
@@ -95,8 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <UnsavedChangesProvider>
-    <SellScreenProvider>
-    <AiAssistantProvider>
+      <AiAssistantProvider>
     <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
       <Sidebar open={sidebarOpen} />
       <div className="flex min-w-0 flex-1 flex-col print:w-full">
@@ -107,7 +124,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onUserClick={() => setUserMenuOpen((v) => !v)}
         />
         <div className="relative min-h-0 flex-1">
-          {children}
+          {pathname === ODOO_REGISTER_PATH ? children : <SellScreenProvider>{children}</SellScreenProvider>}
           <UserMenu
             open={userMenuOpen}
             onClose={() => setUserMenuOpen(false)}
@@ -117,8 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <AiFloatHost />
     </div>
-    </AiAssistantProvider>
-    </SellScreenProvider>
+      </AiAssistantProvider>
     </UnsavedChangesProvider>
   );
 }

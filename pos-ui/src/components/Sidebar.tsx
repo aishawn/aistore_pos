@@ -45,6 +45,7 @@ const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?
   customers: Users,
   reporting: BarChart3,
   settings: Settings,
+  marketing: Percent,
 };
 
 /** Per-item icons for the Settings sub-menu (matches Shopfront Setup drawer). */
@@ -114,7 +115,7 @@ export function Sidebar({ open = true }: { open?: boolean }) {
     >
       <div className="flex min-w-[var(--oh-sidebar-width)] flex-1 flex-col">
       <div className="flex h-[var(--oh-header-height)] items-center border-b border-[var(--oh-sidebar-border)] px-4">
-        <OrithosLogo />
+        <OrithosLogo inverse />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
@@ -161,9 +162,9 @@ function SidebarNavLink({
         )}
       >
         {active && (
-          <span className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full bg-[var(--oh-orange)]" />
+          <span className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />
         )}
-        <Icon size={17} strokeWidth={1.75} className={active ? "text-[var(--oh-orange)]" : ""} />
+        <Icon size={17} strokeWidth={1.75} className={active ? "text-[var(--oh-sidebar-active)]" : ""} />
         {item.label}
       </Link>
     </li>
@@ -202,7 +203,7 @@ function SidebarNavGroup({
           <Icon
             size={17}
             strokeWidth={1.75}
-            className={active ? "text-[var(--oh-orange)]" : ""}
+            className={active ? "text-[var(--oh-sidebar-active)]" : ""}
           />
           {group.label}
         </span>
@@ -223,10 +224,10 @@ function SidebarNavGroup({
                     "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
                     item.more
                       ? active
-                        ? "font-medium text-[var(--oh-orange)]"
+                        ? "font-medium text-[var(--oh-sidebar-active)]"
                         : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]"
                       : active
-                        ? "font-medium text-[var(--oh-orange)]"
+                        ? "font-medium text-[var(--oh-sidebar-active)]"
                         : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
                   )}
                 >
@@ -236,7 +237,7 @@ function SidebarNavGroup({
                       strokeWidth={2.5}
                       className={cn(
                         "shrink-0",
-                        active ? "text-[var(--oh-orange)]" : "text-[var(--sf-tab-blue,#3b82f6)]",
+                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--sf-tab-blue,#3b82f6)]",
                       )}
                     />
                   ) : SubIcon ? (
@@ -245,7 +246,7 @@ function SidebarNavGroup({
                       strokeWidth={1.75}
                       className={cn(
                         "shrink-0",
-                        active ? "text-[var(--oh-orange)]" : "text-[var(--sf-tab-blue,#3b82f6)]",
+                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--sf-tab-blue,#3b82f6)]",
                       )}
                     />
                   ) : null}
