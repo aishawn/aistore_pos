@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Eye, EyeOff, PackageCheck, ShoppingBasket, Sparkles } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
 
 type UiMode = "web" | "mobile";
+const REMEMBERED_USERNAME_KEY = "orithos-remembered-username";
 
 function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -30,15 +31,34 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberUsername, setRememberUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<UiMode | null>(null);
+
+  useEffect(() => {
+    try {
+      const rememberedUsername = localStorage.getItem(REMEMBERED_USERNAME_KEY);
+      if (rememberedUsername) {
+        setUsername(rememberedUsername);
+        setRememberUsername(true);
+      }
+    } catch {
+      // Storage may be unavailable in private browsing; sign-in still works.
+    }
+  }, []);
 
   async function doLogin(mode: UiMode) {
     setBusy(mode);
     setError(null);
     try {
       await login(username.trim(), password);
+      try {
+        if (rememberUsername) localStorage.setItem(REMEMBERED_USERNAME_KEY, username.trim());
+        else localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+      } catch {
+        // Remembering the username is optional and must not block sign-in.
+      }
       setUiMode(mode);
       const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
       window.location.assign(returnPath ?? (mode === "mobile" ? "/m" : "/"));
@@ -143,6 +163,17 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                 </button>
               </span>
+            </label>
+
+            <label htmlFor="remember-username" className="-mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-medium text-[#52615a]">
+              <input
+                id="remember-username"
+                type="checkbox"
+                checked={rememberUsername}
+                onChange={(event) => setRememberUsername(event.target.checked)}
+                className="h-4 w-4 rounded border-[#aebbb2] accent-[var(--oh-orange-dark)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange-dark)]"
+              />
+              Remember username on this device
             </label>
 
             {error && <p className="rounded-md border border-[#f0c8c2] bg-[#fff4f2] px-3 py-2.5 text-sm leading-5 text-[#9b3328]" role="alert">{error}</p>}
