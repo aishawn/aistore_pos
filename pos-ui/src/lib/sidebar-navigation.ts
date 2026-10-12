@@ -64,6 +64,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers" },
+      { label: "Odoo Customers", href: "/customers/odoo" },
       { label: "Customer Groups", href: "/customer-groups" },
       { label: "Balances", href: "/customers/balances" },
       { label: "Gift Cards", href: "/giftcards" },
