@@ -63,7 +63,7 @@ export function OdooCustomerDirectoryPage() {
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Odoo Customers</h1>
+          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Customers</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Customer records available to your Odoo staff account.</p>
         </div>
         <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
