@@ -183,7 +183,11 @@ export interface OdooCheckoutResult {
   receipt: string;
   total: number;
   gst: number;
+  subtotal: number;
+  tendered: number;
   change: number;
+  lines: Array<{ name: string; quantity: number; subtotal: number; total: number }>;
+  date: string;
   session: string;
 }
 
@@ -267,7 +271,7 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
   if (!response.ok) {
     throw new OdooApiError(payload?.message || `Odoo checkout failed (${response.status})`, response.status);
   }
-  if (!payload || !("saleId" in payload) || typeof payload.saleId !== "number" || typeof payload.receipt !== "string" || typeof payload.change !== "number") {
+  if (!payload || !("saleId" in payload) || typeof payload.saleId !== "number" || typeof payload.receipt !== "string" || typeof payload.change !== "number" || !Array.isArray(payload.lines)) {
     throw new OdooApiError("Odoo did not confirm the sale", 502);
   }
   return payload as OdooCheckoutResult;

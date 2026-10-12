@@ -214,6 +214,7 @@ export async function POST(request: NextRequest) {
     const fiscalPosition = customer?.property_account_position_id || config.default_fiscal_position_id;
     const fiscalPositionId = Array.isArray(fiscalPosition) ? fiscalPosition[0] : null;
     const lineCommands: unknown[] = [];
+    const receiptLines: { name: string; quantity: number; subtotal: number; total: number }[] = [];
     let subtotal = 0;
     let total = 0;
     for (const inputLine of body.lines) {
@@ -230,6 +231,7 @@ export async function POST(request: NextRequest) {
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
       subtotal += totals.total_excluded;
       total += totals.total_included;
+      receiptLines.push({ name: product.name, quantity: inputLine.quantity, subtotal: totals.total_excluded, total: totals.total_included });
       lineCommands.push([0, 0, {
         product_id: product.id,
         qty: inputLine.quantity,
@@ -286,7 +288,11 @@ export async function POST(request: NextRequest) {
       receipt: saved.pos_reference || saved.name,
       total: saved.amount_total,
       gst: saved.amount_tax,
+      subtotal: Math.round((saved.amount_total - saved.amount_tax) * 100) / 100,
+      tendered: roundedTender,
       change,
+      lines: receiptLines,
+      date,
       session: sessionName,
     }, { status: 201 });
   } catch (error) {

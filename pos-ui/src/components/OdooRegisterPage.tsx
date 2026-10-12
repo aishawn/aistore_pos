@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, CircleAlert, LoaderCircle, Minus, Plus, RefreshCw, Search, Trash2, UserRound, Wine } from "lucide-react";
+import { Check, CircleAlert, LoaderCircle, Minus, Plus, Printer, RefreshCw, Search, Trash2, UserRound, Wine, X } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSession,
@@ -14,6 +14,20 @@ import {
 } from "@/lib/odoo-api";
 
 type CartLine = { product: OdooProductRecord; quantity: number };
+type CompletedReceipt = {
+  reference: string;
+  total: number;
+  subtotal: number;
+  gst: number;
+  tendered: number;
+  change: number;
+  lines: { name: string; quantity: number; subtotal: number; total: number }[];
+  customerName: string;
+  companyName: string;
+  paymentMethod: string;
+  session: string;
+  date: string;
+};
 
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
@@ -44,7 +58,7 @@ export function OdooRegisterPage() {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<{ reference: string; total: number; gst: number; change: number } | null>(null);
+  const [receipt, setReceipt] = useState<CompletedReceipt | null>(null);
   const [cashTendered, setCashTendered] = useState("");
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
@@ -125,6 +139,12 @@ export function OdooRegisterPage() {
   const tenderedAmount = isCashPayment && cashTendered.trim() ? Number(cashTendered) : amountToCollect;
   const changeDue = isCashPayment && Number.isFinite(tenderedAmount) ? Math.max(0, Math.round((tenderedAmount - amountToCollect) * 100) / 100) : 0;
 
+  function formatReceiptDate(value: string) {
+    const date = new Date(`${value.replace(" ", "T")}Z`);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(date);
+  }
+
   function addProduct(product: OdooProductRecord) {
     setLines((current) => {
       const found = current.find((line) => line.product.id === product.id);
@@ -196,7 +216,20 @@ export function OdooRegisterPage() {
         tendered: tenderedAmount,
         lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
       });
-      setReceipt({ reference: result.receipt, total: result.total, gst: result.gst, change: result.change });
+      setReceipt({
+        reference: result.receipt,
+        total: result.total,
+        subtotal: result.subtotal,
+        gst: result.gst,
+        tendered: result.tendered,
+        change: result.change,
+        lines: result.lines,
+        customerName: customer?.name ?? "Walk-in customer",
+        companyName: Array.isArray(selectedConfig.company) ? selectedConfig.company[1] : "Orithos POS",
+        paymentMethod: selectedPayment?.name ?? "Payment",
+        session: selectedConfig.session.name,
+        date: result.date,
+      });
       setLines([]);
       setCustomer(null);
       setCustomerQuery("");
@@ -291,15 +324,16 @@ export function OdooRegisterPage() {
         </section>
       </div>
 
-      {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-        <section className="w-full max-w-sm rounded-xl bg-white p-7 text-center shadow-2xl">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Check size={24} /></span>
-          <h2 id="sale-complete-title" className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Sale complete</h2>
-          <p className="mt-2 text-sm text-[var(--oh-muted)]">Receipt {receipt.reference}</p>
-          <p className="mt-3 text-3xl font-semibold">{money(receipt.total)}</p>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">GST {money(receipt.gst)} · {selectedConfig?.session?.name}</p>
-          {receipt.change > 0 && <p className="mt-2 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">Change due {money(receipt.change)}</p>}
-          <button onClick={() => setReceipt(null)} className="mt-6 h-11 w-full rounded-md bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">New sale</button>
+      {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
+        <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
+          <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button></header>
+          <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatReceiptDate(receipt.date)}</p></div>
+          <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 border-y border-dashed border-[var(--oh-border)] py-3 text-xs"><dt className="text-[var(--oh-muted)]">Customer</dt><dd className="text-right font-medium text-[var(--oh-text)]">{receipt.customerName}</dd><dt className="text-[var(--oh-muted)]">Register</dt><dd className="text-right text-[var(--oh-text)]">{receipt.session}</dd></dl>
+          <table className="mt-4 w-full text-xs"><thead><tr className="border-b border-[var(--oh-border)] text-[var(--oh-muted)]"><th className="pb-2 text-left font-semibold">Item</th><th className="pb-2 text-right font-semibold">Qty</th><th className="pb-2 text-right font-semibold">Total</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{receipt.lines.map((line, index) => <tr key={`${line.name}-${index}`}><td className="py-2 pr-2 font-medium text-[var(--oh-text)]">{line.name}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.quantity}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text)]">{money(line.total)}</td></tr>)}</tbody></table>
+          <dl className="mt-4 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Subtotal</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.subtotal)}</dd><dt className="text-[var(--oh-muted)]">Tax</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.gst)}</dd><dt className="border-t border-[var(--oh-border)] pt-2 text-sm font-bold text-[var(--oh-text)]">Total</dt><dd className="border-t border-[var(--oh-border)] pt-2 text-right text-sm font-bold tabular-nums text-[var(--oh-text)]">{money(receipt.total)}</dd></dl>
+          <section className="mt-4 border-t border-dashed border-[var(--oh-border)] pt-3"><h4 className="text-xs font-semibold text-[var(--oh-text)]">Payment</h4><dl className="mt-2 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Method</dt><dd className="text-right text-[var(--oh-text)]">{receipt.paymentMethod}</dd>{receipt.change > 0 && <><dt className="text-[var(--oh-muted)]">Cash received</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.tendered)}</dd><dt className="font-semibold text-[var(--oh-text)]">Change</dt><dd className="text-right font-semibold tabular-nums text-[var(--oh-text)]">{money(receipt.change)}</dd></>}</dl></section>
+          <p className="mt-5 text-center text-[10px] text-[var(--oh-muted)]">Thank you for shopping with us.</p>
+          <footer className="receipt-print-hidden mt-5 flex gap-2 border-t border-[var(--oh-border)] pt-4"><button type="button" onClick={() => setReceipt(null)} className="h-11 flex-1 rounded-md border border-[var(--oh-border)] text-sm font-semibold text-[var(--oh-text)]">New sale</button><button type="button" onClick={() => window.print()} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--oh-orange)] text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22]"><Printer size={16} /> Print receipt</button></footer>
         </section>
       </div>}
     </main>
