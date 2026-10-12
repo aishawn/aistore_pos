@@ -16,7 +16,6 @@ export interface AuthUser {
 
 interface LoginResponse {
   accessToken: string;
-  refreshToken: string;
   expiresIn: number;
   user: AuthUser;
 }

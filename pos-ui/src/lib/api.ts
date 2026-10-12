@@ -86,7 +86,10 @@ function clearSession() {
 }
 
 function isAuthExemptPath(path: string): boolean {
-  return path.startsWith("/api/auth/login") || path.startsWith("/api/auth/logout");
+  return path.startsWith("/api/auth/login")
+    || path.startsWith("/api/auth/logout")
+    || path.startsWith("/api/auth/refresh")
+    || path.startsWith("/api/auth/change-password");
 }
 
 function handleAuthFailure(path: string, status: number, code: number) {
@@ -109,7 +112,11 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   if (path.startsWith("http")) {
     url = new URL(path);
   } else {
-    const base = getApiBase();
+    // Keep credential-bearing endpoints on this origin so Next can hold the
+    // refresh token in an HttpOnly cookie, even when business APIs use a
+    // separately configured backend origin.
+    const authBff = /^\/api\/auth\/(login|refresh|logout|change-password)$/.test(path);
+    const base = authBff ? "" : getApiBase();
     url = base
       ? new URL(path, base.endsWith("/") ? base : `${base}/`)
       : new URL(
@@ -125,10 +132,36 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   return url.toString();
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const response = await fetch(new URL("/api/auth/refresh", window.location.origin), {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null) as
+        | { code?: number; data?: { accessToken?: string } }
+        | null;
+      if (!response.ok || payload?.code !== 0 || !payload.data?.accessToken) return false;
+      setToken(payload.data.accessToken);
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
 async function request<T>(
   method: string,
   path: string,
   opts: { query?: Record<string, QueryValue>; body?: unknown } = {},
+  retriedAfterRefresh = false,
 ): Promise<T> {
   const token = getToken();
   const res = await fetch(buildUrl(path, opts.query), {
@@ -146,6 +179,11 @@ async function request<T>(
     json = await res.json();
   } catch {
     /* non-JSON response */
+  }
+
+  const authExpired = res.status === 401 || json?.code === 40100 || json?.code === 40103;
+  if (authExpired && !retriedAfterRefresh && !isAuthExemptPath(path) && await refreshAccessToken()) {
+    return request<T>(method, path, opts, true);
   }
 
   if (!res.ok || !json) {
