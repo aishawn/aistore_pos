@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Pencil, RefreshCw, Search, X } from "lucide-react";
+import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import {
+  createOdooProduct,
   getOdooSession,
   searchOdooRecords,
   updateOdooProduct,
@@ -33,6 +34,9 @@ export function OdooProductCataloguePage() {
   const [categoriesTouched, setCategoriesTouched] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [newProductOpen, setNewProductOpen] = useState(false);
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const requestRevision = useRef(0);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
 
@@ -129,6 +133,39 @@ export function OdooProductCataloguePage() {
     }
   }
 
+  async function createProduct(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creatingProduct) return;
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+    const price = Number(form.get("list_price"));
+    if (!Number.isFinite(price) || price < 0 || price > 1_000_000) {
+      setCreateError("Enter a sale price between 0 and 1,000,000.");
+      return;
+    }
+    setCreatingProduct(true);
+    setCreateError(null);
+    try {
+      await createOdooProduct({
+        name,
+        list_price: price,
+        default_code: String(form.get("default_code") ?? "").trim(),
+        barcode: String(form.get("barcode") ?? "").trim(),
+        pos_categ_ids: form.getAll("pos_categ_ids").map(Number),
+        available_in_pos: form.get("available_in_pos") === "on",
+      });
+      setNewProductOpen(false);
+      setQuery(name);
+      setCategoryId(null);
+      setOffset(0);
+      setRefreshKey((value) => value + 1);
+    } catch (cause) {
+      setCreateError(cause instanceof Error ? cause.message : "Could not create this Odoo product.");
+    } finally {
+      setCreatingProduct(false);
+    }
+  }
+
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -136,9 +173,12 @@ export function OdooProductCataloguePage() {
           <h1 className="text-xl font-semibold text-[var(--oh-text)]">Products</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
         </div>
-        <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
-          {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+            {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
+          </button>
+        </div>
       </header>
 
       {connected === false ? (
@@ -250,6 +290,48 @@ export function OdooProductCataloguePage() {
             <footer className="flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
               <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
               <button type="submit" disabled={savingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-wait disabled:opacity-60">{savingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Save changes</button>
+            </footer>
+          </form>
+        </section>
+      </div>}
+
+      {newProductOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !creatingProduct) setNewProductOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="product-create-title" className="my-auto w-full max-w-xl rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl md:p-6">
+          <header className="flex items-start justify-between gap-4">
+            <div><h2 id="product-create-title" className="text-lg font-semibold text-[var(--oh-text)]">New product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Add a stock-tracked product to the Odoo POS catalogue.</p></div>
+            <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+          </header>
+          <form key="new-product" onSubmit={(event) => void createProduct(event)} className="mt-5 grid gap-4">
+            <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Product name <span className="text-red-700">*</span>
+              <input name="name" autoFocus maxLength={120} required className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Sale price (AUD)
+                <input name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue="0" className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+              </label>
+              <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">SKU
+                <input name="default_code" maxLength={64} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+              </label>
+            </div>
+            <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Barcode
+              <input name="barcode" maxLength={64} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+            </label>
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-medium text-[var(--oh-text)]">POS categories <span className="font-normal text-[var(--oh-muted)]">(optional)</span></legend>
+              <div className="grid max-h-36 gap-1 overflow-y-auto rounded-md border border-[var(--oh-border)] p-2 sm:grid-cols-2">
+                {categories.map((category) => <label key={category.id} className="flex min-h-9 items-center gap-2 rounded px-2 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
+                  <input type="checkbox" name="pos_categ_ids" value={category.id} className="accent-[var(--oh-orange)]" />
+                  <span className="truncate">{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</span>
+                </label>)}
+                {!categories.length && <p className="px-2 py-3 text-sm text-[var(--oh-muted)]">No POS categories are available. You can create the product without one.</p>}
+              </div>
+            </fieldset>
+            <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked className="mt-0.5 accent-[var(--oh-orange)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Make the product searchable at the register.</span></span></label>
+            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">Odoo will track this as a stockable good. Add opening stock through Odoo receiving or stock adjustment after creating it.</p>
+            {createError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{createError}</p>}
+            <footer className="flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
+              <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={creatingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-wait disabled:opacity-60">{creatingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Create product</button>
             </footer>
           </form>
         </section>
