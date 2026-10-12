@@ -278,6 +278,18 @@ export async function createOdooCustomer(values: { name: string; phone: string; 
   return { id: payload.id, name: payload.name };
 }
 
+export async function updateOdooCustomer(customerId: number, values: { name: string; phone: string; email: string; ref: string }): Promise<void> {
+  const response = await fetch(`/api/odoo/customers/${customerId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(values),
+  });
+  const payload = await response.json().catch(() => null) as { message?: string } | null;
+  if (!response.ok) throw new OdooApiError(payload?.message || `Customer update failed (${response.status})`, response.status);
+}
+
 export async function getOdooSaleDetail(saleId: number): Promise<OdooSaleDetail> {
   const response = await fetch(`/api/odoo/sales/${saleId}`, { credentials: "same-origin", cache: "no-store" });
   const payload = await response.json().catch(() => null) as (OdooSaleDetail & { message?: string }) | { message?: string } | null;
