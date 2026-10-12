@@ -459,15 +459,15 @@ export function OdooRegisterPage() {
             <button type="button" onClick={() => setSaleView("parked")} className={`inline-flex items-center gap-2 border-b-2 px-3 text-sm font-semibold ${saleView === "parked" ? "border-[var(--oh-orange)] text-[var(--oh-text)]" : "border-transparent text-[var(--oh-muted)]"}`}>Parked sales <span className="rounded-full bg-[var(--oh-surface)] px-2 py-0.5 text-xs">{visibleParkedSales.length}</span></button>
           </div>
           {saleView === "sell" ? <>
-          <label className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-3">
+          <div role="group" aria-label="Search and filter POS products" className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-3">
             <Search size={18} className="text-[var(--oh-muted)]" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => void handleProductSearchKeyDown(event)} placeholder="Scan barcode or search products" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            <input aria-label="Search products by name, barcode or code" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => void handleProductSearchKeyDown(event)} placeholder="Scan barcode or search products" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             {productsLoading && <LoaderCircle size={16} className="animate-spin text-[var(--oh-muted)]" />}
             <select aria-label="POS category" value={categoryId ?? ""} onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)} className="h-9 max-w-[40%] rounded-md border border-[var(--oh-border)] bg-white px-2 text-xs font-medium text-[var(--oh-text)] sm:max-w-[180px]">
               <option value="">All categories</option>
               {posCategories.map((category) => <option key={category.id} value={category.id}>{Array.isArray(category.parent_id) ? `${category.parent_id[1]} / ${category.name}` : category.name}</option>)}
             </select>
-          </label>
+          </div>
           {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {products.length ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
