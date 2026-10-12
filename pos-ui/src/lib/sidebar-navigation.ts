@@ -54,6 +54,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Classic Products (MySQL)", href: "/products" },
       { label: "Classic Stock List (MySQL)", href: "/stock/list" },
       { label: "Replenishment Plan (Odoo)", href: "/stock/replenishment" },
+      { label: "Purchases (Odoo)", href: "/purchases/odoo" },
       { label: "Classic Suppliers (MySQL)", href: "/suppliers" },
       { label: "Classic Orders (MySQL)", href: "/orders" },
       { label: "Classic Stocktake (MySQL)", href: "/stocktake" },

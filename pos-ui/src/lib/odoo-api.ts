@@ -80,6 +80,49 @@ export interface OdooSaleDetail {
   company: { id: number; name: string; currency_id: [number, string] | false } | null;
 }
 
+export interface OdooPurchaseOrderRecord {
+  id: number;
+  name: string;
+  partner_id: [number, string] | false;
+  date_order: string;
+  state: string;
+  amount_total: number;
+  currency_id: [number, string] | false;
+  company_id: [number, string] | false;
+  order_line: number[];
+}
+
+export interface OdooPurchaseOrderDetail {
+  order: OdooPurchaseOrderRecord & {
+    date_planned?: string | false;
+    amount_untaxed: number;
+    amount_tax: number;
+    user_id: [number, string] | false;
+    origin: string | false;
+    notes: string | false;
+  };
+  lines: Array<{
+    id: number;
+    product_id: [number, string] | false;
+    name: string;
+    product_qty: number;
+    product_uom?: [number, string] | false;
+    product_uom_id?: [number, string] | false;
+    price_unit: number;
+    price_subtotal: number;
+    qty_received: number;
+    date_planned: string | false;
+  }>;
+  url: string;
+}
+
+export interface OdooPurchaseOrderPage {
+  items: OdooPurchaseOrderRecord[];
+  limit: number;
+  offset: number;
+  hasNext: boolean;
+}
+
 export interface OdooNamedRecord {
   id: number;
   name: string;
@@ -356,4 +399,39 @@ export async function getOdooSaleDetail(saleId: number): Promise<OdooSaleDetail>
     throw new OdooApiError(payload && "message" in payload ? payload.message || `Sale details failed (${response.status})` : `Sale details failed (${response.status})`, response.status || 502);
   }
   return payload as OdooSaleDetail;
+}
+
+export async function searchOdooPurchaseOrders(options: { query?: string; state?: string; limit?: number; offset?: number } = {}): Promise<OdooPurchaseOrderPage> {
+  const params = new URLSearchParams();
+  if (options.query) params.set("query", options.query);
+  if (options.state) params.set("state", options.state);
+  if (options.limit) params.set("limit", String(options.limit));
+  if (options.offset) params.set("offset", String(options.offset));
+  const response = await fetch(`/api/odoo/purchase-orders?${params.toString()}`, { credentials: "same-origin", cache: "no-store" });
+  const payload = await response.json().catch(() => null) as (OdooPurchaseOrderPage & { message?: string }) | null;
+  if (!response.ok || !payload || !Array.isArray(payload.items) || typeof payload.hasNext !== "boolean") {
+    throw new OdooApiError(payload?.message || `Odoo purchase list failed (${response.status})`, response.status || 502);
+  }
+  return payload;
+}
+
+export async function getOdooPurchaseOrderDetail(purchaseId: number): Promise<OdooPurchaseOrderDetail> {
+  const response = await fetch(`/api/odoo/purchase-orders/${purchaseId}`, { credentials: "same-origin", cache: "no-store" });
+  const payload = await response.json().catch(() => null) as (OdooPurchaseOrderDetail & { message?: string }) | null;
+  if (!response.ok || !payload || !payload.order || !Array.isArray(payload.lines) || typeof payload.url !== "string") {
+    throw new OdooApiError(payload?.message || `Purchase order details failed (${response.status})`, response.status || 502);
+  }
+  return payload;
+}
+
+export async function confirmOdooPurchaseOrder(purchaseId: number): Promise<void> {
+  const response = await fetch(`/api/odoo/purchase-orders/${purchaseId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify({ confirm: true }),
+  });
+  const payload = await response.json().catch(() => null) as { message?: string } | null;
+  if (!response.ok) throw new OdooApiError(payload?.message || `Purchase confirmation failed (${response.status})`, response.status || 502);
 }
