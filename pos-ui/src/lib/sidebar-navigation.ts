@@ -51,6 +51,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "inventory",
     items: [
       { label: "Products", href: "/products" },
+      { label: "Odoo Product Catalogue", href: "/products/odoo" },
       { label: "Stock List", href: "/stock/list" },
       { label: "Suppliers", href: "/suppliers" },
       { label: "Orders & Invoices", href: "/orders" },

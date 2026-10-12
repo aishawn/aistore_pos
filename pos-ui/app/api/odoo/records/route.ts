@@ -14,6 +14,13 @@ const RECORD_TYPES = {
     searchFields: ["name", "barcode", "default_code"],
     baseDomain: [["available_in_pos", "=", true]],
   },
+  posCategories: {
+    model: "pos.category",
+    fields: ["id", "name", "parent_id"],
+    order: "name asc, id asc",
+    searchFields: ["name"],
+    baseDomain: [],
+  },
   customers: {
     model: "res.partner",
     fields: ["id", "name", "phone", "email", "customer_rank", "ref"],
@@ -82,7 +89,7 @@ export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
 
-  let body: { type?: string; query?: string; limit?: number; offset?: number; filters?: Record<string, unknown> };
+  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -98,6 +105,12 @@ export async function POST(request: NextRequest) {
   const offset = Math.max(0, Math.floor(Number(body.offset) || 0));
   const query = body.query?.trim().slice(0, 120);
   const domain: unknown[] = [...config.baseDomain];
+  if (type === "products" && body.categoryId !== undefined) {
+    if (!Number.isInteger(body.categoryId) || body.categoryId <= 0) {
+      return NextResponse.json({ message: "Product category is invalid" }, { status: 400 });
+    }
+    domain.push(["pos_categ_ids", "in", [body.categoryId]]);
+  }
   if (query) {
     const clauses = config.searchFields.map((field) => [field, "ilike", query]);
     if (clauses.length === 1) domain.push(clauses[0]);

@@ -1,5 +1,6 @@
 export type OdooRecordType =
   | "products"
+  | "posCategories"
   | "customers"
   | "outlets"
   | "registers"
@@ -23,6 +24,12 @@ export interface OdooProductRecord {
   qty_available: number;
   uom_id: [number, string] | false;
   pos_categ_ids: number[];
+}
+
+export interface OdooPosCategoryRecord {
+  id: number;
+  name: string;
+  parent_id: [number, string] | false;
 }
 
 export interface OdooCustomerRecord {
@@ -189,7 +196,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { query?: string; limit?: number; offset?: number } = {},
+  options: { query?: string; limit?: number; offset?: number; categoryId?: number } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetch("/api/odoo/records", {
     method: "POST",
@@ -201,6 +208,7 @@ export async function searchOdooRecords<T>(
       query: options.query,
       limit: options.limit,
       offset: options.offset,
+      categoryId: options.categoryId,
     }),
   });
   const payload = (await response.json().catch(() => null)) as
