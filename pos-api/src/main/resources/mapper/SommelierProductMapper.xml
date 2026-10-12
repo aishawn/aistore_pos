@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper">
+
+    <sql id="catalogSelect">
+        SELECT p.id,
+               p.name,
+               p.description,
+               p.image,
+               c.name AS category_name,
+               f.name AS family_name,
+               b.name AS brand_name,
+               (SELECT pp.price FROM product_price pp
+                 WHERE pp.product_id = p.id ORDER BY pp.quantity LIMIT 1) AS price,
+               (SELECT pb.promotion_price FROM product_barcode pb
+                 WHERE pb.product_id = p.id AND pb.promotion_price IS NOT NULL
+                 ORDER BY pb.id LIMIT 1) AS promo_price,
+               COALESCE((
+                   SELECT SUM(pi.quantity) FROM product_inventory pi
+                   WHERE pi.product_id = p.id
+                     <if test="outletId != null">
+                       AND pi.outlet_id = #{outletId}
+                     </if>
+               ), 0) AS stock_quantity,
+               p.track_inventory AS track_inventory,
+               p.case_quantity AS case_quantity,
+               wp.wine_type AS stored_wine_type,
+               wp.dryness AS stored_dryness,
+               wp.body AS stored_body,
+               wp.fruitiness AS stored_fruitiness,
+               wp.oak AS stored_oak,
+               wp.tannin AS stored_tannin,
+               wp.varietal AS stored_varietal,
+               wp.region AS stored_region,
+               wp.vintage AS stored_vintage,
+               wp.aroma_tags AS stored_aroma_tags,
+               wp.palate_tags AS stored_palate_tags,
+               wp.food_tags AS stored_food_tags,
+               wp.finish_note AS stored_finish_note
+        FROM product p
+        LEFT JOIN category c ON c.id = p.category_id
+        LEFT JOIN family f ON f.id = p.family_id
+        LEFT JOIN brand b ON b.id = p.brand_id
+        LEFT JOIN product_wine_profile wp ON wp.product_id = p.id
+        WHERE p.deleted_at IS NULL
+          AND p.status = 'ACTIVE'
+    </sql>
+
+    <sql id="wineLike">
+        AND (
+            LOWER(IFNULL(f.name, '')) LIKE '%wine%'
+            OR LOWER(IFNULL(c.name, '')) LIKE '%wine%'
+            OR LOWER(p.name) LIKE '%wine%'
+            OR LOWER(p.name) LIKE '%shiraz%'
+            OR LOWER(p.name) LIKE '%syrah%'
+            OR LOWER(p.name) LIKE '%cabernet%'
+            OR LOWER(p.name) LIKE '%pinot%'
+            OR LOWER(p.name) LIKE '%chardonnay%'
+            OR LOWER(p.name) LIKE '%merlot%'
+            OR LOWER(p.name) LIKE '%sauvignon%'
+            OR LOWER(p.name) LIKE '%prosecco%'
+            OR LOWER(p.name) LIKE '%champagne%'
+            OR LOWER(p.name) LIKE '%riesling%'
+            OR LOWER(p.name) LIKE '%malbec%'
+            OR LOWER(p.name) LIKE '%grenache%'
+            OR LOWER(p.name) LIKE '%tempranillo%'
+            OR LOWER(p.name) LIKE '%moscato%'
+            OR LOWER(p.name) LIKE '%sparkling%'
+            OR LOWER(p.name) LIKE '%brut%'
+            OR LOWER(p.name) LIKE '%rosé%'
+            OR LOWER(p.name) LIKE '% rose%'
+            OR LOWER(p.name) LIKE 'rose %'
+            OR wp.product_id IS NOT NULL
+        )
+    </sql>
+
+    <select id="listCatalog" resultType="com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper$CatalogRow">
+        <include refid="catalogSelect"/>
+        <include refid="wineLike"/>
+        ORDER BY p.name ASC, p.id ASC
+        LIMIT 800
+    </select>
+
+    <select id="searchCatalog" resultType="com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper$CatalogRow">
+        <include refid="catalogSelect"/>
+        AND (
+            p.name LIKE CONCAT('%', #{q}, '%')
+            OR EXISTS (
+                SELECT 1 FROM product_barcode pb
+                WHERE pb.product_id = p.id
+                  AND (pb.code = #{q} OR pb.code LIKE CONCAT('%', #{q}, '%'))
+            )
+            OR EXISTS (
+                SELECT 1 FROM product_supplier ps
+                WHERE ps.product_id = p.id
+                  AND ps.code IS NOT NULL
+                  AND (ps.code = #{q} OR ps.code LIKE CONCAT('%', #{q}, '%'))
+            )
+        )
+        ORDER BY
+            CASE WHEN EXISTS (
+                SELECT 1 FROM product_barcode pb WHERE pb.product_id = p.id AND pb.code = #{q}
+            ) THEN 0 ELSE 1 END,
+            p.name ASC
+        LIMIT 40
+    </select>
+
+    <select id="findById" resultType="com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper$CatalogRow">
+        <include refid="catalogSelect"/>
+        AND p.id = #{id}
+        LIMIT 1
+    </select>
+</mapper>

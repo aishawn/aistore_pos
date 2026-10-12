@@ -1,0 +1,31 @@
+package com.orithos.modules.ai.sommelier.dto;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+public record WineAssistantResponse(
+        Long productId,
+        String name,
+        String brandName,
+        String categoryName,
+        String image,
+        BigDecimal listPrice,
+        BigDecimal sellPrice,
+        boolean onPromotion,
+        BigDecimal stockQuantity,
+        BigDecimal caseQuantity,
+        String wineType,
+        String varietal,
+        String region,
+        String vintage,
+        String drynessLabel,
+        String bodyLabel,
+        List<String> aromaTags,
+        List<String> palateTags,
+        List<String> foodTags,
+        String finishNote,
+        String pitch,
+        String pitch10s,
+        String pitch30s,
+        boolean inferred
+) {}
