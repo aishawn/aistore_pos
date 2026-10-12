@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
  * sea.onshopfront.com: a 500px white panel (full-width on mobile) that slides
  * in from the right below the 50px header, dimming the page behind it.
  *
- * Contents: a Theme selector, two demo activity charts (Revenue, Transaction
- * Count), and footer actions — "Modify User" (link) and "Logout" (button).
+ * Contents: a Theme selector, activity charts (Revenue, Transaction Count),
+ * and footer actions — "Profile & Security" and "Logout".
  */
 export function UserMenu({
   open,
@@ -97,7 +97,7 @@ export function UserMenu({
             className="inline-flex w-[202px] items-center justify-center gap-2 rounded-xl border border-solid border-[var(--sf-link-blue)] px-8 py-2 text-base font-bold text-[var(--sf-link-blue)] no-underline transition-colors hover:bg-[var(--sf-link-blue)]/5"
           >
             <SettingsGearIcon size={18} strokeWidth={1.5} />
-            Modify User
+            Profile &amp; Security
           </Link>
           <button
             type="button"

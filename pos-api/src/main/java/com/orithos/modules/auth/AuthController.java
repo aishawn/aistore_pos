@@ -3,6 +3,7 @@ package com.orithos.modules.auth;
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.auth.dto.LoginRequest;
+import com.orithos.modules.auth.dto.ChangePasswordRequest;
 import com.orithos.modules.auth.dto.TokenResponse;
 import com.orithos.modules.user.UserService;
 import com.orithos.modules.user.entity.User;
@@ -49,7 +50,7 @@ public class AuthController {
         tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
 
         var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId());
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
         return ApiResult.ok(new TokenResponse(access.token(), refresh.token(),
                 props.getAccessTokenTtlMinutes() * 60, info));
     }
@@ -77,7 +78,7 @@ public class AuthController {
         var access = jwtService.issueAccess(u.getId(), u.getUsername(),
                 Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), authorities);
         var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId());
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
         return ApiResult.ok(new TokenResponse(access.token(), refreshToken,
                 props.getAccessTokenTtlMinutes() * 60, info));
     }
@@ -95,6 +96,36 @@ public class AuthController {
         return ApiResult.ok();
     }
 
+    @PostMapping("/change-password")
+    public ApiResult<TokenResponse> changePassword(
+            @RequestHeader(value = "Authorization", required = false) String header,
+            @Valid @RequestBody ChangePasswordRequest req) {
+        Long userId = CurrentUser.id();
+        if (userId == null) throw new BusinessException(40100, "Unauthorized");
+        userService.changePassword(userId, req.currentPassword(), req.newPassword());
+        tokenStore.revokeRefresh(userId);
+        if (header != null && header.startsWith("Bearer ")) {
+            try {
+                Claims current = jwtService.parse(header.substring(7));
+                if (userId.equals(Long.parseLong(current.getSubject()))) {
+                    tokenStore.blacklist(current.getId(), current.getExpiration());
+                }
+            } catch (Exception ignored) {
+                // The credential change remains successful; a fresh session is issued below.
+            }
+        }
+        User user = userService.require(userId);
+        var authorities = userService.authorities(user);
+        var access = jwtService.issueAccess(user.getId(), user.getUsername(),
+                Boolean.TRUE.equals(user.getIsAdmin()), user.getOutletId(), authorities);
+        var refresh = jwtService.issueRefresh(user.getId(), user.getUsername());
+        tokenStore.saveRefresh(user.getId(), refresh.jti(), refresh.expiry());
+        var info = new TokenResponse.UserInfo(user.getId(), user.getName(), user.getUsername(),
+                Boolean.TRUE.equals(user.getIsAdmin()), user.getOutletId(), user.getEmail(), false);
+        return ApiResult.ok(new TokenResponse(access.token(), refresh.token(),
+                props.getAccessTokenTtlMinutes() * 60, info));
+    }
+
     /** Current user info — mirrors the live /user/info shape. */
     @GetMapping("/me")
     public ApiResult<Map<String, Object>> me() {
@@ -108,6 +139,8 @@ public class AuthController {
         body.put("isAdmin", Boolean.TRUE.equals(u.getIsAdmin()));
         body.put("darkMode", u.getDarkMode() == null ? "default" : u.getDarkMode());
         body.put("outletId", u.getOutletId());
+        body.put("email", u.getEmail());
+        body.put("pendingPasswordReset", Boolean.TRUE.equals(u.getPendingPasswordReset()));
         return ApiResult.ok(body);
     }
 }

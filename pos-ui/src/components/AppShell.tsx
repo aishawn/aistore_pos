@@ -63,6 +63,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace(`/login?next=${encodeURIComponent(next)}`);
       return;
     }
+    if (user?.pendingPasswordReset && pathname !== "/settings/account") {
+      router.replace("/settings/account");
+      return;
+    }
     if (user && pathname === "/login") {
       const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
       router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
@@ -91,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }
 
-  if (pathname === "/m" || (uiMode === "mobile" && isMobileAllowedPath(pathname))) {
+  if (!user?.pendingPasswordReset && (pathname === "/m" || (uiMode === "mobile" && isMobileAllowedPath(pathname)))) {
     if (!user) {
       return null;
     }

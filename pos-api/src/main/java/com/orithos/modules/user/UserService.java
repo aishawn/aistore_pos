@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class UserService {
@@ -31,6 +32,22 @@ public class UserService {
             throw new BusinessException(40101, "Invalid username or password");
         }
         return u;
+    }
+
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = require(userId);
+        if (!encoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BusinessException(40105, "Current password is incorrect");
+        }
+        if (currentPassword.equals(newPassword)) {
+            throw new BusinessException(40001, "New password must be different from the current password");
+        }
+        if (newPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new BusinessException(40001, "New password must be no more than 72 UTF-8 bytes");
+        }
+        if (userMapper.updatePassword(userId, encoder.encode(newPassword)) != 1) {
+            throw new BusinessException(40400, "User not found");
+        }
     }
 
     public User require(Long id) {

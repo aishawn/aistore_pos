@@ -33,7 +33,7 @@ public interface UserMapper {
         """)
     int update(User u);
 
-    @Update("UPDATE app_user SET password_hash=#{hash} WHERE id=#{id}")
+    @Update("UPDATE app_user SET password_hash=#{hash}, pending_password_reset=0 WHERE id=#{id} AND deleted_at IS NULL")
     int updatePassword(@Param("id") Long id, @Param("hash") String hash);
 
     @Update("UPDATE app_user SET dashboard=#{dashboard} WHERE id=#{id}")

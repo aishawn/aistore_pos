@@ -10,6 +10,8 @@ export interface AuthUser {
   isAdmin: boolean;
   /** SaaS tenant id. Missing on sessions cached before this field existed. */
   outletId?: number;
+  email?: string | null;
+  pendingPasswordReset?: boolean;
 }
 
 interface LoginResponse {
@@ -23,6 +25,7 @@ interface AuthState {
   user: AuthUser | null;
   ready: boolean;
   login: (username: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -63,6 +66,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(res.user));
   }, []);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const res = await api.post<LoginResponse>("/api/auth/change-password", { currentPassword, newPassword });
+    setToken(res.accessToken);
+    setUser(res.user);
+    if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await api.post("/api/auth/logout");
@@ -74,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
   }, []);
 
-  return <AuthContext.Provider value={{ user, ready, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, ready, login, changePassword, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

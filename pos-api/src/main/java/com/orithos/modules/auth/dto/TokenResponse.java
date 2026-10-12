@@ -6,5 +6,6 @@ public record TokenResponse(
         long expiresIn,
         UserInfo user) {
 
-    public record UserInfo(Long id, String name, String username, boolean isAdmin, Long outletId) {}
+    public record UserInfo(Long id, String name, String username, boolean isAdmin, Long outletId,
+                           String email, boolean pendingPasswordReset) {}
 }
