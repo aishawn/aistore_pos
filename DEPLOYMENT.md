@@ -10,6 +10,12 @@ This repository deploys the Spring Boot + MySQL + Redis services and the Next.js
 4. Keep the database and Redis services on the private Compose network. Expose the frontend service on port `3000` through Dokploy's domain/proxy configuration and enable HTTPS.
 5. Deploy, sign into Orithos and connect an Odoo staff account at **Setup → Integrations**. The default **Register → Sell** page uses Odoo. Confirm that the expected POS configuration, open session, payment methods and products appear. The legacy Spring/MySQL register remains available at **Register → Classic POS (MySQL)**.
 
+## Orithos administrator account
+
+- The initial Orithos username is `admin`. Find the initial password in the Dokploy application's Compose environment variables under `INITIAL_ADMIN_PASSWORD`; the value in a local `.env` file is relevant only if it matches the value deployed to Dokploy.
+- The backend reads `INITIAL_ADMIN_PASSWORD` only when it creates the first `admin` row in a new database. Changing the variable later does not change an existing account's password, and the current password cannot be read back from the database.
+- If `admin` already exists and the configured value does not work, ask the Dokploy owner to use the application's supported password-reset process. Do not delete the database volume to recreate the account; that would erase store data.
+
 ## Odoo requirements and current limits
 
 - Odoo must be reachable from the frontend container over HTTPS. The app uses the Odoo JSON-RPC web session and the configured database.
