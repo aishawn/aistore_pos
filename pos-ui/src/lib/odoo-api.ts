@@ -34,6 +34,19 @@ export interface OdooCustomerRecord {
   ref: string | false;
 }
 
+export interface OdooSaleRecord {
+  id: number;
+  name: string;
+  pos_reference: string | false;
+  date_order: string;
+  amount_total: number;
+  amount_tax: number;
+  state: "draft" | "paid" | "done" | "invoiced" | "cancel" | string;
+  partner_id: [number, string] | false;
+  session_id: [number, string] | false;
+  user_id: [number, string] | false;
+}
+
 export interface OdooNamedRecord {
   id: number;
   name: string;

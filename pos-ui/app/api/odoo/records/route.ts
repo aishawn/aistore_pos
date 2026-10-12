@@ -51,9 +51,9 @@ const RECORD_TYPES = {
   },
   sales: {
     model: "pos.order",
-    fields: ["id", "name", "date_order", "amount_total", "state", "partner_id", "session_id", "user_id"],
+    fields: ["id", "name", "pos_reference", "date_order", "amount_total", "amount_tax", "state", "partner_id", "session_id", "user_id"],
     order: "date_order desc, id desc",
-    searchFields: ["name"],
+    searchFields: ["name", "pos_reference"],
     baseDomain: [],
   },
 } as const;
