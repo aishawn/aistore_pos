@@ -24,7 +24,7 @@ export default function GeneralCompanySettingsPage() {
       <ToggleRow label="Cross promotion count" on />
       <TextRow
         label="Team message"
-        value='Need assistance? <a href="https://support.onshopfront.com">Check out our help center</a>.'
+        value="Need assistance? Contact your Orithos administrator."
       />
       <NumberRow label="Price activation time" value={0} />
       <ToggleRow label="Refunds require reason" />
