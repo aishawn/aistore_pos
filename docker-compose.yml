@@ -94,8 +94,8 @@ services:
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
       # Used by the server-side Odoo session/data bridge. Keep credentials out
       # of the browser bundle; staff authenticate with their own Odoo users.
-      ODOO_BASE_URL: ${ODOO_BASE_URL:-}
-      ODOO_DATABASE: ${ODOO_DATABASE:-}
+      ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
+      ODOO_DATABASE: ${ODOO_DATABASE:-aipos}
 
 volumes:
   mysql-data:

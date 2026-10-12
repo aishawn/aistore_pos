@@ -6,7 +6,7 @@ This repository deploys the Spring Boot + MySQL + Redis services and the Next.js
 
 1. Connect the Dokploy Compose application to `aishawn/aistore_pos` and the `main` branch. Use the repository root as the build context and `docker-compose.yml` as the Compose file. A push to `main` can then trigger Dokploy's configured deployment pipeline.
 2. Set the required Compose environment variables in Dokploy before the first deployment: `DB_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`, `INITIAL_ADMIN_PASSWORD`, and `CORS_ALLOWED_ORIGINS`. Use long, unique production secrets; `CORS_ALLOWED_ORIGINS` must contain the public frontend origin.
-3. Set `ODOO_BASE_URL` and `ODOO_DATABASE` for the **frontend** service. For example, use the Odoo HTTPS origin (no `/web` suffix) and the exact database name used by the Odoo installation. These values are passed server-side by Compose; do not add Odoo credentials or session tokens to `NEXT_PUBLIC_*` variables.
+3. The frontend service defaults to `ODOO_BASE_URL=https://odoo.orithos.com.au` and `ODOO_DATABASE=aipos`. Override these values in Dokploy only if the Odoo host or database changes. They are passed server-side by Compose; do not add Odoo credentials or session tokens to `NEXT_PUBLIC_*` variables.
 4. Keep the database and Redis services on the private Compose network. Expose the frontend service on port `3000` through Dokploy's domain/proxy configuration and enable HTTPS.
 5. Deploy, sign into Orithos and connect an Odoo staff account at **Setup → Integrations**. The default **Register → Sell** page uses Odoo. Confirm that the expected POS configuration, open session, payment methods and products appear. The legacy Spring/MySQL register remains available at **Register → Classic POS (MySQL)**.
 
