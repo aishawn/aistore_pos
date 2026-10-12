@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom], ["order_id.date_order", "<", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
-      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId] } }),
+      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId] } }),
       rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }),
     ]);
 
@@ -96,6 +96,8 @@ export async function GET(request: NextRequest) {
       const previousUnits = previousSold.get(id) ?? 0;
       const soldUnits = recentUnits + previousUnits;
       const onHand = Number(product.qty_available ?? 0);
+      const virtualAvailable = Number(product.virtual_available);
+      const forecastStock = Number.isFinite(virtualAvailable) ? virtualAvailable : onHand;
       const recentUnitsPerDay = recentUnits / PERIOD_DAYS;
       const previousUnitsPerDay = previousUnits / PERIOD_DAYS;
       const unitsPerDay = recentUnits > 0 && previousUnits > 0
@@ -107,7 +109,7 @@ export async function GET(request: NextRequest) {
         : trendPercent === null ? null
           : trendPercent > 10 ? "up"
             : trendPercent < -10 ? "down" : "steady";
-      const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * coverageDays - onHand));
+      const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * coverageDays - forecastStock));
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
       return {
         id,
@@ -121,7 +123,8 @@ export async function GET(request: NextRequest) {
         trendPercent,
         trend,
         onHand,
-        daysOfStock: unitsPerDay > 0 ? onHand / unitsPerDay : null,
+        forecastStock,
+        daysOfStock: unitsPerDay > 0 ? forecastStock / unitsPerDay : null,
         suggestedQuantity,
       };
     }).sort((a, b) => b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
