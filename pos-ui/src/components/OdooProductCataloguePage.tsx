@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
+import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import {
   createOdooProduct,
   getOdooSession,
+  importOdooProducts,
   searchOdooRecords,
   updateOdooProduct,
   type OdooPosCategoryRecord,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
+import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 
 const PAGE_SIZE = 40;
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
@@ -37,6 +39,12 @@ export function OdooProductCataloguePage() {
   const [newProductOpen, setNewProductOpen] = useState(false);
   const [creatingProduct, setCreatingProduct] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
+  const [importRows, setImportRows] = useState<ProductImportRow[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importResult, setImportResult] = useState<{ created: number; skipped: Array<{ line: number; reason: string }> } | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
   const requestRevision = useRef(0);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
 
@@ -166,6 +174,51 @@ export function OdooProductCataloguePage() {
     }
   }
 
+  async function selectImportFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    setImportResult(null);
+    setImportFileName(file?.name ?? "");
+    if (!file) {
+      setImportRows([]);
+      setImportErrors([]);
+      return;
+    }
+    if (!file.name.toLocaleLowerCase().endsWith(".csv") || file.size > 2_000_000) {
+      setImportRows([]);
+      setImportErrors(["Choose a CSV file smaller than 2 MB."]);
+      return;
+    }
+    if (categoryLoading) {
+      setImportRows([]);
+      setImportErrors(["Wait for POS categories to finish loading, then select the file again."]);
+      return;
+    }
+    try {
+      const parsed = parseProductCsv(await file.text(), categories);
+      setImportRows(parsed.rows);
+      setImportErrors(parsed.errors);
+    } catch {
+      setImportRows([]);
+      setImportErrors(["This CSV file could not be read. Save it as UTF-8 CSV and try again."]);
+    }
+  }
+
+  async function runProductImport() {
+    if (!importRows.length || importBusy) return;
+    setImportBusy(true);
+    setImportErrors([]);
+    setImportResult(null);
+    try {
+      const result = await importOdooProducts(importRows);
+      setImportResult(result);
+      if (result.created > 0) setRefreshKey((value) => value + 1);
+    } catch (cause) {
+      setImportErrors([cause instanceof Error ? cause.message : "Could not import these products into Odoo."]);
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -174,6 +227,7 @@ export function OdooProductCataloguePage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50"><FileUp size={16} /> Import CSV</button>
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
@@ -292,6 +346,42 @@ export function OdooProductCataloguePage() {
               <button type="submit" disabled={savingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-wait disabled:opacity-60">{savingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Save changes</button>
             </footer>
           </form>
+        </section>
+      </div>}
+
+      {importOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !importBusy) setImportOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="product-import-title" className="my-auto w-full max-w-3xl rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl md:p-6">
+          <header className="flex items-start justify-between gap-4">
+            <div><h2 id="product-import-title" className="text-lg font-semibold text-[var(--oh-text)]">Import products from CSV</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Preview and validate your catalogue before adding products to Odoo.</p></div>
+            <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+          </header>
+          <div className="mt-5 grid gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
+              <div><p className="text-sm font-semibold text-[var(--oh-text)]">CSV columns</p><p className="mt-1 text-xs leading-5 text-[var(--oh-muted)]">Required: Product Name, Sale Price. Optional: SKU, Barcode, Cost, POS Category. English and common Chinese headers are supported.</p></div>
+              <a href="/product-import-template.csv" download className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)] hover:border-[var(--oh-orange)]"><Download size={14} /> Download template</a>
+            </div>
+            <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Choose a CSV file
+              <input type="file" accept=".csv,text/csv" onChange={(event) => void selectImportFile(event)} disabled={importBusy || categoryLoading} className="block w-full rounded-md border border-[var(--oh-border)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--oh-text)] disabled:opacity-60" />
+            </label>
+            {importFileName && <p className="-mt-2 text-xs text-[var(--oh-muted)]">Selected: {importFileName}</p>}
+            {importErrors.length > 0 && <div role="alert" className="max-h-32 overflow-auto rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"><p className="font-semibold">Some rows need attention</p><ul className="mt-1 list-disc space-y-1 pl-5">{importErrors.slice(0, 30).map((message) => <li key={message}>{message}</li>)}</ul>{importErrors.length > 30 && <p className="mt-1">And {importErrors.length - 30} more row errors.</p>}</div>}
+            {importRows.length > 0 && <>
+              <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950"><span>{importRows.length} valid product{importRows.length === 1 ? "" : "s"} ready to import</span><span>Up to 500 per file</span></div>
+              <div className="max-h-64 overflow-auto rounded-md border border-[var(--oh-border)]">
+                <table className="w-full min-w-[620px] text-left text-xs">
+                  <thead className="sticky top-0 bg-[#f7f8f8] font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-3 py-2">Line</th><th className="px-3 py-2">Product</th><th className="px-3 py-2">SKU / Barcode</th><th className="px-3 py-2 text-right">Sale price</th><th className="px-3 py-2 text-right">Cost</th></tr></thead>
+                  <tbody className="divide-y divide-[var(--oh-border)]">{importRows.slice(0, 30).map((row) => <tr key={row.line}><td className="px-3 py-2 text-[var(--oh-muted)]">{row.line}</td><td className="px-3 py-2 font-medium text-[var(--oh-text)]">{row.name}</td><td className="px-3 py-2 text-[var(--oh-muted)]">{row.default_code || "—"} / {row.barcode || "—"}</td><td className="px-3 py-2 text-right">{money(row.list_price)}</td><td className="px-3 py-2 text-right">{row.standard_price === undefined ? "—" : money(row.standard_price)}</td></tr>)}</tbody>
+                </table>
+                {importRows.length > 30 && <p className="border-t border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">Showing the first 30 rows; {importRows.length - 30} more will be imported.</p>}
+              </div>
+            </>}
+            {importResult && <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-950"><p className="font-semibold">Added {importResult.created} product{importResult.created === 1 ? "" : "s"} to Odoo; skipped {importResult.skipped.length} duplicate{importResult.skipped.length === 1 ? "" : "s"}.</p>{importResult.skipped.length > 0 && <ul className="mt-1 max-h-24 list-disc space-y-1 overflow-auto pl-5">{importResult.skipped.slice(0, 30).map((item) => <li key={`${item.line}-${item.reason}`}>Line {item.line}: {item.reason}.</li>)}</ul>}</div>}
+            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">This imports product details, sale prices and optional costs. It does not change on-hand stock; use an Odoo receipt or stock adjustment to load opening quantities. Products already matching an SKU or barcode are skipped.</p>
+            <footer className="flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
+              <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">{importResult ? "Done" : "Cancel"}</button>
+              <button type="button" onClick={() => void runProductImport()} disabled={importBusy || importRows.length === 0 || Boolean(importResult)} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-not-allowed disabled:opacity-60">{importBusy ? <LoaderCircle size={15} className="animate-spin" /> : <FileUp size={15} />} Import {importRows.length} product{importRows.length === 1 ? "" : "s"}</button>
+            </footer>
+          </div>
         </section>
       </div>}
 

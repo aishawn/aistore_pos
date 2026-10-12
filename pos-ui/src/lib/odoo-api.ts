@@ -347,6 +347,36 @@ export async function createOdooProduct(values: {
   return { id: payload.id, name: payload.name };
 }
 
+export interface OdooProductImportRow {
+  line: number;
+  name: string;
+  list_price: number;
+  default_code: string;
+  barcode: string;
+  standard_price?: number;
+  pos_categ_ids: number[];
+}
+
+export interface OdooProductImportResult {
+  created: number;
+  skipped: Array<{ line: number; reason: string }>;
+}
+
+export async function importOdooProducts(products: OdooProductImportRow[]): Promise<OdooProductImportResult> {
+  const response = await fetch("/api/odoo/products/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify({ products }),
+  });
+  const payload = await response.json().catch(() => null) as (OdooProductImportResult & { message?: string }) | null;
+  if (!response.ok || !payload || typeof payload.created !== "number" || !Array.isArray(payload.skipped)) {
+    throw new OdooApiError(payload?.message || `Product import failed (${response.status})`, response.status || 502);
+  }
+  return payload;
+}
+
 export interface OdooSupplierOption {
   id: number;
   name: string;
