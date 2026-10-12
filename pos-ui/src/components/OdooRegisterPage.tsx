@@ -10,6 +10,7 @@ import {
   submitOdooPosOrder,
   type OdooCustomerRecord,
   type OdooPosBootstrap,
+  type OdooPosCategoryRecord,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
 
@@ -87,6 +88,9 @@ export function OdooRegisterPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [posCategories, setPosCategories] = useState<OdooPosCategoryRecord[]>([]);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [customers, setCustomers] = useState<OdooCustomerRecord[]>([]);
@@ -158,7 +162,7 @@ export function OdooRegisterPage() {
       if (!connected) return;
       setProductsLoading(true);
       try {
-        const result = await searchOdooRecords<OdooProductRecord>("products", { query, limit: 50 });
+        const result = await searchOdooRecords<OdooProductRecord>("products", { query, limit: 50, categoryId: categoryId ?? undefined });
         if (revision === searchRevision.current) setProducts(result.items);
       } catch (cause) {
         if (revision === searchRevision.current) setError(cause instanceof Error ? cause.message : "Product search failed.");
@@ -167,7 +171,21 @@ export function OdooRegisterPage() {
       }
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [query, connected]);
+  }, [query, categoryId, connected]);
+
+  useEffect(() => {
+    if (!connected) {
+      setPosCategories([]);
+      setCategoriesError(null);
+      return;
+    }
+    let cancelled = false;
+    setCategoriesError(null);
+    void searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100 })
+      .then((result) => { if (!cancelled) { setPosCategories(result.items); setCategoriesError(null); } })
+      .catch((cause) => { if (!cancelled) setCategoriesError(cause instanceof Error ? cause.message : "Product categories could not be loaded."); });
+    return () => { cancelled = true; };
+  }, [connected]);
 
   useEffect(() => {
     const timer = window.setTimeout(async () => {
@@ -445,7 +463,12 @@ export function OdooRegisterPage() {
             <Search size={18} className="text-[var(--oh-muted)]" />
             <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => void handleProductSearchKeyDown(event)} placeholder="Scan barcode or search products" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             {productsLoading && <LoaderCircle size={16} className="animate-spin text-[var(--oh-muted)]" />}
+            <select aria-label="POS category" value={categoryId ?? ""} onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)} className="h-9 max-w-[40%] rounded-md border border-[var(--oh-border)] bg-white px-2 text-xs font-medium text-[var(--oh-text)] sm:max-w-[180px]">
+              <option value="">All categories</option>
+              {posCategories.map((category) => <option key={category.id} value={category.id}>{Array.isArray(category.parent_id) ? `${category.parent_id[1]} / ${category.name}` : category.name}</option>)}
+            </select>
           </label>
+          {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {products.length ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {products.map((product) => <button key={product.id} type="button" title={product.display_name || product.name} onClick={() => addProduct(product)} disabled={!selectedConfig?.session} className="flex min-h-[82px] items-center gap-3 rounded-md border border-[var(--oh-border)] p-3 text-left transition-colors hover:border-[var(--sf-link-blue)] hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50">
@@ -453,7 +476,7 @@ export function OdooRegisterPage() {
                 <span className="min-w-0 flex-1"><span className="line-clamp-2 text-[13px] font-medium leading-4 text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="mt-1 block text-sm font-semibold text-[var(--oh-text)]">{money(product.list_price)}</span><span className={`mt-0.5 block text-xs ${product.qty_available > 0 ? "text-[var(--oh-muted)]" : "font-medium text-amber-700"}`}>{product.qty_available > 0 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty_available)} available` : "No stock on hand"}</span></span>
                 <Plus size={17} className="shrink-0 text-[var(--sf-tab-blue)]" />
               </button>)}
-            </div> : <div className="grid h-full place-items-center text-center text-sm text-[var(--oh-muted)]">{productsLoading ? "Loading products…" : "No POS products found. Search by name, barcode or code."}</div>}
+            </div> : <div className="grid h-full place-items-center px-5 text-center text-sm text-[var(--oh-muted)]">{productsLoading ? "Loading products…" : <div><p>No POS products match this search and category.</p>{(query || categoryId !== null) && <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-2 font-semibold text-[var(--oh-primary)] underline underline-offset-2">Clear filters to see all products</button>}</div>}</div>}
           </div>
           </> : <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <p className="mb-3 flex items-start gap-2 rounded-md bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-muted)]"><Clock3 size={15} className="mt-0.5 shrink-0" />Parked sales are saved on this terminal. Odoo checks current pricing and availability when you resume and finalise.</p>
