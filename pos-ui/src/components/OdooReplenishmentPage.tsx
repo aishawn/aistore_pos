@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CalendarRange, Clock3, LoaderCircle, RefreshCw, Store } from "lucide-react";
+import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, RefreshCw, ShoppingCart, Store, X } from "lucide-react";
+import { createOdooDraftRfq, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 
 type ReplenishmentProduct = {
   id: number;
@@ -32,6 +33,9 @@ type ReplenishmentData = {
 
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
+const MAX_RFQ_LINES = 100;
+
+type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number };
 
 export function OdooReplenishmentPage() {
   const [data, setData] = useState<ReplenishmentData | null>(null);
@@ -41,6 +45,14 @@ export function OdooReplenishmentPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
+  const [rfqOpen, setRfqOpen] = useState(false);
+  const [rfqLoadingSuppliers, setRfqLoadingSuppliers] = useState(false);
+  const [rfqSubmitting, setRfqSubmitting] = useState(false);
+  const [rfqSuppliers, setRfqSuppliers] = useState<OdooSupplierOption[]>([]);
+  const [rfqSupplierId, setRfqSupplierId] = useState("");
+  const [rfqLines, setRfqLines] = useState<DraftRfqLine[]>([]);
+  const [rfqError, setRfqError] = useState<string | null>(null);
+  const [createdRfq, setCreatedRfq] = useState<OdooDraftRfq | null>(null);
 
   const load = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true);
@@ -70,6 +82,56 @@ export function OdooReplenishmentPage() {
   const visibleItems = showAll ? data?.products ?? [] : suggestedItems;
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = suggestedItems.filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
+  const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
+
+  async function openRfqDialog() {
+    setRfqLines(suggestedItems.slice(0, MAX_RFQ_LINES).map((product) => ({
+      productId: product.id,
+      name: product.name,
+      unit: product.unit,
+      suggestedQuantity: product.suggestedQuantity,
+      quantity: product.suggestedQuantity,
+    })));
+    setRfqSupplierId("");
+    setRfqError(null);
+    setCreatedRfq(null);
+    setRfqOpen(true);
+    setRfqLoadingSuppliers(true);
+    try {
+      const suppliers = await getOdooSuppliers();
+      setRfqSuppliers(suppliers);
+      if (suppliers.length === 1) setRfqSupplierId(String(suppliers[0].id));
+    } catch (cause) {
+      setRfqError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
+    } finally {
+      setRfqLoadingSuppliers(false);
+    }
+  }
+
+  async function submitRfq(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (rfqSubmitting) return;
+    const supplierId = Number(rfqSupplierId);
+    if (!Number.isSafeInteger(supplierId) || supplierId < 1) {
+      setRfqError("Choose a supplier for this draft RFQ.");
+      return;
+    }
+    if (!selectedRfqLines.length) {
+      setRfqError("Keep at least one product with a quantity above zero.");
+      return;
+    }
+    setRfqSubmitting(true);
+    setRfqError(null);
+    try {
+      const result = await createOdooDraftRfq(supplierId, selectedRfqLines.map(({ productId, quantity }) => ({ productId, quantity })));
+      setCreatedRfq(result);
+      setRfqOpen(false);
+    } catch (cause) {
+      setRfqError(cause instanceof Error ? cause.message : "Could not create the draft RFQ.");
+    } finally {
+      setRfqSubmitting(false);
+    }
+  }
 
   if (loading && !data) return <main className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></main>;
 
@@ -103,6 +165,8 @@ export function OdooReplenishmentPage() {
 
       {error && <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
 
+      {createdRfq && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"><span><strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed.</span><a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">Open in Odoo <ExternalLink size={14} /></a></div>}
+
       <section className="grid gap-3 sm:grid-cols-3">
         <SummaryCard title="Products to replenish" value={number.format(suggestedItems.length)} detail={`of ${number.format(data?.products.length ?? 0)} POS products`} />
         <SummaryCard title="Suggested units" value={number.format(totalSuggestedUnits)} detail={`Across a ${coverageDays}-day target`} />
@@ -111,8 +175,9 @@ export function OdooReplenishmentPage() {
 
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5">
-          <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Replenishment suggestions"}</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Average daily sales use the last {data?.historyDays ?? 56} days.</p></div>
-          <button type="button" onClick={() => setShowAll((value) => !value)} className="text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline">{showAll ? "Show suggestions only" : "Show all products"}</button>
+          <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Replenishment suggestions"}</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Demand trend compares the latest {data?.periodDays ?? 28} days with the previous period.</p></div>
+          <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => void openRfqDialog()} disabled={!suggestedItems.length} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
+            <button type="button" onClick={() => setShowAll((value) => !value)} className="text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline">{showAll ? "Show suggestions only" : "Show all products"}</button></div>
         </header>
         <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full min-w-[980px] border-collapse text-left text-sm">
@@ -143,6 +208,45 @@ export function OdooReplenishmentPage() {
       </section>
 
       <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(data.generatedAt)) : "—"}.</p>
+
+      {rfqOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !rfqSubmitting) setRfqOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="rfq-title" className="my-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
+          <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] p-5 md:px-6">
+            <div><h2 id="rfq-title" className="text-lg font-semibold text-[var(--oh-text)]">Review draft RFQ</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Choose one supplier and check the quantities before creating a draft in Odoo.</p></div>
+            <button type="button" onClick={() => setRfqOpen(false)} disabled={rfqSubmitting} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+          </header>
+          <form onSubmit={(event) => void submitRfq(event)} className="flex min-h-0 flex-1 flex-col">
+            <div className="grid gap-4 overflow-y-auto p-5 md:px-6">
+              <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Supplier <span className="text-red-700">*</span>
+                <select value={rfqSupplierId} onChange={(event) => setRfqSupplierId(event.target.value)} required disabled={rfqLoadingSuppliers || rfqSubmitting} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] disabled:opacity-60">
+                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : "No suppliers available"}</option>
+                  {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
+                </select>
+              </label>
+              <div className="overflow-hidden rounded-lg border border-[var(--oh-border)]">
+                <div className="flex items-center justify-between bg-[#f7f8f8] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><span>Suggested products</span><span>{selectedRfqLines.length} selected</span></div>
+                <div className="max-h-[38dvh] divide-y divide-[var(--oh-border)] overflow-y-auto">
+                  {rfqLines.map((line) => <div key={line.productId} className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
+                    <div className="min-w-0"><p className="truncate text-sm font-medium text-[var(--oh-text)]">{line.name}</p><p className="text-xs text-[var(--oh-muted)]">Suggested {number.format(line.suggestedQuantity)} {line.unit}</p></div>
+                    <label className="grid gap-1 text-[11px] font-medium text-[var(--oh-muted)] sm:col-auto">Order quantity
+                      <input type="number" min="0" max="100000" step="0.01" value={line.quantity} onChange={(event) => { const value = Number(event.target.value); setRfqLines((current) => current.map((item) => item.productId === line.productId ? { ...item, quantity: Number.isFinite(value) ? value : 0 } : item)); }} disabled={rfqSubmitting} className="h-9 w-full rounded-md border border-[var(--oh-border)] px-2 text-sm font-semibold tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030] disabled:opacity-60" />
+                    </label>
+                    <p className="hidden text-right text-sm text-[var(--oh-muted)] sm:block">{line.unit}</p>
+                  </div>)}
+                  {!rfqLines.length && <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No replenishment suggestions to add.</p>}
+                </div>
+              </div>
+              {suggestedItems.length > MAX_RFQ_LINES && <p className="text-xs leading-5 text-amber-900">This RFQ includes the top {MAX_RFQ_LINES} suggestions. Create another RFQ for the remaining products.</p>}
+              <div className="rounded-md bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]"><p className="font-semibold text-[var(--oh-text-secondary)]">Draft only</p><p className="mt-1">This creates an Odoo RFQ in draft status. It will not email the supplier or confirm an order. Review the supplier prices, taxes, delivery dates and quantities in Odoo before sending.</p></div>
+              {rfqError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{rfqError}</p>}
+            </div>
+            <footer className="flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] p-4 md:px-6">
+              <button type="button" onClick={() => setRfqOpen(false)} disabled={rfqSubmitting} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
+              <button type="submit" disabled={rfqSubmitting || rfqLoadingSuppliers || !rfqSuppliers.length || !selectedRfqLines.length} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-wait disabled:opacity-60">{rfqSubmitting ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {rfqSubmitting ? "Creating draft…" : "Create draft RFQ"}</button>
+            </footer>
+          </form>
+        </section>
+      </div>}
     </main>
   );
 }

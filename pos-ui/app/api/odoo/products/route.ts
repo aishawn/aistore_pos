@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
   const values: Record<string, unknown> = {
     name,
     sale_ok: true,
+    purchase_ok: true,
     list_price: price,
     default_code: sku || false,
     barcode: barcode || false,

@@ -285,6 +285,43 @@ export async function createOdooProduct(values: {
   return { id: payload.id, name: payload.name };
 }
 
+export interface OdooSupplierOption {
+  id: number;
+  name: string;
+  email?: string | false;
+}
+
+export async function getOdooSuppliers(): Promise<OdooSupplierOption[]> {
+  const response = await fetch("/api/odoo/purchase-requests", { credentials: "same-origin", cache: "no-store" });
+  const payload = await response.json().catch(() => null) as { suppliers?: OdooSupplierOption[]; message?: string } | null;
+  if (!response.ok || !payload || !Array.isArray(payload.suppliers)) {
+    throw new OdooApiError(payload?.message || `Supplier list failed (${response.status})`, response.status || 502);
+  }
+  return payload.suppliers;
+}
+
+export interface OdooDraftRfq {
+  id: number;
+  name: string;
+  supplier: string;
+  url: string;
+}
+
+export async function createOdooDraftRfq(supplierId: number, lines: Array<{ productId: number; quantity: number }>): Promise<OdooDraftRfq> {
+  const response = await fetch("/api/odoo/purchase-requests", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify({ supplierId, lines }),
+  });
+  const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
+  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string") {
+    throw new OdooApiError(payload?.message || `Draft RFQ creation failed (${response.status})`, response.status || 502);
+  }
+  return payload;
+}
+
 export async function createOdooCustomer(values: { name: string; phone: string; email: string; ref: string }): Promise<{ id: number; name: string }> {
   const response = await fetch("/api/odoo/customers", {
     method: "POST",
