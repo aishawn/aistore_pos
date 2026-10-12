@@ -105,7 +105,7 @@ export default function LoginPage() {
           <ul className="mt-9 grid gap-4">
             {capabilities.map(({ icon: Icon, label }) => (
               <li key={label} className="flex items-center gap-3 text-sm font-medium text-[var(--oh-ink-soft)] sm:text-base">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#fff2da] text-[#8b4a00]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#e8f2ee] text-[#145b4a]">
                   <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                 </span>
                 {label}
@@ -135,13 +135,13 @@ export default function LoginPage() {
                 spellCheck={false}
                 required
                 maxLength={120}
-                className="h-12 w-full rounded-md border border-[#d6dfd8] bg-white px-3 text-base font-normal text-[var(--oh-ink)] outline-none transition-shadow placeholder:text-[#98a39c] focus:border-[var(--oh-orange-dark)] focus:ring-3 focus:ring-[#f3920030]"
+                className="h-12 w-full rounded-md border border-[#d6dfd8] bg-white px-3 text-base font-normal text-[var(--oh-ink)] outline-none transition-shadow placeholder:text-[#98a39c] focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[#0d6b5830]"
               />
             </label>
 
             <label htmlFor="password" className="grid gap-2 text-sm font-semibold text-[#34414a]">
               Password
-              <span className="flex h-12 w-full items-center rounded-md border border-[#d6dfd8] bg-white pr-1 transition-shadow focus-within:border-[var(--oh-orange-dark)] focus-within:ring-3 focus-within:ring-[#f3920030]">
+              <span className="flex h-12 w-full items-center rounded-md border border-[#d6dfd8] bg-white pr-1 transition-shadow focus-within:border-[var(--oh-primary)] focus-within:ring-3 focus-within:ring-[#0d6b5830]">
                 <input
                   id="password"
                   name="password"
@@ -171,7 +171,7 @@ export default function LoginPage() {
                 type="checkbox"
                 checked={rememberUsername}
                 onChange={(event) => setRememberUsername(event.target.checked)}
-                className="h-4 w-4 rounded border-[#aebbb2] accent-[var(--oh-orange-dark)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange-dark)]"
+                className="h-4 w-4 rounded border-[#aebbb2] accent-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
               />
               Remember username on this device
             </label>
@@ -181,7 +181,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={busy !== null}
-              className="mt-1 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-orange)] px-5 font-bold text-[#1e1b16] transition-colors hover:bg-[#ffad22] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange-dark)] disabled:cursor-wait disabled:opacity-70"
+              className="mt-1 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
             >
               {busy === "web" ? "Signing in…" : "Sign in"}
               {busy === null && <ArrowRight size={18} aria-hidden="true" />}
