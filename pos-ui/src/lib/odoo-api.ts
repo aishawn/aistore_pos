@@ -239,3 +239,18 @@ export async function updateOdooProduct(productId: number, values: Partial<OdooP
   const payload = await response.json().catch(() => null) as { message?: string } | null;
   if (!response.ok) throw new OdooApiError(payload?.message || `Product update failed (${response.status})`, response.status);
 }
+
+export async function createOdooCustomer(values: { name: string; phone: string; email: string; ref: string }): Promise<{ id: number; name: string }> {
+  const response = await fetch("/api/odoo/customers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(values),
+  });
+  const payload = await response.json().catch(() => null) as { id?: number; name?: string; message?: string } | null;
+  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
+    throw new OdooApiError(payload?.message || `Customer creation failed (${response.status})`, response.status || 502);
+  }
+  return { id: payload.id, name: payload.name };
+}
