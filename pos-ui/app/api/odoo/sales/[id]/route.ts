@@ -1,0 +1,107 @@
+import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const SESSION_COOKIE = "orithos_odoo_session";
+
+type RpcEnvelope<T> = { result?: T; error?: { message?: string; data?: { message?: string } } };
+
+function sameOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return !origin || origin === new URL(request.url).origin;
+}
+
+function baseUrl() {
+  const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
+  if (!value) throw new Error("Odoo connection is not configured");
+  const parsed = new URL(value);
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  return value;
+}
+
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+  const response = await fetch(`${baseUrl()}/web/dataset/call_kw`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) throw new Error("Odoo sales are unavailable");
+  const payload = await response.json() as RpcEnvelope<T>;
+  if (payload.error) {
+    if (/session|authenticate|log in/i.test(payload.error.message ?? "")) throw new SaleSessionExpiredError();
+    throw new Error("Odoo could not load the sale details");
+  }
+  return payload.result;
+}
+
+class SaleSessionExpiredError extends Error {}
+
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  if (!sameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const { id: rawId } = await context.params;
+  const saleId = Number(rawId);
+  if (!Number.isSafeInteger(saleId) || saleId < 1) return NextResponse.json({ message: "Invalid sale id" }, { status: 400 });
+
+  try {
+    const sessionResponse = await fetch(`${baseUrl()}/web/session/get_session_info`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!sessionResponse.ok) throw new SaleSessionExpiredError();
+    const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
+    const companyIds = (session.result?.user_context?.allowed_company_ids ?? []).filter(Number.isInteger);
+    if (session.error || !session.result?.uid) throw new SaleSessionExpiredError();
+    if (!companyIds.length) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
+
+    const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [[
+      ["id", "=", saleId], ["company_id", "in", companyIds],
+    ]], {
+      fields: ["id", "name", "pos_reference", "date_order", "state", "amount_total", "amount_tax", "amount_paid", "amount_return", "partner_id", "session_id", "user_id", "company_id", "lines", "payment_ids"],
+      limit: 1,
+    });
+    const order = orders?.[0];
+    if (!order) return NextResponse.json({ message: "Sale not found or you do not have access to it." }, { status: 404 });
+
+    const [lines, payments, companies] = await Promise.all([
+      Array.isArray(order.lines) && order.lines.length
+        ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [[["id", "in", order.lines]]], {
+            fields: ["id", "product_id", "qty", "price_unit", "price_subtotal", "price_subtotal_incl"],
+            limit: 200,
+          })
+        : Promise.resolve([]),
+      Array.isArray(order.payment_ids) && order.payment_ids.length
+        ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.payment", "search_read", [[["id", "in", order.payment_ids]]], {
+            fields: ["id", "payment_method_id", "amount", "payment_date"],
+            limit: 50,
+          })
+        : Promise.resolve([]),
+      Array.isArray(order.company_id)
+        ? rpc<Array<{ id: number; name: string; currency_id: [number, string] | false }>>(sessionId, "res.company", "search_read", [[["id", "=", order.company_id[0]]]], { fields: ["id", "name", "currency_id"], limit: 1 })
+        : Promise.resolve([]),
+    ]);
+
+    return NextResponse.json({
+      order,
+      lines: (lines ?? []).sort((left, right) => Number(left.id) - Number(right.id)),
+      payments: payments ?? [],
+      company: companies?.[0] ?? null,
+    }, { status: 200, headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    if (error instanceof SaleSessionExpiredError) {
+      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
+    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    return NextResponse.json({ message }, { status });
+  }
+}

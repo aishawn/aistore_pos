@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ChevronLeft, ChevronRight, LoaderCircle, RefreshCw, Search } from "lucide-react";
-import { getOdooSession, searchOdooRecords, type OdooSaleRecord } from "@/lib/odoo-api";
+import { AlertCircle, ChevronLeft, ChevronRight, FileText, LoaderCircle, Printer, RefreshCw, Search, X } from "lucide-react";
+import { getOdooSaleDetail, getOdooSession, searchOdooRecords, type OdooSaleDetail, type OdooSaleRecord } from "@/lib/odoo-api";
 
 const PAGE_SIZE = 40;
-const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
+const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
 
 function formatOrderDate(value: string) {
   const date = new Date(`${value.replace(" ", "T")}Z`);
@@ -41,7 +41,11 @@ export function OdooSalesHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [saleDetail, setSaleDetail] = useState<OdooSaleDetail | null>(null);
+  const [saleDetailLoading, setSaleDetailLoading] = useState(false);
+  const [saleDetailError, setSaleDetailError] = useState<string | null>(null);
   const requestRevision = useRef(0);
+  const detailRevision = useRef(0);
 
   const loadSales = useCallback(async () => {
     const revision = ++requestRevision.current;
@@ -73,6 +77,30 @@ export function OdooSalesHistoryPage() {
     setQuery(value);
     setOffset(0);
   }
+
+  async function openSale(saleId: number) {
+    const revision = ++detailRevision.current;
+    setSaleDetail(null);
+    setSaleDetailError(null);
+    setSaleDetailLoading(true);
+    try {
+      const detail = await getOdooSaleDetail(saleId);
+      if (revision === detailRevision.current) setSaleDetail(detail);
+    } catch (cause) {
+      if (revision === detailRevision.current) setSaleDetailError(cause instanceof Error ? cause.message : "Could not load sale details.");
+    } finally {
+      if (revision === detailRevision.current) setSaleDetailLoading(false);
+    }
+  }
+
+  function closeSale() {
+    detailRevision.current += 1;
+    setSaleDetail(null);
+    setSaleDetailLoading(false);
+    setSaleDetailError(null);
+  }
+
+  const receiptCurrency = saleDetail && Array.isArray(saleDetail.company?.currency_id) ? saleDetail.company.currency_id[1] : "AUD";
 
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
@@ -123,7 +151,7 @@ export function OdooSalesHistoryPage() {
                   <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]">{query ? "No sales match this reference." : "No Odoo sales are available for this account."}</td></tr>
                 ) : items.map((sale) => (
                   <tr key={sale.id} className="hover:bg-sky-50/50">
-                    <td className="px-4 py-3 font-semibold text-[var(--oh-text)]">{sale.pos_reference || sale.name}</td>
+                    <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex items-center gap-1.5 font-semibold text-[var(--oh-orange-dark)] hover:underline"><FileText size={15} />{sale.pos_reference || sale.name}</button></td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order)}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
@@ -144,6 +172,52 @@ export function OdooSalesHistoryPage() {
           </footer>
         </>
       )}
+
+      {(saleDetailLoading || saleDetailError || saleDetail) && <div className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSale(); }}>
+        {saleDetailLoading && <section role="status" className="rounded-xl bg-white p-8 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={22} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sale details…</span></section>}
+        {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><button type="button" onClick={closeSale} className="mt-5 h-10 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Close</button></section>}
+        {saleDetail && <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="receipt-print my-auto w-full max-w-2xl rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl md:p-7">
+          <header className="receipt-print-hidden mb-4 flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
+            <div><h2 id="receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale receipt</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Review this Odoo order or print a copy.</p></div>
+            <button type="button" onClick={closeSale} aria-label="Close receipt" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button>
+          </header>
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-[var(--oh-muted)]">{saleDetail.company?.name || "Orithos POS"}</p>
+            <h3 className="mt-2 text-xl font-bold tracking-tight text-[var(--oh-text)]">{saleDetail.order.pos_reference || saleDetail.order.name}</h3>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">{formatOrderDate(saleDetail.order.date_order)}</p>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">{saleDetail.order.session_id ? saleDetail.order.session_id[1] : "POS sale"} · {saleDetail.order.user_id ? saleDetail.order.user_id[1] : "Staff"}</p>
+          </div>
+          <div className="mt-5 grid grid-cols-2 gap-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
+            <span className="text-[var(--oh-muted)]">Customer</span><span className="text-right font-medium text-[var(--oh-text)]">{saleDetail.order.partner_id ? saleDetail.order.partner_id[1] : "Walk-in customer"}</span>
+            <span className="text-[var(--oh-muted)]">Status</span><span className="text-right font-medium text-[var(--oh-text)]">{stateLabel(saleDetail.order.state)}</span>
+          </div>
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-sm">
+              <thead><tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><th className="py-2 text-left">Item</th><th className="py-2 text-right">Qty</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Total</th></tr></thead>
+              <tbody className="divide-y divide-[var(--oh-border)]">{saleDetail.lines.map((line) => <tr key={line.id}>
+                <td className="py-2.5 pr-3 font-medium text-[var(--oh-text)]">{line.product_id ? line.product_id[1] : "Product"}</td>
+                <td className="py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 3 }).format(line.qty)}</td>
+                <td className="py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{money(line.price_unit, receiptCurrency)}</td>
+                <td className="py-2.5 text-right font-medium tabular-nums text-[var(--oh-text)]">{money(line.price_subtotal_incl, receiptCurrency)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          <div className="ml-auto mt-4 grid max-w-xs grid-cols-2 gap-y-2 text-sm">
+            <span className="text-[var(--oh-muted)]">Subtotal</span><span className="text-right tabular-nums text-[var(--oh-text)]">{money(saleDetail.order.amount_total - saleDetail.order.amount_tax, receiptCurrency)}</span>
+            <span className="text-[var(--oh-muted)]">Tax</span><span className="text-right tabular-nums text-[var(--oh-text)]">{money(saleDetail.order.amount_tax, receiptCurrency)}</span>
+            <span className="border-t border-[var(--oh-border)] pt-2 font-semibold text-[var(--oh-text)]">Total</span><span className="border-t border-[var(--oh-border)] pt-2 text-right font-bold tabular-nums text-[var(--oh-text)]">{money(saleDetail.order.amount_total, receiptCurrency)}</span>
+          </div>
+          <section className="mt-5 border-t border-dashed border-[var(--oh-border)] pt-4">
+            <h4 className="text-sm font-semibold text-[var(--oh-text)]">Payments</h4>
+            {saleDetail.payments.length ? <ul className="mt-2 grid gap-1.5 text-sm">{saleDetail.payments.map((payment) => <li key={payment.id} className="flex justify-between gap-3 text-[var(--oh-text-secondary)]"><span>{payment.payment_method_id ? payment.payment_method_id[1] : "Payment"}</span><span className="font-medium tabular-nums">{money(payment.amount, receiptCurrency)}</span></li>)}</ul> : <p className="mt-2 text-sm text-[var(--oh-muted)]">No payment lines recorded.</p>}
+            {saleDetail.order.amount_return > 0 && <p className="mt-2 flex justify-between gap-3 text-sm text-[var(--oh-text-secondary)]"><span>Change returned</span><span>{money(saleDetail.order.amount_return, receiptCurrency)}</span></p>}
+          </section>
+          <footer className="receipt-print-hidden mt-6 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
+            <button type="button" onClick={closeSale} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Close</button>
+            <button type="button" onClick={() => window.print()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22]"><Printer size={16} /> Print receipt</button>
+          </footer>
+        </section>}
+      </div>}
     </main>
   );
 }

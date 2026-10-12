@@ -256,6 +256,38 @@
     margin: 16mm;
   }
 
+  body * {
+    visibility: hidden !important;
+  }
+
+  .receipt-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  .receipt-overlay,
+  .receipt-overlay * {
+    visibility: visible !important;
+  }
+
+  .receipt-print {
+    width: 100% !important;
+    max-width: 720px !important;
+    margin: 0 auto !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .receipt-print-hidden {
+    display: none !important;
+  }
+
   body {
     background: #fff !important;
   }

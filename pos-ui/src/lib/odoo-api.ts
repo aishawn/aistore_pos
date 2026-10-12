@@ -57,6 +57,29 @@ export interface OdooSaleRecord {
   user_id: [number, string] | false;
 }
 
+export interface OdooSaleDetail {
+  order: OdooSaleRecord & {
+    amount_paid: number;
+    amount_return: number;
+    company_id: [number, string] | false;
+  };
+  lines: {
+    id: number;
+    product_id: [number, string] | false;
+    qty: number;
+    price_unit: number;
+    price_subtotal: number;
+    price_subtotal_incl: number;
+  }[];
+  payments: {
+    id: number;
+    payment_method_id: [number, string] | false;
+    amount: number;
+    payment_date: string;
+  }[];
+  company: { id: number; name: string; currency_id: [number, string] | false } | null;
+}
+
 export interface OdooNamedRecord {
   id: number;
   name: string;
@@ -253,4 +276,13 @@ export async function createOdooCustomer(values: { name: string; phone: string; 
     throw new OdooApiError(payload?.message || `Customer creation failed (${response.status})`, response.status || 502);
   }
   return { id: payload.id, name: payload.name };
+}
+
+export async function getOdooSaleDetail(saleId: number): Promise<OdooSaleDetail> {
+  const response = await fetch(`/api/odoo/sales/${saleId}`, { credentials: "same-origin", cache: "no-store" });
+  const payload = await response.json().catch(() => null) as (OdooSaleDetail & { message?: string }) | { message?: string } | null;
+  if (!response.ok || !payload || !("order" in payload) || !Array.isArray(payload.lines) || !Array.isArray(payload.payments)) {
+    throw new OdooApiError(payload && "message" in payload ? payload.message || `Sale details failed (${response.status})` : `Sale details failed (${response.status})`, response.status || 502);
+  }
+  return payload as OdooSaleDetail;
 }
