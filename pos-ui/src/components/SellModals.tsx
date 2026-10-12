@@ -176,7 +176,7 @@ function ModalBtn({
       className={cn(
         "cursor-pointer rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-medium transition-colors",
         variant === "primary"
-          ? "bg-[var(--oh-orange)] text-white hover:bg-[var(--oh-orange-hover)]"
+          ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
           : "border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
       )}
     >

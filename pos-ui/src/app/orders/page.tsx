@@ -185,7 +185,7 @@ export default function OrdersPage() {
               aria-expanded={menuOpen}
               aria-haspopup="dialog"
               aria-label="Menu"
-              className="relative flex h-10 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-orange)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-orange-hover)]"
+              className="relative flex h-10 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
             >
               {menuOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
               Menu

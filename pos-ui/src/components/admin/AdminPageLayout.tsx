@@ -18,7 +18,7 @@ export function AdminPrimaryButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-orange)] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[var(--oh-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60",
+        "flex cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >
@@ -96,7 +96,7 @@ export function AdminPillButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-full bg-[var(--oh-orange)] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-orange-hover)]",
+        "flex cursor-pointer items-center gap-2 rounded-full bg-[var(--oh-primary)] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]",
         className,
       )}
     >

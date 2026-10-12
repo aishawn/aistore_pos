@@ -120,7 +120,7 @@ function PriceListsPageInner() {
             clearInitial();
             setCreating(true);
           }}
-          className="flex items-center gap-2 rounded bg-[var(--oh-orange)] px-6 py-3 text-[16px] font-bold text-white transition-colors hover:bg-[var(--oh-orange-hover)]"
+          className="flex items-center gap-2 rounded bg-[var(--oh-primary)] px-6 py-3 text-[16px] font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
         >
           <PlusIcon size={18} /> Add Price List
         </button>

@@ -218,7 +218,7 @@ function TabButton({
           }
           className={cn(
             "ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white",
-            badgeTone === "warning" ? "bg-[var(--oh-warning)]" : "bg-[var(--oh-orange)]",
+            badgeTone === "warning" ? "bg-[var(--oh-warning)]" : "bg-[var(--oh-primary)]",
           )}
         >
           {badge}
@@ -577,7 +577,7 @@ function PaymentActionStrip() {
           className={cn(
             "cursor-pointer rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors",
             hasItems
-              ? "bg-[var(--oh-orange)] hover:bg-[var(--oh-orange-hover)]"
+              ? "bg-[var(--oh-primary)] hover:bg-[var(--oh-primary-hover)]"
               : "cursor-not-allowed bg-[var(--oh-border-strong)]",
           )}
         >

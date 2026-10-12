@@ -18,8 +18,8 @@ const VARIANT_STYLES: Record<
   warning: {
     headerBg: "bg-[var(--oh-tile-orange-bg)]",
     headerText: "text-[var(--oh-tile-orange-text)]",
-    buttonBg: "bg-[var(--oh-orange)]",
-    buttonHover: "hover:bg-[var(--oh-orange-hover)]",
+    buttonBg: "bg-[var(--oh-primary)]",
+    buttonHover: "hover:bg-[var(--oh-primary-hover)]",
     Icon: TriangleAlert,
   },
   danger: {

@@ -93,7 +93,7 @@ export function QuantityKeypadModal({
             <MinusIcon size={16} strokeWidth={2} />
           </button>
           <div className="min-w-0 flex-1 text-center">
-            <span className="inline-block min-w-[3ch] rounded-md bg-[var(--oh-orange)] px-3 py-1 text-[22px] font-bold leading-none text-white">
+            <span className="inline-block min-w-[3ch] rounded-md bg-[var(--oh-primary)] px-3 py-1 text-[22px] font-bold leading-none text-white">
               {input || "0"}
             </span>
           </div>
@@ -119,7 +119,7 @@ export function QuantityKeypadModal({
                 className={cn(
                   "flex h-12 cursor-pointer items-center justify-center rounded-[var(--oh-radius)] text-[20px] font-bold transition-colors",
                   isSpecial
-                    ? "bg-[var(--oh-orange)] text-white hover:bg-[var(--oh-orange-hover)]"
+                    ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
                     : "border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-tile-blue-text)] hover:bg-[var(--oh-tile-blue-bg)]",
                 )}
               >
@@ -136,7 +136,7 @@ export function QuantityKeypadModal({
         <button
           type="button"
           onClick={confirm}
-          className="mt-3 w-full cursor-pointer rounded-full bg-[var(--oh-orange)] py-3 text-[16px] font-semibold text-white transition-colors hover:bg-[var(--oh-orange-hover)]"
+          className="mt-3 w-full cursor-pointer rounded-full bg-[var(--oh-primary)] py-3 text-[16px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
         >
           OK
         </button>

@@ -127,7 +127,7 @@ export function AiInsightsPanel() {
         />
         <button
           type="button"
-          className="w-full cursor-pointer rounded-[var(--oh-radius)] bg-[var(--oh-orange)] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[var(--oh-orange-hover)]"
+          className="w-full cursor-pointer rounded-[var(--oh-radius)] bg-[var(--oh-primary)] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
         >
           Action
         </button>

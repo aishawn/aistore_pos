@@ -177,7 +177,7 @@ export function OdooReplenishmentPage() {
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5">
           <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Replenishment suggestions"}</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Demand trend compares the latest {data?.periodDays ?? 28} days with the previous period.</p></div>
-          <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => void openRfqDialog()} disabled={!suggestedItems.length} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
+          <div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => void openRfqDialog()} disabled={!suggestedItems.length} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
             <button type="button" onClick={() => setShowAll((value) => !value)} className="text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline">{showAll ? "Show suggestions only" : "Show all products"}</button></div>
         </header>
         <div className="min-h-0 flex-1 overflow-auto">
@@ -244,7 +244,7 @@ export function OdooReplenishmentPage() {
             </div>
             <footer className="flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] p-4 md:px-6">
               <button type="button" onClick={() => setRfqOpen(false)} disabled={rfqSubmitting} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={rfqSubmitting || rfqLoadingSuppliers || !rfqSuppliers.length || !selectedRfqLines.length} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-wait disabled:opacity-60">{rfqSubmitting ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {rfqSubmitting ? "Creating draft…" : "Create draft RFQ"}</button>
+              <button type="submit" disabled={rfqSubmitting || rfqLoadingSuppliers || !rfqSuppliers.length || !selectedRfqLines.length} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">{rfqSubmitting ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {rfqSubmitting ? "Creating draft…" : "Create draft RFQ"}</button>
             </footer>
           </form>
         </section>

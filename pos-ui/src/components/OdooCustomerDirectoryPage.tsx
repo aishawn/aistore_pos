@@ -102,7 +102,7 @@ export function OdooCustomerDirectoryPage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Customer records available to your Odoo staff account.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => { setEditingCustomer(null); setCreateOpen(true); setCreateError(null); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
+          <button type="button" onClick={() => { setEditingCustomer(null); setCreateOpen(true); setCreateError(null); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
@@ -183,7 +183,7 @@ export function OdooCustomerDirectoryPage() {
             {createError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{createError}</p>}
             <footer className="flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
               <button type="button" onClick={() => { setCreateOpen(false); setEditingCustomer(null); }} disabled={creating} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={creating} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-wait disabled:opacity-60">{creating ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {editingCustomer ? "Save changes" : "Create customer"}</button>
+              <button type="submit" disabled={creating} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">{creating ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {editingCustomer ? "Save changes" : "Create customer"}</button>
             </footer>
           </form>
         </section>

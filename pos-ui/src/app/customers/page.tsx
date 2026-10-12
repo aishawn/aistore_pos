@@ -99,7 +99,7 @@ function CustomersPageInner() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--oh-orange)] px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[var(--oh-orange-hover)]"
+          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
         >
           <PlusIcon size={16} /> Add Customer
         </button>

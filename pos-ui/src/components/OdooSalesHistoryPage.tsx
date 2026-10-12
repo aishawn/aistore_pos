@@ -214,7 +214,7 @@ export function OdooSalesHistoryPage() {
           </section>
           <footer className="receipt-print-hidden mt-6 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
             <button type="button" onClick={closeSale} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Close</button>
-            <button type="button" onClick={() => window.print()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)]"><Printer size={16} /> Print receipt</button>
+            <button type="button" onClick={() => window.print()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><Printer size={16} /> Print receipt</button>
           </footer>
         </section>}
       </div>}

@@ -36,7 +36,7 @@ export default function FutureCostsPage() {
         <span className="flex h-[52px] items-center rounded-lg border border-neutral-300 px-4 text-neutral-400">Select Start Date...</span>
         <span className="flex h-[52px] items-center rounded-lg border border-neutral-300 px-4 text-neutral-400">Select End Date...</span>
       </div>
-      <button className="mt-4 rounded-lg bg-[var(--oh-orange)] px-8 py-3 text-[16px] font-bold text-white transition-colors hover:bg-[var(--oh-orange-hover)]">Filter</button>
+      <button className="mt-4 rounded-lg bg-[var(--oh-primary)] px-8 py-3 text-[16px] font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)]">Filter</button>
 
       {showTable ? (
         <div className="mt-6">

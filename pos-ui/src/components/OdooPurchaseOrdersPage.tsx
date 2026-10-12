@@ -178,7 +178,7 @@ export function OdooPurchaseOrdersPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Odoo</p><h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Purchases</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Review requests for quotation and purchase orders from your current Odoo companies.</p></div>
         <div className="flex items-center gap-2">
-          <Link href="/stock/replenishment" className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)]"><ShoppingCart size={16} /> Replenishment plan</Link>
+          <Link href="/stock/replenishment" className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><ShoppingCart size={16} /> Replenishment plan</Link>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
       </header>

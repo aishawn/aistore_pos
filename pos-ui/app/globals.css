@@ -49,10 +49,10 @@
 }
 
 :root {
-  --oh-ink: #101820;
-  --oh-ink-soft: #34414a;
-  --oh-paper: #f7f8f6;
-  --oh-orange-dark: #b95500;
+  --oh-ink: #17352d;
+  --oh-ink-soft: #50675e;
+  --oh-paper: #faf9f4;
+  --oh-orange-dark: #b85c39;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -134,36 +134,36 @@
   --oh-shadow-card: 0 1px 3px rgba(28, 37, 54, 0.06), 0 4px 16px rgba(28, 37, 54, 0.04);
 
   /* Sidebar — deep charcoal/navy */
-  --oh-sidebar-bg: #101820;
-  --oh-sidebar-text: #94a3b8;
-  --oh-sidebar-text-hover: #cbd5e1;
-  --oh-sidebar-active: #5ebbeb;
-  --oh-sidebar-active-bg: rgba(94, 187, 235, 0.1);
-  --oh-sidebar-border: rgba(255, 255, 255, 0.06);
+  --oh-sidebar-bg: #12372f;
+  --oh-sidebar-text: #abc4b9;
+  --oh-sidebar-text-hover: #f1f7f3;
+  --oh-sidebar-active: #e89168;
+  --oh-sidebar-active-bg: rgba(255, 255, 255, 0.06);
+  --oh-sidebar-border: rgba(255, 255, 255, 0.1);
 
   /* Brand orange — logo, active nav, Action button */
-  --oh-orange: #f39200;
-  --oh-orange-hover: #e08500;
-  --oh-orange-light: #fef3dc;
-  --oh-orange-muted: rgba(243, 146, 0, 0.15);
+  --oh-orange: #e89168;
+  --oh-orange-hover: #d87852;
+  --oh-orange-light: #fff1e9;
+  --oh-orange-muted: rgba(232, 145, 104, 0.14);
 
   /* Surfaces */
-  --oh-header-bg: #ffffff;
-  --oh-surface: #f7f8f6;
+  --oh-header-bg: #fffdf8;
+  --oh-surface: #faf9f4;
   --oh-surface-elevated: #ffffff;
-  --oh-border: #e2e8e4;
-  --oh-border-strong: #cbd4ce;
+  --oh-border: #e8e5dc;
+  --oh-border-strong: #d6d3c8;
 
   /* Text */
-  --oh-text: #101820;
-  --oh-text-secondary: #34414a;
-  --oh-muted: #687780;
-  --oh-placeholder: #98a39c;
+  --oh-text: #17352d;
+  --oh-text-secondary: #50675e;
+  --oh-muted: #73847b;
+  --oh-placeholder: #8a9990;
 
   /* Buttons — dark navy primary */
-  --oh-primary: #101820;
-  --oh-primary-hover: #25343d;
-  --oh-navy: #101820;
+  --oh-primary: #0d6b58;
+  --oh-primary-hover: #095746;
+  --oh-navy: #24473d;
 
   /* Status tile borders (pastel) */
   --oh-tile-blue-bg: #eef6ff;
@@ -189,11 +189,11 @@
   /* Legacy aliases */
   --oh-accent: var(--oh-orange);
   --oh-accent-light: var(--oh-orange-light);
-  --sf-header-bg: #313439;
+  --sf-header-bg: #12372f;
   --sf-on-dark: #f8f8f8;
   --sf-muted: var(--oh-muted);
-  --sf-link-blue: #5ebbeb;
-  --sf-tab-blue: #1c86f2;
+  --sf-link-blue: #17866f;
+  --sf-tab-blue: #0d6b58;
   --sf-online-green: #32b643;
   --sf-pad-bg: #f8f8f8;
   --sf-placeholder: #757575;

@@ -91,7 +91,7 @@ function ProgressDots({ step }: { step: number }) {
             i === step ? "border-[var(--oh-orange)]" : "border-[var(--oh-border)]"
           }`}
         >
-          {i === step && <span className="h-2 w-2 rounded-full bg-[var(--oh-orange)]" />}
+          {i === step && <span className="h-2 w-2 rounded-full bg-[var(--oh-primary)]" />}
         </span>
       ))}
     </div>

@@ -467,7 +467,7 @@ export function FinaliseSalePage() {
 
                         isSpecial
 
-                          ? "bg-[var(--oh-orange)] text-white hover:bg-[var(--oh-orange-hover)]"
+                          ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
 
                           : "border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-tile-blue-text)] hover:bg-[var(--oh-tile-blue-bg)]",
 
@@ -663,7 +663,7 @@ export function FinaliseSalePage() {
 
                   onClick={completeAndReturn}
 
-                  className="mt-4 cursor-pointer rounded-[var(--oh-radius)] bg-[var(--oh-orange)] px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-[var(--oh-orange-hover)]"
+                  className="mt-4 cursor-pointer rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
 
                 >
 

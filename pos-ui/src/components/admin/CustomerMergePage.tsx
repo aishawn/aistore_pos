@@ -845,7 +845,7 @@ export function CustomerMergePage() {
             <span className="mt-2 max-w-[240px] text-[13px] leading-relaxed text-[var(--oh-muted)]">
               Search and select a customer. Use the checkmarks to copy their details into the merged result.
             </span>
-            <span className="mt-5 rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-white px-4 py-2 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors group-hover:bg-[var(--oh-orange)] group-hover:text-white">
+            <span className="mt-5 rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-white px-4 py-2 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors group-hover:bg-[var(--oh-primary)] group-hover:text-white">
             Choose customer
           </span>
         </button>
