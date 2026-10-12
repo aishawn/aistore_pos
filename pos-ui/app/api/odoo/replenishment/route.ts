@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 56;
+const PERIOD_DAYS = 28;
 const MAX_PRODUCTS = 1000;
 const COVERAGE_OPTIONS = new Set([7, 14, 21, 28, 42]);
 
@@ -49,7 +50,9 @@ export async function GET(request: NextRequest) {
 
   const parsedCoverage = Number(request.nextUrl.searchParams.get("coverageDays") ?? 21);
   const coverageDays = COVERAGE_OPTIONS.has(parsedCoverage) ? parsedCoverage : 21;
-  const from = new Date(Date.now() - HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+  const now = Date.now();
+  const recentFrom = new Date(now - PERIOD_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+  const previousFrom = new Date(now - HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
 
   try {
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
@@ -66,28 +69,44 @@ export async function GET(request: NextRequest) {
     if (session.error || !session.result?.uid) throw new ReplenishmentSessionExpiredError();
     if (!companyId) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
 
-    const salesDomain = [
+    const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
-      ["order_id.date_order", ">=", from],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
     ];
-    const [salesByProduct, products, companies] = await Promise.all([
-      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [salesDomain, ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
+    const [recentSales, previousSales, products, companies] = await Promise.all([
+      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
+      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom], ["order_id.date_order", "<", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
       ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId] } }),
       rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }),
     ]);
 
-    const sold = new Map<number, number>();
-    for (const row of salesByProduct ?? []) {
-      if (Array.isArray(row.product_id) && Number.isFinite(Number(row.qty))) sold.set(row.product_id[0], Number(row.qty));
+    const recentSold = new Map<number, number>();
+    const previousSold = new Map<number, number>();
+    for (const row of recentSales ?? []) {
+      if (Array.isArray(row.product_id) && Number.isFinite(Number(row.qty))) recentSold.set(row.product_id[0], Number(row.qty));
+    }
+    for (const row of previousSales ?? []) {
+      if (Array.isArray(row.product_id) && Number.isFinite(Number(row.qty))) previousSold.set(row.product_id[0], Number(row.qty));
     }
     const replenishmentItems = (products ?? []).map((product) => {
       const id = Number(product.id);
-      const soldUnits = sold.get(id) ?? 0;
+      const recentUnits = recentSold.get(id) ?? 0;
+      const previousUnits = previousSold.get(id) ?? 0;
+      const soldUnits = recentUnits + previousUnits;
       const onHand = Number(product.qty_available ?? 0);
-      const unitsPerDay = soldUnits / HISTORY_DAYS;
+      const recentUnitsPerDay = recentUnits / PERIOD_DAYS;
+      const previousUnitsPerDay = previousUnits / PERIOD_DAYS;
+      const unitsPerDay = recentUnits > 0 && previousUnits > 0
+        ? recentUnitsPerDay * 0.7 + previousUnitsPerDay * 0.3
+        : recentUnitsPerDay || previousUnitsPerDay;
+      const trendPercent = previousUnitsPerDay > 0 ? ((recentUnitsPerDay / previousUnitsPerDay) - 1) * 100 : null;
+      const trend = recentUnits > 0 && previousUnits === 0
+        ? "new"
+        : trendPercent === null ? null
+          : trendPercent > 10 ? "up"
+            : trendPercent < -10 ? "down" : "steady";
       const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * coverageDays - onHand));
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
       return {
@@ -96,7 +115,11 @@ export async function GET(request: NextRequest) {
         sku: product.default_code ? String(product.default_code) : "",
         unit,
         soldUnits,
+        recentUnits,
+        previousUnits,
         unitsPerDay,
+        trendPercent,
+        trend,
         onHand,
         daysOfStock: unitsPerDay > 0 ? onHand / unitsPerDay : null,
         suggestedQuantity,
@@ -106,9 +129,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       company: companies?.[0]?.name ?? "Current company",
       historyDays: HISTORY_DAYS,
+      periodDays: PERIOD_DAYS,
       coverageDays,
       products: replenishmentItems,
-      truncated: (products?.length ?? 0) >= MAX_PRODUCTS || (salesByProduct?.length ?? 0) >= MAX_PRODUCTS,
+      truncated: (products?.length ?? 0) >= MAX_PRODUCTS || (recentSales?.length ?? 0) >= MAX_PRODUCTS || (previousSales?.length ?? 0) >= MAX_PRODUCTS,
       generatedAt: new Date().toISOString(),
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

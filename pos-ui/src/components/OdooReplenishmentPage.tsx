@@ -10,7 +10,11 @@ type ReplenishmentProduct = {
   sku: string;
   unit: string;
   soldUnits: number;
+  recentUnits: number;
+  previousUnits: number;
   unitsPerDay: number;
+  trendPercent: number | null;
+  trend: "new" | "up" | "down" | "steady" | null;
   onHand: number;
   daysOfStock: number | null;
   suggestedQuantity: number;
@@ -19,6 +23,7 @@ type ReplenishmentProduct = {
 type ReplenishmentData = {
   company: string;
   historyDays: number;
+  periodDays: number;
   coverageDays: number;
   products: ReplenishmentProduct[];
   truncated: boolean;
@@ -110,17 +115,18 @@ export function OdooReplenishmentPage() {
           <button type="button" onClick={() => setShowAll((value) => !value)} className="text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline">{showAll ? "Show suggestions only" : "Show all products"}</button>
         </header>
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-              <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th className="px-4 py-3 text-right">Avg / day</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Stock cover</th><th className="px-4 py-3 text-right">Suggested order</th></tr>
+              <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th className="px-4 py-3 text-right">Forecast / day</th><th className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Stock cover</th><th className="px-4 py-3 text-right">Suggested order</th></tr>
             </thead>
             <tbody className="divide-y divide-[var(--oh-border)]">
-              {loading && !data ? <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
-                : !visibleItems.length ? <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
+              {loading && !data ? <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
+                : !visibleItems.length ? <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
                   : visibleItems.map((product) => <tr key={product.id} className="hover:bg-sky-50/40">
                     <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]">{product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{product.sku ? `SKU ${product.sku} · ` : ""}{product.unit}</span></td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.unitsPerDay)}</td>
+                    <td className="px-4 py-3 text-right">{product.trend === "new" ? <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">New demand</span> : product.trend === "up" ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">↑ {number.format(product.trendPercent ?? 0)}%</span> : product.trend === "down" ? <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">↓ {number.format(Math.abs(product.trendPercent ?? 0))}%</span> : product.trend === "steady" ? <span className="text-xs text-[var(--oh-muted)]">Steady</span> : <span className="text-xs text-[var(--oh-muted)]">—</span>}</td>
                     <td className={`px-4 py-3 text-right tabular-nums ${product.onHand <= 0 && product.soldUnits > 0 ? "font-semibold text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{number.format(product.onHand)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
                     <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[#fff2da] px-2.5 py-1 text-xs font-bold tabular-nums text-[#8b4a00]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
@@ -133,7 +139,7 @@ export function OdooReplenishmentPage() {
 
       <section className="rounded-md border border-[var(--oh-border)] bg-white px-4 py-3 text-xs leading-5 text-[var(--oh-muted)]">
         <p className="font-semibold text-[var(--oh-text-secondary)]">How this estimate works</p>
-        <p className="mt-1">Suggested order = max(0, average daily sales over {data?.historyDays ?? 56} days × {coverageDays}-day coverage − on-hand stock), rounded up to a whole unit. It is a planning estimate only; it does not create a purchase order and does not yet account for supplier lead times, pack sizes, holidays or store-specific events.</p>
+        <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {coverageDays}-day coverage − on-hand stock), rounded up to a whole unit. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events.</p>
       </section>
 
       <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(data.generatedAt)) : "—"}.</p>
