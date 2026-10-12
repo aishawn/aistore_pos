@@ -24,7 +24,10 @@ export interface OdooProductRecord {
   qty_available: number;
   uom_id: [number, string] | false;
   pos_categ_ids: number[];
+  available_in_pos: boolean;
 }
+
+export type OdooProductUpdate = Pick<OdooProductRecord, "barcode" | "default_code" | "list_price" | "pos_categ_ids" | "available_in_pos">;
 
 export interface OdooPosCategoryRecord {
   id: number;
@@ -223,4 +226,16 @@ export async function searchOdooRecords<T>(
     throw new OdooApiError("Odoo returned an invalid records response", 502);
   }
   return payload as OdooPage<T>;
+}
+
+export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate>): Promise<void> {
+  const response = await fetch(`/api/odoo/products/${productId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(values),
+  });
+  const payload = await response.json().catch(() => null) as { message?: string } | null;
+  if (!response.ok) throw new OdooApiError(payload?.message || `Product update failed (${response.status})`, response.status);
 }
