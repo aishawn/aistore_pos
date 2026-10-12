@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -54,7 +54,7 @@ async function getCompanies(sessionId: string) {
   if (!response.ok) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
   if (payload.error || !payload.result?.uid) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const companyIds = getOdooAllowedCompanyIds(payload.result);
+  const companyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
   if (!companyIds.length) throw new PurchaseRequestError("No Odoo companies are available to this user.", 403);
   return companyIds;
 }

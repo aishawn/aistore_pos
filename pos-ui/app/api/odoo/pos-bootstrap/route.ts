@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     const info = infoPayload.result;
     if (infoPayload.error || !info?.uid) throw new OdooSessionExpiredError();
 
-    const companyIds = getOdooAllowedCompanyIds(info);
+    const companyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
     if (!companyIds.length) {
       return NextResponse.json({ configs: [], activeSessionId: null, message: "No accessible Odoo companies are assigned to this user." }, { status: 200 });
     }

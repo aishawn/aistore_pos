@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -55,7 +55,7 @@ async function getSessionContext(sessionId: string) {
     error?: OdooError;
   };
   if (payload.error || !payload.result?.uid) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const companyId = getOdooAllowedCompanyIds(payload.result)[0];
+  const companyId = (await resolveOdooAllowedCompanyIds(sessionId, payload.result))[0];
   if (!companyId) throw new OdooRequestError("No Odoo company is available to this account.", 403);
   return { companyId };
 }

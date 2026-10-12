@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -66,14 +66,14 @@ function cookieOptions() {
   };
 }
 
-function publicUser(info: OdooSessionInfo) {
+async function publicUser(info: OdooSessionInfo, sessionId: string) {
   if (!info.uid || !info.username) throw new Error("Odoo session is not authenticated");
   return {
     id: String(info.uid),
     name: info.partner_display_name || info.name || info.username,
     username: info.username,
     isAdmin: false,
-    allowedCompanyIds: getOdooAllowedCompanyIds(info),
+    allowedCompanyIds: await resolveOdooAllowedCompanyIds(sessionId, info),
   };
 }
 
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Odoo did not return a session" }, { status: 502 });
     }
 
-    const nextResponse = NextResponse.json({ user: publicUser(payload.result) }, { status: 200 });
+    const nextResponse = NextResponse.json({ user: await publicUser(payload.result, sessionId) }, { status: 200 });
     nextResponse.cookies.set(SESSION_COOKIE, sessionId, cookieOptions());
     return nextResponse;
   } catch (error) {
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const info = await callOdoo("/web/session/get_session_info", {}, sessionId);
-    return NextResponse.json({ user: info.uid ? publicUser(info) : null }, { status: 200 });
+    return NextResponse.json({ user: info.uid ? await publicUser(info, sessionId) : null }, { status: 200 });
   } catch {
     const response = NextResponse.json({ user: null }, { status: 200 });
     response.cookies.delete(SESSION_COOKIE);
