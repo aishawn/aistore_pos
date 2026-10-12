@@ -5,8 +5,27 @@ export const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_MAX_AGE = 14 * 24 * 60 * 60;
 
 export function isSameOrigin(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
+  const originHeader = request.headers.get("origin");
+  if (!originHeader) return true;
+
+  let origin: string;
+  try {
+    origin = new URL(originHeader).origin;
+  } catch {
+    return false;
+  }
+
+  const requestUrl = new URL(request.url);
+  // Behind Dokploy/Cloudflare, Next may see the internal HTTP URL while the
+  // browser sends the public HTTPS origin. Prefer the proxy's public host and
+  // protocol headers, then fall back to the direct request URL.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim();
+  const host = forwardedHost || request.headers.get("host") || requestUrl.host;
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+  const protocol = forwardedProto || requestUrl.protocol.slice(0, -1);
+  const externalOrigin = `${protocol}://${host}`;
+
+  return origin === externalOrigin || origin === requestUrl.origin;
 }
 
 export function backendUrl() {
