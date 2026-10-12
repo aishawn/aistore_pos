@@ -77,9 +77,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   try {
     const companyIds = await getCompanyIds(sessionId);
+    const orderFields = await rpc<Record<string, { type?: string }>>(sessionId, "purchase.order", "fields_get", [["picking_ids", "receipt_status"]], { attributes: ["type"] });
+    const availableOrderFields = ["picking_ids", "receipt_status"].filter((field) => Object.hasOwn(orderFields ?? {}, field));
     const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "purchase.order", "search_read", [[
       ["id", "=", purchaseId], ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "partner_id", "date_order", "date_planned", "state", "amount_untaxed", "amount_tax", "amount_total", "currency_id", "company_id", "user_id", "origin", "notes", "order_line"], limit: 1, context: { allowed_company_ids: companyIds } });
+    ]], { fields: ["id", "name", "partner_id", "date_order", "date_planned", "state", "amount_untaxed", "amount_tax", "amount_total", "currency_id", "company_id", "user_id", "origin", "notes", "order_line", ...availableOrderFields], limit: 1, context: { allowed_company_ids: companyIds } });
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Purchase order not found or you do not have access to it." }, { status: 404 });
     const orderLineIds = Array.isArray(order.order_line) ? order.order_line.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
@@ -92,10 +94,33 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         ["id", "in", orderLineIds], ["order_id", "=", purchaseId],
       ]], { fields: ["id", "product_id", "name", "product_qty", unitField, "price_unit", "price_subtotal", "qty_received", "date_planned"], limit: 200, context: { allowed_company_ids: companyIds } }) ?? [];
     }
+    const pickingIds = Array.isArray(order.picking_ids) ? order.picking_ids.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
+    let receiptsAvailable = availableOrderFields.includes("picking_ids");
+    let receipts: Array<Record<string, unknown>> = [];
+    if (receiptsAvailable && pickingIds.length) {
+      try {
+        receipts = await rpc<Array<Record<string, unknown>>>(sessionId, "stock.picking", "search_read", [[
+          ["id", "in", pickingIds], ["company_id", "in", companyIds],
+        ]], {
+          fields: ["id", "name", "state", "scheduled_date", "date_done", "picking_type_id", "location_id", "location_dest_id", "origin", "company_id"],
+          limit: 100,
+          order: "scheduled_date desc, id desc",
+          context: { allowed_company_ids: companyIds },
+        }) ?? [];
+      } catch (error) {
+        if (!(error instanceof PurchaseOrderError) || error.status !== 403) throw error;
+        receiptsAvailable = false;
+      }
+    }
     const baseUrl = odooBaseUrl();
     return NextResponse.json({
       order,
       lines: lines ?? [],
+      receipts: receipts.map((receipt) => ({
+        ...receipt,
+        url: `${baseUrl}/web#id=${receipt.id}&model=stock.picking&view_type=form`,
+      })),
+      receiptsAvailable,
       url: `${baseUrl}/web#id=${purchaseId}&model=purchase.order&view_type=form`,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

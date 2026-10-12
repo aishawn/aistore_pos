@@ -27,6 +27,30 @@ function statusClass(status: string) {
   return "bg-amber-50 text-amber-900";
 }
 
+function receiptStatusLabel(status: string) {
+  if (status === "done") return "Received";
+  if (status === "cancel") return "Cancelled";
+  if (status === "assigned") return "Ready to receive";
+  if (status === "waiting") return "Waiting for another step";
+  if (status === "confirmed") return "Waiting";
+  if (status === "draft") return "Draft";
+  return status.replaceAll("_", " ");
+}
+
+function receiptStatusClass(status: string) {
+  if (status === "done") return "bg-emerald-50 text-emerald-800";
+  if (status === "cancel") return "bg-slate-100 text-slate-600";
+  if (status === "assigned") return "bg-sky-50 text-sky-800";
+  return "bg-amber-50 text-amber-900";
+}
+
+function purchaseReceiptLabel(status?: string | false) {
+  if (status === "full") return "Received in full";
+  if (status === "partial") return "Partially received";
+  if (status === "pending") return "Awaiting receipt";
+  return null;
+}
+
 function formatDate(value?: string | false) {
   if (!value) return "—";
   const date = new Date(`${value.replace(" ", "T")}Z`);
@@ -190,10 +214,19 @@ export function OdooPurchaseOrdersPage() {
       {(detail || detailLoading || detailError) && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !confirming) closeDetail(); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="purchase-detail-title" className="my-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
           {detailLoading ? <div className="grid min-h-56 place-items-center"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></div> : detailError ? <div className="p-6"><div className="flex justify-between gap-4"><h2 id="purchase-detail-title" className="text-lg font-semibold text-[var(--oh-text)]">Purchase details</h2><button type="button" onClick={closeDetail} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button></div><p role="alert" className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{detailError}</p></div> : detail && <>
-            <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] p-5 md:px-6"><div><div className="flex flex-wrap items-center gap-2"><h2 id="purchase-detail-title" className="text-lg font-semibold text-[var(--oh-text)]">{detail.order.name}</h2><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(detail.order.state)}`}>{statusLabel(detail.order.state)}</span></div><p className="mt-1 text-sm text-[var(--oh-muted)]">{relationName(detail.order.partner_id) || "No supplier"} · {formatDate(detail.order.date_order)}</p></div><button type="button" onClick={closeDetail} disabled={confirming} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button></header>
+            <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] p-5 md:px-6"><div><div className="flex flex-wrap items-center gap-2"><h2 id="purchase-detail-title" className="text-lg font-semibold text-[var(--oh-text)]">{detail.order.name}</h2><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(detail.order.state)}`}>{statusLabel(detail.order.state)}</span>{purchaseReceiptLabel(detail.order.receipt_status) && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{purchaseReceiptLabel(detail.order.receipt_status)}</span>}</div><p className="mt-1 text-sm text-[var(--oh-muted)]">{relationName(detail.order.partner_id) || "No supplier"} · {formatDate(detail.order.date_order)}</p></div><button type="button" onClick={closeDetail} disabled={confirming} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button></header>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 md:px-6">
               <div className="overflow-auto rounded-lg border border-[var(--oh-border)]"><table className="w-full min-w-[680px] border-collapse text-left text-sm"><thead className="bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-3 py-2.5">Product</th><th className="px-3 py-2.5 text-right">Quantity</th><th className="px-3 py-2.5 text-right">Received</th><th className="px-3 py-2.5 text-right">Unit price</th><th className="px-3 py-2.5 text-right">Subtotal</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{detail.lines.map((line) => { const unit = relationName(line.product_uom) || relationName(line.product_uom_id); return <tr key={line.id}><td className="px-3 py-3"><span className="block font-medium text-[var(--oh-text)]">{relationName(line.product_id) || line.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Expected {formatDate(line.date_planned)}</span></td><td className="px-3 py-3 text-right tabular-nums">{line.product_qty} {unit}</td><td className="px-3 py-3 text-right tabular-nums">{line.qty_received}</td><td className="px-3 py-3 text-right tabular-nums">{formatMoney(line.price_unit, detail.order.currency_id)}</td><td className="px-3 py-3 text-right font-medium tabular-nums">{formatMoney(line.price_subtotal, detail.order.currency_id)}</td></tr>; })}{!detail.lines.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--oh-muted)]">This RFQ has no product lines.</td></tr>}</tbody></table></div>
               <dl className="ml-auto grid max-w-sm grid-cols-2 gap-x-8 gap-y-2 text-sm"><dt className="text-[var(--oh-muted)]">Untaxed</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{formatMoney(detail.order.amount_untaxed, detail.order.currency_id)}</dd><dt className="text-[var(--oh-muted)]">Tax</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{formatMoney(detail.order.amount_tax, detail.order.currency_id)}</dd><dt className="font-semibold text-[var(--oh-text)]">Total</dt><dd className="text-right font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(detail.order.amount_total, detail.order.currency_id)}</dd></dl>
+              <section aria-labelledby="receipt-list-title" className="rounded-lg border border-[var(--oh-border)]">
+                <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3">
+                  <div><h3 id="receipt-list-title" className="text-sm font-semibold text-[var(--oh-text)]">Incoming receipts</h3><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Receipt status and quantities are managed in Odoo Inventory.</p></div>
+                  <span className="text-xs text-[var(--oh-muted)]">{detail.receipts.length} {detail.receipts.length === 1 ? "receipt" : "receipts"}</span>
+                </header>
+                {!detail.receiptsAvailable ? <p role="status" className="px-4 py-4 text-sm text-[var(--oh-muted)]">Receipt details are not available for this account. Open the purchase order in Odoo to review its deliveries.</p>
+                  : detail.receipts.length ? <ul className="divide-y divide-[var(--oh-border)]">{detail.receipts.map((receipt) => <li key={receipt.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><a href={receipt.url} target="_blank" rel="noreferrer" className="font-semibold text-[var(--oh-primary)] hover:underline">{receipt.name}</a><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${receiptStatusClass(receipt.state)}`}>{receiptStatusLabel(receipt.state)}</span></div><p className="mt-1 text-xs text-[var(--oh-muted)]">{relationName(receipt.picking_type_id) || "Incoming transfer"} · {relationName(receipt.location_id) || "Vendor"} → {relationName(receipt.location_dest_id) || "Stock"}</p></div><div className="flex items-center gap-3 text-right"><div><span className="block text-xs text-[var(--oh-muted)]">{receipt.state === "done" ? "Received" : "Scheduled"}</span><span className="text-sm tabular-nums text-[var(--oh-text-secondary)]">{formatDate(receipt.date_done || receipt.scheduled_date)}</span></div><a href={receipt.url} target="_blank" rel="noreferrer" aria-label={`Open receipt ${receipt.name} in Odoo`} className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]"><ExternalLink size={15} /></a></div></li>)}</ul>
+                  : <p className="px-4 py-4 text-sm text-[var(--oh-muted)]">No incoming receipts are linked yet. Confirm the purchase order in Odoo to start the receiving workflow.</p>}
+              </section>
               {detail.order.origin && <p className="text-xs text-[var(--oh-muted)]">Source: {detail.order.origin}</p>}
               {detail.order.state === "to approve" && <p role="status" className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-950">This RFQ is waiting for approval in Odoo.</p>}
               {detail.order.state === "draft" && detail.lines.some((line) => line.price_unit <= 0) && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">At least one line has no supplier price yet. Review the quote with the supplier before confirming.</p>}

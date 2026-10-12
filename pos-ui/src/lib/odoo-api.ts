@@ -95,6 +95,7 @@ export interface OdooPurchaseOrderRecord {
 export interface OdooPurchaseOrderDetail {
   order: OdooPurchaseOrderRecord & {
     date_planned?: string | false;
+    receipt_status?: string | false;
     amount_untaxed: number;
     amount_tax: number;
     user_id: [number, string] | false;
@@ -113,6 +114,19 @@ export interface OdooPurchaseOrderDetail {
     qty_received: number;
     date_planned: string | false;
   }>;
+  receipts: Array<{
+    id: number;
+    name: string;
+    state: string;
+    scheduled_date: string | false;
+    date_done: string | false;
+    picking_type_id: [number, string] | false;
+    location_id: [number, string] | false;
+    location_dest_id: [number, string] | false;
+    origin: string | false;
+    url: string;
+  }>;
+  receiptsAvailable: boolean;
   url: string;
 }
 
