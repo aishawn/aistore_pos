@@ -130,36 +130,37 @@
   --oh-shadow-card: 0 1px 3px rgba(28, 37, 54, 0.06), 0 4px 16px rgba(28, 37, 54, 0.04);
 
   /* Sidebar */
-  --oh-sidebar-bg: #0b0f19;
-  --oh-sidebar-text: #94a3b8;
-  --oh-sidebar-text-hover: #cbd5e1;
-  --oh-sidebar-active: #f39200;
+  --oh-sidebar-bg: #12372f;
+  --oh-sidebar-text: #abc4b9;
+  --oh-sidebar-text-hover: #f1f7f3;
+  --oh-sidebar-active: #e89168;
   --oh-sidebar-active-bg: rgba(255, 255, 255, 0.04);
-  --oh-sidebar-border: rgba(255, 255, 255, 0.06);
+  --oh-sidebar-border: rgba(255, 255, 255, 0.1);
 
   /* Brand */
-  --oh-orange: #f39200;
-  --oh-orange-hover: #e08500;
-  --oh-orange-light: #fef3dc;
-  --oh-orange-muted: rgba(243, 146, 0, 0.15);
+  /* Legacy token name retained while the app migrates to brand-primary usage. */
+  --oh-orange: #0d6b58;
+  --oh-orange-hover: #095746;
+  --oh-orange-light: #eaf4ef;
+  --oh-orange-muted: rgba(13, 107, 88, 0.12);
 
   /* Surfaces */
-  --oh-header-bg: #ffffff;
-  --oh-surface: #f8f9fa;
+  --oh-header-bg: #fffdf8;
+  --oh-surface: #faf9f4;
   --oh-surface-elevated: #ffffff;
-  --oh-border: #e4e8ee;
-  --oh-border-strong: #cdd4df;
+  --oh-border: #e8e5dc;
+  --oh-border-strong: #d6d3c8;
 
   /* Text */
-  --oh-text: #1c2536;
-  --oh-text-secondary: #4a5568;
-  --oh-muted: #718096;
-  --oh-placeholder: #a0aec0;
+  --oh-text: #17352d;
+  --oh-text-secondary: #50675e;
+  --oh-muted: #73847b;
+  --oh-placeholder: #8a9990;
 
   /* Buttons */
-  --oh-primary: #1c2536;
-  --oh-primary-hover: #141b28;
-  --oh-navy: #2d3a4f;
+  --oh-primary: #0d6b58;
+  --oh-primary-hover: #095746;
+  --oh-navy: #24473d;
 
   /* Status tiles */
   --oh-tile-blue-bg: #eef6ff;
@@ -199,11 +200,11 @@
 
 /* ── Orithos "Sell" screen design tokens (extracted from sea.onorithos.com) ── */
 :root {
-  --sf-header-bg: rgb(49, 52, 57); /* #313439 dark header */
+  --sf-header-bg: #12372f;
   --sf-on-dark: rgb(248, 248, 248); /* #f8f8f8 header icons/text */
   --sf-muted: rgb(189, 189, 189); /* #bdbdbd team-message / summary */
-  --sf-link-blue: rgb(94, 187, 235); /* #5ebbeb help-center link + Finalise btn */
-  --sf-tab-blue: rgb(28, 134, 242); /* #1c86f2 selected tab */
+  --sf-link-blue: #17866f;
+  --sf-tab-blue: #0d6b58;
   --sf-online-green: rgb(50, 182, 67); /* #32b643 ONLINE status */
   --sf-pad-bg: rgb(248, 248, 248); /* #f8f8f8 sales-keys area background */
   --sf-placeholder: rgb(117, 117, 117); /* #757575 search placeholder */

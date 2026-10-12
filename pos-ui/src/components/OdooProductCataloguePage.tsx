@@ -228,7 +228,7 @@ export function OdooProductCataloguePage() {
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50"><FileUp size={16} /> Import CSV</button>
-          <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
+          <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
@@ -343,7 +343,7 @@ export function OdooProductCataloguePage() {
             {editError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{editError}</p>}
             <footer className="flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
               <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={savingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-wait disabled:opacity-60">{savingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Save changes</button>
+              <button type="submit" disabled={savingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-wait disabled:opacity-60">{savingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Save changes</button>
             </footer>
           </form>
         </section>
@@ -379,7 +379,7 @@ export function OdooProductCataloguePage() {
             <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">This imports product details, sale prices and optional costs. It does not change on-hand stock; use an Odoo receipt or stock adjustment to load opening quantities. Products already matching an SKU or barcode are skipped.</p>
             <footer className="flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
               <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">{importResult ? "Done" : "Cancel"}</button>
-              <button type="button" onClick={() => void runProductImport()} disabled={importBusy || importRows.length === 0 || Boolean(importResult)} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-not-allowed disabled:opacity-60">{importBusy ? <LoaderCircle size={15} className="animate-spin" /> : <FileUp size={15} />} Import {importRows.length} product{importRows.length === 1 ? "" : "s"}</button>
+              <button type="button" onClick={() => void runProductImport()} disabled={importBusy || importRows.length === 0 || Boolean(importResult)} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60">{importBusy ? <LoaderCircle size={15} className="animate-spin" /> : <FileUp size={15} />} Import {importRows.length} product{importRows.length === 1 ? "" : "s"}</button>
             </footer>
           </div>
         </section>
@@ -421,7 +421,7 @@ export function OdooProductCataloguePage() {
             {createError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{createError}</p>}
             <footer className="flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
               <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={creatingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-[#1e1b16] hover:bg-[#ffad22] disabled:cursor-wait disabled:opacity-60">{creatingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Create product</button>
+              <button type="submit" disabled={creatingProduct} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-orange)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-orange-hover)] disabled:cursor-wait disabled:opacity-60">{creatingProduct ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} Create product</button>
             </footer>
           </form>
         </section>
