@@ -14,7 +14,8 @@ import {
   type OdooProductRecord,
 } from "@/lib/odoo-api";
 
-type CartLine = { product: OdooProductRecord; quantity: number };
+type CartLine = { product: OdooProductRecord; quantity: number; /** Units per pack (1 = bottle/each, 12 = case). */ packFactor: number };
+const CASE_PACK_OPTIONS = [1, 6, 12, 24] as const;
 type ParkedOdooSale = {
   id: string;
   ownerUserId: string;
@@ -58,7 +59,7 @@ function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
     && typeof sale.createdAt === "string"
     && Array.isArray(sale.lines)
     && sale.lines.length > 0
-    && sale.lines.every((line) => line && Number.isSafeInteger(line.product?.id) && typeof line.product?.name === "string" && Number.isFinite(line.product?.list_price) && Number.isFinite(line.quantity) && line.quantity > 0);
+    && sale.lines.every((line) => line && Number.isSafeInteger(line.product?.id) && typeof line.product?.name === "string" && Number.isFinite(line.product?.list_price) && Number.isFinite(line.quantity) && line.quantity > 0 && (line.packFactor === undefined || (Number.isFinite(line.packFactor) && (line.packFactor as number) > 0)));
 }
 
 function readParkedOdooSales(): ParkedOdooSale[] {
@@ -208,7 +209,7 @@ export function OdooRegisterPage() {
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
   const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === odooUserId && sale.companyId === selectedCompanyId);
   const parkedActionSale = parkedAction ? parkedSales.find((sale) => sale.id === parkedAction.saleId) : null;
-  const total = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity, 0) * 100) / 100, [lines]);
+  const total = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0) * 100) / 100, [lines]);
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
   const isCashPayment = selectedPayment?.type === "cash";
   const applyRounding = Boolean(selectedConfig?.cashRounding && (!selectedConfig.onlyRoundCashMethod || selectedPayment?.is_cash_count));
@@ -225,13 +226,20 @@ export function OdooRegisterPage() {
     return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(date);
   }
 
-  function addProduct(product: OdooProductRecord) {
+  function addProduct(product: OdooProductRecord, packFactor = 1) {
     setLines((current) => {
-      const found = current.find((line) => line.product.id === product.id);
+      const found = current.find((line) => line.product.id === product.id && (line.packFactor || 1) === packFactor);
       return found
-        ? current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line)
-        : [...current, { product, quantity: 1 }];
+        ? current.map((line) => line.product.id === product.id && (line.packFactor || 1) === packFactor ? { ...line, quantity: line.quantity + 1 } : line)
+        : [...current, { product, quantity: 1, packFactor }];
     });
+  }
+
+  function setLinePackFactor(productId: number, currentFactor: number, nextFactor: number) {
+    setLines((current) => current.map((line) =>
+      line.product.id === productId && (line.packFactor || 1) === currentFactor
+        ? { ...line, packFactor: nextFactor }
+        : line));
   }
 
   async function handleProductSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -264,9 +272,9 @@ export function OdooRegisterPage() {
     }
   }
 
-  function changeQuantity(productId: number, amount: number) {
+  function changeQuantity(productId: number, packFactor: number, amount: number) {
     setLines((current) => current
-      .map((line) => line.product.id === productId ? { ...line, quantity: line.quantity + amount } : line)
+      .map((line) => line.product.id === productId && (line.packFactor || 1) === packFactor ? { ...line, quantity: line.quantity + amount } : line)
       .filter((line) => line.quantity > 0));
   }
 
@@ -317,7 +325,7 @@ export function OdooRegisterPage() {
 
   function restoreParkedSale(sale: ParkedOdooSale) {
     if (!saveParkedSales(parkedSales.filter((item) => item.id !== sale.id))) return;
-    setLines(sale.lines);
+    setLines(sale.lines.map((line) => ({ ...line, packFactor: line.packFactor || 1 })));
     setCustomer(sale.customer ? {
       id: sale.customer.id,
       name: sale.customer.name,
@@ -384,7 +392,7 @@ export function OdooRegisterPage() {
         orderUuid: stableOrderUuid,
         customerId: customer?.id ?? null,
         tendered: tenderedAmount,
-        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1 })),
       });
       setReceipt({
         reference: result.receipt,
@@ -481,8 +489,8 @@ export function OdooRegisterPage() {
           </> : <div className="min-h-0 flex-1 overflow-y-auto p-3">
             <p className="mb-3 flex items-start gap-2 rounded-md bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-muted)]"><Clock3 size={15} className="mt-0.5 shrink-0" />Parked sales are saved on this terminal. Odoo checks current pricing and availability when you resume and finalise.</p>
             {visibleParkedSales.length ? <div className="grid gap-2">{visibleParkedSales.map((sale) => <article key={sale.id} className="rounded-md border border-[var(--oh-border)] p-3">
-              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatParkedDate(sale.createdAt)} · {sale.registerName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity, 0))}</p></div></div>
-              <p className="mt-2 line-clamp-2 text-xs text-[var(--oh-muted)]">{sale.lines.map((line) => `${line.quantity} × ${line.product.display_name || line.product.name}`).join(" · ")}</p>
+              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatParkedDate(sale.createdAt)} · {sale.registerName}</p>              <p className="mt-1 text-xs text-[var(--oh-muted)]">{sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}</p></div></div>
+              <p className="mt-2 line-clamp-2 text-xs text-[var(--oh-muted)]">{sale.lines.map((line) => `${line.quantity}${(line.packFactor || 1) > 1 ? `×${line.packFactor}` : ""} × ${line.product.display_name || line.product.name}`).join(" · ")}</p>
               <div className="mt-3 flex gap-2"><button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--sf-link-blue)] px-3 text-sm font-semibold text-white hover:brightness-95"><RotateCcw size={15} /> Resume</button><button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-muted)] hover:text-red-700">Discard</button></div>
             </article>)}</div> : <div className="grid h-[60%] place-items-center text-center"><div><Archive size={24} className="mx-auto text-[var(--oh-muted)]"/><p className="mt-2 text-sm font-medium text-[var(--oh-text)]">No parked sales</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Park an open cart to finish it later.</p></div></div>}
           </div>}
@@ -495,12 +503,22 @@ export function OdooRegisterPage() {
           </div>
           {!customer && customers.length > 0 && <div className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">{customers.map((item) => <button key={item.id} type="button" onClick={() => { setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2 text-left text-sm hover:bg-sky-50">{item.name}<span className="ml-2 text-xs text-[var(--oh-muted)]">{item.phone || item.email}</span></button>)}</div>}
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {lines.length ? lines.map(({ product, quantity: qty }) => <div key={product.id} className="flex items-center gap-3 border-b border-[#eee] px-4 py-3">
+            {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
+              const factor = packFactor || 1;
+              return <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[#eee] px-4 py-3">
+              <div className="flex items-center gap-3">
               <span className="w-6 text-sm text-[var(--oh-muted)]">{qty}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="text-xs text-[var(--oh-muted)]">{money(product.list_price)} each</span></span>
-              <span className="text-sm font-medium">{money(product.list_price * qty)}</span>
-              <div className="flex items-center gap-1"><button aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, -1)} className="grid h-8 w-8 place-items-center rounded border border-[var(--oh-border)]"><Minus size={14} /></button><button aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, 1)} className="grid h-8 w-8 place-items-center rounded border border-[var(--oh-border)]"><Plus size={14} /></button><button aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => line.product.id !== product.id))} className="grid h-8 w-8 place-items-center text-[var(--oh-muted)] hover:text-red-600"><Trash2 size={15} /></button></div>
-            </div>) : <div className="grid h-full place-items-center px-6 text-center"><div><Wine size={24} className="mx-auto text-[var(--oh-muted)]" /><p className="mt-2 text-sm text-[var(--oh-muted)]">Add a product to start a sale</p></div></div>}
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="text-xs text-[var(--oh-muted)]">{money(product.list_price)} each{factor > 1 ? ` · ${factor}/pack` : ""}</span></span>
+              <span className="text-sm font-medium">{money(product.list_price * qty * factor)}</span>
+              <div className="flex items-center gap-1"><button aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-8 w-8 place-items-center rounded border border-[var(--oh-border)]"><Minus size={14} /></button><button aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-8 w-8 place-items-center rounded border border-[var(--oh-border)]"><Plus size={14} /></button><button aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-8 w-8 place-items-center text-[var(--oh-muted)] hover:text-red-600"><Trash2 size={15} /></button></div>
+              </div>
+              <label className="flex items-center gap-2 text-[11px] font-medium text-[var(--oh-muted)]">Pack / case
+                <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="h-8 rounded border border-[var(--oh-border)] bg-white px-2 text-xs font-semibold text-[var(--oh-text)]">
+                  {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each / bottle" : `Case ×${size}`}</option>)}
+                </select>
+              </label>
+            </div>;
+            }) : <div className="grid h-full place-items-center px-6 text-center"><div><Wine size={24} className="mx-auto text-[var(--oh-muted)]" /><p className="mt-2 text-sm text-[var(--oh-muted)]">Add a product to start a sale</p></div></div>}
           </div>
           <div className="shrink-0 border-t border-[var(--oh-border)] p-4">
             <div className="mb-3 flex items-end justify-between"><div><p className="text-xs text-[var(--oh-muted)]">{quantity} {quantity === 1 ? "item" : "items"}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">GST included where configured in Odoo</p>{amountToCollect !== total && <p className="mt-1 text-xs font-medium text-[var(--oh-muted)]">Cash rounding {money(amountToCollect - total)}</p>}</div><div className="text-right"><p className="text-xs uppercase tracking-wide text-[var(--oh-muted)]">Total</p><p className="text-3xl font-semibold tabular-nums text-[var(--oh-text)]">{money(amountToCollect)}</p></div></div>

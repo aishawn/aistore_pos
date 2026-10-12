@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import {
-  SIDEBAR_MAIN,
+  getSidebarNavigation,
   type SidebarGroup,
   type SidebarIcon,
   type SidebarItem,
@@ -120,7 +120,7 @@ export function Sidebar({ open = true }: { open?: boolean }) {
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         <ul className="flex flex-col gap-0.5">
-          {SIDEBAR_MAIN.map((entry) =>
+          {getSidebarNavigation().map((entry) =>
             isGroup(entry) ? (
               <SidebarNavGroup key={entry.label} group={entry} pathname={pathname} guardNav={guardNav} tabIndex={checkoutKeyboard ? -1 : undefined} />
             ) : (

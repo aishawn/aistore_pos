@@ -2,8 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ChevronLeft, ChevronRight, FileText, LoaderCircle, Printer, RefreshCw, Search, X } from "lucide-react";
-import { getOdooSaleDetail, getOdooSession, searchOdooRecords, type OdooSaleDetail, type OdooSaleRecord } from "@/lib/odoo-api";
+import { AlertCircle, ChevronLeft, ChevronRight, FileText, LoaderCircle, Printer, RefreshCw, RotateCcw, Search, X } from "lucide-react";
+import {
+  getOdooPosBootstrap,
+  getOdooSaleDetail,
+  getOdooSession,
+  searchOdooRecords,
+  submitOdooPosOrder,
+  type OdooPosBootstrap,
+  type OdooSaleDetail,
+  type OdooSaleRecord,
+} from "@/lib/odoo-api";
 
 const PAGE_SIZE = 40;
 const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
@@ -44,6 +53,10 @@ export function OdooSalesHistoryPage() {
   const [saleDetail, setSaleDetail] = useState<OdooSaleDetail | null>(null);
   const [saleDetailLoading, setSaleDetailLoading] = useState(false);
   const [saleDetailError, setSaleDetailError] = useState<string | null>(null);
+  const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [confirmingRefund, setConfirmingRefund] = useState(false);
+  const [refundMessage, setRefundMessage] = useState<string | null>(null);
   const requestRevision = useRef(0);
   const detailRevision = useRef(0);
 
@@ -60,10 +73,14 @@ export function OdooSalesHistoryPage() {
         setHasNext(false);
         return;
       }
-      const page = await searchOdooRecords<OdooSaleRecord>("sales", { query, limit: PAGE_SIZE, offset });
+      const [page, pos] = await Promise.all([
+        searchOdooRecords<OdooSaleRecord>("sales", { query, limit: PAGE_SIZE, offset }),
+        getOdooPosBootstrap().catch(() => null),
+      ]);
       if (revision !== requestRevision.current) return;
       setItems(page.items);
       setHasNext(page.items.length === PAGE_SIZE);
+      if (pos) setBootstrap(pos);
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo sales.");
     } finally {
@@ -98,9 +115,55 @@ export function OdooSalesHistoryPage() {
     setSaleDetail(null);
     setSaleDetailLoading(false);
     setSaleDetailError(null);
+    setRefundMessage(null);
+  }
+
+  async function refundSale() {
+    if (!saleDetail || refundBusy) return;
+    const refundable = ["paid", "done", "invoiced"].includes(saleDetail.order.state);
+    if (!refundable) {
+      setRefundMessage("Only paid, completed or invoiced sales can be refunded.");
+      return;
+    }
+    const openConfig = bootstrap?.configs.find((item) => item.session && item.paymentMethods.length);
+    const paymentMethodId = openConfig?.paymentMethods[0]?.id;
+    if (!openConfig?.session || !paymentMethodId) {
+      setRefundMessage("Open an Odoo POS session with a payment method before refunding.");
+      return;
+    }
+    const lines = saleDetail.lines
+      .filter((line) => Array.isArray(line.product_id) && line.qty > 0)
+      .map((line) => ({ productId: (line.product_id as [number, string])[0], quantity: -Math.abs(line.qty) }));
+    if (!lines.length) {
+      setRefundMessage("This sale has no refundable product lines.");
+      return;
+    }
+    setRefundBusy(true);
+    setRefundMessage(null);
+    try {
+      const amount = Math.abs(saleDetail.order.amount_total);
+      const result = await submitOdooPosOrder({
+        configId: openConfig.id,
+        paymentMethodId,
+        orderUuid: crypto.randomUUID(),
+        customerId: Array.isArray(saleDetail.order.partner_id) ? saleDetail.order.partner_id[0] : null,
+        tendered: amount,
+        refundOfOrderId: saleDetail.order.id,
+        lines,
+      });
+      setRefundMessage(`Refund recorded as ${result.receipt}. Total ${money(result.total)}.`);
+      setConfirmingRefund(false);
+      setRefreshKey((value) => value + 1);
+    } catch (cause) {
+      setRefundMessage(cause instanceof Error ? cause.message : "Refund failed.");
+      setConfirmingRefund(false);
+    } finally {
+      setRefundBusy(false);
+    }
   }
 
   const receiptCurrency = saleDetail && Array.isArray(saleDetail.company?.currency_id) ? saleDetail.company.currency_id[1] : "AUD";
+  const canRefund = saleDetail && ["paid", "done", "invoiced"].includes(saleDetail.order.state) && saleDetail.order.amount_total > 0;
 
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
@@ -212,12 +275,62 @@ export function OdooSalesHistoryPage() {
             {saleDetail.payments.length ? <ul className="mt-2 grid gap-1.5 text-sm">{saleDetail.payments.map((payment) => <li key={payment.id} className="flex justify-between gap-3 text-[var(--oh-text-secondary)]"><span>{payment.payment_method_id ? payment.payment_method_id[1] : "Payment"}</span><span className="font-medium tabular-nums">{money(payment.amount, receiptCurrency)}</span></li>)}</ul> : <p className="mt-2 text-sm text-[var(--oh-muted)]">No payment lines recorded.</p>}
             {saleDetail.order.amount_return > 0 && <p className="mt-2 flex justify-between gap-3 text-sm text-[var(--oh-text-secondary)]"><span>Change returned</span><span>{money(saleDetail.order.amount_return, receiptCurrency)}</span></p>}
           </section>
-          <footer className="receipt-print-hidden mt-6 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
+          {refundMessage && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">{refundMessage}</p>}
+          <footer className="receipt-print-hidden mt-6 flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
             <button type="button" onClick={closeSale} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Close</button>
+            {canRefund && (
+              <button
+                type="button"
+                onClick={() => setConfirmingRefund(true)}
+                disabled={refundBusy}
+                className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-800 hover:bg-red-100 disabled:opacity-50"
+              >
+                {refundBusy ? <LoaderCircle size={16} className="animate-spin" /> : <RotateCcw size={16} />}
+                {refundBusy ? "Refunding…" : "Refund full sale"}
+              </button>
+            )}
             <button type="button" onClick={() => window.print()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><Printer size={16} /> Print receipt</button>
           </footer>
         </section>}
       </div>}
+
+      {confirmingRefund && saleDetail && canRefund && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="refund-sale-title"
+            aria-describedby="refund-sale-description"
+            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl"
+          >
+            <h2 id="refund-sale-title" className="text-lg font-semibold text-[var(--oh-text)]">Confirm full refund</h2>
+            <p id="refund-sale-description" className="mt-2 text-sm leading-6 text-[var(--oh-text-secondary)]">
+              Record a refund against <strong>{saleDetail.order.pos_reference || saleDetail.order.name}</strong> for <strong>{money(Math.abs(saleDetail.order.amount_total), receiptCurrency)}</strong>?
+              This creates a financial transaction in Odoo and cannot be undone from this page.
+            </p>
+            {refundMessage && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{refundMessage}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingRefund(false)}
+                disabled={refundBusy}
+                className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void refundSale()}
+                disabled={refundBusy}
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50"
+              >
+                {refundBusy && <LoaderCircle size={16} className="animate-spin" />}
+                {refundBusy ? "Recording…" : "Record full refund"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

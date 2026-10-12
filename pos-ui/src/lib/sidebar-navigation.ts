@@ -1,7 +1,7 @@
 /**
- * Orithos navigation follows the Shopfront retail workflow while keeping our
- * own labels and AI tools. Keep the high-frequency register actions first;
- * group back-office pages by the job users are trying to complete.
+ * Orithos navigation — Odoo is the sole writable business source of truth.
+ * Classic MySQL routes remain in the repo as reference only and are hidden
+ * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  */
 
 export interface SidebarItem {
@@ -33,15 +33,14 @@ export type SidebarIcon =
   | "settings"
   | "marketing";
 
+/** Primary nav: Odoo-backed surfaces only. */
 export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
   {
     label: "Register",
     icon: "sales",
     items: [
       { label: "Sell", href: "/" },
-      { label: "Classic POS (MySQL)", href: "/register/classic" },
       { label: "Sales History", href: "/history/odoo" },
-      { label: "Classic Sales (MySQL)", href: "/history" },
       { label: "Manage Cash", href: "/manage-cash" },
       { label: "Close Register", href: "/close" },
     ],
@@ -51,14 +50,8 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "inventory",
     items: [
       { label: "Products", href: "/products/odoo" },
-      { label: "Classic Products (MySQL)", href: "/products" },
-      { label: "Classic Stock List (MySQL)", href: "/stock/list" },
-      { label: "Replenishment Plan (Odoo)", href: "/stock/replenishment" },
-      { label: "Purchases (Odoo)", href: "/purchases/odoo" },
-      { label: "Classic Suppliers (MySQL)", href: "/suppliers" },
-      { label: "Classic Orders (MySQL)", href: "/orders" },
-      { label: "Classic Stocktake (MySQL)", href: "/stocktake" },
-      { label: "Classic Stock Tools (MySQL)", href: "/stock/more", more: true },
+      { label: "Replenishment Plan", href: "/stock/replenishment" },
+      { label: "Purchases", href: "/purchases/odoo" },
     ],
   },
   {
@@ -66,19 +59,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers/odoo" },
-      { label: "Classic Customers (MySQL)", href: "/customers" },
-      { label: "Classic Customer Groups (MySQL)", href: "/customer-groups" },
-      { label: "Classic Balances (MySQL)", href: "/customers/balances" },
-      { label: "Classic Gift Cards (MySQL)", href: "/giftcards" },
-    ],
-  },
-  {
-    label: "Marketing",
-    icon: "marketing",
-    items: [
-      { label: "Classic Promotions (MySQL)", href: "/promotions" },
-      { label: "Classic Price Lists (MySQL)", href: "/pricelists" },
-      { label: "Classic Promotion Categories (MySQL)", href: "/promotion/categories" },
     ],
   },
   {
@@ -86,27 +66,24 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "reporting",
     items: [
       { label: "Reporting Dashboard", href: "/reports/dashboard" },
-      { label: "Classic Sales Reports (MySQL)", href: "/reports/sales" },
-      { label: "Classic Inventory Reports (MySQL)", href: "/reports/inventory" },
-      { label: "Classic Purchase Reports (MySQL)", href: "/reports/purchase" },
-      { label: "Classic Closures (MySQL)", href: "/reports/closures" },
-      { label: "Classic Reports (MySQL)", href: "/reports/misc", more: true },
     ],
   },
   {
     label: "Orithos AI",
     icon: "sommelier",
     items: [
+      { label: "Replenishment Plan", href: "/stock/replenishment" },
+      { label: "Scan Supplier Invoice", href: "/invoices/scan" },
       { label: "Wine Assistant", href: "/sommelier" },
       { label: "Find a Wine", href: "/sommelier/find" },
       { label: "Identify Wine Label", href: "/sommelier/identify" },
-      { label: "Scan Supplier Invoice", href: "/invoices/scan" },
     ],
   },
   {
     label: "Setup",
     icon: "settings",
     items: [
+      { label: "Integrations", href: "/settings/integrations" },
       { label: "Company Settings", href: "/settings/company/general" },
       { label: "Users", href: "/settings/users" },
       { label: "Roles & Permissions", href: "/settings/roles" },
@@ -116,8 +93,32 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Tax Rates", href: "/settings/tax" },
       { label: "Receipts", href: "/settings/receipts" },
       { label: "Hardware", href: "/settings/hardware" },
-      { label: "Integrations", href: "/settings/integrations" },
       { label: "More Settings", href: "/settings", more: true },
     ],
   },
 ];
+
+/** Debug-only Classic (MySQL) routes — not shown in production pilot UI. */
+export const SIDEBAR_CLASSIC_DEBUG: SidebarGroup[] = [
+  {
+    label: "Classic (MySQL reference)",
+    icon: "settings",
+    items: [
+      { label: "Classic POS", href: "/register/classic" },
+      { label: "Classic Sales", href: "/history" },
+      { label: "Classic Products", href: "/products" },
+      { label: "Classic Stock", href: "/stock/list" },
+      { label: "Classic Orders", href: "/orders" },
+      { label: "Classic Customers", href: "/customers" },
+      { label: "Classic Reports", href: "/reports/sales" },
+    ],
+  },
+];
+
+export function getSidebarNavigation(): (SidebarItem | SidebarGroup)[] {
+  const showClassic =
+    typeof process !== "undefined" &&
+    process.env.NEXT_PUBLIC_SHOW_CLASSIC_POS === "true";
+  if (!showClassic) return SIDEBAR_MAIN;
+  return [...SIDEBAR_MAIN, ...SIDEBAR_CLASSIC_DEBUG];
+}

@@ -175,7 +175,9 @@ export interface OdooCheckoutRequest {
   orderUuid: string;
   customerId?: number | null;
   tendered: number;
-  lines: { productId: number; quantity: number }[];
+  /** When set, marks this checkout as a refund of a completed Odoo sale. */
+  refundOfOrderId?: number | null;
+  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number }[];
 }
 
 export interface OdooCheckoutResult {
@@ -186,9 +188,18 @@ export interface OdooCheckoutResult {
   subtotal: number;
   tendered: number;
   change: number;
-  lines: Array<{ name: string; quantity: number; subtotal: number; total: number }>;
+  isRefund?: boolean;
+  lines: Array<{ name: string; quantity: number; subtotal: number; total: number; packFactor?: number }>;
   date: string;
   session: string;
+}
+
+export interface OdooCloseSessionResult {
+  sessionId: number;
+  sessionName: string;
+  registerName: string;
+  state: string;
+  message: string;
 }
 
 export interface OdooAuthUser {
@@ -275,6 +286,27 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
     throw new OdooApiError("Odoo did not confirm the sale", 502);
   }
   return payload as OdooCheckoutResult;
+}
+
+export async function closeOdooPosSession(configId: number, countedCash?: number | null): Promise<OdooCloseSessionResult> {
+  const response = await fetch("/api/odoo/session/close", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify({ configId, countedCash: countedCash ?? null }),
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | (OdooCloseSessionResult & { message?: string })
+    | { message?: string }
+    | null;
+  if (!response.ok) {
+    throw new OdooApiError(payload?.message || `Could not close the register (${response.status})`, response.status);
+  }
+  if (!payload || !("sessionId" in payload) || typeof payload.sessionId !== "number") {
+    throw new OdooApiError("Odoo did not confirm the register close", 502);
+  }
+  return payload as OdooCloseSessionResult;
 }
 
 export function logoutFromOdoo() {

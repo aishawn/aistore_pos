@@ -31,6 +31,8 @@ type OdooProduct = {
   lst_price: number;
   taxes_id: number[];
   available_in_pos: boolean;
+  uom_id: Relation;
+  uom_po_id?: Relation;
 };
 
 type OdooCustomer = {
@@ -89,7 +91,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   if (payload.error) {
     const detail = payload.error.data?.message || payload.error.message || "";
     if (/session|log in|authenticate/i.test(detail)) throw new OdooSessionExpiredError();
-    throw new OdooCheckoutError("Odoo rejected the POS request. Check register, tax and payment configuration.");
+    throw new OdooCheckoutError(detail || "Odoo rejected the POS request. Check register, tax and payment configuration.");
   }
   if (payload.result === undefined) throw new OdooCheckoutError("Odoo returned an empty POS response.", 502);
   return payload.result;
@@ -97,6 +99,54 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 
 async function searchRead<T>(sessionId: string, model: string, domain: unknown[], fields: string[], limit = 100) {
   return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit });
+}
+
+/** Resolve unit price from the active pricelist (rules + customer list) via Odoo. */
+async function resolveUnitPrice(
+  sessionId: string,
+  pricelistId: number | null,
+  product: OdooProduct,
+  quantity: number,
+  partnerId: number | false,
+): Promise<number> {
+  const absQty = Math.abs(quantity) || 1;
+  if (!pricelistId) {
+    const fallback = Number(product.lst_price);
+    if (!Number.isFinite(fallback) || fallback < 0) {
+      throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
+    }
+    return fallback;
+  }
+
+  try {
+    const priced = await rpc<number>(sessionId, "product.pricelist", "_get_product_price", [[pricelistId], product.id], {
+      quantity: absQty,
+      partner: partnerId || false,
+      uom_id: Array.isArray(product.uom_id) ? product.uom_id[0] : false,
+    });
+    if (Number.isFinite(priced) && priced >= 0) return Number(priced);
+  } catch {
+    // Fall through to list price if the pricelist helper is unavailable on this Odoo build.
+  }
+
+  try {
+    const ruleMap = await rpc<Record<string, [number, number | false]>>(
+      sessionId,
+      "product.pricelist",
+      "_compute_price_rule",
+      [[pricelistId], { [String(product.id)]: absQty }],
+    );
+    const entry = ruleMap?.[String(product.id)] ?? ruleMap?.[product.id as unknown as string];
+    if (Array.isArray(entry) && Number.isFinite(entry[0]) && entry[0] >= 0) return Number(entry[0]);
+  } catch {
+    // Continue to list price.
+  }
+
+  const fallback = Number(product.lst_price);
+  if (!Number.isFinite(fallback) || fallback < 0) {
+    throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
+  }
+  return fallback;
 }
 
 export async function POST(request: NextRequest) {
@@ -110,7 +160,8 @@ export async function POST(request: NextRequest) {
     orderUuid?: string;
     customerId?: number | null;
     tendered?: number;
-    lines?: { productId: number; quantity: number }[];
+    refundOfOrderId?: number | null;
+    lines?: { productId: number; quantity: number; uomFactor?: number; refundedOrderLineId?: number }[];
   };
   try {
     body = await request.json();
@@ -127,11 +178,34 @@ export async function POST(request: NextRequest) {
   if (!Array.isArray(body.lines) || body.lines.length === 0 || body.lines.length > MAX_LINES) {
     return NextResponse.json({ message: `A sale must contain between 1 and ${MAX_LINES} items.` }, { status: 400 });
   }
-  if (body.lines.some((line) => !Number.isInteger(line.productId) || !Number.isFinite(line.quantity) || line.quantity <= 0 || line.quantity > 1000)) {
-    return NextResponse.json({ message: "Sale quantities or product ids are invalid." }, { status: 400 });
+
+  const isRefund = body.refundOfOrderId != null;
+  if (isRefund && (!Number.isInteger(body.refundOfOrderId) || body.refundOfOrderId! < 1)) {
+    return NextResponse.json({ message: "Choose a valid original sale for this refund." }, { status: 400 });
   }
+  if (body.lines.some((line) => isRefund ? line.quantity >= 0 : line.quantity <= 0)) {
+    return NextResponse.json({ message: isRefund ? "Refund quantities must all be negative." : "Sale quantities must all be positive." }, { status: 400 });
+  }
+  if (body.lines.some((line) => {
+    const factor = line.uomFactor ?? 1;
+    return !Number.isInteger(line.productId)
+      || !Number.isFinite(line.quantity)
+      || line.quantity === 0
+      || Math.abs(line.quantity) > 1000
+      || !Number.isFinite(factor)
+      || factor <= 0
+      || factor > 1000
+      || (isRefund && (!Number.isInteger(line.refundedOrderLineId) || line.refundedOrderLineId! < 1))
+      || (!isRefund && line.refundedOrderLineId != null);
+  })) {
+    return NextResponse.json({ message: "Sale quantities, pack sizes or product ids are invalid." }, { status: 400 });
+  }
+
   const tendered = Number(body.tendered);
-  if (!Number.isFinite(tendered) || tendered <= 0 || tendered > 1_000_000) {
+  if (!Number.isFinite(tendered) || tendered < 0 || tendered > 1_000_000) {
+    return NextResponse.json({ message: "The payment amount is invalid." }, { status: 400 });
+  }
+  if (!isRefund && tendered <= 0) {
     return NextResponse.json({ message: "The payment amount is invalid." }, { status: 400 });
   }
 
@@ -177,7 +251,21 @@ export async function POST(request: NextRequest) {
       if (!cashRounding) throw new OdooCheckoutError("The register cash rounding rule is unavailable.", 409);
     }
 
-    const pricelist = Array.isArray(config.pricelist_id) ? config.pricelist_id[0] : null;
+    let customer: OdooCustomer | null = null;
+    if (body.customerId != null) {
+      if (!Number.isInteger(body.customerId)) throw new OdooCheckoutError("The customer selection is invalid.", 400);
+      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId]], ["id", "property_product_pricelist", "property_account_position_id"], 1);
+      customer = customers[0] ?? null;
+      if (!customer) throw new OdooCheckoutError("The selected customer is no longer available.", 409);
+    }
+
+    // Customer pricelist wins when set; otherwise use the register pricelist.
+    const configPricelist = Array.isArray(config.pricelist_id) ? config.pricelist_id[0] : null;
+    const customerPricelist = customer && Array.isArray(customer.property_product_pricelist)
+      ? customer.property_product_pricelist[0]
+      : null;
+    const pricelist = customerPricelist || configPricelist;
+
     if (pricelist) {
       const pricelists = await searchRead<{ id: number; currency_id: Relation }>(odooSession, "product.pricelist", [["id", "=", pricelist]], ["id", "currency_id"], 1);
       const configuredCurrencyId = Array.isArray(config.currency_id) ? config.currency_id[0] : null;
@@ -185,58 +273,109 @@ export async function POST(request: NextRequest) {
       if (configuredCurrencyId && pricelistCurrencyId && configuredCurrencyId !== pricelistCurrencyId) {
         throw new OdooCheckoutError("This register uses a different-currency pricelist. Currency conversion must be connected before checkout.", 409);
       }
-      const rules = await searchRead<{ id: number }>(odooSession, "product.pricelist.item", [["pricelist_id", "=", pricelist]], ["id"], 1);
-      if (rules.length) throw new OdooCheckoutError("This register uses pricing rules that are not yet supported by the custom POS checkout. Use the configured Odoo POS until pricing rules are connected.", 409);
+    }
+
+    if (isRefund) {
+      const originals = await searchRead<{ id: number; state: string; company_id: Relation; lines: number[] }>(odooSession, "pos.order", [
+        ["id", "=", body.refundOfOrderId],
+        ["company_id", "in", companyIds],
+        ["state", "in", ["paid", "done", "invoiced"]],
+      ], ["id", "state", "company_id", "lines"], 1);
+      const original = originals[0];
+      if (!original) throw new OdooCheckoutError("The original sale was not found or cannot be refunded.", 404);
+
+      const originalLines = original.lines.length
+        ? await searchRead<{ id: number; product_id: Relation; qty: number; refunded_qty: number }>(
+          odooSession,
+          "pos.order.line",
+          [["id", "in", original.lines], ["order_id", "=", original.id]],
+          ["id", "product_id", "qty", "refunded_qty"],
+          MAX_LINES,
+        )
+        : [];
+      const refundableLines = originalLines.filter((line) => line.qty > 0 && Number(line.refunded_qty || 0) === 0);
+      if (refundableLines.length !== originalLines.filter((line) => line.qty > 0).length) {
+        throw new OdooCheckoutError("This full-sale refund is unavailable because some items have already been refunded.", 409);
+      }
+      if (refundableLines.length !== body.lines.length) {
+        throw new OdooCheckoutError("Refund lines must match every item on the original sale.", 400);
+      }
+      const originalLineById = new Map(refundableLines.map((line) => [line.id, line]));
+      const seenOriginalLineIds = new Set<number>();
+      for (const line of body.lines) {
+        const originalLine = originalLineById.get(line.refundedOrderLineId!);
+        const originalProductId = Array.isArray(originalLine?.product_id) ? originalLine.product_id[0] : null;
+        const factor = line.uomFactor ?? 1;
+        if (!originalLine || seenOriginalLineIds.has(originalLine.id) || originalProductId !== line.productId) {
+          throw new OdooCheckoutError("A refund item does not match the original sale.", 400);
+        }
+        if (Math.abs(line.quantity * factor - originalLine.qty) > 0.0001) {
+          throw new OdooCheckoutError("Refund quantities must match the unrefunded quantity on the original sale.", 400);
+        }
+        seenOriginalLineIds.add(originalLine.id);
+      }
     }
 
     const productIds = [...new Set(body.lines.map((line) => line.productId))];
     const products = await searchRead<OdooProduct>(odooSession, "product.product", [
       ["id", "in", productIds],
       ["available_in_pos", "=", true],
-    ], ["id", "name", "lst_price", "taxes_id", "available_in_pos"], MAX_LINES);
+    ], ["id", "name", "lst_price", "taxes_id", "available_in_pos", "uom_id", "uom_po_id"], MAX_LINES);
     if (products.length !== productIds.length) throw new OdooCheckoutError("One or more products are no longer available in this POS.", 409);
     const productsById = new Map(products.map((product) => [product.id, product]));
 
-    let customer: OdooCustomer | null = null;
-    if (body.customerId != null) {
-      if (!Number.isInteger(body.customerId)) throw new OdooCheckoutError("The customer selection is invalid.", 400);
-      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId]], ["id", "property_product_pricelist", "property_account_position_id"], 1);
-      customer = customers[0] ?? null;
-      if (!customer) throw new OdooCheckoutError("The selected customer is no longer available.", 409);
-      if (pricelist && Array.isArray(customer.property_product_pricelist) && customer.property_product_pricelist[0] !== pricelist) {
-        throw new OdooCheckoutError("This customer uses a different pricelist. Customer-specific pricing must be connected before checkout.", 409);
-      }
-    }
-
     const fiscalPosition = customer?.property_account_position_id || config.default_fiscal_position_id;
     const fiscalPositionId = Array.isArray(fiscalPosition) ? fiscalPosition[0] : null;
+    const partnerId = customer?.id ?? false;
     const lineCommands: unknown[] = [];
-    const receiptLines: { name: string; quantity: number; subtotal: number; total: number }[] = [];
+    const receiptLines: { name: string; quantity: number; subtotal: number; total: number; packFactor?: number }[] = [];
     let subtotal = 0;
     let total = 0;
+
     for (const inputLine of body.lines) {
       const product = productsById.get(inputLine.productId)!;
-      const priceUnit = Number(product.lst_price);
-      if (!Number.isFinite(priceUnit) || priceUnit < 0) throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
+      const packFactor = inputLine.uomFactor && inputLine.uomFactor > 0 ? inputLine.uomFactor : 1;
+      // Bottle/case: quantity is in sell units; packFactor scales for case packs (e.g. 12 bottles).
+      const effectiveQty = inputLine.quantity * packFactor;
+      const priceUnit = await resolveUnitPrice(odooSession, pricelist, product, effectiveQty, partnerId);
       let taxIds = product.taxes_id;
       if (fiscalPositionId && taxIds.length) {
         taxIds = await rpc<number[]>(odooSession, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds]);
       }
       const totals = taxIds.length
-        ? await rpc<TaxTotals>(odooSession, "account.tax", "compute_all", [taxIds, priceUnit, config.currency_id && Array.isArray(config.currency_id) ? config.currency_id[0] : undefined, inputLine.quantity, product.id, body.customerId ?? false])
-        : { total_excluded: priceUnit * inputLine.quantity, total_included: priceUnit * inputLine.quantity };
-      if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
+        ? await rpc<TaxTotals>(odooSession, "account.tax", "compute_all", [
+          taxIds,
+          priceUnit,
+          config.currency_id && Array.isArray(config.currency_id) ? config.currency_id[0] : undefined,
+          effectiveQty,
+          product.id,
+          partnerId,
+        ])
+        : { total_excluded: priceUnit * effectiveQty, total_included: priceUnit * effectiveQty };
+      if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) {
+        throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
+      }
       subtotal += totals.total_excluded;
       total += totals.total_included;
-      receiptLines.push({ name: product.name, quantity: inputLine.quantity, subtotal: totals.total_excluded, total: totals.total_included });
+      const label = packFactor !== 1
+        ? `${product.name} (${packFactor} ${Array.isArray(product.uom_id) ? product.uom_id[1] : "units"}/pack × ${inputLine.quantity})`
+        : product.name;
+      receiptLines.push({
+        name: label,
+        quantity: effectiveQty,
+        subtotal: totals.total_excluded,
+        total: totals.total_included,
+        packFactor: packFactor !== 1 ? packFactor : undefined,
+      });
       lineCommands.push([0, 0, {
         product_id: product.id,
-        qty: inputLine.quantity,
+        qty: effectiveQty,
         price_unit: priceUnit,
         price_subtotal: totals.total_excluded,
         price_subtotal_incl: totals.total_included,
         tax_ids: [[6, 0, taxIds]],
         pack_lot_ids: [],
+        ...(isRefund ? { refunded_orderline_id: inputLine.refundedOrderLineId } : {}),
       }]);
     }
 
@@ -245,28 +384,46 @@ export async function POST(request: NextRequest) {
     if (cashRounding && (!config.only_round_cash_method || paymentMethod.is_cash_count)) {
       total = roundCashTotal(total, cashRounding);
     }
+
+    const amountDue = Math.abs(total);
     const roundedTender = Math.round(tendered * 100) / 100;
-    if (roundedTender + 0.001 < total) throw new OdooCheckoutError("Payment is less than the sale total.");
-    if (roundedTender > total + 0.001 && paymentMethod.type !== "cash") throw new OdooCheckoutError("Only a cash payment can include change. Enter the exact total for this payment method.");
-    const change = Math.round(Math.max(0, roundedTender - total) * 100) / 100;
+    if (isRefund) {
+      // Refunds: tendered is the cash/card amount returned to the customer (positive).
+      if (roundedTender + 0.001 < amountDue) {
+        throw new OdooCheckoutError("Refund payment is less than the refund total.");
+      }
+      if (roundedTender > amountDue + 0.001 && paymentMethod.type !== "cash") {
+        throw new OdooCheckoutError("Only a cash refund can include change. Enter the exact refund total for this payment method.");
+      }
+    } else {
+      if (roundedTender + 0.001 < total) throw new OdooCheckoutError("Payment is less than the sale total.");
+      if (roundedTender > total + 0.001 && paymentMethod.type !== "cash") {
+        throw new OdooCheckoutError("Only a cash payment can include change. Enter the exact total for this payment method.");
+      }
+    }
+
+    const paymentAmount = isRefund ? -Math.min(roundedTender, amountDue) : roundedTender;
+    const change = isRefund
+      ? Math.round(Math.max(0, roundedTender - amountDue) * 100) / 100
+      : Math.round(Math.max(0, roundedTender - total) * 100) / 100;
 
     const date = new Date().toISOString().slice(0, 19).replace("T", " ");
     const uuid = body.orderUuid;
-    const order = {
-      amount_paid: roundedTender,
+    const order: Record<string, unknown> = {
+      amount_paid: isRefund ? paymentAmount : roundedTender,
       amount_return: change,
       amount_tax: Math.round((total - subtotal) * 100) / 100,
       amount_total: total,
       date_order: date,
       fiscal_position_id: fiscalPositionId || false,
       pricelist_id: pricelist || false,
-      name: `Order ${uuid}`,
+      name: isRefund ? `Refund ${uuid}` : `Order ${uuid}`,
       last_order_preparation_change: "{}",
       lines: lineCommands,
-      partner_id: customer?.id || false,
+      partner_id: partnerId,
       session_id: sessionId,
       payment_ids: [[0, 0, {
-        amount: roundedTender,
+        amount: paymentAmount,
         name: date,
         payment_method_id: body.paymentMethodId,
       }]],
@@ -288,6 +445,7 @@ export async function POST(request: NextRequest) {
       subtotal: Math.round((saved.amount_total - saved.amount_tax) * 100) / 100,
       tendered: roundedTender,
       change,
+      isRefund,
       lines: receiptLines,
       date,
       session: sessionName,

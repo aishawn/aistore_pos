@@ -124,19 +124,21 @@ AI 默认关闭。未配置 `AI_ENABLED` 和百炼 API Key 时，收银、进销
 界面是一个全屏收银壳，不是多套独立站点。
 
 - `AppShell` 包住已登录页面：顶栏、侧栏、当前门店。
-- 首页 `/` 是收银台：左侧 `SellPad`（搜索 + 销售键），右侧 `CartSidebar`（顾客、金额、去结账），结账在 `/finalise`。
-- 侧栏按 Sell、Sommelier、Scan Invoice、Inventory、Customer、Reporting、Settings 分组，定义在 `pos-ui/src/lib/sidebar-navigation.ts`。
-- `/m` 是手机会话。`ui-mode.ts` 把手机限制在收银、商品、库存列表、AI 报表、侍酒和扫票，避免在小屏打开整棵后台设置树。
-- 访问令牌存在 Cookie `sf_token`。401 或会话失效业务码会清会话并回到 `/login`。密码错误是业务码 `40101`，不会被当成掉线。
-- `/register/odoo` 是新增的 Odoo 收银入口：商品、顾客、收银机、班次、支付方式和销售订单直接通过同源服务端路由访问 Odoo；浏览器不会接触 Odoo 会话令牌。登录 Orithos 后，还需要在 **Settings → Integrations** 使用 Odoo 员工账号连接一次。
+- 首页 `/` 是 **Odoo 收银台**（`OdooRegisterPage`）：搜索/扫码、购物车、挂单、结账。
+- 侧栏只暴露 Odoo 业务入口（Register / Stock / Customers / Reporting / AI / Setup）。Classic MySQL 路由默认隐藏；调试时设 `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`。
+- `/m` 是手机会话。`ui-mode.ts` 把手机限制在高频收银与库存面，避免小屏打开整棵设置树。
+- Classic JWT 存在 Cookie `sf_token`（历史命名）。401 或会话失效业务码会清会话并回到 `/login`。
+- Odoo 员工会话经 **Settings → Integrations** 登录后写入 HttpOnly Cookie；浏览器不接触 Odoo 会话令牌。
 
-### Odoo POS 过渡接入
+### Odoo 为唯一业务事实源
 
-此仓库目前是迁移中的双后端架构：原有页面和登录仍使用 Spring Boot / MySQL；`/register/odoo` 是独立的 Odoo POS 入口。Odoo 员工会话通过 HttpOnly Cookie 保存，POS 写入通过 Odoo 原生 `pos.order.sync_from_ui` 完成。价目表规则、客户专属价格、跨币种价格、赊账、退款和找零尚未接入；遇到未支持的价目表配置时，结账会拒绝提交，不会静默使用错误价格。
+试点与产品路线以 **Odoo** 为商品、销售、库存、采购的唯一可写源。Spring/MySQL Classic 栈保留作行为规格与 AI Graph 参考，**不再与 Odoo 双写**。
 
-Dokploy 的前端服务需要配置 `ODOO_BASE_URL`（例如 `https://odoo.example.com`）和 `ODOO_DATABASE`（Odoo 数据库名）。Odoo 必须使用 HTTPS，且员工账号需要有对应公司、POS 配置、商品和销售订单权限。环境变量未配置时，旧版收银与后台仍可使用，但 Odoo 收银会提示尚未连接服务器。
+已接入的 Odoo 收银能力包括：价目表/客户价解析（经 Odoo 计价）、GST、现金凑整、瓶/箱包装系数、挂单（终端本地）、销售历史全单退款、关班（关闭 POS session）。跨币种价表与赊销仍拒绝或未做。能力三态见 [`docs/CAPABILITY_STATUS.md`](docs/CAPABILITY_STATUS.md)。
 
-收银台上的 AI 面板把助手返回的 `ui` 指令落到现有页面：打开搜索、跳转路由、或把槽位预填进新建表单。问数结果可以打开 `/reports/ai/[id]` 查看完整快照。
+Dokploy / 部署需配置 `ODOO_BASE_URL`（HTTPS）与 `ODOO_DATABASE`。员工账号需要公司、POS 配置、商品与销售权限。
+
+AI：补货建议（规则可解释 + 人工审批草稿 RFQ）为试点优先；侍酒/发票 OCR/通用助手在 `AI_ENABLED` 时可用，但不挡收银主路径。问数快照在 `/reports/ai/[id]`。
 
 ## 领域模型
 

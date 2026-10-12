@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: Inter, Avenir, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Source Sans 3", "Segoe UI", Avenir, ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -122,7 +122,7 @@
 }
 
 @theme inline {
-  --font-sans: Inter, Avenir, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Source Sans 3", "Segoe UI", Avenir, ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ── Orithos design tokens (strict match: reference mockup) ── */
@@ -186,17 +186,17 @@
   --oh-info: #3182ce;
   --oh-warning: #dd6b20;
 
-  /* Legacy aliases */
+  /* Compat aliases (historical --sf-* names map to Orithos tokens) */
   --oh-accent: var(--oh-orange);
   --oh-accent-light: var(--oh-orange-light);
-  --sf-header-bg: #12372f;
+  --sf-header-bg: var(--oh-ink);
   --sf-on-dark: #f8f8f8;
   --sf-muted: var(--oh-muted);
   --sf-link-blue: #17866f;
   --sf-tab-blue: #0d6b58;
-  --sf-online-green: #32b643;
-  --sf-pad-bg: #f8f8f8;
-  --sf-placeholder: #757575;
+  --sf-online-green: var(--oh-success);
+  --sf-pad-bg: var(--oh-paper);
+  --sf-placeholder: var(--oh-placeholder, #757575);
   --sf-divider: #000000;
   --sf-summary: rgba(189, 189, 189, 0.7);
 }

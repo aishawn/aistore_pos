@@ -108,6 +108,25 @@ export async function GET(request: NextRequest) {
             : trendPercent < -10 ? "down" : "steady";
       const suggestedQuantity = Math.max(0, Math.ceil(unitsPerDay * coverageDays - forecastStock));
       const unit = Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units";
+      const daysOfStock = unitsPerDay > 0 ? forecastStock / unitsPerDay : null;
+      const reasonParts: string[] = [];
+      if (soldUnits <= 0) {
+        reasonParts.push("No completed POS sales in the lookback window — suggestion is zero until demand appears.");
+      } else {
+        reasonParts.push(
+          `Demand ≈ ${unitsPerDay.toFixed(2)} ${unit}/day from ${HISTORY_DAYS}d sales (recent ${PERIOD_DAYS}d weighted 70%).`,
+        );
+        reasonParts.push(`Target cover ${coverageDays}d ⇒ need ≈ ${(unitsPerDay * coverageDays).toFixed(1)} ${unit}.`);
+        reasonParts.push(`Forecast stock ${forecastStock.toFixed(1)} ${unit} (on hand ${onHand.toFixed(1)} incl. scheduled moves).`);
+        if (suggestedQuantity > 0) {
+          reasonParts.push(`Suggested order = ceil(need − forecast) = ${suggestedQuantity} ${unit}.`);
+        } else {
+          reasonParts.push("Forecast stock already covers the target window — no order suggested.");
+        }
+        if (trend === "up") reasonParts.push(`Trend up ${Number(trendPercent?.toFixed(0) ?? 0)}% vs prior period.`);
+        if (trend === "down") reasonParts.push(`Trend down ${Math.abs(Number(trendPercent?.toFixed(0) ?? 0))}% vs prior period.`);
+        if (trend === "new") reasonParts.push("New demand — sold recently with no prior-period sales.");
+      }
       return {
         id,
         name: String(product.display_name ?? product.name ?? "Product"),
@@ -121,8 +140,11 @@ export async function GET(request: NextRequest) {
         trend,
         onHand,
         forecastStock,
-        daysOfStock: unitsPerDay > 0 ? forecastStock / unitsPerDay : null,
+        daysOfStock,
         suggestedQuantity,
+        reason: reasonParts.join(" "),
+        reasonParts,
+        method: "rules_v1_weighted_velocity",
       };
     }).sort((a, b) => b.suggestedQuantity - a.suggestedQuantity || b.unitsPerDay - a.unitsPerDay || a.name.localeCompare(b.name));
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, RefreshCw, ShoppingCart, Store, X } from "lucide-react";
 import { createOdooDraftRfq, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
+import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 
 type ReplenishmentProduct = {
   id: number;
@@ -20,6 +21,9 @@ type ReplenishmentProduct = {
   forecastStock: number;
   daysOfStock: number | null;
   suggestedQuantity: number;
+  reason?: string;
+  reasonParts?: string[];
+  method?: string;
 };
 
 type ReplenishmentData = {
@@ -36,7 +40,7 @@ const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
 
-type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number };
+type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string };
 
 export function OdooReplenishmentPage() {
   const [data, setData] = useState<ReplenishmentData | null>(null);
@@ -54,6 +58,12 @@ export function OdooReplenishmentPage() {
   const [rfqLines, setRfqLines] = useState<DraftRfqLine[]>([]);
   const [rfqError, setRfqError] = useState<string | null>(null);
   const [createdRfq, setCreatedRfq] = useState<OdooDraftRfq | null>(null);
+  const [auditEntries, setAuditEntries] = useState<ReplenishmentAuditEntry[]>([]);
+  const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setAuditEntries(readReplenishmentAudit());
+  }, []);
 
   const load = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true);
@@ -93,6 +103,7 @@ export function OdooReplenishmentPage() {
       unit: product.unit,
       suggestedQuantity: product.suggestedQuantity,
       quantity: product.suggestedQuantity,
+      reason: product.reason || product.reasonParts?.join(" ") || "",
     })));
     setRfqSupplierId("");
     setRfqError(null);
@@ -126,6 +137,24 @@ export function OdooReplenishmentPage() {
     setRfqError(null);
     try {
       const result = await createOdooDraftRfq(supplierId, selectedRfqLines.map(({ productId, quantity }) => ({ productId, quantity })));
+      const supplier = rfqSuppliers.find((item) => item.id === supplierId);
+      const audit = appendReplenishmentAudit({
+        company: data?.company ?? "Current company",
+        coverageDays,
+        method: data?.products.find((product) => product.method)?.method ?? "rules_v1_weighted_velocity",
+        supplierId,
+        supplierName: supplier?.name ?? result.supplier,
+        rfqName: result.name,
+        rfqUrl: result.url,
+        lines: selectedRfqLines.map((line) => ({
+          productId: line.productId,
+          name: line.name,
+          suggestedQuantity: line.suggestedQuantity,
+          orderedQuantity: line.quantity,
+          reason: line.reason,
+        })),
+      });
+      setAuditEntries((current) => [audit, ...current].slice(0, 40));
       setCreatedRfq(result);
       setRfqOpen(false);
     } catch (cause) {
@@ -154,7 +183,7 @@ export function OdooReplenishmentPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment plan</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Suggested quantities from recent Odoo sales and current on-hand stock.</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock. Draft RFQs require human approval — nothing auto-orders.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="coverage-days" className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-medium text-[var(--oh-muted)]"><CalendarRange size={15} /> Cover</label>
@@ -186,11 +215,11 @@ export function OdooReplenishmentPage() {
         <div className="min-h-0 flex-1 overflow-auto">
         <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-              <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th className="px-4 py-3 text-right">Forecast / day</th><th className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Forecast stock</th><th className="px-4 py-3 text-right">Stock cover</th><th className="px-4 py-3 text-right">Suggested order</th></tr>
+              <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th className="px-4 py-3 text-right">Forecast / day</th><th className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Forecast stock</th><th className="px-4 py-3 text-right">Stock cover</th><th className="px-4 py-3 text-right">Suggested order</th><th className="px-4 py-3">Why</th></tr>
             </thead>
             <tbody className="divide-y divide-[var(--oh-border)]">
-              {loading && !data ? <tr><td colSpan={8} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
-                : !visibleItems.length ? <tr><td colSpan={8} className="px-4 py-16 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
+              {loading && !data ? <tr><td colSpan={9} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
+                : !visibleItems.length ? <tr><td colSpan={9} className="px-4 py-16 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
                   : visibleItems.map((product) => <tr key={product.id} className="hover:bg-sky-50/40">
                     <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]">{product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{product.sku ? `SKU ${product.sku} · ` : ""}{product.unit}</span></td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
@@ -200,6 +229,18 @@ export function OdooReplenishmentPage() {
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Odoo forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
                     <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[#fff2da] px-2.5 py-1 text-xs font-bold tabular-nums text-[#8b4a00]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
+                    <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
+                      <button type="button" onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="font-semibold text-[var(--oh-orange-dark)] hover:underline">
+                        {expandedReasonId === product.id ? "Hide" : "Explain"}
+                      </button>
+                      {expandedReasonId === product.id && (
+                        <ul className="mt-2 max-w-xs list-disc space-y-1 pl-4 text-left text-[var(--oh-text-secondary)]">
+                          {(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => (
+                            <li key={part}>{part}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
                   </tr>)}
             </tbody>
           </table>
@@ -207,9 +248,34 @@ export function OdooReplenishmentPage() {
         {data?.truncated && <p role="status" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">Showing up to 1,000 products or product demand groups. Narrow the product catalogue in Odoo for a complete plan.</p>}
       </section>
 
+      {auditEntries.length > 0 && (
+        <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+          <h2 className="text-sm font-semibold text-[var(--oh-text)]">Approval audit (this browser)</h2>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">Each draft RFQ records suggested vs ordered quantities for pilot metrics (adoption and edit rate). Not synced to Odoo yet.</p>
+          <ul className="mt-3 divide-y divide-[var(--oh-border)]">
+            {auditEntries.slice(0, 8).map((entry) => {
+              const edited = entry.lines.filter((line) => Math.abs(line.orderedQuantity - line.suggestedQuantity) > 0.001).length;
+              const adopted = entry.lines.length - edited;
+              return (
+                <li key={entry.id} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
+                  <div>
+                    <p className="font-medium text-[var(--oh-text)]">{entry.rfqName} · {entry.supplierName}</p>
+                    <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
+                      {new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}
+                      {" · "}{entry.lines.length} lines · {adopted} kept as suggested · {edited} edited · cover {entry.coverageDays}d
+                    </p>
+                  </div>
+                  <a href={entry.rfqUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Open RFQ <ExternalLink size={12} /></a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section className="rounded-md border border-[var(--oh-border)] bg-white px-4 py-3 text-xs leading-5 text-[var(--oh-muted)]">
         <p className="font-semibold text-[var(--oh-text-secondary)]">How this estimate works</p>
-        <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {coverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events.</p>
+        <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {coverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.</p>
       </section>
 
       <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(data.generatedAt)) : "—"}.</p>
