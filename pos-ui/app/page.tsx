@@ -1,11 +1,5 @@
-import { SellPage } from "@/components/SellPage";
-import { SellModals } from "@/components/SellModals";
+import { OdooRegisterPage } from "@/components/OdooRegisterPage";
 
 export default function Home() {
-  return (
-    <>
-      <SellPage />
-      <SellModals />
-    </>
-  );
+  return <OdooRegisterPage />;
 }

@@ -39,7 +39,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "sales",
     items: [
       { label: "Sell", href: "/" },
-      { label: "Odoo POS", href: "/register/odoo" },
+      { label: "Classic POS (MySQL)", href: "/register/classic" },
       { label: "Sales History", href: "/history" },
       { label: "Odoo Sales", href: "/history/odoo" },
       { label: "Manage Cash", href: "/manage-cash" },

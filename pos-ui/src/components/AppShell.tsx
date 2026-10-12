@@ -16,7 +16,7 @@ import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/
 /** Routes that render standalone, without the app chrome + auth guard. */
 const CHROMELESS = ["/login"];
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
-const ODOO_REGISTER_PATH = "/register/odoo";
+const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
 
 function safeInternalPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -128,7 +128,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onUserClick={() => setUserMenuOpen((v) => !v)}
         />
         <div className="relative min-h-0 flex-1">
-          {pathname === ODOO_REGISTER_PATH ? children : <SellScreenProvider>{children}</SellScreenProvider>}
+          {ODOO_REGISTER_PATHS.has(pathname) ? children : <SellScreenProvider>{children}</SellScreenProvider>}
           <UserMenu
             open={userMenuOpen}
             onClose={() => setUserMenuOpen(false)}
