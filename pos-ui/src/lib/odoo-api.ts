@@ -61,13 +61,17 @@ export interface OdooSaleDetail {
   order: OdooSaleRecord & {
     amount_paid: number;
     amount_return: number;
+    config_id: [number, string] | false;
     company_id: [number, string] | false;
   };
   lines: {
     id: number;
     product_id: [number, string] | false;
     qty: number;
+    refunded_qty: number;
     price_unit: number;
+    discount: number;
+    tax_ids: number[];
     price_subtotal: number;
     price_subtotal_incl: number;
   }[];
@@ -177,7 +181,7 @@ export interface OdooCheckoutRequest {
   tendered: number;
   /** When set, marks this checkout as a refund of a completed Odoo sale. */
   refundOfOrderId?: number | null;
-  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number }[];
+  lines: { productId: number; quantity: number; /** Pack/case size multiplier (bottle→case). */ uomFactor?: number; refundedOrderLineId?: number }[];
 }
 
 export interface OdooCheckoutResult {

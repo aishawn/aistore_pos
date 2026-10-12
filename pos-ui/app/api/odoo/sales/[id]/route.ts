@@ -61,7 +61,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [[
       ["id", "=", saleId], ["company_id", "in", companyIds],
     ]], {
-      fields: ["id", "name", "pos_reference", "date_order", "state", "amount_total", "amount_tax", "amount_paid", "amount_return", "partner_id", "session_id", "user_id", "company_id", "lines", "payment_ids"],
+      fields: ["id", "name", "pos_reference", "date_order", "state", "amount_total", "amount_tax", "amount_paid", "amount_return", "partner_id", "session_id", "config_id", "user_id", "company_id", "lines", "payment_ids"],
       limit: 1,
     });
     const order = orders?.[0];
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const [lines, payments, companies] = await Promise.all([
       Array.isArray(order.lines) && order.lines.length
         ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [[["id", "in", order.lines]]], {
-            fields: ["id", "product_id", "qty", "price_unit", "price_subtotal", "price_subtotal_incl"],
+            fields: ["id", "product_id", "qty", "refunded_qty", "price_unit", "discount", "tax_ids", "price_subtotal", "price_subtotal_incl"],
             limit: 200,
           })
         : Promise.resolve([]),

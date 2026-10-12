@@ -41,6 +41,16 @@ type OdooCustomer = {
   property_account_position_id: Relation;
 };
 
+type OdooRefundSourceLine = {
+  id: number;
+  product_id: Relation;
+  qty: number;
+  refunded_qty: number;
+  price_unit: number;
+  discount: number;
+  tax_ids: number[];
+};
+
 type TaxTotals = { total_excluded: number; total_included: number };
 type OdooPaymentMethod = { id: number; name: string; is_cash_count: boolean; type: string };
 type OdooCashRounding = { id: number; rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" };
@@ -64,13 +74,14 @@ function roundCashTotal(amount: number, rounding: OdooCashRounding) {
   if (!Number.isFinite(rounding.rounding) || rounding.rounding <= 0) {
     throw new OdooCheckoutError("This register has an invalid cash rounding setting.", 409);
   }
-  const ratio = amount / rounding.rounding;
+  const sign = amount < 0 ? -1 : 1;
+  const ratio = Math.abs(amount) / rounding.rounding;
   const rounded = rounding.rounding_method === "UP"
     ? Math.ceil(ratio - 1e-9)
     : rounding.rounding_method === "DOWN"
       ? Math.floor(ratio + 1e-9)
       : Math.floor(ratio + 0.5 + 1e-9);
-  return Math.round(rounded * rounding.rounding * 100) / 100;
+  return sign * Math.round(rounded * rounding.rounding * 100) / 100;
 }
 
 async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
@@ -101,7 +112,7 @@ async function searchRead<T>(sessionId: string, model: string, domain: unknown[]
   return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit });
 }
 
-/** Resolve unit price from the active pricelist (rules + customer list) via Odoo. */
+/** Resolve the list price only when the pricelist has no rules we cannot apply safely. */
 async function resolveUnitPrice(
   sessionId: string,
   pricelistId: number | null,
@@ -109,7 +120,6 @@ async function resolveUnitPrice(
   quantity: number,
   partnerId: number | false,
 ): Promise<number> {
-  const absQty = Math.abs(quantity) || 1;
   if (!pricelistId) {
     const fallback = Number(product.lst_price);
     if (!Number.isFinite(fallback) || fallback < 0) {
@@ -117,35 +127,17 @@ async function resolveUnitPrice(
     }
     return fallback;
   }
-
-  try {
-    const priced = await rpc<number>(sessionId, "product.pricelist", "_get_product_price", [[pricelistId], product.id], {
-      quantity: absQty,
-      partner: partnerId || false,
-      uom_id: Array.isArray(product.uom_id) ? product.uom_id[0] : false,
-    });
-    if (Number.isFinite(priced) && priced >= 0) return Number(priced);
-  } catch {
-    // Fall through to list price if the pricelist helper is unavailable on this Odoo build.
-  }
-
-  try {
-    const ruleMap = await rpc<Record<string, [number, number | false]>>(
-      sessionId,
-      "product.pricelist",
-      "_compute_price_rule",
-      [[pricelistId], { [String(product.id)]: absQty }],
-    );
-    const entry = ruleMap?.[String(product.id)] ?? ruleMap?.[product.id as unknown as string];
-    if (Array.isArray(entry) && Number.isFinite(entry[0]) && entry[0] >= 0) return Number(entry[0]);
-  } catch {
-    // Continue to list price.
+  const rules = await searchRead<{ id: number }>(sessionId, "product.pricelist.item", [["pricelist_id", "=", pricelistId]], ["id"], 1);
+  if (rules.length) {
+    throw new OdooCheckoutError("This register uses Odoo pricelist rules that are not yet supported by the custom POS checkout. Use Odoo POS for this sale.", 409);
   }
 
   const fallback = Number(product.lst_price);
   if (!Number.isFinite(fallback) || fallback < 0) {
     throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
   }
+  void quantity;
+  void partnerId;
   return fallback;
 }
 
@@ -266,7 +258,7 @@ export async function POST(request: NextRequest) {
       : null;
     const pricelist = customerPricelist || configPricelist;
 
-    if (pricelist) {
+    if (pricelist && !isRefund) {
       const pricelists = await searchRead<{ id: number; currency_id: Relation }>(odooSession, "product.pricelist", [["id", "=", pricelist]], ["id", "currency_id"], 1);
       const configuredCurrencyId = Array.isArray(config.currency_id) ? config.currency_id[0] : null;
       const pricelistCurrencyId = Array.isArray(pricelists[0]?.currency_id) ? pricelists[0].currency_id[0] : null;
@@ -275,21 +267,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let originalOrder: {
+      id: number;
+      amount_total: number;
+      pricelist_id: Relation;
+      fiscal_position_id: Relation;
+      partner_id: Relation;
+    } | null = null;
+    let refundSourceLines = new Map<number, OdooRefundSourceLine>();
     if (isRefund) {
-      const originals = await searchRead<{ id: number; state: string; company_id: Relation; lines: number[] }>(odooSession, "pos.order", [
+      const originals = await searchRead<{
+        id: number;
+        state: string;
+        company_id: Relation;
+        lines: number[];
+        amount_total: number;
+        pricelist_id: Relation;
+        fiscal_position_id: Relation;
+        partner_id: Relation;
+      }>(odooSession, "pos.order", [
         ["id", "=", body.refundOfOrderId],
         ["company_id", "in", companyIds],
+        ["config_id", "=", config.id],
         ["state", "in", ["paid", "done", "invoiced"]],
-      ], ["id", "state", "company_id", "lines"], 1);
+      ], ["id", "state", "company_id", "config_id", "lines", "amount_total", "pricelist_id", "fiscal_position_id", "partner_id"], 1);
       const original = originals[0];
       if (!original) throw new OdooCheckoutError("The original sale was not found or cannot be refunded.", 404);
+      if (original.amount_total <= 0) throw new OdooCheckoutError("Only a positive original sale can be refunded.", 409);
+      const originalPartnerId = Array.isArray(original.partner_id) ? original.partner_id[0] : null;
+      if ((body.customerId ?? null) !== originalPartnerId) {
+        throw new OdooCheckoutError("The refund customer must match the original sale.", 400);
+      }
+      originalOrder = original;
 
       const originalLines = original.lines.length
-        ? await searchRead<{ id: number; product_id: Relation; qty: number; refunded_qty: number }>(
+        ? await searchRead<OdooRefundSourceLine>(
           odooSession,
           "pos.order.line",
           [["id", "in", original.lines], ["order_id", "=", original.id]],
-          ["id", "product_id", "qty", "refunded_qty"],
+          ["id", "product_id", "qty", "refunded_qty", "price_unit", "discount", "tax_ids"],
           MAX_LINES,
         )
         : [];
@@ -301,6 +317,7 @@ export async function POST(request: NextRequest) {
         throw new OdooCheckoutError("Refund lines must match every item on the original sale.", 400);
       }
       const originalLineById = new Map(refundableLines.map((line) => [line.id, line]));
+      refundSourceLines = originalLineById;
       const seenOriginalLineIds = new Set<number>();
       for (const line of body.lines) {
         const originalLine = originalLineById.get(line.refundedOrderLineId!);
@@ -309,7 +326,7 @@ export async function POST(request: NextRequest) {
         if (!originalLine || seenOriginalLineIds.has(originalLine.id) || originalProductId !== line.productId) {
           throw new OdooCheckoutError("A refund item does not match the original sale.", 400);
         }
-        if (Math.abs(line.quantity * factor - originalLine.qty) > 0.0001) {
+        if (factor !== 1 || Math.abs(line.quantity + originalLine.qty) > 0.0001) {
           throw new OdooCheckoutError("Refund quantities must match the unrefunded quantity on the original sale.", 400);
         }
         seenOriginalLineIds.add(originalLine.id);
@@ -317,16 +334,21 @@ export async function POST(request: NextRequest) {
     }
 
     const productIds = [...new Set(body.lines.map((line) => line.productId))];
-    const products = await searchRead<OdooProduct>(odooSession, "product.product", [
+    const productDomain: unknown[] = [
       ["id", "in", productIds],
-      ["available_in_pos", "=", true],
-    ], ["id", "name", "lst_price", "taxes_id", "available_in_pos", "uom_id", "uom_po_id"], MAX_LINES);
+    ];
+    if (!isRefund) productDomain.push(["available_in_pos", "=", true]);
+    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "uom_id", "uom_po_id"], MAX_LINES);
     if (products.length !== productIds.length) throw new OdooCheckoutError("One or more products are no longer available in this POS.", 409);
     const productsById = new Map(products.map((product) => [product.id, product]));
 
-    const fiscalPosition = customer?.property_account_position_id || config.default_fiscal_position_id;
+    const fiscalPosition = isRefund
+      ? originalOrder?.fiscal_position_id || false
+      : customer?.property_account_position_id || config.default_fiscal_position_id;
     const fiscalPositionId = Array.isArray(fiscalPosition) ? fiscalPosition[0] : null;
-    const partnerId = customer?.id ?? false;
+    const partnerId = isRefund && originalOrder
+      ? (Array.isArray(originalOrder.partner_id) ? originalOrder.partner_id[0] : false)
+      : customer?.id ?? false;
     const lineCommands: unknown[] = [];
     const receiptLines: { name: string; quantity: number; subtotal: number; total: number; packFactor?: number }[] = [];
     let subtotal = 0;
@@ -334,24 +356,32 @@ export async function POST(request: NextRequest) {
 
     for (const inputLine of body.lines) {
       const product = productsById.get(inputLine.productId)!;
+      const refundSourceLine = isRefund ? refundSourceLines.get(inputLine.refundedOrderLineId!) : null;
       const packFactor = inputLine.uomFactor && inputLine.uomFactor > 0 ? inputLine.uomFactor : 1;
       // Bottle/case: quantity is in sell units; packFactor scales for case packs (e.g. 12 bottles).
       const effectiveQty = inputLine.quantity * packFactor;
-      const priceUnit = await resolveUnitPrice(odooSession, pricelist, product, effectiveQty, partnerId);
-      let taxIds = product.taxes_id;
-      if (fiscalPositionId && taxIds.length) {
+      const priceUnit = refundSourceLine
+        ? Number(refundSourceLine.price_unit)
+        : await resolveUnitPrice(odooSession, pricelist, product, effectiveQty, partnerId);
+      const discount = refundSourceLine ? Number(refundSourceLine.discount || 0) : 0;
+      if (!Number.isFinite(priceUnit) || priceUnit < 0 || !Number.isFinite(discount) || discount < 0 || discount > 100) {
+        throw new OdooCheckoutError(`The source price for ${product.name} is invalid.`, 409);
+      }
+      let taxIds = refundSourceLine ? refundSourceLine.tax_ids : product.taxes_id;
+      if (!isRefund && fiscalPositionId && taxIds.length) {
         taxIds = await rpc<number[]>(odooSession, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds]);
       }
+      const discountedUnitPrice = priceUnit * (1 - discount / 100);
       const totals = taxIds.length
         ? await rpc<TaxTotals>(odooSession, "account.tax", "compute_all", [
           taxIds,
-          priceUnit,
+          discountedUnitPrice,
           config.currency_id && Array.isArray(config.currency_id) ? config.currency_id[0] : undefined,
           effectiveQty,
           product.id,
           partnerId,
         ])
-        : { total_excluded: priceUnit * effectiveQty, total_included: priceUnit * effectiveQty };
+        : { total_excluded: discountedUnitPrice * effectiveQty, total_included: discountedUnitPrice * effectiveQty };
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) {
         throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
       }
@@ -371,6 +401,7 @@ export async function POST(request: NextRequest) {
         product_id: product.id,
         qty: effectiveQty,
         price_unit: priceUnit,
+        discount,
         price_subtotal: totals.total_excluded,
         price_subtotal_incl: totals.total_included,
         tax_ids: [[6, 0, taxIds]],
@@ -383,6 +414,9 @@ export async function POST(request: NextRequest) {
     total = Math.round(total * 100) / 100;
     if (cashRounding && (!config.only_round_cash_method || paymentMethod.is_cash_count)) {
       total = roundCashTotal(total, cashRounding);
+    }
+    if (isRefund && originalOrder && Math.abs(Math.abs(total) - Math.abs(originalOrder.amount_total)) > 0.001) {
+      throw new OdooCheckoutError("The refund total does not match the original sale. Use Odoo POS to complete this refund.", 409);
     }
 
     const amountDue = Math.abs(total);
@@ -416,8 +450,11 @@ export async function POST(request: NextRequest) {
       amount_total: total,
       date_order: date,
       fiscal_position_id: fiscalPositionId || false,
-      pricelist_id: pricelist || false,
+      pricelist_id: isRefund && originalOrder
+        ? (Array.isArray(originalOrder.pricelist_id) ? originalOrder.pricelist_id[0] : false)
+        : pricelist || false,
       name: isRefund ? `Refund ${uuid}` : `Order ${uuid}`,
+      is_refund: isRefund,
       last_order_preparation_change: "{}",
       lines: lineCommands,
       partner_id: partnerId,
