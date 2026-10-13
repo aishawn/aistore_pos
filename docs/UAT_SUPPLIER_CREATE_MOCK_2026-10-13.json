@@ -6,6 +6,7 @@
   "checks": [
     "Read-only Odoo aipos fields_get confirmed supplier_rank, company_type, is_company, vat, email, phone, and ref are writable.",
     "Production browser UAT verified malformed email is blocked before submission, duplicate ABN response remains editable, and unique ABN submission refreshes the supplier list.",
+    "With an authenticated Orithos session, cross-origin supplier creation returned 403; same-origin creation without an Odoo session returned 401 before payload processing.",
     "POST /api/odoo/suppliers was intercepted in the browser; no supplier was created in Odoo.",
     "API validates required name, email shape, field lengths, same-origin requests, Odoo session, and blocks an exact duplicate ABN before create."
   ],
@@ -14,5 +15,6 @@
     "No live RFQ or receipt was created."
   ],
   "script": "scripts/pilot-supplier-create-mock-uat.mjs",
+  "apiGuardScript": "scripts/pilot-supplier-api-guard-uat.mjs",
   "schemaScript": "scripts/pilot-supplier-schema.mjs"
 }

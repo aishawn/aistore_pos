@@ -21,6 +21,7 @@
 - `8721a08` 修复报表授权使用旧 JWT 权限的问题：每次报表请求从当前启用员工的数据库角色计算权限，撤权立即在下一次请求生效。`ee0cb0b` 在 Dokploy **Done**；构建执行 113 项后端测试，全部通过（0 失败/错误/跳过）。因 AI 仍关闭，本次未调用生产报表或模型。
 - `9cba779` 增加 Odoo 供应商目录的新增流程：表单明确录入真实经销商，公司名称必填、邮件格式和长度校验、ABN 重复时阻止创建；成功后刷新列表并提供回到补货页的入口。Odoo `aipos` 只读 schema 确认字段可写，生产浏览器 UAT 对创建 API 做网络拦截，没有写入供应商；证据 `UAT_SUPPLIER_CREATE_MOCK_2026-10-13.json`。生产没有供应商/RFQ，仍需店主录入真实供货商后才能验收实时采购链路。
 - `9cba779` 后复跑生产回归：24/24 页面、8/8 一般交互、3/3 运营只读、6/6 自动恢复通过；角色 UI CRUD 通过并清理临时角色。补货审计、采购详情、供应商创建三项浏览器 mock 均通过，均拦截写请求，没有新增供应商/RFQ。班次 `orithos_store1/00004` 仍打开，两款 DEMO 商品库存 12/12。证据分别更新于 `UAT_PAGE_MATRIX_2026-10-13.json`、`UAT_INTERACTION_2026-10-13.json`、`UAT_OPS_READONLY_2026-10-13.json`、`UAT_ODOO_AUTORECOVER_2026-10-13.json` 和三个 mock UAT JSON。
+- 供应商 API 附加安全验收：authenticated cross-origin POST 返回 403；同源请求缺少 Odoo 会话返回 401，均在 payload 处理/写入前拒绝。无业务写入，脚本 `scripts/pilot-supplier-api-guard-uat.mjs`。
 
 ## 产品目标
 
