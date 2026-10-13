@@ -112,7 +112,7 @@ async function searchRead<T>(sessionId: string, model: string, domain: unknown[]
   return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit });
 }
 
-/** Resolve the list price only when the pricelist has no rules we cannot apply safely. */
+/** Resolve unit price via Odoo pricelist rules; fall back to list price only when no pricelist is set. */
 async function resolveUnitPrice(
   sessionId: string,
   pricelistId: number | null,
@@ -120,24 +120,51 @@ async function resolveUnitPrice(
   quantity: number,
   partnerId: number | false,
 ): Promise<number> {
+  const fallback = Number(product.lst_price);
   if (!pricelistId) {
-    const fallback = Number(product.lst_price);
     if (!Number.isFinite(fallback) || fallback < 0) {
       throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
     }
     return fallback;
   }
-  const rules = await searchRead<{ id: number }>(sessionId, "product.pricelist.item", [["pricelist_id", "=", pricelistId]], ["id"], 1);
-  if (rules.length) {
-    throw new OdooCheckoutError("This register uses Odoo pricelist rules that are not yet supported by the custom POS checkout. Use Odoo POS for this sale.", 409);
+
+  const qty = Number.isFinite(quantity) && quantity !== 0 ? Math.abs(quantity) : 1;
+  try {
+    // Odoo record method: product.pricelist._get_product_price(product, quantity=…, partner=…)
+    const priced = await rpc<number>(
+      sessionId,
+      "product.pricelist",
+      "_get_product_price",
+      [[pricelistId], product.id],
+      { quantity: qty, partner: partnerId || false },
+    );
+    const unit = Number(priced);
+    if (Number.isFinite(unit) && unit >= 0) return unit;
+  } catch (error) {
+    if (error instanceof OdooSessionExpiredError) throw error;
+    // Some Odoo builds expect a product recordset kwargs shape instead of positional id.
+    try {
+      const priced = await rpc<number>(
+        sessionId,
+        "product.pricelist",
+        "_get_product_price",
+        [[pricelistId]],
+        { product: product.id, quantity: qty, partner: partnerId || false },
+      );
+      const unit = Number(priced);
+      if (Number.isFinite(unit) && unit >= 0) return unit;
+    } catch (inner) {
+      if (inner instanceof OdooSessionExpiredError) throw inner;
+      throw new OdooCheckoutError(
+        `Could not resolve Odoo pricelist price for ${product.name}. Check the register pricelist in Odoo.`,
+        409,
+      );
+    }
   }
 
-  const fallback = Number(product.lst_price);
   if (!Number.isFinite(fallback) || fallback < 0) {
     throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
   }
-  void quantity;
-  void partnerId;
   return fallback;
 }
 

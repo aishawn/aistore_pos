@@ -17,25 +17,48 @@ public class SommelierCatalogService {
 
     private final SommelierProductMapper mapper;
     private final ObjectMapper objectMapper;
+    private final OdooWineCatalogClient odooWineCatalogClient;
 
-    public SommelierCatalogService(SommelierProductMapper mapper, ObjectMapper objectMapper) {
+    public SommelierCatalogService(
+            SommelierProductMapper mapper,
+            ObjectMapper objectMapper,
+            OdooWineCatalogClient odooWineCatalogClient) {
         this.mapper = mapper;
         this.objectMapper = objectMapper;
+        this.odooWineCatalogClient = odooWineCatalogClient;
     }
 
     public List<WineCandidate> listWines(Long outletId) {
+        List<WineCandidate> odoo = odooCatalog();
+        if (!odoo.isEmpty()) return odoo;
         return toCandidates(mapper.listCatalog(outletId), true);
     }
 
     public List<WineCandidate> search(Long outletId, String q) {
         if (q == null || q.isBlank()) return List.of();
+        List<WineCandidate> odoo = odooCatalog();
+        if (!odoo.isEmpty()) {
+            String needle = q.trim().toLowerCase();
+            return odoo.stream()
+                    .filter(w -> w.name() != null && w.name().toLowerCase().contains(needle))
+                    .toList();
+        }
         return toCandidates(mapper.searchCatalog(outletId, q.trim()), false);
     }
 
     public WineCandidate findById(Long id, Long outletId) {
         if (id == null) return null;
+        List<WineCandidate> odoo = odooCatalog();
+        if (!odoo.isEmpty()) {
+            return odoo.stream().filter(w -> id.equals(w.productId())).findFirst().orElse(null);
+        }
         List<WineCandidate> found = toCandidates(listOf(mapper.findById(id, outletId)), false);
         return found.isEmpty() ? null : found.get(0);
+    }
+
+    private List<WineCandidate> odooCatalog() {
+        if (!odooWineCatalogClient.isConfigured()) return List.of();
+        return odooWineCatalogClient.listWines();
     }
 
     private List<WineCandidate> toCandidates(List<CatalogRow> rows, boolean wineOnly) {

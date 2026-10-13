@@ -73,6 +73,11 @@ services:
       AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen-vl-plus}
       AI_REPORT_RO_USER: ${AI_REPORT_RO_USER:-orithos_ai_ro}
       AI_REPORT_RO_PASSWORD: ${AI_REPORT_RO_PASSWORD:-}
+      # Sommelier / AI catalogue SoT — same service account as frontend auto-recover.
+      ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
+      ODOO_DATABASE: ${ODOO_DATABASE:-aipos}
+      ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
+      ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
 
   frontend:
     build:

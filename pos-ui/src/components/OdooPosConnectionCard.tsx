@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, CircleAlert, LoaderCircle, LogIn, LogOut, RefreshCw } from "lucide-react";
 import {
   getOdooPosBootstrap,
-  getOdooSession,
+  getOdooSessionStatus,
   loginToOdoo,
   logoutFromOdoo,
   OdooApiError,
@@ -18,6 +18,7 @@ export function OdooPosConnectionCard() {
   const [state, setState] = useState<ConnectionState>("loading");
   const [user, setUser] = useState<OdooAuthUser | null>(null);
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
+  const [autoRecoverConfigured, setAutoRecoverConfigured] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,9 +28,10 @@ export function OdooPosConnectionCard() {
     setBusy(true);
     setMessage(null);
     try {
-      const sessionUser = await getOdooSession();
-      setUser(sessionUser);
-      if (!sessionUser) {
+      const session = await getOdooSessionStatus();
+      setUser(session.user);
+      setAutoRecoverConfigured(session.autoRecoverConfigured);
+      if (!session.user) {
         setBootstrap(null);
         setState("disconnected");
         return;
@@ -168,6 +170,11 @@ export function OdooPosConnectionCard() {
       )}
 
       {message && <p role="status" className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{message}</p>}
+      <p className="mt-4 text-xs leading-5 text-[var(--oh-muted)]">
+        {autoRecoverConfigured
+          ? "Server auto-recover is configured: a valid Orithos login can restore the Odoo session after the cookie expires."
+          : "Server auto-recover is not configured yet. Set ODOO_SERVICE_USERNAME and ODOO_SERVICE_PASSWORD in Dokploy (aistore/production → aistorepos → Environment), redeploy, then refresh this page. Use a dedicated least-privilege Odoo POS account; never commit the password to Git."}
+      </p>
     </section>
   );
 }

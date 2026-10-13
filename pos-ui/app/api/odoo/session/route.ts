@@ -172,39 +172,47 @@ export async function POST(request: NextRequest) {
   }
 }
 
+function sessionPayload(user: Awaited<ReturnType<typeof publicUser>> | null) {
+  return {
+    user,
+    /** True when Dokploy/server has ODOO_SERVICE_* set (password never exposed). */
+    autoRecoverConfigured: Boolean(getServiceCredentials()),
+  };
+}
+
 export async function GET(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) {
-    if (!(await hasOrithosSession(request))) return NextResponse.json({ user: null }, { status: 200 });
+    if (!(await hasOrithosSession(request))) return NextResponse.json(sessionPayload(null), { status: 200 });
     try {
       const session = await connectWithServiceAccount();
-      if (!session) return NextResponse.json({ user: null }, { status: 200 });
-      const response = NextResponse.json({ user: session.user }, { status: 200 });
+      if (!session) return NextResponse.json(sessionPayload(null), { status: 200 });
+      const response = NextResponse.json(sessionPayload(session.user), { status: 200 });
       response.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
       return response;
     } catch {
-      return NextResponse.json({ user: null }, { status: 200 });
+      return NextResponse.json(sessionPayload(null), { status: 200 });
     }
   }
 
   try {
     const info = await callOdoo("/web/session/get_session_info", {}, sessionId);
     if (!info.uid) throw new Error("Odoo session has expired");
-    return NextResponse.json({ user: await publicUser(info, sessionId) }, { status: 200 });
+    return NextResponse.json(sessionPayload(await publicUser(info, sessionId)), { status: 200 });
   } catch {
     if (!(await hasOrithosSession(request))) {
-      const response = NextResponse.json({ user: null }, { status: 200 });
+      const response = NextResponse.json(sessionPayload(null), { status: 200 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
     try {
       const session = await connectWithServiceAccount();
-      const response = NextResponse.json({ user: session?.user ?? null }, { status: 200 });
+      const response = NextResponse.json(sessionPayload(session?.user ?? null), { status: 200 });
       if (session) response.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
       else response.cookies.delete(SESSION_COOKIE);
       return response;
     } catch {
-      const response = NextResponse.json({ user: null }, { status: 200 });
+      const response = NextResponse.json(sessionPayload(null), { status: 200 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }

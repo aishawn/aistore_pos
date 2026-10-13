@@ -225,10 +225,16 @@ export class OdooApiError extends Error {
   }
 }
 
+export type OdooSessionStatus = {
+  user: OdooAuthUser | null;
+  /** True when the server has ODOO_SERVICE_* configured (never exposes the password). */
+  autoRecoverConfigured: boolean;
+};
+
 async function sessionRequest(
   method: "GET" | "POST" | "DELETE",
   body?: { username: string; password: string },
-): Promise<OdooAuthUser | null> {
+): Promise<OdooSessionStatus> {
   const response = await fetch("/api/odoo/session", {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -237,19 +243,26 @@ async function sessionRequest(
     body: body ? JSON.stringify(body) : undefined,
   });
   const payload = (await response.json().catch(() => null)) as
-    | { user?: OdooAuthUser | null; message?: string }
+    | { user?: OdooAuthUser | null; autoRecoverConfigured?: boolean; message?: string }
     | null;
   if (!response.ok) {
     throw new OdooApiError(payload?.message || `Odoo login failed (${response.status})`, response.status);
   }
-  return payload?.user ?? null;
+  return {
+    user: payload?.user ?? null,
+    autoRecoverConfigured: Boolean(payload?.autoRecoverConfigured),
+  };
 }
 
-export function loginToOdoo(username: string, password: string) {
-  return sessionRequest("POST", { username, password });
+export async function loginToOdoo(username: string, password: string) {
+  return (await sessionRequest("POST", { username, password })).user;
 }
 
-export function getOdooSession() {
+export async function getOdooSession() {
+  return (await sessionRequest("GET")).user;
+}
+
+export function getOdooSessionStatus() {
   return sessionRequest("GET");
 }
 

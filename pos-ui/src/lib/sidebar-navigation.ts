@@ -41,7 +41,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     items: [
       { label: "Sell", href: "/" },
       { label: "Sales History", href: "/history/odoo" },
-      { label: "Manage Cash", href: "/manage-cash" },
       { label: "Close Register", href: "/close" },
     ],
   },
