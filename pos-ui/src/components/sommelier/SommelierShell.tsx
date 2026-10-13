@@ -20,32 +20,32 @@ export function SommelierShell({
   const onHome = pathname === "/sommelier" || pathname === "/m";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#1a1020] text-white">
-      <header className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-6">
+    <div className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)] text-[var(--oh-text)]">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
           <div>
             {!onHome && (
               <Link
                 href={homeHref}
-                className="mb-2 inline-flex text-[13px] font-medium uppercase tracking-[0.16em] text-[#f39200]"
+                className="mb-2 inline-flex text-[13px] font-semibold text-[var(--oh-primary)]"
               >
                 Orion Sommelier
               </Link>
             )}
             <div className="flex items-center gap-2">
-              <Wine size={22} strokeWidth={1.6} className="text-[#f39200]" />
-              <h1 className="text-[22px] font-medium tracking-tight sm:text-[26px]">
+              <Wine size={21} strokeWidth={1.8} className="text-[var(--oh-primary)]" />
+              <h1 className="text-[20px] font-semibold tracking-tight sm:text-[24px]">
                 {title ?? "Orion Sommelier"}
               </h1>
             </div>
             {subtitle ? (
-              <p className="mt-1 max-w-xl text-[13px] leading-5 text-white/65">{subtitle}</p>
+              <p className="mt-1 max-w-xl text-[14px] leading-5 text-[var(--oh-muted)]">{subtitle}</p>
             ) : null}
           </div>
         </div>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-7">{children}</div>
+        <div className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6 sm:py-7">{children}</div>
       </div>
     </div>
   );

@@ -43,66 +43,66 @@ export function WineCard({
   }
 
   return (
-    <article className="rounded-2xl border border-white/12 bg-white/[0.06] p-4 shadow-lg">
+    <article className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">{card.badge}</p>
-          <p className="mt-1 text-[28px] font-medium leading-none">{formatMoney(card.sellPrice)}</p>
+          <p className="text-[13px] font-semibold text-[var(--oh-primary)]">{card.badge}</p>
+          <p className="mt-1 text-[26px] font-semibold leading-none text-[var(--oh-text)]">{formatMoney(card.sellPrice)}</p>
           {card.onPromotion ? (
-            <p className="mt-1 text-[13px] text-amber-300">
+            <p className="mt-1 text-[13px] text-amber-700">
               On promotion · normally {formatMoney(card.listPrice)}
             </p>
           ) : null}
         </div>
-        <div className="rounded-full bg-[#f39200]/15 px-2.5 py-1 text-[13px] font-semibold text-[#f39200]">
+        <div className="rounded-full bg-blue-50 px-2.5 py-1 text-[13px] font-semibold text-blue-800">
           Match {card.matchPct}%
         </div>
       </div>
 
-      <h3 className="mt-3 text-[18px] font-medium leading-6">{card.name}</h3>
-      <p className="mt-1 text-[13px] text-white/70">
+      <h3 className="mt-3 text-[18px] font-semibold leading-6 text-[var(--oh-text)]">{card.name}</h3>
+      <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
         {[card.varietal, card.drynessLabel, card.bodyLabel].filter(Boolean).join(" · ")}
       </p>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {(card.aromaTags ?? []).slice(0, 4).map((tag) => (
-          <span key={tag} className="rounded-full bg-white/8 px-2.5 py-1 text-[13px] text-white/85">
+          <span key={tag} className="rounded-full bg-slate-100 px-2.5 py-1 text-[13px] text-slate-700">
             {AROMA_ICON[tag] ?? "🍇"} {tag}
           </span>
         ))}
       </div>
 
       {(card.foodTags ?? []).length > 0 ? (
-        <p className="mt-3 text-[13px] text-white/60">
+        <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
           Pairing · {card.foodTags.slice(0, 3).join(" · ")}
         </p>
       ) : null}
 
       {card.whyUpgrade ? (
-        <p className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-[13px] leading-5 text-white/80">
+        <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-[13px] leading-5 text-slate-700">
           Why upgrade? {card.whyUpgrade}
         </p>
       ) : null}
 
-      <p className="mt-3 text-[13px] leading-5 text-white/80">{card.pitch}</p>
+      <p className="mt-3 text-[14px] leading-6 text-[var(--oh-text-secondary)]">{card.pitch}</p>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={addToCart}
-          className="rounded-xl bg-[#f39200] px-3 py-2.5 text-[13px] font-semibold text-[#1a1020] transition hover:bg-[#e08500]"
+          className="min-h-11 rounded-lg bg-[var(--oh-primary)] px-3 py-2.5 text-[14px] font-semibold text-white transition hover:bg-[var(--oh-primary-hover)]"
         >
           Add to cart
         </button>
         <button
           type="button"
           onClick={() => (onHelp ? onHelp() : router.push(`/sommelier/wine/${card.productId}`))}
-          className="rounded-xl border border-white/15 px-3 py-2.5 text-[13px] font-semibold text-white transition hover:bg-white/8"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] px-3 py-2.5 text-[14px] font-semibold text-[var(--oh-text)] transition hover:bg-slate-50"
         >
           Help me sell
         </button>
       </div>
-      <p className="mt-2 text-[13px] text-white/40">In stock: {card.stockQuantity}</p>
+      <p className="mt-2 text-[13px] text-[var(--oh-muted)]">In stock: {card.stockQuantity}</p>
     </article>
   );
 }

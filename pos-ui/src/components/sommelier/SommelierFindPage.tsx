@@ -141,9 +141,16 @@ export function SommelierFindPage() {
   return (
     <SommelierShell title={title} subtitle={subtitle}>
       {step !== "results" ? (
-        <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="mb-5 h-1.5 overflow-hidden rounded-full bg-slate-200"
+          role="progressbar"
+          aria-label={`Step ${idx + 1} of ${STEPS.length - 1}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round((idx / (STEPS.length - 1)) * 100)}
+        >
           <div
-            className="h-full rounded-full bg-[#f39200] transition-all"
+            className="h-full rounded-full bg-[var(--oh-primary)] transition-all"
             style={{ width: `${Math.round((idx / (STEPS.length - 1)) * 100)}%` }}
           />
         </div>
@@ -215,7 +222,7 @@ export function SommelierFindPage() {
             value={foodOther}
             onChange={(e) => setFoodOther(e.target.value)}
             placeholder="Other, e.g. Chinese BBQ"
-            className="mt-3 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-[14px] text-white outline-none placeholder:text-white/35 focus:border-[#f39200]"
+            className="mt-3 min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
           />
         </StepFrame>
       )}
@@ -239,7 +246,7 @@ export function SommelierFindPage() {
       {step === "results" && (
         <div className="space-y-4">
           {emptyReason && cards.length === 0 ? (
-            <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[14px] text-white/80">{emptyReason}</p>
+            <p className="rounded-xl border border-[var(--oh-border)] bg-white p-4 text-[14px] text-[var(--oh-text)]">{emptyReason}</p>
           ) : null}
           {cards.map((card) => (
             <WineCard
@@ -251,14 +258,14 @@ export function SommelierFindPage() {
           <button
             type="button"
             onClick={() => go("type")}
-            className="w-full rounded-xl border border-white/15 py-2.5 text-[13px] text-white/80"
+            className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
           >
             Start over
           </button>
         </div>
       )}
 
-      {error ? <p className="mt-4 text-[13px] text-rose-300">{error}</p> : null}
+      {error ? <p role="alert" className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p> : null}
     </SommelierShell>
   );
 }
@@ -284,8 +291,8 @@ function chipClass(active: boolean) {
   return [
     "rounded-xl border px-3 py-3 text-left text-[14px] transition",
     active
-      ? "border-[#f39200] bg-[#f39200]/15 text-white"
-      : "border-white/12 bg-white/5 text-white/85 hover:border-white/30",
+      ? "border-[var(--oh-primary)] bg-blue-50 text-blue-800 ring-1 ring-blue-100"
+      : "border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-blue-300 hover:bg-slate-50",
   ].join(" ");
 }
 
@@ -333,7 +340,7 @@ function StepFrame({
           <button
             type="button"
             onClick={onBack}
-            className="rounded-xl border border-white/15 px-4 py-2.5 text-[13px] font-medium text-white/80"
+            className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
           >
             Back
           </button>
@@ -342,7 +349,7 @@ function StepFrame({
           type="button"
           disabled={nextDisabled}
           onClick={onNext}
-          className="flex-1 rounded-xl bg-[#f39200] px-4 py-2.5 text-[13px] font-semibold text-[#1a1020] disabled:opacity-60"
+          className="min-h-11 flex-1 rounded-lg bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
         >
           {nextLabel}
         </button>

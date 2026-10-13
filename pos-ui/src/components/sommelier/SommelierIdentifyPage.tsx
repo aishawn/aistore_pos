@@ -89,11 +89,11 @@ export function SommelierIdentifyPage() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Penfolds Bin 28 or barcode"
           autoFocus
-          className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-3 text-[15px] outline-none placeholder:text-white/35 focus:border-[#f39200]"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="submit"
-          className="inline-flex items-center gap-1.5 rounded-xl bg-[#f39200] px-4 text-[13px] font-semibold text-[#1a1020]"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] sm:px-4"
         >
           <Search size={16} />
           Search
@@ -116,7 +116,7 @@ export function SommelierIdentifyPage() {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/15 px-3 py-2 text-[13px] text-white/80"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
         >
           <Camera size={16} />
           Photograph label
@@ -124,13 +124,13 @@ export function SommelierIdentifyPage() {
       </div>
 
       {extracted ? (
-        <p className="mt-3 text-[13px] text-sky-200">
-          Label read as <span className="font-medium text-white">{extracted}</span>
+        <p className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-[13px] text-blue-800">
+          Label read as <span className="font-semibold">{extracted}</span>
         </p>
       ) : null}
-      {scanHint ? <p className="mt-3 text-[13px] text-amber-200">{scanHint}</p> : null}
-      {error ? <p className="mt-3 text-[13px] text-rose-300">{error}</p> : null}
-      {loading ? <p className="mt-4 text-[13px] text-white/60">{busyLabel ?? "Working…"}</p> : null}
+      {scanHint ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800">{scanHint}</p> : null}
+      {error ? <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p> : null}
+      {loading ? <p role="status" className="mt-4 text-[14px] text-[var(--oh-muted)]">{busyLabel ?? "Working…"}</p> : null}
 
       <ul className="mt-5 space-y-2">
         {items.map((item) => (
@@ -138,13 +138,13 @@ export function SommelierIdentifyPage() {
             <button
               type="button"
               onClick={() => router.push(`/sommelier/wine/${item.productId}`)}
-              className="w-full rounded-2xl border border-white/12 bg-white/5 px-4 py-3 text-left transition hover:border-white/30"
+              className="w-full rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left shadow-[var(--oh-shadow-card)] transition hover:border-blue-300"
             >
               <div className="flex items-baseline justify-between gap-3">
-                <p className="text-[16px] font-medium">{item.name}</p>
-                <p className="text-[16px] text-[#f39200]">{formatMoney(item.sellPrice)}</p>
+                <p className="text-[15px] font-semibold text-[var(--oh-text)] sm:text-[16px]">{item.name}</p>
+                <p className="shrink-0 text-[15px] font-semibold text-[var(--oh-primary)] sm:text-[16px]">{formatMoney(item.sellPrice)}</p>
               </div>
-              <p className="mt-1 text-[13px] text-white/55">
+              <p className="mt-1 text-[13px] leading-5 text-[var(--oh-muted)]">
                 {[item.varietal, item.drynessLabel, item.bodyLabel].filter(Boolean).join(" · ")}
                 {item.stockQuantity != null ? ` · Stock ${item.stockQuantity}` : ""}
               </p>

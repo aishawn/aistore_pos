@@ -150,7 +150,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
   if (error && !wine) {
     return (
       <SommelierShell title="Product assistant">
-        <p className="text-[14px] text-rose-300">{error}</p>
+        <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-[14px] text-rose-700">{error}</p>
       </SommelierShell>
     );
   }
@@ -158,7 +158,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
   if (!wine) {
     return (
       <SommelierShell title="Product assistant">
-        <p className="text-[14px] text-white/60">Loading this bottle…</p>
+        <p role="status" className="text-[14px] text-[var(--oh-muted)]">Loading this bottle…</p>
       </SommelierShell>
     );
   }
@@ -168,15 +168,15 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
   return (
     <SommelierShell title={wine.name} subtitle={[wine.varietal, wine.vintage, wine.region].filter(Boolean).join(" · ")}>
-      <div className="rounded-2xl border border-white/12 bg-white/5 p-4">
+      <div className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-[28px] font-medium leading-none">{formatMoney(wine.sellPrice)}</p>
+            <p className="text-[28px] font-semibold leading-none text-[var(--oh-text)]">{formatMoney(wine.sellPrice)}</p>
             {wine.onPromotion ? (
-              <p className="mt-1 text-[13px] text-amber-300">On promotion · normally {formatMoney(wine.listPrice)}</p>
+              <p className="mt-1 text-[13px] text-amber-700">On promotion · normally {formatMoney(wine.listPrice)}</p>
             ) : null}
           </div>
-          <p className="text-[13px] text-white/55">In stock: {wine.stockQuantity}</p>
+          <p className="text-[13px] text-[var(--oh-muted)]">In stock: {wine.stockQuantity}</p>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 text-[13px]">
           <Chip>{wine.drynessLabel}</Chip>
@@ -188,43 +188,43 @@ export function SommelierWinePage({ productId }: { productId: string }) {
       </div>
 
       <section className="mt-5">
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/45">Tasting notes</h2>
+        <h2 className="text-[14px] font-semibold text-[var(--oh-text)]">Tasting notes</h2>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {wine.aromaTags.map((t) => (
             <Chip key={t}>{t}</Chip>
           ))}
         </div>
-        {wine.finishNote ? <p className="mt-2 text-[13px] text-white/70">{wine.finishNote}</p> : null}
+        {wine.finishNote ? <p className="mt-2 text-[13px] text-[var(--oh-text-secondary)]">{wine.finishNote}</p> : null}
       </section>
 
       <section className="mt-5">
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/45">Food pairing</h2>
-        <p className="mt-2 text-[14px] text-white/80">{wine.foodTags.length ? wine.foodTags.join(" · ") : "Flexible with dinner"}</p>
+        <h2 className="text-[14px] font-semibold text-[var(--oh-text)]">Food pairing</h2>
+        <p className="mt-2 text-[14px] text-[var(--oh-text-secondary)]">{wine.foodTags.length ? wine.foodTags.join(" · ") : "Flexible with dinner"}</p>
       </section>
 
-      <section className="mt-5 rounded-2xl border border-[#f39200]/30 bg-[#f39200]/10 p-4">
+      <section className="mt-5 rounded-xl border border-blue-100 bg-blue-50/70 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">How to sell</h2>
+          <h2 className="text-[14px] font-semibold text-[var(--oh-primary)]">How to sell</h2>
           <div className="flex gap-1">
             <MiniToggle active={pitch === "10s"} onClick={() => void refreshPitch("10s")}>10s</MiniToggle>
             <MiniToggle active={pitch === "30s"} onClick={() => void refreshPitch("30s")}>30s</MiniToggle>
           </div>
         </div>
-        <p className="mt-2 text-[15px] leading-6 text-white">{spoken}</p>
+        <p className="mt-2 text-[15px] leading-6 text-[var(--oh-text)]">{spoken}</p>
       </section>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={addToCart}
-          className="rounded-xl bg-[#f39200] px-3 py-2.5 text-[13px] font-semibold text-[#1a1020]"
+          className="min-h-11 rounded-lg bg-[var(--oh-primary)] px-3 py-2.5 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
         >
           Add to cart
         </button>
         <button
           type="button"
           onClick={() => void refreshPitch(pitch === "30s" ? "10s" : "30s")}
-          className="rounded-xl border border-white/15 px-3 py-2.5 text-[13px] font-semibold"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] font-semibold text-[var(--oh-text)] hover:bg-slate-50"
         >
           Help me sell this
         </button>
@@ -235,7 +235,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           type="button"
           disabled={busy !== null}
           onClick={() => void loadSimilar("cheaper")}
-          className="rounded-xl border border-white/15 py-2 text-[13px] disabled:opacity-60"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
         >
           {busy === "cheaper" ? "Looking…" : "Similar but cheaper"}
         </button>
@@ -243,23 +243,23 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           type="button"
           disabled={busy !== null}
           onClick={() => void loadSimilar("upgrade")}
-          className="rounded-xl border border-white/15 py-2 text-[13px] disabled:opacity-60"
+          className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:opacity-60"
         >
           {busy === "upgrade" ? "Looking…" : "Something better"}
         </button>
       </div>
 
       {altsLabel || alts.length > 0 ? (
-        <div ref={altsRef} className="mt-3 space-y-3 rounded-2xl border border-[#f39200]/35 bg-[#f39200]/10 p-3">
-          <p className="text-[13px] font-medium text-[#f39200]">{altsLabel}</p>
+        <div ref={altsRef} className="mt-3 space-y-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+          <p className="text-[13px] font-medium text-[var(--oh-primary)]">{altsLabel}</p>
           {alts.length > 0 ? (
             alts.map((card) => (
               <WineCard key={card.productId} card={card} onHelp={() => router.push(`/sommelier/wine/${card.productId}`)} />
             ))
           ) : busy === "cheaper" || busy === "upgrade" ? (
-            <p className="text-[13px] text-white/70">Checking this store's stock…</p>
+            <p className="text-[13px] text-[var(--oh-muted)]">Checking this store&apos;s stock…</p>
           ) : (
-            <p className="text-[13px] text-white/70">Try a different bottle, or ask in the box below.</p>
+            <p className="text-[13px] text-[var(--oh-muted)]">Try a different bottle, or ask in the box below.</p>
           )}
         </div>
       ) : null}
@@ -278,12 +278,12 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             if (askHint) setAskHint(null);
           }}
           placeholder="Type the customer's question"
-          className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-[14px] outline-none placeholder:text-white/35 focus:border-[#f39200]"
+          className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="submit"
           disabled={busy !== null}
-          className="rounded-xl bg-[#f39200] px-3 text-[13px] font-semibold text-[#1a1020] disabled:opacity-60"
+          className="min-h-11 rounded-lg bg-[var(--oh-primary)] px-3 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
         >
           {busy === "ask" ? "…" : "Ask"}
         </button>
@@ -295,29 +295,29 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             type="button"
             disabled={busy !== null}
             onClick={() => void ask(q)}
-            className="rounded-full border border-white/15 px-2.5 py-1 text-[13px] text-white/75 disabled:opacity-50"
+            className="min-h-9 rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)] hover:border-blue-300 hover:text-[var(--oh-primary)] disabled:opacity-50"
           >
             {q}
           </button>
         ))}
       </div>
-      {askHint ? <p className="mt-2 text-[13px] text-amber-200">{askHint}</p> : null}
+      {askHint ? <p className="mt-2 text-[13px] text-amber-700">{askHint}</p> : null}
 
-      {answer ? <p className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-[14px] leading-6 text-white/85">{answer}</p> : null}
-      {error ? <p className="mt-3 text-[13px] text-rose-300">{error}</p> : null}
+      {answer ? <p className="mt-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] leading-6 text-[var(--oh-text)]">{answer}</p> : null}
+      {error ? <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p> : null}
 
 
       <div className="mt-6">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/45">Customer reaction</p>
-        <p className="mt-1 text-[13px] text-white/50">Did the customer like this bottle? This trains later recommendations.</p>
+        <p className="text-[14px] font-semibold text-[var(--oh-text)]">Customer reaction</p>
+        <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Did the customer like this bottle? This trains later recommendations.</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => void recordReaction("liked")}
             className={`rounded-full border px-3 py-1.5 text-[13px] ${
               reaction === "liked"
-                ? "border-emerald-400 bg-emerald-400/20 text-emerald-200"
-                : "border-white/15 text-white/80"
+                ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                : "border-[var(--oh-border)] bg-white text-[var(--oh-text)]"
             }`}
           >
             Liked
@@ -327,15 +327,15 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             onClick={() => void recordReaction("rejected")}
             className={`rounded-full border px-3 py-1.5 text-[13px] ${
               reaction === "rejected"
-                ? "border-rose-400 bg-rose-400/20 text-rose-200"
-                : "border-white/15 text-white/80"
+                ? "border-rose-600 bg-rose-50 text-rose-800"
+                : "border-[var(--oh-border)] bg-white text-[var(--oh-text)]"
             }`}
           >
             Rejected
           </button>
         </div>
         {reactionNote ? (
-          <p className={`mt-2 text-[13px] ${reaction ? "text-emerald-200" : "text-rose-300"}`}>{reactionNote}</p>
+          <p className={`mt-2 text-[13px] ${reaction ? "text-emerald-700" : "text-rose-700"}`}>{reactionNote}</p>
         ) : null}
       </div>
     </SommelierShell>
@@ -344,7 +344,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
 function Chip({ children }: { children: React.ReactNode }) {
   if (!children) return null;
-  return <span className="rounded-full bg-white/8 px-2.5 py-1 text-[13px] text-white/85">{children}</span>;
+  return <span className="rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)]">{children}</span>;
 }
 
 function MiniToggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -352,7 +352,7 @@ function MiniToggle({ active, onClick, children }: { active: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg px-2 py-1 text-[13px] font-semibold ${active ? "bg-[#f39200] text-[#1a1020]" : "bg-white/10 text-white/70"}`}
+      className={`min-h-9 rounded-md px-2 py-1 text-[13px] font-semibold ${active ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] hover:bg-slate-100"}`}
     >
       {children}
     </button>
