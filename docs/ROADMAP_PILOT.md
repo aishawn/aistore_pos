@@ -9,7 +9,7 @@
 - GitHub `main` 的 `a190138` 已由 Dokploy **Manual deployment** 部署并显示 **Done**。构建日志确认 Node 24 下 Next.js production build、TypeScript 和 130 个静态页面生成成功；生产新图标资源 HTTP 200。
 - 部署后生产验收：页面矩阵 25/25（含 `/overview`），AI 浮钮品牌蓝和开关面板通过，Overview 在 390px 视口无横向溢出；只读交互 8/8、运营只读 3/3、Odoo 自动恢复 6/6、Sommelier Odoo 只读回归 6/6。更新证据见对应 `UAT_*_2026-10-13.json` 文件。
 - 当前库存/交易事实仍为 POS `orithos_store1/00004` opened，DEMO 商品库存 12/12；本轮 UAT 没有关账或写入业务数据。真实关账需核对现金；真实供应商和草稿 RFQ 当前为空，采购详情/收货仍缺真实 Odoo 样本。AI 仍关闭，等待预算/范围确认；SMTP、真实打印设备、价目表及多仓库存位置上下文未接入/未验收。
-- Dokploy Autodeploy 开关已开启；此前 GitHub 仓库 webhook 数为 0，已新增仅监听 push 的 hook（ID `696888898`）。`e7eecec` push 的 GitHub delivery 返回 `OK`，Dokploy 回复 `Compose deployed successfully`；但 Dokploy 部署列表的最新提交标签仍显示 `087dc83`/`0bc3b58`，需要在下一次代码 push 时核验 event SHA 与实际部署 SHA。最近一次已确认生产验收的应用提交为 `a190138`；后续提交仅改文档/证据。
+- Dokploy Autodeploy 根因已找到：GitHub 仓库此前 webhook 数为 0。已新增仅监听 push 的 hook（ID `696888898`）；`e7eecec`、`f72a730` 两次 push 的 GitHub delivery 均返回 `OK`，Dokploy 回复 `Compose deployed successfully`，列表 SHA 与事件一致。异常是每次 push 对应两条同 SHA 的 Done 部署记录，需排除 GitHub 原生 Autodeploy 与显式仓库 webhook 重复触发。最近一次已确认生产验收的应用提交为 `a190138`；后续提交仅改文档/证据。
 
 - 应用基线 `fe9b163` 提供角色权限分配、公司设置/Sale Keys 诚实状态页和试点侧栏清理；后续 `f2f16db` 增加角色列表权限摘要。应用提交 `17ef0f5` 加入现金实点 UI 保护，`3c2618e` 在 Odoo close API 再强制校验；`9460243` 移除 AI 报表账户源码弱默认密码并要求显式配置，Dokploy 已标记 **Done**。
 - 应用代码已部署 `5b5d48f`（Odoo 会话过期后只重试明确只读的 GET、商品/客户记录查询和购物车报价；checkout、RFQ、产品/客户写入、关账等写操作不自动重放）；Dokploy 记录 **Done**。生产通过 24/24 路由、8/8 一般交互、3/3 运营检查，以及会话失效后补货页与商品页恢复验收。
