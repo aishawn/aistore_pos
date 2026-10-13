@@ -6,11 +6,12 @@
 
 > 以下为当前快照。文末更早的日记段落保留作历史；若冲突，以本段与 [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) 为准。
 
-- GitHub `main` 的 `a190138` 已由 Dokploy **Manual deployment** 部署并显示 **Done**。构建日志确认 Node 24 下 Next.js production build、TypeScript 和 130 个静态页面生成成功；生产新图标资源 HTTP 200。
-- 部署后生产验收：页面矩阵 25/25（含 `/overview`），AI 浮钮品牌蓝和开关面板通过，Overview 在 390px 视口无横向溢出；只读交互 8/8、运营只读 3/3、Odoo 自动恢复 6/6、Sommelier Odoo 只读回归 6/6。更新证据见对应 `UAT_*_2026-10-13.json` 文件。
-- 当前库存/交易事实仍为 POS `orithos_store1/00004` opened，DEMO 商品库存 12/12；本轮 UAT 没有关账或写入业务数据。真实关账需核对现金；真实供应商和草稿 RFQ 当前为空，采购详情/收货仍缺真实 Odoo 样本。AI 仍关闭，等待预算/范围确认；SMTP、真实打印设备、价目表及多仓库存位置上下文未接入/未验收。
-- Dokploy GitHub 原生 Autodeploy 已验证：显式仓库 hook 与原生触发同时存在会导致每个 push 两条重复部署；删除显式 hook `696888898` 后，GitHub hooks 为 0。原生 Autodeploy 对 `fe2119e` push 产生一条 SHA 匹配的 Done 部署。最近一次已确认生产验收的应用提交为 `a190138`；之后提交仅改文档/证据。
-
+- 工作区/GitHub `main` 最新为 `b40eb02`；Dokploy 部署列表当前最新可见 Done SHA 为 `319125d`，`b40eb02` 尚无部署记录。`319125d` 出现两条相同 SHA 的 Done 部署记录，重复触发问题仍待查明；`b40eb02` 的移动端导航与 Odoo 401 恢复顺序改动暂不能视为生产功能。
+- 在 `319125d` 上生产回归：页面矩阵 **25/25**，布局 **50/50**（25 路由 × 390px/1440px），报表只读 **2/2**；此前只读交互 **9 项**、运营只读 **3 项**、Odoo 自动恢复 **6 项**、酒款助手只读回归 **6 项**通过。报表显示退款与销售分列、净销售额扣除退款；具体证据见 `UAT_LAYOUT_2026-10-14.json`、`UAT_REPORTING_2026-10-14.json` 与其他 UAT JSON。
+- 最新 TypeScript 检查通过；ESLint 0 error、55 warnings。warning 按关键业务模块逐步治理。Node 22 低于项目要求 Node 24，未在本机运行 production build。
+- Autodeploy 开关开启，GitHub branch=`main`、Watch Paths 为空；显式 hook `696888898` 已删除。当前需调查为什么 `319125d` 有两条 Done 记录而 `b40eb02` 没有部署记录。不要重新添加显式 hook；部署状态以 Dokploy SHA 为准。
+- 当前只读回归没有新建销售、退款、RFQ、收货或关班；页面矩阵角色临时 CRUD 测试完成后已删除。当前班次 `orithos_store1/00004` 仍 opened，DEMO 商品库存 12/12。AI 仍关闭；SMTP、真实打印机/钱箱、价目表和库存库位语义仍待配置/验收；生产没有供应商及 Draft RFQ。
+- `/overview` 页面矩阵曾记录两次 `/api/odoo/reporting-dashboard` 401，随后同一路由成功 200；页面加载成功，但不能假定 401 已消除。`b40eb02` 调整只读请求的恢复顺序，部署后需核实。
 - 应用基线 `fe9b163` 提供角色权限分配、公司设置/Sale Keys 诚实状态页和试点侧栏清理；后续 `f2f16db` 增加角色列表权限摘要。应用提交 `17ef0f5` 加入现金实点 UI 保护，`3c2618e` 在 Odoo close API 再强制校验；`9460243` 移除 AI 报表账户源码弱默认密码并要求显式配置，Dokploy 已标记 **Done**。
 - 应用代码已部署 `5b5d48f`（Odoo 会话过期后只重试明确只读的 GET、商品/客户记录查询和购物车报价；checkout、RFQ、产品/客户写入、关账等写操作不自动重放）；Dokploy 记录 **Done**。生产通过 24/24 路由、8/8 一般交互、3/3 运营检查，以及会话失效后补货页与商品页恢复验收。
 - Odoo 自动恢复覆盖首个业务页请求和页面内续期：清除会话后直接访问补货页可自动恢复；商品页已加载后再次清会话，点 Refresh 后只读记录 POST 会恢复并重试，无需手动 Connect。6 项证据见 [UAT_ODOO_AUTORECOVER_2026-10-13.json](UAT_ODOO_AUTORECOVER_2026-10-13.json)。

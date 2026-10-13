@@ -1,7 +1,12 @@
 {
-  "generatedAt": "2026-10-13T15:44:33.755Z",
+  "generatedAt": "2026-10-13T17:19:06.876Z",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
+    {
+      "name": "Compact account popover opens and closes accessibly",
+      "status": "PASS",
+      "evidence": "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click."
+    },
     {
       "name": "Product search filters the Odoo catalogue",
       "status": "PASS",

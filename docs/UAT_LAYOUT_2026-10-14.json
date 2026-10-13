@@ -1,0 +1,464 @@
+{
+  "generatedAt": "2026-10-13T17:22:14.796Z",
+  "deployment": "319125d",
+  "pagesChecked": 25,
+  "viewportWidths": [
+    390,
+    1440
+  ],
+  "checks": 50,
+  "passed": 50,
+  "failed": 0,
+  "results": [
+    {
+      "width": 390,
+      "route": "/overview",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/history/odoo",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/close",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/products/odoo",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers/odoo",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/suppliers/odoo",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "20px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/purchases/odoo",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "24px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/stock/replenishment",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/dashboard",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/integrations",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "28px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/payment",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/tax",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/registers-outlets",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/receipts",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/hardware",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/company/general",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/users",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "28px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/roles",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/account",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "24px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/keys",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/sommelier",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "22px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/sommelier/find",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "22px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/sommelier/identify",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "22px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/invoices/scan",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "20px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/overview",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/history/odoo",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/close",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/products/odoo",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/customers/odoo",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/suppliers/odoo",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "20px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/purchases/odoo",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "24px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/stock/replenishment",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/dashboard",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": null,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/integrations",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "28px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/payment",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/tax",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/registers-outlets",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/receipts",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/hardware",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/company/general",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/users",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "28px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/roles",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/account",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "24px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/keys",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/sommelier",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "26px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/sommelier/find",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "26px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/sommelier/identify",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "26px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/invoices/scan",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "20px",
+      "status": "PASS"
+    }
+  ]
+}
