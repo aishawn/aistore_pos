@@ -31,3 +31,4 @@ orithos-images.tar
 /orithos*.sql
 /db/*.sql
 /pos-api/src/main/resources/db/orithos*.sql
+node_modules/

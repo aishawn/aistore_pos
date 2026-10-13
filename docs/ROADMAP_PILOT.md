@@ -4,20 +4,15 @@
 
 ## 最新执行进度（2026-10-13）
 
-- 当前应用提交 `0f77bb3e13797a660017834769989221f6dcd43e` 已推送至 GitHub `main`，并在 Dokploy 标记 **Done**；后续接手时仍须重新核对远端和部署 SHA。
-- 文档提交 `10e6c7290730940558ff7df69bd8d11700dc509b` 已推送，Dokploy 也显示 **Done**；它没有应用代码改动，当前应用行为仍由 `0f77bb3` 提供。
-- 一瓶报价修复及整箱价格单位文案已部署。生产 POS 显示一瓶 `$26.00` 未税、GST `$2.60`、应收 `$28.60`；整箱 ×6 显示未税 `$156.00`、GST `$15.60`、应收 `$171.60`，并标明 `per case inc. GST · 6 bottles/case`。
-- 已用生产 Orithos 登录态和 Odoo 员工会话做只读验证：quote API 返回一瓶商品 subtotal `$26.00`、GST `$2.60`、total `$28.60`；生产 POS 页面显示相同金额，Finalise 在报价完成后才启用。
-- Cash 方式显示相同应收金额。没有点击 Finalise；没有产生销售、支付或库存变化。
-- Odoo 自动恢复仍为 `autoRecoverConfigured=false`；下一步需配置 Dokploy 服务账号变量并验证 Cookie 失效后恢复、Orithos 登出后拒绝恢复。当前班次和 DEMO 库存每次测试前都要重新核实。
-- 当前 POS 班次记录为 `orithos_store1/00003`，两款 DEMO 酒各 12 瓶；这是最近一次核对结果，任何写操作前必须重新读取线上状态。
-- 未运行本地 Docker build；代码检查及 Dokploy 远程构建已通过。验收购物车已清空，没有执行交易写入。
-- 本轮只读页面复核：商品 2 款 DEMO 酒、各 12 瓶；销售历史为空；采购和供应商为空；客户 Odoo 目录为空；补货页明确说明最近 56 天没有已完成销售，建议数为 0；报表显示销售 `$0.00`、交易 0、打开班次 1。
-- 支付设置从 Odoo 只读显示 Card、Cash、Customer Account 三种方式；税率设置从 Odoo 显示 11 个销售税率，其中 `10% GST` 和 `29% WET` 可见。没有保存任何设置。
-- Integrations 仍显示 Odoo Connected（当前浏览器员工会话），但 **Odoo auto-reconnect is off**。生产自动恢复仍未通过；只读检查未向 Dokploy 保存或提交环境变更。
-- 商品分类下拉仍出现空的 `Chairs`、`Desks`，实际商品表只有两款酒；家具演示商品此前已归档。这是需要处理的残留分类显示问题，不代表有可售家具。
-- 收据、硬件、通用公司设置页仍显示本地示例配置和可保存控件；这些值不是 Odoo 数据，不应作为已配置的门店设置。主导航客户目录 `/customers/odoo` 是 Odoo 数据；直接访问 Classic 调试路由 `/customers` 会看到示例客户，不能用于经营。
-- 用户设置页显示 1 个内部 Orithos admin；角色页显示 0 个角色。SMTP 未配置状态仍需在员工邀请/重置邮件验收前解决。
+> 以下为当前快照。文末更早的日记段落保留作历史；若冲突，以本段与 [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) 为准。
+
+- 当前应用提交 `fe9b163`（角色权限分配 + 公司设置/Sale Keys 诚实状态页 + 侧栏去掉 Classic Sale Keys）已推送 GitHub `main` 并由 Dokploy 部署；生产公司设置页含 `not connected to Odoo`，Sale Keys 页含 `not part of the Odoo pilot`。
+- Odoo 自动恢复 **已开启**：生产 `/api/odoo/session` 返回 `autoRecoverConfigured:true`，登录后自动连接 Administrator。
+- 当前测试班次 `orithos_store1/00004` **opened**；两款 DEMO 酒 free/on-hand **12**（本轮浏览器销售后退款已回滚）。
+- 浏览器页面矩阵：试点侧栏路由已逐页验收，证据见 [UAT_PAGE_MATRIX_2026-10-13.json](UAT_PAGE_MATRIX_2026-10-13.json)。
+- 浏览器交易 UAT（本轮）：Card 收据 `260-1-000009` `$28.60`；Cash 收据 `260-1-000010` `$38.39`；随后全额退款；库存恢复 12；证据 [UAT_WRITE_2026-10-13.json](UAT_WRITE_2026-10-13.json)。未关 `00004`（本轮净额为零）。
+- 设置诚实性：支付/税/门店只读 Odoo；收据/硬件/公司设置为未接通状态页；角色可勾选权限并创建/删除。
+- AI 保持关闭；SMTP 仍未配置（邀请/重置走复制链接文案）。未本地 Docker build。
 
 ## 产品目标
 
@@ -334,3 +329,8 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - `c3058b4` 已推送 GitHub `main`，Dokploy 已标记 **Done**。生产管理员登录后，`/api/users`、`/api/roles`、`/api/permissions` 均成功读取；用户数 1、角色数 0、权限数 2；用户响应已不含 `passwordHash`。Orithos 登出后，`/api/users` 返回 401。没有新增或修改生产账号/角色/权限。
 - 管理员路径与登出拒绝已在线验证；当前生产只有管理员账号，尚未创建非管理员账号，因此未用生产数据验证员工访问这些端点时的 403。授权检查已覆盖用户、角色及权限读取/写入接口；`User.passwordHash` 已标记为 Jackson 忽略字段。
 - 管理页面仍需补齐角色权限分配与员工角色展示/编辑。目前真实角色数为 0；当前角色界面的 CRUD 只维护名称，不能配置权限，暂不能据此宣称员工角色管理完成。
+
+### 浏览器页面矩阵与交易 UAT（2026-10-13 晚）
+
+- 部署 e9b163 后完成试点侧栏浏览器验收与 DEMO 班次  0004 上 Card/Cash Finalise + 指定退款；库存回 12。证据：docs/UAT_PAGE_MATRIX_2026-10-13.json、docs/UAT_WRITE_2026-10-13.json。脚本：scripts/pilot-page-matrix.mjs、scripts/pilot-write-uat.mjs。
+- 角色权限可创建并勾选；公司设置/Sale Keys 为诚实状态页。AI 未调用；SMTP 未配置；未关  0004。

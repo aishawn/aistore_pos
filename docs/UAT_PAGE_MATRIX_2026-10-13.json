@@ -1,0 +1,126 @@
+{
+  "generatedAt": "2026-10-13T09:39:39.615Z",
+  "roleResult": "CREATED_DELETE_FAIL",
+  "matrix": [
+    {
+      "path": "/",
+      "status": "PASS",
+      "snippet": "orithos Register Sell Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin orithos_store1 Open orithos_store1/00004 All categories DEMO | Red Wine DEMO | White Wine A Adelaide Hills Sauvig"
+    },
+    {
+      "path": "/history/odoo",
+      "status": "PASS",
+      "snippet": "orithos Register Sell Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Sales History Sales recorded by the Odoo register, newest first. Refresh RECEIPT DATE & TIME CUSTOMER REGISTER SE"
+    },
+    {
+      "path": "/close",
+      "status": "PASS",
+      "snippet": "orithos Register Sell Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Close register End the open Odoo POS session after reconciling cash. Refresh Register orithos_store1 · orithos_st"
+    },
+    {
+      "path": "/products/odoo",
+      "status": "FAIL",
+      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Products POS products, prices and stock data from Odoo. Import CSV New product Refresh POS category"
+    },
+    {
+      "path": "/customers/odoo",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Customers Reporting Orithos AI Setup ONLINE admin Customers Customer records available to your Odoo staff account. New customer Refresh CUSTOMER PHONE EMAIL REFERENCE ACTIONS No customers"
+    },
+    {
+      "path": "/suppliers/odoo",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Suppliers Supplier contacts available to your Odoo staff account. Refresh SUPPLIER CONTACT ABN / TA"
+    },
+    {
+      "path": "/purchases/odoo",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin STOCK MANAGEMENT · ODOO Purchases Review requests for quotation and purchase orders from your curre"
+    },
+    {
+      "path": "/stock/replenishment",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin STOCK PLANN"
+    },
+    {
+      "path": "/reports/dashboard",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin STORE OVERVIEW · MY COMPANY Reporting Dashboard Live sales totals from Odoo. All times shown in Sydney time. Reporting period L"
+    },
+    {
+      "path": "/settings/integrations",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Integrations Odoo p"
+    },
+    {
+      "path": "/settings/payment",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Payment Methods Pay"
+    },
+    {
+      "path": "/settings/tax",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Tax Rates Active sa"
+    },
+    {
+      "path": "/settings/registers-outlets",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Registers & Outlets"
+    },
+    {
+      "path": "/settings/receipts",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Receipt Settings Re"
+    },
+    {
+      "path": "/settings/hardware",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Hardware Peripheral"
+    },
+    {
+      "path": "/settings/company/general",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Company Settings St"
+    },
+    {
+      "path": "/settings/users",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin General Settings Co"
+    },
+    {
+      "path": "/settings/roles",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Roles & Permissions"
+    },
+    {
+      "path": "/settings/account",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin YOUR ACCOUNT Profil"
+    },
+    {
+      "path": "/settings/keys",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Setup ONLINE admin Sale Keys Quick-key layout status for the Orithos pilot Sale keys are not part of the Odoo pilot register This page previously managed Classic MySQ"
+    },
+    {
+      "path": "/sommelier",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin Orion Sommelier Help the customer find the right bottle fro"
+    },
+    {
+      "path": "/sommelier/find",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin ORION SOMMELIER Find a wine AI asks a few questions, then m"
+    },
+    {
+      "path": "/sommelier/identify",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin ORION SOMMELIER Identify a wine Photograph the bottle label"
+    },
+    {
+      "path": "/invoices/scan",
+      "status": "PASS",
+      "snippet": "orithos Register Stock Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin Scan Invoice Photograph invoice Take a photo or upload a su"
+    }
+  ]
+}

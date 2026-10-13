@@ -1,0 +1,54 @@
+{
+  "generatedAt": "2026-10-13T09:44:12.217Z",
+  "before": {
+    "products": [],
+    "recent": []
+  },
+  "after": {
+    "products": [
+      {
+        "code": "DEMO-SB-2024",
+        "free": 12
+      },
+      {
+        "code": "DEMO-SHIRAZ21",
+        "free": 12
+      }
+    ],
+    "recent": [
+      {
+        "name": "orithos_store1 - 000009 REFUND",
+        "amount": -28.6,
+        "state": "paid"
+      },
+      {
+        "name": "orithos_store1 - 000010 REFUND",
+        "amount": -38.39,
+        "state": "paid"
+      },
+      {
+        "name": "orithos_store1 - 000010",
+        "amount": 38.39,
+        "state": "paid"
+      },
+      {
+        "name": "orithos_store1 - 000009",
+        "amount": 28.6,
+        "state": "paid"
+      },
+      {
+        "name": "orithos_store1 - 000007 REFUND",
+        "amount": -38.39,
+        "state": "done"
+      },
+      {
+        "name": "orithos_store1 - 000007",
+        "amount": 38.39,
+        "state": "done"
+      }
+    ]
+  },
+  "r1": "orithos Register Sell Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Sales History Sales recorded by the Odoo register, newest first. Refresh RECEIPT DATE & TIME CUSTOMER REGISTER SESSION STATUS TOTAL 260-1-000010 13 Oct 2026, 08:41 pm Walk-in customer orithos_store1/00004 Paid $38.39 260-1-000009 13 Oct 2026, 08:41 pm Walk-in customer orithos_store1/00004 Pai",
+  "r2": "orithos Register Sell Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Sales History Sales recorded by the Odoo register, newest first. Refresh RECEIPT DATE & TIME CUSTOMER REGISTER SESSION STATUS TOTAL 260-1-000011 13 Oct 2026, 08:43 pm Walk-in customer orithos_store1/00004 Paid -$38.39 260-1-000010 13 Oct 2026, 08:41 pm Walk-in customer orithos_store1/00004 Pa",
+  "note": "refund-only continuation after successful browser Card/Cash sales"
+}
