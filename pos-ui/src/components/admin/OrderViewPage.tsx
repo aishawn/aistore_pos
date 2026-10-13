@@ -58,7 +58,7 @@ function display(value?: string | number | null) {
 function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">{label}</p>
+      <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">{label}</p>
       <p className="mt-1 text-[15px] text-[var(--oh-text)]">{value}</p>
     </div>
   );
@@ -90,7 +90,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
             </h1>
             {order?.status && (
               <span
-                className={`rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[order.status] ?? "bg-neutral-500"}`}
+                className={`rounded px-2 py-0.5 text-[13px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[order.status] ?? "bg-neutral-500"}`}
               >
                 {order.status}
               </span>

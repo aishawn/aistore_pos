@@ -417,7 +417,7 @@ export function EditCustomerGroupPage({ groupId }: { groupId: string }) {
                 type="button"
                 onClick={() => setTab(id)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-2 text-[12px] font-medium transition-colors",
+                  "flex items-center gap-1.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors",
                   active
                     ? "bg-white text-[var(--oh-text)] shadow-sm"
                     : "text-[var(--oh-muted)] hover:bg-white/80 hover:text-[var(--oh-text-secondary)]",

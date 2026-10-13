@@ -278,7 +278,7 @@ export function SupplyChainPage() {
                 <Metric label="Est. spend" value={money(plan.estimatedSpend)} />
                 <Metric label="AI saving" value={money(plan.estimatedSaving)} />
               </div>
-              <p className="mt-3 text-[12px] leading-5 text-[var(--oh-text-secondary)]">
+              <p className="mt-3 text-[13px] leading-5 text-[var(--oh-text-secondary)]">
                 {plan.holidayNote ? `${plan.holidayNote}. ` : ""}
                 Quantity is forecast + safety stock − on hand − incoming, then rounded to the supplier case size.
                 You confirm the cart or the email. Nothing is paid automatically.
@@ -323,7 +323,7 @@ export function SupplyChainPage() {
               >
                 <div className="text-[13px] font-semibold uppercase tracking-wider text-sky-700">Other purchases</div>
                 <div className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{plan.other.length}</div>
-                <div className="text-[12px] text-[var(--oh-muted)]">Manual tasks with no API or email</div>
+                <div className="text-[13px] text-[var(--oh-muted)]">Manual tasks with no API or email</div>
               </button>
             </div>
           </section>
@@ -332,7 +332,7 @@ export function SupplyChainPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3">
               <div>
                 <h2 className="text-[15px] font-semibold text-[var(--oh-text)]">{selectionTitle(plan, selection)}</h2>
-                <p className="text-[12px] text-[var(--oh-muted)]">{visibleLines.length} lines</p>
+                <p className="text-[13px] text-[var(--oh-muted)]">{visibleLines.length} lines</p>
               </div>
               {selection?.kind === "ready" && (
                 <AdminPrimaryButton
@@ -407,7 +407,7 @@ export function SupplyChainPage() {
             <pre className="mt-3 whitespace-pre-wrap rounded bg-[var(--oh-surface)] p-3 text-[13px] leading-5 text-[var(--oh-text)]">
               {draft.body}
             </pre>
-            <p className="mt-3 text-[12px] text-[var(--oh-muted)]">
+            <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
               Orion keeps this as a draft. Copy it into your mailbox and send it yourself.
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -490,7 +490,7 @@ function ChannelCard({
             }`}
           >
             <div className="text-[14px] font-semibold text-[var(--oh-text)]">{item.title}</div>
-            <div className="text-[12px] text-[var(--oh-muted)]">{item.detail}</div>
+            <div className="text-[13px] text-[var(--oh-muted)]">{item.detail}</div>
           </button>
         ))}
       </div>
@@ -517,7 +517,7 @@ function LineRows({
       <tr className="border-b border-[var(--oh-border)] align-top">
         <td className="px-4 py-3">
           <div className="font-medium text-[var(--oh-text)]">{line.productName}</div>
-          <div className="text-[12px] text-[var(--oh-muted)]">
+          <div className="text-[13px] text-[var(--oh-muted)]">
             {line.supplierName || "No supplier"}
             {line.supplierSku ? ` · ${line.supplierSku}` : ""}
             {line.unusual ? " · Unusual quantity" : ""}
@@ -525,11 +525,11 @@ function LineRows({
         </td>
         <td className="px-3 py-3">
           {qty(line.orderQty)}
-          <div className="text-[12px] text-[var(--oh-muted)]">{qty(line.caseQty)} cases</div>
+          <div className="text-[13px] text-[var(--oh-muted)]">{qty(line.caseQty)} cases</div>
         </td>
         <td className="px-3 py-3">
           {money(line.unitCost)}
-          <div className="text-[12px] text-[var(--oh-muted)]">{money(line.lineCost)} line</div>
+          <div className="text-[13px] text-[var(--oh-muted)]">{money(line.lineCost)} line</div>
         </td>
         <td className="px-3 py-3 text-[var(--oh-text-secondary)]">{line.reason || "—"}</td>
         <td className="px-3 py-3">
@@ -539,17 +539,17 @@ function LineRows({
           <div className="mt-1 text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">{line.status.replaceAll("_", " ")}</div>
         </td>
         <td className="px-4 py-3 text-right">
-          <button type="button" onClick={onToggle} className="text-[12px] font-semibold text-[var(--oh-orange)]">
+          <button type="button" onClick={onToggle} className="text-[13px] font-semibold text-[var(--oh-orange)]">
             {open ? "Hide" : "Why?"}
           </button>
           {line.status !== "ORDERED" && line.status !== "REJECTED" && (
             <div className="mt-1 flex justify-end gap-2">
               {line.status === "NEEDS_REVIEW" && (
-                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="text-[12px] font-semibold text-emerald-700">
+                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="text-[13px] font-semibold text-emerald-700">
                   Approve
                 </button>
               )}
-              <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="text-[12px] font-semibold text-[var(--oh-muted)]">
+              <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="text-[13px] font-semibold text-[var(--oh-muted)]">
                 Skip
               </button>
             </div>
@@ -576,7 +576,7 @@ function LineRows({
                     </span>
                     <span>
                       {money(quote.effective)} / case
-                      <span className="ml-2 text-[12px] text-[var(--oh-muted)]">{quote.note}</span>
+                      <span className="ml-2 text-[13px] text-[var(--oh-muted)]">{quote.note}</span>
                     </span>
                   </div>
                 ))}
@@ -686,7 +686,7 @@ function SettingsPanel() {
               Save preference
             </AdminPrimaryButton>
           </div>
-          <ul className="mt-3 space-y-1 text-[12px] text-[var(--oh-text-secondary)]">
+          <ul className="mt-3 space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
             {settings?.preferences.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.supplierName} · priority {item.priority} · {item.channel}</span>
@@ -749,7 +749,7 @@ function SettingsPanel() {
               Add price
             </AdminPrimaryButton>
           </div>
-          <ul className="mt-3 space-y-1 text-[12px] text-[var(--oh-text-secondary)]">
+          <ul className="mt-3 space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
             {settings?.prices.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.productName} · {item.supplierName} · {money(item.basePrice)}</span>
@@ -808,7 +808,7 @@ function SettingsPanel() {
               Add deal
             </AdminPrimaryButton>
           </div>
-          <ul className="mt-3 space-y-1 text-[12px] text-[var(--oh-text-secondary)]">
+          <ul className="mt-3 space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
             {settings?.deals.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.name} · {item.supplierName}</span>
@@ -824,7 +824,7 @@ function SettingsPanel() {
             onSubmit={(e) => e.preventDefault()}
           >
             <h3 className="text-[14px] font-semibold">Product supplier rule</h3>
-            <p className="mt-1 text-[12px] text-[var(--oh-muted)]">Search a product in the price card to fill this id, or type it.</p>
+            <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Search a product in the price card to fill this id, or type it.</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <input className={field} value={rule.productId} onChange={(e) => setRule({ ...rule, productId: e.target.value })} placeholder="Product id" required />
               <select className={field} value={rule.supplierMode} onChange={(e) => setRule({ ...rule, supplierMode: e.target.value })}>
@@ -853,7 +853,7 @@ function SettingsPanel() {
                 Save rule
               </AdminPrimaryButton>
             </div>
-            <ul className="mt-3 space-y-1 text-[12px] text-[var(--oh-text-secondary)]">
+            <ul className="mt-3 space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
               {settings?.rules.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2">
                   <span>{item.productName} · {item.supplierMode} {item.supplierName || ""}</span>
@@ -888,7 +888,7 @@ function SettingsPanel() {
                 Add event
               </AdminPrimaryButton>
             </div>
-            <ul className="mt-3 space-y-1 text-[12px] text-[var(--oh-text-secondary)]">
+            <ul className="mt-3 space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
               {settings?.events.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2">
                   <span>{item.eventDate} · {item.name} · +{qty(item.adjustmentPercent)}%</span>

@@ -70,7 +70,7 @@ export function AiAssistant() {
     <div className="fixed bottom-5 right-5 z-30 flex w-[300px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-2xl">
       {/* Dark navy header */}
       <div className="flex items-center justify-between bg-[var(--oh-primary)] px-4 py-3">
-        <span className="text-[12px] font-semibold text-white">Orithos AI Conversational Assistant</span>
+        <span className="text-[13px] font-semibold text-white">Orithos AI Conversational Assistant</span>
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -110,7 +110,7 @@ export function AiAssistant() {
                   key={action}
                   type="button"
                   onClick={() => runAction(action)}
-                  className="cursor-pointer rounded-full border border-[var(--oh-border-strong)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+                  className="cursor-pointer rounded-full border border-[var(--oh-border-strong)] bg-white px-2.5 py-1 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
                 >
                   {action}
                 </button>

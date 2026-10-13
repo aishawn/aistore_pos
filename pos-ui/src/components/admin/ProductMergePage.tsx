@@ -106,7 +106,7 @@ function ProductPickerModal({
                     <span className="min-w-0 flex-1">
                       <span className="block text-[14px] font-semibold text-[var(--oh-text)]">{p.name}</span>
                       {p.categoryName && (
-                        <span className="mt-0.5 block text-[12px] text-[var(--oh-muted)]">{p.categoryName}</span>
+                        <span className="mt-0.5 block text-[13px] text-[var(--oh-muted)]">{p.categoryName}</span>
                       )}
                     </span>
                   </button>
@@ -205,7 +205,7 @@ export function ProductMergePage() {
                   <div>
                     <p className="text-[14px] font-semibold text-[var(--oh-text)]">{target.name}</p>
                     {target.categoryName && (
-                      <p className="text-[12px] text-[var(--oh-muted)]">{target.categoryName}</p>
+                      <p className="text-[13px] text-[var(--oh-muted)]">{target.categoryName}</p>
                     )}
                   </div>
                   <button
@@ -243,7 +243,7 @@ export function ProductMergePage() {
                   <div>
                     <p className="text-[14px] font-medium text-[var(--oh-text)]">{p.name}</p>
                     {p.categoryName && (
-                      <p className="text-[12px] text-[var(--oh-muted)]">{p.categoryName}</p>
+                      <p className="text-[13px] text-[var(--oh-muted)]">{p.categoryName}</p>
                     )}
                   </div>
                   <button

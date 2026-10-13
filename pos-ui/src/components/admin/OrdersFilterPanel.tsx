@@ -60,7 +60,7 @@ export function orderFiltersToQuery(filters: OrderFilters): Record<string, strin
   };
 }
 
-const labelClass = "mb-0.5 text-[12px] font-medium text-[var(--oh-text-secondary)]";
+const labelClass = "mb-0.5 text-[13px] font-medium text-[var(--oh-text-secondary)]";
 const inputClass =
   "h-8 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 const fieldClass = "flex min-w-0 flex-col font-sans";

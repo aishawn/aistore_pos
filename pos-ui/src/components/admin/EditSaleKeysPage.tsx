@@ -254,7 +254,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                       />
                     </label>
                   </div>
-                  <p className="text-[12px] leading-relaxed text-neutral-500">
+                  <p className="text-[13px] leading-relaxed text-neutral-500">
                     Row 1 (columns 1–5) is reserved for Beer, Wines, Spirits, Products, and Promotions.
                     Custom keys start from row 2. Width and Height are grid cells (1–10).
                   </p>

@@ -88,7 +88,7 @@ function StatusItem({
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center border-r border-[var(--oh-border)] px-4 py-4 last:border-r-0">
-      <span className="text-[12px] font-medium text-[var(--oh-muted)]">{label}</span>
+      <span className="text-[13px] font-medium text-[var(--oh-muted)]">{label}</span>
       <span className="mt-1.5 flex items-center gap-1.5 text-[14px] font-semibold text-[var(--oh-text)]">
         {enabled ? (
           <>
@@ -113,7 +113,7 @@ function SummaryBar({ group }: { group: CustomerGroupDetail }) {
       <StatusItem label="Promotions" enabled={!(group.disablePromotions ?? false)} />
       <StatusItem label="Account Sales" enabled={group.allowAccountSales ?? false} />
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-4">
-        <span className="text-[12px] font-medium text-[var(--oh-muted)]">Account Limit</span>
+        <span className="text-[13px] font-medium text-[var(--oh-muted)]">Account Limit</span>
         <span className="mt-1.5 text-[14px] font-semibold text-[var(--oh-text)]">
           {money(group.accountLimit)}
         </span>

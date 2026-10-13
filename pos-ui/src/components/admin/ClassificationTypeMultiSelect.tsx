@@ -103,7 +103,7 @@ export function ClassificationTypeMultiSelect({
             values.map((value) => (
               <span
                 key={value}
-                className="rounded bg-[var(--oh-border)] px-2 py-0.5 text-[12px] text-[var(--oh-text-secondary)]"
+                className="rounded bg-[var(--oh-border)] px-2 py-0.5 text-[13px] text-[var(--oh-text-secondary)]"
               >
                 {TYPE_LABELS[value]}
               </span>

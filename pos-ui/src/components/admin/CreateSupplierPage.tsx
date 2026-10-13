@@ -420,7 +420,7 @@ function FormSelect({
   return (
     <label className="block">
       {label && (
-        <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
+        <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
       )}
       <div ref={wrapRef} className="relative" data-select-open={open}>
         <button
@@ -758,7 +758,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                   }}
                 >
                   <label className="block">
-                    <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">Name</span>
+                    <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">Name</span>
                     <input
                       autoFocus
                       value={form.name}
@@ -785,7 +785,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                     className={inputClass}
                   />
                   <label className="block">
-                    <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">
+                    <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
                       Master Database Reference
                     </span>
                     <ClassificationFormSelect

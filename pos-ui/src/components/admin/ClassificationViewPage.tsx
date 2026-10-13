@@ -64,7 +64,7 @@ function SalesChart() {
                 stroke="var(--oh-border)"
                 strokeDasharray="4 4"
               />
-              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[12px]">
+              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[13px]">
                 ${tick.toFixed(2)}
               </text>
             </g>
@@ -78,13 +78,13 @@ function SalesChart() {
             x={pad.left + i * step}
             y={h - 8}
             textAnchor="middle"
-            className="fill-[var(--oh-muted)] text-[12px]"
+            className="fill-[var(--oh-muted)] text-[13px]"
           >
             {m}
           </text>
         ))}
       </svg>
-      <div className="mt-2 flex justify-center text-[12px] text-[var(--oh-text-secondary)]">
+      <div className="mt-2 flex justify-center text-[13px] text-[var(--oh-text-secondary)]">
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded-sm bg-[#5cb3e0]" /> Sales
         </span>
@@ -153,7 +153,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
   return (
     <div className="flex h-full bg-[var(--oh-surface)] font-sans">
       <aside className="flex w-[260px] shrink-0 flex-col border-r border-[var(--oh-border)] bg-[#eef1f5] px-4 py-5">
-        <p className="text-[12px] font-medium text-[var(--oh-muted)]">{typeLabel}</p>
+        <p className="text-[13px] font-medium text-[var(--oh-muted)]">{typeLabel}</p>
         <h1 className="mt-0.5 text-[22px] font-bold leading-tight text-[var(--oh-text)]">View {title}</h1>
 
         <nav className="mt-6 space-y-1">

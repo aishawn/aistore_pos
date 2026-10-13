@@ -49,12 +49,12 @@ export function WineCard({
           <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">{card.badge}</p>
           <p className="mt-1 text-[28px] font-medium leading-none">{formatMoney(card.sellPrice)}</p>
           {card.onPromotion ? (
-            <p className="mt-1 text-[12px] text-amber-300">
+            <p className="mt-1 text-[13px] text-amber-300">
               On promotion · normally {formatMoney(card.listPrice)}
             </p>
           ) : null}
         </div>
-        <div className="rounded-full bg-[#f39200]/15 px-2.5 py-1 text-[12px] font-semibold text-[#f39200]">
+        <div className="rounded-full bg-[#f39200]/15 px-2.5 py-1 text-[13px] font-semibold text-[#f39200]">
           Match {card.matchPct}%
         </div>
       </div>
@@ -66,14 +66,14 @@ export function WineCard({
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {(card.aromaTags ?? []).slice(0, 4).map((tag) => (
-          <span key={tag} className="rounded-full bg-white/8 px-2.5 py-1 text-[12px] text-white/85">
+          <span key={tag} className="rounded-full bg-white/8 px-2.5 py-1 text-[13px] text-white/85">
             {AROMA_ICON[tag] ?? "🍇"} {tag}
           </span>
         ))}
       </div>
 
       {(card.foodTags ?? []).length > 0 ? (
-        <p className="mt-3 text-[12px] text-white/60">
+        <p className="mt-3 text-[13px] text-white/60">
           Pairing · {card.foodTags.slice(0, 3).join(" · ")}
         </p>
       ) : null}

@@ -72,7 +72,7 @@ export function ExternalStocktakesPage() {
       />
 
       <div className="mt-6 min-h-0 flex-1 overflow-auto">
-        <div className="flex items-center rounded-md bg-black px-3 py-2 text-[12px] font-bold text-white">
+        <div className="flex items-center rounded-md bg-black px-3 py-2 text-[13px] font-bold text-white">
           <div className="w-[40%] px-4">Date Created</div>
           <div className="w-[35%] px-4">Outlet</div>
           <div className="w-[25%] px-4">Status</div>

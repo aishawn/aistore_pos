@@ -255,7 +255,7 @@ function DiscountDialog({
         </button>
       </div>
 
-      <label className="mb-1 block text-[12px] font-medium text-[var(--oh-muted)]">
+      <label className="mb-1 block text-[13px] font-medium text-[var(--oh-muted)]">
         {mode === "amount" ? "Discount amount" : "Discount percent"}
       </label>
       <input
@@ -270,7 +270,7 @@ function DiscountDialog({
         autoFocus
       />
 
-      <label className="mb-1 block text-[12px] font-medium text-[var(--oh-muted)]">
+      <label className="mb-1 block text-[13px] font-medium text-[var(--oh-muted)]">
         Reason (optional)
       </label>
       <input
@@ -641,7 +641,7 @@ function PaymentDialog() {
                 </div>
               )}
               {payment.invoiceId && (
-                <div className="flex justify-between pt-1 text-[12px] text-[var(--oh-muted)]">
+                <div className="flex justify-between pt-1 text-[13px] text-[var(--oh-muted)]">
                   <span>Invoice</span>
                   <span>{payment.invoiceId}</span>
                 </div>

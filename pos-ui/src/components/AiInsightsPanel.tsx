@@ -95,12 +95,12 @@ export function AiInsightsPanel() {
 
       {/* Customer profile */}
       <div className="mx-3 mb-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
-        <p className="mb-2 text-[12px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="mb-2 text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
           Customer Profile
         </p>
         {sell.customer ? (
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--oh-navy)] text-[12px] font-bold text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--oh-navy)] text-[13px] font-bold text-white">
               {sell.customer.name.charAt(0)}
             </span>
             <div>
@@ -113,7 +113,7 @@ export function AiInsightsPanel() {
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--oh-border)] text-[var(--oh-muted)]">
               👤
             </span>
-            <p className="text-[12px] text-[var(--oh-muted)]">Australian Loyalty ID</p>
+            <p className="text-[13px] text-[var(--oh-muted)]">Australian Loyalty ID</p>
           </div>
         )}
       </div>
@@ -123,7 +123,7 @@ export function AiInsightsPanel() {
         <textarea
           rows={2}
           placeholder="Type a response message…"
-          className="mb-2 w-full resize-none rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[12px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)]"
+          className="mb-2 w-full resize-none rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)]"
         />
         <button
           type="button"

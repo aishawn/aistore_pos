@@ -24,7 +24,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
         >
           <div className="flex items-center gap-3 text-[#f39200]">
             <Sparkles size={22} />
-            <span className="text-[12px] font-semibold uppercase tracking-[0.18em]">Find a wine</span>
+            <span className="text-[13px] font-semibold uppercase tracking-[0.18em]">Find a wine</span>
           </div>
           <h2 className="mt-4 text-[26px] font-medium leading-tight">Help me find the right wine for this customer</h2>
           <p className="mt-2 text-[14px] leading-6 text-white/70">
@@ -38,7 +38,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
         >
           <div className="flex items-center gap-3 text-sky-300">
             <Camera size={22} />
-            <span className="text-[12px] font-semibold uppercase tracking-[0.18em]">Identify a wine</span>
+            <span className="text-[13px] font-semibold uppercase tracking-[0.18em]">Identify a wine</span>
           </div>
           <h2 className="mt-4 text-[26px] font-medium leading-tight">Photograph the label or search a bottle</h2>
           <p className="mt-2 text-[14px] leading-6 text-white/70">
@@ -55,7 +55,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
             <Search size={18} className="text-white/60" />
             <span>
               <span className="block font-medium text-white">POS Assistant</span>
-              <span className="text-[12px] text-white/55">Reports, stock, customers, navigation</span>
+              <span className="text-[13px] text-white/55">Reports, stock, customers, navigation</span>
             </span>
           </button>
         ) : null}

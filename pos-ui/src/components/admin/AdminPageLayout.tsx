@@ -220,7 +220,7 @@ export function AdminSearchInput({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
+      <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -259,7 +259,7 @@ export function AdminRowActions({
   );
 
   return (
-    <div className="flex items-center justify-center gap-3 text-[12px] font-medium">
+    <div className="flex items-center justify-center gap-3 text-[13px] font-medium">
       {view && (
         <Item
           label="View"

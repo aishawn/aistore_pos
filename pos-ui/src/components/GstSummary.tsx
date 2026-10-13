@@ -26,7 +26,7 @@ export function GstSummary({
   return (
     <div className="space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
       {onTogglePrices && (
-        <label className="mb-1 flex cursor-pointer items-center justify-between gap-3 text-[12px]">
+        <label className="mb-1 flex cursor-pointer items-center justify-between gap-3 text-[13px]">
           <span>Prices include GST</span>
           <input
             type="checkbox"
@@ -48,7 +48,7 @@ export function GstSummary({
         <span>{pricesIncludeGst ? "Total incl. GST" : "Total ex GST"}</span>
         <span>${primary.toFixed(2)}</span>
       </div>
-      <p className="text-[12px] text-[var(--oh-muted)]">Total includes GST of ${gstAmount.toFixed(2)}</p>
+      <p className="text-[13px] text-[var(--oh-muted)]">Total includes GST of ${gstAmount.toFixed(2)}</p>
       {showCash && rounding !== 0 && (
         <div className="flex justify-between">
           <span>Cash rounding</span>

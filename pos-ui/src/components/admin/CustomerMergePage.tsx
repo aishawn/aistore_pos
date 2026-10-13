@@ -452,7 +452,7 @@ function MergeSection({
           <button
             type="button"
             onClick={onSelectSection}
-            className="rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--oh-orange)] transition-colors hover:bg-[var(--oh-orange-light)]"
+            className="rounded-[var(--oh-radius)] border border-[var(--oh-orange)] bg-white px-3 py-1.5 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors hover:bg-[var(--oh-orange-light)]"
           >
             Select Section
           </button>
@@ -561,12 +561,12 @@ function CustomerPickerModal({
                     <span className="min-w-0 flex-1">
                       <span className="block text-[14px] font-semibold text-[var(--oh-text)]">{c.name}</span>
                       {(c.company || c.code) && (
-                        <span className="mt-0.5 block text-[12px] text-[var(--oh-muted)]">
+                        <span className="mt-0.5 block text-[13px] text-[var(--oh-muted)]">
                           {[c.company, c.code].filter(Boolean).join(" · ")}
                         </span>
                       )}
                       {(c.email || c.phone) && (
-                        <span className="mt-0.5 block text-[12px] text-[var(--oh-text-secondary)]">
+                        <span className="mt-0.5 block text-[13px] text-[var(--oh-text-secondary)]">
                           {[c.email, c.phone].filter(Boolean).join(" · ")}
                         </span>
                       )}
@@ -725,7 +725,7 @@ export function CustomerMergePage() {
               {sources.length === 1 ? "" : "s"} added
             </div>
             {sources.length > 0 && sources.length < 2 && (
-              <span className="rounded-full bg-[var(--oh-tile-orange-bg)] px-3 py-1.5 text-[12px] font-medium text-[var(--oh-tile-orange-text)]">
+              <span className="rounded-full bg-[var(--oh-tile-orange-bg)] px-3 py-1.5 text-[13px] font-medium text-[var(--oh-tile-orange-text)]">
                 Add 1 more to merge
               </span>
             )}
@@ -750,12 +750,12 @@ export function CustomerMergePage() {
         >
           <div className="shrink-0 border-b border-[var(--oh-tile-green-border)] bg-[var(--oh-tile-green-bg)] px-5 py-3.5">
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--oh-tile-green-text)] text-[12px] font-bold text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--oh-tile-green-text)] text-[13px] font-bold text-white">
                 ✓
               </span>
               <div>
                 <p className="text-[14px] font-semibold text-[var(--oh-tile-green-text)]">Merged Result</p>
-                <p className="text-[12px] text-[var(--oh-text-secondary)]">Edit or confirm final values</p>
+                <p className="text-[13px] text-[var(--oh-text-secondary)]">Edit or confirm final values</p>
               </div>
             </div>
           </div>

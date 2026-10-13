@@ -173,7 +173,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
           <div>
             <p className="text-[28px] font-medium leading-none">{formatMoney(wine.sellPrice)}</p>
             {wine.onPromotion ? (
-              <p className="mt-1 text-[12px] text-amber-300">On promotion · normally {formatMoney(wine.listPrice)}</p>
+              <p className="mt-1 text-[13px] text-amber-300">On promotion · normally {formatMoney(wine.listPrice)}</p>
             ) : null}
           </div>
           <p className="text-[13px] text-white/55">In stock: {wine.stockQuantity}</p>
@@ -188,7 +188,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
       </div>
 
       <section className="mt-5">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/45">Tasting notes</h2>
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/45">Tasting notes</h2>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {wine.aromaTags.map((t) => (
             <Chip key={t}>{t}</Chip>
@@ -198,13 +198,13 @@ export function SommelierWinePage({ productId }: { productId: string }) {
       </section>
 
       <section className="mt-5">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/45">Food pairing</h2>
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/45">Food pairing</h2>
         <p className="mt-2 text-[14px] text-white/80">{wine.foodTags.length ? wine.foodTags.join(" · ") : "Flexible with dinner"}</p>
       </section>
 
       <section className="mt-5 rounded-2xl border border-[#f39200]/30 bg-[#f39200]/10 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[12px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">How to sell</h2>
+          <h2 className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">How to sell</h2>
           <div className="flex gap-1">
             <MiniToggle active={pitch === "10s"} onClick={() => void refreshPitch("10s")}>10s</MiniToggle>
             <MiniToggle active={pitch === "30s"} onClick={() => void refreshPitch("30s")}>30s</MiniToggle>
@@ -295,7 +295,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             type="button"
             disabled={busy !== null}
             onClick={() => void ask(q)}
-            className="rounded-full border border-white/15 px-2.5 py-1 text-[12px] text-white/75 disabled:opacity-50"
+            className="rounded-full border border-white/15 px-2.5 py-1 text-[13px] text-white/75 disabled:opacity-50"
           >
             {q}
           </button>
@@ -308,8 +308,8 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
 
       <div className="mt-6">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/45">Customer reaction</p>
-        <p className="mt-1 text-[12px] text-white/50">Did the customer like this bottle? This trains later recommendations.</p>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-white/45">Customer reaction</p>
+        <p className="mt-1 text-[13px] text-white/50">Did the customer like this bottle? This trains later recommendations.</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button
             type="button"
@@ -344,7 +344,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
 
 function Chip({ children }: { children: React.ReactNode }) {
   if (!children) return null;
-  return <span className="rounded-full bg-white/8 px-2.5 py-1 text-[12px] text-white/85">{children}</span>;
+  return <span className="rounded-full bg-white/8 px-2.5 py-1 text-[13px] text-white/85">{children}</span>;
 }
 
 function MiniToggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

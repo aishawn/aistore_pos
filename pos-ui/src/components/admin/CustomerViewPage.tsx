@@ -358,7 +358,7 @@ function CustomerBalancePanel({
                   key={`void-${p.id}`}
                   type="button"
                   onClick={() => onVoidPayment(p.id)}
-                  className="text-[12px] font-semibold text-[var(--oh-danger)] hover:underline"
+                  className="text-[13px] font-semibold text-[var(--oh-danger)] hover:underline"
                 >
                   Void
                 </button>

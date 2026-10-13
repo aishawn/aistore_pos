@@ -86,7 +86,7 @@ function Actions({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex items-center justify-center gap-14 text-[12px] font-medium">
+    <div className="flex items-center justify-center gap-14 text-[13px] font-medium">
       <button type="button" onClick={onEdit} className="flex items-center gap-1 text-[var(--oh-success)]">
         <EditIcon size={14} /> Edit
       </button>
@@ -316,7 +316,7 @@ function ClassificationsPageInner() {
         <>
           <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
             <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{filtered.length}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               Results
             </div>
           </div>
@@ -375,7 +375,7 @@ function ClassificationsPageInner() {
           type="button"
           onClick={requestBatchDelete}
           disabled={!hasSelection}
-          className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#c62828] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#c62828] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Batch Delete{hasSelection ? ` (${selectedKeys.size})` : ""}
         </button>

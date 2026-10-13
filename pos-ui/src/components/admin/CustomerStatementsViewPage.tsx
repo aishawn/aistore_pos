@@ -131,7 +131,7 @@ export function CustomerStatementsViewPage() {
               className="break-inside-avoid rounded-lg border border-[var(--oh-border)] bg-white p-6 print:rounded-none print:border-0 print:p-0 print:[break-after:page]"
             >
               <div className="border-b border-[var(--oh-border)] pb-4">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--oh-muted)] print:text-black">
+                <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)] print:text-black">
                   {templateName}
                 </p>
                 <h2 className="mt-1 text-[20px] font-semibold text-[var(--oh-text)]">
@@ -161,7 +161,7 @@ export function CustomerStatementsViewPage() {
               </div>
 
               <div className="mt-5 overflow-hidden rounded-lg border border-[var(--oh-border)] text-[14px]">
-                <div className="grid grid-cols-[160px_1fr_120px] bg-[var(--oh-surface)] text-[12px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+                <div className="grid grid-cols-[160px_1fr_120px] bg-[var(--oh-surface)] text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                   <div className="border-r border-[var(--oh-border)] px-4 py-3">Date</div>
                   <div className="border-r border-[var(--oh-border)] px-4 py-3">Description</div>
                   <div className="px-4 py-3 text-right">Amount</div>

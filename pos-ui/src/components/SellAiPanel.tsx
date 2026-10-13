@@ -831,7 +831,7 @@ export function SellAiPanel({
                     {voiceStatus}
                   </p>
                 ) : (
-                  <p className="text-[12px] text-[var(--oh-muted)]">AI chat · Enter to send</p>
+                  <p className="text-[13px] text-[var(--oh-muted)]">AI chat · Enter to send</p>
                 )}
               </div>
             </div>
@@ -906,7 +906,7 @@ function DialogueView({
   return (
     <div className="flex h-full flex-col p-3.5">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Chat
         </p>
         <button
@@ -915,7 +915,7 @@ function DialogueView({
           disabled={!canClear}
           title="Clear chat"
           aria-label="Clear chat"
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--oh-muted)]"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--oh-muted)]"
         >
           <Eraser size={13} />
           Clear
@@ -946,7 +946,7 @@ function DialogueView({
                   </span>
                   <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 </a>
-                <span className="mt-1 block text-[12px] text-[var(--oh-muted)]">
+                <span className="mt-1 block text-[13px] text-[var(--oh-muted)]">
                   {/[\u4e00-\u9fff]/.test(msg.text)
                     ? "点击在新页面查看完整报表数据"
                     : "Click to open the full report in a new page"}
@@ -983,7 +983,7 @@ function DialogueView({
                   </tbody>
                 </table>
                 {msg.table.rows.length > 8 && (
-                  <p className="mt-1 text-[12px] text-[var(--oh-muted)]">
+                  <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
                     +{msg.table.rows.length - 8} more
                   </p>
                 )}

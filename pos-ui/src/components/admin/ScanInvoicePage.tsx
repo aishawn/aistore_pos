@@ -236,7 +236,7 @@ export function ScanInvoicePage() {
 
               <div className="overflow-x-auto rounded border border-neutral-200">
                 <table className="min-w-full text-left text-[14px]">
-                  <thead className="bg-neutral-50 text-[12px] uppercase tracking-wide text-neutral-500">
+                  <thead className="bg-neutral-50 text-[13px] uppercase tracking-wide text-neutral-500">
                     <tr>
                       <th className="px-3 py-2">Product</th>
                       <th className="px-3 py-2 text-right">Pack</th>
@@ -269,7 +269,7 @@ export function ScanInvoicePage() {
                         </td>
                         <td className="px-3 py-2 text-right">{money(line.unitPrice)}</td>
                         <td className="px-3 py-2 text-right">{money(line.lineTotal)}</td>
-                        <td className="px-3 py-2 text-[12px] text-neutral-500">
+                        <td className="px-3 py-2 text-[13px] text-neutral-500">
                           {line.productId ? `#${line.productId}` : "New product"}
                         </td>
                       </tr>

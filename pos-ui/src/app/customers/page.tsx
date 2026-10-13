@@ -128,7 +128,7 @@ function CustomersPageInner() {
                 {c.code ? (
                   <>
                     <br />
-                    <span className="text-[12px] text-neutral-500">{c.code}</span>
+                    <span className="text-[13px] text-neutral-500">{c.code}</span>
                   </>
                 ) : null}
               </button>,

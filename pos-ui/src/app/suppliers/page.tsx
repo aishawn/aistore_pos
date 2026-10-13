@@ -37,7 +37,7 @@ function Actions({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-center gap-14 text-[12px] font-medium">
+    <div className="flex items-center justify-center gap-14 text-[13px] font-medium">
       <button
         type="button"
         onClick={() => onEdit(supplierId)}

@@ -83,7 +83,7 @@ const STATUS_STYLES: Record<string, string> = {
 function OrderStatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[status] ?? "bg-neutral-500"}`}
+      className={`inline-block rounded px-2 py-0.5 text-[13px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[status] ?? "bg-neutral-500"}`}
     >
       {status}
     </span>
@@ -100,7 +100,7 @@ function OrderActions({
   onEdit: (id: string) => void;
 }) {
   return (
-    <div className="flex flex-col items-center gap-1 text-[12px] font-medium">
+    <div className="flex flex-col items-center gap-1 text-[13px] font-medium">
       <button
         type="button"
         onClick={() => onView(orderId)}
@@ -174,7 +174,7 @@ export default function OrdersPage() {
         <>
           <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
             <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{total}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               Results
             </div>
           </div>
@@ -266,10 +266,10 @@ export default function OrdersPage() {
               o.reference || "—",
               <div key="status" className="flex flex-col items-center gap-0.5">
                 <OrderStatusBadge status={o.status} />
-                <span className="text-[12px] text-[var(--oh-text-secondary)]">
+                <span className="text-[13px] text-[var(--oh-text-secondary)]">
                   {`$${Number(o.expectedTotal || 0).toFixed(2)}`}
                 </span>
-                <span className="text-[10px] uppercase tracking-wide text-[var(--oh-muted)]">
+                <span className="text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">
                   {`${o.lineCount || 0} lines`}
                 </span>
               </div>,

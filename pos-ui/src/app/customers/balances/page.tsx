@@ -54,7 +54,7 @@ const toOptions = (rows?: Named[] | null): SelectOption[] =>
 const emptyFilters: AppliedFilters = { groupIds: [], minOwing: "", maxOwing: "", asOf: "" };
 
 const labelClass =
-  "mb-1 block h-4 truncate whitespace-nowrap text-[12px] font-medium leading-4 text-[var(--oh-text-secondary)]";
+  "mb-1 block h-4 truncate whitespace-nowrap text-[13px] font-medium leading-4 text-[var(--oh-text-secondary)]";
 const inputClass =
   "h-8 min-w-0 flex-1 rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 
@@ -159,7 +159,7 @@ export default function BalancesPage() {
         <>
           <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
             <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{total}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               Results
             </div>
           </div>

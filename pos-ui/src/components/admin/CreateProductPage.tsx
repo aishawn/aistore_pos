@@ -67,7 +67,7 @@ function RequiredMark() {
 
 function FormLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">
+    <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
       {children}
       {required && <RequiredMark />}
     </span>
@@ -482,7 +482,7 @@ export function CreateProductPage() {
                       className={cn(inputClass, "pl-9")}
                     />
                   </div>
-                  <p className="mt-1 text-[12px] text-[var(--oh-muted)]">{BARCODE_FORMAT_HINT}</p>
+                  <p className="mt-1 text-[13px] text-[var(--oh-muted)]">{BARCODE_FORMAT_HINT}</p>
                 </label>
               </FormSection>
 

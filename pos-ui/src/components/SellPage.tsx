@@ -126,7 +126,7 @@ export function SellPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {sell.lines.length > 0 && (
-            <span className="rounded-[var(--oh-radius)] border border-[var(--oh-orange-muted)] bg-[var(--oh-orange-light)] px-3 py-1.5 text-[12px] font-semibold text-[var(--oh-orange)]">
+            <span className="rounded-[var(--oh-radius)] border border-[var(--oh-orange-muted)] bg-[var(--oh-orange-light)] px-3 py-1.5 text-[13px] font-semibold text-[var(--oh-orange)]">
               {sell.itemCount} items · ${sell.total.toFixed(2)}
             </span>
           )}
@@ -217,7 +217,7 @@ function TabButton({
               : `${badge} parked`
           }
           className={cn(
-            "ml-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-semibold leading-none text-white",
+            "ml-0.5 rounded-full px-1.5 py-0.5 text-[13px] font-semibold leading-none text-white",
             badgeTone === "warning" ? "bg-[var(--oh-warning)]" : "bg-[var(--oh-primary)]",
           )}
         >
@@ -261,7 +261,7 @@ function QuickKeysPanel({ onOpenMoreActions }: { onOpenMoreActions: () => void }
         cartEmpty={cartEmpty}
         sell={{ ...sell, onOpenMoreActions, openPromotions: () => sell.openPromotions() }}
       />
-      <p className="text-[12px] text-[var(--oh-muted)]">
+      <p className="text-[13px] text-[var(--oh-muted)]">
         Tab moves through each quick key, Enter adds the item, arrow keys move across the grid.
       </p>
 
@@ -380,7 +380,7 @@ function MoreActionsPanel() {
             Register actions
           </p>
           {sell.saleNote && (
-            <p className="mt-0.5 max-w-[280px] truncate text-[12px] text-[var(--oh-tile-blue-text)]">
+            <p className="mt-0.5 max-w-[280px] truncate text-[13px] text-[var(--oh-tile-blue-text)]">
               Note: {sell.saleNote}
             </p>
           )}
@@ -391,7 +391,7 @@ function MoreActionsPanel() {
             sell.setView("keys");
             sell.setKeypadPage(0);
           }}
-          className="cursor-pointer text-[12px] font-medium text-[var(--oh-orange)] hover:underline"
+          className="cursor-pointer text-[13px] font-medium text-[var(--oh-orange)] hover:underline"
         >
           ← Back to Quick Keys
         </button>
@@ -440,7 +440,7 @@ function ParkedPanel() {
           Refresh
         </AdminSecondaryButton>
       </div>
-      <p className="text-[12px] text-[var(--oh-muted)]">
+      <p className="text-[13px] text-[var(--oh-muted)]">
         Kept through the next business day. Previous-day parks are marked overdue; older parks are voided automatically.
       </p>
 
@@ -464,7 +464,7 @@ function ParkedPanel() {
       ) : sell.parkedSales.length === 0 ? (
         <div className="rounded-[var(--oh-radius)] border border-dashed border-[var(--oh-border)] py-10 text-center">
           <p className="text-[14px] font-medium text-[var(--oh-text-secondary)]">No parked sales</p>
-          <p className="mt-1 text-[12px] text-[var(--oh-muted)]">
+          <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
             Park the current cart to resume it later from this list
           </p>
         </div>
@@ -492,13 +492,13 @@ function ParkedPanel() {
                     <span className="block truncate text-[14px] font-medium text-[var(--oh-text)]">
                       {sale.customerName ?? "Walk-in customer"}
                     </span>
-                    <span className="block text-[12px] text-[var(--oh-muted)]">
+                    <span className="block text-[13px] text-[var(--oh-muted)]">
                       {sale.totalQuantity} items
                       {when ? ` · ${when}` : ""}
                       {sale.note ? ` · ${sale.note}` : ""}
                     </span>
                     {sale.stale && (
-                      <span className="mt-0.5 block text-[12px] font-medium text-[var(--oh-warning)]">
+                      <span className="mt-0.5 block text-[13px] font-medium text-[var(--oh-warning)]">
                         Overdue{clears ? ` · cleared ${clears}` : ""}
                       </span>
                     )}
@@ -615,7 +615,7 @@ function CheckoutPanel({ className }: { className?: string }) {
               <p className="truncate text-[14px] font-medium text-[var(--oh-text)]">
                 {sell.customer.name}
               </p>
-              <p className="text-[12px] text-[var(--oh-muted)]">
+              <p className="text-[13px] text-[var(--oh-muted)]">
                 {sell.customer.loyaltyPoints} loyalty points
               </p>
             </div>
@@ -646,7 +646,7 @@ function CheckoutPanel({ className }: { className?: string }) {
           <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
             <CartIcon size={28} className="text-[var(--oh-border-strong)]" />
             <p className="text-[14px] font-medium text-[var(--oh-text-secondary)]">Cart is empty</p>
-            <p className="text-[12px] text-[var(--oh-muted)]">
+            <p className="text-[13px] text-[var(--oh-muted)]">
               Search or tap a quick key to add items
             </p>
           </div>
@@ -678,7 +678,7 @@ function CheckoutPanel({ className }: { className?: string }) {
                         setQtyKeypadLineId(line.id);
                       }}
                       className={cn(
-                        "flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border bg-[var(--oh-surface)] text-[12px] font-semibold transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]",
+                        "flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border bg-[var(--oh-surface)] text-[13px] font-semibold transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]",
                         isReturn
                           ? "border-[var(--oh-tile-red-border)] text-[var(--oh-danger)]"
                           : "border-[var(--oh-border)] text-[var(--oh-text-secondary)]",
@@ -746,7 +746,7 @@ function CheckoutPanel({ className }: { className?: string }) {
 
       {/* Summary */}
       <div className="border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/50 p-4">
-        <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[12px] text-[var(--oh-muted)]">
+        <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[13px] text-[var(--oh-muted)]">
           <span>{sell.itemCount} {sell.itemCount === 1 ? "item" : "items"}</span>
           <span className="text-right">{sell.productCount} products</span>
           <span>Savings ${sell.discountTotal.toFixed(2)}</span>
@@ -837,9 +837,9 @@ function CustomerPanel() {
             >
               <span>
                 <span className="block text-[14px] font-medium text-[var(--oh-text)]">{c.name}</span>
-                <span className="block text-[12px] text-[var(--oh-muted)]">{c.group}</span>
+                <span className="block text-[13px] text-[var(--oh-muted)]">{c.group}</span>
               </span>
-              <span className="text-[12px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
+              <span className="text-[13px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
             </button>
           </li>
         ))}
@@ -883,7 +883,7 @@ function PromotionsPanel() {
             className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-1.5 text-[13px]"
           >
             {PERIOD_LABELS[sell.promotionPeriod]}
-            <span className="text-[12px]">▼</span>
+            <span className="text-[13px]">▼</span>
           </button>
           {sell.promotionMenuOpen && (
             <div className="absolute left-0 top-full z-10 mt-1 min-w-[120px] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-lg">
@@ -927,7 +927,7 @@ function PromotionsPanel() {
                   <span className="block truncate text-[14px] text-[var(--oh-text)]">
                     {item.productName}
                   </span>
-                  <span className="block text-[12px] text-[var(--oh-muted)]">
+                  <span className="block text-[13px] text-[var(--oh-muted)]">
                     {item.promotionName}
                   </span>
                 </span>
@@ -973,7 +973,7 @@ function ProductsPanel() {
               onClick={() => sell.pickBrowseProduct(item)}
               className="flex min-h-[72px] cursor-pointer items-center justify-center bg-[#4a4a4a] px-2 py-3 text-center transition-colors hover:bg-[#5a5a5a] active:bg-[#3a3a3a]"
             >
-              <span className="line-clamp-3 text-[12px] font-medium leading-snug text-white sm:text-[13px]">
+              <span className="line-clamp-3 text-[13px] font-medium leading-snug text-white sm:text-[13px]">
                 {item.name}
               </span>
             </button>
@@ -1006,7 +1006,7 @@ function ToolBtn({
         if (!disabled) onClick();
       }}
       className={cn(
-        "cursor-pointer rounded-lg border px-3 py-2 text-[12px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
+        "cursor-pointer rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
         variant === "danger"
           ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] text-[var(--oh-tile-red-text)] hover:opacity-90"
           : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] hover:text-[var(--oh-text)]",

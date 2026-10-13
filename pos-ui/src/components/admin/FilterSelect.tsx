@@ -46,7 +46,7 @@ export function FilterSelect({
     return (
       <label className="flex min-w-0 w-full flex-col font-sans">
         {label ? (
-          <span className="mb-1 block h-4 truncate whitespace-nowrap text-[12px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
+          <span className="mb-1 block h-4 truncate whitespace-nowrap text-[13px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
         ) : null}
         <div className="relative">
           <select
@@ -70,7 +70,7 @@ export function FilterSelect({
   return (
     <label className="flex min-w-0 w-full flex-col font-sans">
       {label ? (
-        <span className="mb-1 block h-4 truncate whitespace-nowrap text-[12px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
+        <span className="mb-1 block h-4 truncate whitespace-nowrap text-[13px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
       ) : null}
       <span className="flex h-8 items-center justify-between rounded-md border border-[var(--oh-border)] px-2.5 text-[13px] text-neutral-400">
         {placeholder}

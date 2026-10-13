@@ -123,7 +123,7 @@ function PriceCell({ price }: { price?: number | null }) {
       title="This product is priced at $0.00 and can be sold for free. Set a price greater than zero before selling it."
     >
       <span className="font-semibold">$0.00</span>
-      <span className="text-[11px] font-medium">Zero price</span>
+      <span className="text-[13px] font-medium">Zero price</span>
     </span>
   );
 }

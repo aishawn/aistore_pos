@@ -104,7 +104,7 @@ function StocktakePageInner() {
         <>
           <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
             <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{total}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               Results
             </div>
           </div>

@@ -324,7 +324,7 @@ function RequiredMark() {
 
 function FormLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">
+    <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
       {children}
       {required && <RequiredMark />}
     </span>
@@ -497,7 +497,7 @@ function FormSearchSelect({
   return (
     <label className="block">
       {label && (
-        <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
+        <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
       )}
       <div ref={wrapRef} className="relative" data-select-open={open || undefined}>
         <div className="relative">
@@ -1107,7 +1107,7 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                 }}
               >
                 <label className="block">
-                  <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">
+                  <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
                     Loyalty Points
                   </span>
                   <input
@@ -1174,7 +1174,7 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                   placeholder="Not Specified"
                 />
                 <label className="block">
-                  <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">
+                  <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
                     Invoice and Statement Message
                   </span>
                   <textarea
@@ -1185,7 +1185,7 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-[12px] font-medium text-[var(--oh-text-secondary)]">
+                  <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
                     Comments (internal)
                   </span>
                   <textarea

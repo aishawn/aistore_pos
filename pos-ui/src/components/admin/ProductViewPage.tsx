@@ -211,7 +211,7 @@ function SalesPurchasesChart({
                 stroke="var(--oh-border)"
                 strokeDasharray="4 4"
               />
-              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[12px]">
+              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[13px]">
                 ${tick}
               </text>
             </g>
@@ -225,13 +225,13 @@ function SalesPurchasesChart({
             x={pad.left + i * step}
             y={h - 6}
             textAnchor="middle"
-            className="fill-[var(--oh-muted)] text-[12px]"
+            className="fill-[var(--oh-muted)] text-[13px]"
           >
             {m}
           </text>
         ))}
       </svg>
-      <div className="mt-2 flex justify-center gap-6 text-[12px]">
+      <div className="mt-2 flex justify-center gap-6 text-[13px]">
         <span className="flex items-center gap-1.5 text-[var(--oh-text-secondary)]">
           <span className="inline-block h-0.5 w-4 bg-[#e53e3e]" /> Purchases
         </span>
@@ -266,7 +266,7 @@ function PlaceholderPanel({ title, description }: { title: string; description: 
     <div className="flex flex-col items-center justify-center rounded-[var(--oh-radius)] border border-dashed border-[var(--oh-border)] bg-[var(--oh-surface)] py-20 text-center">
       <h3 className="text-[16px] font-semibold text-[var(--oh-text)]">{title}</h3>
       <p className="mt-2 max-w-sm text-[13px] text-[var(--oh-muted)]">{description}</p>
-      <p className="mt-4 text-[12px] text-[var(--oh-placeholder)]">No records to display yet.</p>
+      <p className="mt-4 text-[13px] text-[var(--oh-placeholder)]">No records to display yet.</p>
     </div>
   );
 }
@@ -404,11 +404,11 @@ function ProductHomeReport({
             <div className="flex gap-8">
               <div>
                 <div className="text-[28px] font-bold leading-none text-[var(--oh-text)]">{cases}</div>
-                <div className="mt-1 text-[12px] text-[var(--oh-muted)]">Cases</div>
+                <div className="mt-1 text-[13px] text-[var(--oh-muted)]">Cases</div>
               </div>
               <div>
                 <div className="text-[28px] font-bold leading-none text-[var(--oh-text)]">{items}</div>
-                <div className="mt-1 text-[12px] text-[var(--oh-muted)]">Items</div>
+                <div className="mt-1 text-[13px] text-[var(--oh-muted)]">Items</div>
               </div>
             </div>
           </InfoCard>

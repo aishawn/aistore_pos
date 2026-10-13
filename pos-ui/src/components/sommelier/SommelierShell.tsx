@@ -27,7 +27,7 @@ export function SommelierShell({
             {!onHome && (
               <Link
                 href={homeHref}
-                className="mb-2 inline-flex text-[12px] font-medium uppercase tracking-[0.16em] text-[#f39200]"
+                className="mb-2 inline-flex text-[13px] font-medium uppercase tracking-[0.16em] text-[#f39200]"
               >
                 Orion Sommelier
               </Link>

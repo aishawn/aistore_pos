@@ -70,7 +70,7 @@ function SaleKeyTile({
         <span
           className={cn(
             "w-full text-center font-semibold leading-tight tracking-tight",
-            large ? "text-[13px] sm:text-[12px]" : "text-[12px] sm:text-[13px]",
+            large ? "text-[13px] sm:text-[13px]" : "text-[13px] sm:text-[13px]",
           )}
         >
           {label}

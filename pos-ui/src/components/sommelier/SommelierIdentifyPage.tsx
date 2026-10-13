@@ -144,7 +144,7 @@ export function SommelierIdentifyPage() {
                 <p className="text-[16px] font-medium">{item.name}</p>
                 <p className="text-[16px] text-[#f39200]">{formatMoney(item.sellPrice)}</p>
               </div>
-              <p className="mt-1 text-[12px] text-white/55">
+              <p className="mt-1 text-[13px] text-white/55">
                 {[item.varietal, item.drynessLabel, item.bodyLabel].filter(Boolean).join(" · ")}
                 {item.stockQuantity != null ? ` · Stock ${item.stockQuantity}` : ""}
               </p>

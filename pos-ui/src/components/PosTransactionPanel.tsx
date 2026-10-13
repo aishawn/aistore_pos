@@ -259,7 +259,7 @@ function SearchDropdown() {
           className="flex w-full cursor-pointer items-center justify-between border-t border-[var(--oh-border)] px-4 py-2.5 text-left hover:bg-[var(--oh-surface)]"
         >
           <span className="text-[13px] text-[var(--oh-text)]">{c.name}</span>
-          <span className="text-[12px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
+          <span className="text-[13px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
         </button>
       ))}
     </div>
@@ -306,9 +306,9 @@ function CustomerOverlay() {
           >
             <span>
               <span className="block text-[14px] font-medium text-[var(--oh-text)]">{c.name}</span>
-              <span className="block text-[12px] text-[var(--oh-muted)]">{c.group}</span>
+              <span className="block text-[13px] text-[var(--oh-muted)]">{c.group}</span>
             </span>
-            <span className="text-[12px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
+            <span className="text-[13px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
           </button>
         ))}
       </div>

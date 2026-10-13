@@ -77,7 +77,7 @@ export function QuantityKeypadModal({
         onClick={(e) => e.stopPropagation()}
       >
         {productName && (
-          <p className="mb-3 truncate text-center text-[12px] font-medium text-[var(--oh-muted)]">
+          <p className="mb-3 truncate text-center text-[13px] font-medium text-[var(--oh-muted)]">
             {productName}
           </p>
         )}

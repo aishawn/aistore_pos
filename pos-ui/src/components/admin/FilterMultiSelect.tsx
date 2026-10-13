@@ -50,7 +50,7 @@ export function FilterMultiSelect({
 
   return (
     <div ref={wrapRef} className="relative flex min-w-0 w-full flex-col font-sans">
-      <span className="mb-1 block h-4 truncate whitespace-nowrap text-[12px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
+      <span className="mb-1 block h-4 truncate whitespace-nowrap text-[13px] font-medium leading-4 text-[var(--oh-text-secondary)]">{label}</span>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

@@ -515,7 +515,7 @@ export function FinaliseSalePage() {
 
                   className={cn(
 
-                    "cursor-pointer rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 py-3 text-[12px] font-semibold leading-snug text-[var(--oh-text)] transition-colors sm:px-3 sm:py-4 sm:text-[13px]",
+                    "cursor-pointer rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 py-3 text-[13px] font-semibold leading-snug text-[var(--oh-text)] transition-colors sm:px-3 sm:py-4 sm:text-[13px]",
 
                     "hover:border-[var(--oh-orange)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50",
 
@@ -577,7 +577,7 @@ export function FinaliseSalePage() {
 
               <div className="w-full max-w-md rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3">
 
-                <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+                <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
 
                   Payments applied
 
@@ -599,7 +599,7 @@ export function FinaliseSalePage() {
 
                 </ul>
 
-                <p className="mt-2 border-t border-[var(--oh-border)] pt-2 text-[12px] text-[var(--oh-text-secondary)]">
+                <p className="mt-2 border-t border-[var(--oh-border)] pt-2 text-[13px] text-[var(--oh-text-secondary)]">
                   Total includes GST of ${sell.gstTotal.toFixed(2)}
                 </p>
 
@@ -639,7 +639,7 @@ export function FinaliseSalePage() {
 
                 {checkoutResult.invoiceId && (
 
-                  <p className="mt-1 text-[12px] text-[var(--oh-muted)]">
+                  <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
 
                     Invoice {checkoutResult.invoiceId}
 
@@ -785,7 +785,7 @@ function FinaliseSidebar({
 
               </p>
 
-              <p className="text-[12px] text-[var(--oh-muted)]">
+              <p className="text-[13px] text-[var(--oh-muted)]">
 
                 {sell.customer.loyaltyPoints} loyalty points
 
@@ -921,7 +921,7 @@ function FinaliseSidebar({
 
             </p>
 
-            <ul className="space-y-1 text-[12px] text-[var(--oh-text-secondary)]">
+            <ul className="space-y-1 text-[13px] text-[var(--oh-text-secondary)]">
 
               {appliedPayments.map((p, i) => (
 
@@ -999,7 +999,7 @@ function FinaliseSidebar({
 
         </div>
 
-        <p className="px-4 pb-3 text-[12px] text-[var(--oh-text-secondary)]">
+        <p className="px-4 pb-3 text-[13px] text-[var(--oh-text-secondary)]">
           Total includes GST of ${sell.gstTotal.toFixed(2)}
         </p>
 
@@ -1155,11 +1155,11 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
                   <span className="block text-[14px] font-medium text-[var(--oh-text)]">{c.name}</span>
 
-                  <span className="block text-[12px] text-[var(--oh-muted)]">{c.group}</span>
+                  <span className="block text-[13px] text-[var(--oh-muted)]">{c.group}</span>
 
                 </span>
 
-                <span className="text-[12px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
+                <span className="text-[13px] text-[var(--oh-muted)]">{c.loyaltyPoints} pts</span>
 
               </button>
 

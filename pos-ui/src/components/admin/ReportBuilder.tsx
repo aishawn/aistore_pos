@@ -75,7 +75,7 @@ export function ReportBuilder({
       <div className="mt-4 overflow-x-auto">
         <div className="overflow-hidden rounded-md font-sans text-[13px]">
           <div
-            className="grid items-center bg-black px-3 py-2 text-center text-[12px] font-bold text-white"
+            className="grid items-center bg-black px-3 py-2 text-center text-[13px] font-bold text-white"
             style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}
           >
             {columns.map((c, i) => (

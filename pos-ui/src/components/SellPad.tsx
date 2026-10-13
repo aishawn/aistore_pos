@@ -405,7 +405,7 @@ function PromotionsPanel() {
             className="flex cursor-pointer items-center gap-2 rounded border border-[var(--sf-muted)] px-3 py-1.5 text-[16px] text-black"
           >
             {PERIOD_LABELS[sell.promotionPeriod]}
-            <span className="text-[12px]">▼</span>
+            <span className="text-[13px]">▼</span>
           </button>
           {sell.promotionMenuOpen && (
             <div className="absolute left-0 top-full z-20 mt-1 min-w-[120px] border border-[var(--sf-muted)] bg-white shadow-lg">

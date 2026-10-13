@@ -278,7 +278,7 @@ export function BulkPriceEditPage() {
 
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
         <div className="inline-block min-w-full">
-          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black px-3 py-2 text-[12px] font-bold text-white">
+          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black px-3 py-2 text-[13px] font-bold text-white">
             <div className="w-[220px] shrink-0 px-2">Product</div>
             <div className="w-[72px] shrink-0 px-2 text-center">Case Qty</div>
             <div className="w-[88px] shrink-0 px-2">Price Set</div>
