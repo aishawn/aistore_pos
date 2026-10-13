@@ -44,7 +44,7 @@ export default function RegisterClosuresPage() {
       </p>
 
       <div className="overflow-hidden rounded-lg border border-[var(--oh-border)] text-[14px]">
-        <div className="flex border-b border-[var(--oh-border)] bg-[var(--oh-surface)] text-[12px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+        <div className="flex border-b border-[var(--oh-border)] bg-[var(--oh-surface)] text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
           {COLS.map((c, i) => (
             <div key={c} className={`px-4 py-3 text-center ${i === 5 ? "w-[120px]" : "flex-1"} ${i > 0 ? "border-l border-[var(--oh-border)]" : ""}`}>
               {c}

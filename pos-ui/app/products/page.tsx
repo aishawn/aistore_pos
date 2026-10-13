@@ -122,7 +122,7 @@ function PriceCell({ price }: { price?: number | null }) {
       title="This product is priced at $0.00 and can be sold for free. Set a price greater than zero before selling it."
     >
       <span className="font-semibold">$0.00</span>
-      <span className="text-[12px] font-medium">Zero price</span>
+      <span className="text-[13px] font-medium">Zero price</span>
     </span>
   );
 }
@@ -355,7 +355,7 @@ function ProductsPageInner() {
         <>
           <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
             <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{total}</div>
-            <div className="text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               Results
             </div>
           </div>
@@ -446,7 +446,7 @@ function ProductsPageInner() {
           type="button"
           onClick={() => setBatchDeleting(true)}
           disabled={!hasSelection}
-          className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-[#c62828] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#c62828] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Batch Delete{hasSelection ? ` (${selectedIds.size})` : ""}
         </button>

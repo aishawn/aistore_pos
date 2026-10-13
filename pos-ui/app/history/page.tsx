@@ -107,7 +107,7 @@ export default function SalesHistoryPage() {
                 <div className="ml-5 w-[150px] leading-tight">
                   <div className="text-[14px] text-[var(--oh-text)]">{date}</div>
                   <div className="text-[14px] text-[var(--oh-text-secondary)]">{time}</div>
-                  <div className="text-[12px] text-[var(--oh-muted)]">#{s.invoiceId}</div>
+                  <div className="text-[13px] text-[var(--oh-muted)]">#{s.invoiceId}</div>
                 </div>
 
                 <div className="text-[14px] text-[var(--oh-text-secondary)]">{s.userName}</div>

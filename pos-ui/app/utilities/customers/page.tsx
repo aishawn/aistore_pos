@@ -44,7 +44,7 @@ export default function CustomerUtilitiesPage() {
       </div>
 
       <div className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white text-[14px]">
-        <div className="flex items-center bg-[var(--oh-primary)] px-4 py-3 text-[12px] font-semibold uppercase tracking-wide text-white">
+        <div className="flex items-center bg-[var(--oh-primary)] px-4 py-3 text-[13px] font-semibold uppercase tracking-wide text-white">
           <span className="mr-3 h-4 w-4 rounded border border-white/40" />
           <span className="flex-1">Name</span>
           <span className="w-[120px] text-right">Actions</span>

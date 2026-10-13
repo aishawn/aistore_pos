@@ -49,7 +49,7 @@ export default function SecurityCentrePage() {
       </div>
 
       <div className="mt-3 overflow-hidden rounded-lg border border-[var(--oh-border)]">
-        <div className="flex bg-[var(--oh-primary)] text-[12px] font-semibold uppercase tracking-wide text-white">
+        <div className="flex bg-[var(--oh-primary)] text-[13px] font-semibold uppercase tracking-wide text-white">
           {["Timestamp", "Event", "User", "Outlet", "Register", "Device"].map((c) => (
             <div key={c} className="flex-1 px-4 py-3 text-center">{c}</div>
           ))}
