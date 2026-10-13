@@ -138,10 +138,10 @@ export function OdooCloseRegisterPage() {
             </dd>
           </dl>
         ) : (
-          <p className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-            <AlertCircle size={16} className="mt-0.5 shrink-0" />
-            This register has no open session. Open one in Odoo before closing.
-          </p>
+          <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+            <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />This register has no open session. Open one in Odoo before closing.</span>
+            <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center justify-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+          </div>
         )}
 
         <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">

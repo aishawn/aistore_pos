@@ -457,7 +457,7 @@ export function OdooRegisterPage() {
         </div>
       </header>
 
-      {!selectedConfig?.session && <div role="status" className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">This register has no open session. Open a session in Odoo, then refresh.</div>}
+      {!selectedConfig?.session && <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>This register has no open session. Open a session in Odoo, then refresh.</span><a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center justify-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a></div>}
       {error && <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}</span><button onClick={() => setError(null)} aria-label="Dismiss" className="font-bold">×</button></div>}
 
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_390px]">
@@ -496,8 +496,8 @@ export function OdooRegisterPage() {
           </div>}
         </section>
 
-        <section className="flex min-h-[400px] flex-col overflow-hidden rounded-lg border border-black bg-white">
-          <div className="flex min-h-[64px] shrink-0 items-center gap-2 border-b border-black px-4">
+        <section className="flex min-h-[400px] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <div className="flex min-h-[64px] shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-4">
             <UserRound size={18} className="text-[var(--oh-muted)]" />
             {customer ? <><span className="flex-1 text-sm font-semibold text-[var(--oh-text)]">{customer.name}</span><button type="button" onClick={() => setCustomer(null)} className="text-xs font-medium text-[var(--sf-link-blue)]">Remove</button></> : <input value={customerQuery} onChange={(event) => setCustomerQuery(event.target.value)} placeholder="Add customer (optional)" className="h-10 min-w-0 flex-1 text-sm outline-none placeholder:text-[var(--oh-muted)]" />}
           </div>
