@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (app commit `6dfb738` deployed Done; 24-route matrix, 8 general interactions, 6 auto-recovery checks; 113 backend tests previously passed at `ee0cb0b`)
+**Last updated:** 2026-10-13 (app commit `9cba779`; supplier create UI/API added, typecheck/ESLint and intercepted browser UAT pass; 24-route matrix and prior production UAT remain as recorded below)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -32,7 +32,7 @@ Statuses:
 | Capability | Status | Notes |
 |---|---|---|
 | Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12 |
-| Supplier directory (Odoo, read-only) | In progress | `/suppliers/odoo` loads; production partner data still thin |
+| Supplier directory (Odoo) | In progress | `/suppliers/odoo` reads Odoo suppliers and now supports user-submitted company contacts with ABN duplicate blocking; Odoo `fields_get` confirmed writable fields and intercepted production browser UAT passed. No live supplier was created; permission and supplier-specific Odoo validation still need a real distributor entry |
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |

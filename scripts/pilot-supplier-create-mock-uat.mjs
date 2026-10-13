@@ -17,11 +17,16 @@ try {
 
   const page = await context.newPage();
   let submitted = null;
+  let hasCreatedFixture = false;
   await page.route("**/api/odoo/session**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: 1, name: "UAT" }, autoRecoverConfigured: true }) }));
-  await page.route("**/api/odoo/records", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [], limit: 40, offset: 0 }) }));
+  await page.route("**/api/odoo/records", (route) => {
+    const items = hasCreatedFixture ? [{ id: 999001, name: "UAT Winery Group (fixture only)", phone: "+61 2 5550 0100", email: "vendor-uat@example.invalid", vat: "53004085616", ref: "UAT-ONLY", supplier_rank: 1 }] : [];
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items, limit: 40, offset: 0 }) });
+  });
   await page.route("**/api/odoo/suppliers", async (route) => {
     if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Unexpected method" });
     submitted = route.request().postDataJSON();
+    hasCreatedFixture = true;
     return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ id: 999001, name: submitted.name }) });
   });
   await page.goto(`${base}/suppliers/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -36,7 +41,7 @@ try {
   await dialog.getByRole("button", { name: "Create supplier" }).click();
   await dialog.waitFor({ state: "detached", timeout: 10000 });
   if (!submitted || submitted.name !== "UAT Winery Group (fixture only)" || submitted.vat !== "53004085616" || submitted.ref !== "UAT-ONLY") throw new Error(`Supplier create payload mismatch: ${JSON.stringify(submitted)}`);
-  if (await page.getByText("No suppliers are available to this Odoo account.").count()) throw new Error("Supplier directory did not refresh after successful fixture response");
+  await page.getByText("UAT Winery Group (fixture only)", { exact: true }).waitFor({ timeout: 10000 });
   console.log(JSON.stringify({ status: "PASS", fixture: "create API intercepted; no Odoo write", checks: ["supplier form opens from directory", "required and optional contact fields submit", "ABN and reference included in create request", "success closes form and refreshes list"] }));
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
