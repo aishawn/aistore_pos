@@ -6,8 +6,8 @@
 
 > 以下为当前快照。文末更早的日记段落保留作历史；若冲突，以本段与 [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) 为准。
 
-- 应用基线 `fe9b163` 提供角色权限分配、公司设置/Sale Keys 诚实状态页和试点侧栏清理；后续 `f2f16db` 增加角色列表权限摘要。应用提交 `17ef0f5` 加入现金实点 UI 保护；最新应用提交 `3c2618e` 在 Odoo close API 再强制校验，Dokploy 已标记 **Done**。
-- 生产应用运行 `3c2618e`；随后完成 24 路由、角色权限、6 项一般交互与 3 项运营交互回归。
+- 应用基线 `fe9b163` 提供角色权限分配、公司设置/Sale Keys 诚实状态页和试点侧栏清理；后续 `f2f16db` 增加角色列表权限摘要。应用提交 `17ef0f5` 加入现金实点 UI 保护，`3c2618e` 在 Odoo close API 再强制校验；`9460243` 移除 AI 报表账户源码弱默认密码并要求显式配置，Dokploy 已标记 **Done**。
+- 生产应用运行 `9460243`；随后完成 24 路由、角色权限、6 项一般交互与 3 项运营交互回归。新部署后首页 HTTP 200。
 - Odoo 自动恢复 **已开启**：生产 `/api/odoo/session` 返回 `autoRecoverConfigured:true`，登录后自动连接 Administrator。
 - 当前测试班次 `orithos_store1/00004` **opened**；两款 DEMO 酒 free/on-hand **12**（本轮浏览器销售后退款已回滚）。
 - 浏览器页面矩阵：试点侧栏路由已逐页验收，证据见 [UAT_PAGE_MATRIX_2026-10-13.json](UAT_PAGE_MATRIX_2026-10-13.json)。

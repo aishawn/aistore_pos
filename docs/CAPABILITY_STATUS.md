@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + nine production interaction checks; production deploy `3c2618e`)
+**Last updated:** 2026-10-13 (24-route matrix + nine production interaction checks; production deploy `9460243`)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -85,7 +85,7 @@ AI remains disabled in production. The tenant report database account has no sou
 
 ## 2026-10-13 browser UAT (session `00004`)
 
-- Deployed app commit `3c2618e` (role list now displays actual assigned permissions; cash-enabled register close requires counted cash in UI/API; role permissions + honest company/sale-keys pages).
+- Deployed app commit `9460243` (cash-enabled register close requires counted cash in UI/API; AI tenant report account has no source default password; role permissions + honest company/sale-keys pages).
 - Page matrix evidence: `docs/UAT_PAGE_MATRIX_2026-10-13.json` (24/24 routes pass after waiting for Odoo catalogue hydration; the inventory assertion now matches the displayed `12Units` format).
 - Role CRUD evidence: production UI created a temporary role, selected `AI Report Cost`, showed the saved grant in the role list, and deleted the role. API confirmed the grant; no test role remains. Earlier leftover `Pilot Clerk 344840` was also removed.
 - Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
