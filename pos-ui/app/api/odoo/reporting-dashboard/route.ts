@@ -186,6 +186,7 @@ export async function GET(request: NextRequest) {
       ["order_id.date_order", ">=", from],
       ["order_id.date_order", "<=", to],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
+      ["order_id.amount_total", ">", 0],
     ];
 
     const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, companies, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([

@@ -101,19 +101,30 @@ function useGuardedNav() {
   };
 }
 
-export function Sidebar({ open = true }: { open?: boolean }) {
+export function Sidebar({
+  open = true,
+  mobileOpen = false,
+  onNavigate,
+}: {
+  open?: boolean;
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const guardNav = useGuardedNav();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
 
   return (
     <aside
+      id="main-navigation"
       className={cn(
-        "flex h-full shrink-0 flex-col overflow-hidden bg-[var(--oh-sidebar-bg)] font-sans transition-[width] duration-200 ease-in-out print:hidden",
-        open ? "w-[var(--oh-sidebar-width)]" : "w-0",
+        "fixed inset-y-0 left-0 z-50 flex h-full w-[var(--oh-sidebar-width)] shrink-0 flex-col overflow-hidden bg-[var(--oh-sidebar-bg)] font-sans shadow-xl transition-transform duration-200 ease-in-out print:hidden md:static md:z-auto md:shadow-none md:transition-[width]",
+        mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none md:pointer-events-auto md:translate-x-0",
+        open ? "md:w-[var(--oh-sidebar-width)]" : "md:w-0",
       )}
       aria-label="Main navigation"
-      aria-hidden={!open}
+      aria-hidden={!open && !mobileOpen}
+      inert={!open && !mobileOpen}
     >
       <div className="flex min-w-[var(--oh-sidebar-width)] flex-1 flex-col">
       <div className="flex h-[var(--oh-header-height)] items-center border-b border-[var(--oh-sidebar-border)] px-4">
@@ -124,9 +135,9 @@ export function Sidebar({ open = true }: { open?: boolean }) {
         <ul className="flex flex-col gap-0.5">
           {getSidebarNavigation().map((entry) =>
             isGroup(entry) ? (
-              <SidebarNavGroup key={entry.label} group={entry} pathname={pathname} guardNav={guardNav} tabIndex={checkoutKeyboard ? -1 : undefined} />
+              <SidebarNavGroup key={entry.label} group={entry} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={checkoutKeyboard ? -1 : undefined} />
             ) : (
-              <SidebarNavLink key={entry.href} item={entry} pathname={pathname} guardNav={guardNav} tabIndex={checkoutKeyboard ? -1 : undefined} />
+              <SidebarNavLink key={entry.href} item={entry} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={checkoutKeyboard ? -1 : undefined} />
             ),
           )}
         </ul>
@@ -140,11 +151,13 @@ function SidebarNavLink({
   item,
   pathname,
   guardNav,
+  onNavigate,
   tabIndex,
 }: {
   item: SidebarItem;
   pathname: string;
   guardNav: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
+  onNavigate?: () => void;
   tabIndex?: number;
 }) {
   const Icon = ICONS[item.icon];
@@ -155,7 +168,10 @@ function SidebarNavLink({
       <Link
         href={item.href}
         tabIndex={tabIndex}
-        onClick={(event) => guardNav(event, item.href)}
+        onClick={(event) => {
+          guardNav(event, item.href);
+          if (!event.defaultPrevented) onNavigate?.();
+        }}
         className={cn(
           "oh-type-label relative flex items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 font-medium transition-colors",
           active
@@ -177,11 +193,13 @@ function SidebarNavGroup({
   group,
   pathname,
   guardNav,
+  onNavigate,
   tabIndex,
 }: {
   group: SidebarGroup;
   pathname: string;
   guardNav: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
+  onNavigate?: () => void;
   tabIndex?: number;
 }) {
   const [expanded, setExpanded] = useState(groupActive(group, pathname));
@@ -221,7 +239,10 @@ function SidebarNavGroup({
                 <Link
                   href={item.href}
                   tabIndex={tabIndex}
-                  onClick={(event) => guardNav(event, item.href)}
+                  onClick={(event) => {
+                    guardNav(event, item.href);
+                    if (!event.defaultPrevented) onNavigate?.();
+                  }}
                   className={cn(
                     "oh-type-label relative flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 font-medium transition-colors",
                     active

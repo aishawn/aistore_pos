@@ -41,6 +41,8 @@ function safeInternalPath(value: string | null): string | null {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [uiMode, setUiModeState] = useState<UiMode>("web");
   const pathname = usePathname();
   const router = useRouter();
@@ -50,22 +52,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isSellPath = ODOO_REGISTER_PATHS.has(pathname);
 
   useEffect(() => {
-    if (isSellPath) {
-      // Shopfront-like Sell: hide the charcoal rail so the dual-pane register dominates.
-      setSidebarOpen(false);
-      return;
-    }
-    const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
-    if (stored !== null) {
-      setSidebarOpen(stored === "true");
-    } else {
-      setSidebarOpen(true);
-    }
+    const breakpoint = window.matchMedia("(max-width: 767px)");
+    const syncViewport = () => {
+      setIsMobileViewport(breakpoint.matches);
+      setMobileSidebarOpen(false);
+      if (breakpoint.matches) {
+        setSidebarOpen(false);
+        return;
+      }
+      if (isSellPath) {
+        // Keep the register wide on desktop; mobile navigation opens as an overlay.
+        setSidebarOpen(false);
+        return;
+      }
+      setSidebarOpen(localStorage.getItem(SIDEBAR_OPEN_KEY) !== "false");
+    };
+    syncViewport();
+    breakpoint.addEventListener("change", syncViewport);
+    return () => breakpoint.removeEventListener("change", syncViewport);
   }, [isSellPath]);
 
   useEffect(() => {
-    localStorage.setItem(SIDEBAR_OPEN_KEY, String(sidebarOpen));
-  }, [sidebarOpen]);
+    if (!mobileSidebarOpen || !isMobileViewport) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileSidebarOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [mobileSidebarOpen, isMobileViewport]);
 
   useLayoutEffect(() => {
     const mode = getUiMode();
@@ -108,6 +122,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }
 
+  function toggleNavigation() {
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setMobileSidebarOpen((value) => !value);
+      return;
+    }
+    setSidebarOpen((value) => {
+      const next = !value;
+      localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
+      return next;
+    });
+  }
+
   if (!user?.pendingPasswordReset && (pathname === "/m" || (uiMode === "mobile" && isMobileAllowedPath(pathname)))) {
     if (!user) {
       return null;
@@ -132,13 +158,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <UnsavedChangesProvider>
       <AiAssistantProvider>
     <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
-      <Sidebar open={sidebarOpen} />
+      <Sidebar
+        open={!isMobileViewport && sidebarOpen}
+        mobileOpen={mobileSidebarOpen}
+        onNavigate={() => setMobileSidebarOpen(false)}
+      />
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 cursor-default bg-slate-950/30 md:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
       <div className="flex min-w-0 flex-1 flex-col print:w-full">
         <Header
           userName={user?.name || user?.username || "admin"}
-          sidebarOpen={sidebarOpen}
+          sidebarOpen={isMobileViewport ? mobileSidebarOpen : sidebarOpen}
           userMenuOpen={userMenuOpen}
-          onSidebarToggle={() => setSidebarOpen((v) => !v)}
+          onSidebarToggle={toggleNavigation}
           onUserClick={() => setUserMenuOpen((v) => !v)}
         />
         <UserMenu

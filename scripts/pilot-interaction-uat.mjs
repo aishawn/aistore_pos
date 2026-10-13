@@ -39,6 +39,47 @@ try {
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error("Pilot interaction UAT login failed");
 
+  await check("Mobile navigation drawer opens and dismisses", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const trigger = page.locator('button[aria-controls="main-navigation"]');
+    const navigation = page.locator("#main-navigation");
+    const backdrop = page.locator('button[aria-label="Close navigation menu"]:not([aria-controls])');
+    await trigger.waitFor({ timeout: 15000 });
+    await trigger.click();
+    if (await trigger.getAttribute("aria-expanded") !== "true" || await navigation.getAttribute("aria-hidden") !== "false") {
+      throw new Error("Mobile navigation did not expose its expanded state");
+    }
+    await page.keyboard.press("Escape");
+    if (await trigger.getAttribute("aria-expanded") !== "false" || await navigation.getAttribute("aria-hidden") !== "true") {
+      throw new Error("Escape did not close the mobile navigation");
+    }
+    await trigger.click();
+    await backdrop.click({ position: { x: 350, y: 100 } });
+    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Outside click did not close the mobile navigation");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return "At 390px, the navigation drawer opens and closes with Escape and the outside backdrop; ARIA state tracks visibility.";
+  });
+
+  await check("Compact account popover opens and closes accessibly", async () => {
+    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const trigger = page.locator("[data-user-menu-trigger]");
+    const menu = page.getByRole("dialog", { name: "User menu" });
+    await trigger.waitFor({ timeout: 15000 });
+    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Account menu is not initially collapsed");
+    await trigger.click();
+    await menu.waitFor({ state: "visible", timeout: 10000 });
+    if (await trigger.getAttribute("aria-expanded") !== "true") throw new Error("Trigger did not expose the expanded state");
+    await page.keyboard.press("Escape");
+    await menu.waitFor({ state: "hidden", timeout: 10000 });
+    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Escape did not reset the expanded state");
+    await trigger.click();
+    await menu.waitFor({ state: "visible", timeout: 10000 });
+    await page.locator("main").click({ position: { x: 12, y: 12 } });
+    await menu.waitFor({ state: "hidden", timeout: 10000 });
+    return "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click.";
+  });
+
   await check("Product search filters the Odoo catalogue", async () => {
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const search = page.getByPlaceholder("Search product, barcode or SKU");

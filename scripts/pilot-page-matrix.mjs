@@ -58,7 +58,8 @@ function matchAll(text, patterns) {
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
-const productDiagnostics = { consoleErrors: [], failedRequests: [], unauthorizedResponses: [] };
+const productDiagnostics = { consoleErrors: [], failedRequests: [], unauthorizedResponses: [], reportingResponses: [] };
+const reportingRequestRoutes = new WeakMap();
 page.on("console", (message) => {
   if (message.type() === "error") productDiagnostics.consoleErrors.push(message.text());
 });
@@ -69,13 +70,31 @@ page.on("requestfailed", (request) => {
   }
 });
 page.on("response", (response) => {
-  if (response.status() === 401) {
-    const request = response.request();
-    productDiagnostics.unauthorizedResponses.push({
+  const request = response.request();
+  const url = new URL(response.url());
+  if (url.pathname === "/api/odoo/reporting-dashboard") {
+    productDiagnostics.reportingResponses.push({
+      route: reportingRequestRoutes.get(request) ?? null,
       method: request.method(),
-      path: new URL(response.url()).pathname,
+      status: response.status(),
+      hours: url.searchParams.get("hours"),
+    });
+  }
+  if (response.status() === 401) {
+    productDiagnostics.unauthorizedResponses.push({
+      route: reportingRequestRoutes.get(request) ?? null,
+      method: request.method(),
+      path: url.pathname,
       resourceType: request.resourceType(),
     });
+  }
+});
+page.on("request", (request) => {
+  if (new URL(request.url()).pathname !== "/api/odoo/reporting-dashboard") return;
+  try {
+    reportingRequestRoutes.set(request, new URL(request.frame().url()).pathname);
+  } catch {
+    reportingRequestRoutes.set(request, null);
   }
 });
 
@@ -121,6 +140,7 @@ for (const entry of pages) {
       consoleErrors: productDiagnostics.consoleErrors,
       failedRequests: productDiagnostics.failedRequests,
       unauthorizedResponses: productDiagnostics.unauthorizedResponses,
+      reportingResponses: productDiagnostics.reportingResponses,
     }));
   }
   matrix.push({
@@ -212,7 +232,7 @@ try {
 console.log("ROLE_CRUD", roleResult);
 
 const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
-fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses }, null, 2));
+fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses }, null, 2));
 console.log("WROTE", outPath);
 
 await browser.close();

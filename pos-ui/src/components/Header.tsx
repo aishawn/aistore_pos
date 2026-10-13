@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { PanelLeft, PanelLeftClose, Wifi, WifiOff } from "lucide-react";
 import { UserIcon } from "@/components/icons";
+import { OrithosLogo } from "@/components/OrithosLogo";
 
 /**
  * Orithos top bar — light chrome (50px) shared by Sell and admin pages.
  *
- * Right-group: avatar opens the User menu panel (onUserClick).
+ * Right-group: avatar opens the account menu (onUserClick).
  */
 export function Header({
   userName = "admin",
@@ -44,8 +45,9 @@ export function Header({
       <button
         type="button"
         tabIndex={tabIndex}
-        aria-label={sidebarOpen ? "Hide navigation menu" : "Show navigation menu"}
+        aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
         aria-expanded={sidebarOpen}
+        aria-controls="main-navigation"
         onClick={onSidebarToggle}
         className="flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center px-1 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"
       >
@@ -56,7 +58,11 @@ export function Header({
         )}
       </button>
 
-      <div className="flex items-center gap-3 pr-3 sm:gap-5 sm:pr-5">
+      <div className="mr-auto min-w-0 pl-1 md:hidden" aria-hidden="true">
+        <OrithosLogo />
+      </div>
+
+      <div className="flex items-center gap-2 pr-2 sm:gap-5 sm:pr-5">
         <div
           role="status"
           aria-live="polite"
@@ -68,13 +74,14 @@ export function Header({
           ) : (
             <WifiOff size={16} className="text-[var(--oh-warning)]" aria-hidden="true" />
           )}
-          <span className={online ? "text-[var(--sf-online-green)]" : undefined}>{online ? "ONLINE" : "OFFLINE"}</span>
+          <span className={`hidden sm:inline ${online ? "text-[var(--sf-online-green)]" : ""}`}>{online ? "ONLINE" : "OFFLINE"}</span>
         </div>
         <button
           type="button"
           tabIndex={tabIndex}
           onClick={onUserClick}
           title="User menu"
+          aria-label={`User menu for ${userName}`}
           data-user-menu-trigger
           aria-haspopup="dialog"
           aria-controls="user-menu"
@@ -85,7 +92,7 @@ export function Header({
           <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-primary)]">
             <UserIcon size={20} className="text-white" fill="white" />
           </span>
-          <p className="oh-type-body mx-2 text-[var(--oh-text)]">{userName}</p>
+          <p className="oh-type-body mx-2 hidden text-[var(--oh-text)] sm:block">{userName}</p>
         </button>
       </div>
     </header>

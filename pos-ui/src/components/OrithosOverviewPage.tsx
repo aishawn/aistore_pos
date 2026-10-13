@@ -6,9 +6,12 @@ import {
   AlertCircle,
   Archive,
   ArrowRight,
+  BarChart3,
   LoaderCircle,
   Package,
+  PieChart,
   RefreshCw,
+  RotateCcw,
   ShoppingBag,
   Store,
 } from "lucide-react";
@@ -23,6 +26,9 @@ type OverviewData = {
   currency: string;
   trendGranularity: "hour" | "day";
   revenue: number;
+  grossSales?: number;
+  refunds?: number;
+  refundTransactions?: number;
   tax: number;
   transactions: number;
   itemsSold: number;
@@ -77,16 +83,6 @@ function greetingForSydney() {
   return "Good evening";
 }
 
-function todayChipLabel() {
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Sydney",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date());
-}
-
 function markTone(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) hash = (hash + name.charCodeAt(i) * (i + 1)) % MARK_TONES.length;
@@ -124,7 +120,6 @@ export function OrithosOverviewPage() {
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
   const greeting = useMemo(() => greetingForSydney(), []);
-  const dateLabel = useMemo(() => todayChipLabel(), []);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -172,7 +167,7 @@ export function OrithosOverviewPage() {
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
 
-  const averageSale = data?.transactions ? data.revenue / data.transactions : 0;
+  const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
   const donutGradient = useMemo(() => {
     if (!data?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
@@ -204,19 +199,18 @@ export function OrithosOverviewPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)]">
-      {/* Single viewport: no middle scrollbar — denser than default oh-type scale */}
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-3 lg:flex-row lg:gap-3 lg:p-3.5">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
+    <main className="flex h-full min-h-0 flex-col overflow-y-auto bg-[var(--oh-surface)] lg:overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 p-3 lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3.5">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 lg:overflow-hidden">
           <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
               <h1 className="oh-type-title mt-0.5 text-[var(--oh-text)]">{greeting}</h1>
-              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Here&apos;s what&apos;s happening in your store today.</p>
+              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Sales and store activity from the last 24 hours.</p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="oh-type-meta inline-flex h-8 items-center rounded-full border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] shadow-sm">
-                Today · {dateLabel}
+                Last 24 hours
               </span>
               <button
                 type="button"
@@ -227,6 +221,9 @@ export function OrithosOverviewPage() {
                 {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                 Refresh
               </button>
+              <Link href="/" className="oh-type-label inline-flex h-9 items-center gap-1 rounded-lg bg-[var(--oh-primary)] px-3 font-semibold text-white no-underline hover:bg-[var(--oh-primary-hover)] lg:hidden">
+                Open point of sale <ArrowRight size={15} />
+              </Link>
             </div>
           </header>
 
@@ -238,26 +235,29 @@ export function OrithosOverviewPage() {
 
           <section aria-label="Today summary" className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
-              title="Total sales"
+              title="Net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
+              detail="After refunds · incl. tax"
               delta={data?.compare.revenueDeltaPct}
               icon={<ShoppingBag size={15} />}
             />
             <KpiCard
-              title="Transactions"
+              title="Sales"
               value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)}
+              detail={`Avg ${formatMoney(averageSale, data?.currency ?? "AUD")} per sale`}
               delta={data?.compare.transactionsDeltaPct}
               icon={<Package size={15} />}
             />
             <KpiCard
-              title="Average sale"
-              value={formatMoney(averageSale, data?.currency ?? "AUD")}
-              delta={data?.compare.averageSaleDeltaPct}
-              icon={<ArrowRight size={15} />}
+              title="Refunds"
+              value={formatMoney(data?.refunds ?? 0, data?.currency ?? "AUD")}
+              detail={`${new Intl.NumberFormat("en-AU").format(data?.refundTransactions ?? 0)} refunded orders`}
+              icon={<RotateCcw size={15} />}
             />
             <KpiCard
               title="Items sold"
               value={new Intl.NumberFormat("en-AU", { maximumFractionDigits: 0 }).format(data?.itemsSold ?? 0)}
+              detail="From completed sales"
               delta={data?.compare.itemsSoldDeltaPct}
               icon={<Archive size={15} />}
             />
@@ -266,7 +266,7 @@ export function OrithosOverviewPage() {
           <section className="min-h-0 shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
               <div>
-                <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Top products today</h2>
+                <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Top products</h2>
                 <p className="oh-type-meta text-[var(--oh-muted)]">Last 24 hours</p>
               </div>
               <Link href="/products/odoo" className="oh-type-meta font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
@@ -313,11 +313,11 @@ export function OrithosOverviewPage() {
             )}
           </section>
 
-          <div className="grid min-h-0 flex-1 gap-2 xl:grid-cols-2">
+          <div className="grid min-h-[20rem] flex-1 gap-2 sm:grid-cols-2 lg:min-h-0">
             <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales trend</h2>
               <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Last 24 hours</p>
-              {data?.trend.length ? (
+              {data?.trend.some((item) => item.revenue > 0) ? (
                 <div className="mt-2 flex min-h-[7rem] flex-1 items-end gap-1.5 border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1">
                   {data.trend.map((item, index) => {
                     const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
@@ -332,7 +332,14 @@ export function OrithosOverviewPage() {
                   })}
                 </div>
               ) : (
-                <div className="oh-type-meta grid min-h-[7rem] flex-1 place-items-center text-center text-[var(--oh-muted)]">No sales in this period</div>
+                <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
+                  <div className="max-w-xs">
+                    <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-accent)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
+                    <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No sales in the last 24 hours</p>
+                    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Complete a sale to see activity by hour.</p>
+                    <Link href="/" className="oh-type-meta mt-2 inline-flex min-h-9 items-center gap-1 rounded-md px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-accent)]">Open point of sale <ArrowRight size={14} /></Link>
+                  </div>
+                </div>
               )}
             </section>
 
@@ -357,7 +364,13 @@ export function OrithosOverviewPage() {
                   </ul>
                 </div>
               ) : (
-                <div className="oh-type-meta grid min-h-[7rem] flex-1 place-items-center text-center text-[var(--oh-muted)]">No category mix yet</div>
+                <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
+                  <div className="max-w-xs">
+                    <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-accent)] text-[var(--oh-primary)]"><PieChart size={19} /></span>
+                    <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No category mix yet</p>
+                    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Category shares appear after completed sales.</p>
+                  </div>
+                </div>
               )}
             </section>
           </div>
@@ -368,7 +381,7 @@ export function OrithosOverviewPage() {
           </p>
         </div>
 
-        <aside className="flex w-full shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:h-full lg:w-[280px]">
+        <aside className="hidden w-full shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:flex lg:h-full lg:w-[280px]">
           <div className="flex shrink-0 items-center justify-between border-b border-[var(--oh-border)] px-3 py-2">
             <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Current sale</h2>
             {parkedCount > 0 && (
@@ -411,22 +424,27 @@ export function OrithosOverviewPage() {
 function KpiCard({
   title,
   value,
+  detail,
   delta,
   icon,
 }: {
   title: string;
   value: string;
+  detail?: string;
   delta?: number | null;
   icon: React.ReactNode;
 }) {
   return (
-    <article className="rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
+    <article className="flex min-h-[104px] flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
       <div className="flex items-center justify-between gap-2">
         <p className="oh-type-meta text-[var(--oh-muted)]">{title}</p>
         <span className="grid h-7 w-7 place-items-center rounded-md bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">{icon}</span>
       </div>
       <p className="mt-1.5 text-[1.25rem] font-bold leading-tight tracking-tight text-[var(--oh-text)]">{value}</p>
-      <div className="mt-0.5 min-h-4"><Delta value={delta} /></div>
+      <div className="mt-auto pt-1">
+        {detail && <p className="oh-type-meta truncate text-[var(--oh-muted)]" title={detail}>{detail}</p>}
+        <div className="min-h-4"><Delta value={delta} /></div>
+      </div>
     </article>
   );
 }

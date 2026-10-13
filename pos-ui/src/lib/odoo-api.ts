@@ -278,6 +278,13 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   let response = await fetch(input, init);
   if (response.status !== 401) return response;
 
+  // Odoo-backed routes use their own session cookie. Recover it before refreshing
+  // the unrelated Orithos access token, then replay only requests proven safe.
+  if (canReplay && await recoverOdooSession()) {
+    response = await fetch(input, init);
+    if (response.status !== 401) return response;
+  }
+
   try {
     const refreshed = await fetch("/api/auth/refresh", {
       method: "POST",
