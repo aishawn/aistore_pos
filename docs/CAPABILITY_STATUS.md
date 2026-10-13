@@ -42,6 +42,8 @@ Statuses:
 
 ## Reporting & AI
 
+AI remains disabled in production. The tenant report database account has no source-controlled default password; configuring `AI_REPORT_RO_PASSWORD` is required before outlet report access can be provisioned.
+
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass |

@@ -7,7 +7,7 @@ public class AiReportProperties {
 
     /** Base name for per-outlet RO users ({@code {username}_o{outletId}}). */
     private String username = "orithos_ai_ro";
-    private String password = "orithos-ai-ro";
+    private String password = "";
     /**
      * If the tenant RO account cannot connect, execute on the primary DS.
      * Keep false in SaaS: primary can read every outlet.

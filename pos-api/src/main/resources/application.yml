@@ -104,7 +104,8 @@ app:
     vision-model: ${AI_VISION_MODEL:qwen-vl-plus}
     report:
       username: ${AI_REPORT_RO_USER:orithos_ai_ro}
-      password: ${AI_REPORT_RO_PASSWORD:orithos-ai-ro}
+      # Never use a source-controlled fallback for the tenant reporting account.
+      password: ${AI_REPORT_RO_PASSWORD:}
       fallback-to-primary: false
       query-timeout-seconds: 5
       max-rows: 500

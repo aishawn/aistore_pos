@@ -64,6 +64,10 @@ public class AiReportTenantProvisioner {
     }
 
     private void provision(long outletId) {
+        if (props.getPassword() == null || props.getPassword().isBlank()) {
+            throw new IllegalStateException(
+                    "AI_REPORT_RO_PASSWORD must be configured before provisioning AI report access");
+        }
         String schema = AiReportTenantSchema.schemaName(outletId);
         String user = AiReportTenantSchema.username(props.getUsername(), outletId);
         String pass = escapeMysqlString(props.getPassword());
