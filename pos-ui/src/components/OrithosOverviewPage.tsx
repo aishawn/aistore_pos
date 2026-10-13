@@ -169,6 +169,12 @@ export function OrithosOverviewPage() {
 
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
+  const hasTrendData = data?.trend.some((item) => item.revenue > 0) ?? false;
+  const hasCategoryData = (data?.byCategory.length ?? 0) > 0;
+  const hasAnalyticsData = hasTrendData || hasCategoryData;
+  const trendData = data?.trend ?? [];
+  const trendGranularity = data?.trendGranularity ?? "hour";
+  const currency = data?.currency ?? "AUD";
   const donutGradient = useMemo(() => {
     if (!data?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
     let cursor = 0;
@@ -273,12 +279,12 @@ export function OrithosOverviewPage() {
             </div>
             {data?.topProducts.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] text-left">
+                <table className="w-full table-fixed text-left">
                   <thead>
                     <tr className="oh-type-meta border-b border-[var(--oh-border)] text-[var(--oh-muted)]">
-                      <th className="px-3 py-1.5 font-semibold">Product</th>
-                      <th className="px-2 py-1.5 text-right font-semibold">Units</th>
-                      <th className="px-3 py-1.5 text-right font-semibold">Revenue</th>
+                      <th className="w-[52%] px-3 py-1.5 font-semibold">Product</th>
+                      <th className="w-[16%] px-2 py-1.5 text-right font-semibold">Units</th>
+                      <th className="w-[32%] px-3 py-1.5 text-right font-semibold">Revenue</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">
@@ -313,19 +319,19 @@ export function OrithosOverviewPage() {
             )}
           </section>
 
-          <div className="grid min-h-[20rem] flex-1 gap-2 sm:grid-cols-2 lg:min-h-0">
+          <div className={cn("grid gap-2 sm:grid-cols-2", hasAnalyticsData ? "min-h-0 flex-1" : "min-h-[15rem] shrink-0")}>
             <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales trend</h2>
               <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Last 24 hours</p>
-              {data?.trend.some((item) => item.revenue > 0) ? (
+              {hasTrendData ? (
                 <div className="mt-2 flex min-h-[7rem] flex-1 items-end gap-1.5 border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1">
-                  {data.trend.map((item, index) => {
+                  {trendData.map((item, index) => {
                     const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
-                    const label = formatSydney(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+                    const label = formatSydney(item.label, trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
                     return (
                       <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">
-                        <div className="oh-type-meta mb-0.5 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, data.currency)}</div>
-                        <div className="relative mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
+                        <div className="oh-type-meta mb-0.5 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, currency)}</div>
+                        <div className="relative mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`} />
                         <span className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{label}</span>
                       </div>
                     );
@@ -334,7 +340,7 @@ export function OrithosOverviewPage() {
               ) : (
                 <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
                   <div className="max-w-xs">
-                    <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-accent)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
+                    <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
                     <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No sales in the last 24 hours</p>
                     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Complete a sale to see activity by hour.</p>
                     <Link href="/" className="oh-type-meta mt-2 inline-flex min-h-9 items-center gap-1 rounded-md px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-accent)]">Open point of sale <ArrowRight size={14} /></Link>
@@ -366,7 +372,7 @@ export function OrithosOverviewPage() {
               ) : (
                 <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
                   <div className="max-w-xs">
-                    <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-accent)] text-[var(--oh-primary)]"><PieChart size={19} /></span>
+                    <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><PieChart size={19} /></span>
                     <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No category mix yet</p>
                     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Category shares appear after completed sales.</p>
                   </div>
