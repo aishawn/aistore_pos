@@ -8,6 +8,7 @@ import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
   transcribeAudio,
+  ApiError,
   type AssistantResponse,
 } from "@/lib/api";
 import {
@@ -75,6 +76,23 @@ const DEMO_MESSAGES: ChatMessage[] = [
     text: "Hi, I'm the Orithos AI assistant. Ask me to create customers, look up products, or check sales.",
   },
 ];
+
+function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
+  if (error instanceof ApiError && error.status === 401) {
+    return "Your session has expired. Sign in again to use the assistant.";
+  }
+  if (
+    error instanceof ApiError &&
+    (error.code === 50301 || error.status === 503)
+  ) {
+    return mode === "voice"
+      ? "AI voice transcription is not enabled for this store. Type your request instead."
+      : "The AI assistant is not enabled for this store. Contact your administrator. Product search and checkout are still available.";
+  }
+  return mode === "voice"
+    ? "Voice transcription could not reach the assistant. Check your connection or type your request instead."
+    : "The assistant could not connect. Check your connection and try again.";
+}
 
 const QUICK_ACTIONS = [
   "Today's sales",
@@ -395,10 +413,9 @@ export function SellAiPanel({
         ]);
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "AI request failed";
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: `Sorry — ${msg}. Please try again.` },
+        { role: "assistant", text: aiFailureMessage(e, "chat") },
       ]);
     } finally {
       busyRef.current = false;
@@ -621,8 +638,7 @@ export function SellAiPanel({
       setListening(false);
       setVoiceStatus(null);
       voiceStopRef.current = null;
-      const detail = e instanceof Error ? e.message : "unknown error";
-      setVoiceAlert(`Cloud voice failed (${detail}). Please type instead.`);
+      setVoiceAlert(aiFailureMessage(e, "voice"));
     }
   }
 
