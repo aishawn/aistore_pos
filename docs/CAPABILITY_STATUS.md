@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + 8 general, 3 operations, and 6 auto-recovery checks; app commit `5b5d48f` deployed Done)
+**Last updated:** 2026-10-13 (24-route matrix + 8 general, 3 operations, 6 auto-recovery checks, and 113 backend tests; app commit `ee0cb0b` deployed Done)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -47,7 +47,7 @@ AI remains disabled in production. The tenant report database account has no sou
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass |
-| Cashier assistant / NL reports | In progress | Spring Graph; keep `AI_ENABLED=false` until budget |
+| Cashier assistant / NL reports | In progress | Spring Graph; report permissions now resolve from the active DB role on every request (`8721a08`); 113 Java 21 build tests pass. Production AI remains disabled until budget, so no live report call UAT yet |
 | Wine / sommelier assistant | In progress | Routes load; AI kept off this round (no model calls) |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
 
