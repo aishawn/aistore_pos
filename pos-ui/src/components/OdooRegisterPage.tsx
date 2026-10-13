@@ -629,14 +629,14 @@ export function OdooRegisterPage() {
                             title={fullName}
                             onClick={() => addProduct(product)}
                             disabled={!selectedConfig?.session || product.free_qty <= 0}
-                            className="flex min-h-[104px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45"
+                            className="flex min-h-[112px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45"
                           >
-                            <span className="mb-2 grid h-8 w-8 place-items-center rounded-full text-xs font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">
+                            <span className="oh-type-label mb-2 grid h-9 w-9 place-items-center rounded-full font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">
                               {initial}
                             </span>
-                            <span className="line-clamp-2 text-sm font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
-                            <span className="mt-auto pt-2 text-base font-bold tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</span>
-                            <span className={cn("mt-0.5 text-xs", product.free_qty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>
+                            <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
+                            <span className="oh-type-body-strong mt-auto pt-2 tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</span>
+                            <span className={cn("oh-type-label mt-0.5", product.free_qty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>
                               {product.free_qty > 0
                                 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.free_qty)} avail.`
                                 : "No stock"}
@@ -707,11 +707,11 @@ export function OdooRegisterPage() {
                 aria-selected={saleView === "sell"}
                 onClick={() => setSaleView("sell")}
                 className={cn(
-                  "flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors",
+                  "oh-type-body flex h-11 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-colors",
                   saleView === "sell" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]",
                 )}
               >
-                <Keyboard size={16} strokeWidth={1.75} /> Sales Keys
+                <Keyboard size={18} strokeWidth={1.75} /> Sales Keys
               </button>
               <button
                 type="button"
@@ -719,13 +719,13 @@ export function OdooRegisterPage() {
                 aria-selected={saleView === "parked"}
                 onClick={() => setSaleView("parked")}
                 className={cn(
-                  "relative flex h-10 flex-1 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors",
+                  "oh-type-body relative flex h-11 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-colors",
                   saleView === "parked" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]",
                 )}
               >
-                <SquareParking size={16} strokeWidth={1.75} /> Parked
+                <SquareParking size={18} strokeWidth={1.75} /> Parked
                 {visibleParkedSales.length > 0 && (
-                  <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--oh-primary)] px-1.5 text-[11px] font-bold text-white">
+                  <span className="oh-type-label inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--oh-primary)] px-1.5 font-bold text-white">
                     {visibleParkedSales.length}
                   </span>
                 )}
@@ -739,8 +739,8 @@ export function OdooRegisterPage() {
             {customer ? (
               <>
                 <button type="button" onClick={() => setCustomerQuery(customer.name)} className="flex flex-1 cursor-pointer items-center text-left">
-                  <span className="ml-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-primary)] text-sm font-bold text-white">{customer.name.charAt(0)}</span>
-                  <span className="mx-2 truncate text-base font-semibold text-[var(--oh-text)]">{customer.name}</span>
+                  <span className="oh-type-body ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--oh-primary)] font-bold text-white">{customer.name.charAt(0)}</span>
+                  <span className="oh-type-body-strong mx-2 truncate text-[var(--oh-text)]">{customer.name}</span>
                 </button>
                 <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="mr-2 grid h-8 w-8 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"><X size={18} /></button>
               </>
@@ -751,7 +751,7 @@ export function OdooRegisterPage() {
                   value={customerQuery}
                   onChange={(event) => setCustomerQuery(event.target.value)}
                   placeholder="Add customer"
-                  className="h-full min-w-0 flex-1 bg-transparent text-base font-semibold text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
+                  className="oh-type-body-strong h-full min-w-0 flex-1 bg-transparent text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
                 />
               </label>
             )}
@@ -775,28 +775,28 @@ export function OdooRegisterPage() {
               const fullName = product.display_name || product.name;
               const label = friendlyProductLabel(fullName);
               return (
-                <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3">
+                <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3.5">
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 w-6 shrink-0 text-sm font-semibold tabular-nums text-[var(--oh-text-secondary)]">{qty}×</span>
+                    <span className="oh-type-body mt-0.5 w-7 shrink-0 font-semibold tabular-nums text-[var(--oh-text-secondary)]">{qty}×</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-[var(--oh-text)]" title={fullName}>{label}</span>
-                      <span className="text-xs text-[var(--oh-text-secondary)]">
+                      <span className="oh-type-body block truncate font-semibold text-[var(--oh-text)]" title={fullName}>{label}</span>
+                      <span className="oh-type-label text-[var(--oh-text-secondary)]">
                         {factor > 1
-                          ? `${money(unitPrice)} per case · ${factor}/pack`
+                          ? `${money(unitPrice)} / case · ${factor}`
                           : `${money(unitPrice)} each`}
-                        {quotedLine ? " inc. GST" : ""}
+                        {quotedLine ? " · GST" : ""}
                       </span>
                     </span>
-                    <span className="shrink-0 text-sm font-bold tabular-nums text-[var(--oh-text)]">${lineTotal.whole}.{lineTotal.cents}</span>
+                    <span className="oh-type-body-strong shrink-0 tabular-nums text-[var(--oh-text)]">${lineTotal.whole}.{lineTotal.cents}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 pl-9">
                     <div className="flex items-center gap-1">
-                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={14} /></button>
-                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-8 w-8 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={14} /></button>
-                      <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-8 w-8 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={15} /></button>
+                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={15} /></button>
+                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={15} /></button>
+                      <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={16} /></button>
                     </div>
-                    <label className="flex items-center gap-2 text-[11px] font-medium text-[var(--oh-text-secondary)]">Pack
-                      <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="h-8 rounded-md border border-[var(--oh-border)] bg-white px-2 text-xs font-semibold text-[var(--oh-text)]">
+                    <label className="oh-type-label flex items-center gap-2 text-[var(--oh-text-secondary)]">Pack
+                      <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="oh-type-label h-9 rounded-md border border-[var(--oh-border)] bg-white px-2 font-semibold text-[var(--oh-text)]">
                         {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each" : `Case ×${size}`}</option>)}
                       </select>
                     </label>
@@ -806,11 +806,11 @@ export function OdooRegisterPage() {
             }) : (
               <div className="grid h-full min-h-[180px] place-items-center px-6 text-center">
                 <div>
-                  <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
-                    <ShoppingBag size={22} aria-hidden="true" />
+                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
+                    <ShoppingBag size={24} aria-hidden="true" />
                   </span>
-                  <p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">Cart is empty</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--oh-text-secondary)]">Tap a product on the left to start this sale.</p>
+                  <p className="oh-type-body-strong mt-3 text-[var(--oh-text)]">Cart is empty</p>
+                  <p className="oh-type-label mt-1 text-[var(--oh-text-secondary)]">Tap a product to start.</p>
                 </div>
               </div>
             )}
@@ -819,33 +819,33 @@ export function OdooRegisterPage() {
           <div className="relative shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/60">
             {(isCashPayment || paymentMethods.length > 1) && (
               <div className="border-b border-[var(--oh-border)] px-4 py-3">
-                <label className="grid gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">Payment
-                  <select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">
+                <label className="oh-type-label grid gap-1.5 font-semibold text-[var(--oh-text-secondary)]">Payment
+                  <select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="oh-type-body h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-medium text-[var(--oh-text)]">
                     {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
                   </select>
                 </label>
                 {isCashPayment && (
                   <div className="mt-2">
-                    <label htmlFor="cash-tendered" className="flex items-center justify-between text-sm text-[var(--oh-text)]"><span>Cash received</span><span className="text-xs text-[var(--oh-text-secondary)]">Due {money(amountToCollect)}</span></label>
-                    <input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="mt-1 h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2 text-base tabular-nums outline-none focus:border-[var(--sf-cta)] focus:ring-2 focus:ring-[var(--sf-cta)]/20" />
-                    {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && <p className="mt-1 text-sm tabular-nums text-[var(--oh-text-secondary)]">Change {money(changeDue)}</p>}
+                    <label htmlFor="cash-tendered" className="oh-type-body flex items-center justify-between text-[var(--oh-text)]"><span>Cash received</span><span className="oh-type-label text-[var(--oh-text-secondary)]">Due {money(amountToCollect)}</span></label>
+                    <input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="oh-type-body-strong mt-1 h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-2 tabular-nums outline-none focus:border-[var(--sf-cta)] focus:ring-2 focus:ring-[var(--sf-cta)]/20" />
+                    {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && <p className="oh-type-body mt-1 tabular-nums text-[var(--oh-text-secondary)]">Change {money(changeDue)}</p>}
                   </div>
                 )}
               </div>
             )}
             <div className="px-4 py-3">
               <div className="flex items-end justify-between gap-3">
-                <div className={cn("text-sm", lines.length ? "text-[var(--oh-text-secondary)]" : "text-[var(--oh-placeholder)]")}>
-                  <p className="font-medium text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>
+                <div className={cn("oh-type-label", lines.length ? "text-[var(--oh-text-secondary)]" : "text-[var(--oh-placeholder)]")}>
+                  <p className="oh-type-body font-semibold text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>
                   <p className="mt-0.5">Subtotal {money(subtotal)}</p>
                   <p>GST {quoteLoading ? "…" : money(taxTotal)}</p>
                   {amountToCollect !== total && <p>Rounding {money(amountToCollect - total)}</p>}
                 </div>
                 <div className={cn("text-right", lines.length ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]")}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">Total</p>
+                  <p className="oh-type-label font-semibold text-[var(--oh-text-secondary)]">Total</p>
                   <p className="leading-none">
-                    <span className="text-[36px] font-bold tracking-tight">${totalWhole}</span>
-                    <span className="align-top text-xl font-bold">.{totalCents}</span>
+                    <span className="oh-type-display">${totalWhole}</span>
+                    <span className="align-top text-[1.375rem] font-bold">.{totalCents}</span>
                   </p>
                 </div>
               </div>
@@ -854,7 +854,7 @@ export function OdooRegisterPage() {
                 onClick={() => void checkout()}
                 disabled={!canFinalise}
                 className={cn(
-                  "mt-3 inline-flex h-12 w-full items-center justify-center rounded-lg text-base font-semibold transition-colors",
+                  "oh-type-body-strong mt-3 inline-flex h-14 w-full items-center justify-center rounded-lg transition-colors",
                   canFinalise
                     ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
                     : "cursor-not-allowed bg-[var(--oh-border)] text-[var(--oh-text-secondary)]",

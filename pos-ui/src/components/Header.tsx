@@ -59,12 +59,12 @@ export function Header({
           role="status"
           aria-live="polite"
           title="Browser network connection"
-          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--oh-text-secondary)]"
+          className="oh-type-label inline-flex items-center gap-1.5 font-semibold text-[var(--oh-text-secondary)]"
         >
           {online ? (
-            <Wifi size={15} className="text-[var(--sf-online-green)]" aria-hidden="true" />
+            <Wifi size={16} className="text-[var(--sf-online-green)]" aria-hidden="true" />
           ) : (
-            <WifiOff size={15} className="text-[var(--oh-warning)]" aria-hidden="true" />
+            <WifiOff size={16} className="text-[var(--oh-warning)]" aria-hidden="true" />
           )}
           <span className={online ? "text-[var(--sf-online-green)]" : undefined}>{online ? "ONLINE" : "OFFLINE"}</span>
         </div>
@@ -79,7 +79,7 @@ export function Header({
           <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-primary)]">
             <UserIcon size={20} className="text-white" fill="white" />
           </span>
-          <p className="mx-2 text-[16px] text-[var(--oh-text)]">{userName}</p>
+          <p className="oh-type-body mx-2 text-[var(--oh-text)]">{userName}</p>
         </button>
       </div>
     </header>

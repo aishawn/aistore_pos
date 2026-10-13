@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Archive,
   ArrowRight,
-  LayoutDashboard,
   LoaderCircle,
   Package,
   RefreshCw,
@@ -102,8 +101,8 @@ function Delta({ value }: { value: number | null | undefined }) {
   if (value === null || value === undefined || !Number.isFinite(value)) return null;
   const positive = value >= 0;
   return (
-    <span className={cn("text-xs font-semibold", positive ? "text-[var(--oh-success)]" : "text-red-600")}>
-      {positive ? "+" : ""}{value}% vs same period last week
+    <span className={cn("oh-type-label font-semibold", positive ? "text-[var(--oh-success)]" : "text-red-600")}>
+      {positive ? "+" : ""}{value}% vs last week
     </span>
   );
 }
@@ -128,7 +127,8 @@ export function OrithosOverviewPage() {
   const dateLabel = useMemo(() => todayChipLabel(), []);
 
   const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       // Overview uses a rolling 24h window so “today” KPIs stay useful overnight.
@@ -209,23 +209,21 @@ export function OrithosOverviewPage() {
         <div className="flex min-w-0 flex-1 flex-col gap-4 lg:overflow-y-auto lg:pr-1">
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">
-                <LayoutDashboard size={14} /> Overview · {data?.company ?? "Store"}
-              </div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)] sm:text-3xl">{greeting}</h1>
-              <p className="mt-1 text-sm text-[var(--oh-muted)]">Here&apos;s what&apos;s happening in your store today.</p>
+              <p className="oh-type-label text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
+              <h1 className="oh-type-display mt-1 text-[var(--oh-text)]">{greeting}</h1>
+              <p className="oh-type-body mt-1 text-[var(--oh-muted)]">Here&apos;s what&apos;s happening in your store today.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex h-10 items-center rounded-full border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] shadow-sm">
+              <span className="oh-type-body inline-flex h-11 items-center rounded-full border border-[var(--oh-border)] bg-white px-4 text-[var(--oh-text)] shadow-sm">
                 Today · {dateLabel}
               </span>
               <button
                 type="button"
                 onClick={() => void load(true)}
                 disabled={refreshing}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] shadow-sm hover:bg-white disabled:opacity-60"
+                className="oh-type-body inline-flex h-11 items-center gap-2 rounded-full border border-[var(--oh-border)] bg-white px-4 text-[var(--oh-text)] shadow-sm hover:bg-white disabled:opacity-60"
               >
-                {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}
                 Refresh
               </button>
             </div>
@@ -265,21 +263,21 @@ export function OrithosOverviewPage() {
           </section>
 
           <section className="rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3.5 sm:px-5">
               <div>
-                <h2 className="text-base font-semibold text-[var(--oh-text)]">Top products today</h2>
-                <p className="text-xs text-[var(--oh-muted)]">Last 24 hours · completed POS orders</p>
+                <h2 className="oh-type-title text-[var(--oh-text)]">Top products today</h2>
+                <p className="oh-type-label mt-0.5 text-[var(--oh-muted)]">Last 24 hours</p>
               </div>
-              <Link href="/products/odoo" className="text-sm font-semibold text-[var(--oh-primary)] hover:underline">View all products →</Link>
+              <Link href="/products/odoo" className="oh-type-body font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
             </div>
             {data?.topProducts.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm">
+                <table className="w-full min-w-[520px] text-left">
                   <thead>
-                    <tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
-                      <th className="px-4 py-3 font-semibold sm:px-5">Product</th>
-                      <th className="px-3 py-3 text-right font-semibold">Units</th>
-                      <th className="px-4 py-3 text-right font-semibold sm:px-5">Revenue</th>
+                    <tr className="oh-type-label border-b border-[var(--oh-border)] text-[var(--oh-muted)]">
+                      <th className="px-4 py-3.5 font-semibold sm:px-5">Product</th>
+                      <th className="px-3 py-3.5 text-right font-semibold">Units</th>
+                      <th className="px-4 py-3.5 text-right font-semibold sm:px-5">Revenue</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">
@@ -289,17 +287,14 @@ export function OrithosOverviewPage() {
                       const initial = (label.replace(/[^A-Za-z0-9]/gu, "").charAt(0) || "?").toUpperCase();
                       return (
                         <tr key={product.id}>
-                          <td className="px-4 py-3 sm:px-5">
+                          <td className="px-4 py-3.5 sm:px-5">
                             <div className="flex items-center gap-3">
-                              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">{initial}</span>
-                              <div className="min-w-0">
-                                <p className="truncate font-semibold text-[var(--oh-text)]" title={product.name}>{label}</p>
-                                <p className="truncate text-xs text-[var(--oh-muted)]">SKU / POS product</p>
-                              </div>
+                              <span className="oh-type-label grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">{initial}</span>
+                              <p className="oh-type-body-strong min-w-0 truncate text-[var(--oh-text)]" title={product.name}>{label}</p>
                             </div>
                           </td>
-                          <td className="px-3 py-3 text-right tabular-nums text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty)}</td>
-                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)] sm:px-5">{formatMoney(product.revenue, data.currency)}</td>
+                          <td className="oh-type-body px-3 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty)}</td>
+                          <td className="oh-type-body-strong px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)] sm:px-5">{formatMoney(product.revenue, data.currency)}</td>
                         </tr>
                       );
                     })}
@@ -309,9 +304,9 @@ export function OrithosOverviewPage() {
             ) : (
               <div className="grid min-h-40 place-items-center px-4 py-8 text-center">
                 <div>
-                  <p className="text-sm font-semibold text-[var(--oh-text)]">No product sales yet</p>
-                  <p className="mt-1 text-sm text-[var(--oh-muted)]">Complete a sale on the register to see top products here.</p>
-                  <Link href="/" className="mt-3 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open point of sale</Link>
+                  <p className="oh-type-body-strong text-[var(--oh-text)]">No product sales yet</p>
+                  <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Complete a sale to see top products.</p>
+                  <Link href="/" className="oh-type-body mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open point of sale</Link>
                 </div>
               </div>
             )}
@@ -319,8 +314,8 @@ export function OrithosOverviewPage() {
 
           <div className="grid gap-4 xl:grid-cols-2">
             <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
-              <h2 className="text-base font-semibold text-[var(--oh-text)]">Sales trend</h2>
-              <p className="mt-1 text-xs text-[var(--oh-muted)]">Last 24 hours · Sydney time</p>
+              <h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2>
+              <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Last 24 hours</p>
               {data?.trend.length ? (
                 <div className="mt-5 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2">
                   {data.trend.map((item, index) => {
@@ -328,29 +323,29 @@ export function OrithosOverviewPage() {
                     const label = formatSydney(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
                     return (
                       <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">
-                        <div className="mb-1 truncate text-[10px] tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, data.currency)}</div>
+                        <div className="oh-type-meta mb-1 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, data.currency)}</div>
                         <div className="relative mx-auto w-full max-w-12 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
-                        <span className="mt-2 truncate text-[10px] text-[var(--oh-muted)]">{label}</span>
+                        <span className="oh-type-meta mt-2 truncate text-[var(--oh-muted)]">{label}</span>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="grid h-48 place-items-center text-center text-sm text-[var(--oh-muted)]">No sales in this period</div>
+                <div className="oh-type-body grid h-48 place-items-center text-center text-[var(--oh-muted)]">No sales in this period</div>
               )}
             </section>
 
             <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
-              <h2 className="text-base font-semibold text-[var(--oh-text)]">Sales by category</h2>
-              <p className="mt-1 text-xs text-[var(--oh-muted)]">Share of revenue · last 24 hours</p>
+              <h2 className="oh-type-title text-[var(--oh-text)]">Sales by category</h2>
+              <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Share of revenue</p>
               {data?.byCategory.length ? (
                 <div className="mt-5 flex flex-wrap items-center gap-6">
                   <div className="relative h-36 w-36 shrink-0 rounded-full" style={{ background: donutGradient }} aria-hidden="true">
                     <div className="absolute inset-[28%] rounded-full bg-white" />
                   </div>
-                  <ul className="min-w-0 flex-1 space-y-2">
+                  <ul className="min-w-0 flex-1 space-y-2.5">
                     {data.byCategory.map((item, index) => (
-                      <li key={item.name} className="flex items-center justify-between gap-3 text-sm">
+                      <li key={item.name} className="oh-type-body flex items-center justify-between gap-3">
                         <span className="flex min-w-0 items-center gap-2">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }} />
                           <span className="truncate text-[var(--oh-text)]">{item.name}</span>
@@ -361,23 +356,23 @@ export function OrithosOverviewPage() {
                   </ul>
                 </div>
               ) : (
-                <div className="grid h-48 place-items-center text-center text-sm text-[var(--oh-muted)]">Category mix appears after product sales post.</div>
+                <div className="oh-type-body grid h-48 place-items-center text-center text-[var(--oh-muted)]">No category mix yet</div>
               )}
             </section>
           </div>
 
-          <p className="pb-2 text-xs text-[var(--oh-muted)]">
-            Open registers: {data?.openRegisters ?? 0}. Deep dive in{" "}
-            <Link href="/reports/dashboard" className="font-semibold text-[var(--oh-primary)] hover:underline">Reporting</Link>.
+          <p className="oh-type-label pb-2 text-[var(--oh-muted)]">
+            Open registers: {data?.openRegisters ?? 0}.{" "}
+            <Link href="/reports/dashboard" className="font-semibold text-[var(--oh-primary)] hover:underline">Reporting</Link>
           </p>
         </div>
 
         <aside className="flex w-full shrink-0 flex-col rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:w-[340px]">
-          <div className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3">
-            <h2 className="text-base font-semibold text-[var(--oh-text)]">Current sale</h2>
+          <div className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3.5">
+            <h2 className="oh-type-title text-[var(--oh-text)]">Current sale</h2>
             {parkedCount > 0 && (
-              <Link href="/" className="inline-flex items-center gap-1 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-semibold text-[var(--oh-primary)]">
-                <Archive size={13} /> {parkedCount} parked
+              <Link href="/" className="oh-type-label inline-flex items-center gap-1 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 font-semibold text-[var(--oh-primary)]">
+                <Archive size={14} /> {parkedCount} parked
               </Link>
             )}
           </div>
@@ -386,22 +381,22 @@ export function OrithosOverviewPage() {
               <ShoppingBag size={24} />
             </span>
             <div>
-              <p className="text-sm font-semibold text-[var(--oh-text)]">Ready when you are</p>
-              <p className="mt-1 text-xs leading-5 text-[var(--oh-muted)]">
-                Overview is for today&apos;s store picture. Open the register to search products, take payment, and finalise.
+              <p className="oh-type-body-strong text-[var(--oh-text)]">Ready when you are</p>
+              <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+                Open the register to sell.
               </p>
             </div>
           </div>
           <div className="border-t border-[var(--oh-border)] p-4">
             <Link
               href="/"
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
+              className="oh-type-body inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
             >
-              Open point of sale <ArrowRight size={16} />
+              Open point of sale <ArrowRight size={18} />
             </Link>
             <Link
               href="/history/odoo"
-              className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg border border-[var(--oh-border)] text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
+              className="oh-type-body mt-2 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[var(--oh-border)] font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
             >
               Sales history
             </Link>
@@ -424,13 +419,13 @@ function KpiCard({
   icon: React.ReactNode;
 }) {
   return (
-    <article className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+    <article className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-[var(--oh-muted)]">{title}</p>
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">{icon}</span>
+        <p className="oh-type-label text-[var(--oh-muted)]">{title}</p>
+        <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">{icon}</span>
       </div>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">{value}</p>
-      <div className="mt-1 min-h-4"><Delta value={delta} /></div>
+      <p className="oh-type-kpi mt-3 text-[var(--oh-text)]">{value}</p>
+      <div className="mt-1.5 min-h-5"><Delta value={delta} /></div>
     </article>
   );
 }

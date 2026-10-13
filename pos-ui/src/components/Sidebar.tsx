@@ -157,7 +157,7 @@ function SidebarNavLink({
         tabIndex={tabIndex}
         onClick={(event) => guardNav(event, item.href)}
         className={cn(
-          "relative flex items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 text-[14px] font-medium transition-colors",
+          "oh-type-body relative flex items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -166,7 +166,7 @@ function SidebarNavLink({
         {active && (
           <span className="absolute bottom-1.5 left-0 top-1.5 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />
         )}
-        <Icon size={17} strokeWidth={1.75} className={active ? "text-[var(--oh-sidebar-active)]" : ""} />
+        <Icon size={18} strokeWidth={1.75} className={active ? "text-[var(--oh-sidebar-active)]" : ""} />
         {item.label}
       </Link>
     </li>
@@ -195,7 +195,7 @@ function SidebarNavGroup({
         tabIndex={tabIndex}
         onClick={() => setExpanded((v) => !v)}
         className={cn(
-          "flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 text-[14px] font-medium transition-colors",
+          "oh-type-body flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -203,13 +203,13 @@ function SidebarNavGroup({
       >
         <span className="flex items-center gap-3">
           <Icon
-            size={17}
+            size={18}
             strokeWidth={1.75}
             className={active ? "text-[var(--oh-sidebar-active)]" : ""}
           />
           {group.label}
         </span>
-        {expanded ? <ChevronDown size={15} className="opacity-50" /> : <ChevronRight size={15} className="opacity-50" />}
+        {expanded ? <ChevronDown size={16} className="opacity-50" /> : <ChevronRight size={16} className="opacity-50" />}
       </button>
       {expanded && (
         <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
@@ -223,7 +223,7 @@ function SidebarNavGroup({
                   tabIndex={tabIndex}
                   onClick={(event) => guardNav(event, item.href)}
                   className={cn(
-                    "relative flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                    "relative flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 text-[15px] transition-colors",
                     active
                       ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
                       : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
