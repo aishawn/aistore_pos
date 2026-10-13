@@ -299,3 +299,8 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - 非法 `categoryId=0` 请求被校验为 HTTP 400。
 - Orithos 登出 HTTP 200 后，POS bootstrap、Odoo session、records 查询和只读 quote 接口均返回 HTTP 401，未登录无法继续读取业务数据或报价。
 - 测试只触发 Odoo 读取与报价，无销售、库存或班次写入。该结果验证搜索/过滤 API 与服务端会话保护；尚未覆盖浏览器中实际点击、焦点、键盘扫码与下拉选择的 UI 行为。
+
+### Sell 报价接口校验与同源保护（2026-10-13）
+
+- 生产登录及 Odoo 自动恢复成功后，对只读 quote API 验证非法数量 `0` 返回 HTTP 400、不可用收银机 ID 返回 HTTP 403、伪造外部 Origin 返回 HTTP 403。
+- 测试 Orithos 登出返回 HTTP 200；登出后的匿名 session 为 `user: null` 且服务端自动恢复配置仍为 `true`。报价边界测试未创建订单、支付、库存或班次数据。
