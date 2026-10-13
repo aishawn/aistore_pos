@@ -118,28 +118,52 @@ for (const entry of pages) {
   console.log(`${pass ? "PASS" : "FAIL"} ${entry.path} :: ${text.slice(0, 140)}`);
 }
 
-// Roles: use the same authenticated API as the UI, and always clean up the
-// uniquely named temporary role even if an intermediate assertion fails.
+// Roles: exercise permission assignment through the UI, verify the stored
+// grant through the API, and always clean up the unique test role.
 let roleResult = "SKIP";
 let temporaryRoleId;
+let roleName;
 try {
-  const roleName = `Pilot Clerk ${Date.now().toString().slice(-6)}`;
+  roleName = `Pilot UAT ${Date.now().toString().slice(-6)}`;
+  await page.goto(`${base}/settings/roles`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("button", { name: /New role/i }).click();
+  await page.getByLabel(/Role name/i).fill(roleName);
   const permissionsResponse = await context.request.get(`${base}/api/permissions`);
   const permissionsBody = await permissionsResponse.json();
   if (!permissionsResponse.ok() || permissionsBody.code !== 0) throw new Error(`Permission list failed: ${permissionsBody.message}`);
-  const permissionIds = (permissionsBody.data || permissionsBody.items || []).slice(0, 1).map((permission) => permission.id);
-  const create = await context.request.post(`${base}/api/roles`, { data: { name: roleName, permissionIds } });
-  const createdBody = await create.json();
-  if (!create.ok() || createdBody.code !== 0 || !createdBody.data?.id) throw new Error(`Role create failed: ${createdBody.message}`);
-  temporaryRoleId = createdBody.data.id;
-  roleResult = "CREATED";
+  const firstPermission = (permissionsBody.data || permissionsBody.items || [])[0];
+  if (!firstPermission) throw new Error("No permissions are available for role UAT");
+  const firstCheckbox = page.locator('input[type="checkbox"]').first();
+  await firstCheckbox.check();
+  await page.getByRole("button", { name: /Save role/i }).click();
+  await page.getByText(roleName, { exact: true }).waitFor({ timeout: 20000 });
+  const rolesResponse = await context.request.get(`${base}/api/roles`);
+  const rolesBody = await rolesResponse.json();
+  temporaryRoleId = (rolesBody.data || []).find((role) => role.name === roleName)?.id;
+  if (!temporaryRoleId) throw new Error("Created role was not returned by the role API");
+  const assignedResponse = await context.request.get(`${base}/api/roles/${temporaryRoleId}/permissions`);
+  const assignedBody = await assignedResponse.json();
+  if (!assignedResponse.ok() || !(assignedBody.data || []).some((permission) => permission.id === firstPermission.id)) {
+    throw new Error("The UI permission grant was not saved");
+  }
+  await page.locator("tr", { hasText: roleName }).getByText(firstPermission.name, { exact: true }).waitFor({ timeout: 15000 });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: `Delete ${roleName} role` }).click();
+  await page.getByText(roleName, { exact: true }).waitFor({ state: "detached", timeout: 20000 });
+  temporaryRoleId = undefined;
+  roleResult = "CREATED_PERMISSION_SAVED_DELETED";
 } catch (error) {
   roleResult = `ERROR:${error.message}`;
 } finally {
+  if (!temporaryRoleId && roleName) {
+    const rolesResponse = await context.request.get(`${base}/api/roles`).catch(() => null);
+    const rolesBody = await rolesResponse?.json().catch(() => null);
+    temporaryRoleId = (rolesBody?.data || []).find((role) => role.name === roleName)?.id;
+  }
   if (temporaryRoleId) {
     const deletion = await context.request.delete(`${base}/api/roles/${temporaryRoleId}`);
     const deletedBody = await deletion.json().catch(() => ({}));
-    roleResult = deletion.ok() && deletedBody.code === 0 ? "CREATED_DELETED" : `CREATED_DELETE_FAIL:${deletedBody.message || deletion.status()}`;
+    if (!deletion.ok() || deletedBody.code !== 0) roleResult = `CLEANUP_FAIL:${deletedBody.message || deletion.status()}`;
   }
 }
 console.log("ROLE_CRUD", roleResult);

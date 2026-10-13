@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-13T10:20:53.757Z",
-  "roleResult": "CREATED_DELETED",
+  "generatedAt": "2026-10-13T10:33:28.409Z",
+  "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
       "path": "/",

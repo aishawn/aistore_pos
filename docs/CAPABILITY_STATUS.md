@@ -85,7 +85,8 @@ Statuses:
 
 - Deployed app commit `fe9b163` (role permissions + honest company/sale-keys pages).
 - Page matrix evidence: `docs/UAT_PAGE_MATRIX_2026-10-13.json` (24/24 routes pass after waiting for Odoo catalogue hydration; the inventory assertion now matches the displayed `12Units` format).
-- Role CRUD evidence: temporary API-created role was deleted successfully; the earlier leftover UAT role `Pilot Clerk 344840` (`AI Report Cost`, no longer needed) was also deleted and verified absent.
+- Role CRUD evidence: browser UI created a temporary role, its selected `AI Report Cost` grant was verified through the API, then the role was deleted through the UI. The earlier leftover `Pilot Clerk 344840` was also deleted and verified absent.
+- Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap still returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
 - Write evidence: Card `$28.60` receipt `260-1-000009`, Cash `$38.39` receipt `260-1-000010`, refunds created, stock restored to 12/12 — `docs/UAT_WRITE_2026-10-13.json`.
 - AI remained off; SMTP still unconfigured (invite/reset copy-link path verified in UI copy).
 - Session `orithos_store1/00004` left **opened** after net-zero this-round sales/refunds.

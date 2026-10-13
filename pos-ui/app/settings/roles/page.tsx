@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Pencil, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { AsyncState } from "@/components/admin/AsyncState";
@@ -40,10 +40,15 @@ export default function RolesPage() {
   const rolesState = useApi<Role[]>(BASE);
   const permissionsState = useApi<Permission[]>("/api/permissions");
   const usersState = useApi<StaffUser[]>("/api/users");
-  const roles = rolesState.data ?? [];
+  const roles = useMemo(() => rolesState.data ?? [], [rolesState.data]);
   const permissions = useMemo(() => permissionsState.data ?? [], [permissionsState.data]);
   const users = usersState.data ?? [];
+  const roleKey = useMemo(() => roles.map((role) => String(role.id)).join("|"), [roles]);
 
+  const [rolePermissionSnapshot, setRolePermissionSnapshot] = useState<{
+    key: string;
+    byRole: Record<string, string[] | null>;
+  }>({ key: "", byRole: {} });
   const [editing, setEditing] = useState<Role | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -62,6 +67,27 @@ export default function RolesPage() {
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [permissions]);
+
+  useEffect(() => {
+    if (!roles.length) return;
+    let cancelled = false;
+    void Promise.all(roles.map(async (role) => {
+      try {
+        const assigned = await api.get<Permission[]>(`${BASE}/${role.id}/permissions`);
+        return [String(role.id), assigned.map((permission) => permission.name)] as const;
+      } catch {
+        return [String(role.id), null] as const;
+      }
+    })).then((entries) => {
+      if (!cancelled) {
+        setRolePermissionSnapshot({
+          key: roleKey,
+          byRole: Object.fromEntries(entries),
+        });
+      }
+    });
+    return () => { cancelled = true; };
+  }, [roles, roleKey]);
 
   function openCreate() {
     setEditing(null);
@@ -196,7 +222,19 @@ export default function RolesPage() {
                       <tr key={String(role.id)} className="border-t border-[var(--oh-border)]/70">
                         <td className="px-4 py-4 font-semibold text-[var(--oh-text)]">{role.name}</td>
                         <td className="px-4 py-4 text-[var(--oh-text-secondary)]">
-                          {permissions.length === 0 ? "No catalogue loaded" : "Edit access to assign permissions"}
+                          {rolePermissionSnapshot.key !== roleKey ? (
+                            <span className="text-[var(--oh-muted)]">Loading access…</span>
+                          ) : rolePermissionSnapshot.byRole[String(role.id)] === null ? (
+                            <span className="text-red-800">Could not load permissions</span>
+                          ) : rolePermissionSnapshot.byRole[String(role.id)]?.length ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {rolePermissionSnapshot.byRole[String(role.id)]?.map((permissionName) => (
+                                <span key={permissionName} className="rounded-full bg-[var(--oh-surface)] px-2 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{permissionName}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[var(--oh-muted)]">No permissions assigned</span>
+                          )}
                         </td>
                         <td className="px-4 py-4 text-[var(--oh-text-secondary)]">
                           <span className="inline-flex items-center gap-1.5"><UsersRound size={15} aria-hidden="true" />{roleUsers.length}</span>
