@@ -696,7 +696,7 @@ export function SellAiPanel({
           disabled={busy}
           readOnly={busy}
           placeholder={busy ? "Waiting for reply…" : "Ask Orithos AI…"}
-          className="min-w-0 flex-1 bg-transparent text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] disabled:cursor-not-allowed"
+          className="min-w-0 flex-1 bg-transparent text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] disabled:cursor-not-allowed"
         />
       </div>
       <button
@@ -773,16 +773,16 @@ export function SellAiPanel({
       }}
     >
       {expanded && (
-        <div className="pointer-events-auto flex w-[min(100vw-2.5rem,360px)] flex-col gap-2.5">
+        <div className="pointer-events-auto flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5">
           <div
-            className="flex max-h-[min(70vh,560px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--oh-border)] bg-white"
+            className="flex max-h-[min(72vh,620px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--oh-border)] bg-white"
             style={{ boxShadow: FLOAT_SHADOW }}
             role="dialog"
             aria-label="Orithos AI assistant"
           >
             <div
               className={cn(
-                "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] bg-[var(--oh-orange-light)] px-3 py-2.5",
+                "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] bg-[var(--oh-orange-light)] px-3.5 py-3",
                 dragging ? "cursor-grabbing" : "cursor-grab",
               )}
               onPointerDown={beginDrag}
@@ -790,12 +790,12 @@ export function SellAiPanel({
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
             >
-              <AiFabIcon size={36} className="pointer-events-none shadow-sm" />
+              <AiFabIcon size={40} className="pointer-events-none shadow-sm" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-[var(--oh-text)]">
+                <p className="truncate text-[15px] font-semibold text-[var(--oh-text)]">
                   Orithos AI
                 </p>
-                <p className="truncate text-[11px] text-[var(--oh-muted)]">
+                <p className="truncate text-[13px] text-[var(--oh-muted)]">
                   Ask anything about sales
                 </p>
               </div>
@@ -814,7 +814,7 @@ export function SellAiPanel({
 
             <div
               ref={scrollRef}
-              className="min-h-[200px] flex-1 overflow-y-auto bg-[var(--oh-surface)]"
+              className="min-h-[240px] flex-1 overflow-y-auto bg-[var(--oh-surface)]"
             >
               <DialogueView
                 messages={messages}
@@ -824,14 +824,14 @@ export function SellAiPanel({
               />
             </div>
 
-            <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3 py-2">
+            <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
               <div className="flex items-center justify-end gap-2">
                 {voiceStatus ? (
-                  <p className="min-w-0 flex-1 truncate text-right text-[11px] font-medium text-[var(--oh-primary)]">
+                  <p className="min-w-0 flex-1 truncate text-right text-[13px] font-medium text-[var(--oh-primary)]">
                     {voiceStatus}
                   </p>
                 ) : (
-                  <p className="text-[10px] text-[var(--oh-muted)]">AI chat · Enter to send</p>
+                  <p className="text-[12px] text-[var(--oh-muted)]">AI chat · Enter to send</p>
                 )}
               </div>
             </div>
@@ -904,9 +904,9 @@ function DialogueView({
 }) {
   const canClear = !busy && messages.length > DEMO_MESSAGES.length;
   return (
-    <div className="flex h-full flex-col p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+    <div className="flex h-full flex-col p-3.5">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Chat
         </p>
         <button
@@ -915,18 +915,18 @@ function DialogueView({
           disabled={!canClear}
           title="Clear chat"
           aria-label="Clear chat"
-          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--oh-muted)]"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--oh-muted)]"
         >
-          <Eraser size={11} />
+          <Eraser size={13} />
           Clear
         </button>
       </div>
-      <div className="min-h-0 flex-1 space-y-2">
+      <div className="min-h-0 flex-1 space-y-2.5">
         {messages.map((msg, i) => (
           <div
             key={i}
             className={cn(
-              "max-w-[92%] rounded-[var(--oh-radius)] px-3 py-2 text-[12px] leading-relaxed",
+              "max-w-[92%] rounded-[var(--oh-radius)] px-3.5 py-2.5 text-[14px] leading-relaxed",
               msg.role === "user"
                 ? "ml-auto bg-[var(--oh-primary)] text-white"
                 : "mr-auto border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text-secondary)] shadow-sm",
@@ -946,7 +946,7 @@ function DialogueView({
                   </span>
                   <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 </a>
-                <span className="mt-1 block text-[10px] text-[var(--oh-muted)]">
+                <span className="mt-1 block text-[12px] text-[var(--oh-muted)]">
                   {/[\u4e00-\u9fff]/.test(msg.text)
                     ? "点击在新页面查看完整报表数据"
                     : "Click to open the full report in a new page"}
@@ -957,7 +957,7 @@ function DialogueView({
             )}
             {msg.role === "assistant" && !msg.reportId && msg.table && msg.table.rows.length > 0 && (
               <div className="mt-2 overflow-x-auto">
-                <table className="w-full border-collapse text-[11px]">
+                <table className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr>
                       {msg.table.columns.map((col) => (
@@ -983,7 +983,7 @@ function DialogueView({
                   </tbody>
                 </table>
                 {msg.table.rows.length > 8 && (
-                  <p className="mt-1 text-[10px] text-[var(--oh-muted)]">
+                  <p className="mt-1 text-[12px] text-[var(--oh-muted)]">
                     +{msg.table.rows.length - 8} more
                   </p>
                 )}
@@ -992,22 +992,22 @@ function DialogueView({
           </div>
         ))}
         {busy && (
-          <div className="mr-auto max-w-[92%] rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3 py-2 text-[12px] text-[var(--oh-primary)] shadow-sm">
+          <div className="mr-auto max-w-[92%] rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3.5 py-2.5 text-[14px] text-[var(--oh-primary)] shadow-sm">
             Thinking…
           </div>
         )}
       </div>
       <div className="mt-3 shrink-0 border-t border-[var(--oh-border)] pt-3">
-        <p className="mb-2 text-[9px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
           Quick actions
         </p>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {QUICK_ACTIONS.map((action) => (
             <button
               key={action}
               type="button"
               onClick={() => onAction(action)}
-              className="cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[10px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
+              className="cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
             >
               {action}
             </button>
