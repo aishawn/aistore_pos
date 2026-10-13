@@ -257,6 +257,12 @@
   font-weight: 500;
 }
 
+/* Match page-title hierarchy across routes built with different components. */
+h1[class] {
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
 .oh-brand-mark {
   display: inline-flex;
   align-items: center;
