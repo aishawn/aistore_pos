@@ -199,4 +199,5 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - Dokploy 已显示 `de61b96` **Done**。生产登录成功；收银、关账、集成、支付、税率、门店/收银机、商品、报表和用户管理等路由均返回 HTTP 200，对应支付/税/门店页面脚本中也能确认已部署的 Odoo 只读文案。
 - 使用获准的 Odoo 登录会话做只读数据验证：POS 配置 1、门店 1、收银机 1、商品 2、销售税率 11；客户、供应商、销售单、采购单均为 0。补货建议和报表 API 均返回 HTTP 200。没有执行任何销售、退款、采购确认、现金调整或关账写操作。
 - 生产仍未设置自动恢复：登录态 `/api/odoo/session` 为 `autoRecoverConfigured: false`。设置页能自动连接的前提是先完成 Dokploy 服务账号变量配置。
-- 安全复核发现：在 `de61b96` 生产版中，使用获准的 Orithos 登录和 Odoo 会话访问商品列表为 200，随后调用 Orithos logout 后同一会话仍能读 Odoo 商品（200）。工作树已加入 Orithos API 会话保护、logout 清除 Odoo Cookie 和 401 自动续期；类型检查与定向 ESLint 通过，尚未提交或部署。该修复应先发布，再启用共享服务账号自动恢复。
+- 安全复核发现：在 `de61b96` 生产版中，使用获准的 Orithos 登录和 Odoo 会话访问商品列表为 200，随后调用 Orithos logout 后同一会话仍能读 Odoo 商品（200）。`5782acf` 已加入 Orithos API 会话保护、logout 清除 Odoo Cookie 和 401 自动续期，类型检查与定向 ESLint 通过，并已由 Dokploy 部署 **Done**。
+- 回归复测：Orithos 登录 200、手动 Odoo 连接 200、登出前商品 API 200；Orithos 登出 200 后商品 API 返回 **401**、Odoo Cookie 已清除，匿名会话返回 `user:null`。目前尚未向 Dokploy 配置 Odoo 服务账号，`autoRecoverConfigured` 仍为 false。未运行本地 build。
