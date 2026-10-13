@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-13T09:39:39.615Z",
-  "roleResult": "CREATED_DELETE_FAIL",
+  "generatedAt": "2026-10-13T10:20:53.757Z",
+  "roleResult": "CREATED_DELETED",
   "matrix": [
     {
       "path": "/",
@@ -19,7 +19,7 @@
     },
     {
       "path": "/products/odoo",
-      "status": "FAIL",
+      "status": "PASS",
       "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Products POS products, prices and stock data from Odoo. Import CSV New product Refresh POS category"
     },
     {
