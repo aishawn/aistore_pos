@@ -76,3 +76,12 @@ Statuses:
 - Test session: `orithos_store1/00003` left **opened** for further checkout UAT.
 - Confirmed: search/categories, add line, pack factor UI, park/discard.
 - Not done on purpose: Finalise sale, refund, cash adjust, purchase confirm, close session.
+
+
+## Store setup and account administration
+
+| Capability | Status | Notes |
+|---|---|---|
+| Odoo session integration | In progress | Manual connection works; production auto-recover is off. |
+| Users / roles | In progress | `/settings/users` production page is a generic editor placeholder; roles page reported 0 records. Parallel invite/reset changes are uncommitted and not production-verified. |
+| Payment / tax / outlet / register / receipt / hardware setup | In progress | Production pages showed local/demo settings, not Odoo values. Do not treat these pages as the live configuration source until migrated to Odoo or clearly disabled/labeled. |
