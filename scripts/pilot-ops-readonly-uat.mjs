@@ -59,6 +59,7 @@ try {
     await status.selectOption("draft");
     if (await status.inputValue() !== "draft") throw new Error("Draft filter did not remain selected");
     await page.waitForTimeout(1500);
+    if (!purchaseStatesRequested.includes("draft")) throw new Error("Draft status selection did not issue an Odoo purchase-list request");
     const bodyText = await page.locator("tbody").innerText();
     const viewButtons = page.getByRole("button", { name: "View" });
     const dataRows = await viewButtons.count();
