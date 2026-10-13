@@ -49,7 +49,22 @@ try {
     await dialog.getByRole("button", { name: "Keep session open" }).click();
     await dialog.waitFor({ state: "detached", timeout: 10000 });
     await page.locator("dd").filter({ hasText: "00004" }).first().waitFor({ timeout: 10000 });
-    return "Cash count is required before close; temporary UI value 0.00 enabled the confirmation, which named session 00004 and was cancelled. No close request was sent.";
+    const configId = Number(await page.locator("select").first().inputValue());
+    const rejectedClose = await context.request.post(base + "/api/odoo/session/close", {
+      data: { configId, countedCash: null },
+      headers: { Origin: base },
+    });
+    const rejectedBody = await rejectedClose.json().catch(() => ({}));
+    if (rejectedClose.status() !== 422 || !/Count the cash in the drawer/i.test(rejectedBody.message || "")) {
+      throw new Error("Server did not reject close without counted cash (HTTP " + rejectedClose.status() + ")");
+    }
+    const bootstrapResponse = await context.request.get(base + "/api/odoo/pos-bootstrap");
+    const bootstrap = await bootstrapResponse.json();
+    const activeSession = bootstrap.configs?.find((config) => config.id === configId)?.session;
+    if (!String(activeSession?.name || "").endsWith("/00004") || activeSession?.state !== "opened") {
+      throw new Error("Rejected close attempt changed the open register session");
+    }
+    return "Cash count is required before close; the UI confirmation was cancelled, and a direct API close without cash returned 422 before any Odoo write. Session 00004 remains open.";
   });
 
   await check("Purchase status filter refreshes Odoo results and detail is view-only", async () => {
@@ -90,7 +105,7 @@ try {
   await browser.close();
 }
 
-const output = { generatedAt: new Date().toISOString(), scope: "read-only production validation; close confirmation opened then cancelled; no purchase order confirmed and no register-close request sent", checks };
+const output = { generatedAt: new Date().toISOString(), scope: "read-only production validation; no purchase order confirmed; close UI was cancelled; an invalid close request was rejected before any Odoo write", checks };
 const outputPath = path.join(root, "docs", "UAT_OPS_READONLY_2026-10-13.json");
 fs.writeFileSync(outputPath, JSON.stringify(output, null, 2) + "\n");
 console.log(JSON.stringify({ outputPath, passed: checks.filter((item) => item.status === "PASS").length, failed: checks.filter((item) => item.status === "FAIL").length, checks }));

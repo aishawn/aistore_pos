@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + nine production interaction checks; production deploy `17ef0f5`)
+**Last updated:** 2026-10-13 (24-route matrix + nine production interaction checks; production deploy `3c2618e`)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -22,7 +22,7 @@ Statuses:
 | Pricelist rules & customer pricelist | Accepted | Checkout calls Odoo `_get_product_price`; FX mismatch still blocked |
 | Bottle / case pack factor | Accepted | Pack ×1/6/12/24 on cart lines (UI confirmed) |
 | Full-sale refund from history | Accepted | Browser refund of this-round receipts `260-1-000009` and `260-1-000010`; Odoo independent refunds `000009 REFUND` / `000010 REFUND`; free qty back to 12 |
-| Close register (Odoo session) | In progress | Production `17ef0f5` requires a counted cash amount before closing a cash-enabled register; modal/cancel verified for `00004`. Session remains open pending actual drawer count and reconciliation |
+| Close register (Odoo session) | In progress | Production `3c2618e` requires counted cash in both UI and API for cash-enabled registers; direct API request without count returns 422 before Odoo writes. Session `00004` remains open pending actual drawer count and reconciliation |
 | Manage Cash | Planned | Not in pilot sidebar; deep-link `/manage-cash` is Coming soon (no Odoo writes) |
 | Credit sales / multi-tender split | Planned | |
 | Offline-first sell | Planned | Competitor hard requirement; deferred |
@@ -83,12 +83,12 @@ Statuses:
 
 ## 2026-10-13 browser UAT (session `00004`)
 
-- Deployed app commit `17ef0f5` (role list now displays actual assigned permissions; cash-enabled register close requires counted cash; role permissions + honest company/sale-keys pages).
+- Deployed app commit `3c2618e` (role list now displays actual assigned permissions; cash-enabled register close requires counted cash in UI/API; role permissions + honest company/sale-keys pages).
 - Page matrix evidence: `docs/UAT_PAGE_MATRIX_2026-10-13.json` (24/24 routes pass after waiting for Odoo catalogue hydration; the inventory assertion now matches the displayed `12Units` format).
 - Role CRUD evidence: production UI created a temporary role, selected `AI Report Cost`, showed the saved grant in the role list, and deleted the role. API confirmed the grant; no test role remains. Earlier leftover `Pilot Clerk 344840` was also removed.
 - Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
 - Interaction evidence: `docs/UAT_INTERACTION_2026-10-13.json` covers catalogue search, customer form validation, refunded receipt search/detail, replenishment coverage change, and reporting range change. No customer, sale, RFQ, refund, or register-close write was performed in this pass.
-- Operations evidence: `docs/UAT_OPS_READONLY_2026-10-13.json` confirms connected auto-recovery status, a cancellable close confirmation for session `00004`, and the purchase status filter. No draft RFQs currently exist, so purchase detail/receipt viewing remains unverified; no purchase or close write was performed.
+- Operations evidence: `docs/UAT_OPS_READONLY_2026-10-13.json` confirms connected auto-recovery status, direct close API rejection without counted cash, session `00004` still open, and the purchase status filter. No draft RFQs currently exist, so purchase detail/receipt viewing remains unverified; no purchase or close write was performed.
 - Write evidence: Card `$28.60` receipt `260-1-000009`, Cash `$38.39` receipt `260-1-000010`, refunds created, stock restored to 12/12 — `docs/UAT_WRITE_2026-10-13.json`.
 - AI remained off; SMTP still unconfigured (invite/reset copy-link path verified in UI copy).
 - Session `orithos_store1/00004` left **opened** after net-zero this-round sales/refunds.
