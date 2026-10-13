@@ -130,19 +130,19 @@
   --oh-shadow-card: 0 1px 3px rgba(28, 37, 54, 0.06), 0 4px 16px rgba(28, 37, 54, 0.04);
 
   /* Sidebar */
-  --oh-sidebar-bg: #12372f;
-  --oh-sidebar-text: #abc4b9;
-  --oh-sidebar-text-hover: #f1f7f3;
+  --oh-sidebar-bg: #31383e;
+  --oh-sidebar-text: #c4cbd0;
+  --oh-sidebar-text-hover: #ffffff;
   --oh-sidebar-active: #e89168;
   --oh-sidebar-active-bg: rgba(255, 255, 255, 0.04);
   --oh-sidebar-border: rgba(255, 255, 255, 0.1);
 
   /* Brand */
   /* Legacy token name retained while the app migrates to brand-primary usage. */
-  --oh-orange: #0d6b58;
-  --oh-orange-hover: #095746;
-  --oh-orange-light: #eaf4ef;
-  --oh-orange-muted: rgba(13, 107, 88, 0.12);
+  --oh-orange: #155a86;
+  --oh-orange-hover: #104765;
+  --oh-orange-light: #edf4f8;
+  --oh-orange-muted: rgba(21, 90, 134, 0.12);
 
   /* Surfaces */
   --oh-header-bg: #fffdf8;
@@ -152,15 +152,15 @@
   --oh-border-strong: #d6d3c8;
 
   /* Text */
-  --oh-text: #17352d;
-  --oh-text-secondary: #50675e;
-  --oh-muted: #73847b;
-  --oh-placeholder: #8a9990;
+  --oh-text: #283139;
+  --oh-text-secondary: #55616a;
+  --oh-muted: #68747d;
+  --oh-placeholder: #87929a;
 
   /* Buttons */
-  --oh-primary: #0d6b58;
-  --oh-primary-hover: #095746;
-  --oh-navy: #24473d;
+  --oh-primary: #155a86;
+  --oh-primary-hover: #104765;
+  --oh-navy: #31383e;
 
   /* Status tiles */
   --oh-tile-blue-bg: #eef6ff;
@@ -169,15 +169,15 @@
   --oh-tile-red-bg: #fff5f5;
   --oh-tile-red-border: #f5c6c6;
   --oh-tile-red-text: #c53030;
-  --oh-tile-green-bg: #f0fff4;
-  --oh-tile-green-border: #b2e0c0;
-  --oh-tile-green-text: #276749;
+  --oh-tile-green-bg: #edf4f8;
+  --oh-tile-green-border: #c5dce8;
+  --oh-tile-green-text: #245b7a;
   --oh-tile-orange-bg: #fffaf0;
   --oh-tile-orange-border: #fbd38d;
   --oh-tile-orange-text: #c05621;
 
   /* Semantic */
-  --oh-success: #38a169;
+  --oh-success: #338363;
   --oh-danger: #e53e3e;
   --oh-danger-text: #e53e3e;
   --oh-info: #3182ce;
@@ -200,11 +200,11 @@
 
 /* ── Orithos "Sell" screen design tokens (extracted from sea.onorithos.com) ── */
 :root {
-  --sf-header-bg: #12372f;
+  --sf-header-bg: #313439;
   --sf-on-dark: rgb(248, 248, 248); /* #f8f8f8 header icons/text */
   --sf-muted: rgb(189, 189, 189); /* #bdbdbd team-message / summary */
-  --sf-link-blue: #17866f;
-  --sf-tab-blue: #0d6b58;
+  --sf-link-blue: #256f9f;
+  --sf-tab-blue: #155a86;
   --sf-online-green: rgb(50, 182, 67); /* #32b643 ONLINE status */
   --sf-pad-bg: rgb(248, 248, 248); /* #f8f8f8 sales-keys area background */
   --sf-placeholder: rgb(117, 117, 117); /* #757575 search placeholder */
