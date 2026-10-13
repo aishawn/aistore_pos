@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + 8 general and 3 operations interactions; app commit `1673384` deployed Done)
+**Last updated:** 2026-10-13 (24-route matrix + 8 general and 3 operations interactions; app commit `effcb7e` deployed Done)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -56,7 +56,7 @@ AI remains disabled in production. The tenant report database account has no sou
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo manual connect | Accepted | Manual Connect remains available |
-| Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; current-deploy regression cleared the Odoo session and confirmed automatic reconnect plus POS session `00004` still open — `docs/UAT_ODOO_AUTORECOVER_2026-10-13.json` |
+| Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; clearing the Odoo session then directly opening Replenishment triggers reconnect on the first data request without manual Connect; POS session `00004` remains open. Safe GETs retry after recovery; write requests are never replayed — `docs/UAT_ODOO_AUTORECOVER_2026-10-13.json` |
 | Deploy currency (`83bdafb`+) | Accepted | Production shows **Open Odoo POS** on closed-register empty state |
 
 ## Classic MySQL stack
@@ -85,10 +85,10 @@ AI remains disabled in production. The tenant report database account has no sou
 
 ## 2026-10-13 browser UAT (session `00004`)
 
-- Deployed app commit `1673384` (includes cash-count close guard, AI report credential hardening, role permissions, honest company/Sale Keys status pages, and duplicate-refund status explanation).
+- Deployed app commit `effcb7e` (includes cash-count close guard, AI report credential hardening, role permissions, honest company/Sale Keys status pages, and duplicate-refund status explanation).
 - Page matrix evidence: `docs/UAT_PAGE_MATRIX_2026-10-13.json` (24/24 routes pass after waiting for Odoo catalogue hydration; the inventory assertion now matches the displayed `12Units` format).
 - Role CRUD evidence: production UI created a temporary role, selected `AI Report Cost`, showed the saved grant in the role list, and deleted the role. API confirmed the grant; no test role remains. Earlier leftover `Pilot Clerk 344840` was also removed.
-- Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
+- Odoo auto-recovery regression: after production Odoo session DELETE, navigating directly to Replenishment restored the session through its first data request, without visiting Integrations or pressing Connect; POS bootstrap returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
 - Interaction evidence: `docs/UAT_INTERACTION_2026-10-13.json` records 8/8 passing read-only interactions, including refunded receipt `260-1-000009` showing prior-refund status and no duplicate full-refund action, catalogue search/edit prefill, form guards, CSV preview/cancel, replenishment coverage, and reporting range change. No product/customer, sale, RFQ, refund, or register-close write was performed in this pass.
 - Operations evidence: `docs/UAT_OPS_READONLY_2026-10-13.json` confirms connected auto-recovery status, direct close API rejection without counted cash, session `00004` still open, and the purchase status filter. No draft RFQs currently exist, so purchase detail/receipt viewing remains unverified; no purchase or close write was performed.
 - Write evidence: Card `$28.60` receipt `260-1-000009`, Cash `$38.39` receipt `260-1-000010`, refunds created, stock restored to 12/12 — `docs/UAT_WRITE_2026-10-13.json`.

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T11:48:48.657Z",
+  "generatedAt": "2026-10-13T12:10:53.297Z",
   "scope": "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
   "checks": [
     {
@@ -16,6 +16,11 @@
       "name": "Odoo browser session cleared",
       "status": "PASS",
       "evidence": "Same-origin session DELETE succeeded; this only clears the Odoo session cookie/session."
+    },
+    {
+      "name": "First business page reconnects without manual Connect",
+      "status": "PASS",
+      "evidence": "After clearing the Odoo cookie, replenishment loaded through its data API and returned to the normal page without a manual connect action."
     },
     {
       "name": "Odoo reconnects automatically after session removal",
