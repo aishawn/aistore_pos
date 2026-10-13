@@ -21,7 +21,7 @@ export const NAVIGATION: NavEntry[] = [
   {
     kind: "group",
     group: {
-      label: "Stock Management",
+      label: "Stock",
       items: [
         { label: "Products", href: "/products" },
         { label: "Classifications", href: "/classifications" },
@@ -35,7 +35,7 @@ export const NAVIGATION: NavEntry[] = [
   {
     kind: "group",
     group: {
-      label: "Customer Management",
+      label: "Customers",
       items: [
         { label: "Customers", href: "/customers" },
         { label: "Customer Groups", href: "/customer-groups" },

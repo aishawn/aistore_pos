@@ -129,7 +129,7 @@
 /* ── Orithos design tokens — Scheme A light retail blue ── */
 :root {
   /* Layout */
-  --oh-sidebar-width: 220px;
+  --oh-sidebar-width: 256px;
   --oh-header-height: 56px;
   --oh-radius: 8px;
   --oh-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);

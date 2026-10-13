@@ -155,7 +155,7 @@ function SidebarNavLink({
         tabIndex={tabIndex}
         onClick={(event) => guardNav(event, item.href)}
         className={cn(
-          "relative flex items-center gap-3 rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 text-[14px] font-medium transition-colors",
+          "relative flex items-center gap-3 whitespace-nowrap rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 text-[14px] font-medium transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -193,7 +193,7 @@ function SidebarNavGroup({
         tabIndex={tabIndex}
         onClick={() => setExpanded((v) => !v)}
         className={cn(
-          "flex w-full cursor-pointer items-center justify-between rounded-[var(--oh-radius)] px-3 py-2.5 text-[14px] font-medium transition-colors",
+          "flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 text-[14px] font-medium transition-colors",
           active
             ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -221,7 +221,7 @@ function SidebarNavGroup({
                   tabIndex={tabIndex}
                   onClick={(event) => guardNav(event, item.href)}
                   className={cn(
-                    "relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                    "relative flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-1.5 text-[13px] transition-colors",
                     active
                       ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
                       : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",

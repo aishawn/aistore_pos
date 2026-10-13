@@ -45,7 +45,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     ],
   },
   {
-    label: "Stock Management",
+    label: "Stock",
     icon: "inventory",
     items: [
       { label: "Products", href: "/products/odoo" },
@@ -55,7 +55,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     ],
   },
   {
-    label: "Customer Management",
+    label: "Customers",
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers/odoo" },
