@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-10-13T14:39:07Z",
+  "productionUrl": "https://app.orithos.com.au",
+  "codeCommit": "4ac9c0d3374ec3c70d17016bb424f90b1a467a9b",
+  "deploymentHead": "becff792b8ffc860bcabfcb5e0329e12616fd359",
+  "deploymentStatus": "DONE",
+  "checks": [
+    {
+      "name": "Sommelier find page copy",
+      "status": "PASS",
+      "details": "Page loaded; describes matching wines listed in this store's catalogue; no longer claims AI is asking the questions."
+    },
+    {
+      "name": "Deterministic recommendation",
+      "status": "PASS",
+      "details": "POST /api/ai/sommelier/recommend returned HTTP 200/code 0 with one in-stock DEMO Shiraz recommendation at AUD 34.90 and stock quantity 12."
+    },
+    {
+      "name": "Catalogue identify",
+      "status": "PASS",
+      "details": "GET /api/ai/sommelier/identify?q=DEMO returned HTTP 200/code 0 with two current DEMO catalogue items."
+    },
+    {
+      "name": "Wine details and deterministic assistance",
+      "status": "PASS",
+      "details": "Wine detail, pitch and ask endpoints for Odoo product 62 returned HTTP 200/code 0; text responses were populated."
+    },
+    {
+      "name": "Similar cheaper alternatives",
+      "status": "PASS",
+      "details": "Endpoint returned HTTP 200/code 0 and no alternatives for the DEMO Shiraz, consistent with the current catalogue having no cheaper same-style in-stock wine."
+    },
+    {
+      "name": "Anonymous access guard",
+      "status": "PASS",
+      "details": "Unauthenticated recommend request returned HTTP 401."
+    },
+    {
+      "name": "No production writes or model calls",
+      "status": "PASS",
+      "details": "Only GET and deterministic read-only recommendation/pitch/ask requests were sent; feedback endpoint, image recognition, model services, sales, stock, and Odoo write operations were not called."
+    }
+  ],
+  "limitations": [
+    "The production test used the live two-item DEMO catalogue. It does not simulate Odoo returning an empty response; the new unit test covers prevention of Classic MySQL fallback when configured Odoo is empty.",
+    "Sommelier still reads Odoo list_price and qty_available; parity with POS effective pricelist and outlet-specific free_qty has not been verified.",
+    "GitHub push did not automatically create a Dokploy deployment record in this run. A correctly shaped main-branch push webhook request was needed to trigger deployment; autodeploy delivery remains to be repaired or independently proven."
+  ]
+}
