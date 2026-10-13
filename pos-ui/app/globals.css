@@ -152,19 +152,20 @@
   --oh-header-bg: #ffffff;
   --oh-surface: #f7f8fa;
   --oh-surface-elevated: #ffffff;
-  --oh-border: #e3e7eb;
+  --oh-border: #dce1e6;
   --oh-border-strong: #cbd2d8;
 
   /* Text */
   --oh-text: #283139;
-  --oh-text-secondary: #55616a;
-  --oh-muted: #68747d;
+  --oh-text-secondary: #5c6770;
+  --oh-muted: #5c6770;
   --oh-placeholder: #87929a;
 
-  /* Buttons — dark navy primary */
+  /* Buttons — navy primary (single CTA blue) */
   --oh-primary: #155a86;
   --oh-primary-hover: #104765;
   --oh-navy: #31383e;
+  --oh-sidebar-active-pill: #3d454c;
 
   /* Status tile borders (pastel) */
   --oh-tile-blue-bg: #eef6ff;
@@ -187,19 +188,19 @@
   --oh-info: #3182ce;
   --oh-warning: #dd6b20;
 
-  /* Compat aliases (historical --sf-* names map to Orithos tokens) */
+  /* Compat aliases — map legacy Shopfront names onto Orithos semantics */
   --oh-accent: var(--oh-orange);
   --oh-accent-light: var(--oh-orange-light);
-  --sf-header-bg: #313439;
-  --sf-on-dark: #f8f8f8;
+  --sf-header-bg: var(--oh-header-bg);
+  --sf-on-dark: var(--oh-text);
   --sf-muted: var(--oh-muted);
-  --sf-link-blue: #256f9f;
-  --sf-tab-blue: #155a86;
+  --sf-link-blue: var(--oh-primary);
+  --sf-tab-blue: var(--oh-primary);
   --sf-online-green: var(--oh-success);
   --sf-pad-bg: var(--oh-paper);
-  --sf-placeholder: var(--oh-placeholder, #757575);
-  --sf-divider: #000000;
-  --sf-summary: rgba(189, 189, 189, 0.7);
+  --sf-placeholder: var(--oh-placeholder);
+  --sf-divider: var(--oh-border-strong);
+  --sf-summary: rgba(104, 116, 125, 0.7);
 }
 
 .oh-brand-mark {
@@ -249,6 +250,17 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

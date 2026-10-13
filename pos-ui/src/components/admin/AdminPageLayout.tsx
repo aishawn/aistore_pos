@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Primary orange action button. */
+/** Primary navy action button. */
 export function AdminPrimaryButton({
   children,
   onClick,
@@ -281,15 +281,17 @@ export function AdminRowActions({
   );
 }
 
-/** Large empty-state hero with icon. */
+/** Large empty-state hero with icon and optional next-step action. */
 export function AdminEmptyHero({
   icon,
   title,
   description,
+  action,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
@@ -297,6 +299,7 @@ export function AdminEmptyHero({
       <div>
         <h2 className="text-[18px] font-semibold text-[var(--oh-text)]">{title}</h2>
         <p className="mt-1 max-w-md text-[14px] text-[var(--oh-muted)]">{description}</p>
+        {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
       </div>
     </div>
   );

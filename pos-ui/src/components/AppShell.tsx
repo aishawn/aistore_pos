@@ -122,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar open={sidebarOpen} />
       <div className="flex min-w-0 flex-1 flex-col print:w-full">
         <Header
-          userName={user?.name ?? "Mennru"}
+          userName={user?.name || user?.username || "admin"}
           sidebarOpen={sidebarOpen}
           onSidebarToggle={() => setSidebarOpen((v) => !v)}
           onUserClick={() => setUserMenuOpen((v) => !v)}

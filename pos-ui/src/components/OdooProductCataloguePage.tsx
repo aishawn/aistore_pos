@@ -266,7 +266,7 @@ export function OdooProductCataloguePage() {
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="w-full min-w-[940px] border-collapse text-left text-sm">
-              <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+              <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3">Category</th>
@@ -281,11 +281,11 @@ export function OdooProductCataloguePage() {
                 {loading && items.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading products…</span></td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]">{debouncedQuery || categoryId ? "No POS products match these filters." : "No products are available in the Odoo POS catalogue."}</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId ? "No matching products" : "No POS products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId ? "Try clearing search or category filters." : "Connect Odoo and confirm products are available in the POS catalogue."}</p>{debouncedQuery || categoryId ? <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Integrations</Link>}</div></td></tr>
                 ) : items.map((product) => {
                   const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id)).filter(Boolean);
                   return (
-                    <tr key={product.id} className="hover:bg-sky-50/50">
+                    <tr key={product.id} className="hover:bg-[var(--oh-tile-blue-bg)]/60">
                       <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{product.id}</span></td>
                       <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</td>
                       <td className="px-4 py-3 text-[var(--oh-text-secondary)]"><span className="block">{product.barcode || "—"}</span>{product.default_code && <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">SKU {product.default_code}</span>}</td>

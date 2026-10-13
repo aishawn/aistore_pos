@@ -154,14 +154,14 @@ export function OdooPosConnectionCard() {
           </div>
         </div>
       ) : (
-        <form onSubmit={connect} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <form onSubmit={connect} className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
             Odoo username
-            <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" required maxLength={120} className="h-10 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-orange-100" />
+            <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" required maxLength={120} className="h-10 max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
           </label>
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
             Odoo password
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required maxLength={256} className="h-10 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange-dark)] focus:ring-2 focus:ring-orange-100" />
+            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required maxLength={256} className="h-10 max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
           </label>
           <button type="submit" disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <LogIn size={16} />} Connect Odoo
@@ -172,8 +172,8 @@ export function OdooPosConnectionCard() {
       {message && <p role="status" className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{message}</p>}
       <p className="mt-4 text-xs leading-5 text-[var(--oh-muted)]">
         {autoRecoverConfigured
-          ? "Server auto-recover is configured: a valid Orithos login can restore the Odoo session after the cookie expires."
-          : "Server auto-recover is not configured yet. Set ODOO_SERVICE_USERNAME and ODOO_SERVICE_PASSWORD in Dokploy (aistore/production → aistorepos → Environment), redeploy, then refresh this page. Use a dedicated least-privilege Odoo POS account; never commit the password to Git."}
+          ? "Odoo auto-reconnect is on for signed-in Orithos users when the session cookie expires."
+          : "Odoo auto-reconnect is off. Ask an admin to configure the dedicated Odoo service account on the server if sessions keep dropping."}
       </p>
     </section>
   );

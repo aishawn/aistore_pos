@@ -6,7 +6,7 @@ import { PanelLeft, PanelLeftClose, Wifi, WifiOff } from "lucide-react";
 import { UserIcon } from "@/components/icons";
 
 /**
- * Orithos "Sell" screen top bar — static dark header (50px).
+ * Orithos top bar — light chrome (50px) shared by Sell and admin pages.
  *
  * Right-group: avatar opens the User menu panel (onUserClick).
  */
@@ -38,19 +38,19 @@ export function Header({
   }, []);
 
   return (
-    <header className="relative flex h-[50px] items-center justify-between bg-[var(--sf-header-bg)] font-sans print:hidden">
+    <header className="relative flex h-[50px] items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-header-bg)] font-sans print:hidden">
       <button
         type="button"
         tabIndex={tabIndex}
         aria-label={sidebarOpen ? "Hide navigation menu" : "Show navigation menu"}
         aria-expanded={sidebarOpen}
         onClick={onSidebarToggle}
-        className="flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center px-1"
+        className="flex h-[50px] w-[50px] shrink-0 cursor-pointer items-center justify-center px-1 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"
       >
         {sidebarOpen ? (
-          <PanelLeftClose size={22} strokeWidth={1.5} className="text-[var(--sf-on-dark)]" />
+          <PanelLeftClose size={22} strokeWidth={1.5} />
         ) : (
-          <PanelLeft size={22} strokeWidth={1.5} className="text-[var(--sf-on-dark)]" />
+          <PanelLeft size={22} strokeWidth={1.5} />
         )}
       </button>
 
@@ -59,28 +59,27 @@ export function Header({
           role="status"
           aria-live="polite"
           title="Browser network connection"
-          className="inline-flex items-center gap-1.5 text-[12px] text-[var(--sf-on-dark)]"
+          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--oh-text-secondary)]"
         >
           {online ? (
-            <Wifi size={15} className="text-[var(--sf-online-green)]" aria-hidden="true" />
+            <Wifi size={15} className="text-[var(--oh-success)]" aria-hidden="true" />
           ) : (
-            <WifiOff size={15} className="text-amber-300" aria-hidden="true" />
+            <WifiOff size={15} className="text-[var(--oh-warning)]" aria-hidden="true" />
           )}
           <span>{online ? "ONLINE" : "OFFLINE"}</span>
         </div>
-        {/* User — click opens the user menu panel */}
         <button
           type="button"
           tabIndex={tabIndex}
           onClick={onUserClick}
           title="User menu"
           data-testid="sh-current-user"
-          className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sf-link-blue)]"
+          className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
-          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--sf-muted)]">
+          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-navy)]">
             <UserIcon size={20} className="text-white" fill="white" />
           </span>
-          <p className="mx-2 text-[16px] text-[var(--sf-on-dark)]">{userName}</p>
+          <p className="mx-2 text-[16px] text-[var(--oh-text)]">{userName}</p>
         </button>
       </div>
     </header>

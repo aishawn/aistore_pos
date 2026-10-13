@@ -214,6 +214,7 @@ export function SettingsScaffold({
   sectionIcon,
   subSectionTitle = "General",
   showSubSectionTitle = true,
+  showSave = true,
   tabs,
   subTabs,
   children,
@@ -223,23 +224,32 @@ export function SettingsScaffold({
   sectionIcon?: React.ReactNode;
   subSectionTitle?: string;
   showSubSectionTitle?: boolean;
+  showSave?: boolean;
   tabs?: SettingsTab[];
   subTabs?: SettingsTab[];
   children: React.ReactNode;
 }) {
+  const resolvedSection =
+    sectionTitle && sectionTitle.trim().toLowerCase() !== title.trim().toLowerCase()
+      ? sectionTitle
+      : undefined;
+
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
+    <div className="h-full overflow-auto bg-[var(--oh-surface)] p-6 font-sans">
       <div className="w-full">
-        <h1 className="mb-4 text-[34px] font-bold text-black">{title}</h1>
-        <div className="flex flex-col overflow-hidden rounded-lg border border-neutral-300">
+        <h1 className="mb-4 text-[34px] font-bold text-[var(--oh-text)]">{title}</h1>
+        <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
           <div className="p-4">
-            <input placeholder="Search settings..." className="h-[48px] w-full rounded-lg border border-neutral-300 px-4 text-[16px] outline-none placeholder:text-neutral-400" />
+            <input
+              placeholder="Search settings..."
+              className="h-[48px] w-full max-w-md rounded-lg border border-[var(--oh-border)] px-4 text-[16px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
+            />
           </div>
           {tabs && tabs.length > 0 && (
-            <div className="flex border-b border-neutral-200">
+            <div className="flex border-b border-[var(--oh-border)]">
               {tabs.map((t) => {
                 const className = `flex flex-1 items-center justify-center gap-2 py-3 text-[16px] ${
-                  t.active ? "border-b-2 border-[#5cb3e0] text-[var(--sf-tab-blue)]" : "text-black"
+                  t.active ? "border-b-2 border-[var(--oh-primary)] text-[var(--oh-primary)]" : "text-[var(--oh-text)]"
                 }`;
                 return t.href ? (
                   <Link key={t.label} href={t.href} className={className}>
@@ -254,12 +264,12 @@ export function SettingsScaffold({
             </div>
           )}
           {subTabs && subTabs.length > 0 && (
-            <div className="flex flex-wrap gap-1 border-b border-neutral-200 px-4 py-2">
+            <div className="flex flex-wrap gap-1 border-b border-[var(--oh-border)] px-4 py-2">
               {subTabs.map((t) => {
                 const className = `rounded-md px-3 py-1.5 text-[14px] ${
                   t.active
-                    ? "bg-[#e8f4fc] font-medium text-[var(--sf-tab-blue)]"
-                    : "text-neutral-600 hover:bg-neutral-50 hover:text-black"
+                    ? "bg-[var(--oh-tile-blue-bg)] font-medium text-[var(--oh-primary)]"
+                    : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
                 }`;
                 return t.href ? (
                   <Link key={t.label} href={t.href} className={className}>
@@ -274,27 +284,29 @@ export function SettingsScaffold({
             </div>
           )}
           <div className="px-6 py-5">
-            {sectionTitle && (
-              <h2 className="mb-3 flex items-center gap-2 text-[24px] font-bold text-black">
+            {resolvedSection && (
+              <h2 className="mb-3 flex items-center gap-2 text-[24px] font-bold text-[var(--oh-text)]">
                 {sectionIcon}
-                {sectionTitle}
+                {resolvedSection}
               </h2>
             )}
             {showSubSectionTitle && subSectionTitle && (
-              <h3 className="mb-1 flex items-center gap-2 text-[18px] font-bold text-black">
+              <h3 className="mb-1 flex items-center gap-2 text-[18px] font-bold text-[var(--oh-text)]">
                 <SettingsGearIcon size={18} /> {subSectionTitle}
               </h3>
             )}
             {children}
           </div>
-          <div className="flex justify-end border-t border-neutral-200 px-6 py-4">
-            <button
-              type="button"
-              className="inline-flex min-w-[160px] items-center justify-center gap-2 rounded-lg bg-[#2c8fe0] px-8 py-3 text-[18px] font-medium text-white hover:bg-[#2680cc]"
-            >
-              <SaveIcon size={20} /> Save
-            </button>
-          </div>
+          {showSave && (
+            <div className="flex justify-end border-t border-[var(--oh-border)] px-6 py-4">
+              <button
+                type="button"
+                className="inline-flex min-h-11 min-w-[160px] items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-8 py-3 text-[18px] font-medium text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                <SaveIcon size={20} /> Save
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

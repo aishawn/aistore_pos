@@ -10,6 +10,7 @@ target/
 pos-api/.env
 pos-ui/.env
 pos-ui/.env.local
+.local/
 
 # Python cache
 __pycache__/

@@ -157,7 +157,7 @@ function SidebarNavLink({
         className={cn(
           "relative flex items-center gap-3 rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 text-[14px] font-medium transition-colors",
           active
-            ? "bg-[var(--oh-sidebar-active-bg)] text-[var(--oh-sidebar-active)]"
+            ? "bg-[var(--oh-sidebar-active-pill)] text-white"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
         )}
       >
@@ -195,7 +195,7 @@ function SidebarNavGroup({
         className={cn(
           "flex w-full cursor-pointer items-center justify-between rounded-[var(--oh-radius)] px-3 py-2.5 text-[14px] font-medium transition-colors",
           active
-            ? "text-[var(--oh-sidebar-active)]"
+            ? "bg-[var(--oh-sidebar-active-pill)] text-white"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
         )}
       >
@@ -221,23 +221,22 @@ function SidebarNavGroup({
                   tabIndex={tabIndex}
                   onClick={(event) => guardNav(event, item.href)}
                   className={cn(
-                    "flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
-                    item.more
-                      ? active
-                        ? "font-medium text-[var(--oh-sidebar-active)]"
-                        : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]"
-                      : active
-                        ? "font-medium text-[var(--oh-sidebar-active)]"
-                        : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
+                    "relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
+                    active
+                      ? "bg-[var(--oh-sidebar-active-pill)] font-medium text-white"
+                      : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
                   )}
                 >
+                  {active && (
+                    <span className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-[var(--oh-sidebar-active)]" />
+                  )}
                   {item.more ? (
                     <Plus
                       size={14}
                       strokeWidth={2.5}
                       className={cn(
                         "shrink-0",
-                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--sf-tab-blue,#3b82f6)]",
+                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--oh-primary)]",
                       )}
                     />
                   ) : SubIcon ? (
@@ -246,7 +245,7 @@ function SidebarNavGroup({
                       strokeWidth={1.75}
                       className={cn(
                         "shrink-0",
-                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--sf-tab-blue,#3b82f6)]",
+                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--oh-primary)]",
                       )}
                     />
                   ) : null}
