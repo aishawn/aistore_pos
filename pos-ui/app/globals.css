@@ -124,6 +124,8 @@
 
 @theme inline {
   --font-sans: "Source Sans 3", "Segoe UI", Avenir, ui-sans-serif, system-ui, sans-serif;
+  /* Keep supporting text readable across pages that use Tailwind's text-xs. */
+  --text-xs: 0.8125rem;
 }
 
 /* ── Orithos design tokens — Scheme A light retail blue ── */

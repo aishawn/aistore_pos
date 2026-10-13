@@ -64,7 +64,7 @@ function SalesChart() {
                 stroke="var(--oh-border)"
                 strokeDasharray="4 4"
               />
-              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[10px]">
+              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[12px]">
                 ${tick.toFixed(2)}
               </text>
             </g>
@@ -78,7 +78,7 @@ function SalesChart() {
             x={pad.left + i * step}
             y={h - 8}
             textAnchor="middle"
-            className="fill-[var(--oh-muted)] text-[10px]"
+            className="fill-[var(--oh-muted)] text-[12px]"
           >
             {m}
           </text>
@@ -165,7 +165,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
             <LineChartIcon size={16} className="mt-0.5 shrink-0 text-[var(--oh-tile-blue-text)]" strokeWidth={1.75} />
             <div className="min-w-0">
               <div className="text-[13px] font-semibold text-[var(--oh-tile-blue-text)]">Home</div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--oh-muted)]">
+              <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">
                 View {typeLabel.toLowerCase()} details and basic statistics
               </div>
             </div>
@@ -179,7 +179,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
             <AssignIcon size={16} className="mt-0.5 shrink-0" strokeWidth={1.75} />
             <div className="min-w-0">
               <div className="text-[13px] font-semibold">Assign</div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--oh-muted)]">
+              <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">
                 Assign products to the {typeLabel.toLowerCase()}
               </div>
             </div>

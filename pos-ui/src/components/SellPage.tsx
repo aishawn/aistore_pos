@@ -217,7 +217,7 @@ function TabButton({
               : `${badge} parked`
           }
           className={cn(
-            "ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white",
+            "ml-0.5 rounded-full px-1.5 py-0.5 text-[12px] font-semibold leading-none text-white",
             badgeTone === "warning" ? "bg-[var(--oh-warning)]" : "bg-[var(--oh-primary)]",
           )}
         >
@@ -267,7 +267,7 @@ function QuickKeysPanel({ onOpenMoreActions }: { onOpenMoreActions: () => void }
 
       {/* Quantity & cart tools */}
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Line controls
         </p>
         <div className="flex flex-wrap gap-2">
@@ -376,7 +376,7 @@ function MoreActionsPanel() {
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex shrink-0 items-center justify-between gap-2">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Register actions
           </p>
           {sell.saleNote && (
@@ -433,7 +433,7 @@ function ParkedPanel() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Suspended sales
         </p>
         <AdminSecondaryButton onClick={() => sell.refreshParked()} disabled={sell.parkedLoading}>
@@ -697,7 +697,7 @@ function CheckoutPanel({ className }: { className?: string }) {
                         {line.name}
                       </p>
                       {(Math.abs(line.qty) > 1 || line.discount) && (
-                        <p className="text-[11px] text-[var(--oh-muted)]">
+                        <p className="text-[13px] text-[var(--oh-muted)]">
                           ${line.unitPrice.toFixed(2)} each
                           {line.discount ? ` · −$${line.discount.toFixed(2)} disc.` : ""}
                         </p>
@@ -763,7 +763,7 @@ function CheckoutPanel({ className }: { className?: string }) {
           </div>
         )}
         <div className="flex items-end justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          <span className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Total
           </span>
           <p className="text-[32px] font-bold leading-none text-[var(--oh-text)]">
@@ -772,7 +772,7 @@ function CheckoutPanel({ className }: { className?: string }) {
           </p>
         </div>
         {sell.saleNote && (
-          <p className="mt-2 truncate text-[11px] text-[var(--oh-muted)]">Note: {sell.saleNote}</p>
+          <p className="mt-2 truncate text-[13px] text-[var(--oh-muted)]">Note: {sell.saleNote}</p>
         )}
       </div>
     </aside>
@@ -883,7 +883,7 @@ function PromotionsPanel() {
             className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-1.5 text-[13px]"
           >
             {PERIOD_LABELS[sell.promotionPeriod]}
-            <span className="text-[10px]">▼</span>
+            <span className="text-[12px]">▼</span>
           </button>
           {sell.promotionMenuOpen && (
             <div className="absolute left-0 top-full z-10 mt-1 min-w-[120px] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-lg">

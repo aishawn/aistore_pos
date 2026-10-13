@@ -555,7 +555,7 @@ function CustomerPickerModal({
                     }}
                     className="flex w-full items-start gap-3 rounded-[var(--oh-radius)] px-3 py-3 text-left transition-colors hover:bg-[var(--oh-surface)]"
                   >
-                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-primary)] text-[11px] font-bold text-white">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-primary)] text-[13px] font-bold text-white">
                       {customerInitials(c.name)}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -796,11 +796,11 @@ export function CustomerMergePage() {
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-semibold text-[var(--oh-text)]">{source.label}</p>
                     {index === 0 ? (
-                      <span className="mt-0.5 inline-flex rounded-full bg-[var(--oh-orange-light)] px-2 py-0.5 text-[11px] font-semibold text-[var(--oh-orange)]">
+                      <span className="mt-0.5 inline-flex rounded-full bg-[var(--oh-orange-light)] px-2 py-0.5 text-[13px] font-semibold text-[var(--oh-orange)]">
                         Primary · kept after merge
                       </span>
                     ) : (
-                      <span className="mt-0.5 inline-flex rounded-full bg-[var(--oh-surface)] px-2 py-0.5 text-[11px] font-medium text-[var(--oh-muted)]">
+                      <span className="mt-0.5 inline-flex rounded-full bg-[var(--oh-surface)] px-2 py-0.5 text-[13px] font-medium text-[var(--oh-muted)]">
                         Will be merged in
                       </span>
                     )}

@@ -305,7 +305,7 @@ export function OdooReplenishmentPage() {
                 <div className="max-h-[38dvh] divide-y divide-[var(--oh-border)] overflow-y-auto">
                   {rfqLines.map((line) => <div key={line.productId} className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
                     <div className="min-w-0"><p className="truncate text-sm font-medium text-[var(--oh-text)]">{line.name}</p><p className="text-xs text-[var(--oh-muted)]">Suggested {number.format(line.suggestedQuantity)} {line.unit}</p></div>
-                    <label className="grid gap-1 text-[11px] font-medium text-[var(--oh-muted)] sm:col-auto">Order quantity
+                    <label className="grid gap-1 text-[13px] font-medium text-[var(--oh-muted)] sm:col-auto">Order quantity
                       <input type="number" min="0" max="100000" step="0.01" value={line.quantity} onChange={(event) => { const value = Number(event.target.value); setRfqLines((current) => current.map((item) => item.productId === line.productId ? { ...item, quantity: Number.isFinite(value) ? value : 0 } : item)); }} disabled={rfqSubmitting} className="h-9 w-full rounded-md border border-[var(--oh-border)] px-2 text-sm font-semibold tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030] disabled:opacity-60" />
                     </label>
                     <p className="hidden text-right text-sm text-[var(--oh-muted)] sm:block">{line.unit}</p>

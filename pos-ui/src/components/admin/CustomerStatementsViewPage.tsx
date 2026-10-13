@@ -147,15 +147,15 @@ export function CustomerStatementsViewPage() {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Opening Balance</p>
+                  <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Opening Balance</p>
                   <p className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{money(statement.openingBalance)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Closing Balance</p>
+                  <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Closing Balance</p>
                   <p className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{money(statement.closingBalance)}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Current Owing</p>
+                  <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Current Owing</p>
                   <p className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{money(statement.currentOwing)}</p>
                 </div>
               </div>

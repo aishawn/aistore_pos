@@ -915,7 +915,7 @@ function FinaliseSidebar({
 
           <div className="border-b border-[var(--oh-border)] px-4 py-3">
 
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
 
               Paid
 
@@ -963,7 +963,7 @@ function FinaliseSidebar({
 
           <div>
 
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
 
               Total
 
@@ -981,7 +981,7 @@ function FinaliseSidebar({
 
           <div className="text-right">
 
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
 
               Remaining
 

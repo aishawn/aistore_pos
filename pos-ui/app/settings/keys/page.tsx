@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 export default function SaleKeysPage() {
@@ -19,9 +20,9 @@ export default function SaleKeysPage() {
           <dt className="text-sm font-medium text-[var(--oh-text)]">Pilot sell screen</dt>
           <dd className="text-sm text-[var(--oh-muted)]">
             Use{" "}
-            <a href="/" className="font-semibold text-[var(--oh-primary)] underline">
+            <Link href="/" className="font-semibold text-[var(--oh-primary)] underline">
               Sell
-            </a>{" "}
+            </Link>{" "}
             with Odoo products
           </dd>
         </div>

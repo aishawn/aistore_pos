@@ -266,7 +266,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
                     <div className={cn("text-[13px] font-semibold", active && "text-[#5cb3e0]")}>
                       {label}
                     </div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-[var(--oh-muted)]">
+                    <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">
                       {description}
                     </div>
                   </div>

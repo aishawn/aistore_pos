@@ -308,7 +308,7 @@ export default function UsersSettingsPage() {
                     <tr key={String(staff.id)} className="border-b border-[var(--oh-border)]/70">
                       <td className="px-2 py-3 font-medium text-[var(--oh-text)]">
                         {staff.name}
-                        {staffIsAdmin(staff) ? <span className="ml-2 rounded bg-[var(--oh-tile-blue-bg)] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[var(--oh-primary)]">Admin</span> : null}
+                        {staffIsAdmin(staff) ? <span className="ml-2 rounded bg-[var(--oh-tile-blue-bg)] px-1.5 py-0.5 text-[12px] font-bold uppercase text-[var(--oh-primary)]">Admin</span> : null}
                       </td>
                       <td className="px-2 py-3 text-[var(--oh-text-secondary)]">{staff.username}</td>
                       <td className="px-2 py-3 break-all text-[var(--oh-text-secondary)]">{staff.email || "—"}</td>

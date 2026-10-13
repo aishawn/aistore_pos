@@ -107,7 +107,7 @@ export function PosTransactionPanel() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full text-[14px]">
           <thead>
-            <tr className="border-b border-[var(--oh-border)] bg-[var(--oh-surface)] text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <tr className="border-b border-[var(--oh-border)] bg-[var(--oh-surface)] text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               <th className="px-5 py-3 text-left">Product</th>
               <th className="w-16 px-2 py-3 text-center">Qty</th>
               <th className="w-24 px-2 py-3 text-right">Price</th>
@@ -174,7 +174,7 @@ export function PosTransactionPanel() {
           </p>
         </div>
         <div className="text-right">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Grand Total
           </p>
           <p className="text-[36px] font-bold leading-none tracking-tight text-[var(--oh-text)]">

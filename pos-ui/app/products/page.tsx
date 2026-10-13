@@ -67,7 +67,7 @@ function Status({ status }: { status?: string }) {
   const normalized = status?.toUpperCase() ?? "ACTIVE";
   if (normalized === "INACTIVE") {
     return (
-      <div className="flex flex-col items-center gap-0.5 text-[11px] leading-none text-[var(--oh-muted)]">
+      <div className="flex flex-col items-center gap-0.5 text-[13px] leading-none text-[var(--oh-muted)]">
         <span className="inline-block h-2 w-2 rounded-full bg-[var(--oh-muted)]" />
         Inactive
       </div>
@@ -75,14 +75,14 @@ function Status({ status }: { status?: string }) {
   }
   if (normalized === "ARCHIVED") {
     return (
-      <div className="flex flex-col items-center gap-0.5 text-[11px] leading-none text-[var(--oh-muted)]">
+      <div className="flex flex-col items-center gap-0.5 text-[13px] leading-none text-[var(--oh-muted)]">
         <span className="inline-block h-2 w-2 rounded-full bg-[var(--oh-muted)]" />
         Archived
       </div>
     );
   }
   return (
-    <div className="flex flex-col items-center gap-0.5 text-[11px] leading-none text-[var(--oh-success)]">
+    <div className="flex flex-col items-center gap-0.5 text-[13px] leading-none text-[var(--oh-success)]">
       <ActiveIcon size={16} strokeWidth={1.75} />
       Active
     </div>
@@ -122,7 +122,7 @@ function PriceCell({ price }: { price?: number | null }) {
       title="This product is priced at $0.00 and can be sold for free. Set a price greater than zero before selling it."
     >
       <span className="font-semibold">$0.00</span>
-      <span className="text-[10px] font-medium">Zero price</span>
+      <span className="text-[12px] font-medium">Zero price</span>
     </span>
   );
 }
@@ -156,7 +156,7 @@ function formatLiquorText(p: Product, value?: string | null) {
 function formatInventory(p: Product) {
   const { cases, items } = splitCasesItems(p.stockQuantity, p.caseQuantity);
   return (
-    <span className="text-[11px] leading-tight text-[var(--oh-muted)]">
+    <span className="text-[13px] leading-tight text-[var(--oh-muted)]">
       {cases} Cases
       <br />
       {items} Items
@@ -355,7 +355,7 @@ function ProductsPageInner() {
         <>
           <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
             <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{total}</div>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+            <div className="text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
               Results
             </div>
           </div>

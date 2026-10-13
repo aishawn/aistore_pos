@@ -251,7 +251,7 @@ function CustomerBalancePanel({
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Current Owing
           </p>
           <p className="mt-1 text-[22px] font-semibold text-[var(--oh-text)]">
@@ -259,7 +259,7 @@ function CustomerBalancePanel({
           </p>
         </div>
         <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Account Limit
           </p>
           <p className="mt-1 text-[22px] font-semibold text-[var(--oh-text)]">
@@ -267,7 +267,7 @@ function CustomerBalancePanel({
           </p>
         </div>
         <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Available Credit
           </p>
           <p className="mt-1 text-[22px] font-semibold text-[var(--oh-text)]">
@@ -580,7 +580,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                         <div className={cn("text-[13px] font-semibold", active && "text-[#5cb3e0]")}>
                           {label}
                         </div>
-                        <div className="mt-0.5 text-[11px] leading-snug text-[var(--oh-muted)]">
+                        <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">
                           {description}
                         </div>
                       </div>

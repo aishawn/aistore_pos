@@ -98,7 +98,7 @@ function CappedPriceRowEditor({
   return (
     <div className="flex items-start border-b border-neutral-200 bg-white py-2 text-[13px] text-black">
       <div className="w-[24%] shrink-0 px-3">
-        <div className="text-[11px] text-neutral-500">{row.priceSetName ?? "Default Price Set"}</div>
+        <div className="text-[13px] text-neutral-500">{row.priceSetName ?? "Default Price Set"}</div>
         <div className="mt-0.5 font-semibold leading-snug">{row.productName}</div>
       </div>
       <div className="w-[18%] shrink-0 px-3 leading-snug">{row.source}</div>

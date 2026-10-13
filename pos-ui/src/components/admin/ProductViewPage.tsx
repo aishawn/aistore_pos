@@ -211,7 +211,7 @@ function SalesPurchasesChart({
                 stroke="var(--oh-border)"
                 strokeDasharray="4 4"
               />
-              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[10px]">
+              <text x={pad.left - 8} y={y + 4} textAnchor="end" className="fill-[var(--oh-muted)] text-[12px]">
                 ${tick}
               </text>
             </g>
@@ -225,7 +225,7 @@ function SalesPurchasesChart({
             x={pad.left + i * step}
             y={h - 6}
             textAnchor="middle"
-            className="fill-[var(--oh-muted)] text-[10px]"
+            className="fill-[var(--oh-muted)] text-[12px]"
           >
             {m}
           </text>
@@ -693,7 +693,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                           <div className={cn("text-[13px] font-semibold", active && "text-[var(--oh-tile-blue-text)]")}>
                             {label}
                           </div>
-                          <div className="mt-0.5 text-[11px] leading-snug text-[var(--oh-muted)]">{description}</div>
+                          <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">{description}</div>
                         </div>
                       </button>
                     );

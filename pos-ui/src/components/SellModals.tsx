@@ -552,7 +552,7 @@ function PaymentDialog() {
       </div>
 
       <div className="mb-6 rounded-[var(--oh-radius)] bg-[var(--oh-surface)] p-5 text-center">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+        <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           {exactCash ? "Cash Due" : eftposCashOut && payment.cashout > 0 ? "Purchase Amount" : "Amount Due"}
         </div>
         <div className="text-[36px] font-bold leading-tight text-[var(--oh-text)]">

@@ -44,7 +44,7 @@ export function ListTable({
         className={cn(
           rowLayout,
           "relative items-center rounded-md bg-black px-3 font-bold text-white",
-          compact ? "py-1 text-[11px]" : "py-2 text-[12px]",
+          compact ? "py-1 text-[13px]" : "py-2 text-[12px]",
           headerRight && "pr-24",
           headerClassName,
         )}

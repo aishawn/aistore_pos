@@ -68,7 +68,7 @@ export function AiInsightsPanel() {
           </div>
           <div>
             <h2 className="text-[15px] font-semibold text-[var(--oh-text)]">Orithos AI</h2>
-            <p className="text-[11px] leading-snug text-[var(--oh-muted)]">
+            <p className="text-[13px] leading-snug text-[var(--oh-muted)]">
               Live AI-generated business insights.
             </p>
           </div>
@@ -95,7 +95,7 @@ export function AiInsightsPanel() {
 
       {/* Customer profile */}
       <div className="mx-3 mb-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="mb-2 text-[12px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
           Customer Profile
         </p>
         {sell.customer ? (
@@ -105,7 +105,7 @@ export function AiInsightsPanel() {
             </span>
             <div>
               <p className="text-[13px] font-medium text-[var(--oh-text)]">{sell.customer.name}</p>
-              <p className="text-[11px] text-[var(--oh-muted)]">Australian Loyalty ID</p>
+              <p className="text-[13px] text-[var(--oh-muted)]">Australian Loyalty ID</p>
             </div>
           </div>
         ) : (

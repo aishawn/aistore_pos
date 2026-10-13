@@ -86,7 +86,7 @@ export function AiAssistant() {
         {DEMO_MESSAGES.map((msg, i) => (
           <div
             key={i}
-            className={`mb-2 max-w-[90%] rounded-[var(--oh-radius)] px-3 py-2 text-[11px] leading-relaxed ${
+            className={`mb-2 max-w-[90%] rounded-[var(--oh-radius)] px-3 py-2 text-[13px] leading-relaxed ${
               msg.role === "user"
                 ? "ml-auto bg-[var(--oh-navy)] text-white"
                 : "mr-auto bg-white text-[var(--oh-text-secondary)] shadow-sm"
@@ -110,7 +110,7 @@ export function AiAssistant() {
                   key={action}
                   type="button"
                   onClick={() => runAction(action)}
-                  className="cursor-pointer rounded-full border border-[var(--oh-border-strong)] bg-white px-2.5 py-1 text-[10px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+                  className="cursor-pointer rounded-full border border-[var(--oh-border-strong)] bg-white px-2.5 py-1 text-[12px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
                 >
                   {action}
                 </button>
@@ -134,7 +134,7 @@ export function AiAssistant() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask Orithos AI…"
-          className="h-8 min-w-0 flex-1 rounded-full border border-[var(--oh-border)] px-3 text-[11px] outline-none focus:border-[var(--oh-orange)]"
+          className="h-8 min-w-0 flex-1 rounded-full border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)]"
         />
       </div>
     </div>

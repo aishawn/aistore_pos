@@ -270,7 +270,7 @@ export function SupplyChainPage() {
         <div className="space-y-4">
           <section className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr]">
             <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+              <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
                 This week · {plan.weekStart} to {plan.weekEnd}
               </div>
               <div className="mt-3 grid grid-cols-3 gap-3">
@@ -321,7 +321,7 @@ export function SupplyChainPage() {
                     : "border-[var(--oh-border)] bg-white"
                 }`}
               >
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-sky-700">Other purchases</div>
+                <div className="text-[13px] font-semibold uppercase tracking-wider text-sky-700">Other purchases</div>
                 <div className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{plan.other.length}</div>
                 <div className="text-[12px] text-[var(--oh-muted)]">Manual tasks with no API or email</div>
               </button>
@@ -364,7 +364,7 @@ export function SupplyChainPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-[13px]">
-                  <thead className="text-[11px] uppercase tracking-wide text-[var(--oh-muted)]">
+                  <thead className="text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">
                     <tr className="border-b border-[var(--oh-border)]">
                       <th className="px-4 py-2 font-semibold">Product</th>
                       <th className="px-3 py-2 font-semibold">Qty</th>
@@ -401,7 +401,7 @@ export function SupplyChainPage() {
       {draft && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[85vh] w-full max-w-xl overflow-auto rounded-[var(--oh-radius)] bg-white p-5 shadow-xl">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Email draft</div>
+            <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Email draft</div>
             <h3 className="mt-1 text-[16px] font-semibold">{draft.subject}</h3>
             <p className="mt-1 text-[13px] text-[var(--oh-text-secondary)]">To: {draft.toEmail || "No rep email on file"}</p>
             <pre className="mt-3 whitespace-pre-wrap rounded bg-[var(--oh-surface)] p-3 text-[13px] leading-5 text-[var(--oh-text)]">
@@ -457,7 +457,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-[20px] font-semibold leading-none text-[var(--oh-text)]">{value}</div>
-      <div className="mt-1 text-[11px] uppercase tracking-wide text-[var(--oh-muted)]">{label}</div>
+      <div className="mt-1 text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">{label}</div>
     </div>
   );
 }
@@ -475,7 +475,7 @@ function ChannelCard({
 }) {
   return (
     <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-      <div className={`text-[11px] font-semibold uppercase tracking-wider ${tone === "ready" ? "text-emerald-700" : "text-amber-700"}`}>
+      <div className={`text-[13px] font-semibold uppercase tracking-wider ${tone === "ready" ? "text-emerald-700" : "text-amber-700"}`}>
         {title}
       </div>
       <div className="mt-2 space-y-2">
@@ -533,10 +533,10 @@ function LineRows({
         </td>
         <td className="px-3 py-3 text-[var(--oh-text-secondary)]">{line.reason || "—"}</td>
         <td className="px-3 py-3">
-          <span className={`rounded px-2 py-0.5 text-[11px] font-semibold ${confidenceClass(line.confidenceLabel)}`}>
+          <span className={`rounded px-2 py-0.5 text-[13px] font-semibold ${confidenceClass(line.confidenceLabel)}`}>
             {line.confidenceLabel} {line.confidence}%
           </span>
-          <div className="mt-1 text-[11px] uppercase tracking-wide text-[var(--oh-muted)]">{line.status.replaceAll("_", " ")}</div>
+          <div className="mt-1 text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">{line.status.replaceAll("_", " ")}</div>
         </td>
         <td className="px-4 py-3 text-right">
           <button type="button" onClick={onToggle} className="text-[12px] font-semibold text-[var(--oh-orange)]">

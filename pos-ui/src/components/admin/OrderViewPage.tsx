@@ -90,7 +90,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
             </h1>
             {order?.status && (
               <span
-                className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[order.status] ?? "bg-neutral-500"}`}
+                className={`rounded px-2 py-0.5 text-[12px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[order.status] ?? "bg-neutral-500"}`}
               >
                 {order.status}
               </span>

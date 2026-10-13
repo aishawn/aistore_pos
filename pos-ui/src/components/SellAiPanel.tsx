@@ -998,7 +998,7 @@ function DialogueView({
         )}
       </div>
       <div className="mt-3 shrink-0 border-t border-[var(--oh-border)] pt-3">
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="mb-2 text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
           Quick actions
         </p>
         <div className="flex flex-wrap gap-2">

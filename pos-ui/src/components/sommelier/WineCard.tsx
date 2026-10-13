@@ -46,7 +46,7 @@ export function WineCard({
     <article className="rounded-2xl border border-white/12 bg-white/[0.06] p-4 shadow-lg">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">{card.badge}</p>
+          <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-[#f39200]">{card.badge}</p>
           <p className="mt-1 text-[28px] font-medium leading-none">{formatMoney(card.sellPrice)}</p>
           {card.onPromotion ? (
             <p className="mt-1 text-[12px] text-amber-300">
@@ -102,7 +102,7 @@ export function WineCard({
           Help me sell
         </button>
       </div>
-      <p className="mt-2 text-[11px] text-white/40">In stock: {card.stockQuantity}</p>
+      <p className="mt-2 text-[13px] text-white/40">In stock: {card.stockQuantity}</p>
     </article>
   );
 }

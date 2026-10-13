@@ -24,10 +24,10 @@ export function SaleKeysPanel({
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Sale keys
         </p>
-        <span className="text-[11px] text-[var(--oh-muted)]">{setName}</span>
+        <span className="text-[13px] text-[var(--oh-muted)]">{setName}</span>
       </div>
       <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-gradient-to-b from-white to-[var(--oh-surface)] p-2.5 shadow-[var(--oh-shadow-card)]">
         {loading ? (
@@ -37,7 +37,7 @@ export function SaleKeysPanel({
         ) : (
           <>
             {error && (
-              <p className="mb-2 text-center text-[11px] text-[var(--oh-muted)]">
+              <p className="mb-2 text-center text-[13px] text-[var(--oh-muted)]">
                 Using saved or default layout
               </p>
             )}

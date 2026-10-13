@@ -352,7 +352,7 @@ function MiniToggle({ active, onClick, children }: { active: boolean; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${active ? "bg-[#f39200] text-[#1a1020]" : "bg-white/10 text-white/70"}`}
+      className={`rounded-lg px-2 py-1 text-[13px] font-semibold ${active ? "bg-[#f39200] text-[#1a1020]" : "bg-white/10 text-white/70"}`}
     >
       {children}
     </button>
