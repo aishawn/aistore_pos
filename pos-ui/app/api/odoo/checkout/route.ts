@@ -32,7 +32,6 @@ type OdooProduct = {
   taxes_id: number[];
   available_in_pos: boolean;
   uom_id: Relation;
-  uom_po_id?: Relation;
 };
 
 type OdooCustomer = {
@@ -365,7 +364,7 @@ export async function POST(request: NextRequest) {
       ["id", "in", productIds],
     ];
     if (!isRefund) productDomain.push(["available_in_pos", "=", true]);
-    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "uom_id", "uom_po_id"], MAX_LINES);
+    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "uom_id"], MAX_LINES);
     if (products.length !== productIds.length) throw new OdooCheckoutError("One or more products are no longer available in this POS.", 409);
     const productsById = new Map(products.map((product) => [product.id, product]));
 

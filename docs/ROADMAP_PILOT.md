@@ -201,3 +201,4 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - 生产仍未设置自动恢复：登录态 `/api/odoo/session` 为 `autoRecoverConfigured: false`。设置页能自动连接的前提是先完成 Dokploy 服务账号变量配置。
 - 安全复核发现：在 `de61b96` 生产版中，使用获准的 Orithos 登录和 Odoo 会话访问商品列表为 200，随后调用 Orithos logout 后同一会话仍能读 Odoo 商品（200）。`5782acf` 已加入 Orithos API 会话保护、logout 清除 Odoo Cookie 和 401 自动续期，类型检查与定向 ESLint 通过，并已由 Dokploy 部署 **Done**。
 - 回归复测：Orithos 登录 200、手动 Odoo 连接 200、登出前商品 API 200；Orithos 登出 200 后商品 API 返回 **401**、Odoo Cookie 已清除，匿名会话返回 `user:null`。目前尚未向 Dokploy 配置 Odoo 服务账号，`autoRecoverConfigured` 仍为 false。未运行本地 build。
+- 受控交易验收首次尝试在落单前失败：生产 Odoo 20 报 `Invalid field 'uom_po_id' on 'product.product'`（HTTP 422）。因此没有生成销售单；现已从 checkout 产品查询移除未使用字段，typecheck 和该 route 的 ESLint 通过。此修复待部署，之后再继续 Card/Cash、退款和关账验收。

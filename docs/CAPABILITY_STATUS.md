@@ -18,11 +18,11 @@ Statuses:
 |---|---|---|
 | Open sell screen (Odoo products / scan / cart) | Accepted | `/` → `OdooRegisterPage`. 2026-10-13: session `orithos_store1/00003` open; demo wines searchable with stock; add-to-cart + pack sizes OK. Checkout not exercised on production (no approved test sale). |
 | Park / resume sale (terminal localStorage) | Accepted | Park + discard confirmed on production terminal; not server-synced |
-| Checkout with GST + cash rounding | Accepted | Uses Odoo tax + register rounding; live finalise deferred until an approved test order |
+| Checkout with GST + cash rounding | In progress | Uses Odoo tax + register rounding. Production test was rejected before order creation because checkout requested unsupported Odoo 20 field `product.product.uom_po_id`; working-tree fix removes the unused field. Redeploy and repeat Card/Cash UAT before accepting. |
 | Pricelist rules & customer pricelist | Accepted | Checkout calls Odoo `_get_product_price`; FX mismatch still blocked |
 | Bottle / case pack factor | Accepted | Pack ×1/6/12/24 on cart lines (UI confirmed) |
-| Full-sale refund from history | Accepted | Negative qty checkout + `refundOfOrderId`; live refund deferred |
-| Close register (Odoo session) | Accepted | `/close` → `action_pos_session_closing_control`. With open session, close UI is available; do not close the pilot test session unless finished UAT |
+| Full-sale refund from history | In progress | Negative qty checkout + `refundOfOrderId`; live refund depends on successful checkout UAT |
+| Close register (Odoo session) | In progress | `/close` → `action_pos_session_closing_control`; live test-session close and final reconciliation remain unverified |
 | Manage Cash | Planned | Sidebar entry removed in upcoming deploy; deep-link page shows Coming soon (no Odoo writes) |
 | Credit sales / multi-tender split | Planned | |
 | Offline-first sell | Planned | Competitor hard requirement; deferred |
