@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T13:47:19.942Z",
+  "generatedAt": "2026-10-13T14:07:16.788Z",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -25,12 +25,12 @@
     {
       "path": "/customers/odoo",
       "status": "PASS",
-      "snippet": "orithos Register Stock Customers Customers Reporting Orithos AI Setup ONLINE admin Customers Customer records available to your Odoo staff account. New customer Refresh CUSTOMER PHONE EMAIL REFERENCE ACTIONS No customers"
+      "snippet": "orithos Register Stock Customers Customers Reporting Orithos AI Setup ONLINE admin Customers Customer records available to your Odoo staff account. New customer Refresh CUSTOMER PHONE EMAIL REFERENCE ACTIONS Loading cust"
     },
     {
       "path": "/suppliers/odoo",
       "status": "PASS",
-      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Suppliers Supplier contacts available to your Odoo staff account. Refresh SUPPLIER CONTACT ABN / TA"
+      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Suppliers Supplier contacts available to your Odoo staff account. Open replenishment Add supplier R"
     },
     {
       "path": "/purchases/odoo",

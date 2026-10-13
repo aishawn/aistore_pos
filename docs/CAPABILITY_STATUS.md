@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (app commit `9cba779`; supplier create UI/API added, typecheck/ESLint and intercepted browser UAT pass; 24-route matrix and prior production UAT remain as recorded below)
+**Last updated:** 2026-10-13 (app commit `9cba779`; production regression after supplier flow: 24/24 routes, 8/8 interactions, 3/3 operations, 6/6 Odoo auto-recovery; purchase and supplier write UATs intercepted)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 

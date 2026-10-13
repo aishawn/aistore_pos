@@ -5,7 +5,7 @@
   "productionOdooWrite": false,
   "checks": [
     "Read-only Odoo aipos fields_get confirmed supplier_rank, company_type, is_company, vat, email, phone, and ref are writable.",
-    "Production browser UAT opened the Add supplier form, entered fixture-only details, submitted the request, and refreshed the supplier list from a fixture response.",
+    "Production browser UAT verified malformed email is blocked before submission, duplicate ABN response remains editable, and unique ABN submission refreshes the supplier list.",
     "POST /api/odoo/suppliers was intercepted in the browser; no supplier was created in Odoo.",
     "API validates required name, email shape, field lengths, same-origin requests, Odoo session, and blocks an exact duplicate ABN before create."
   ],

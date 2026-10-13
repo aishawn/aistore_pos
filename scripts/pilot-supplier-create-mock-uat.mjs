@@ -16,7 +16,7 @@ try {
   if (!login.ok() || loginBody.code !== 0) throw new Error("Supplier UAT login failed");
 
   const page = await context.newPage();
-  let submitted = null;
+  const submissions = [];
   let hasCreatedFixture = false;
   await page.route("**/api/odoo/session**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: 1, name: "UAT" }, autoRecoverConfigured: true }) }));
   await page.route("**/api/odoo/records", (route) => {
@@ -25,7 +25,9 @@ try {
   });
   await page.route("**/api/odoo/suppliers", async (route) => {
     if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Unexpected method" });
-    submitted = route.request().postDataJSON();
+    const submitted = route.request().postDataJSON();
+    submissions.push(submitted);
+    if (submitted.vat === "53004085616") return route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ message: "ABN / Tax ID already belongs to UAT Existing Supplier (fixture only) (existing supplier). Review that record before continuing." }) });
     hasCreatedFixture = true;
     return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ id: 999001, name: submitted.name }) });
   });
@@ -35,14 +37,23 @@ try {
   await dialog.waitFor({ timeout: 10000 });
   await dialog.getByLabel(/Business name/).fill("UAT Winery Group (fixture only)");
   await dialog.getByLabel("Phone").fill("+61 2 5550 0100");
-  await dialog.getByLabel("Email").fill("vendor-uat@example.invalid");
+  await dialog.getByLabel("Email").fill("not-an-email");
   await dialog.getByLabel("ABN / Tax ID").fill("53004085616");
   await dialog.getByLabel("Internal reference").fill("UAT-ONLY");
   await dialog.getByRole("button", { name: "Create supplier" }).click();
+  await page.waitForTimeout(300);
+  if (submissions.length !== 0) throw new Error("Invalid email unexpectedly submitted a supplier request");
+  await dialog.getByLabel("Email").fill("vendor-uat@example.invalid");
+  await dialog.getByRole("button", { name: "Create supplier" }).click();
+  await dialog.getByRole("alert").getByText("ABN / Tax ID already belongs to UAT Existing Supplier (fixture only) (existing supplier). Review that record before continuing.").waitFor({ timeout: 10000 });
+  if (submissions.length !== 1) throw new Error("Duplicate ABN was not sent exactly once to the intercepted API");
+  await dialog.getByLabel("ABN / Tax ID").fill("53004085617");
+  await dialog.getByRole("button", { name: "Create supplier" }).click();
   await dialog.waitFor({ state: "detached", timeout: 10000 });
-  if (!submitted || submitted.name !== "UAT Winery Group (fixture only)" || submitted.vat !== "53004085616" || submitted.ref !== "UAT-ONLY") throw new Error(`Supplier create payload mismatch: ${JSON.stringify(submitted)}`);
+  const submitted = submissions[1];
+  if (submissions.length !== 2 || !submitted || submitted.name !== "UAT Winery Group (fixture only)" || submitted.vat !== "53004085617" || submitted.ref !== "UAT-ONLY") throw new Error(`Supplier create payload mismatch: ${JSON.stringify(submissions)}`);
   await page.getByText("UAT Winery Group (fixture only)", { exact: true }).waitFor({ timeout: 10000 });
-  console.log(JSON.stringify({ status: "PASS", fixture: "create API intercepted; no Odoo write", checks: ["supplier form opens from directory", "required and optional contact fields submit", "ABN and reference included in create request", "success closes form and refreshes list"] }));
+  console.log(JSON.stringify({ status: "PASS", fixture: "create API intercepted; no Odoo write", checks: ["supplier form opens from directory", "browser rejects malformed email before API", "duplicate ABN response is shown and form remains editable", "unique ABN and contact fields submit", "success closes form and refreshes list"] }));
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await browser.close();
