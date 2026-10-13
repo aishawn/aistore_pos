@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-13T11:10:23.123Z",
+  "scope": "read-only production validation; close confirmation opened then cancelled; no purchase order confirmed and no register-close request sent",
+  "checks": [
+    {
+      "name": "Integrations displays automatic Odoo recovery and the live POS session",
+      "status": "PASS",
+      "evidence": "Connected status, auto-reconnect message, and opened session 00004 were visible."
+    },
+    {
+      "name": "Close-register confirmation is explicit and safely cancellable",
+      "status": "PASS",
+      "evidence": "Session 00004 was named in the confirmation; cancel returned to the open session. No close request was sent."
+    },
+    {
+      "name": "Purchase status filter refreshes Odoo results and detail is view-only",
+      "status": "PASS",
+      "evidence": "Draft filter rendered 0 row(s); explicit empty state shown."
+    }
+  ]
+}
