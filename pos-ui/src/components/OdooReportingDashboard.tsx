@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, ShoppingBag, Store } from "lucide-react";
+import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, RotateCcw, ShoppingBag, Store } from "lucide-react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
 
 type DashboardData = {
@@ -13,6 +13,9 @@ type DashboardData = {
   currency: string;
   trendGranularity: "hour" | "day";
   revenue: number;
+  grossSales: number;
+  refunds: number;
+  refundTransactions: number;
   tax: number;
   transactions: number;
   openRegisters: number;
@@ -86,7 +89,7 @@ export function OdooReportingDashboard() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const averageOrder = data?.transactions ? data.revenue / data.transactions : 0;
+  const averageOrder = data?.transactions ? data.grossSales / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [])), [data]);
 
   if (loading && !data) {
@@ -131,10 +134,11 @@ export function OdooReportingDashboard() {
 
       {error && <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
 
-      <section aria-label="Sales summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Gross sales" value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")} detail="Completed POS orders · incl. tax" icon={<ShoppingBag size={18} />} />
-        <MetricCard title="Transactions" value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)} detail={`Average ${formatMoney(averageOrder, data?.currency ?? "AUD")} per sale`} icon={<Activity size={18} />} />
-        <MetricCard title="Tax collected" value={formatMoney(data?.tax ?? 0, data?.currency ?? "AUD")} detail="Tax recorded on completed orders" icon={<ArrowUpRight size={18} />} />
+      <section aria-label="Sales summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard title="Net sales" value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")} detail="Completed sales less refunds · incl. tax" icon={<ShoppingBag size={18} />} />
+        <MetricCard title="Sales" value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)} detail={`Average ${formatMoney(averageOrder, data?.currency ?? "AUD")} per sale`} icon={<Activity size={18} />} />
+        <MetricCard title="Refunds" value={formatMoney(data?.refunds ?? 0, data?.currency ?? "AUD")} detail={`${new Intl.NumberFormat("en-AU").format(data?.refundTransactions ?? 0)} refunded orders`} icon={<RotateCcw size={18} />} />
+        <MetricCard title="Net tax" value={formatMoney(data?.tax ?? 0, data?.currency ?? "AUD")} detail="Sales tax less refunded tax" icon={<ArrowUpRight size={18} />} />
         <MetricCard title="Open registers" value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)} detail="Across the current Odoo company" icon={<Store size={18} />} />
       </section>
 
@@ -160,21 +164,21 @@ export function OdooReportingDashboard() {
 
         <section className="flex flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-4 md:px-5">
-            <div><h2 className="oh-type-title text-[var(--oh-text)]">Recent sales</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Latest completed Odoo POS orders</p></div>
+            <div><h2 className="oh-type-title text-[var(--oh-text)]">Recent sales &amp; refunds</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Latest completed Odoo POS orders</p></div>
             <Link href="/history/odoo" className="oh-type-label inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--oh-primary)] hover:underline">View all <ArrowUpRight size={15} /></Link>
           </div>
           <div>
             {data?.recentSales.length ? <ul className="divide-y divide-[var(--oh-border)]">
               {data.recentSales.map((sale) => <li key={sale.id} className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
-                <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
-                <span className="oh-type-body-strong shrink-0 tabular-nums text-[var(--oh-text)]">{formatMoney(sale.amount_total, data.currency)}</span>
+                <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.amount_total < 0 ? "Refund · " : "Sale · "}{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
+                <span className={`oh-type-body-strong shrink-0 tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-orange-dark)]" : "text-[var(--oh-text)]"}`}>{formatMoney(sale.amount_total, data.currency)}</span>
               </li>)}
             </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
           </div>
         </section>
       </div>
 
-      <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}. Revenue excludes drafts and cancelled orders.</p>
+      <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
     </main>
   );
 }

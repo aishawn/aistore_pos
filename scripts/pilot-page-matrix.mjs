@@ -58,7 +58,7 @@ function matchAll(text, patterns) {
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
-const productDiagnostics = { consoleErrors: [], failedRequests: [] };
+const productDiagnostics = { consoleErrors: [], failedRequests: [], unauthorizedResponses: [] };
 page.on("console", (message) => {
   if (message.type() === "error") productDiagnostics.consoleErrors.push(message.text());
 });
@@ -66,6 +66,16 @@ page.on("requestfailed", (request) => {
   const errorText = request.failure()?.errorText;
   if (errorText && errorText !== "net::ERR_ABORTED" && request.url().includes("/api/")) {
     productDiagnostics.failedRequests.push(`${request.method()} ${request.url()} :: ${errorText}`);
+  }
+});
+page.on("response", (response) => {
+  if (response.status() === 401) {
+    const request = response.request();
+    productDiagnostics.unauthorizedResponses.push({
+      method: request.method(),
+      path: new URL(response.url()).pathname,
+      resourceType: request.resourceType(),
+    });
   }
 });
 
@@ -110,6 +120,7 @@ for (const entry of pages) {
       body: text,
       consoleErrors: productDiagnostics.consoleErrors,
       failedRequests: productDiagnostics.failedRequests,
+      unauthorizedResponses: productDiagnostics.unauthorizedResponses,
     }));
   }
   matrix.push({
@@ -201,7 +212,7 @@ try {
 console.log("ROLE_CRUD", roleResult);
 
 const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
-fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks }, null, 2));
+fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses }, null, 2));
 console.log("WROTE", outPath);
 
 await browser.close();

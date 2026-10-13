@@ -178,6 +178,9 @@ export async function GET(request: NextRequest) {
       ["date_order", "<=", compareToAligned],
       ["state", "in", ["paid", "done", "invoiced"]],
     ];
+    const salesDomain = [...domain, ["amount_total", ">", 0]];
+    const refundDomain = [...domain, ["amount_total", "<", 0]];
+    const compareSalesDomain = [...compareDomain, ["amount_total", ">", 0]];
     const lineDomain = [
       ["order_id.company_id", "=", companyId],
       ["order_id.date_order", ">=", from],
@@ -185,10 +188,13 @@ export async function GET(request: NextRequest) {
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
     ];
 
-    const [count, totals, trendData, recentSales, openSessions, companies, compareCount, compareTotals, lineExtras] = await Promise.all([
-      rpc<number>(sessionId, "pos.order", "search_count", [domain]),
+    const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, companies, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([
+      rpc<number>(sessionId, "pos.order", "search_count", [salesDomain]),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []]),
-      readSalesTrend(sessionId, domain, rangeHours),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []]),
+      rpc<number>(sessionId, "pos.order", "search_count", [refundDomain]),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []]),
+      readSalesTrend(sessionId, salesDomain, rangeHours),
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [domain], {
         fields: ["id", "name", "pos_reference", "date_order", "amount_total", "partner_id", "session_id"],
         order: "date_order desc, id desc",
@@ -200,17 +206,24 @@ export async function GET(request: NextRequest) {
       rpc<Array<{ name?: string; currency_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
         ["id", "=", companyId],
       ]], { fields: ["name", "currency_id"], limit: 1 }),
-      rpc<number>(sessionId, "pos.order", "search_count", [compareDomain]).catch(() => 0),
+      rpc<number>(sessionId, "pos.order", "search_count", [compareSalesDomain]).catch(() => 0),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []]).catch(() => []),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareSalesDomain, ["amount_total:sum"], []]).catch(() => []),
       loadLineExtras(sessionId, lineDomain),
     ]);
 
     const summary = totals?.[0] ?? {};
+    const grossSummary = grossTotals?.[0] ?? {};
+    const refundSummary = refundTotals?.[0] ?? {};
     const compareSummary = compareTotals?.[0] ?? {};
     const revenue = Number(summary.amount_total ?? 0);
     const transactions = Number(count ?? summary.__count ?? 0);
+    const grossSales = Number(grossSummary.amount_total ?? 0);
+    const refunds = Math.abs(Number(refundSummary.amount_total ?? 0));
+    const refundTransactions = Number(refundCount ?? 0);
     const compareRevenue = Number(compareSummary.amount_total ?? 0);
     const compareTransactions = Number(compareCount ?? compareSummary.__count ?? 0);
+    const compareGrossSales = Number(compareGrossTotals?.[0]?.amount_total ?? 0);
 
     return NextResponse.json({
       rangeHours,
@@ -220,6 +233,9 @@ export async function GET(request: NextRequest) {
       currency: Array.isArray(companies?.[0]?.currency_id) ? companies[0].currency_id[1] : "AUD",
       trendGranularity: trendData.granularity,
       revenue,
+      grossSales,
+      refunds,
+      refundTransactions,
       tax: Number(summary.amount_tax ?? 0),
       transactions,
       itemsSold: lineExtras.itemsSold,
@@ -242,8 +258,8 @@ export async function GET(request: NextRequest) {
         transactionsDeltaPct: percentDelta(transactions, compareTransactions),
         itemsSoldDeltaPct: percentDelta(lineExtras.itemsSold, lineExtras.compareItemsSold),
         averageSaleDeltaPct: percentDelta(
-          transactions ? revenue / transactions : 0,
-          compareTransactions ? compareRevenue / compareTransactions : 0,
+          transactions ? grossSales / transactions : 0,
+          compareTransactions ? compareGrossSales / compareTransactions : 0,
         ),
       },
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
