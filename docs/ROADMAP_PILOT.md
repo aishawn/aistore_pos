@@ -134,14 +134,16 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 
 ## 2026-10-13 执行进度核对
 
-- 仓库本地 `main` 与 `origin/main` 同步于 `0cecf49`；已部署应用代码包含 `75c6184` 的 POS 外壳/主题统一。
-- Dokploy 部署列表显示 `0cecf49` **Done**；生产首页 HEAD 请求为 HTTP 200。页面交互仍在逐页验收。
+- 最近确认应用提交 `e37c6a6` 已在 Dokploy **Done**；`main` 与 `origin/main` 同步到该提交（后续文档更新提交除外）。生产首页 HTTP 200；页面交互仍在逐页验收。
 - 生产 `GET /api/odoo/session` 返回 `autoRecoverConfigured: false`、匿名 `user: null`。自动恢复仍是阶段 0 的阻塞项。
 - 本地 `.env` 中存在 `ODOO_SERVICE_USERNAME` 和 `ODOO_SERVICE_PASSWORD`，凭据未展示或写入文档。将这组凭据保存到 Dokploy Environment、重部署并做 Cookie 失效验证，等待店主对该具体配置动作的确认。
 - 登录成功；Sell 页面连接到 Odoo 班次 `orithos_store1/00003`，商品及测试库存正确显示为两款酒、各 12 瓶。Close Register 显示同一打开班次；未点击关账。
 - Sales History、Customers、Suppliers、Purchases 都正常呈现当前空数据状态；Replenishment 明确提示最近 56 天无已完成销售且不给出虚假建议；Reporting 显示销售额/交易为 0、打开班次为 1。
 - Integrations 当前显示 Odoo Connected（Administrator），但明确提示 auto-reconnect off。酒类助手、按口味查酒、酒标识别和发票识别入口可加载；未上传图片、未调用 AI 或提交业务写操作。
 - 设置页发现数据源不一致风险：支付方式/税率/门店与收银机/收据/硬件页显示本地或示例配置，不能代表 Odoo。`/settings/users` 当前为通用编辑器空态，`/settings/roles` 显示 0 个角色；这些页面需标清来源或改为 Odoo-backed 后再纳入业务配置验收。
-- 并行未提交改动涉及登录邀请/密码重置、主题、收银布局及容器邮件变量。全量前端 `npm run typecheck` 通过；针对改动文件的 ESLint 发现 `AppShell.tsx` 两条同步 state-in-effect 警告。该组改动尚未推送或部署。
+- `8b356bf` 的登录邀请/密码重置、主题与收银布局已部署。登录态员工管理界面以及邮件投递仍需生产验收；SMTP 当前未配置。
+
+- 并行改动已由另一工作提交为 `8b356bf` 并部署。生产复核发现缺少 `/api/auth/reset-token` 同源代理，已在 `e37c6a6` 修复并部署；前端类型检查和该文件 ESLint 通过。无效测试令牌和伪造 Origin 验证了失效响应与 403 防护；未知用户名的忘记密码请求返回反枚举通用响应。SMTP 未配置。
+- 新登录会话保护会将已过期浏览器会话重定向到登录页；使用本机 `.env` 的 `admin` 凭据经正式登录 API 验证成功，`/api/users` 返回成功并显示 1 个用户，但员工管理界面视觉验收、邀请/重置操作尚未完成。Odoo 自动恢复仍未配置：登录态会话接口返回 `autoRecoverConfigured: false` 且无 Odoo 用户，阶段 0 仍受阻。
 
 当前确认部署完成和上述页面只读状态；自动连接、真实交易闭环、AI 结果与其余设置页面尚未验收。店主确认凭据配置后继续阶段 0 第 2–4 项，再复核测试班次状态，进入阶段 1。
