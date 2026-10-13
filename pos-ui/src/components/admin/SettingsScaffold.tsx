@@ -237,7 +237,7 @@ export function SettingsScaffold({
   return (
     <div className="h-full overflow-auto bg-[var(--oh-surface)] p-6 font-sans">
       <div className="w-full">
-        <h1 className="mb-4 text-[34px] font-bold text-[var(--oh-text)]">{title}</h1>
+        <h1 className="oh-type-display mb-4 text-[var(--oh-text)]">{title}</h1>
         <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
           <div className="p-4">
             <input

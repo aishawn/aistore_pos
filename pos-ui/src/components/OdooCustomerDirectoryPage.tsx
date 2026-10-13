@@ -95,11 +95,11 @@ export function OdooCustomerDirectoryPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Customers</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Customer records available to your Odoo staff account.</p>
+          <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Customer records available to your Odoo staff account.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { setEditingCustomer(null); setCreateOpen(true); setCreateError(null); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
@@ -120,11 +120,11 @@ export function OdooCustomerDirectoryPage() {
         </section>
       ) : (
         <>
-          <label className="flex h-11 max-w-xl items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
+          <label className="flex h-11 max-w-xl shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>}
+          {error && <p role="alert" className="shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="w-full min-w-[840px] border-collapse text-left text-sm">
@@ -149,7 +149,7 @@ export function OdooCustomerDirectoryPage() {
             </table>
           </section>
 
-          <footer className="flex items-center justify-between text-sm text-[var(--oh-muted)]">
+          <footer className="flex shrink-0 items-center justify-between text-sm text-[var(--oh-muted)]">
             <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>

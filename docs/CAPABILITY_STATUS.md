@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (app commit `9cba779`; production regression after supplier flow: 24/24 routes, 8/8 interactions, 3/3 operations, 6/6 Odoo auto-recovery; purchase and supplier write UATs intercepted)
+**Last updated:** 2026-10-13 (production commit `da508ce`; fresh regression: 24/24 routes, 8/8 interactions, 3/3 operations, 6/6 Odoo auto-recovery, 6/6 Sommelier reads; AI launcher style/interaction pass)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -48,7 +48,7 @@ AI remains disabled in production. The tenant report database account has no sou
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass |
 | Cashier assistant / NL reports | In progress | Spring Graph; report permissions now resolve from the active DB role on every request (`8721a08`); 113 Java 21 build tests pass. Production AI remains disabled until budget, so no live report call UAT yet |
-| Wine / sommelier assistant | In progress | Odoo remains authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. Current update aligns recommendation price/stock inputs to Odoo POS `lst_price` / `free_qty`, with safe legacy-field fallback. Production UAT and remaining outlet warehouse/pricelist caveats are tracked in `docs/UAT_SOMMELIER_2026-10-13.json`. |
+| Wine / sommelier assistant | In progress | Odoo remains authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. Recommendation/detail price and free-stock parity passed 6/6 production read-only checks on `da508ce`; see `docs/UAT_SOMMELIER_REGRESSION_2026-10-13.json`. Still not verified against register-specific warehouse context or tax/pricelist customer totals. Image recognition and model-backed behavior remain off/unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
 
 ## Ops / integration

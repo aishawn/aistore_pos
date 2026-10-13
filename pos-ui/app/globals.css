@@ -162,13 +162,13 @@
   --oh-muted: #64748b;
   --oh-placeholder: #94a3b8;
 
-  /* Type scale — Shopfront-like retail readability (min body 16px) */
-  --oh-text-display: 2.125rem;   /* 34px — greeting / hero total */
-  --oh-text-kpi: 1.75rem;        /* 28px — KPI figures */
-  --oh-text-title: 1.375rem;     /* 22px — section titles */
-  --oh-text-body: 1rem;          /* 16px — default body / nav / product */
-  --oh-text-body-strong: 1.125rem; /* 18px — customer, line totals, prices */
-  --oh-text-label: 0.875rem;     /* 14px — secondary labels (replaces xs) */
+  /* Type scale — compact retail (1A); body min 16px */
+  --oh-text-display: 1.75rem;    /* 28px — greeting / hero total */
+  --oh-text-kpi: 1.5rem;         /* 24px — KPI figures */
+  --oh-text-title: 1.125rem;     /* 18px — section titles */
+  --oh-text-body: 1rem;          /* 16px — default body / product */
+  --oh-text-body-strong: 1rem;   /* 16px — customer, line totals, prices */
+  --oh-text-label: 0.875rem;     /* 14px — secondary labels / nav */
   --oh-text-meta: 0.8125rem;     /* 13px — true metadata only */
 
   /* Buttons — one primary blue for Sell + admin */

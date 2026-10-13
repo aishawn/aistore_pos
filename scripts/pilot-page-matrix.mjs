@@ -24,6 +24,7 @@ if (!password) {
 }
 
 const pages = [
+  { path: "/overview", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Current sale/] },
   { path: "/", expect: [/orithos_store1\/00004/, /12 avail/, /Finalise/] },
   { path: "/history/odoo", expect: [/Sales History/, /260-1-00000/] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
@@ -82,6 +83,7 @@ await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
 if (new URL(page.url()).pathname === "/login") throw new Error("Login API succeeded but browser session was not established");
 
 const matrix = [];
+const uiChecks = [];
 for (const entry of pages) {
   await page.goto(`${base}${entry.path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.waitForTimeout(1200);
@@ -115,8 +117,38 @@ for (const entry of pages) {
     status: pass ? "PASS" : "FAIL",
     snippet: text.slice(0, 220),
   });
+  if (entry.path === "/") {
+    try {
+      const fab = page.locator('button[aria-label="Open Orithos AI"] [role="img"][aria-label="Orithos AI"]');
+      await fab.waitFor({ timeout: 10000 });
+      const background = await fab.evaluate((element) => getComputedStyle(element).backgroundColor);
+      if (background !== "rgb(37, 99, 235)") throw new Error(`Expected brand blue, got ${background}`);
+      await page.getByRole("button", { name: "Open Orithos AI" }).click();
+      await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
+      await page.getByRole("button", { name: "Close assistant" }).click();
+      await page.getByRole("button", { name: "Open Orithos AI" }).waitFor({ timeout: 10000 });
+      uiChecks.push({ name: "AI launcher brand and panel interaction", status: "PASS", background, evidence: "Launcher uses retail brand blue; opening and closing the assistant panel works without submitting a prompt." });
+    } catch (error) {
+      uiChecks.push({ name: "AI launcher brand and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+    }
+  }
   console.log(`${pass ? "PASS" : "FAIL"} ${entry.path} :: ${text.slice(0, 140)}`);
 }
+
+try {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }).waitFor({ timeout: 20000 });
+  const dimensions = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    page: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+  }));
+  if (dimensions.page > dimensions.viewport) throw new Error(`Overview overflows horizontally: ${dimensions.page}px > ${dimensions.viewport}px`);
+  uiChecks.push({ name: "Overview mobile layout", status: "PASS", evidence: `390px viewport has no horizontal page overflow (${dimensions.page}px content).` });
+} catch (error) {
+  uiChecks.push({ name: "Overview mobile layout", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+}
+await page.setViewportSize({ width: 1440, height: 900 });
 
 // Roles: exercise permission assignment through the UI, verify the stored
 // grant through the API, and always clean up the unique test role.
@@ -169,9 +201,10 @@ try {
 console.log("ROLE_CRUD", roleResult);
 
 const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
-fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix }, null, 2));
+fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks }, null, 2));
 console.log("WROTE", outPath);
 
 await browser.close();
 const failed = matrix.filter((row) => row.status === "FAIL");
-process.exit(failed.length ? 2 : 0);
+const failedUiChecks = uiChecks.filter((check) => check.status === "FAIL");
+process.exit(failed.length || failedUiChecks.length ? 2 : 0);

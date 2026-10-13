@@ -220,11 +220,11 @@ export function OdooProductCataloguePage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Products</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
+          <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50"><FileUp size={16} /> Import CSV</button>
@@ -246,12 +246,12 @@ export function OdooProductCataloguePage() {
         </section>
       ) : (
         <>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex shrink-0 flex-wrap gap-3">
             <label className="flex h-11 min-w-[240px] flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
               <Search size={17} className="text-[var(--oh-muted)]" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             </label>
-            <label className="grid min-w-[220px] gap-1 text-xs font-medium text-[var(--oh-muted)]">
+            <label className="oh-type-label grid min-w-[220px] gap-1 text-[var(--oh-muted)]">
               POS category
               <select value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] disabled:opacity-60">
                 <option value="">All categories</option>
@@ -260,9 +260,9 @@ export function OdooProductCataloguePage() {
             </label>
           </div>
 
-          <p className="-mt-2 text-xs leading-5 text-[var(--oh-muted)]">On-hand quantities follow the Odoo user’s current inventory context and may include multiple locations; use Odoo stock reports for location-specific counts.</p>
-          {categoryError && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{categoryError}</p>}
-          {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>}
+          <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">On-hand quantities follow the Odoo user’s current inventory context and may include multiple locations; use Odoo stock reports for location-specific counts.</p>
+          {categoryError && <p role="status" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{categoryError}</p>}
+          {error && <p role="alert" className="shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="w-full min-w-[940px] border-collapse text-left text-sm">
@@ -300,7 +300,7 @@ export function OdooProductCataloguePage() {
             </table>
           </section>
 
-          <footer className="flex items-center justify-between text-sm text-[var(--oh-muted)]">
+          <footer className="flex shrink-0 items-center justify-between text-sm text-[var(--oh-muted)]">
             <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>

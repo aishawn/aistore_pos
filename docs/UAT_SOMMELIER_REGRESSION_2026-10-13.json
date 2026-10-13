@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-13T15:20:51.876Z",
+  "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
+  "checks": [
+    {
+      "name": "Odoo catalog identify",
+      "status": "PASS",
+      "evidence": "Found 2 DEMO wines; Shiraz product 62 is present."
+    },
+    {
+      "name": "Recommendation price and free-stock parity",
+      "status": "PASS",
+      "evidence": "Product 62: AUD 34.9; free stock 12; recommendation agrees with Odoo identify data."
+    },
+    {
+      "name": "Wine detail parity",
+      "status": "PASS",
+      "evidence": "Product 62 detail matches the Odoo catalog price and free stock."
+    },
+    {
+      "name": "cheaper alternatives filter unavailable stock",
+      "status": "PASS",
+      "evidence": "Returned 0 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "upgrade alternatives filter unavailable stock",
+      "status": "PASS",
+      "evidence": "Returned 0 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "Anonymous access guard",
+      "status": "PASS",
+      "evidence": "Recommendation API returns HTTP 401 after logout."
+    }
+  ]
+}

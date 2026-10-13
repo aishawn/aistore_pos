@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T14:43:26.438Z",
+  "generatedAt": "2026-10-13T15:19:08.439Z",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -40,12 +40,12 @@
     {
       "path": "/stock/replenishment",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin Ac"
+      "snippet": "orithos Overview Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin ST"
     },
     {
       "path": "/reports/dashboard",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
+      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin DEEP DIVE · MY COMPANY Reporting Dashboard Live sales totals from Odoo. For a lighter daily view, open Overview. All t"
     },
     {
       "path": "/settings/integrations",
@@ -121,6 +121,14 @@
       "path": "/invoices/scan",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin Scan Invoice Photograph invoice Take a photo or up"
+    }
+  ],
+  "uiChecks": [
+    {
+      "name": "AI launcher brand and panel interaction",
+      "status": "PASS",
+      "background": "rgb(37, 99, 235)",
+      "evidence": "Launcher uses retail brand blue; opening and closing the assistant panel works without submitting a prompt."
     }
   ]
 }

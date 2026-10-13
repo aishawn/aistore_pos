@@ -205,8 +205,8 @@ export function OrithosOverviewPage() {
 
   return (
     <main className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)]">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:flex-row lg:overflow-hidden lg:p-5">
-        <div className="flex min-w-0 flex-1 flex-col gap-4 lg:overflow-y-auto lg:pr-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 lg:flex-row lg:items-start lg:p-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
           <header className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="oh-type-label text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
@@ -263,7 +263,7 @@ export function OrithosOverviewPage() {
           </section>
 
           <section className="rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3.5 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
               <div>
                 <h2 className="oh-type-title text-[var(--oh-text)]">Top products today</h2>
                 <p className="oh-type-label mt-0.5 text-[var(--oh-muted)]">Last 24 hours</p>
@@ -275,9 +275,9 @@ export function OrithosOverviewPage() {
                 <table className="w-full min-w-[520px] text-left">
                   <thead>
                     <tr className="oh-type-label border-b border-[var(--oh-border)] text-[var(--oh-muted)]">
-                      <th className="px-4 py-3.5 font-semibold sm:px-5">Product</th>
-                      <th className="px-3 py-3.5 text-right font-semibold">Units</th>
-                      <th className="px-4 py-3.5 text-right font-semibold sm:px-5">Revenue</th>
+                      <th className="px-4 py-2.5 font-semibold sm:px-5">Product</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Units</th>
+                      <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Revenue</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">
@@ -287,14 +287,14 @@ export function OrithosOverviewPage() {
                       const initial = (label.replace(/[^A-Za-z0-9]/gu, "").charAt(0) || "?").toUpperCase();
                       return (
                         <tr key={product.id}>
-                          <td className="px-4 py-3.5 sm:px-5">
+                          <td className="px-4 py-2.5 sm:px-5">
                             <div className="flex items-center gap-3">
-                              <span className="oh-type-label grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">{initial}</span>
+                              <span className="oh-type-label grid h-9 w-9 shrink-0 place-items-center rounded-full font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">{initial}</span>
                               <p className="oh-type-body-strong min-w-0 truncate text-[var(--oh-text)]" title={product.name}>{label}</p>
                             </div>
                           </td>
-                          <td className="oh-type-body px-3 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty)}</td>
-                          <td className="oh-type-body-strong px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)] sm:px-5">{formatMoney(product.revenue, data.currency)}</td>
+                          <td className="oh-type-body px-3 py-2.5 text-right tabular-nums text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty)}</td>
+                          <td className="oh-type-body-strong px-4 py-2.5 text-right tabular-nums text-[var(--oh-text)] sm:px-5">{formatMoney(product.revenue, data.currency)}</td>
                         </tr>
                       );
                     })}
@@ -302,7 +302,7 @@ export function OrithosOverviewPage() {
                 </table>
               </div>
             ) : (
-              <div className="grid min-h-40 place-items-center px-4 py-8 text-center">
+              <div className="grid min-h-32 place-items-center px-4 py-6 text-center">
                 <div>
                   <p className="oh-type-body-strong text-[var(--oh-text)]">No product sales yet</p>
                   <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Complete a sale to see top products.</p>
@@ -312,12 +312,12 @@ export function OrithosOverviewPage() {
             )}
           </section>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+          <div className="grid gap-3 xl:grid-cols-2">
+            <section className="rounded-xl border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)] sm:p-4">
               <h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2>
               <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Last 24 hours</p>
               {data?.trend.length ? (
-                <div className="mt-5 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2">
+                <div className="mt-4 flex h-40 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2">
                   {data.trend.map((item, index) => {
                     const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
                     const label = formatSydney(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
@@ -331,16 +331,16 @@ export function OrithosOverviewPage() {
                   })}
                 </div>
               ) : (
-                <div className="oh-type-body grid h-48 place-items-center text-center text-[var(--oh-muted)]">No sales in this period</div>
+                <div className="oh-type-body grid h-40 place-items-center text-center text-[var(--oh-muted)]">No sales in this period</div>
               )}
             </section>
 
-            <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+            <section className="rounded-xl border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)] sm:p-4">
               <h2 className="oh-type-title text-[var(--oh-text)]">Sales by category</h2>
               <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Share of revenue</p>
               {data?.byCategory.length ? (
-                <div className="mt-5 flex flex-wrap items-center gap-6">
-                  <div className="relative h-36 w-36 shrink-0 rounded-full" style={{ background: donutGradient }} aria-hidden="true">
+                <div className="mt-4 flex flex-wrap items-center gap-6">
+                  <div className="relative h-32 w-32 shrink-0 rounded-full" style={{ background: donutGradient }} aria-hidden="true">
                     <div className="absolute inset-[28%] rounded-full bg-white" />
                   </div>
                   <ul className="min-w-0 flex-1 space-y-2.5">
@@ -356,7 +356,7 @@ export function OrithosOverviewPage() {
                   </ul>
                 </div>
               ) : (
-                <div className="oh-type-body grid h-48 place-items-center text-center text-[var(--oh-muted)]">No category mix yet</div>
+                <div className="oh-type-body grid h-40 place-items-center text-center text-[var(--oh-muted)]">No category mix yet</div>
               )}
             </section>
           </div>
@@ -367,16 +367,16 @@ export function OrithosOverviewPage() {
           </p>
         </div>
 
-        <aside className="flex w-full shrink-0 flex-col rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:w-[340px]">
-          <div className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3.5">
+        <aside className="flex w-full shrink-0 flex-col rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:sticky lg:top-0 lg:max-h-[calc(100dvh-50px-2.5rem)] lg:w-[340px] lg:self-start">
+          <div className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3">
             <h2 className="oh-type-title text-[var(--oh-text)]">Current sale</h2>
             {parkedCount > 0 && (
-              <Link href="/" className="oh-type-label inline-flex items-center gap-1 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 font-semibold text-[var(--oh-primary)]">
+              <Link href="/" className="oh-type-label inline-flex items-center gap-1 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 font-medium text-[var(--oh-primary)]">
                 <Archive size={14} /> {parkedCount} parked
               </Link>
             )}
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-8 text-center">
             <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
               <ShoppingBag size={24} />
             </span>
@@ -419,13 +419,13 @@ function KpiCard({
   icon: React.ReactNode;
 }) {
   return (
-    <article className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+    <article className="rounded-xl border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)]">
       <div className="flex items-center justify-between gap-3">
         <p className="oh-type-label text-[var(--oh-muted)]">{title}</p>
-        <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">{icon}</span>
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">{icon}</span>
       </div>
-      <p className="oh-type-kpi mt-3 text-[var(--oh-text)]">{value}</p>
-      <div className="mt-1.5 min-h-5"><Delta value={delta} /></div>
+      <p className="oh-type-kpi mt-2.5 text-[var(--oh-text)]">{value}</p>
+      <div className="mt-1 min-h-5"><Delta value={delta} /></div>
     </article>
   );
 }

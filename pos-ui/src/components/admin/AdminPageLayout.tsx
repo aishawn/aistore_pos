@@ -161,15 +161,15 @@ export function AdminPageLayout({
     <div className={cn("h-full overflow-auto bg-[var(--oh-surface)] font-sans print:overflow-visible print:bg-white print:p-0", compact ? "p-4 md:p-5" : "p-5 md:p-6")}>
       <div className={cn("flex flex-wrap items-start justify-between gap-4 print:hidden", compact ? "mb-3" : "mb-5")}>
         <div>
-          <h1 className="text-[22px] font-semibold text-[var(--oh-text)]">{title}</h1>
-          {subtitle && <p className="mt-0.5 text-[13px] text-[var(--oh-muted)]">{subtitle}</p>}
+          <h1 className="oh-type-title text-[var(--oh-text)]">{title}</h1>
+          {subtitle && <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">{subtitle}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {actions}
           {count !== undefined && (
             <div className="ml-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
-              <div className="text-[22px] font-bold leading-none text-[var(--oh-text)]">{count}</div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+              <div className="oh-type-kpi leading-none text-[var(--oh-text)]">{count}</div>
+              <div className="oh-type-meta font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
                 {countLabel}
               </div>
             </div>

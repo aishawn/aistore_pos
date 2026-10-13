@@ -107,12 +107,12 @@ export function OdooReportingDashboard() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Deep dive · {data?.company}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Reporting Dashboard</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">
+          <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Deep dive · {data?.company}</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Reporting Dashboard</h1>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             Live sales totals from Odoo. For a lighter daily view, open{" "}
             <Link href="/overview" className="font-semibold text-[var(--oh-primary)] hover:underline">Overview</Link>.
             {" "}All times shown in Sydney time.
@@ -138,51 +138,51 @@ export function OdooReportingDashboard() {
         <MetricCard title="Open registers" value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)} detail="Across the current Odoo company" icon={<Store size={18} />} />
       </section>
 
-      <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]">
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><h2 className="text-base font-semibold text-[var(--oh-text)]">Sales trend</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">{ranges.find((item) => item.hours === rangeHours)?.label} · {data ? `${formatDate(data.from, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</p></div>
+            <div><h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{ranges.find((item) => item.hours === rangeHours)?.label} · {data ? `${formatDate(data.from, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</p></div>
           </div>
           {data?.trend.length ? (
-            <div className="mt-6 flex h-56 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2 sm:gap-3">
+            <div className="mt-6 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2 sm:gap-3">
               {data.trend.map((item, index) => {
                 const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
                 const label = formatDate(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
                 return <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">
-                  <div className="mb-1 truncate text-[10px] tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
+                  <div className="oh-type-meta mb-1 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
                   <div className="relative mx-auto w-full max-w-14 rounded-t bg-[var(--oh-orange)]/85 transition-colors group-hover:bg-[var(--oh-orange)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
-                  <span className="mt-2 truncate text-[10px] text-[var(--oh-muted)]">{label}</span>
+                  <span className="oh-type-meta mt-2 truncate text-[var(--oh-muted)]">{label}</span>
                 </div>;
               })}
             </div>
-          ) : <div className="grid h-56 place-items-center px-4 text-center"><div><p className="text-sm font-semibold text-[var(--oh-text)]">No sales in this period</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Open a register session and complete a sale to see the trend.</p><Link href="/" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link></div></div>}
+          ) : <div className="grid h-48 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No sales in this period</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Open a register session and complete a sale to see the trend.</p><Link href="/" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link></div></div>}
         </section>
 
-        <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+        <section className="flex flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-4 md:px-5">
-            <div><h2 className="text-base font-semibold text-[var(--oh-text)]">Recent sales</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Latest completed Odoo POS orders</p></div>
-            <Link href="/history/odoo" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[var(--oh-primary)] hover:underline">View all <ArrowUpRight size={15} /></Link>
+            <div><h2 className="oh-type-title text-[var(--oh-text)]">Recent sales</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Latest completed Odoo POS orders</p></div>
+            <Link href="/history/odoo" className="oh-type-label inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--oh-primary)] hover:underline">View all <ArrowUpRight size={15} /></Link>
           </div>
-          <div className="min-h-0 flex-1 overflow-auto">
+          <div>
             {data?.recentSales.length ? <ul className="divide-y divide-[var(--oh-border)]">
               {data.recentSales.map((sale) => <li key={sale.id} className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
-                <div className="min-w-0"><p className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="mt-1 truncate text-xs text-[var(--oh-muted)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
-                <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(sale.amount_total, data.currency)}</span>
+                <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
+                <span className="oh-type-body-strong shrink-0 tabular-nums text-[var(--oh-text)]">{formatMoney(sale.amount_total, data.currency)}</span>
               </li>)}
-            </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="text-sm font-semibold text-[var(--oh-text)]">No recent sales</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
+            </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
           </div>
         </section>
       </div>
 
-      <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}. Revenue excludes drafts and cancelled orders.</p>
+      <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}. Revenue excludes drafts and cancelled orders.</p>
     </main>
   );
 }
 
 function MetricCard({ title, value, detail, icon }: { title: string; value: string; detail: string; icon: React.ReactNode }) {
-  return <article className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-    <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium text-[var(--oh-muted)]">{title}</p><span className="grid h-9 w-9 place-items-center rounded-md bg-[#fff2da] text-[var(--oh-orange-dark)]">{icon}</span></div>
-    <p className="mt-4 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">{value}</p>
-    <p className="mt-1 text-xs text-[var(--oh-muted)]">{detail}</p>
+  return <article className="rounded-lg border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)]">
+    <div className="flex items-center justify-between gap-3"><p className="oh-type-label text-[var(--oh-muted)]">{title}</p><span className="grid h-9 w-9 place-items-center rounded-md bg-[#fff2da] text-[var(--oh-orange-dark)]">{icon}</span></div>
+    <p className="oh-type-kpi mt-3 text-[var(--oh-text)]">{value}</p>
+    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{detail}</p>
   </article>;
 }
