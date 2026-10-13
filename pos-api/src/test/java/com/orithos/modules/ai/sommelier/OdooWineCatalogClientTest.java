@@ -35,7 +35,7 @@ class OdooWineCatalogClientTest {
         assertEquals(new BigDecimal("34.9"), candidate.listPrice());
         assertEquals(new BigDecimal("34.9"), candidate.sellPrice());
         assertEquals(new BigDecimal("3.0"), candidate.stockQuantity());
-        assertEquals(3.0, candidate.stock());
+        assertEquals(3.0, candidate.stock(), 0.0001);
     }
 
     @Test
@@ -55,7 +55,7 @@ class OdooWineCatalogClientTest {
 
         WineCandidate candidate = client.toCandidate(row);
 
-        assertEquals(BigDecimal.ZERO, candidate.stockQuantity());
+        assertEquals(0, candidate.stockQuantity().compareTo(BigDecimal.ZERO));
         assertFalse(candidate.inStock());
     }
 }
