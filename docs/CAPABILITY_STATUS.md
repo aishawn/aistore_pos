@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (field UAT pass after test session/stock prep)  
+**Last updated:** 2026-10-13 (pilot UAT plus settings migration in working tree; not yet deployed)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -84,4 +84,5 @@ Statuses:
 |---|---|---|
 | Odoo session integration | In progress | Manual connection works; production auto-recover is off. |
 | Users / roles | In progress | `/settings/users` production page is a generic editor placeholder; roles page reported 0 records. Parallel invite/reset changes are uncommitted and not production-verified. |
-| Payment / tax / outlet / register / receipt / hardware setup | In progress | Production pages showed local/demo settings, not Odoo values. Do not treat these pages as the live configuration source until migrated to Odoo or clearly disabled/labeled. |
+| Payment / tax / outlet / register setup | In progress | Current local changes replace payment/tax/outlet/register mock CRUD with allowlisted Odoo read-only views. Typecheck + targeted ESLint passed; changes are uncommitted and not deployed/visually verified. Until deployment, production still shows local/demo values; do not treat them as live Odoo configuration. |
+| Receipt / hardware setup | In progress | Production pages previously showed local/demo settings. Still needs a decision: migrate to Odoo-backed data where supported or explicitly label/disable as local terminal configuration. |

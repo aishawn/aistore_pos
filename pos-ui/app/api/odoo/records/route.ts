@@ -64,6 +64,13 @@ const RECORD_TYPES = {
     searchFields: ["name"],
     baseDomain: [],
   },
+  taxes: {
+    model: "account.tax",
+    fields: ["id", "name", "amount", "amount_type", "type_tax_use", "price_include", "company_id"],
+    order: "name asc, id asc",
+    searchFields: ["name"],
+    baseDomain: [["type_tax_use", "=", "sale"], ["active", "=", true]],
+  },
   sales: {
     model: "pos.order",
     fields: ["id", "name", "pos_reference", "date_order", "amount_total", "amount_tax", "state", "partner_id", "session_id", "user_id"],

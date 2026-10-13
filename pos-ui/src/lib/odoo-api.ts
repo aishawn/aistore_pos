@@ -7,6 +7,7 @@ export type OdooRecordType =
   | "registers"
   | "sessions"
   | "paymentMethods"
+  | "taxes"
   | "sales";
 
 export interface OdooPage<T> {
@@ -145,6 +146,16 @@ export interface OdooPurchaseOrderPage {
 export interface OdooNamedRecord {
   id: number;
   name: string;
+}
+
+export interface OdooTaxRecord {
+  id: number;
+  name: string;
+  amount: number;
+  amount_type: "percent" | "fixed" | "division" | "group" | string;
+  type_tax_use: "sale" | "purchase" | "none" | string;
+  price_include: boolean;
+  company_id: [number, string] | false;
 }
 
 export interface OdooPosBootstrap {

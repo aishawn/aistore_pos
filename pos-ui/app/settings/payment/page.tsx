@@ -1,75 +1,92 @@
 "use client";
 
-import { useState } from "react";
-import {
-  AdminPageLayout,
-  AdminPrimaryButton,
-} from "@/components/admin/AdminPageLayout";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { ListTable } from "@/components/admin/ListTable";
-import { RowActions } from "@/components/admin/RowActions";
-import { AsyncState } from "@/components/admin/AsyncState";
-import { EntityFormModal, FormValues, FormField } from "@/components/admin/EntityFormModal";
-import { api } from "@/lib/api";
-import { useApi } from "@/hooks/useApi";
-import { PlusIcon } from "@/components/icons";
+import { getOdooPosBootstrap, getOdooSession, type OdooPosBootstrap } from "@/lib/odoo-api";
 
-interface PaymentMethod {
-  id: string;
+type PaymentRow = {
+  id: number;
   name: string;
   type: string;
+  registers: string[];
+};
+
+function paymentType(type: string, isCash: boolean) {
+  if (isCash || type === "cash") return "Cash";
+  if (type === "bank") return "Card / bank";
+  return type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-const BASE = "/api/payment-methods";
-const FIELDS: FormField[] = [
-  { name: "name", label: "Name", type: "text" },
-  { name: "type", label: "Type", type: "text" },
-];
-const body = (v: FormValues) => ({ name: v.name, type: v.type });
+function toRows(data: OdooPosBootstrap): PaymentRow[] {
+  const methods = new Map<number, PaymentRow>();
+  for (const config of data.configs) {
+    for (const method of config.paymentMethods) {
+      const existing = methods.get(method.id);
+      if (existing) {
+        if (!existing.registers.includes(config.name)) existing.registers.push(config.name);
+      } else {
+        methods.set(method.id, {
+          id: method.id,
+          name: method.name,
+          type: paymentType(method.type, method.is_cash_count),
+          registers: [config.name],
+        });
+      }
+    }
+  }
+  return [...methods.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
 
 export default function PaymentMethodsPage() {
-  const { data, loading, error, reload } = useApi<PaymentMethod[]>(BASE);
-  const methods = data ?? [];
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<PaymentMethod | null>(null);
+  const [rows, setRows] = useState<PaymentRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  async function remove(id: string) {
-    if (!window.confirm("Delete this item?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
-  }
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const session = await getOdooSession();
+        if (!session) throw new Error("Connect your Odoo staff account to view live payment methods.");
+        const bootstrap = await getOdooPosBootstrap();
+        if (active) setRows(toRows(bootstrap));
+      } catch (cause) {
+        if (active) setError(cause instanceof Error ? cause.message : "Could not load Odoo payment methods.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   return (
     <AdminPageLayout
       title="Payment Methods"
-      subtitle="Configure accepted payment types"
-      count={methods.length}
+      subtitle="Payment methods assigned to your Odoo POS registers"
+      count={rows.length}
       countLabel="Methods"
-      actions={
-        <AdminPrimaryButton onClick={() => setCreating(true)}>
-          <PlusIcon size={16} /> New
-        </AdminPrimaryButton>
-      }
     >
-      <AsyncState loading={loading} error={error} empty={methods.length === 0}>
+      <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
+        <p className="font-semibold text-[var(--oh-text)]">Live from Odoo · Read only</p>
+        <p className="mt-1">Changes to payment methods should be made in Odoo. Orithos does not save a second copy.</p>
+      </section>
+      {error ? (
+        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
+        </div>
+      ) : loading ? (
+        <div className="py-16 text-center text-sm text-[var(--oh-muted)]">Loading Odoo payment methods…</div>
+      ) : rows.length === 0 ? (
+        <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
+          No payment methods are assigned to the Odoo POS registers available to this account.
+        </div>
+      ) : (
         <ListTable
-          columns={[
-            { label: "Name" },
-            { label: "Type" },
-            { label: "Actions", align: "center", width: "w-[200px]" },
-          ]}
-          rows={methods.map((m) => [
-            m.name,
-            m.type ?? "",
-            <RowActions key="a" justify="center" onEdit={() => setEditing(m)} onDelete={() => remove(m.id)} />,
-          ])}
+          columns={[{ label: "Payment method" }, { label: "Type" }, { label: "Odoo register" }]}
+          rows={rows.map((row) => [row.name, row.type, row.registers.join(", ")])}
         />
-      </AsyncState>
-
-      {creating && (
-        <EntityFormModal title="Add Payment Method" fields={FIELDS} onClose={() => setCreating(false)} onSubmit={async (v) => { await api.post(BASE, body(v)); reload(); }} />
-      )}
-      {editing && (
-        <EntityFormModal title="Edit Payment Method" fields={FIELDS} initial={editing as unknown as FormValues} onClose={() => setEditing(null)} onSubmit={async (v) => { await api.put(`${BASE}/${editing.id}`, body(v)); reload(); }} />
       )}
     </AdminPageLayout>
   );

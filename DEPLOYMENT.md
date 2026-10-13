@@ -7,12 +7,12 @@ This repository deploys the Spring Boot + MySQL + Redis services and the Next.js
 1. Connect the Dokploy Compose application to `aishawn/aistore_pos` and the `main` branch. Use the repository root as the build context and `docker-compose.yml` as the Compose file. A push to `main` can then trigger Dokploy's configured deployment pipeline.
 2. Set the required Compose environment variables in Dokploy before the first deployment: `DB_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`, `INITIAL_ADMIN_PASSWORD`, and `CORS_ALLOWED_ORIGINS`. Use long, unique production secrets; `CORS_ALLOWED_ORIGINS` must contain the public frontend origin.
 3. The frontend service defaults to `ODOO_BASE_URL=https://odoo.orithos.com.au` and `ODOO_DATABASE=aipos`. Override these values in Dokploy only if the Odoo host or database changes. They are passed server-side by Compose; do not add Odoo credentials or session tokens to `NEXT_PUBLIC_*` variables.
-4. For Odoo session auto-recover (and Sommelier catalogue SoT), set **both** frontend and backend Compose env vars in Dokploy:
+4. To have Orithos reconnect to Odoo automatically after deployment, set **both** frontend and backend Compose env vars in Dokploy:
    - `ODOO_SERVICE_USERNAME`
    - `ODOO_SERVICE_PASSWORD`
-   Use a dedicated least-privilege Odoo POS account. Never commit the password to Git. After saving env, run a normal **Deploy** (never **Fresh Volumes**).
+   These credentials are only used server-side to restore an Odoo session for an already authenticated Orithos user; they are never exposed to the browser. After setting them and running a normal **Deploy** (never **Fresh Volumes**), opening Orithos should reconnect automatically without clicking Connect. Use a dedicated least-privilege Odoo POS account where possible. Never commit the password to Git.
 5. Keep the database and Redis services on the private Compose network. Expose the frontend service on port `3000` through Dokploy's domain/proxy configuration and enable HTTPS.
-6. Deploy, sign into Orithos and connect an Odoo staff account at **Setup → Integrations**. The default **Register → Sell** page uses Odoo. Confirm that the expected POS configuration, open session, payment methods and products appear. Classic MySQL routes are hidden unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true` (debug only). Do not pilot dual-write.
+6. Deploy and sign into Orithos. When service-account variables are configured, **Setup → Integrations** and **Register → Sell** should establish the Odoo session automatically; manual staff sign-in remains available as a fallback. Confirm that the expected POS configuration, open session, payment methods and products appear. Classic MySQL routes are hidden unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true` (debug only). Do not pilot dual-write.
 7. Optional AI: leave `AI_ENABLED=false` until DashScope is budgeted. Then set `AI_ENABLED=true`, `AI_DASHSCOPE_API_KEY`, and model URLs from `.env.example`. Invoice OCR save into Classic MySQL is disabled; use Odoo Purchases / Replenishment for draft RFQs.
 
 ## Orithos administrator account
