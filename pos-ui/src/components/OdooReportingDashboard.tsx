@@ -110,9 +110,13 @@ export function OdooReportingDashboard() {
     <main className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Store overview · {data?.company}</p>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Deep dive · {data?.company}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Reporting Dashboard</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Live sales totals from Odoo. All times shown in Sydney time.</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">
+            Live sales totals from Odoo. For a lighter daily view, open{" "}
+            <Link href="/overview" className="font-semibold text-[var(--oh-primary)] hover:underline">Overview</Link>.
+            {" "}All times shown in Sydney time.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="dashboard-range">Reporting period</label>

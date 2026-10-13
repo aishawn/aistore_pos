@@ -24,6 +24,7 @@ export interface SidebarGroup {
 }
 
 export type SidebarIcon =
+  | "overview"
   | "sales"
   | "sommelier"
   | "invoice"
@@ -36,10 +37,15 @@ export type SidebarIcon =
 /** Primary nav: Odoo-backed surfaces only. */
 export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
   {
+    label: "Overview",
+    href: "/overview",
+    icon: "overview",
+  },
+  {
     label: "Register",
     icon: "sales",
     items: [
-      { label: "Sell", href: "/" },
+      { label: "Point of sale", href: "/" },
       { label: "Sales History", href: "/history/odoo" },
       { label: "Close Register", href: "/close" },
     ],

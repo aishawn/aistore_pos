@@ -25,6 +25,7 @@ import {
   Building2,
   Wine,
   ScanLine,
+  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
@@ -38,6 +39,7 @@ import { useUnsavedChangesOptional } from "@/lib/unsaved-changes";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>> = {
+  overview: LayoutDashboard,
   sales: ShoppingCart,
   sommelier: Wine,
   invoice: ScanLine,

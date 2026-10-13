@@ -44,6 +44,82 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 
 class OdooSessionExpiredError extends Error {}
 
+function percentDelta(current: number, previous: number): number | null {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return null;
+  return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
+}
+
+function moneyField(row: Record<string, unknown>) {
+  return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
+}
+
+async function loadLineExtras(sessionId: string, lineDomain: unknown[]) {
+  const empty = { itemsSold: 0, compareItemsSold: 0, topProducts: [] as Array<{ id: number; name: string; qty: number; revenue: number }>, byCategory: [] as Array<{ name: string; revenue: number; share: number }> };
+  try {
+    const compareLineDomain = lineDomain.map((clause) => {
+      if (!Array.isArray(clause) || clause.length < 3) return clause;
+      const [field, op, value] = clause as [string, string, unknown];
+      if (field === "order_id.date_order" && typeof value === "string") {
+        const shifted = new Date(`${value.replace(" ", "T")}Z`);
+        if (!Number.isNaN(shifted.getTime())) {
+          shifted.setUTCDate(shifted.getUTCDate() - 7);
+          return [field, op, shifted.toISOString().slice(0, 19).replace("T", " ")];
+        }
+      }
+      return clause;
+    });
+
+    const [qtyRows, productRows, categoryRows, compareQtyRows] = await Promise.all([
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], []], { lazy: false }).catch(() => []),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal_incl:sum"], ["product_id"]], { lazy: false }).catch(async () => (
+        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal:sum"], ["product_id"]], { lazy: false }).catch(() => [])
+      )),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["price_subtotal_incl:sum"], ["product_id.categ_id"]], { lazy: false }).catch(async () => (
+        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["price_subtotal:sum"], ["product_id.categ_id"]], { lazy: false }).catch(() => [])
+      )),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [compareLineDomain, ["qty:sum"], []], { lazy: false }).catch(() => []),
+    ]);
+
+    const itemsSold = Number(qtyRows?.[0]?.qty ?? 0);
+    const compareItemsSold = Number(compareQtyRows?.[0]?.qty ?? 0);
+
+    const topProducts = (productRows ?? [])
+      .map((row) => {
+        const product = row.product_id;
+        const id = Array.isArray(product) ? Number(product[0]) : 0;
+        const name = Array.isArray(product) ? String(product[1] ?? "Product") : "Product";
+        return {
+          id,
+          name,
+          qty: Number(row.qty ?? 0),
+          revenue: moneyField(row),
+        };
+      })
+      .filter((row) => row.id > 0)
+      .sort((a, b) => b.revenue - a.revenue || b.qty - a.qty)
+      .slice(0, 8);
+
+    const categoryRevenue = (categoryRows ?? []).map((row) => {
+      const category = row["product_id.categ_id"] ?? row.categ_id;
+      const name = Array.isArray(category) ? String(category[1] ?? "Uncategorised") : "Uncategorised";
+      return { name, revenue: moneyField(row) };
+    });
+    const categoryTotal = categoryRevenue.reduce((sum, row) => sum + row.revenue, 0) || 1;
+    const byCategory = categoryRevenue
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 6)
+      .map((row) => ({
+        name: row.name,
+        revenue: row.revenue,
+        share: Math.round((row.revenue / categoryTotal) * 1000) / 10,
+      }));
+
+    return { itemsSold, compareItemsSold, topProducts, byCategory };
+  } catch {
+    return empty;
+  }
+}
+
 async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: number) {
   const granularity = rangeHours <= 24 ? "hour" : "day";
   try {
@@ -91,7 +167,25 @@ export async function GET(request: NextRequest) {
       ["date_order", "<=", to],
       ["state", "in", ["paid", "done", "invoiced"]],
     ];
-    const [count, totals, trendData, recentSales, openSessions, companies] = await Promise.all([
+    // Same-length window shifted back 7 days for week-over-week deltas.
+    const compareStart = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const compareEnd = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const compareFromAligned = compareStart.toISOString().slice(0, 19).replace("T", " ");
+    const compareToAligned = compareEnd.toISOString().slice(0, 19).replace("T", " ");
+    const compareDomain = [
+      ["company_id", "=", companyId],
+      ["date_order", ">=", compareFromAligned],
+      ["date_order", "<=", compareToAligned],
+      ["state", "in", ["paid", "done", "invoiced"]],
+    ];
+    const lineDomain = [
+      ["order_id.company_id", "=", companyId],
+      ["order_id.date_order", ">=", from],
+      ["order_id.date_order", "<=", to],
+      ["order_id.state", "in", ["paid", "done", "invoiced"]],
+    ];
+
+    const [count, totals, trendData, recentSales, openSessions, companies, compareCount, compareTotals, lineExtras] = await Promise.all([
       rpc<number>(sessionId, "pos.order", "search_count", [domain]),
       rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []]),
       readSalesTrend(sessionId, domain, rangeHours),
@@ -106,9 +200,18 @@ export async function GET(request: NextRequest) {
       rpc<Array<{ name?: string; currency_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
         ["id", "=", companyId],
       ]], { fields: ["name", "currency_id"], limit: 1 }),
+      rpc<number>(sessionId, "pos.order", "search_count", [compareDomain]).catch(() => 0),
+      rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []]).catch(() => []),
+      loadLineExtras(sessionId, lineDomain),
     ]);
 
     const summary = totals?.[0] ?? {};
+    const compareSummary = compareTotals?.[0] ?? {};
+    const revenue = Number(summary.amount_total ?? 0);
+    const transactions = Number(count ?? summary.__count ?? 0);
+    const compareRevenue = Number(compareSummary.amount_total ?? 0);
+    const compareTransactions = Number(compareCount ?? compareSummary.__count ?? 0);
+
     return NextResponse.json({
       rangeHours,
       from,
@@ -116,9 +219,10 @@ export async function GET(request: NextRequest) {
       company: companies?.[0]?.name ?? "Current company",
       currency: Array.isArray(companies?.[0]?.currency_id) ? companies[0].currency_id[1] : "AUD",
       trendGranularity: trendData.granularity,
-      revenue: Number(summary.amount_total ?? 0),
+      revenue,
       tax: Number(summary.amount_tax ?? 0),
-      transactions: Number(count ?? summary.__count ?? 0),
+      transactions,
+      itemsSold: lineExtras.itemsSold,
       openRegisters: Number(openSessions ?? 0),
       trend: trendData.rows.map((row) => ({
         label: String(row[`date_order:${trendData.granularity}`] ?? ""),
@@ -126,6 +230,22 @@ export async function GET(request: NextRequest) {
         transactions: Number(row.__count ?? 0),
       })),
       recentSales: recentSales ?? [],
+      topProducts: lineExtras.topProducts,
+      byCategory: lineExtras.byCategory,
+      compare: {
+        from: compareFromAligned,
+        to: compareToAligned,
+        revenue: compareRevenue,
+        transactions: compareTransactions,
+        itemsSold: lineExtras.compareItemsSold,
+        revenueDeltaPct: percentDelta(revenue, compareRevenue),
+        transactionsDeltaPct: percentDelta(transactions, compareTransactions),
+        itemsSoldDeltaPct: percentDelta(lineExtras.itemsSold, lineExtras.compareItemsSold),
+        averageSaleDeltaPct: percentDelta(
+          transactions ? revenue / transactions : 0,
+          compareTransactions ? compareRevenue / compareTransactions : 0,
+        ),
+      },
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof OdooSessionExpiredError) {
