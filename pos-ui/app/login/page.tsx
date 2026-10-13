@@ -105,7 +105,7 @@ export default function LoginPage() {
           <ul className="mt-9 grid gap-4">
             {capabilities.map(({ icon: Icon, label }) => (
               <li key={label} className="flex items-center gap-3 text-sm font-medium text-[var(--oh-ink-soft)] sm:text-base">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#e8f2ee] text-[#145b4a]">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#edf4f8] text-[#155a86]">
                   <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
                 </span>
                 {label}
@@ -114,7 +114,7 @@ export default function LoginPage() {
           </ul>
         </section>
 
-        <section aria-labelledby="login-title" className="w-full rounded-xl border border-[#e2e8e4] bg-white p-6 shadow-[0_18px_50px_rgba(20,35,27,.08)] sm:p-9">
+        <section aria-labelledby="login-title" className="w-full rounded-xl border border-[#e1e5e8] bg-white p-6 shadow-[0_18px_50px_rgba(28,40,50,.08)] sm:p-9">
           <div className="mb-7">
             <h2 id="login-title" className="text-2xl font-bold tracking-[-.035em] text-[var(--oh-ink)]">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-[#687780]">Sign in with your Orithos account to continue.</p>
@@ -135,13 +135,13 @@ export default function LoginPage() {
                 spellCheck={false}
                 required
                 maxLength={120}
-                className="h-12 w-full rounded-md border border-[#d6dfd8] bg-white px-3 text-base font-normal text-[var(--oh-ink)] outline-none transition-shadow placeholder:text-[#98a39c] focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[#0d6b5830]"
+                className="h-12 w-full rounded-md border border-[#d9dfe4] bg-white px-3 text-base font-normal text-[var(--oh-ink)] outline-none transition-shadow placeholder:text-[#89939b] focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[#155a8630]"
               />
             </label>
 
             <label htmlFor="password" className="grid gap-2 text-sm font-semibold text-[#34414a]">
               Password
-              <span className="flex h-12 w-full items-center rounded-md border border-[#d6dfd8] bg-white pr-1 transition-shadow focus-within:border-[var(--oh-primary)] focus-within:ring-3 focus-within:ring-[#0d6b5830]">
+              <span className="flex h-12 w-full items-center rounded-md border border-[#d9dfe4] bg-white pr-1 transition-shadow focus-within:border-[var(--oh-primary)] focus-within:ring-3 focus-within:ring-[#155a8630]">
                 <input
                   id="password"
                   name="password"
@@ -151,7 +151,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   required
                   maxLength={256}
-                  className="h-full min-w-0 flex-1 rounded-md bg-transparent px-3 text-base font-normal text-[var(--oh-ink)] outline-none placeholder:text-[#98a39c]"
+                  className="h-full min-w-0 flex-1 rounded-md bg-transparent px-3 text-base font-normal text-[var(--oh-ink)] outline-none placeholder:text-[#89939b]"
                 />
                 <button
                   type="button"
@@ -165,7 +165,7 @@ export default function LoginPage() {
               </span>
             </label>
 
-            <label htmlFor="remember-username" className="-mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-medium text-[#52615a]">
+              <label htmlFor="remember-username" className="-mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-medium text-[#52606a]">
               <input
                 id="remember-username"
                 type="checkbox"
