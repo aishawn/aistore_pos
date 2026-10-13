@@ -88,12 +88,11 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Users", href: "/settings/users" },
       { label: "Roles & Permissions", href: "/settings/roles" },
       { label: "Registers & Outlets", href: "/settings/registers-outlets" },
-      { label: "Sale Keys", href: "/settings/keys" },
       { label: "Payment Methods", href: "/settings/payment" },
       { label: "Tax Rates", href: "/settings/tax" },
       { label: "Receipts", href: "/settings/receipts" },
       { label: "Hardware", href: "/settings/hardware" },
-      { label: "More Settings", href: "/settings", more: true },
+      { label: "Account", href: "/settings/account" },
     ],
   },
 ];

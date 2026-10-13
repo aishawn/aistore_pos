@@ -1,97 +1,35 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { RowActions } from "@/components/admin/RowActions";
-import { AsyncState } from "@/components/admin/AsyncState";
-import { EntityFormModal, FormValues, FormField } from "@/components/admin/EntityFormModal";
-import { api } from "@/lib/api";
-import { useApi } from "@/hooks/useApi";
-import { PlusIcon } from "@/components/icons";
-
-interface SaleKeysSet {
-  id: number;
-  name: string;
-  saleKeys?: string | null;
-}
-
-const BASE = "/api/sale-keys";
-const FIELDS: FormField[] = [{ name: "name", label: "Name", type: "text", required: true }];
-const body = (v: FormValues) => ({ name: v.name, saleKeys: null });
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 export default function SaleKeysPage() {
-  const router = useRouter();
-  const { data, loading, error, reload } = useApi<SaleKeysSet[]>(BASE);
-  const sets = data ?? [];
-  const [creating, setCreating] = useState(false);
-
-  async function remove(id: number) {
-    if (!window.confirm("Delete this sale keys set?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
-  }
-
-  async function clone(id: number) {
-    await api.post(`${BASE}/${id}/clone`);
-    reload();
-  }
-
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <div className="flex items-center gap-5">
-        <h1 className="text-[34px] font-bold text-black">Sales Keys</h1>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 rounded-md bg-[#3cb44b] px-5 py-2.5 text-[16px] font-semibold text-white transition-colors hover:bg-[#35a042]"
-        >
-          <PlusIcon size={18} /> New
-        </button>
-      </div>
+    <AdminPageLayout
+      title="Sale Keys"
+      subtitle="Quick-key layout status for the Orithos pilot"
+    >
+      <section role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <h2 className="font-semibold">Sale keys are not part of the Odoo pilot register</h2>
+        <p className="mt-1 leading-6">
+          This page previously managed Classic MySQL sale-key sets. The pilot Sell screen uses the Odoo
+          product catalogue, search, and pack factors instead. Changes here would not affect Odoo POS.
+        </p>
+      </section>
 
-      <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={sets.length === 0} emptyText="No sale keys sets found.">
-          <div className="overflow-hidden rounded-sm border border-neutral-300">
-            <div className="grid grid-cols-[1fr_320px] border-b border-neutral-300 bg-white">
-              <div className="border-r border-neutral-300 px-4 py-3 text-center text-[16px] font-semibold text-black">
-                Name
-              </div>
-              <div className="px-4 py-3 text-center text-[16px] font-semibold text-black">Actions</div>
-            </div>
-            {sets.map((set, index) => (
-              <div
-                key={set.id}
-                className={`grid grid-cols-[1fr_320px] ${index < sets.length - 1 ? "border-b border-neutral-300" : ""}`}
-              >
-                <div className="border-r border-neutral-300 px-4 py-3 text-[16px] text-black">{set.name}</div>
-                <div className="flex items-center px-4 py-3">
-                  <RowActions
-                    clone
-                    onEdit={() => router.push(`/settings/keys/${set.id}/edit`)}
-                    onClone={() => clone(set.id)}
-                    onDelete={() => remove(set.id)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </AsyncState>
-      </div>
-
-      {creating && (
-        <EntityFormModal
-          title="New Sales Keys"
-          fields={FIELDS}
-          onClose={() => setCreating(false)}
-          onSubmit={async (v) => {
-            const created = await api.post<SaleKeysSet>(BASE, body(v));
-            reload();
-            if (created?.id) {
-              router.push(`/settings/keys/${created.id}/edit`);
-            }
-          }}
-        />
-      )}
-    </div>
+      <dl className="mt-4 divide-y divide-[var(--oh-border)] rounded-lg border border-[var(--oh-border)] bg-white px-4">
+        <div className="grid gap-1 py-3 sm:grid-cols-[220px_1fr] sm:gap-4">
+          <dt className="text-sm font-medium text-[var(--oh-text)]">Pilot sell screen</dt>
+          <dd className="text-sm text-[var(--oh-muted)]">
+            Use{" "}
+            <a href="/" className="font-semibold text-[var(--oh-primary)] underline">
+              Sell
+            </a>{" "}
+            with Odoo products
+          </dd>
+        </div>
+        <div className="grid gap-1 py-3 sm:grid-cols-[220px_1fr] sm:gap-4">
+          <dt className="text-sm font-medium text-[var(--oh-text)]">Classic sale keys API</dt>
+          <dd className="text-sm text-[var(--oh-muted)]">Reference only — not writable business source of truth</dd>
+        </div>
+      </dl>
+    </AdminPageLayout>
   );
 }

@@ -22,6 +22,12 @@ interface StaffUser {
   /** Jackson may serialize Boolean isAdmin as `admin`. */
   admin?: boolean;
   pendingPasswordReset?: boolean;
+  roleId?: string | number | null;
+}
+
+interface StaffRole {
+  id: string | number;
+  name: string;
 }
 
 function staffIsAdmin(user: StaffUser): boolean {
@@ -44,12 +50,15 @@ interface ResetLinkResult {
 export default function UsersSettingsPage() {
   const { user: currentUser } = useAuth();
   const { data, loading, error, reload } = useApi<StaffUser[]>("/api/users");
+  const rolesState = useApi<StaffRole[]>("/api/roles");
   const users = useMemo(() => data ?? [], [data]);
+  const roles = rolesState.data ?? [];
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roleId, setRoleId] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
@@ -82,6 +91,7 @@ export default function UsersSettingsPage() {
         username: username.trim(),
         email: email.trim(),
         isAdmin,
+        roleId: roleId ? Number(roleId) : undefined,
       });
       setLastInviteUrl(result.inviteUrl);
       setInviteNotice(
@@ -95,6 +105,7 @@ export default function UsersSettingsPage() {
       setUsername("");
       setEmail("");
       setIsAdmin(false);
+      setRoleId("");
       reload();
     } catch (cause) {
       setInviteError(apiFailureMessage(cause, "Could not create the invite.", "Sign in again to invite staff."));
@@ -185,6 +196,26 @@ export default function UsersSettingsPage() {
                 className="h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
               />
             </label>
+            <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)] sm:col-span-2">
+              Staff role
+              <select
+                value={roleId}
+                onChange={(event) => setRoleId(event.target.value)}
+                required={!isAdmin}
+                disabled={rolesState.loading || roles.length === 0}
+                className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:bg-[var(--oh-surface)]"
+              >
+                <option value="">{rolesState.loading ? "Loading roles…" : "Select a role"}</option>
+                {roles.map((role) => <option key={String(role.id)} value={String(role.id)}>{role.name}</option>)}
+              </select>
+              {rolesState.error ? (
+                <span role="alert" className="font-normal text-red-800">Could not load staff roles: {rolesState.error}</span>
+              ) : roles.length === 0 && !rolesState.loading ? (
+                <span className="font-normal text-[var(--oh-muted)]">Create a role first in <a href="/settings/roles" className="font-semibold text-[var(--oh-primary)] underline">Roles &amp; Permissions</a>. Administrators can still be invited below.</span>
+              ) : (
+                <span className="font-normal text-[var(--oh-muted)]">Choose the least access this teammate needs.</span>
+              )}
+            </label>
             <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--oh-text-secondary)] sm:col-span-2">
               <input
                 type="checkbox"
@@ -267,6 +298,7 @@ export default function UsersSettingsPage() {
                     <th className="px-2 py-3 font-semibold">Name</th>
                     <th className="px-2 py-3 font-semibold">Username</th>
                     <th className="px-2 py-3 font-semibold">Email</th>
+                    <th className="px-2 py-3 font-semibold">Role</th>
                     <th className="px-2 py-3 font-semibold">Status</th>
                     <th className="px-2 py-3 font-semibold">Actions</th>
                   </tr>
@@ -280,6 +312,9 @@ export default function UsersSettingsPage() {
                       </td>
                       <td className="px-2 py-3 text-[var(--oh-text-secondary)]">{staff.username}</td>
                       <td className="px-2 py-3 break-all text-[var(--oh-text-secondary)]">{staff.email || "—"}</td>
+                      <td className="px-2 py-3 text-[var(--oh-text-secondary)]">
+                        {staffIsAdmin(staff) ? "Administrator" : roles.find((role) => String(role.id) === String(staff.roleId ?? ""))?.name || "No role"}
+                      </td>
                       <td className="px-2 py-3 text-[var(--oh-muted)]">
                         {staff.pendingPasswordReset ? "Must set password" : "Active"}
                       </td>

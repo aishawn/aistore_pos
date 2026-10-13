@@ -15,6 +15,9 @@ public interface RoleMapper {
     @Select("SELECT * FROM role ORDER BY id DESC")
     List<Role> findAll();
 
+    @Select("SELECT COUNT(*) FROM app_user WHERE role_id = #{roleId} AND deleted_at IS NULL")
+    long countActiveUsers(Long roleId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO role (name, managed_id) VALUES (#{name}, #{managedId})")
     int insert(Role r);
