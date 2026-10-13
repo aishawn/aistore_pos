@@ -263,6 +263,7 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 ### Odoo 自动恢复变量保存后的复核（2026-10-13）
 
 - 店主已在 Dokploy 手动保存 Odoo 自动恢复服务账号环境变量；本地 `.env` 也包含 `ODOO_SERVICE_USERNAME` 与 `ODOO_SERVICE_PASSWORD`，值未读取到文档或输出。
-- 保存后生产 `GET /api/odoo/session` 仍返回 `autoRecoverConfigured: false`（匿名状态下 `user: null`），说明当前运行容器尚未确认加载这组配置；不能据此宣称自动恢复已生效。
-- 当前 `main` 与生产检查基线都是 `f3cc578`。下一步通过普通部署使 Dokploy 应用已保存环境变量，再复查 `autoRecoverConfigured`，并在登录态验证 Odoo 会话丢失后的自动恢复及 Orithos 登出后的拒绝行为。
-- 不执行 Fresh Volumes，不改动其他 AI 工具留下的未提交界面文件；本次状态记录应单独提交，避免夹带并行工作。
+- `f3cc578` 时生产 API 仍返回 `autoRecoverConfigured: false`。只提交本文件的 `a12a4a2` 推送到 GitHub `main` 后触发普通 Dokploy 部署，生产 API 转为 `autoRecoverConfigured: true`。
+- 使用生产 Orithos 登录接口建立的会话调用 `/api/odoo/session`，HTTP 200 并自动连接到 Odoo Administrator，返回允许公司 `[1]`；服务端签发了 HttpOnly `orithos_odoo_session` Cookie。
+- 登录后注入无效 Odoo Cookie 模拟会话失效，再请求 `/api/odoo/session`，HTTP 200，自动重新认证并签发有效 Odoo Cookie。随后 Orithos 登出 HTTP 200；另一轮登出后复核确认受保护的会话接口返回 401。
+- 本次未产生销售、采购、退款或库存变更，也未使用 Fresh Volumes。其他 AI 工具留下的界面改动未提交；文档更改单独提交。
