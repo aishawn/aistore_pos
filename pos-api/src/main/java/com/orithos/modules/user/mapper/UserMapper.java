@@ -17,6 +17,9 @@ public interface UserMapper {
     @Select("SELECT * FROM app_user WHERE id = #{id}")
     User findById(Long id);
 
+    @Select("SELECT * FROM app_user WHERE id = #{id} AND deleted_at IS NULL")
+    User findActiveById(Long id);
+
     @Select("SELECT * FROM app_user WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC")
     List<User> findAll();
 

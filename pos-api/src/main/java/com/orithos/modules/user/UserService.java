@@ -64,6 +64,13 @@ public class UserService {
         return u;
     }
 
+    /** Resolve report permissions from the active database record, not an older access-token claim. */
+    public List<String> authoritiesForActiveUser(Long id) {
+        User user = userMapper.findActiveById(id);
+        if (user == null) throw new BusinessException(40100, "Unauthorized");
+        return authorities(user);
+    }
+
     /** Authorities = ROLE_<roleName> + perm:<safeName> for the JWT claim. */
     public List<String> authorities(User u) {
         List<String> result = new ArrayList<>();

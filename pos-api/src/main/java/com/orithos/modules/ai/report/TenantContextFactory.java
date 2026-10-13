@@ -1,26 +1,25 @@
 package com.orithos.modules.ai.report;
 
 import com.orithos.common.BusinessException;
+import com.orithos.modules.user.UserService;
 import com.orithos.security.AuthUser;
 import com.orithos.security.CurrentUser;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 public class TenantContextFactory {
 
     private final UserReportingOutletMapper reportingOutletMapper;
+    private final UserService userService;
 
-    public TenantContextFactory(UserReportingOutletMapper reportingOutletMapper) {
+    public TenantContextFactory(UserReportingOutletMapper reportingOutletMapper, UserService userService) {
         this.reportingOutletMapper = reportingOutletMapper;
+        this.userService = userService;
     }
 
     public TenantContext fromSecurity() {
@@ -42,13 +41,9 @@ public class TenantContextFactory {
             // table may be empty / missing on partial installs
         }
 
-        Set<String> authorities = Set.of();
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null) {
-            authorities = auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toUnmodifiableSet());
-        }
+        // Role permissions can change while an access token is still valid. Resolve them
+        // from the active user record so revocations take effect on the next report request.
+        Set<String> authorities = Set.copyOf(userService.authoritiesForActiveUser(user.id()));
 
         return new TenantContext(
                 TenantContext.DEFAULT_VENDOR_ID,
