@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, RefreshCw, ShoppingCart, Store, X } from "lucide-react";
-import { createOdooDraftRfq, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
+import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 
 type ReplenishmentProduct = {
@@ -69,7 +69,7 @@ export function OdooReplenishmentPage() {
     refresh ? setRefreshing(true) : setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store" });
+      const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store" });
       const payload = await response.json().catch(() => null) as ReplenishmentData | { message?: string } | null;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;

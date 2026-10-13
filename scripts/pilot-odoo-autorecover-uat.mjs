@@ -20,6 +20,7 @@ const getSession = async (context) => {
 const { chromium } = await import("playwright");
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
+const page = await context.newPage();
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -39,6 +40,13 @@ try {
   const deleted = await context.request.delete(`${base}/api/odoo/session`, { headers: { Origin: base } });
   if (!deleted.ok()) throw new Error(`Could not clear the Odoo browser session (HTTP ${deleted.status()})`);
   record("Odoo browser session cleared", "PASS", "Same-origin session DELETE succeeded; this only clears the Odoo session cookie/session.");
+
+  await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("heading", { name: "Replenishment plan" }).waitFor({ timeout: 30000 });
+  if (await page.getByRole("heading", { name: "Connect Odoo to plan replenishment" }).count()) {
+    throw new Error("The first Odoo-backed page after session removal still asks the user to connect manually");
+  }
+  record("First business page reconnects without manual Connect", "PASS", "After clearing the Odoo cookie, replenishment loaded through its data API and returned to the normal page without a manual connect action.");
 
   const restored = await getSession(context);
   if (restored.status !== 200 || restored.body.autoRecoverConfigured !== true || !restored.body.user) {

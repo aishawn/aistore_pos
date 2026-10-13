@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, ShoppingBag, Store } from "lucide-react";
+import { fetchOdooRoute } from "@/lib/odoo-api";
 
 type DashboardData = {
   rangeHours: number;
@@ -60,7 +61,7 @@ export function OdooReportingDashboard() {
     refresh ? setRefreshing(true) : setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/odoo/reporting-dashboard?hours=${rangeHours}`, {
+      const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${rangeHours}`, {
         credentials: "same-origin",
         cache: "no-store",
       });

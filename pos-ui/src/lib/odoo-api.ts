@@ -251,8 +251,28 @@ export type OdooSessionStatus = {
   autoRecoverConfigured: boolean;
 };
 
+let odooRecoveryInFlight: Promise<boolean> | null = null;
+
+async function recoverOdooSession() {
+  if (!odooRecoveryInFlight) {
+    odooRecoveryInFlight = fetch("/api/odoo/session", {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) return false;
+        const payload = await response.json().catch(() => null) as { user?: OdooAuthUser | null } | null;
+        return Boolean(payload?.user);
+      })
+      .catch(() => false)
+      .finally(() => { odooRecoveryInFlight = null; });
+  }
+  return odooRecoveryInFlight;
+}
+
 async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit) {
-  const response = await fetch(input, init);
+  let response = await fetch(input, init);
   if (response.status !== 401) return response;
 
   try {
@@ -262,11 +282,25 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit) {
       cache: "no-store",
     });
     const payload = await refreshed.json().catch(() => null) as { code?: number } | null;
-    if (!refreshed.ok || payload?.code !== 0) return response;
-    return await fetch(input, init);
+    if (refreshed.ok && payload?.code === 0) response = await fetch(input, init);
   } catch {
-    return response;
+    // Odoo service-account recovery below is independent of Orithos token refresh.
   }
+
+  if (response.status !== 401) return response;
+
+  const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
+  const recovered = await recoverOdooSession();
+  if (recovered && ["GET", "HEAD", "OPTIONS"].includes(method)) {
+    return fetch(input, init);
+  }
+
+  // Recover credentials in the background, but never replay a write request.
+  return response;
+}
+
+export function fetchOdooRoute(input: RequestInfo | URL, init?: RequestInit) {
+  return fetchOdooApi(input, init);
 }
 
 async function sessionRequest(
