@@ -45,6 +45,7 @@ export function OdooCloseRegisterPage() {
   useEffect(() => { void load(); }, [load]);
 
   const selected = bootstrap?.configs.find((item) => item.id === configId) ?? null;
+  const requiresCashCount = Boolean(selected?.paymentMethods.some((method) => method.is_cash_count));
 
   async function handleClose() {
     if (!selected?.session || busy) return;
@@ -53,6 +54,9 @@ export function OdooCloseRegisterPage() {
     setResult(null);
     try {
       const cash = countedCash.trim() ? Number(countedCash) : null;
+      if (requiresCashCount && cash == null) {
+        throw new Error("Count the cash in the drawer before closing this register.");
+      }
       if (cash != null && (!Number.isFinite(cash) || cash < 0 || cash > 1_000_000)) {
         throw new Error("Enter a valid counted cash amount, or leave it blank.");
       }
@@ -115,7 +119,10 @@ export function OdooCloseRegisterPage() {
           Register
           <select
             value={configId ?? ""}
-            onChange={(event) => setConfigId(Number(event.target.value))}
+            onChange={(event) => {
+              setConfigId(Number(event.target.value));
+              setCountedCash("");
+            }}
             className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal"
           >
             {bootstrap?.configs.map((config) => (
@@ -145,16 +152,22 @@ export function OdooCloseRegisterPage() {
         )}
 
         <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
-          Counted cash (optional)
+          Counted cash {requiresCashCount ? "(required)" : "(optional)"}
           <input
             type="number"
             min="0"
             step="0.05"
+            required={requiresCashCount}
             value={countedCash}
             onChange={(event) => setCountedCash(event.target.value)}
-            placeholder="Leave blank to skip cash count write-back"
+            placeholder={requiresCashCount ? "Enter the amount counted in the drawer (AUD)" : "Leave blank to skip cash count write-back"}
             className="h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-normal tabular-nums"
           />
+          <span className="text-xs font-normal text-[var(--oh-muted)]">
+            {requiresCashCount
+              ? "Required for this cash-enabled register. The counted amount is written to Odoo when you confirm."
+              : "This register has no cash payment method, so a cash count is optional."}
+          </span>
         </label>
 
         <p className="mt-3 text-xs leading-5 text-[var(--oh-muted)]">
@@ -165,7 +178,7 @@ export function OdooCloseRegisterPage() {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          disabled={!selected?.session || busy}
+          disabled={!selected?.session || busy || (requiresCashCount && !countedCash.trim())}
           className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? <LoaderCircle size={16} className="animate-spin" /> : null}
