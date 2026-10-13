@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-13T10:55:22.345Z",
+  "scope": "read-only production interactions; customer form opened but not submitted; no sale, refund, RFQ, or register-close writes",
+  "checks": [
+    {
+      "name": "Product search filters the Odoo catalogue",
+      "status": "PASS",
+      "evidence": "Search `shiraz` returned Barossa Shiraz only."
+    },
+    {
+      "name": "Product edit dialog is prefilled from Odoo",
+      "status": "PASS",
+      "evidence": "Barossa Shiraz edit dialog showed the Odoo sale price 34.90 and was closed without saving."
+    },
+    {
+      "name": "Customer creation form is required-field guarded",
+      "status": "PASS",
+      "evidence": "Customer name is required; an empty form fails browser validation and was not submitted."
+    },
+    {
+      "name": "Sales history searches and opens a refunded receipt",
+      "status": "PASS",
+      "evidence": "Receipt search matched `260-1-000009`; detail opened and closed without a refund action."
+    },
+    {
+      "name": "Replenishment coverage control refreshes the estimate",
+      "status": "PASS",
+      "evidence": "Coverage changed to 7 days; no-sales state remains explicitly qualified."
+    },
+    {
+      "name": "Reporting period selector reloads Odoo dashboard",
+      "status": "PASS",
+      "evidence": "Dashboard changed to the 24-hour Odoo reporting window."
+    }
+  ]
+}
