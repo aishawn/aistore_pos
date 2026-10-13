@@ -31,6 +31,7 @@ Statuses:
 | Capability | Status | Notes |
 |---|---|---|
 | Product catalogue (Odoo) | Accepted | `/products/odoo` |
+| Supplier directory (Odoo, read-only) | In progress | `/suppliers/odoo`; added to the approved Odoo partner read API; awaiting production data validation |
 | Purchases / RFQ list | Accepted | `/purchases/odoo` |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |

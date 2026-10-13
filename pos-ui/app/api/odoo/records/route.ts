@@ -29,6 +29,13 @@ const RECORD_TYPES = {
     searchFields: ["name", "phone", "email", "ref"],
     baseDomain: [["customer_rank", ">", 0]],
   },
+  suppliers: {
+    model: "res.partner",
+    fields: ["id", "name", "phone", "email", "vat", "ref", "supplier_rank"],
+    order: "name asc, id asc",
+    searchFields: ["name", "phone", "email", "vat", "ref"],
+    baseDomain: [["supplier_rank", ">", 0]],
+  },
   outlets: {
     model: "res.company",
     fields: ["id", "name", "currency_id"],

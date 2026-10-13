@@ -52,6 +52,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Products", href: "/products/odoo" },
       { label: "Replenishment Plan", href: "/stock/replenishment" },
       { label: "Purchases", href: "/purchases/odoo" },
+      { label: "Suppliers", href: "/suppliers/odoo" },
     ],
   },
   {

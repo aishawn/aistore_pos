@@ -2,6 +2,7 @@ export type OdooRecordType =
   | "products"
   | "posCategories"
   | "customers"
+  | "suppliers"
   | "outlets"
   | "registers"
   | "sessions"
