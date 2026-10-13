@@ -1,7 +1,12 @@
 {
-  "generatedAt": "2026-10-13T15:19:08.439Z",
+  "generatedAt": "2026-10-13T15:43:39.050Z",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
+    {
+      "path": "/overview",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin My Company Good morning Here's what's happening in your store today. Today · Wed, 14 Oct 2026 Refresh Total sales $0.00 Transactions 12 Av"
+    },
     {
       "path": "/",
       "status": "PASS",
@@ -45,7 +50,7 @@
     {
       "path": "/reports/dashboard",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin DEEP DIVE · MY COMPANY Reporting Dashboard Live sales totals from Odoo. For a lighter daily view, open Overview. All t"
+      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
     },
     {
       "path": "/settings/integrations",
@@ -129,6 +134,11 @@
       "status": "PASS",
       "background": "rgb(37, 99, 235)",
       "evidence": "Launcher uses retail brand blue; opening and closing the assistant panel works without submitting a prompt."
+    },
+    {
+      "name": "Overview mobile layout",
+      "status": "PASS",
+      "evidence": "390px viewport has no horizontal page overflow (390px content)."
     }
   ]
 }
