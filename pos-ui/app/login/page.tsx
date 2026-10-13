@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Eye, EyeOff, PackageCheck, ShoppingBasket, Sparkles } from "lucide-react";
+import { Eye, EyeOff, LogIn } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
@@ -14,18 +14,17 @@ function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
   try {
     const parsed = new URL(value, window.location.origin);
-    if (parsed.origin !== window.location.origin || parsed.pathname === "/login") return null;
+    if (
+      parsed.origin !== window.location.origin
+      || parsed.pathname === "/login"
+      || parsed.pathname === "/forgot-password"
+      || parsed.pathname === "/reset-password"
+    ) return null;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return null;
   }
 }
-
-const capabilities = [
-  { icon: ShoppingBasket, label: "Point of sale and register operations" },
-  { icon: PackageCheck, label: "Products, stock and supplier workflows" },
-  { icon: Sparkles, label: "Orithos AI tools for retail teams" },
-];
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -35,6 +34,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<UiMode | null>(null);
+  const [passwordResetNotice, setPasswordResetNotice] = useState(false);
 
   useEffect(() => {
     try {
@@ -46,6 +46,7 @@ export default function LoginPage() {
     } catch {
       // Storage may be unavailable in private browsing; sign-in still works.
     }
+    setPasswordResetNotice(new URLSearchParams(window.location.search).get("reset") === "1");
   }, []);
 
   async function doLogin(mode: UiMode) {
@@ -75,152 +76,132 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-[var(--oh-surface)] px-5 py-6 text-[var(--oh-text)] sm:px-8 sm:py-8">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-full max-w-xl bg-[linear-gradient(135deg,var(--oh-orange-muted),transparent_55%)]" />
-      <div aria-hidden="true" className="pointer-events-none absolute -right-44 -top-56 h-[570px] w-[570px] rounded-full border border-[var(--oh-orange)]/20 sm:-right-20 sm:-top-64" />
-      <div aria-hidden="true" className="pointer-events-none absolute -right-28 -top-40 h-[410px] w-[410px] rounded-full border border-[var(--oh-primary)]/10 sm:right-0 sm:-top-48" />
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[#1c2228] px-4 py-8 font-sans text-[var(--oh-text)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(94,187,235,0.18),transparent_45%),radial-gradient(ellipse_at_80%_70%,rgba(232,145,104,0.12),transparent_40%),linear-gradient(160deg,#1a1f24_0%,#2a3138_55%,#1c2228_100%)]"
+      />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:url('/images/logo-new.png')] [background-position:center] [background-repeat:no-repeat] [background-size:min(70vw,480px)]" />
 
-      <header className="relative z-10 mx-auto flex w-full max-w-5xl items-center justify-between">
-        <OrithosLogo />
-        <Link
-          href="https://orithos.com.au"
-          className="rounded-md px-3 py-2 text-sm font-semibold text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-orange-dark)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-        >
-          Orithos home
-        </Link>
-      </header>
+      <div className="relative z-10 mb-6 scale-110">
+        <OrithosLogo inverse />
+      </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-5xl flex-1 items-center gap-10 py-10 md:grid-cols-[minmax(0,1fr)_minmax(340px,420px)] md:gap-12 lg:gap-16">
-        <section className="max-w-lg">
-          <p className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-[var(--oh-text-secondary)]">
-            <span className="h-2 w-2 rounded-full bg-[var(--oh-orange)] shadow-[0_0_0_4px_var(--oh-orange-muted)]" />
-            Retail workspace
-          </p>
-          <h1 className="text-4xl font-bold leading-[1.08] tracking-[-.055em] text-[var(--oh-text)] sm:text-5xl">
-            Sign in to your store.
-          </h1>
-          <p className="mt-4 max-w-md text-base leading-7 text-[var(--oh-text-secondary)] sm:text-lg sm:leading-8">
-            Open the workspace your team uses to sell, manage stock and keep store operations moving.
-          </p>
-
-          <ul className="mt-8 grid gap-3">
-            {capabilities.map(({ icon: Icon, label }) => (
-              <li key={label} className="flex items-center gap-3 text-sm font-medium text-[var(--oh-text-secondary)] sm:text-base">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--oh-tile-blue-bg)] text-[var(--oh-primary)]">
-                  <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-                </span>
-                {label}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section aria-labelledby="login-title" className="w-full rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-[var(--oh-shadow-card)] sm:p-8">
-          <div className="mb-6">
-            <h2 id="login-title" className="text-2xl font-bold tracking-[-.035em] text-[var(--oh-text)]">Welcome back</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Sign in with your Orithos account to continue.</p>
+      <section className="relative z-10 grid w-full max-w-[720px] overflow-hidden bg-white shadow-[0_24px_60px_rgba(0,0,0,0.35)] md:grid-cols-2">
+        <form onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-8 sm:p-10" aria-labelledby="login-title">
+          <div>
+            <h1 id="login-title" className="sr-only">Sign in</h1>
+            <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-black/70">Username</label>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoFocus
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              maxLength={120}
+              placeholder="Username"
+              className="h-12 w-full border border-[#bdbdbd] bg-white px-3 text-base text-black outline-none placeholder:text-[#757575] focus:border-[var(--sf-cta)] focus:ring-2 focus:ring-[var(--sf-cta)]/25"
+            />
           </div>
 
-          <form onSubmit={onSubmit} className="grid gap-5">
-            <label htmlFor="username" className="grid gap-2 text-sm font-semibold text-[var(--oh-text-secondary)]">
-              Username
+          <div>
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-black/70">Password</label>
+            <span className="flex h-12 w-full items-center border border-[#bdbdbd] bg-white pr-1 focus-within:border-[var(--sf-cta)] focus-within:ring-2 focus-within:ring-[var(--sf-cta)]/25">
               <input
-                id="username"
-                name="username"
-                type="text"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                autoFocus
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
                 required
-                maxLength={120}
-                className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none transition-shadow placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-3 focus:ring-[var(--oh-primary)]/20"
+                maxLength={256}
+                placeholder="Password"
+                className="h-full min-w-0 flex-1 bg-transparent px-3 text-base text-black outline-none placeholder:text-[#757575]"
               />
-            </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="grid h-10 w-10 shrink-0 place-items-center text-[#757575] hover:text-black"
+              >
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </span>
+          </div>
 
-            <label htmlFor="password" className="grid gap-2 text-sm font-semibold text-[var(--oh-text-secondary)]">
-              Password
-              <span className="flex h-12 w-full items-center rounded-md border border-[var(--oh-border-strong)] bg-white pr-1 transition-shadow focus-within:border-[var(--oh-primary)] focus-within:ring-3 focus-within:ring-[var(--oh-primary)]/20">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
-                  required
-                  maxLength={256}
-                  className="h-full min-w-0 flex-1 rounded-md bg-transparent px-3 text-base font-normal text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--oh-primary)]"
-                >
-                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-                </button>
-              </span>
-            </label>
-
-            <label htmlFor="remember-username" className="-mt-2 flex min-h-11 cursor-pointer items-center gap-2.5 text-sm font-medium text-[var(--oh-text-secondary)]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="remember-username" className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-black/65">
               <input
                 id="remember-username"
                 type="checkbox"
                 checked={rememberUsername}
                 onChange={(event) => setRememberUsername(event.target.checked)}
-                className="h-4 w-4 rounded border-[var(--oh-border-strong)] accent-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+                className="h-4 w-4 accent-[var(--sf-cta)]"
               />
               Remember username on this device
             </label>
-
-            {error && (
-              <p className="rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--oh-tile-red-text)]" role="alert">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy !== null}
-              className="mt-1 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
-            >
-              {busy === "web" ? "Signing in…" : "Sign in"}
-              {busy === null && <ArrowRight size={18} aria-hidden="true" />}
-            </button>
-
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void doLogin("mobile")}
-              className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-transparent px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:border-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
-            >
-              {busy === "mobile" ? "Opening mobile workspace…" : "Use mobile workspace"}
-            </button>
-          </form>
-
-          <div className="mt-6 grid gap-2 border-t border-[var(--oh-border)] pt-5 text-xs leading-5 text-[var(--oh-muted)]">
-            <p>Access is managed by your store administrator. If you can’t sign in, contact them for help.</p>
-            <p>
-              Looking for a product tour?{" "}
-              <a
-                href="https://orithos.com.au/apply-for-pilot?request=demo"
-                className="font-semibold text-[var(--oh-orange-dark)] underline decoration-[var(--oh-orange)] underline-offset-2 transition-colors hover:text-[var(--oh-primary)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-              >
-                Request a guided demo
-              </a>
-              .
-            </p>
+            <Link href="/forgot-password" className="text-sm font-semibold text-[var(--sf-cta)] hover:underline">
+              Forgot password?
+            </Link>
           </div>
-        </section>
-      </div>
 
-      <footer className="relative z-10 mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 border-t border-[var(--oh-border)] pt-5 text-xs text-[var(--oh-muted)]">
+          {passwordResetNotice && !error && (
+            <p className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900" role="status">
+              Password updated. Sign in with your new password.
+            </p>
+          )}
+
+          {error && (
+            <p className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={busy !== null}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 bg-[var(--sf-cta)] text-base font-semibold text-white transition-colors hover:bg-[var(--sf-cta-hover)] disabled:cursor-wait disabled:opacity-70"
+          >
+            <LogIn size={18} aria-hidden="true" />
+            {busy === "web" ? "Signing in…" : "Login"}
+          </button>
+
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void doLogin("mobile")}
+            className="min-h-10 border border-[#bdbdbd] bg-transparent text-sm font-semibold text-black transition-colors hover:bg-[var(--sf-pad-bg)] disabled:cursor-wait disabled:opacity-70"
+          >
+            {busy === "mobile" ? "Opening mobile workspace…" : "Use mobile workspace"}
+          </button>
+        </form>
+
+        <aside className="relative hidden min-h-[320px] flex-col justify-end bg-[linear-gradient(165deg,#edf6fb_0%,#f7f8fa_45%,#fff1e9_100%)] md:flex">
+          <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_70%_30%,rgba(94,187,235,0.45),transparent_50%)]" />
+          <div className="relative z-10 bg-[#2a3138]/95 px-5 py-4 text-white">
+            <p className="text-sm font-semibold leading-snug">Orithos retail workspace</p>
+            <p className="mt-1 text-xs text-white/65">Sell, stock and store ops for Australian liquor retail</p>
+            <Link
+              href="https://orithos.com.au/apply-for-pilot?request=demo"
+              className="mt-2 inline-block text-sm font-semibold text-[var(--sf-cta)] hover:underline"
+            >
+              More Info…
+            </Link>
+            <div className="mt-3 h-0.5 w-full bg-[var(--sf-cta)]" />
+          </div>
+        </aside>
+      </section>
+
+      <footer className="relative z-10 mt-6 flex w-full max-w-[720px] flex-wrap items-center justify-between gap-2 text-xs text-white/55">
         <span>© {new Date().getFullYear()} Orithos</span>
-        <span>Retail POS · Australia</span>
+        <Link href="https://orithos.com.au" className="hover:text-white">Orithos home</Link>
       </footer>
     </main>
   );

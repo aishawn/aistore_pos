@@ -64,6 +64,12 @@ services:
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in Dokploy}
       SQL_INIT_MODE: never
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in Dokploy}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@orithos.com.au}
       # AI assistant (DashScope). Defaults off; set AI_ENABLED=true + key in root .env
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}

@@ -2,11 +2,15 @@ package com.orithos.modules.auth;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
-import com.orithos.modules.auth.dto.LoginRequest;
 import com.orithos.modules.auth.dto.ChangePasswordRequest;
+import com.orithos.modules.auth.dto.ForgotPasswordRequest;
+import com.orithos.modules.auth.dto.InviteUserRequest;
+import com.orithos.modules.auth.dto.LoginRequest;
+import com.orithos.modules.auth.dto.ResetPasswordRequest;
 import com.orithos.modules.auth.dto.TokenResponse;
 import com.orithos.modules.user.UserService;
 import com.orithos.modules.user.entity.User;
+import com.orithos.security.AccountTokenStore;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.JwtProperties;
 import com.orithos.security.JwtService;
@@ -27,13 +31,16 @@ public class AuthController {
     private final JwtService jwtService;
     private final TokenStore tokenStore;
     private final JwtProperties props;
+    private final AccountLifecycleService accountLifecycle;
 
     public AuthController(UserService userService, JwtService jwtService,
-                          TokenStore tokenStore, JwtProperties props) {
+                          TokenStore tokenStore, JwtProperties props,
+                          AccountLifecycleService accountLifecycle) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
         this.props = props;
+        this.accountLifecycle = accountLifecycle;
     }
 
     @PostMapping("/login")
@@ -124,6 +131,40 @@ public class AuthController {
                 Boolean.TRUE.equals(user.getIsAdmin()), user.getOutletId(), user.getEmail(), false);
         return ApiResult.ok(new TokenResponse(access.token(), refresh.token(),
                 props.getAccessTokenTtlMinutes() * 60, info));
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResult<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        return ApiResult.ok(accountLifecycle.requestPasswordReset(req.identifier()));
+    }
+
+    @GetMapping("/reset-token")
+    public ApiResult<Map<String, Object>> peekResetToken(
+            @RequestParam String token,
+            @RequestParam(defaultValue = "reset") String purpose) {
+        if (AccountTokenStore.PURPOSE_INVITE.equalsIgnoreCase(purpose)) {
+            return ApiResult.ok(accountLifecycle.peekInviteToken(token));
+        }
+        return ApiResult.ok(accountLifecycle.peekResetToken(token));
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResult<Map<String, Object>> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        if (AccountTokenStore.PURPOSE_INVITE.equalsIgnoreCase(req.purpose())) {
+            return ApiResult.ok(accountLifecycle.completeInvite(req.token(), req.newPassword()));
+        }
+        return ApiResult.ok(accountLifecycle.completePasswordReset(req.token(), req.newPassword()));
+    }
+
+    @PostMapping("/invite")
+    public ApiResult<Map<String, Object>> invite(@Valid @RequestBody InviteUserRequest req) {
+        return ApiResult.ok(accountLifecycle.inviteUser(
+                req.name(), req.username(), req.email(), req.roleId(), req.isAdmin(), req.outletId()));
+    }
+
+    @PostMapping("/users/{id}/reset-link")
+    public ApiResult<Map<String, Object>> issueResetLink(@PathVariable Long id) {
+        return ApiResult.ok(accountLifecycle.issueResetLink(id));
     }
 
     /** Current user info — mirrors the live /user/info shape. */

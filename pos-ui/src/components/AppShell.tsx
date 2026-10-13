@@ -14,7 +14,7 @@ import { MobileTopBar } from "@/components/MobileAiApp";
 import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/ui-mode";
 
 /** Routes that render standalone, without the app chrome + auth guard. */
-const CHROMELESS = ["/login"];
+const CHROMELESS = ["/login", "/forgot-password", "/reset-password"];
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
 
@@ -22,7 +22,12 @@ function safeInternalPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
   try {
     const target = new URL(value, window.location.origin);
-    if (target.origin !== window.location.origin || target.pathname === "/login") return null;
+    if (
+      target.origin !== window.location.origin
+      || target.pathname === "/login"
+      || target.pathname === "/forgot-password"
+      || target.pathname === "/reset-password"
+    ) return null;
     return `${target.pathname}${target.search}${target.hash}`;
   } catch {
     return null;
@@ -42,13 +47,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, ready, logout } = useAuth();
 
   const chromeless = CHROMELESS.includes(pathname);
+  const isSellPath = ODOO_REGISTER_PATHS.has(pathname);
 
   useEffect(() => {
+    if (isSellPath) {
+      // Shopfront-like Sell: hide the charcoal rail so the dual-pane register dominates.
+      setSidebarOpen(false);
+      return;
+    }
     const stored = localStorage.getItem(SIDEBAR_OPEN_KEY);
     if (stored !== null) {
       setSidebarOpen(stored === "true");
+    } else {
+      setSidebarOpen(true);
     }
-  }, []);
+  }, [isSellPath]);
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_OPEN_KEY, String(sidebarOpen));
@@ -67,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/settings/account");
       return;
     }
-    if (user && pathname === "/login") {
+    if (user && (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password")) {
       const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
       router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
       return;

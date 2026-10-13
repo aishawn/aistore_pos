@@ -53,7 +53,8 @@ export function setRefreshCookie(response: NextResponse, token: string | null) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    path: "/api/auth",
+    // Path `/` so middleware can detect a recoverable session after access expiry.
+    path: "/",
     maxAge: token ? REFRESH_MAX_AGE : 0,
   });
 }
@@ -63,7 +64,7 @@ export function setAccessCookie(response: NextResponse, token: string | null, ma
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    path: "/api",
+    path: "/",
     maxAge: token ? maxAge : 0,
   });
 }
@@ -71,6 +72,9 @@ export function setAccessCookie(response: NextResponse, token: string | null, ma
 export function clearAuthCookies(response: NextResponse) {
   setAccessCookie(response, null);
   setRefreshCookie(response, null);
+  // Expire legacy path-scoped cookies from earlier releases.
+  response.cookies.set(ACCESS_COOKIE, "", { httpOnly: true, path: "/api", maxAge: 0 });
+  response.cookies.set(REFRESH_COOKIE, "", { httpOnly: true, path: "/api/auth", maxAge: 0 });
 }
 
 export async function respondWithAuthTokens(backendResponse: Response, clearOnFailure = false) {

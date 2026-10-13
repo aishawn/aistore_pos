@@ -62,11 +62,11 @@ export function Header({
           className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--oh-text-secondary)]"
         >
           {online ? (
-            <Wifi size={15} className="text-[var(--oh-success)]" aria-hidden="true" />
+            <Wifi size={15} className="text-[var(--sf-online-green)]" aria-hidden="true" />
           ) : (
             <WifiOff size={15} className="text-[var(--oh-warning)]" aria-hidden="true" />
           )}
-          <span>{online ? "ONLINE" : "OFFLINE"}</span>
+          <span className={online ? "text-[var(--sf-online-green)]" : undefined}>{online ? "ONLINE" : "OFFLINE"}</span>
         </div>
         <button
           type="button"

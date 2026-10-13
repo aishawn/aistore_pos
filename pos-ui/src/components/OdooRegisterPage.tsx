@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, Clock3, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, UserRound, Wine, X } from "lucide-react";
+import { Archive, Check, CircleAlert, Clock3, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, SquareParking, Trash2, X } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSession,
@@ -13,6 +13,9 @@ import {
   type OdooPosCategoryRecord,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
+import { PlusIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
+import { splitMoney } from "@/lib/sell-screen";
 
 type CartLine = { product: OdooProductRecord; quantity: number; /** Units per pack (1 = bottle/each, 12 = case). */ packFactor: number };
 const CASE_PACK_OPTIONS = [1, 6, 12, 24] as const;
@@ -433,99 +436,250 @@ export function OdooRegisterPage() {
     </main>
   );
 
+  const { whole: totalWhole, cents: totalCents } = splitMoney(amountToCollect);
+  const canFinalise = Boolean(lines.length && selectedConfig?.session && paymentMethodId && !busy && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
+  const summaryMuted = "text-[var(--sf-summary)]";
+
   return (
-    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)] p-3 md:p-5">
-      <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--oh-text)]">Sell</h1>
-          <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo register · {selectedConfig?.name ?? "Choose a register"}{selectedConfig?.session ? ` · ${selectedConfig.session.name}` : ""}</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-white p-2 font-sans">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <select aria-label="Register" value={configId ?? ""} onChange={(event) => {
             const id = Number(event.target.value);
             setConfigId(id);
             setCashTendered("");
             const config = bootstrap?.configs.find((item) => item.id === id);
             setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
-          }} className="h-10 max-w-[220px] rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+          }} className="h-9 max-w-[220px] border border-black/20 bg-white px-2 text-sm text-black">
             {bootstrap?.configs.map((config) => <option key={config.id} value={config.id}>{config.name}{config.session ? "" : " · Closed"}</option>)}
           </select>
-          <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" className="grid h-10 w-10 place-items-center rounded-md border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
-            {refreshing ? <LoaderCircle size={17} className="animate-spin" /> : <RefreshCw size={17} />}
+          <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" className="grid h-9 w-9 place-items-center border border-black/20 bg-white text-black hover:bg-[var(--sf-pad-bg)] disabled:opacity-60">
+            {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           </button>
-          {lines.length > 0 && <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><Archive size={16} /> Park sale</button>}
+          {lines.length > 0 && <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-9 items-center gap-1.5 border border-black/20 bg-white px-2.5 text-sm font-medium text-black hover:bg-[var(--sf-pad-bg)] disabled:opacity-50"><Archive size={15} /> Park</button>}
         </div>
-      </header>
+        <p className="truncate text-xs text-[var(--oh-muted)]">{selectedConfig?.name ?? "Register"}{selectedConfig?.session ? ` · ${selectedConfig.session.name}` : " · Closed"}</p>
+      </div>
 
-      {!selectedConfig?.session && <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"><div className="min-w-0"><p className="font-semibold">No open session</p><p className="mt-0.5 text-xs font-normal text-amber-900/90">Open a session in Odoo, then refresh this register to sell.</p></div><a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a></div>}
-      {error && <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}</span><button onClick={() => setError(null)} aria-label="Dismiss" className="font-bold">×</button></div>}
+      {!selectedConfig?.session && (
+        <div role="status" className="mb-2 flex flex-wrap items-center justify-between gap-2 border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <span>No open session — open one in Odoo, then refresh.</span>
+          <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 shrink-0 items-center justify-center bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Odoo POS</a>
+        </div>
+      )}
+      {error && <div role="alert" className="mb-2 flex items-start justify-between gap-3 border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}</span><button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="font-bold">×</button></div>}
 
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_390px]">
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-          <div className="flex h-12 shrink-0 items-stretch border-b border-[var(--oh-border)] px-2">
-            <button type="button" onClick={() => setSaleView("sell")} className={`border-b-2 px-3 text-sm font-semibold ${saleView === "sell" ? "border-[var(--oh-orange)] text-[var(--oh-text)]" : "border-transparent text-[var(--oh-muted)]"}`}>Sales keys</button>
-            <button type="button" onClick={() => setSaleView("parked")} className={`inline-flex items-center gap-2 border-b-2 px-3 text-sm font-semibold ${saleView === "parked" ? "border-[var(--oh-orange)] text-[var(--oh-text)]" : "border-transparent text-[var(--oh-muted)]"}`}>Parked sales <span className="rounded-full bg-[var(--oh-surface)] px-2 py-0.5 text-xs">{visibleParkedSales.length}</span></button>
+      <div className="flex min-h-0 flex-1 gap-2">
+        {/* Sell pad — Shopfront geometry */}
+        <section className="flex min-w-0 flex-1 flex-col border-[0.667px] border-black">
+          {saleView === "sell" ? (
+            <>
+              <div role="group" aria-label="Search and filter POS products" className="flex h-[50px] shrink-0 items-center border-b border-[#bdbdbd] bg-white px-4">
+                <Search size={18} className="mr-2 shrink-0 text-[var(--sf-placeholder)]" />
+                <input
+                  aria-label="Search products by name, barcode or code"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => void handleProductSearchKeyDown(event)}
+                  placeholder="Search for products…"
+                  className="h-full min-w-0 flex-1 bg-transparent text-base text-black outline-none placeholder:text-[var(--sf-placeholder)]"
+                />
+                {productsLoading && <LoaderCircle size={16} className="ml-2 animate-spin text-[var(--sf-placeholder)]" />}
+                <select aria-label="POS category" value={categoryId ?? ""} onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)} className="ml-2 hidden h-9 max-w-[160px] border border-[#bdbdbd] bg-white px-2 text-xs font-medium text-black sm:block">
+                  <option value="">All categories</option>
+                  {posCategories.map((category) => <option key={category.id} value={category.id}>{Array.isArray(category.parent_id) ? `${category.parent_id[1]} / ${category.name}` : category.name}</option>)}
+                </select>
+              </div>
+              {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
+              <div className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-1.5">
+                {products.length ? (
+                  <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    {products.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        title={product.display_name || product.name}
+                        onClick={() => addProduct(product)}
+                        disabled={!selectedConfig?.session || product.qty_available <= 0}
+                        className="flex min-h-[72px] flex-col justify-center border border-white bg-[rgb(206,229,252)] px-2 py-2 text-left transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:brightness-50"
+                      >
+                        <span className="line-clamp-2 text-[13px] font-medium leading-4 text-black">{product.display_name || product.name}</span>
+                        <span className="mt-1 text-sm font-semibold tabular-nums text-black">{money(product.list_price)}</span>
+                        <span className={cn("mt-0.5 text-[11px]", product.qty_available > 0 ? "text-black/60" : "font-medium text-amber-800")}>
+                          {product.qty_available > 0 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty_available)} avail.` : "No stock"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid h-full place-items-center px-5 text-center text-sm text-black/50">
+                    {productsLoading ? "Loading products…" : (
+                      <div>
+                        <p>No POS products match this search and category.</p>
+                        {(query || categoryId !== null) && (
+                          <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-2 font-semibold text-[var(--sf-tab-blue)] underline underline-offset-2">Clear filters</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
+              <p className="mb-3 flex items-start gap-2 bg-white/80 p-3 text-xs leading-5 text-black/60"><Clock3 size={15} className="mt-0.5 shrink-0" />Parked sales are saved on this terminal.</p>
+              {visibleParkedSales.length ? (
+                <div className="grid gap-2">
+                  {visibleParkedSales.map((sale) => (
+                    <article key={sale.id} className="border border-black/15 bg-white p-3">
+                      <h3 className="truncate text-sm font-semibold text-black">{sale.customer?.name ?? "Walk-in customer"}</h3>
+                      <p className="mt-1 text-xs text-black/55">{formatParkedDate(sale.createdAt)} · {sale.registerName}</p>
+                      <p className="mt-1 text-xs text-black/55">{sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}</p>
+                      <div className="mt-3 flex gap-2">
+                        <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-9 flex-1 items-center justify-center gap-2 bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
+                        <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-9 border border-black/20 px-3 text-sm font-medium text-black/60 hover:text-red-700">Discard</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid h-[60%] place-items-center text-center">
+                  <div>
+                    <Archive size={24} className="mx-auto text-black/40" />
+                    <p className="mt-2 text-sm font-medium text-black">No parked sales</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="hidden shrink-0 lg:block">
+            <div className="h-1 w-full bg-[#e0e0e0]">
+              <div className="h-full bg-[var(--sf-tab-blue)] transition-all" style={{ width: saleView === "parked" ? "100%" : "40%" }} />
+            </div>
+            <ul className="flex h-[50px] items-center bg-white">
+              <li className="flex-1">
+                <button type="button" onClick={() => setSaleView("sell")} className={cn("flex h-[50px] w-full cursor-pointer items-center justify-center gap-2 text-[19.2px]", saleView === "sell" ? "text-[var(--sf-tab-blue)]" : "text-black")}>
+                  <Keyboard size={19} strokeWidth={1.5} /> Sales Keys
+                </button>
+              </li>
+              <li className="flex-1">
+                <button type="button" onClick={() => setSaleView("parked")} className={cn("flex h-[50px] w-full cursor-pointer items-center justify-center gap-2 text-[19.2px]", saleView === "parked" ? "text-[var(--sf-tab-blue)]" : "text-black")}>
+                  <SquareParking size={19} strokeWidth={1.5} /> Parked Sales
+                  {visibleParkedSales.length > 0 && <span className="text-sm">({visibleParkedSales.length})</span>}
+                </button>
+              </li>
+            </ul>
           </div>
-          {saleView === "sell" ? <>
-          <div role="group" aria-label="Search and filter POS products" className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-3">
-            <Search size={18} className="text-[var(--oh-muted)]" />
-            <input aria-label="Search products by name, barcode or code" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => void handleProductSearchKeyDown(event)} placeholder="Scan barcode or search products" className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
-            {productsLoading && <LoaderCircle size={16} className="animate-spin text-[var(--oh-muted)]" />}
-            <select aria-label="POS category" value={categoryId ?? ""} onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)} className="h-9 max-w-[40%] rounded-md border border-[var(--oh-border)] bg-white px-2 text-xs font-medium text-[var(--oh-text)] sm:max-w-[180px]">
-              <option value="">All categories</option>
-              {posCategories.map((category) => <option key={category.id} value={category.id}>{Array.isArray(category.parent_id) ? `${category.parent_id[1]} / ${category.name}` : category.name}</option>)}
-            </select>
+          <div className="flex h-[50px] shrink-0 border-t border-black/10 bg-white lg:hidden">
+            <button type="button" onClick={() => setSaleView("sell")} className={cn("flex-1 text-sm font-semibold", saleView === "sell" ? "text-[var(--sf-tab-blue)]" : "text-black")}>Sales Keys</button>
+            <button type="button" onClick={() => setSaleView("parked")} className={cn("flex-1 text-sm font-semibold", saleView === "parked" ? "text-[var(--sf-tab-blue)]" : "text-black")}>Parked</button>
           </div>
-          {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            {products.length ? <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {products.map((product) => <button key={product.id} type="button" title={product.display_name || product.name} onClick={() => addProduct(product)} disabled={!selectedConfig?.session || product.qty_available <= 0} className="flex min-h-[68px] items-center gap-2.5 rounded-md border border-[var(--oh-border)] px-2.5 py-2 text-left transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-tile-blue-bg)] disabled:cursor-not-allowed disabled:opacity-50">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[var(--oh-tile-blue-bg)] text-[var(--oh-primary)]"><Wine size={17} /></span>
-                <span className="min-w-0 flex-1"><span className="line-clamp-2 text-[12px] font-medium leading-4 text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="mt-0.5 block text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</span><span className={`mt-0.5 block text-[11px] ${product.qty_available > 0 ? "text-[var(--oh-muted)]" : "font-medium text-amber-700"}`}>{product.qty_available > 0 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty_available)} available` : "No stock on hand"}</span></span>
-                <Plus size={16} className="shrink-0 text-[var(--oh-primary)]" />
-              </button>)}
-            </div> : <div className="grid h-full place-items-center px-5 text-center text-sm text-[var(--oh-muted)]">{productsLoading ? "Loading products…" : <div><p>No POS products match this search and category.</p>{(query || categoryId !== null) && <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-2 font-semibold text-[var(--oh-primary)] underline underline-offset-2">Clear filters to see all products</button>}</div>}</div>}
-          </div>
-          </> : <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <p className="mb-3 flex items-start gap-2 rounded-md bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-muted)]"><Clock3 size={15} className="mt-0.5 shrink-0" />Parked sales are saved on this terminal. Odoo checks current pricing and availability when you resume and finalise.</p>
-            {visibleParkedSales.length ? <div className="grid gap-2">{visibleParkedSales.map((sale) => <article key={sale.id} className="rounded-md border border-[var(--oh-border)] p-3">
-              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatParkedDate(sale.createdAt)} · {sale.registerName}</p>              <p className="mt-1 text-xs text-[var(--oh-muted)]">{sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}</p></div></div>
-              <p className="mt-2 line-clamp-2 text-xs text-[var(--oh-muted)]">{sale.lines.map((line) => `${line.quantity}${(line.packFactor || 1) > 1 ? `×${line.packFactor}` : ""} × ${line.product.display_name || line.product.name}`).join(" · ")}</p>
-              <div className="mt-3 flex gap-2"><button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RotateCcw size={15} /> Resume</button><button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-muted)] hover:text-red-700">Discard</button></div>
-            </article>)}</div> : <div className="grid h-[60%] place-items-center text-center"><div><Archive size={24} className="mx-auto text-[var(--oh-muted)]"/><p className="mt-2 text-sm font-medium text-[var(--oh-text)]">No parked sales</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Park an open cart to finish it later.</p></div></div>}
-          </div>}
         </section>
 
-        <section className="flex min-h-[400px] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-          <div className="flex min-h-[64px] shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-4">
-            <UserRound size={18} className="text-[var(--oh-muted)]" />
-            {customer ? <><span className="flex-1 text-sm font-semibold text-[var(--oh-text)]">{customer.name}</span><button type="button" onClick={() => setCustomer(null)} className="text-xs font-medium text-[var(--oh-primary)]">Remove</button></> : <input value={customerQuery} onChange={(event) => setCustomerQuery(event.target.value)} placeholder="Add customer (optional)" className="h-10 min-w-0 flex-1 text-sm outline-none placeholder:text-[var(--oh-muted)]" />}
+        {/* Cart sidebar — Shopfront 419px */}
+        <section className="flex w-full min-h-0 flex-col border-[0.667px] border-black bg-white lg:w-[419px] lg:shrink-0">
+          <div className="flex h-[75px] shrink-0 items-center border-b-[0.667px] border-black">
+            {customer ? (
+              <>
+                <button type="button" onClick={() => setCustomerQuery(customer.name)} className="flex flex-1 cursor-pointer items-center text-left">
+                  <span className="ml-4 flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[var(--sf-muted)] text-white">{customer.name.charAt(0)}</span>
+                  <span className="mx-2 truncate text-[18.72px] font-bold text-black">{customer.name}</span>
+                </button>
+                <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="mr-4 flex h-8 w-8 cursor-pointer items-center justify-center text-[var(--sf-muted)] hover:text-black"><X size={20} /></button>
+              </>
+            ) : (
+              <label className="flex h-full flex-1 cursor-text items-center">
+                <PlusIcon size={18} strokeWidth={1.5} className="ml-4 mr-2 shrink-0 text-black" />
+                <input
+                  value={customerQuery}
+                  onChange={(event) => setCustomerQuery(event.target.value)}
+                  placeholder="Add Customer"
+                  className="h-full min-w-0 flex-1 bg-transparent text-[18.72px] font-bold text-black outline-none placeholder:text-black"
+                />
+              </label>
+            )}
           </div>
-          {!customer && customers.length > 0 && <div className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">{customers.map((item) => <button key={item.id} type="button" onClick={() => { setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2 text-left text-sm hover:bg-[var(--oh-tile-blue-bg)]">{item.name}<span className="ml-2 text-xs text-[var(--oh-muted)]">{item.phone || item.email}</span></button>)}</div>}
+          {!customer && customers.length > 0 && (
+            <div className="max-h-36 shrink-0 overflow-y-auto border-b border-[#eee]">
+              {customers.map((item) => (
+                <button key={item.id} type="button" onClick={() => { setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[#eee] px-4 py-2 text-left text-sm hover:bg-[rgb(206,229,252)]">
+                  {item.name}<span className="ml-2 text-xs text-black/50">{item.phone || item.email}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-y-auto">
             {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
               const factor = packFactor || 1;
-              return <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[#eee] px-4 py-3">
-              <div className="flex items-center gap-3">
-              <span className="w-6 text-sm text-[var(--oh-muted)]">{qty}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="text-xs text-[var(--oh-muted)]">{money(product.list_price)} each{factor > 1 ? ` · ${factor}/pack` : ""}</span></span>
-              <span className="text-sm font-medium">{money(product.list_price * qty * factor)}</span>
-              <div className="flex items-center gap-1"><button aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-8 w-8 place-items-center rounded border border-[var(--oh-border)]"><Minus size={14} /></button><button aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-8 w-8 place-items-center rounded border border-[var(--oh-border)]"><Plus size={14} /></button><button aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-8 w-8 place-items-center text-[var(--oh-muted)] hover:text-red-600"><Trash2 size={15} /></button></div>
-              </div>
-              <label className="flex items-center gap-2 text-[11px] font-medium text-[var(--oh-muted)]">Pack / case
-                <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="h-8 rounded border border-[var(--oh-border)] bg-white px-2 text-xs font-semibold text-[var(--oh-text)]">
-                  {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each / bottle" : `Case ×${size}`}</option>)}
-                </select>
-              </label>
-            </div>;
-            }) : <div className="grid h-full place-items-center px-6 text-center"><div><Wine size={24} className="mx-auto text-[var(--oh-muted)]" /><p className="mt-2 text-sm text-[var(--oh-muted)]">Add a product to start a sale</p></div></div>}
+              const lineTotal = splitMoney(product.list_price * qty * factor);
+              return (
+                <div key={`${product.id}-${factor}`} className="flex flex-col gap-1.5 border-b border-[#eee] px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 shrink-0 text-[16px] text-black">{qty}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[16px] text-black">{product.display_name || product.name}</span>
+                      <span className="text-[13px] text-[var(--sf-muted)]">{money(product.list_price)} each{factor > 1 ? ` · ${factor}/pack` : ""}</span>
+                    </span>
+                    <span className="shrink-0 text-[16px] text-black">${lineTotal.whole}.{lineTotal.cents}</span>
+                    <div className="flex items-center gap-1">
+                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-8 w-8 place-items-center border border-black/15"><Minus size={14} /></button>
+                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-8 w-8 place-items-center border border-black/15"><Plus size={14} /></button>
+                      <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-8 w-8 place-items-center text-[var(--sf-muted)] hover:text-[rgb(222,84,84)]"><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] font-medium text-black/50">Pack / case
+                    <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="h-8 border border-black/15 bg-white px-2 text-xs font-semibold text-black">
+                      {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each / bottle" : `Case ×${size}`}</option>)}
+                    </select>
+                  </label>
+                </div>
+              );
+            }) : null}
           </div>
-          <div className="shrink-0 border-t border-[var(--oh-border)] p-4">
-            <div className="mb-3 flex items-end justify-between"><div><p className="text-xs text-[var(--oh-muted)]">{quantity} {quantity === 1 ? "item" : "items"}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">GST included where configured in Odoo</p>{amountToCollect !== total && <p className="mt-1 text-xs font-medium text-[var(--oh-muted)]">Cash rounding {money(amountToCollect - total)}</p>}</div><div className="text-right"><p className="text-xs uppercase tracking-wide text-[var(--oh-muted)]">Total</p><p className="text-3xl font-semibold tabular-nums text-[var(--oh-text)]">{money(amountToCollect)}</p></div></div>
-            <div className="mb-3 grid grid-cols-[1fr_1.3fr] gap-2"><label className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Payment method<select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">{paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</select></label><div className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Sale details<div className="flex h-10 items-center rounded-md bg-[var(--oh-surface)] px-3 text-sm font-medium normal-case tracking-normal text-[var(--oh-text)]">{selectedConfig?.session?.name ?? "No open session"}</div></div></div>
-            {isCashPayment && <div className="mb-3 rounded-md border border-[var(--oh-border)] bg-[#fbfcfb] p-3"><label htmlFor="cash-tendered" className="flex items-center justify-between gap-3 text-sm font-medium text-[var(--oh-text)]"><span>Cash received</span><span className="text-xs font-normal text-[var(--oh-muted)]">Due {money(amountToCollect)}</span></label><div className="mt-2 flex items-center gap-2"><span className="text-sm text-[var(--oh-muted)]">$</span><input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="h-10 min-w-0 flex-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-base tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange)]/20" /></div><div className="mt-2 flex flex-wrap gap-2">{[5, 10, 20, 50].filter((amount) => amount >= amountToCollect).slice(0, 3).map((amount) => <button key={amount} type="button" onClick={() => setCashTendered(String(amount))} className="min-h-9 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-medium text-[var(--oh-text)] hover:border-[var(--oh-orange)]">${amount}</button>)}<button type="button" onClick={() => setCashTendered(amountToCollect.toFixed(2))} className="min-h-9 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-medium text-[var(--oh-text)] hover:border-[var(--oh-orange)]">Exact</button></div><p role="status" className={`mt-2 text-sm font-semibold tabular-nums ${tenderedAmount + 0.001 < amountToCollect || !Number.isFinite(tenderedAmount) ? "text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{tenderedAmount + 0.001 < amountToCollect || !Number.isFinite(tenderedAmount) ? "Cash received must cover the total." : `Change due ${money(changeDue)}`}</p></div>}
-            <button type="button" onClick={() => void checkout()} disabled={!lines.length || !selectedConfig?.session || !paymentMethodId || busy || !Number.isFinite(tenderedAmount) || tenderedAmount + 0.001 < amountToCollect} className="flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-lg font-semibold text-white transition hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:bg-[var(--oh-border-strong)] disabled:text-white/80">
-              {busy ? <><LoaderCircle size={18} className="animate-spin" /> Processing…</> : !selectedConfig?.session ? <>Open a session to finalise</> : <>Finalise · {money(amountToCollect)}</>}
+
+          <div className="relative shrink-0">
+            {(isCashPayment || paymentMethods.length > 1) && (
+              <div className="border-t border-[#eee] px-3 py-2">
+                <label className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-black/45">Payment
+                  <select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="h-9 border border-black/15 bg-white px-2 text-sm font-medium normal-case tracking-normal text-black">
+                    {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
+                  </select>
+                </label>
+                {isCashPayment && (
+                  <div className="mt-2">
+                    <label htmlFor="cash-tendered" className="flex items-center justify-between text-sm text-black"><span>Cash received</span><span className="text-xs text-black/50">Due {money(amountToCollect)}</span></label>
+                    <input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="mt-1 h-9 w-full border border-black/15 px-2 text-base tabular-nums outline-none focus:border-[var(--sf-cta)]" />
+                    {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && <p className="mt-1 text-sm tabular-nums text-black/70">Change {money(changeDue)}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex h-[93px]">
+              <div className={cn("flex flex-1 flex-col justify-center p-2", lines.length ? "text-black" : summaryMuted)}>
+                <p className="text-[16px] leading-[19px]">{quantity} {quantity === 1 ? "Product" : "Products"}</p>
+                <p className="text-[16px] leading-[19px]">Savings: $0.00</p>
+                <p className="text-[16px] leading-[19px]">Discount: $0.00</p>
+                {amountToCollect !== total && <p className="text-[13px] leading-[16px]">Rounding {money(amountToCollect - total)}</p>}
+              </div>
+              <div className={cn("flex flex-1 flex-col items-center justify-center p-2 text-center", lines.length ? "text-black" : summaryMuted)}>
+                <p className="leading-none">
+                  <span className="text-[40px]">${totalWhole}</span>
+                  <span className="align-top text-[24px]">.{totalCents}</span>
+                </p>
+                <p className="text-[24px] [font-variant:small-caps]">Total</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void checkout()}
+              disabled={!canFinalise}
+              className={cn(
+                "h-[50px] w-full px-2 py-1 text-center text-[32px] text-[var(--sf-on-dark)] [font-variant:small-caps]",
+                canFinalise ? "cursor-pointer bg-[var(--sf-cta)] hover:bg-[var(--sf-cta-hover)]" : "cursor-not-allowed bg-[#bdbdbd]",
+              )}
+            >
+              {busy ? "Processing…" : !selectedConfig?.session ? "No session" : "Finalise"}
             </button>
           </div>
         </section>

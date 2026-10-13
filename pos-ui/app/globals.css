@@ -188,19 +188,23 @@
   --oh-info: #3182ce;
   --oh-warning: #dd6b20;
 
-  /* Compat aliases — map legacy Shopfront names onto Orithos semantics */
+  /* Shopfront interaction blues (Sell Finalise / tabs) — light surfaces stay Orithos */
+  --sf-cta: #5ebbeb;
+  --sf-cta-hover: #4aa9db;
+  --sf-tab-blue: #1c86f2;
+  --sf-online-green: #32b643;
+  --sf-pad-bg: #f8f8f8;
+  --sf-summary: rgba(189, 189, 189, 0.7);
+
+  /* Compat aliases — map legacy Shopfront names onto Orithos / Shopfront tokens */
   --oh-accent: var(--oh-orange);
   --oh-accent-light: var(--oh-orange-light);
   --sf-header-bg: var(--oh-header-bg);
-  --sf-on-dark: var(--oh-text);
-  --sf-muted: var(--oh-muted);
-  --sf-link-blue: var(--oh-primary);
-  --sf-tab-blue: var(--oh-primary);
-  --sf-online-green: var(--oh-success);
-  --sf-pad-bg: var(--oh-paper);
-  --sf-placeholder: var(--oh-placeholder);
-  --sf-divider: var(--oh-border-strong);
-  --sf-summary: rgba(104, 116, 125, 0.7);
+  --sf-on-dark: #f8f8f8;
+  --sf-muted: #bdbdbd;
+  --sf-link-blue: var(--sf-cta);
+  --sf-placeholder: #757575;
+  --sf-divider: #000000;
 }
 
 .oh-brand-mark {

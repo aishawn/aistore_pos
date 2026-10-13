@@ -11,6 +11,9 @@ public interface UserMapper {
     @Select("SELECT * FROM app_user WHERE username = #{username} AND deleted_at IS NULL")
     User findByUsername(String username);
 
+    @Select("SELECT * FROM app_user WHERE email = #{email} AND deleted_at IS NULL LIMIT 1")
+    User findByEmail(String email);
+
     @Select("SELECT * FROM app_user WHERE id = #{id}")
     User findById(Long id);
 
