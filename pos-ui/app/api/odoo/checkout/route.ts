@@ -506,17 +506,37 @@ export async function POST(request: NextRequest) {
       to_invoice: false,
     };
     const synced = await rpc<{
-      "pos.order"?: { id: number; name: string; pos_reference?: string; amount_total: number; amount_tax: number }[];
+      "pos.order"?: { id: number; name: string; pos_reference?: string; amount_total: number; amount_tax: number; uuid?: string }[];
     }>(odooSession, "pos.order", "sync_from_ui", [[order]]);
-    const saved = synced["pos.order"]?.[0];
+    // Odoo may return both the original sale and its refund from sync_from_ui.
+    // Never assume the first record is the order just submitted.
+    const savedFromSync = synced["pos.order"]?.find((candidate) => candidate.uuid === uuid);
+    const saved = savedFromSync ?? (await searchRead<{
+      id: number;
+      name: string;
+      pos_reference?: string;
+      amount_total: number;
+      amount_tax: number;
+      is_refund: boolean;
+    }>(odooSession, "pos.order", [
+      ["uuid", "=", uuid],
+      ["company_id", "in", companyIds],
+      ["config_id", "=", config.id],
+      ["session_id", "=", sessionId],
+    ], ["id", "name", "pos_reference", "amount_total", "amount_tax", "is_refund"], 1))[0];
     if (!saved) throw new OdooCheckoutError("Odoo did not confirm the sale. Check the order history before retrying.", 502);
+    if ("is_refund" in saved && saved.is_refund !== isRefund) {
+      throw new OdooCheckoutError("Odoo returned a different order type than requested. Check the order history before retrying.", 502);
+    }
+    const resultTotal = Math.abs(saved.amount_total);
+    const resultTax = Math.abs(saved.amount_tax);
 
     return NextResponse.json({
       saleId: saved.id,
       receipt: saved.pos_reference || saved.name,
-      total: saved.amount_total,
-      gst: saved.amount_tax,
-      subtotal: Math.round((saved.amount_total - saved.amount_tax) * 100) / 100,
+      total: resultTotal,
+      gst: resultTax,
+      subtotal: Math.round((resultTotal - resultTax) * 100) / 100,
       tendered: roundedTender,
       change,
       isRefund,
