@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + 8 general, 3 operations, 6 auto-recovery checks, and 113 backend tests; app commit `ee0cb0b` deployed Done)
+**Last updated:** 2026-10-13 (app commit `6dfb738` deployed Done; 24-route matrix, 8 general interactions, 6 auto-recovery checks; 113 backend tests previously passed at `ee0cb0b`)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -36,7 +36,7 @@ Statuses:
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
-| Replenishment approval audit | In progress | RFQ creation now stores forecast method, cover target, suggested/ordered quantities and reasons as an internal Odoo chatter note (not supplier-facing terms); zeroed suggestions remain in the audit but are excluded from PO lines. Live Odoo RFQ acceptance is pending a safe vendor/sample |
+| Replenishment approval audit | In progress | Deployed code writes forecast method, cover target, suggested/ordered quantities and reasons as an internal Odoo chatter note (not supplier-facing terms); zeroed suggestions remain in the audit but are excluded from PO lines. Production schema and UI mock pass; live RFQ/message write is unverified pending an approved vendor/sample |
 | Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; Classic MySQL save is **blocked** — use Odoo Purchases / Replenishment |
 | Banner / buyer-group price files | Planned | |
 

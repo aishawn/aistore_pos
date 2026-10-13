@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-13T13:48:16Z",
+  "environment": "production Orithos UI with Playwright-intercepted replenishment and RFQ API fixtures",
+  "scope": "UI request/response validation only; no Odoo supplier, RFQ, purchase, or chatter record was created",
+  "checks": [
+    {
+      "name": "RFQ review keeps the forecast snapshot with the buyer's edits",
+      "status": "PASS",
+      "evidence": "Captured request included supplier, 21-day coverage, weighted-velocity method, suggestion, buyer-edited quantity, and reason."
+    },
+    {
+      "name": "Removing a suggestion from the order preserves it in the audit",
+      "status": "PASS",
+      "evidence": "A second line set to quantity 0 remained in the audit payload with its original suggestion and reason."
+    },
+    {
+      "name": "Draft creation feedback reports the audit persistence result",
+      "status": "PASS",
+      "evidence": "Mock success response with auditSaved=true showed the draft RFQ and internal chatter audit confirmation."
+    }
+  ],
+  "limitations": [
+    "The network mock intercepted the API before it could write to Odoo; this does not prove a real message_post succeeds.",
+    "A live test requires a shop-approved supplier and must leave the created RFQ in draft."
+  ]
+}

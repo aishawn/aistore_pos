@@ -95,8 +95,9 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 
 ### 2026-10-13 后续验收补充
 
+- `6dfb738` 已推送并由 Dokploy 标记 Done。最新部署复验：24/24 路由、8/8 一般交互、3/3 运营检查、6/6 Odoo 自动恢复通过；补货审批与采购详情的 UI mock 也通过，证据分别见 `UAT_REPLENISHMENT_AUDIT_MOCK_2026-10-13.json` 和 `UAT_PURCHASE_DETAIL_MOCK_2026-10-13.json`。
 - 生产采购只读检查：供应商 0、草稿 RFQ 0、可采购 POS 商品 2。没有合适的真实订单样本，因此不创建生产供应商/RFQ来做演示。
-- 采购详情界面使用浏览器网络拦截的内存 fixture 验证了草稿行、AUD 税额、空收货状态与二次确认；取消后未观察到确认写请求。此结果只证明 UI 状态，不代表真实 Odoo 采购/收货集成通过。证据见 [UAT_PURCHASE_DETAIL_MOCK_2026-10-13.json](UAT_PURCHASE_DETAIL_MOCK_2026-10-13.json)。
+- 采购详情界面使用浏览器网络拦截的内存 fixture 验证了草稿行、AUD 税额、内部审批 chatter 纯文本、空收货状态与二次确认；取消后未观察到确认写请求。补货 UI fixture 验证建议量、买家改量、置零行、覆盖周期、算法和理由都会被提交。以上只证明页面展示/客户端请求格式，不证明真实 Odoo 写入成功。
 - 补货审批审计正在从仅浏览器存储改为随 Odoo 草稿 RFQ 保存为**内部 chatter note**：包含预测方法、覆盖天数、每款建议量/实际数量/理由；将数量改为 0 的建议仍记入审计但不会出现在采购行。生产 schema 查询确认 `purchase.order.note` 是供应商可见的 Terms and Conditions，因此没有将内部预测信息写进该字段；改用 `message_post` 的 `mail.mt_note`。采购详情页只显示内部审核消息的纯文本。Schema 只读证据见 [UAT_ODOO_PURCHASE_AUDIT_SCHEMA_2026-10-13.json](UAT_ODOO_PURCHASE_AUDIT_SCHEMA_2026-10-13.json)。UI mock 已跑；真实 RFQ 创建、内部消息权限和读取仍需安全测试供应商。
 - 当前可继续自主完成的生产验收已基本收敛。剩余关账需要实点现金和班次最终核对；供应商/RFQ 需要店主提供或确认测试对象；AI 需要模型预算；SMTP、打印机和钱箱需要各自配置/设备。不要用模拟数据替代这些生产验收。
 

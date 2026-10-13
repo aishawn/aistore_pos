@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T13:12:05Z",
+  "generatedAt": "2026-10-13T13:48:16Z",
   "environment": "production Orithos UI with Playwright-intercepted API fixtures",
   "scope": "UI-only mocked RFQ detail validation; no supplier, RFQ, receipt, or purchase data was written to Odoo",
   "checks": [
@@ -7,6 +7,11 @@
       "name": "Purchase detail displays RFQ header, line, AUD totals and tax",
       "status": "PASS",
       "evidence": "Fixture UAT-RFQ-MOCK-001 rendered in the purchase detail dialog."
+    },
+    {
+      "name": "Purchase detail renders internal Odoo approval chatter as plain text",
+      "status": "PASS",
+      "evidence": "A mocked internal note containing HTML rendered as text in the Replenishment approval audit section; no HTML was injected into the page."
     },
     {
       "name": "Purchase detail displays the empty incoming receipt state",
