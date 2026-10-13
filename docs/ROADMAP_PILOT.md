@@ -325,4 +325,4 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 
 - `ce3cfe8` 移除 `/settings/receipts` 和 `/settings/hardware` 中虚构的默认项（例如 Epson TM-T82、抽屉已连接、80mm 和默认启用的自动打印）及无效 Save 按钮。
 - 两页改为明确说明收据打印、SMTP 邮件和终端外设尚未接通或验证的状态页，且不声称这些值已写入 Odoo。`pos-ui` 类型检查和两个目标页面 ESLint 通过；未运行本地 build。
-- 实际打印机/钱箱/扫描器连接、收据版式与邮件发送仍未实现；此次只清除了会误导经营配置的演示数据。等待 Dokploy 自动部署后再核对线上文案和页面响应。
+- 生产部署后重新读取两页：均 HTTP 200；收据页包含 `Receipt settings are not connected yet`，硬件页包含 `No hardware connection has been verified`，响应不再含 Epson TM-T82 或 80mm 样例值。实际打印机/钱箱/扫描器连接、收据版式与邮件发送仍未实现；此次只清除了会误导经营配置的演示数据。
