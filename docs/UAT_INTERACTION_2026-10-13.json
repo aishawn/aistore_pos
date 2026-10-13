@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T10:55:22.345Z",
+  "generatedAt": "2026-10-13T11:22:15.252Z",
   "scope": "read-only production interactions; customer form opened but not submitted; no sale, refund, RFQ, or register-close writes",
   "checks": [
     {

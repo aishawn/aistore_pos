@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + nine production interaction checks; production deploy `f2f16db`)
+**Last updated:** 2026-10-13 (24-route matrix + nine production interaction checks; production deploy `17ef0f5`)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -22,7 +22,7 @@ Statuses:
 | Pricelist rules & customer pricelist | Accepted | Checkout calls Odoo `_get_product_price`; FX mismatch still blocked |
 | Bottle / case pack factor | Accepted | Pack ×1/6/12/24 on cart lines (UI confirmed) |
 | Full-sale refund from history | Accepted | Browser refund of this-round receipts `260-1-000009` and `260-1-000010`; Odoo independent refunds `000009 REFUND` / `000010 REFUND`; free qty back to 12 |
-| Close register (Odoo session) | In progress | API closed `00003` earlier; browser close UI verified for open `00004` but register left open after this-round net-zero UAT |
+| Close register (Odoo session) | In progress | Production `17ef0f5` requires a counted cash amount before closing a cash-enabled register; modal/cancel verified for `00004`. Session remains open pending actual drawer count and reconciliation |
 | Manage Cash | Planned | Not in pilot sidebar; deep-link `/manage-cash` is Coming soon (no Odoo writes) |
 | Credit sales / multi-tender split | Planned | |
 | Offline-first sell | Planned | Competitor hard requirement; deferred |
@@ -83,7 +83,7 @@ Statuses:
 
 ## 2026-10-13 browser UAT (session `00004`)
 
-- Deployed app commit `f2f16db` (role list now displays actual assigned permissions; role permissions + honest company/sale-keys pages).
+- Deployed app commit `17ef0f5` (role list now displays actual assigned permissions; cash-enabled register close requires counted cash; role permissions + honest company/sale-keys pages).
 - Page matrix evidence: `docs/UAT_PAGE_MATRIX_2026-10-13.json` (24/24 routes pass after waiting for Odoo catalogue hydration; the inventory assertion now matches the displayed `12Units` format).
 - Role CRUD evidence: production UI created a temporary role, selected `AI Report Cost`, showed the saved grant in the role list, and deleted the role. API confirmed the grant; no test role remains. Earlier leftover `Pilot Clerk 344840` was also removed.
 - Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T11:12:25.750Z",
+  "generatedAt": "2026-10-13T11:22:36.777Z",
   "scope": "read-only production validation; close confirmation opened then cancelled; no purchase order confirmed and no register-close request sent",
   "checks": [
     {
@@ -10,7 +10,7 @@
     {
       "name": "Close-register confirmation is explicit and safely cancellable",
       "status": "PASS",
-      "evidence": "Session 00004 was named in the confirmation; cancel returned to the open session. No close request was sent."
+      "evidence": "Cash count is required before close; temporary UI value 0.00 enabled the confirmation, which named session 00004 and was cancelled. No close request was sent."
     },
     {
       "name": "Purchase status filter refreshes Odoo results and detail is view-only",

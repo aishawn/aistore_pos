@@ -42,10 +42,17 @@ try {
   await check("Product search filters the Odoo catalogue", async () => {
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const search = page.getByPlaceholder("Search product, barcode or SKU");
+    await page.waitForFunction(() => {
+      const rows = [...(document.querySelector("tbody")?.querySelectorAll("tr") ?? [])];
+      const text = document.querySelector("tbody")?.innerText ?? "";
+      return rows.length === 2 && /Barossa Shiraz/i.test(text) && /Sauvignon Blanc/i.test(text);
+    }, null, { timeout: 30000 });
     await search.fill("shiraz");
-    await page.getByText(/Barossa Shiraz 2021/i).waitFor({ timeout: 15000 });
-    await page.getByText("Showing 1–1", { exact: true }).waitFor({ timeout: 15000 });
-    if (await page.getByText(/Sauvignon Blanc/i).count()) throw new Error("Non-matching catalogue product remained visible");
+    await page.waitForFunction(() => {
+      const rows = [...(document.querySelector("tbody")?.querySelectorAll("tr") ?? [])];
+      const text = document.querySelector("tbody")?.innerText ?? "";
+      return rows.length === 1 && /Barossa Shiraz/i.test(text) && !/Sauvignon Blanc/i.test(text);
+    }, null, { timeout: 30000 });
     return "Search `shiraz` returned Barossa Shiraz only.";
   });
 

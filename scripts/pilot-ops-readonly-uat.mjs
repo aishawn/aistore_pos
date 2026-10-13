@@ -34,15 +34,22 @@ try {
   await check("Close-register confirmation is explicit and safely cancellable", async () => {
     await page.goto(base + "/close", { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.locator("dd").filter({ hasText: "00004" }).first().waitFor({ timeout: 20000 });
-    await page.getByRole("button", { name: "Close register in Odoo" }).click();
+    const countedCash = page.getByLabel("Counted cash (required)");
+    await countedCash.waitFor({ timeout: 10000 });
+    if (await countedCash.getAttribute("required") === null) throw new Error("Cash count input is not marked required");
+    const closeButton = page.getByRole("button", { name: "Close register in Odoo" });
+    if (await closeButton.isEnabled()) throw new Error("Register close is enabled before a cash count is entered");
+    await countedCash.fill("0.00");
+    if (!(await closeButton.isEnabled())) throw new Error("Entering a cash count did not enable the close confirmation");
+    await closeButton.click();
     const dialog = page.getByRole("alertdialog", { name: "Close this Odoo session?" });
     await dialog.waitFor({ timeout: 10000 });
     const copy = await dialog.innerText();
-    if (!copy.includes("00004") || !copy.includes("reconciled")) throw new Error("Confirmation did not identify session and reconciliation check");
+    if (!copy.includes("00004") || !copy.includes("reconciled") || !copy.includes("$0.00")) throw new Error("Confirmation did not identify the session, reconciliation check, and entered cash count");
     await dialog.getByRole("button", { name: "Keep session open" }).click();
     await dialog.waitFor({ state: "detached", timeout: 10000 });
     await page.locator("dd").filter({ hasText: "00004" }).first().waitFor({ timeout: 10000 });
-    return "Session 00004 was named in the confirmation; cancel returned to the open session. No close request was sent.";
+    return "Cash count is required before close; temporary UI value 0.00 enabled the confirmation, which named session 00004 and was cancelled. No close request was sent.";
   });
 
   await check("Purchase status filter refreshes Odoo results and detail is view-only", async () => {
