@@ -266,4 +266,7 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - `f3cc578` 时生产 API 仍返回 `autoRecoverConfigured: false`。只提交本文件的 `a12a4a2` 推送到 GitHub `main` 后触发普通 Dokploy 部署，生产 API 转为 `autoRecoverConfigured: true`。
 - 使用生产 Orithos 登录接口建立的会话调用 `/api/odoo/session`，HTTP 200 并自动连接到 Odoo Administrator，返回允许公司 `[1]`；服务端签发了 HttpOnly `orithos_odoo_session` Cookie。
 - 登录后注入无效 Odoo Cookie 模拟会话失效，再请求 `/api/odoo/session`，HTTP 200，自动重新认证并签发有效 Odoo Cookie。随后 Orithos 登出 HTTP 200；另一轮登出后复核确认受保护的会话接口返回 401。
+- 使用已登录会话检查 18 个实际页面路由：`/register/odoo`、`/close`、`/history/odoo`、`/products/odoo`、`/customers/odoo`、`/suppliers/odoo`、`/purchases/odoo`、`/stock/replenishment`、`/reports/dashboard`、`/settings/integrations`、`/settings/payment`、`/settings/tax`、`/settings/receipts`、`/settings/hardware`、`/settings/users`、`/settings/roles`、`/sommelier/find`、`/sommelier/identify` 均返回 HTTP 200。匿名访问 `/` 会跳转登录页。
+- 只读 API 检查：POS bootstrap 返回 1 个 POS 配置和当前班次；采购单 0、供应商 0；补货接口返回 2 个商品且仍基于 56 天历史；报表接口返回 0 笔近期交易。未创建、修改或删除业务记录。
+- 上述路由检查仅证明登录态下页面可达，API 检查仅证明数据桥可读取；它们不代表已经完成页面视觉检查或每个按钮/完整业务流程验收。页面级交互矩阵和受控交易 UAT 仍待后续执行。
 - 本次未产生销售、采购、退款或库存变更，也未使用 Fresh Volumes。其他 AI 工具留下的界面改动未提交；文档更改单独提交。
