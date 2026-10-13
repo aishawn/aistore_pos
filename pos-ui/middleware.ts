@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { hasOrithosSession } from "@/lib/server-auth";
 
 const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_COOKIE = "orithos_refresh_token";
@@ -22,9 +23,13 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (isPublic(pathname)) return NextResponse.next();
+
+  if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !(await hasOrithosSession(request))) {
+    return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
+  }
 
   // API routes other than public auth still need a token, but the BFF returns 401;
   // only page navigations are redirected here.

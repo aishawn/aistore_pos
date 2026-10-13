@@ -82,7 +82,7 @@ Statuses:
 
 | Capability | Status | Notes |
 |---|---|---|
-| Odoo session integration | In progress | Manual connection works; production auto-recover is off. |
+| Odoo session integration | In progress | Manual connection works; production auto-recover is off. A working-tree change now requires an authenticated Orithos session for Odoo APIs, clears the Odoo cookie on Orithos logout, and refreshes/retries Odoo API calls after an Orithos 401. Typecheck and targeted ESLint pass; deployment verification pending. |
 | Users / roles | In progress | `/settings/users` production page is a generic editor placeholder; roles page reported 0 records. Parallel invite/reset changes are uncommitted and not production-verified. |
-| Payment / tax / outlet / register setup | In progress | Current local changes replace payment/tax/outlet/register mock CRUD with allowlisted Odoo read-only views. Typecheck + targeted ESLint passed; changes are uncommitted and not deployed/visually verified. Until deployment, production still shows local/demo values; do not treat them as live Odoo configuration. |
+| Payment / tax / outlet / register setup | In progress | Commit `de61b96` replaces payment/tax/outlet/register mock CRUD with allowlisted Odoo read-only views. Typecheck + targeted ESLint passed; Dokploy reports `de61b96` Done and the four page routes return HTTP 200. Live Odoo data and visual interaction checks remain pending; production session status reports auto-recover is not configured. |
 | Receipt / hardware setup | In progress | Production pages previously showed local/demo settings. Still needs a decision: migrate to Odoo-backed data where supported or explicitly label/disable as local terminal configuration. |

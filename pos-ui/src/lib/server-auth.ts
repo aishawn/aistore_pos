@@ -34,6 +34,24 @@ export function backendUrl() {
     || "http://localhost:8080";
 }
 
+export async function hasOrithosSession(request: NextRequest) {
+  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
+  if (!accessToken) return false;
+
+  try {
+    const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return false;
+    const payload = (await response.json()) as { code?: number; data?: unknown };
+    return payload.code === 0 && Boolean(payload.data);
+  } catch {
+    return false;
+  }
+}
+
 export async function postAuthBackend(path: string, body?: unknown, authorization?: string | null) {
   const base = backendUrl().replace(/\/+$/, "");
   return fetch(`${base}/api/auth/${path}`, {

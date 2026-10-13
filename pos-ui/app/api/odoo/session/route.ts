@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
-import { ACCESS_COOKIE, backendUrl, isSameOrigin } from "@/lib/server-auth";
+import { hasOrithosSession, isSameOrigin, REFRESH_COOKIE } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,24 +101,6 @@ async function connectWithServiceAccount() {
   return { ...session, user: await publicUser(session.info, session.sessionId) };
 }
 
-async function hasOrithosSession(request: NextRequest) {
-  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (!accessToken) return false;
-
-  try {
-    const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) return false;
-    const payload = (await response.json()) as { code?: number; data?: unknown };
-    return payload.code === 0 && Boolean(payload.data);
-  } catch {
-    return false;
-  }
-}
-
 function cookieOptions() {
   return {
     httpOnly: true,
@@ -143,6 +125,9 @@ async function publicUser(info: OdooSessionInfo, sessionId: string) {
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) {
     return NextResponse.json({ message: "Cross-origin login is not allowed" }, { status: 403 });
+  }
+  if (!(await hasOrithosSession(request))) {
+    return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   }
 
   let body: { username?: string; password?: string };
@@ -181,9 +166,16 @@ function sessionPayload(user: Awaited<ReturnType<typeof publicUser>> | null) {
 }
 
 export async function GET(request: NextRequest) {
+  if (!(await hasOrithosSession(request))) {
+    const response = NextResponse.json(sessionPayload(null), {
+      status: request.cookies.get(REFRESH_COOKIE)?.value ? 401 : 200,
+    });
+    response.cookies.delete(SESSION_COOKIE);
+    return response;
+  }
+
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) {
-    if (!(await hasOrithosSession(request))) return NextResponse.json(sessionPayload(null), { status: 200 });
     try {
       const session = await connectWithServiceAccount();
       if (!session) return NextResponse.json(sessionPayload(null), { status: 200 });
@@ -200,11 +192,6 @@ export async function GET(request: NextRequest) {
     if (!info.uid) throw new Error("Odoo session has expired");
     return NextResponse.json(sessionPayload(await publicUser(info, sessionId)), { status: 200 });
   } catch {
-    if (!(await hasOrithosSession(request))) {
-      const response = NextResponse.json(sessionPayload(null), { status: 200 });
-      response.cookies.delete(SESSION_COOKIE);
-      return response;
-    }
     try {
       const session = await connectWithServiceAccount();
       const response = NextResponse.json(sessionPayload(session?.user ?? null), { status: 200 });
@@ -222,6 +209,11 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   if (!isSameOrigin(request)) {
     return NextResponse.json({ message: "Cross-origin logout is not allowed" }, { status: 403 });
+  }
+  if (!(await hasOrithosSession(request))) {
+    const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
+    response.cookies.delete(SESSION_COOKIE);
+    return response;
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (sessionId) {

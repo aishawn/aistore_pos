@@ -42,10 +42,12 @@ export async function POST(request: NextRequest) {
       ? await respondWithAuthTokens(logoutResponse, true)
       : NextResponse.json({ code: 0, message: "ok", data: null }, { status: 200 });
     clearAuthCookies(response);
+    response.cookies.delete("orithos_odoo_session");
     return response;
   } catch {
     const response = NextResponse.json({ code: 0, message: "ok", data: null }, { status: 200 });
     clearAuthCookies(response);
+    response.cookies.delete("orithos_odoo_session");
     return response;
   }
 }

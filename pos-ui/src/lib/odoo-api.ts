@@ -242,11 +242,29 @@ export type OdooSessionStatus = {
   autoRecoverConfigured: boolean;
 };
 
+async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit) {
+  const response = await fetch(input, init);
+  if (response.status !== 401) return response;
+
+  try {
+    const refreshed = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const payload = await refreshed.json().catch(() => null) as { code?: number } | null;
+    if (!refreshed.ok || payload?.code !== 0) return response;
+    return await fetch(input, init);
+  } catch {
+    return response;
+  }
+}
+
 async function sessionRequest(
   method: "GET" | "POST" | "DELETE",
   body?: { username: string; password: string },
 ): Promise<OdooSessionStatus> {
-  const response = await fetch("/api/odoo/session", {
+  const response = await fetchOdooApi("/api/odoo/session", {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     credentials: "same-origin",
@@ -278,7 +296,7 @@ export function getOdooSessionStatus() {
 }
 
 export async function getOdooPosBootstrap(): Promise<OdooPosBootstrap> {
-  const response = await fetch("/api/odoo/pos-bootstrap", {
+  const response = await fetchOdooApi("/api/odoo/pos-bootstrap", {
     method: "GET",
     credentials: "same-origin",
     cache: "no-store",
@@ -297,7 +315,7 @@ export async function getOdooPosBootstrap(): Promise<OdooPosBootstrap> {
 }
 
 export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckoutResult> {
-  const response = await fetch("/api/odoo/checkout", {
+  const response = await fetchOdooApi("/api/odoo/checkout", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -318,7 +336,7 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
 }
 
 export async function closeOdooPosSession(configId: number, countedCash?: number | null): Promise<OdooCloseSessionResult> {
-  const response = await fetch("/api/odoo/session/close", {
+  const response = await fetchOdooApi("/api/odoo/session/close", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -347,7 +365,7 @@ export async function searchOdooRecords<T>(
   type: OdooRecordType,
   options: { query?: string; limit?: number; offset?: number; categoryId?: number } = {},
 ): Promise<OdooPage<T>> {
-  const response = await fetch("/api/odoo/records", {
+  const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -375,7 +393,7 @@ export async function searchOdooRecords<T>(
 }
 
 export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate>): Promise<void> {
-  const response = await fetch(`/api/odoo/products/${productId}`, {
+  const response = await fetchOdooApi(`/api/odoo/products/${productId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -394,7 +412,7 @@ export async function createOdooProduct(values: {
   pos_categ_ids: number[];
   available_in_pos: boolean;
 }): Promise<{ id: number; name: string }> {
-  const response = await fetch("/api/odoo/products", {
+  const response = await fetchOdooApi("/api/odoo/products", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -424,7 +442,7 @@ export interface OdooProductImportResult {
 }
 
 export async function importOdooProducts(products: OdooProductImportRow[]): Promise<OdooProductImportResult> {
-  const response = await fetch("/api/odoo/products/import", {
+  const response = await fetchOdooApi("/api/odoo/products/import", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -445,7 +463,7 @@ export interface OdooSupplierOption {
 }
 
 export async function getOdooSuppliers(): Promise<OdooSupplierOption[]> {
-  const response = await fetch("/api/odoo/purchase-requests", { credentials: "same-origin", cache: "no-store" });
+  const response = await fetchOdooApi("/api/odoo/purchase-requests", { credentials: "same-origin", cache: "no-store" });
   const payload = await response.json().catch(() => null) as { suppliers?: OdooSupplierOption[]; message?: string } | null;
   if (!response.ok || !payload || !Array.isArray(payload.suppliers)) {
     throw new OdooApiError(payload?.message || `Supplier list failed (${response.status})`, response.status || 502);
@@ -461,7 +479,7 @@ export interface OdooDraftRfq {
 }
 
 export async function createOdooDraftRfq(supplierId: number, lines: Array<{ productId: number; quantity: number }>): Promise<OdooDraftRfq> {
-  const response = await fetch("/api/odoo/purchase-requests", {
+  const response = await fetchOdooApi("/api/odoo/purchase-requests", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -476,7 +494,7 @@ export async function createOdooDraftRfq(supplierId: number, lines: Array<{ prod
 }
 
 export async function createOdooCustomer(values: { name: string; phone: string; email: string; ref: string }): Promise<{ id: number; name: string }> {
-  const response = await fetch("/api/odoo/customers", {
+  const response = await fetchOdooApi("/api/odoo/customers", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -491,7 +509,7 @@ export async function createOdooCustomer(values: { name: string; phone: string; 
 }
 
 export async function updateOdooCustomer(customerId: number, values: { name: string; phone: string; email: string; ref: string }): Promise<void> {
-  const response = await fetch(`/api/odoo/customers/${customerId}`, {
+  const response = await fetchOdooApi(`/api/odoo/customers/${customerId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -503,7 +521,7 @@ export async function updateOdooCustomer(customerId: number, values: { name: str
 }
 
 export async function getOdooSaleDetail(saleId: number): Promise<OdooSaleDetail> {
-  const response = await fetch(`/api/odoo/sales/${saleId}`, { credentials: "same-origin", cache: "no-store" });
+  const response = await fetchOdooApi(`/api/odoo/sales/${saleId}`, { credentials: "same-origin", cache: "no-store" });
   const payload = await response.json().catch(() => null) as (OdooSaleDetail & { message?: string }) | { message?: string } | null;
   if (!response.ok || !payload || !("order" in payload) || !Array.isArray(payload.lines) || !Array.isArray(payload.payments)) {
     throw new OdooApiError(payload && "message" in payload ? payload.message || `Sale details failed (${response.status})` : `Sale details failed (${response.status})`, response.status || 502);
@@ -517,7 +535,7 @@ export async function searchOdooPurchaseOrders(options: { query?: string; state?
   if (options.state) params.set("state", options.state);
   if (options.limit) params.set("limit", String(options.limit));
   if (options.offset) params.set("offset", String(options.offset));
-  const response = await fetch(`/api/odoo/purchase-orders?${params.toString()}`, { credentials: "same-origin", cache: "no-store" });
+  const response = await fetchOdooApi(`/api/odoo/purchase-orders?${params.toString()}`, { credentials: "same-origin", cache: "no-store" });
   const payload = await response.json().catch(() => null) as (OdooPurchaseOrderPage & { message?: string }) | null;
   if (!response.ok || !payload || !Array.isArray(payload.items) || typeof payload.hasNext !== "boolean") {
     throw new OdooApiError(payload?.message || `Odoo purchase list failed (${response.status})`, response.status || 502);
@@ -526,7 +544,7 @@ export async function searchOdooPurchaseOrders(options: { query?: string; state?
 }
 
 export async function getOdooPurchaseOrderDetail(purchaseId: number): Promise<OdooPurchaseOrderDetail> {
-  const response = await fetch(`/api/odoo/purchase-orders/${purchaseId}`, { credentials: "same-origin", cache: "no-store" });
+  const response = await fetchOdooApi(`/api/odoo/purchase-orders/${purchaseId}`, { credentials: "same-origin", cache: "no-store" });
   const payload = await response.json().catch(() => null) as (OdooPurchaseOrderDetail & { message?: string }) | null;
   if (!response.ok || !payload || !payload.order || !Array.isArray(payload.lines) || typeof payload.url !== "string") {
     throw new OdooApiError(payload?.message || `Purchase order details failed (${response.status})`, response.status || 502);
@@ -535,7 +553,7 @@ export async function getOdooPurchaseOrderDetail(purchaseId: number): Promise<Od
 }
 
 export async function confirmOdooPurchaseOrder(purchaseId: number): Promise<void> {
-  const response = await fetch(`/api/odoo/purchase-orders/${purchaseId}`, {
+  const response = await fetchOdooApi(`/api/odoo/purchase-orders/${purchaseId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
