@@ -61,6 +61,14 @@ export async function POST(request: NextRequest) {
   if (!Number.isInteger(body.configId)) {
     return NextResponse.json({ message: "Choose an Odoo register to close." }, { status: 400 });
   }
+  if (body.countedCash != null && (
+    typeof body.countedCash !== "number"
+    || !Number.isFinite(body.countedCash)
+    || body.countedCash < 0
+    || body.countedCash > 1_000_000
+  )) {
+    return NextResponse.json({ message: "Enter a valid counted cash amount, or leave it blank." }, { status: 400 });
+  }
 
   try {
     const sessionInfoResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
@@ -80,12 +88,21 @@ export async function POST(request: NextRequest) {
       name: string;
       current_session_id: [number, string] | false;
       company_id: [number, string] | false;
+      payment_method_ids: number[];
     }>>(odooSession, "pos.config", "search_read", [[
       ["id", "=", body.configId],
       ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "current_session_id", "company_id"], limit: 1 });
+    ]], { fields: ["id", "name", "current_session_id", "company_id", "payment_method_ids"], limit: 1 });
     const config = configs?.[0];
     if (!config) throw new CloseError("This register is not available to your Odoo user.", 403);
+    const paymentMethods = config.payment_method_ids.length
+      ? await rpc<Array<{ id: number; is_cash_count: boolean }>>(odooSession, "pos.payment.method", "search_read", [[
+          ["id", "in", config.payment_method_ids],
+        ]], { fields: ["id", "is_cash_count"], limit: 100 }) ?? []
+      : [];
+    if (paymentMethods.some((method) => method.is_cash_count) && body.countedCash == null) {
+      throw new CloseError("Count the cash in the drawer before closing this register.", 422);
+    }
     if (!Array.isArray(config.current_session_id)) {
       throw new CloseError("This register has no open POS session to close.", 409);
     }
@@ -100,7 +117,7 @@ export async function POST(request: NextRequest) {
     );
     if (!sessions?.length) throw new CloseError("The POS session is no longer open.", 409);
 
-    if (body.countedCash != null && Number.isFinite(body.countedCash)) {
+    if (body.countedCash != null) {
       await rpc(odooSession, "pos.session", "write", [[sessionId], {
         cash_register_balance_end_real: Math.round(Number(body.countedCash) * 100) / 100,
       }]);
