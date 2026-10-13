@@ -48,7 +48,7 @@ AI remains disabled in production. The tenant report database account has no sou
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass |
 | Cashier assistant / NL reports | In progress | Spring Graph; report permissions now resolve from the active DB role on every request (`8721a08`); 113 Java 21 build tests pass. Production AI remains disabled until budget, so no live report call UAT yet |
-| Wine / sommelier assistant | In progress | Deterministic catalogue matching works without model calls; configured Odoo is now authoritative even when its response is empty, preventing fallback to stale Classic MySQL catalogue data. Page copy no longer claims AI is doing the matching. Price-list and store-specific free-stock parity with POS still need validation. |
+| Wine / sommelier assistant | In progress | Change `4ac9c0d` in GitHub main makes configured Odoo authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. **Not yet confirmed deployed**: Dokploy still shows `cca4772`, Deploy disabled. Price-list and store-specific free-stock parity with POS still need validation. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
 
 ## Ops / integration
