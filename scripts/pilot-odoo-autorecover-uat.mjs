@@ -16,6 +16,16 @@ const getSession = async (context) => {
   const response = await context.request.get(`${base}/api/odoo/session`);
   return { status: response.status(), body: await response.json().catch(() => ({})) };
 };
+const waitForProductPageData = async (page, label) => {
+  try {
+    await page.waitForFunction(() => document.querySelector("tbody tr") || document.querySelector('[role="alert"]') || document.body.innerText.includes("Connect Odoo to view products"), undefined, { timeout: 30000 });
+  } catch {
+    throw new Error(`${label}: product page did not reach a data/error/connection state; body=${(await page.locator("main").innerText().catch(() => "<no main>" )).slice(0, 400)}`);
+  }
+  if (await page.getByRole("alert").count()) throw new Error(`${label}: ${(await page.getByRole("alert").innerText()).slice(0, 240)}`);
+  if (await page.getByText("Connect Odoo to view products", { exact: true }).count()) throw new Error(`${label}: product page reports Odoo disconnected`);
+  if (!(await page.locator("tbody tr").count())) throw new Error(`${label}: no product rows; page says ${(await page.locator("main").innerText()).slice(0, 300)}`);
+};
 
 const { chromium } = await import("playwright");
 const browser = await chromium.launch({ headless: true });
@@ -47,6 +57,18 @@ try {
     throw new Error("The first Odoo-backed page after session removal still asks the user to connect manually");
   }
   record("First business page reconnects without manual Connect", "PASS", "After clearing the Odoo cookie, replenishment loaded through its data API and returned to the normal page without a manual connect action.");
+
+  await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 30000 });
+  await waitForProductPageData(page, "Product catalogue initial load failed");
+  const clearInPageSession = await page.evaluate(async () => {
+    const response = await fetch("/api/odoo/session", { method: "DELETE", credentials: "same-origin", headers: { "Origin": location.origin } });
+    return response.ok;
+  });
+  if (!clearInPageSession) throw new Error("Could not clear the Odoo browser session while the product page was open");
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await waitForProductPageData(page, "The product page could not retry its read-only POST after recovering an expired Odoo session");
+  record("In-page read recovers and retries safely", "PASS", "With the products page already loaded, its read-only POST recovered an expired Odoo session and refreshed the catalogue without an error or manual reconnect.");
 
   const restored = await getSession(context);
   if (restored.status !== 200 || restored.body.autoRecoverConfigured !== true || !restored.body.user) {

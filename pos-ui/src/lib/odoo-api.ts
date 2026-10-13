@@ -271,7 +271,9 @@ async function recoverOdooSession() {
   return odooRecoveryInFlight;
 }
 
-async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit) {
+async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeToRetry = false) {
+  const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
+  const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry;
   let response = await fetch(input, init);
   if (response.status !== 401) return response;
 
@@ -282,16 +284,15 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit) {
       cache: "no-store",
     });
     const payload = await refreshed.json().catch(() => null) as { code?: number } | null;
-    if (refreshed.ok && payload?.code === 0) response = await fetch(input, init);
+    if (canReplay && refreshed.ok && payload?.code === 0) response = await fetch(input, init);
   } catch {
     // Odoo service-account recovery below is independent of Orithos token refresh.
   }
 
   if (response.status !== 401) return response;
 
-  const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
   const recovered = await recoverOdooSession();
-  if (recovered && ["GET", "HEAD", "OPTIONS"].includes(method)) {
+  if (recovered && canReplay) {
     return fetch(input, init);
   }
 
@@ -385,7 +386,7 @@ export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "config
     credentials: "same-origin",
     cache: "no-store",
     body: JSON.stringify(input),
-  });
+  }, true);
   const payload = await response.json().catch(() => null) as (OdooCheckoutQuote & { message?: string }) | null;
   if (!response.ok || !payload || typeof payload.total !== "number") {
     throw new OdooApiError(payload?.message || `Odoo cart quote failed (${response.status})`, response.status);
@@ -435,7 +436,7 @@ export async function searchOdooRecords<T>(
       offset: options.offset,
       categoryId: options.categoryId,
     }),
-  });
+  }, true);
   const payload = (await response.json().catch(() => null)) as
     | OdooPage<T>
     | { message?: string }
