@@ -3,6 +3,7 @@ package com.orithos.modules.user;
 import com.orithos.common.ApiResult;
 import com.orithos.modules.user.entity.User;
 import com.orithos.security.CurrentUser;
+import com.orithos.security.AdminAccess;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,16 +20,19 @@ public class UserController {
 
     @GetMapping
     public ApiResult<List<User>> list() {
+        AdminAccess.requireAdmin();
         return ApiResult.ok(userService.list());
     }
 
     @GetMapping("/{id}")
     public ApiResult<User> get(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
         return ApiResult.ok(userService.require(id));
     }
 
     @PostMapping
     public ApiResult<User> create(@RequestBody CreateUserRequest req) {
+        AdminAccess.requireAdmin();
         User u = new User();
         u.setName(req.name());
         u.setUsername(req.username());
@@ -42,6 +46,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ApiResult<User> update(@PathVariable Long id, @RequestBody UpdateUserRequest req) {
+        AdminAccess.requireAdmin();
         User patch = new User();
         patch.setName(req.name());
         patch.setEmail(req.email());
@@ -55,12 +60,14 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
         userService.delete(id);
         return ApiResult.ok();
     }
 
     @PutMapping("/{id}/dashboard")
     public ApiResult<Void> updateDashboard(@PathVariable Long id, @RequestBody DashboardRequest req) {
+        AdminAccess.requireAdmin();
         userService.updateDashboard(id, req.dashboard());
         return ApiResult.ok();
     }
