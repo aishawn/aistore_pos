@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route browser matrix rerun + role CRUD cleanup; Card/Cash sale/refund UAT on session `00004`; deploy `fe9b163`)
+**Last updated:** 2026-10-13 (24-route matrix + role permission UI verification; production deploy `f2f16db`)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -83,10 +83,10 @@ Statuses:
 
 ## 2026-10-13 browser UAT (session `00004`)
 
-- Deployed app commit `fe9b163` (role permissions + honest company/sale-keys pages).
+- Deployed app commit `f2f16db` (role list now displays actual assigned permissions; role permissions + honest company/sale-keys pages).
 - Page matrix evidence: `docs/UAT_PAGE_MATRIX_2026-10-13.json` (24/24 routes pass after waiting for Odoo catalogue hydration; the inventory assertion now matches the displayed `12Units` format).
-- Role CRUD evidence: browser UI created a temporary role, its selected `AI Report Cost` grant was verified through the API, then the role was deleted through the UI. The earlier leftover `Pilot Clerk 344840` was also deleted and verified absent.
-- Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap still returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
+- Role CRUD evidence: production UI created a temporary role, selected `AI Report Cost`, showed the saved grant in the role list, and deleted the role. API confirmed the grant; no test role remains. Earlier leftover `Pilot Clerk 344840` was also removed.
+- Odoo auto-recovery regression: production Odoo session DELETE followed by GET reconnected automatically; POS bootstrap returned `orithos_store1/00004` as opened. After Orithos logout, anonymous Odoo session GET returned 401.
 - Write evidence: Card `$28.60` receipt `260-1-000009`, Cash `$38.39` receipt `260-1-000010`, refunds created, stock restored to 12/12 — `docs/UAT_WRITE_2026-10-13.json`.
 - AI remained off; SMTP still unconfigured (invite/reset copy-link path verified in UI copy).
 - Session `orithos_store1/00004` left **opened** after net-zero this-round sales/refunds.

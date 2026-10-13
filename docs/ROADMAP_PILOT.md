@@ -7,11 +7,12 @@
 > 以下为当前快照。文末更早的日记段落保留作历史；若冲突，以本段与 [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) 为准。
 
 - 当前应用提交 `fe9b163`（角色权限分配 + 公司设置/Sale Keys 诚实状态页 + 侧栏去掉 Classic Sale Keys）已推送 GitHub `main` 并由 Dokploy 部署；生产公司设置页含 `not connected to Odoo`，Sale Keys 页含 `not part of the Odoo pilot`。
+- 最新应用提交 `f2f16db` 已由 Dokploy 标记 **Done**：角色列表现在直接显示已分配权限；生产部署与 GitHub `main` SHA 一致。
 - Odoo 自动恢复 **已开启**：生产 `/api/odoo/session` 返回 `autoRecoverConfigured:true`，登录后自动连接 Administrator。
 - 当前测试班次 `orithos_store1/00004` **opened**；两款 DEMO 酒 free/on-hand **12**（本轮浏览器销售后退款已回滚）。
 - 浏览器页面矩阵：试点侧栏路由已逐页验收，证据见 [UAT_PAGE_MATRIX_2026-10-13.json](UAT_PAGE_MATRIX_2026-10-13.json)。
 - 复跑修正：原唯一失败是验收正则没有匹配页面格式 `12Units`，并非商品数据缺失；改用 API 登录、等待商品目录 hydrate 后，24/24 路由通过。角色 API 创建/删除通过；上一轮遗留的 `Pilot Clerk 344840` 临时角色已删除并核对不存在。
-- 角色 UI 端到端复验：在 `/settings/roles` 创建临时角色、勾选 `AI Report Cost`、核实权限保存后，从 UI 删除，结果通过且无残留。生产 Odoo 会话 DELETE 后 GET 自动恢复成功；Orithos 注销后匿名会话请求为 401。
+- 角色 UI 端到端复验（部署 `f2f16db`）：在 `/settings/roles` 创建临时角色、勾选 `AI Report Cost`，权限在列表中可见，随后从 UI 删除，结果通过且无残留。生产 Odoo 会话 DELETE 后 GET 自动恢复成功；Orithos 注销后匿名会话请求为 401。
 - 浏览器交易 UAT（本轮）：Card 收据 `260-1-000009` `$28.60`；Cash 收据 `260-1-000010` `$38.39`；随后全额退款；库存恢复 12；证据 [UAT_WRITE_2026-10-13.json](UAT_WRITE_2026-10-13.json)。未关 `00004`（本轮净额为零）。
 - 设置诚实性：支付/税/门店只读 Odoo；收据/硬件/公司设置为未接通状态页；角色可勾选权限并创建/删除。
 - AI 保持关闭；SMTP 仍未配置（邀请/重置走复制链接文案）。未本地 Docker build。
