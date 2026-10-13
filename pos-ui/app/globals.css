@@ -49,43 +49,43 @@
 }
 
 :root {
-  --oh-ink: #283139;
-  --oh-ink-soft: #55616a;
-  --oh-paper: #f7f8fa;
-  --oh-orange-dark: #a94f2c;
-  /* Shopfront-inspired neutral surfaces, blue actions and Orithos amber accents. */
-  --background: oklch(0.985 0.003 250);
-  --foreground: oklch(0.24 0.018 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.018 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.018 250);
-  --primary: oklch(0.43 0.105 245);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.008 250);
-  --secondary-foreground: oklch(0.33 0.025 250);
-  --muted: oklch(0.96 0.006 250);
-  --muted-foreground: oklch(0.48 0.018 250);
-  --accent: oklch(0.94 0.055 44);
-  --accent-foreground: oklch(0.3 0.035 45);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --border: oklch(0.9 0.01 250);
-  --input: oklch(0.9 0.01 250);
-  --ring: oklch(0.5 0.11 245);
-  --chart-1: oklch(0.48 0.12 245);
-  --chart-2: oklch(0.65 0.1 220);
-  --chart-3: oklch(0.68 0.17 48);
-  --chart-4: oklch(0.58 0.12 25);
-  --chart-5: oklch(0.56 0.06 285);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.97 0.004 250);
-  --sidebar-foreground: oklch(0.24 0.018 250);
-  --sidebar-primary: oklch(0.43 0.105 245);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.94 0.01 250);
-  --sidebar-accent-foreground: oklch(0.33 0.025 250);
-  --sidebar-border: oklch(0.9 0.01 250);
-  --sidebar-ring: oklch(0.5 0.11 245);
+  /* Scheme A — light retail blue (Shopfront / Odoo / ERPNext style) */
+  --oh-ink: #1f2937;
+  --oh-ink-soft: #64748b;
+  --oh-paper: #f5f7fa;
+  --oh-orange-dark: #1d4ed8;
+  --background: #f5f7fa;
+  --foreground: #1f2937;
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f7;
+  --secondary-foreground: #1f2937;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+  --destructive: #dc2626;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+  --chart-1: #2563eb;
+  --chart-2: #0ea5e9;
+  --chart-3: #16a36a;
+  --chart-4: #f59e0b;
+  --chart-5: #6366f1;
+  --radius: 0.5rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #1d4ed8;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #2563eb;
 }
 
 .dark {
@@ -126,124 +126,136 @@
   --font-sans: "Source Sans 3", "Segoe UI", Avenir, ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ── Orithos design tokens (strict match: reference mockup) ── */
+/* ── Orithos design tokens — Scheme A light retail blue ── */
 :root {
   /* Layout */
-  --oh-sidebar-width: 210px;
-  --oh-header-height: 58px;
-  --oh-radius: 10px;
-  --oh-shadow-card: 0 1px 3px rgba(28, 37, 54, 0.06), 0 4px 16px rgba(28, 37, 54, 0.04);
+  --oh-sidebar-width: 220px;
+  --oh-header-height: 56px;
+  --oh-radius: 8px;
+  --oh-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
 
-  /* Sidebar — deep charcoal/navy */
-  --oh-sidebar-bg: #31383e;
-  --oh-sidebar-text: #c4cbd0;
-  --oh-sidebar-text-hover: #ffffff;
-  --oh-sidebar-active: #e89168;
-  --oh-sidebar-active-bg: rgba(255, 255, 255, 0.06);
-  --oh-sidebar-border: rgba(255, 255, 255, 0.1);
+  /* Sidebar — light (Odoo / ERPNext style) */
+  --oh-sidebar-bg: #ffffff;
+  --oh-sidebar-text: #64748b;
+  --oh-sidebar-text-hover: #1f2937;
+  --oh-sidebar-active: #2563eb;
+  --oh-sidebar-active-bg: #f1f5f9;
+  --oh-sidebar-border: #e2e8f0;
+  --oh-sidebar-active-pill: #eff6ff;
 
-  /* Brand orange — logo, active nav, Action button */
-  --oh-orange: #e89168;
-  --oh-orange-hover: #d87852;
-  --oh-orange-light: #fff1e9;
-  --oh-orange-muted: rgba(232, 145, 104, 0.14);
+  /* Brand / action — single retail blue */
+  --oh-orange: #2563eb;
+  --oh-orange-hover: #1d4ed8;
+  --oh-orange-light: #eff6ff;
+  --oh-orange-muted: rgba(37, 99, 235, 0.12);
 
   /* Surfaces */
   --oh-header-bg: #ffffff;
-  --oh-surface: #f7f8fa;
+  --oh-surface: #f5f7fa;
   --oh-surface-elevated: #ffffff;
-  --oh-border: #dce1e6;
-  --oh-border-strong: #cbd2d8;
+  --oh-border: #e2e8f0;
+  --oh-border-strong: #cbd5e1;
 
   /* Text */
-  --oh-text: #283139;
-  --oh-text-secondary: #5c6770;
-  --oh-muted: #5c6770;
-  --oh-placeholder: #87929a;
+  --oh-text: #1f2937;
+  --oh-text-secondary: #64748b;
+  --oh-muted: #64748b;
+  --oh-placeholder: #94a3b8;
 
-  /* Buttons — navy primary (single CTA blue) */
-  --oh-primary: #155a86;
-  --oh-primary-hover: #104765;
-  --oh-navy: #31383e;
-  --oh-sidebar-active-pill: #3d454c;
+  /* Buttons — one primary blue for Sell + admin */
+  --oh-primary: #2563eb;
+  --oh-primary-hover: #1d4ed8;
+  --oh-navy: #1e293b;
 
-  /* Status tile borders (pastel) */
-  --oh-tile-blue-bg: #eef6ff;
-  --oh-tile-blue-border: #b8d4f0;
-  --oh-tile-blue-text: #2b6cb0;
-  --oh-tile-red-bg: #fff5f5;
-  --oh-tile-red-border: #f5c6c6;
-  --oh-tile-red-text: #c53030;
-  --oh-tile-green-bg: #edf4f8;
-  --oh-tile-green-border: #c5dce8;
-  --oh-tile-green-text: #245b7a;
-  --oh-tile-orange-bg: #fffaf0;
-  --oh-tile-orange-border: #fbd38d;
-  --oh-tile-orange-text: #c05621;
+  /* Status tiles */
+  --oh-tile-blue-bg: #eff6ff;
+  --oh-tile-blue-border: #bfdbfe;
+  --oh-tile-blue-text: #1d4ed8;
+  --oh-tile-red-bg: #fef2f2;
+  --oh-tile-red-border: #fecaca;
+  --oh-tile-red-text: #b91c1c;
+  --oh-tile-green-bg: #ecfdf5;
+  --oh-tile-green-border: #a7f3d0;
+  --oh-tile-green-text: #047857;
+  --oh-tile-orange-bg: #fffbeb;
+  --oh-tile-orange-border: #fde68a;
+  --oh-tile-orange-text: #b45309;
 
   /* Semantic */
-  --oh-success: #338363;
-  --oh-danger: #e53e3e;
-  --oh-danger-text: #e53e3e;
-  --oh-info: #3182ce;
-  --oh-warning: #dd6b20;
+  --oh-success: #16a36a;
+  --oh-danger: #dc2626;
+  --oh-danger-text: #dc2626;
+  --oh-info: #2563eb;
+  --oh-warning: #d97706;
 
-  /* Shopfront interaction blues (Sell Finalise / tabs) — light surfaces stay Orithos */
-  --sf-cta: #5ebbeb;
-  --sf-cta-hover: #4aa9db;
-  --sf-tab-blue: #1c86f2;
-  --sf-online-green: #32b643;
-  --sf-pad-bg: #f8f8f8;
-  --sf-summary: rgba(189, 189, 189, 0.7);
+  /* Sell / Finalise / tabs — same primary as admin */
+  --sf-cta: #2563eb;
+  --sf-cta-hover: #1d4ed8;
+  --sf-tab-blue: #2563eb;
+  --sf-online-green: #16a36a;
+  --sf-pad-bg: #f5f7fa;
+  --sf-summary: #e2e8f0;
 
-  /* Compat aliases — map legacy Shopfront names onto Orithos / Shopfront tokens */
-  --oh-accent: var(--oh-orange);
+  /* Compat aliases */
+  --oh-accent: var(--oh-primary);
   --oh-accent-light: var(--oh-orange-light);
   --sf-header-bg: var(--oh-header-bg);
-  --sf-on-dark: #f8f8f8;
-  --sf-muted: #bdbdbd;
+  --sf-on-dark: #f8fafc;
+  --sf-muted: #94a3b8;
   --sf-link-blue: var(--sf-cta);
-  --sf-placeholder: #757575;
-  --sf-divider: #000000;
+  --sf-placeholder: #94a3b8;
+  --sf-divider: var(--oh-border);
 }
 
 .oh-brand-mark {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  color: var(--oh-ink);
+  color: var(--oh-text);
   white-space: nowrap;
 }
 .oh-brand-symbol {
   position: relative;
   display: inline-grid;
-  width: 31px;
-  height: 31px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   place-items: center;
-  border: 7px solid var(--oh-ink);
-  border-right-color: var(--oh-orange);
-  border-bottom-color: var(--oh-orange);
-  border-radius: 50%;
-  transform: rotate(-15deg);
+  border: 3px solid var(--oh-primary);
+  border-radius: 9px;
+  background: var(--oh-orange-light);
+  transform: none;
 }
 .oh-brand-symbol > span {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--oh-orange);
-  box-shadow: 7px 0 0 var(--oh-orange), -7px 0 0 var(--oh-orange);
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--oh-primary);
+  box-shadow: none;
+}
+.oh-brand-mark-img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
 }
 .oh-brand-wordmark {
   color: currentColor;
-  font-size: 23px;
-  font-weight: 750;
-  letter-spacing: -.06em;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
   line-height: 1;
 }
 .oh-brand-mark-inverse { color: #fff; }
-.oh-brand-mark-inverse .oh-brand-symbol { border-color: #fff; border-right-color: var(--oh-orange); border-bottom-color: var(--oh-orange); }
-.oh-brand-mark-compact .oh-brand-symbol { width: 27px; height: 27px; border-width: 6px; }
+.oh-brand-mark-inverse .oh-brand-symbol {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+.oh-brand-mark-inverse .oh-brand-symbol > span { background: #fff; }
+.oh-brand-mark-compact .oh-brand-symbol { width: 28px; height: 28px; border-width: 2.5px; }
+.oh-brand-mark-compact .oh-brand-mark-img { width: 28px; height: 28px; }
 
 @layer base {
   * {

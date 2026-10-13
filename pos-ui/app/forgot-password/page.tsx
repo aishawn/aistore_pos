@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
         <OrithosLogo />
         <Link
           href="/login"
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-orange-dark)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
           <ArrowLeft size={16} aria-hidden="true" />
           Back to sign in

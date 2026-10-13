@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: "Orithos | Smart Point of Sale",
   description: "Orithos — AI-powered retail point of sale for bottle shops and specialty retail",
   icons: {
-    icon: [{ url: "/images/logo-new.png", type: "image/png" }],
-    shortcut: "/images/logo-new.png",
-    apple: "/images/logo-new.png",
+    icon: [{ url: "/images/orithos-mark.png", type: "image/png" }],
+    shortcut: "/images/orithos-mark.png",
+    apple: "/images/orithos-mark.png",
   },
 };
 

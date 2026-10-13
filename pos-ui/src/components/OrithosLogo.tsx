@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Orithos brand mark shared with the public brand site. */
+/** Orithos brand mark — Scheme A light retail blue. */
 export function OrithosLogo({ compact = false, inverse = false }: { compact?: boolean; inverse?: boolean }) {
   return (
     <span
@@ -11,7 +11,15 @@ export function OrithosLogo({ compact = false, inverse = false }: { compact?: bo
       )}
       aria-label="Orithos"
     >
-      <span className="oh-brand-symbol" aria-hidden="true"><span /></span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset */}
+      <img
+        src="/images/orithos-mark.png"
+        alt=""
+        aria-hidden="true"
+        className="oh-brand-mark-img"
+        width={32}
+        height={32}
+      />
       {!compact && <span className="oh-brand-wordmark">orithos</span>}
     </span>
   );

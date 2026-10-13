@@ -76,7 +76,7 @@ export function Header({
           data-testid="sh-current-user"
           className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
-          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-navy)]">
+          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[var(--oh-primary)]">
             <UserIcon size={20} className="text-white" fill="white" />
           </span>
           <p className="mx-2 text-[16px] text-[var(--oh-text)]">{userName}</p>

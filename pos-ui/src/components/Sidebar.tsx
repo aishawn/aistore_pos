@@ -115,7 +115,7 @@ export function Sidebar({ open = true }: { open?: boolean }) {
     >
       <div className="flex min-w-[var(--oh-sidebar-width)] flex-1 flex-col">
       <div className="flex h-[var(--oh-header-height)] items-center border-b border-[var(--oh-sidebar-border)] px-4">
-        <OrithosLogo inverse />
+        <OrithosLogo />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
@@ -157,7 +157,7 @@ function SidebarNavLink({
         className={cn(
           "relative flex items-center gap-3 rounded-[var(--oh-radius)] py-2.5 pl-3 pr-3 text-[14px] font-medium transition-colors",
           active
-            ? "bg-[var(--oh-sidebar-active-pill)] text-white"
+            ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
         )}
       >
@@ -195,7 +195,7 @@ function SidebarNavGroup({
         className={cn(
           "flex w-full cursor-pointer items-center justify-between rounded-[var(--oh-radius)] px-3 py-2.5 text-[14px] font-medium transition-colors",
           active
-            ? "bg-[var(--oh-sidebar-active-pill)] text-white"
+            ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
             : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
         )}
       >
@@ -223,7 +223,7 @@ function SidebarNavGroup({
                   className={cn(
                     "relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
                     active
-                      ? "bg-[var(--oh-sidebar-active-pill)] font-medium text-white"
+                      ? "bg-[var(--oh-sidebar-active-pill)] font-semibold text-[var(--oh-sidebar-active)]"
                       : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
                   )}
                 >

@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
         <OrithosLogo />
         <Link
           href="/login"
-          className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-orange-dark)]"
+          className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold text-[var(--oh-text-secondary)] transition-colors hover:text-[var(--oh-primary)]"
         >
           <ArrowLeft size={16} aria-hidden="true" />
           Sign in
@@ -108,14 +108,14 @@ export default function ResetPasswordPage() {
             <div className="grid gap-4">
               <h1 className="text-2xl font-bold tracking-[-.035em]">Link unavailable</h1>
               <p className="text-sm leading-6 text-[var(--oh-muted)]">{loadError}</p>
-              <Link href="/forgot-password" className="text-sm font-semibold text-[var(--oh-orange-dark)] underline underline-offset-2">
+              <Link href="/forgot-password" className="text-sm font-semibold text-[var(--oh-primary)] underline underline-offset-2">
                 Request a new reset link
               </Link>
             </div>
           ) : (
             <>
               <div className="mb-6 flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#fff2da] text-[#8b4a00]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
                   <KeyRound size={20} aria-hidden="true" />
                 </span>
                 <div>

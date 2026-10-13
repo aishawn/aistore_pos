@@ -493,13 +493,13 @@ export function OdooRegisterPage() {
             setCashTendered("");
             const config = bootstrap?.configs.find((item) => item.id === id);
             setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
-          }} className="h-9 max-w-[220px] border border-black/20 bg-white px-2 text-sm text-black">
+          }} className="h-9 max-w-[220px] border border-[var(--oh-border)] bg-white px-2 text-sm text-black">
             {bootstrap?.configs.map((config) => <option key={config.id} value={config.id}>{config.name}{config.session ? "" : " · Closed"}</option>)}
           </select>
-          <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" className="grid h-9 w-9 place-items-center border border-black/20 bg-white text-black hover:bg-[var(--sf-pad-bg)] disabled:opacity-60">
+          <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" className="grid h-9 w-9 place-items-center border border-[var(--oh-border)] bg-white text-black hover:bg-[var(--sf-pad-bg)] disabled:opacity-60">
             {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           </button>
-          {lines.length > 0 && <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-9 items-center gap-1.5 border border-black/20 bg-white px-2.5 text-sm font-medium text-black hover:bg-[var(--sf-pad-bg)] disabled:opacity-50"><Archive size={15} /> Park</button>}
+          {lines.length > 0 && <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-9 items-center gap-1.5 border border-[var(--oh-border)] bg-white px-2.5 text-sm font-medium text-black hover:bg-[var(--sf-pad-bg)] disabled:opacity-50"><Archive size={15} /> Park</button>}
         </div>
         <p className="truncate text-xs text-[var(--oh-muted)]">{selectedConfig?.name ?? "Register"}{selectedConfig?.session ? ` · ${selectedConfig.session.name}` : " · Closed"}</p>
       </div>
@@ -514,10 +514,10 @@ export function OdooRegisterPage() {
 
       <div className="flex min-h-0 flex-1 gap-2">
         {/* Sell pad — Shopfront geometry */}
-        <section className="flex min-w-0 flex-1 flex-col border-[0.667px] border-black">
+        <section className="flex min-w-0 flex-1 flex-col border border-[var(--oh-border)] bg-white">
           {saleView === "sell" ? (
             <>
-              <div role="group" aria-label="Search and filter POS products" className="flex h-[50px] shrink-0 items-center border-b border-[#bdbdbd] bg-white px-4">
+              <div role="group" aria-label="Search and filter POS products" className="flex h-[50px] shrink-0 items-center border-b border-[var(--oh-border)] bg-white px-4">
                 <Search size={18} className="mr-2 shrink-0 text-[var(--sf-placeholder)]" />
                 <input
                   aria-label="Search products by name, barcode or code"
@@ -528,7 +528,7 @@ export function OdooRegisterPage() {
                   className="h-full min-w-0 flex-1 bg-transparent text-base text-black outline-none placeholder:text-[var(--sf-placeholder)]"
                 />
                 {productsLoading && <LoaderCircle size={16} className="ml-2 animate-spin text-[var(--sf-placeholder)]" />}
-                <select aria-label="POS category" value={categoryId ?? ""} onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)} className="ml-2 hidden h-9 max-w-[160px] border border-[#bdbdbd] bg-white px-2 text-xs font-medium text-black sm:block">
+                <select aria-label="POS category" value={categoryId ?? ""} onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)} className="ml-2 hidden h-9 max-w-[160px] border border-[var(--oh-border)] bg-white px-2 text-xs font-medium text-black sm:block">
                   <option value="">All categories</option>
                   {posCategories.map((category) => <option key={category.id} value={category.id}>{Array.isArray(category.parent_id) ? `${category.parent_id[1]} / ${category.name}` : category.name}</option>)}
                 </select>
@@ -544,7 +544,7 @@ export function OdooRegisterPage() {
                         title={product.display_name || product.name}
                         onClick={() => addProduct(product)}
                         disabled={!selectedConfig?.session || product.qty_available <= 0}
-                        className="flex min-h-[72px] flex-col justify-center border border-white bg-[rgb(206,229,252)] px-2 py-2 text-left transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:brightness-50"
+                        className="flex min-h-[72px] flex-col justify-center rounded-md border border-[var(--oh-border)] bg-white px-2 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/40 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <span className="line-clamp-2 text-[13px] font-medium leading-4 text-black">{product.display_name || product.name}</span>
                         <span className="mt-1 text-sm font-semibold tabular-nums text-black">{money(product.list_price)}</span>
@@ -574,13 +574,13 @@ export function OdooRegisterPage() {
               {visibleParkedSales.length ? (
                 <div className="grid gap-2">
                   {visibleParkedSales.map((sale) => (
-                    <article key={sale.id} className="border border-black/15 bg-white p-3">
+                    <article key={sale.id} className="border border-[var(--oh-border)] bg-white p-3">
                       <h3 className="truncate text-sm font-semibold text-black">{sale.customer?.name ?? "Walk-in customer"}</h3>
                       <p className="mt-1 text-xs text-black/55">{formatParkedDate(sale.createdAt)} · {sale.registerName}</p>
                       <p className="mt-1 text-xs text-black/55">{sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}</p>
                       <div className="mt-3 flex gap-2">
                         <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-9 flex-1 items-center justify-center gap-2 bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
-                        <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-9 border border-black/20 px-3 text-sm font-medium text-black/60 hover:text-red-700">Discard</button>
+                        <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-9 border border-[var(--oh-border)] px-3 text-sm font-medium text-black/60 hover:text-red-700">Discard</button>
                       </div>
                     </article>
                   ))}
@@ -596,7 +596,7 @@ export function OdooRegisterPage() {
             </div>
           )}
           <div className="hidden shrink-0 lg:block">
-            <div className="h-1 w-full bg-[#e0e0e0]">
+            <div className="h-1 w-full bg-[var(--oh-border)]">
               <div className="h-full bg-[var(--sf-tab-blue)] transition-all" style={{ width: saleView === "parked" ? "100%" : "40%" }} />
             </div>
             <ul className="flex h-[50px] items-center bg-white">
@@ -613,15 +613,15 @@ export function OdooRegisterPage() {
               </li>
             </ul>
           </div>
-          <div className="flex h-[50px] shrink-0 border-t border-black/10 bg-white lg:hidden">
+          <div className="flex h-[50px] shrink-0 border-t border-[var(--oh-border)] bg-white lg:hidden">
             <button type="button" onClick={() => setSaleView("sell")} className={cn("flex-1 text-sm font-semibold", saleView === "sell" ? "text-[var(--sf-tab-blue)]" : "text-black")}>Sales Keys</button>
             <button type="button" onClick={() => setSaleView("parked")} className={cn("flex-1 text-sm font-semibold", saleView === "parked" ? "text-[var(--sf-tab-blue)]" : "text-black")}>Parked</button>
           </div>
         </section>
 
         {/* Cart sidebar — Shopfront 419px */}
-        <section className="flex w-full min-h-0 flex-col border-[0.667px] border-black bg-white lg:w-[419px] lg:shrink-0">
-          <div className="flex h-[75px] shrink-0 items-center border-b-[0.667px] border-black">
+        <section className="flex w-full min-h-0 flex-col border border-[var(--oh-border)] bg-white lg:w-[419px] lg:shrink-0">
+          <div className="flex h-[75px] shrink-0 items-center border-b border-[var(--oh-border)]">
             {customer ? (
               <>
                 <button type="button" onClick={() => setCustomerQuery(customer.name)} className="flex flex-1 cursor-pointer items-center text-left">
@@ -645,7 +645,7 @@ export function OdooRegisterPage() {
           {!customer && customers.length > 0 && (
             <div className="max-h-36 shrink-0 overflow-y-auto border-b border-[#eee]">
               {customers.map((item) => (
-                <button key={item.id} type="button" onClick={() => { setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[#eee] px-4 py-2 text-left text-sm hover:bg-[rgb(206,229,252)]">
+                <button key={item.id} type="button" onClick={() => { setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2 text-left text-sm hover:bg-[var(--oh-orange-light)]">
                   {item.name}<span className="ml-2 text-xs text-black/50">{item.phone || item.email}</span>
                 </button>
               ))}
@@ -674,13 +674,13 @@ export function OdooRegisterPage() {
                     </span>
                     <span className="shrink-0 text-[16px] text-black">${lineTotal.whole}.{lineTotal.cents}</span>
                     <div className="flex items-center gap-1">
-                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-8 w-8 place-items-center border border-black/15"><Minus size={14} /></button>
-                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-8 w-8 place-items-center border border-black/15"><Plus size={14} /></button>
+                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-8 w-8 place-items-center border border-[var(--oh-border)]"><Minus size={14} /></button>
+                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-8 w-8 place-items-center border border-[var(--oh-border)]"><Plus size={14} /></button>
                       <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-8 w-8 place-items-center text-[var(--sf-muted)] hover:text-[rgb(222,84,84)]"><Trash2 size={15} /></button>
                     </div>
                   </div>
                   <label className="flex items-center gap-2 text-[11px] font-medium text-black/50">Pack / case
-                    <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="h-8 border border-black/15 bg-white px-2 text-xs font-semibold text-black">
+                    <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="h-8 border border-[var(--oh-border)] bg-white px-2 text-xs font-semibold text-black">
                       {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each / bottle" : `Case ×${size}`}</option>)}
                     </select>
                   </label>
@@ -693,14 +693,14 @@ export function OdooRegisterPage() {
             {(isCashPayment || paymentMethods.length > 1) && (
               <div className="border-t border-[#eee] px-3 py-2">
                 <label className="grid gap-1 text-[11px] font-semibold uppercase tracking-wide text-black/45">Payment
-                  <select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="h-9 border border-black/15 bg-white px-2 text-sm font-medium normal-case tracking-normal text-black">
+                  <select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="h-9 border border-[var(--oh-border)] bg-white px-2 text-sm font-medium normal-case tracking-normal text-black">
                     {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
                   </select>
                 </label>
                 {isCashPayment && (
                   <div className="mt-2">
                     <label htmlFor="cash-tendered" className="flex items-center justify-between text-sm text-black"><span>Cash received</span><span className="text-xs text-black/50">Due {money(amountToCollect)}</span></label>
-                    <input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="mt-1 h-9 w-full border border-black/15 px-2 text-base tabular-nums outline-none focus:border-[var(--sf-cta)]" />
+                    <input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="mt-1 h-9 w-full border border-[var(--oh-border)] px-2 text-base tabular-nums outline-none focus:border-[var(--sf-cta)]" />
                     {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && <p className="mt-1 text-sm tabular-nums text-black/70">Change {money(changeDue)}</p>}
                   </div>
                 )}
@@ -727,7 +727,7 @@ export function OdooRegisterPage() {
               disabled={!canFinalise}
               className={cn(
                 "h-[50px] w-full px-2 py-1 text-center text-[32px] text-[var(--sf-on-dark)] [font-variant:small-caps]",
-                canFinalise ? "cursor-pointer bg-[var(--sf-cta)] hover:bg-[var(--sf-cta-hover)]" : "cursor-not-allowed bg-[#bdbdbd]",
+                canFinalise ? "cursor-pointer bg-[var(--sf-cta)] hover:bg-[var(--sf-cta-hover)]" : "cursor-not-allowed bg-[var(--sf-muted)]",
               )}
             >
               {busy ? "Processing…" : quoteLoading ? "Calculating…" : !selectedConfig?.session ? "No session" : "Finalise"}
