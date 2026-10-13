@@ -186,6 +186,9 @@ export function OdooSalesHistoryPage() {
   );
   const sourceConfigId = saleDetail && Array.isArray(saleDetail.order.config_id) ? saleDetail.order.config_id[0] : null;
   const refundConfig = bootstrap?.configs.find((item) => item.id === sourceConfigId && item.session && item.paymentMethods.length) ?? null;
+  const refundAlreadyRecorded = Boolean(refundComplete || saleDetail?.lines.some(
+    (line) => line.qty > 0 && line.refunded_qty > 0,
+  ));
 
   function requestRefundConfirmation() {
     if (!saleDetail) return;
@@ -313,6 +316,7 @@ export function OdooSalesHistoryPage() {
             {saleDetail.payments.length ? <ul className="mt-2 grid gap-1.5 text-sm">{saleDetail.payments.map((payment) => <li key={payment.id} className="flex justify-between gap-3 text-[var(--oh-text-secondary)]"><span>{payment.payment_method_id ? payment.payment_method_id[1] : "Payment"}</span><span className="font-medium tabular-nums">{money(payment.amount, receiptCurrency)}</span></li>)}</ul> : <p className="mt-2 text-sm text-[var(--oh-muted)]">No payment lines recorded.</p>}
             {saleDetail.order.amount_return > 0 && <p className="mt-2 flex justify-between gap-3 text-sm text-[var(--oh-text-secondary)]"><span>Change returned</span><span>{money(saleDetail.order.amount_return, receiptCurrency)}</span></p>}
           </section>
+          {refundAlreadyRecorded && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">A refund has already been recorded for one or more items. Additional refunds are unavailable from this full-sale refund flow.</p>}
           {refundMessage && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">{refundMessage}</p>}
           <footer className="receipt-print-hidden mt-6 flex flex-wrap justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
             <button type="button" onClick={closeSale} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Close</button>

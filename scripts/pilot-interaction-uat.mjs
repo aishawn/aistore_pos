@@ -139,9 +139,14 @@ try {
     const receipt = page.getByRole("button", { name: /260-1-000009/ });
     await receipt.waitFor({ timeout: 15000 });
     await receipt.click();
-    await page.getByRole("heading", { name: /Sale receipt/i }).waitFor({ timeout: 10000 });
+    const detail = page.getByRole("dialog", { name: /Sale receipt/i });
+    await detail.waitFor({ timeout: 10000 });
+    await detail.getByRole("status").filter({ hasText: /refund has already been recorded/i }).waitFor({ timeout: 10000 });
+    if (await detail.getByRole("button", { name: "Refund full sale" }).count()) {
+      throw new Error("A previously refunded sale still exposes the full-refund action");
+    }
     await page.getByRole("button", { name: "Close receipt" }).click();
-    return "Receipt search matched `260-1-000009`; detail opened and closed without a refund action.";
+    return "Receipt search matched `260-1-000009`; detail identified the prior refund and hid the duplicate full-refund action.";
   });
 
   await check("Replenishment coverage control refreshes the estimate", async () => {
