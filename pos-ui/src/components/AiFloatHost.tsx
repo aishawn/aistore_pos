@@ -8,6 +8,7 @@ import { getUiMode } from "@/lib/ui-mode";
 
 /** Routes (and nested paths) that show the floating Orithos AI entry. */
 const AI_FLOAT_PREFIXES = [
+  "/overview",
   "/products",
   "/classifications",
   "/suppliers",

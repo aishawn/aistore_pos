@@ -22,7 +22,9 @@
 - `9cba779` 增加 Odoo 供应商目录的新增流程：表单明确录入真实经销商，公司名称必填、邮件格式和长度校验、ABN 重复时阻止创建；成功后刷新列表并提供回到补货页的入口。Odoo `aipos` 只读 schema 确认字段可写，生产浏览器 UAT 对创建 API 做网络拦截，没有写入供应商；证据 `UAT_SUPPLIER_CREATE_MOCK_2026-10-13.json`。生产没有供应商/RFQ，仍需店主录入真实供货商后才能验收实时采购链路。
 - `9cba779` 后复跑生产回归：24/24 页面、8/8 一般交互、3/3 运营只读、6/6 自动恢复通过；角色 UI CRUD 通过并清理临时角色。补货审计、采购详情、供应商创建三项浏览器 mock 均通过，均拦截写请求，没有新增供应商/RFQ。班次 `orithos_store1/00004` 仍打开，两款 DEMO 商品库存 12/12。证据分别更新于 `UAT_PAGE_MATRIX_2026-10-13.json`、`UAT_INTERACTION_2026-10-13.json`、`UAT_OPS_READONLY_2026-10-13.json`、`UAT_ODOO_AUTORECOVER_2026-10-13.json` 和三个 mock UAT JSON。
 - 供应商 API 附加安全验收：authenticated cross-origin POST 返回 403；同源请求缺少 Odoo 会话返回 401，均在 payload 处理/写入前拒绝。无业务写入，脚本 `scripts/pilot-supplier-api-guard-uat.mjs`。
-- 酒款助手可信度修复 `4ac9c0d` 已部署（Dokploy 部署头 `becff79`，Done），线上只读验收见 `UAT_SOMMELIER_2026-10-13.json`：Odoo 已配置时空目录不回退旧 MySQL；Find 页面不再误称 AI；recommend、identify、wine detail、pitch、similar、ask 正常，匿名访问为 401。前端检查通过；Dockerfile 执行 Java 21 `mvn clean verify` 且部署 Done。部署发现 GitHub push 未自动创建 Dokploy 记录，需要核实 webhook；Sommelier 的 POS 实际价目表及门店 free-stock 口径仍待验证。
+- 最近部署 `ac6bd23` 由 Dokploy 标记 Done，且在 GitHub `main` push 后约一分钟自动出现；已确认 auto-deploy 本轮可用。Sommelier `4ac9c0d` 在该部署中已上线，生产 API 只读验收见 `UAT_SOMMELIER_2026-10-13.json`；全站页面矩阵 24/24 及角色临时 CRUD 清理通过，见 `UAT_PAGE_MATRIX_2026-10-13.json`。
+- 跟进库存/价格一致性：Sell 报价读取 Odoo `lst_price`，报价和结账库存边界读取 `free_qty`；Sommelier 原先取 `list_price` / `qty_available`。本轮改为优先使用 POS 的两个字段并加回归测试；须待 Java 21 `mvn clean verify` 及部署后只读复核。多仓库源库位上下文和动态价目表仍未验证。
+- 酒款助手可信度修复 `4ac9c0d` 已部署（Dokploy 部署头 `ac6bd23`，Done），线上只读验收见 `UAT_SOMMELIER_2026-10-13.json`：Odoo 已配置时空目录不回退旧 MySQL；Find 页面不再误称 AI；recommend、identify、wine detail、pitch、similar、ask 正常，匿名访问为 401。前端检查通过；Dockerfile 执行 Java 21 `mvn clean verify` 且部署 Done。GitHub `main` 自动部署已在 `ac6bd23` 上复核通过；Sommelier 的 POS 实际价目表及门店 free-stock 口径仍待验证。
 
 ## 产品目标
 

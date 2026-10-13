@@ -120,7 +120,9 @@ public class OdooWineCatalogClient {
         fields.add("display_name");
         fields.add("description_sale");
         fields.add("list_price");
+        fields.add("lst_price");
         fields.add("qty_available");
+        fields.add("free_qty");
         fields.add("categ_id");
         fields.add("default_code");
         kwargs.put("limit", 500);
@@ -135,7 +137,7 @@ public class OdooWineCatalogClient {
         return (ArrayNode) result;
     }
 
-    private WineCandidate toCandidate(JsonNode row) {
+    WineCandidate toCandidate(JsonNode row) {
         long id = row.path("id").asLong(0);
         String name = text(row, "display_name");
         if (name.isBlank()) name = text(row, "name");
@@ -153,8 +155,14 @@ public class OdooWineCatalogClient {
                 return null;
             }
         }
-        BigDecimal price = decimal(row.path("list_price"));
-        BigDecimal stock = decimal(row.path("qty_available"));
+        JsonNode posPrice = row.path("lst_price");
+        BigDecimal price = decimal(posPrice.isMissingNode() || posPrice.isNull()
+                ? row.path("list_price")
+                : posPrice);
+        JsonNode freeStock = row.path("free_qty");
+        BigDecimal stock = decimal(freeStock.isMissingNode() || freeStock.isNull()
+                ? row.path("qty_available")
+                : freeStock);
         WineProfile profile = WineLexicon.infer(name, category, "", description);
         return new WineCandidate(
                 id,

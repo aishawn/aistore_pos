@@ -28,7 +28,8 @@ import {
   type VoiceEndpointPhase,
 } from "@/lib/voice";
 
-const FLOAT_SHADOW = "0 4px 24px rgba(28, 37, 54, 0.12), 0 1px 4px rgba(28, 37, 54, 0.06)";
+const FLOAT_SHADOW =
+  "0 4px 24px rgba(37, 99, 235, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06)";
 const FLOAT_POS_KEY = "orithos-ai-float-anchor";
 const DRAG_THRESHOLD_PX = 6;
 
@@ -676,12 +677,12 @@ export function SellAiPanel({
     <div className="flex w-full items-center gap-2.5">
       <div
         className={cn(
-          "flex h-[48px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[var(--oh-border)] bg-white px-4",
+          "flex h-[48px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[var(--oh-border)] bg-white px-4 transition-[border-color,box-shadow] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-orange-muted)]",
           busy && "pointer-events-none opacity-60",
         )}
         style={{ boxShadow: FLOAT_SHADOW }}
       >
-        <MessageCircle size={16} className="shrink-0 text-[var(--oh-placeholder)]" />
+        <MessageCircle size={16} className="shrink-0 text-[var(--oh-primary)]" />
         <input
           ref={inputRef}
           type="text"
@@ -706,8 +707,8 @@ export function SellAiPanel({
         className={cn(
           "flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white transition-colors disabled:opacity-50",
           listening
-            ? "border-[var(--oh-orange)] text-[var(--oh-orange)]"
-            : "text-[var(--oh-placeholder)] hover:text-[var(--oh-orange)]",
+            ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
+            : "text-[var(--oh-placeholder)] hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]",
         )}
         style={{ boxShadow: FLOAT_SHADOW }}
       >
@@ -781,7 +782,7 @@ export function SellAiPanel({
           >
             <div
               className={cn(
-                "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] px-3 py-2.5",
+                "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] bg-[var(--oh-orange-light)] px-3 py-2.5",
                 dragging ? "cursor-grabbing" : "cursor-grab",
               )}
               onPointerDown={beginDrag}
@@ -804,7 +805,7 @@ export function SellAiPanel({
                   onClick={collapsePanel}
                   title="Close"
                   aria-label="Close assistant"
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
+                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-white/80 hover:text-[var(--oh-text)]"
                 >
                   <X size={16} />
                 </button>
@@ -813,7 +814,7 @@ export function SellAiPanel({
 
             <div
               ref={scrollRef}
-              className="min-h-[200px] flex-1 overflow-y-auto bg-[var(--oh-surface)]/40"
+              className="min-h-[200px] flex-1 overflow-y-auto bg-[var(--oh-surface)]"
             >
               <DialogueView
                 messages={messages}
@@ -826,7 +827,7 @@ export function SellAiPanel({
             <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3 py-2">
               <div className="flex items-center justify-end gap-2">
                 {voiceStatus ? (
-                  <p className="min-w-0 flex-1 truncate text-right text-[11px] font-medium text-[var(--oh-orange)]">
+                  <p className="min-w-0 flex-1 truncate text-right text-[11px] font-medium text-[var(--oh-primary)]">
                     {voiceStatus}
                   </p>
                 ) : (
@@ -927,8 +928,8 @@ function DialogueView({
             className={cn(
               "max-w-[92%] rounded-[var(--oh-radius)] px-3 py-2 text-[12px] leading-relaxed",
               msg.role === "user"
-                ? "ml-auto bg-[var(--oh-navy)] text-white"
-                : "mr-auto border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] shadow-sm",
+                ? "ml-auto bg-[var(--oh-primary)] text-white"
+                : "mr-auto border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text-secondary)] shadow-sm",
             )}
           >
             {msg.role === "assistant" && msg.reportId ? (
@@ -938,9 +939,9 @@ function DialogueView({
                   {...(getUiMode() === "mobile"
                     ? {}
                     : { target: "_blank", rel: "noopener noreferrer" })}
-                  className="inline-flex items-start gap-1.5 text-inherit no-underline hover:text-[var(--oh-orange)]"
+                  className="inline-flex items-start gap-1.5 text-inherit no-underline hover:text-[var(--oh-primary)]"
                 >
-                  <span className="underline decoration-[var(--oh-orange)] underline-offset-2">
+                  <span className="underline decoration-[var(--oh-primary)] underline-offset-2">
                     {msg.text || (/[\u4e00-\u9fff]/.test(msg.text) ? "查看报表" : "View report")}
                   </span>
                   <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -991,7 +992,7 @@ function DialogueView({
           </div>
         ))}
         {busy && (
-          <div className="mr-auto max-w-[92%] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-2 text-[12px] text-[var(--oh-muted)] shadow-sm">
+          <div className="mr-auto max-w-[92%] rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3 py-2 text-[12px] text-[var(--oh-primary)] shadow-sm">
             Thinking…
           </div>
         )}
@@ -1006,7 +1007,7 @@ function DialogueView({
               key={action}
               type="button"
               onClick={() => onAction(action)}
-              className="cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[10px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+              className="cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[10px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
             >
               {action}
             </button>
