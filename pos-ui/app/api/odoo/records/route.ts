@@ -10,7 +10,7 @@ const MAX_LIMIT = 100;
 const RECORD_TYPES = {
   products: {
     model: "product.product",
-    fields: ["id", "name", "display_name", "barcode", "default_code", "list_price", "qty_available", "uom_id", "pos_categ_ids", "available_in_pos"],
+    fields: ["id", "name", "display_name", "barcode", "default_code", "list_price", "qty_available", "free_qty", "uom_id", "pos_categ_ids", "available_in_pos"],
     order: "name asc, id asc",
     searchFields: ["name", "barcode", "default_code"],
     baseDomain: [["available_in_pos", "=", true]],

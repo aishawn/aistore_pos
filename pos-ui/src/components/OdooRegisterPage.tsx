@@ -273,6 +273,12 @@ export function OdooRegisterPage() {
   }
 
   function addProduct(product: OdooProductRecord, packFactor = 1) {
+    const requested = lines.filter((line) => line.product.id === product.id).reduce((sum, line) => sum + line.quantity * (line.packFactor || 1), 0) + packFactor;
+    if (requested > product.free_qty + 1e-9) {
+      setError(`Only ${product.free_qty} units of ${product.name} are available.`);
+      return;
+    }
+    setError(null);
     setLines((current) => {
       const found = current.find((line) => line.product.id === product.id && (line.packFactor || 1) === packFactor);
       return found
@@ -282,6 +288,13 @@ export function OdooRegisterPage() {
   }
 
   function setLinePackFactor(productId: number, currentFactor: number, nextFactor: number) {
+    const product = lines.find((line) => line.product.id === productId)?.product;
+    const requested = lines.filter((line) => line.product.id === productId).reduce((sum, line) => sum + line.quantity * ((line.packFactor || 1) === currentFactor ? nextFactor : (line.packFactor || 1)), 0);
+    if (product && requested > product.free_qty + 1e-9) {
+      setError(`Only ${product.free_qty} units of ${product.name} are available.`);
+      return;
+    }
+    setError(null);
     setLines((current) => current.map((line) =>
       line.product.id === productId && (line.packFactor || 1) === currentFactor
         ? { ...line, packFactor: nextFactor }
@@ -319,6 +332,14 @@ export function OdooRegisterPage() {
   }
 
   function changeQuantity(productId: number, packFactor: number, amount: number) {
+    const matching = lines.filter((line) => line.product.id === productId);
+    const product = matching[0]?.product;
+    const requested = matching.reduce((sum, line) => sum + (line.quantity + ((line.packFactor || 1) === packFactor ? amount : 0)) * (line.packFactor || 1), 0);
+    if (amount > 0 && product && requested > product.free_qty + 1e-9) {
+      setError(`Only ${product.free_qty} units of ${product.name} are available.`);
+      return;
+    }
+    setError(null);
     setLines((current) => current
       .map((line) => line.product.id === productId && (line.packFactor || 1) === packFactor ? { ...line, quantity: line.quantity + amount } : line)
       .filter((line) => line.quantity > 0));
@@ -543,13 +564,13 @@ export function OdooRegisterPage() {
                         type="button"
                         title={product.display_name || product.name}
                         onClick={() => addProduct(product)}
-                        disabled={!selectedConfig?.session || product.qty_available <= 0}
+                        disabled={!selectedConfig?.session || product.free_qty <= 0}
                         className="flex min-h-[72px] flex-col justify-center rounded-md border border-[var(--oh-border)] bg-white px-2 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/40 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <span className="line-clamp-2 text-[13px] font-medium leading-4 text-black">{product.display_name || product.name}</span>
                         <span className="mt-1 text-sm font-semibold tabular-nums text-black">{money(product.list_price)}</span>
-                        <span className={cn("mt-0.5 text-[11px]", product.qty_available > 0 ? "text-black/60" : "font-medium text-amber-800")}>
-                          {product.qty_available > 0 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.qty_available)} avail.` : "No stock"}
+                        <span className={cn("mt-0.5 text-[11px]", product.free_qty > 0 ? "text-black/60" : "font-medium text-amber-800")}>
+                          {product.free_qty > 0 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.free_qty)} avail.` : "No stock"}
                         </span>
                       </button>
                     ))}

@@ -31,6 +31,7 @@ type OdooProduct = {
   lst_price: number;
   taxes_id: number[];
   available_in_pos: boolean;
+  free_qty: number;
   uom_id: Relation;
 };
 
@@ -364,9 +365,19 @@ export async function POST(request: NextRequest) {
       ["id", "in", productIds],
     ];
     if (!isRefund) productDomain.push(["available_in_pos", "=", true]);
-    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "uom_id"], MAX_LINES);
+    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "free_qty", "uom_id"], MAX_LINES);
     if (products.length !== productIds.length) throw new OdooCheckoutError("One or more products are no longer available in this POS.", 409);
     const productsById = new Map(products.map((product) => [product.id, product]));
+    if (!isRefund) {
+      const requestedByProduct = new Map<number, number>();
+      for (const line of body.lines) requestedByProduct.set(line.productId, (requestedByProduct.get(line.productId) ?? 0) + line.quantity * (line.uomFactor ?? 1));
+      for (const [productId, requested] of requestedByProduct) {
+        const product = productsById.get(productId)!;
+        if (!Number.isFinite(product.free_qty) || requested > product.free_qty + 1e-9) {
+          throw new OdooCheckoutError(`Only ${Number.isFinite(product.free_qty) ? product.free_qty : 0} units of ${product.name} are available.`, 409);
+        }
+      }
+    }
 
     const fiscalPosition = isRefund
       ? originalOrder?.fiscal_position_id || false

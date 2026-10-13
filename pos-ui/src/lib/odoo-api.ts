@@ -24,6 +24,7 @@ export interface OdooProductRecord {
   default_code: string | false;
   list_price: number;
   qty_available: number;
+  free_qty: number;
   uom_id: [number, string] | false;
   pos_categ_ids: number[];
   available_in_pos: boolean;

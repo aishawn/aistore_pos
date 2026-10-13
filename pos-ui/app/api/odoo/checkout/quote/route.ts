@@ -22,7 +22,7 @@ type PosConfig = {
   only_round_cash_method: boolean;
   rounding_method: Relation;
 };
-type Product = { id: number; name: string; lst_price: number; taxes_id: number[]; available_in_pos: boolean };
+type Product = { id: number; name: string; lst_price: number; taxes_id: number[]; available_in_pos: boolean; free_qty: number };
 type TaxTotals = { total_excluded: number; total_included: number };
 type CashRounding = { id: number; rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" };
 class QuoteError extends Error { constructor(message: string, public readonly status = 422) { super(message); } }
@@ -99,9 +99,17 @@ export async function POST(request: NextRequest) {
     const opened = await searchRead<{ id: number }>(session, "pos.session", [["id", "=", sessionId], ["state", "=", "opened"], ["config_id", "=", config.id]], ["id"], 1);
     if (!opened.length) throw new QuoteError("The POS session has closed. Refresh the register.", 409);
 
-    const products = await searchRead<Product>(session, "product.product", [["id", "in", [...new Set(body.lines.map((line) => line.productId))]], ["available_in_pos", "=", true]], ["id", "name", "lst_price", "taxes_id", "available_in_pos"], MAX_LINES);
+    const products = await searchRead<Product>(session, "product.product", [["id", "in", [...new Set(body.lines.map((line) => line.productId))]], ["available_in_pos", "=", true]], ["id", "name", "lst_price", "taxes_id", "available_in_pos", "free_qty"], MAX_LINES);
     if (products.length !== new Set(body.lines.map((line) => line.productId)).size) throw new QuoteError("One or more products are no longer available in this POS.", 409);
     const productMap = new Map(products.map((product) => [product.id, product]));
+    const requestedByProduct = new Map<number, number>();
+    for (const line of body.lines) requestedByProduct.set(line.productId, (requestedByProduct.get(line.productId) ?? 0) + line.quantity * (line.uomFactor ?? 1));
+    for (const [productId, requested] of requestedByProduct) {
+      const product = productMap.get(productId)!;
+      if (!Number.isFinite(product.free_qty) || requested > product.free_qty + 1e-9) {
+        throw new QuoteError(`Only ${Number.isFinite(product.free_qty) ? product.free_qty : 0} units of ${product.name} are available.`, 409);
+      }
+    }
     const paymentMethods = await searchRead<{ id: number; is_cash_count: boolean }>(session, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "is_cash_count"], 1);
     if (!paymentMethods.length) throw new QuoteError("The selected payment method is unavailable.", 409);
 
