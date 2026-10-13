@@ -13,11 +13,13 @@ import { UserIcon } from "@/components/icons";
 export function Header({
   userName = "admin",
   sidebarOpen = true,
+  userMenuOpen = false,
   onSidebarToggle,
   onUserClick,
 }: {
   userName?: string;
   sidebarOpen?: boolean;
+  userMenuOpen?: boolean;
   onSidebarToggle?: () => void;
   onUserClick?: () => void;
 }) {
@@ -73,6 +75,10 @@ export function Header({
           tabIndex={tabIndex}
           onClick={onUserClick}
           title="User menu"
+          data-user-menu-trigger
+          aria-haspopup="dialog"
+          aria-controls="user-menu"
+          aria-expanded={userMenuOpen}
           data-testid="sh-current-user"
           className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >

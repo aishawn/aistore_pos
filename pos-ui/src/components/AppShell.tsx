@@ -137,16 +137,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Header
           userName={user?.name || user?.username || "admin"}
           sidebarOpen={sidebarOpen}
+          userMenuOpen={userMenuOpen}
           onSidebarToggle={() => setSidebarOpen((v) => !v)}
           onUserClick={() => setUserMenuOpen((v) => !v)}
         />
+        <UserMenu
+          open={userMenuOpen}
+          onClose={() => setUserMenuOpen(false)}
+          onLogout={onLogout}
+        />
         <div className="relative min-h-0 flex-1">
           {ODOO_REGISTER_PATHS.has(pathname) ? children : <SellScreenProvider>{children}</SellScreenProvider>}
-          <UserMenu
-            open={userMenuOpen}
-            onClose={() => setUserMenuOpen(false)}
-            onLogout={onLogout}
-          />
         </div>
       </div>
       <AiFloatHost />
