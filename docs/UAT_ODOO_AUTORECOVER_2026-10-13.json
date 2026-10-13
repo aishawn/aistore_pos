@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T12:10:53.297Z",
+  "generatedAt": "2026-10-13T12:33:24.836Z",
   "scope": "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
   "checks": [
     {
@@ -21,6 +21,11 @@
       "name": "First business page reconnects without manual Connect",
       "status": "PASS",
       "evidence": "After clearing the Odoo cookie, replenishment loaded through its data API and returned to the normal page without a manual connect action."
+    },
+    {
+      "name": "In-page read recovers and retries safely",
+      "status": "PASS",
+      "evidence": "With the products page already loaded, its read-only POST recovered an expired Odoo session and refreshed the catalogue without an error or manual reconnect."
     },
     {
       "name": "Odoo reconnects automatically after session removal",

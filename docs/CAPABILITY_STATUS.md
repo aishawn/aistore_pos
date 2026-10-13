@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + 8 general and 3 operations interactions; app commit `effcb7e` deployed Done)
+**Last updated:** 2026-10-13 (24-route matrix + 8 general, 3 operations, and 6 auto-recovery checks; app commit `5b5d48f` deployed Done)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -56,7 +56,7 @@ AI remains disabled in production. The tenant report database account has no sou
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo manual connect | Accepted | Manual Connect remains available |
-| Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; clearing the Odoo session then directly opening Replenishment triggers reconnect on the first data request without manual Connect; POS session `00004` remains open. Safe GETs retry after recovery; write requests are never replayed — `docs/UAT_ODOO_AUTORECOVER_2026-10-13.json` |
+| Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; cookie removal recovers Replenishment on first request, and an already-open Products page recovers/retries its read-only records POST after Refresh. Only safe reads replay after recovery; checkout, RFQ, product/customer writes and close are never replayed. POS session `00004` remains open — `docs/UAT_ODOO_AUTORECOVER_2026-10-13.json` (6/6) |
 | Deploy currency (`83bdafb`+) | Accepted | Production shows **Open Odoo POS** on closed-register empty state |
 
 ## Classic MySQL stack

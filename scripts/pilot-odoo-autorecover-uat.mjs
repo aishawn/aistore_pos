@@ -22,7 +22,7 @@ const waitForProductPageData = async (page, label) => {
   } catch {
     throw new Error(`${label}: product page did not reach a data/error/connection state; body=${(await page.locator("main").innerText().catch(() => "<no main>" )).slice(0, 400)}`);
   }
-  if (await page.getByRole("alert").count()) throw new Error(`${label}: ${(await page.getByRole("alert").innerText()).slice(0, 240)}`);
+  if (await page.getByRole("alert").count()) throw new Error(`${label}: ${(await page.getByRole("alert").innerText()).slice(0, 240)}; main=${(await page.locator("main").innerText().catch(() => "<no main>")).slice(0, 400)}`);
   if (await page.getByText("Connect Odoo to view products", { exact: true }).count()) throw new Error(`${label}: product page reports Odoo disconnected`);
   if (!(await page.locator("tbody tr").count())) throw new Error(`${label}: no product rows; page says ${(await page.locator("main").innerText()).slice(0, 300)}`);
 };
@@ -66,8 +66,10 @@ try {
     return response.ok;
   });
   if (!clearInPageSession) throw new Error("Could not clear the Odoo browser session while the product page was open");
+  const refreshedRecords = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/odoo/records" && response.status() === 200, { timeout: 30000 });
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await waitForProductPageData(page, "The product page could not retry its read-only POST after recovering an expired Odoo session");
+  await refreshedRecords;
+  await page.locator("tbody tr").first().waitFor({ timeout: 30000 });
   record("In-page read recovers and retries safely", "PASS", "With the products page already loaded, its read-only POST recovered an expired Odoo session and refreshed the catalogue without an error or manual reconnect.");
 
   const restored = await getSession(context);

@@ -7,8 +7,8 @@
 > 以下为当前快照。文末更早的日记段落保留作历史；若冲突，以本段与 [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) 为准。
 
 - 应用基线 `fe9b163` 提供角色权限分配、公司设置/Sale Keys 诚实状态页和试点侧栏清理；后续 `f2f16db` 增加角色列表权限摘要。应用提交 `17ef0f5` 加入现金实点 UI 保护，`3c2618e` 在 Odoo close API 再强制校验；`9460243` 移除 AI 报表账户源码弱默认密码并要求显式配置，Dokploy 已标记 **Done**。
-- 应用代码已部署 `effcb7e`（首个 Odoo 数据请求遇到过期会话时，后台自动恢复并重试只读请求；写请求绝不自动重放）；Dokploy 记录 **Done**。生产通过 24/24 路由、8/8 一般交互、3/3 运营检查，以及清除会话后直接打开补货页的自动连接验收。
-- Odoo 自动恢复 **已开启并覆盖首个业务页请求**：清除会话后直接访问补货页，数据请求触发服务账号重连、只读请求自动重试，无需点击 Connect；会话状态与 POS 班次 `orithos_store1/00004` 仍打开。5 项证据见 [UAT_ODOO_AUTORECOVER_2026-10-13.json](UAT_ODOO_AUTORECOVER_2026-10-13.json)。
+- 应用代码已部署 `5b5d48f`（Odoo 会话过期后只重试明确只读的 GET、商品/客户记录查询和购物车报价；checkout、RFQ、产品/客户写入、关账等写操作不自动重放）；Dokploy 记录 **Done**。生产通过 24/24 路由、8/8 一般交互、3/3 运营检查，以及会话失效后补货页与商品页恢复验收。
+- Odoo 自动恢复覆盖首个业务页请求和页面内续期：清除会话后直接访问补货页可自动恢复；商品页已加载后再次清会话，点 Refresh 后只读记录 POST 会恢复并重试，无需手动 Connect。6 项证据见 [UAT_ODOO_AUTORECOVER_2026-10-13.json](UAT_ODOO_AUTORECOVER_2026-10-13.json)。
 - 当前测试班次 `orithos_store1/00004` **opened**；两款 DEMO 酒 free/on-hand **12**（本轮浏览器销售后退款已回滚）。
 - 浏览器页面矩阵：试点侧栏路由已逐页验收，证据见 [UAT_PAGE_MATRIX_2026-10-13.json](UAT_PAGE_MATRIX_2026-10-13.json)。
 - 复跑修正：原唯一失败是验收正则没有匹配页面格式 `12Units`，并非商品数据缺失；改用 API 登录、等待商品目录 hydrate 后，24/24 路由通过。角色 API 创建/删除通过；上一轮遗留的 `Pilot Clerk 344840` 临时角色已删除并核对不存在。
