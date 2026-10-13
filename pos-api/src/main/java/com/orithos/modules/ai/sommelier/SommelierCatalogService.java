@@ -29,15 +29,17 @@ public class SommelierCatalogService {
     }
 
     public List<WineCandidate> listWines(Long outletId) {
-        List<WineCandidate> odoo = odooCatalog();
-        if (!odoo.isEmpty()) return odoo;
+        // Once Odoo is configured it is the business source of truth. An empty
+        // result (including a temporary Odoo failure) must not expose stale
+        // legacy MySQL products as if they were current store inventory.
+        if (odooWineCatalogClient.isConfigured()) return odooCatalog();
         return toCandidates(mapper.listCatalog(outletId), true);
     }
 
     public List<WineCandidate> search(Long outletId, String q) {
         if (q == null || q.isBlank()) return List.of();
-        List<WineCandidate> odoo = odooCatalog();
-        if (!odoo.isEmpty()) {
+        if (odooWineCatalogClient.isConfigured()) {
+            List<WineCandidate> odoo = odooCatalog();
             String needle = q.trim().toLowerCase();
             return odoo.stream()
                     .filter(w -> w.name() != null && w.name().toLowerCase().contains(needle))
@@ -48,8 +50,8 @@ public class SommelierCatalogService {
 
     public WineCandidate findById(Long id, Long outletId) {
         if (id == null) return null;
-        List<WineCandidate> odoo = odooCatalog();
-        if (!odoo.isEmpty()) {
+        if (odooWineCatalogClient.isConfigured()) {
+            List<WineCandidate> odoo = odooCatalog();
             return odoo.stream().filter(w -> id.equals(w.productId())).findFirst().orElse(null);
         }
         List<WineCandidate> found = toCandidates(listOf(mapper.findById(id, outletId)), false);

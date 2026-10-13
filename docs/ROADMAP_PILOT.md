@@ -22,6 +22,7 @@
 - `9cba779` 增加 Odoo 供应商目录的新增流程：表单明确录入真实经销商，公司名称必填、邮件格式和长度校验、ABN 重复时阻止创建；成功后刷新列表并提供回到补货页的入口。Odoo `aipos` 只读 schema 确认字段可写，生产浏览器 UAT 对创建 API 做网络拦截，没有写入供应商；证据 `UAT_SUPPLIER_CREATE_MOCK_2026-10-13.json`。生产没有供应商/RFQ，仍需店主录入真实供货商后才能验收实时采购链路。
 - `9cba779` 后复跑生产回归：24/24 页面、8/8 一般交互、3/3 运营只读、6/6 自动恢复通过；角色 UI CRUD 通过并清理临时角色。补货审计、采购详情、供应商创建三项浏览器 mock 均通过，均拦截写请求，没有新增供应商/RFQ。班次 `orithos_store1/00004` 仍打开，两款 DEMO 商品库存 12/12。证据分别更新于 `UAT_PAGE_MATRIX_2026-10-13.json`、`UAT_INTERACTION_2026-10-13.json`、`UAT_OPS_READONLY_2026-10-13.json`、`UAT_ODOO_AUTORECOVER_2026-10-13.json` 和三个 mock UAT JSON。
 - 供应商 API 附加安全验收：authenticated cross-origin POST 返回 403；同源请求缺少 Odoo 会话返回 401，均在 payload 处理/写入前拒绝。无业务写入，脚本 `scripts/pilot-supplier-api-guard-uat.mjs`。
+- 酒款助手可信度修复正在推进：Odoo 服务账号已配置时，即使目录查询为空或不可用，也不再回退到 Classic MySQL 的旧酒款/库存；酒款查找页文案改为说明按门店目录匹配，不再误称该流程由 AI 驱动。单元测试已添加；本机 Java 8 无法运行要求 Java 21 的后端测试，须由 Dokploy Java 21 构建验收。Odoo POS 实际价目表与门店可售库存口径仍待验证。
 
 ## 产品目标
 

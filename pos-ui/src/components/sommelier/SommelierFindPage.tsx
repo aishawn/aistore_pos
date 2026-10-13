@@ -136,7 +136,7 @@ export function SommelierFindPage() {
   const subtitle =
     step === "results"
       ? summaryLine(profile)
-      : "AI asks a few questions, then matches this store's stock.";
+      : "Answer a few questions to match wines currently listed in this store's catalogue.";
 
   return (
     <SommelierShell title={title} subtitle={subtitle}>
