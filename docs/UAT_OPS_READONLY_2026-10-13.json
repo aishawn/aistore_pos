@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T11:27:41.959Z",
+  "generatedAt": "2026-10-13T11:39:28.263Z",
   "scope": "read-only production validation; no purchase order confirmed; close UI was cancelled; an invalid close request was rejected before any Odoo write",
   "checks": [
     {

@@ -67,6 +67,59 @@ try {
     return "Barossa Shiraz edit dialog showed the Odoo sale price 34.90 and was closed without saving.";
   });
 
+  await check("New product form blocks submission without a name", async () => {
+    await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.getByRole("button", { name: "New product" }).click();
+    const dialog = page.getByRole("dialog", { name: "New product" });
+    const name = dialog.getByLabel(/Product name/i);
+    await name.waitFor({ timeout: 10000 });
+    const blocked = await name.evaluate((input) => input.required && input.form?.checkValidity() === false);
+    if (!blocked) throw new Error("An empty product form can pass browser validation");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await dialog.waitFor({ state: "detached", timeout: 10000 });
+    return "Product name is required; empty form validation was checked and the dialog was cancelled without creating a product.";
+  });
+
+  await check("CSV product import previews valid rows without writing to Odoo", async () => {
+    await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const writes = [];
+    const onRequest = (request) => {
+      if (request.method() === "POST" && /\/api\/odoo\/products(?:\/import)?(?:\?|$)/.test(new URL(request.url()).pathname)) {
+        writes.push(request.url());
+      }
+    };
+    page.on("request", onRequest);
+    try {
+      await page.getByRole("button", { name: "Import CSV" }).click();
+      const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
+      await dialog.waitFor({ timeout: 10000 });
+      await page.waitForFunction(() => {
+        const input = document.querySelector('input[type="file"]');
+        return Boolean(input && !input.disabled);
+      }, null, { timeout: 15000 });
+      await dialog.locator('input[type="file"]').setInputFiles({
+        name: "preview-only.csv",
+        mimeType: "text/csv",
+        buffer: Buffer.from([
+          "Product Name,SKU,Barcode,Sale Price,Cost",
+          "Preview Only Shiraz,UAT-PREVIEW-001,,19.95,10.00",
+          "",
+        ].join("\n")),
+      });
+      await page.waitForFunction(() => document.body.innerText.includes("1 valid product ready to import"), null, { timeout: 10000 });
+      const preview = await dialog.innerText();
+      if (!preview.includes("Preview Only Shiraz") || !preview.includes("UAT-PREVIEW-001")) {
+        throw new Error(`CSV preview did not show the parsed row: ${preview.slice(0, 500)}`);
+      }
+      if (writes.length) throw new Error("Selecting a CSV unexpectedly wrote products to Odoo");
+      await dialog.getByRole("button", { name: "Cancel" }).click();
+      await dialog.waitFor({ state: "detached", timeout: 10000 });
+      return "A valid one-row CSV was parsed and previewed; Cancel closed the dialog with no Odoo product write.";
+    } finally {
+      page.off("request", onRequest);
+    }
+  });
+
   await check("Customer creation form is required-field guarded", async () => {
     await page.goto(`${base}/customers/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("button", { name: /New customer/i }).click();
@@ -119,7 +172,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  scope: "read-only production interactions; customer form opened but not submitted; no sale, refund, RFQ, or register-close writes",
+  scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   checks,
 };
 const outputPath = path.join(root, "docs", "UAT_INTERACTION_2026-10-13.json");

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-13T11:28:51.576Z",
-  "scope": "read-only production interactions; customer form opened but not submitted; no sale, refund, RFQ, or register-close writes",
+  "generatedAt": "2026-10-13T11:44:57.751Z",
+  "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {
       "name": "Product search filters the Odoo catalogue",
@@ -11,6 +11,16 @@
       "name": "Product edit dialog is prefilled from Odoo",
       "status": "PASS",
       "evidence": "Barossa Shiraz edit dialog showed the Odoo sale price 34.90 and was closed without saving."
+    },
+    {
+      "name": "New product form blocks submission without a name",
+      "status": "PASS",
+      "evidence": "Product name is required; empty form validation was checked and the dialog was cancelled without creating a product."
+    },
+    {
+      "name": "CSV product import previews valid rows without writing to Odoo",
+      "status": "PASS",
+      "evidence": "A valid one-row CSV was parsed and previewed; Cancel closed the dialog with no Odoo product write."
     },
     {
       "name": "Customer creation form is required-field guarded",
