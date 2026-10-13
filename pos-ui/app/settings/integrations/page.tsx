@@ -7,7 +7,7 @@ export default function IntegrationsPage() {
       <div className="grid gap-4">
         <OdooPosConnectionCard />
         <p className="px-1 text-xs leading-5 text-[var(--oh-muted)]">
-          Odoo sign-in is held in a protected server cookie. The POS server must have ODOO_BASE_URL and ODOO_DATABASE configured before connecting.
+          Odoo sessions are held in a protected server cookie. To restore the connection automatically after a session expires or a browser cookie is cleared, configure ODOO_SERVICE_USERNAME and ODOO_SERVICE_PASSWORD in Dokploy. Use a dedicated Odoo POS account with only the access this store needs; keep the password in Dokploy, never in Git.
         </p>
       </div>
     </SettingsScaffold>

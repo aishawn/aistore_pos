@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
-import { isSameOrigin } from "@/lib/server-auth";
+import { ACCESS_COOKIE, backendUrl, isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +56,69 @@ async function callOdoo(
   return payload.result ?? {};
 }
 
+async function authenticateOdoo(username: string, password: string) {
+  const { baseUrl, database } = getOdooConfig();
+  const response = await fetch(`${baseUrl}/web/session/authenticate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "call",
+      params: { db: database, login: username, password },
+      id: Date.now(),
+    }),
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) throw new Error("Odoo login failed");
+
+  const payload = (await response.json()) as {
+    result?: OdooSessionInfo;
+    error?: { message?: string; data?: { message?: string } };
+  };
+  if (payload.error || !payload.result?.uid) {
+    throw new Error("Odoo username or password is incorrect");
+  }
+
+  const sessionCookie = response.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value));
+  const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
+  if (!sessionId) throw new Error("Odoo did not return a session");
+
+  return { info: payload.result, sessionId };
+}
+
+function getServiceCredentials() {
+  const username = process.env.ODOO_SERVICE_USERNAME?.trim();
+  const password = process.env.ODOO_SERVICE_PASSWORD;
+  return username && password ? { username, password } : null;
+}
+
+async function connectWithServiceAccount() {
+  const credentials = getServiceCredentials();
+  if (!credentials) return null;
+
+  const session = await authenticateOdoo(credentials.username, credentials.password);
+  return { ...session, user: await publicUser(session.info, session.sessionId) };
+}
+
+async function hasOrithosSession(request: NextRequest) {
+  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
+  if (!accessToken) return false;
+
+  try {
+    const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return false;
+    const payload = (await response.json()) as { code?: number; data?: unknown };
+    return payload.code === 0 && Boolean(payload.data);
+  } catch {
+    return false;
+  }
+}
+
 function cookieOptions() {
   return {
     httpOnly: true,
@@ -98,40 +161,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { baseUrl, database } = getOdooConfig();
-    const response = await fetch(`${baseUrl}/web/session/authenticate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "call",
-        params: { db: database, login: username, password: body.password },
-        id: Date.now(),
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) {
-      return NextResponse.json({ message: "Odoo login failed" }, { status: 401 });
-    }
-
-    const payload = (await response.json()) as {
-      result?: OdooSessionInfo;
-      error?: { message?: string; data?: { message?: string } };
-    };
-    if (payload.error || !payload.result?.uid) {
-      return NextResponse.json({ message: "Odoo username or password is incorrect" }, { status: 401 });
-    }
-
-    const setCookies = response.headers.getSetCookie();
-    const sessionCookie = setCookies.find((value) => /(?:^|;\s*)session_id=/.test(value));
-    const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
-    if (!sessionId) {
-      return NextResponse.json({ message: "Odoo did not return a session" }, { status: 502 });
-    }
-
-    const nextResponse = NextResponse.json({ user: await publicUser(payload.result, sessionId) }, { status: 200 });
-    nextResponse.cookies.set(SESSION_COOKIE, sessionId, cookieOptions());
+    const session = await authenticateOdoo(username, body.password);
+    const nextResponse = NextResponse.json({ user: await publicUser(session.info, session.sessionId) }, { status: 200 });
+    nextResponse.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
     return nextResponse;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
@@ -142,15 +174,40 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ user: null }, { status: 200 });
+  if (!sessionId) {
+    if (!(await hasOrithosSession(request))) return NextResponse.json({ user: null }, { status: 200 });
+    try {
+      const session = await connectWithServiceAccount();
+      if (!session) return NextResponse.json({ user: null }, { status: 200 });
+      const response = NextResponse.json({ user: session.user }, { status: 200 });
+      response.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
+      return response;
+    } catch {
+      return NextResponse.json({ user: null }, { status: 200 });
+    }
+  }
 
   try {
     const info = await callOdoo("/web/session/get_session_info", {}, sessionId);
-    return NextResponse.json({ user: info.uid ? await publicUser(info, sessionId) : null }, { status: 200 });
+    if (!info.uid) throw new Error("Odoo session has expired");
+    return NextResponse.json({ user: await publicUser(info, sessionId) }, { status: 200 });
   } catch {
-    const response = NextResponse.json({ user: null }, { status: 200 });
-    response.cookies.delete(SESSION_COOKIE);
-    return response;
+    if (!(await hasOrithosSession(request))) {
+      const response = NextResponse.json({ user: null }, { status: 200 });
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
+    try {
+      const session = await connectWithServiceAccount();
+      const response = NextResponse.json({ user: session?.user ?? null }, { status: 200 });
+      if (session) response.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
+      else response.cookies.delete(SESSION_COOKIE);
+      return response;
+    } catch {
+      const response = NextResponse.json({ user: null }, { status: 200 });
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
   }
 }
 
