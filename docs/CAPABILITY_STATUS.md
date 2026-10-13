@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (24-route matrix + 11 production interaction checks; production deploy `9460243`)
+**Last updated:** 2026-10-13 (24-route matrix + 11 production interaction checks; latest Dokploy deploy `86b78b5`, app code `9460243`)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -56,7 +56,7 @@ AI remains disabled in production. The tenant report database account has no sou
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo manual connect | Accepted | Manual Connect remains available |
-| Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; login auto-connects as Administrator; cookie recovery and logout rejection previously verified |
+| Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; current-deploy regression cleared the Odoo session and confirmed automatic reconnect plus POS session `00004` still open — `docs/UAT_ODOO_AUTORECOVER_2026-10-13.json` |
 | Deploy currency (`83bdafb`+) | Accepted | Production shows **Open Odoo POS** on closed-register empty state |
 
 ## Classic MySQL stack
