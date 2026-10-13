@@ -210,6 +210,14 @@ export interface OdooCheckoutResult {
   session: string;
 }
 
+export interface OdooCheckoutQuote {
+  subtotal: number;
+  tax: number;
+  total: number;
+  unroundedTotal: number;
+  lines: { productId: number; quantity: number; uomFactor: number; subtotal: number; tax: number; total: number }[];
+}
+
 export interface OdooCloseSessionResult {
   sessionId: number;
   sessionName: string;
@@ -333,6 +341,21 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
     throw new OdooApiError("Odoo did not confirm the sale", 502);
   }
   return payload as OdooCheckoutResult;
+}
+
+export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "configId" | "paymentMethodId" | "customerId" | "lines">): Promise<OdooCheckoutQuote> {
+  const response = await fetchOdooApi("/api/odoo/checkout/quote", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  const payload = await response.json().catch(() => null) as (OdooCheckoutQuote & { message?: string }) | null;
+  if (!response.ok || !payload || typeof payload.total !== "number") {
+    throw new OdooApiError(payload?.message || `Odoo cart quote failed (${response.status})`, response.status);
+  }
+  return payload;
 }
 
 export async function closeOdooPosSession(configId: number, countedCash?: number | null): Promise<OdooCloseSessionResult> {

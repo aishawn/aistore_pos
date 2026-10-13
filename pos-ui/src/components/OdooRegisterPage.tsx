@@ -6,9 +6,11 @@ import { Archive, Check, CircleAlert, Clock3, Keyboard, LoaderCircle, Minus, Plu
 import {
   getOdooPosBootstrap,
   getOdooSession,
+  quoteOdooPosOrder,
   searchOdooRecords,
   submitOdooPosOrder,
   type OdooCustomerRecord,
+  type OdooCheckoutQuote,
   type OdooPosBootstrap,
   type OdooPosCategoryRecord,
   type OdooProductRecord,
@@ -72,17 +74,6 @@ function readParkedOdooSales(): ParkedOdooSale[] {
 
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
-function roundedTotal(amount: number, increment: number, method: "UP" | "DOWN" | "HALF-UP") {
-  if (!(increment > 0)) return amount;
-  const ratio = amount / increment;
-  const count = method === "UP"
-    ? Math.ceil(ratio - 1e-9)
-    : method === "DOWN"
-      ? Math.floor(ratio + 1e-9)
-      : Math.floor(ratio + 0.5 + 1e-9);
-  return Math.round(count * increment * 100) / 100;
-}
-
 export function OdooRegisterPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
@@ -101,6 +92,9 @@ export function OdooRegisterPage() {
   const [customerQuery, setCustomerQuery] = useState("");
   const [customer, setCustomer] = useState<OdooCustomerRecord | null>(null);
   const [lines, setLines] = useState<CartLine[]>([]);
+  const [quote, setQuote] = useState<OdooCheckoutQuote | null>(null);
+  const [quotedFingerprint, setQuotedFingerprint] = useState<string | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<CompletedReceipt | null>(null);
@@ -111,6 +105,7 @@ export function OdooRegisterPage() {
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
+  const quoteRevision = useRef(0);
   const searchRevision = useRef(0);
   const barcodeLookupBusy = useRef(false);
 
@@ -208,20 +203,68 @@ export function OdooRegisterPage() {
   }, [customerQuery, connected]);
 
   const selectedConfig = bootstrap?.configs.find((item) => item.id === configId) ?? null;
+  const currentQuoteFingerprint = JSON.stringify({
+    configId,
+    paymentMethodId,
+    customerId: customer?.id ?? null,
+    lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1]),
+  });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
   const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === odooUserId && sale.companyId === selectedCompanyId);
   const parkedActionSale = parkedAction ? parkedSales.find((sale) => sale.id === parkedAction.saleId) : null;
-  const total = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0) * 100) / 100, [lines]);
+  const quoteIsCurrent = Boolean(quote && quotedFingerprint === currentQuoteFingerprint);
+  const fallbackSubtotal = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0) * 100) / 100, [lines]);
+  const subtotal = quoteIsCurrent ? quote!.subtotal : fallbackSubtotal;
+  const taxTotal = quoteIsCurrent ? quote!.tax : 0;
+  const total = quoteIsCurrent ? quote!.unroundedTotal : fallbackSubtotal;
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
   const isCashPayment = selectedPayment?.type === "cash";
-  const applyRounding = Boolean(selectedConfig?.cashRounding && (!selectedConfig.onlyRoundCashMethod || selectedPayment?.is_cash_count));
-  const amountToCollect = applyRounding && selectedConfig?.cashRounding
-    ? roundedTotal(total, selectedConfig.cashRounding.rounding, selectedConfig.cashRounding.rounding_method)
-    : total;
+  const amountToCollect = quoteIsCurrent ? quote!.total : 0;
   const quantity = lines.reduce((sum, line) => sum + line.quantity, 0);
   const tenderedAmount = isCashPayment && cashTendered.trim() ? Number(cashTendered) : amountToCollect;
   const changeDue = isCashPayment && Number.isFinite(tenderedAmount) ? Math.max(0, Math.round((tenderedAmount - amountToCollect) * 100) / 100) : 0;
+
+  useEffect(() => {
+    const revision = ++quoteRevision.current;
+    if (!lines.length) {
+      setQuote(null);
+      setQuotedFingerprint(null);
+      setQuoteLoading(false);
+      return;
+    }
+    if (!connected || !selectedConfig?.session || !paymentMethodId) {
+      setQuote(null);
+      setQuotedFingerprint(null);
+      setQuoteLoading(false);
+      return;
+    }
+    setQuote(null);
+    setQuotedFingerprint(null);
+    setQuoteLoading(true);
+    const timer = window.setTimeout(() => {
+      void quoteOdooPosOrder({
+        configId: selectedConfig.id,
+        paymentMethodId,
+        customerId: customer?.id ?? null,
+        lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1 })),
+      }).then((result) => {
+        if (revision === quoteRevision.current) {
+          setQuote(result);
+          setQuotedFingerprint(currentQuoteFingerprint);
+          setQuoteLoading(false);
+          setError(null);
+        }
+      }).catch((cause) => {
+        if (revision === quoteRevision.current) {
+          setQuote(null);
+          setQuoteLoading(false);
+          setError(cause instanceof Error ? cause.message : "Odoo could not calculate tax for this cart.");
+        }
+      });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [connected, currentQuoteFingerprint, customer, lines, paymentMethodId, selectedConfig]);
 
   function formatReceiptDate(value: string) {
     const date = new Date(`${value.replace(" ", "T")}Z`);
@@ -381,7 +424,7 @@ export function OdooRegisterPage() {
         paymentMethodId,
         tendered: tenderedAmount,
         customerId: customer?.id ?? null,
-        lines: lines.map((line) => [line.product.id, line.quantity]),
+        lines: lines.map((line) => [line.product.id, line.quantity, line.packFactor || 1]),
       });
       if (!orderUuid.current || checkoutFingerprint.current !== fingerprint) {
         orderUuid.current = crypto.randomUUID();
@@ -437,7 +480,7 @@ export function OdooRegisterPage() {
   );
 
   const { whole: totalWhole, cents: totalCents } = splitMoney(amountToCollect);
-  const canFinalise = Boolean(lines.length && selectedConfig?.session && paymentMethodId && !busy && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
+  const canFinalise = Boolean(lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
   const summaryMuted = "text-[var(--sf-summary)]";
 
   return (
@@ -610,16 +653,17 @@ export function OdooRegisterPage() {
           )}
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
-              const factor = packFactor || 1;
-              const lineTotal = splitMoney(product.list_price * qty * factor);
-              return (
+              {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
+                const factor = packFactor || 1;
+                const quotedLine = quoteIsCurrent ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor) : undefined;
+                const lineTotal = splitMoney(quotedLine?.total ?? product.list_price * qty * factor);
+                return (
                 <div key={`${product.id}-${factor}`} className="flex flex-col gap-1.5 border-b border-[#eee] px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="w-6 shrink-0 text-[16px] text-black">{qty}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[16px] text-black">{product.display_name || product.name}</span>
-                      <span className="text-[13px] text-[var(--sf-muted)]">{money(product.list_price)} each{factor > 1 ? ` · ${factor}/pack` : ""}</span>
+                        <span className="text-[13px] text-[var(--sf-muted)]">{quotedLine ? `${money(quotedLine.total / qty)} each inc. GST` : `${money(product.list_price)} each`}{factor > 1 ? ` · ${factor}/pack` : ""}</span>
                     </span>
                     <span className="shrink-0 text-[16px] text-black">${lineTotal.whole}.{lineTotal.cents}</span>
                     <div className="flex items-center gap-1">
@@ -655,11 +699,11 @@ export function OdooRegisterPage() {
                 )}
               </div>
             )}
-            <div className="flex h-[93px]">
+            <div className="flex h-[112px]">
               <div className={cn("flex flex-1 flex-col justify-center p-2", lines.length ? "text-black" : summaryMuted)}>
                 <p className="text-[16px] leading-[19px]">{quantity} {quantity === 1 ? "Product" : "Products"}</p>
-                <p className="text-[16px] leading-[19px]">Savings: $0.00</p>
-                <p className="text-[16px] leading-[19px]">Discount: $0.00</p>
+                <p className="text-[12px] leading-[16px]">Subtotal {money(subtotal)}</p>
+                <p className="text-[12px] leading-[16px]">GST {quoteLoading ? "calculating…" : money(taxTotal)}</p>
                 {amountToCollect !== total && <p className="text-[13px] leading-[16px]">Rounding {money(amountToCollect - total)}</p>}
               </div>
               <div className={cn("flex flex-1 flex-col items-center justify-center p-2 text-center", lines.length ? "text-black" : summaryMuted)}>
@@ -679,7 +723,7 @@ export function OdooRegisterPage() {
                 canFinalise ? "cursor-pointer bg-[var(--sf-cta)] hover:bg-[var(--sf-cta-hover)]" : "cursor-not-allowed bg-[#bdbdbd]",
               )}
             >
-              {busy ? "Processing…" : !selectedConfig?.session ? "No session" : "Finalise"}
+              {busy ? "Processing…" : quoteLoading ? "Calculating…" : !selectedConfig?.session ? "No session" : "Finalise"}
             </button>
           </div>
         </section>

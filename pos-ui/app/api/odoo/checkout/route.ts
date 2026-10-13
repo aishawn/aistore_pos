@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
       : customer?.id ?? false;
     const lineCommands: unknown[] = [];
     const receiptLines: { name: string; quantity: number; subtotal: number; total: number; packFactor?: number }[] = [];
-    let subtotal = 0;
+    let taxTotal = 0;
     let total = 0;
 
     for (const inputLine of body.lines) {
@@ -402,16 +402,16 @@ export async function POST(request: NextRequest) {
         ? await rpc<TaxTotals>(odooSession, "account.tax", "compute_all", [
           taxIds,
           discountedUnitPrice,
-          config.currency_id && Array.isArray(config.currency_id) ? config.currency_id[0] : undefined,
+          null,
           effectiveQty,
-          product.id,
-          partnerId,
+          false,
+          false,
         ])
         : { total_excluded: discountedUnitPrice * effectiveQty, total_included: discountedUnitPrice * effectiveQty };
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) {
         throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
       }
-      subtotal += totals.total_excluded;
+      taxTotal += totals.total_included - totals.total_excluded;
       total += totals.total_included;
       const label = packFactor !== 1
         ? `${product.name} (${packFactor} ${Array.isArray(product.uom_id) ? product.uom_id[1] : "units"}/pack × ${inputLine.quantity})`
@@ -436,7 +436,7 @@ export async function POST(request: NextRequest) {
       }]);
     }
 
-    subtotal = Math.round(subtotal * 100) / 100;
+    taxTotal = Math.round(taxTotal * 100) / 100;
     total = Math.round(total * 100) / 100;
     if (cashRounding && (!config.only_round_cash_method || paymentMethod.is_cash_count)) {
       total = roundCashTotal(total, cashRounding);
@@ -472,7 +472,7 @@ export async function POST(request: NextRequest) {
     const order: Record<string, unknown> = {
       amount_paid: isRefund ? paymentAmount : roundedTender,
       amount_return: change,
-      amount_tax: Math.round((total - subtotal) * 100) / 100,
+      amount_tax: taxTotal,
       amount_total: total,
       date_order: date,
       fiscal_position_id: fiscalPositionId || false,

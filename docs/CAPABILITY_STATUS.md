@@ -18,7 +18,7 @@ Statuses:
 |---|---|---|
 | Open sell screen (Odoo products / scan / cart) | Accepted | `/` → `OdooRegisterPage`. 2026-10-13: session `orithos_store1/00003` open; demo wines searchable with stock; add-to-cart + pack sizes OK. Checkout not exercised on production (no approved test sale). |
 | Park / resume sale (terminal localStorage) | Accepted | Park + discard confirmed on production terminal; not server-synced |
-| Checkout with GST + cash rounding | In progress | Uses Odoo tax + register rounding. Production test was rejected before order creation because checkout requested unsupported Odoo 20 field `product.product.uom_po_id`; working-tree fix removes the unused field. Redeploy and repeat Card/Cash UAT before accepting. |
+| Checkout with GST + cash rounding | In progress | Odoo 20 compatibility fix removed unsupported `uom_po_id` and avoids passing integer IDs where `account.tax.compute_all` requires optional recordsets. A server-side cart quote now calculates GST-inclusive due before payment; production quote/UI and Card/Cash UAT still need deployment and verification. Pricelist-backed pricing is blocked safely pending a supported Odoo price-resolution path. |
 | Pricelist rules & customer pricelist | Accepted | Checkout calls Odoo `_get_product_price`; FX mismatch still blocked |
 | Bottle / case pack factor | Accepted | Pack ×1/6/12/24 on cart lines (UI confirmed) |
 | Full-sale refund from history | In progress | Negative qty checkout + `refundOfOrderId`; live refund depends on successful checkout UAT |
@@ -76,6 +76,7 @@ Statuses:
 - Test session: `orithos_store1/00003` left **opened** for further checkout UAT.
 - Confirmed: search/categories, add line, pack factor UI, park/discard.
 - Not done on purpose: Finalise sale, refund, cash adjust, purchase confirm, close session.
+- A Card attempt after deployment failed before order creation with Odoo 20 `int` / `_origin` error during tax computation. Sales History remained empty; the DEMO stock stayed unchanged. The error was traced to passing IDs for optional Odoo recordset arguments. A server-side quote endpoint and corrected tax call are in the working tree; deploy and verify the quote is `$28.60` total (`$26.00` subtotal + `$2.60` GST) before retrying any sale.
 
 
 ## Store setup and account administration
