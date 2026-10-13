@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
 
 # Build
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn -q clean verify
+RUN --mount=type=cache,target=/root/.m2 mvn -B clean verify
 
 # ============================================
 # Stage 2: Run the JAR on a slim JRE
