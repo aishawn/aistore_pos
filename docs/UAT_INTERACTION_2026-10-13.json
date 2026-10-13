@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T13:05:47.660Z",
+  "generatedAt": "2026-10-13T13:28:12.005Z",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {

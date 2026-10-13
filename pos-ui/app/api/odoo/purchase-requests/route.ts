@@ -153,11 +153,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const { companyId } = await getSessionContext(sessionId);
-    const [suppliers, products, orderLineFields, orderFields] = await Promise.all([
+    const [suppliers, products, orderLineFields] = await Promise.all([
       callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[["id", "=", Number(supplierId)], ["supplier_rank", ">", 0]]], { fields: ["id", "name"], limit: 1 }),
-      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[ ["id", "in", Array.from(lineMap.keys())] ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId] } }),
+      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[["id", "in", Array.from(lineMap.keys())]]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId] } }),
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }),
-      callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order", "fields_get", [["notes"]], { attributes: ["type"] }),
     ]);
     const supplier = suppliers?.[0];
     if (!supplier) return NextResponse.json({ message: "This supplier is unavailable to your Odoo account" }, { status: 404 });
@@ -166,8 +165,6 @@ export async function POST(request: NextRequest) {
     if (!unitField) throw new OdooRequestError("Odoo did not expose a purchase unit field for RFQ lines.", 422);
 
     const productById = new Map((products ?? []).map((product) => [product.id, product]));
-    const noteField = Object.hasOwn(orderFields ?? {}, "notes") ? "notes" : null;
-    if (!noteField) throw new OdooRequestError("Odoo does not expose purchase notes, so the replenishment approval cannot be saved with this RFQ.", 422);
     const orderLines = Array.from(orderLineMap, ([productId, line]) => {
       const product = productById.get(productId);
       if (!product || product.purchase_ok !== true) throw new OdooRequestError("One or more selected products are not available for purchasing in Odoo.", 422);
@@ -179,22 +176,43 @@ export async function POST(request: NextRequest) {
         name: product.display_name || product.name || "Product",
       }];
     });
-    const notes = makeReplenishmentNotes(Number(coverageDays), String(method), Array.from(lineMap, ([productId, line]) => ({ productId, ...line })), products ?? []);
+    const approvalNote = makeReplenishmentNotes(Number(coverageDays), String(method), Array.from(lineMap, ([productId, line]) => ({ productId, ...line })), products ?? []);
     const orderId = await callOdoo<number>(sessionId, "purchase.order", "create", [{
       partner_id: Number(supplierId),
       company_id: companyId,
       order_line: orderLines,
-      [noteField]: notes,
     }], { context: { allowed_company_ids: [companyId], force_company: companyId } });
     if (!Number.isSafeInteger(orderId) || orderId < 1) throw new OdooRequestError("Odoo did not confirm the draft RFQ", 502);
 
-    const orders = await callOdoo<Array<{ id: number; name: string }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId]]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId] } });
+    let auditSaved = false;
+    const warnings: string[] = [];
+    try {
+      await callOdoo<number>(sessionId, "purchase.order", "message_post", [[orderId]], {
+        body: approvalNote,
+        message_type: "comment",
+        subtype_xmlid: "mail.mt_note",
+        partner_ids: [],
+      });
+      auditSaved = true;
+    } catch {
+      warnings.push("The internal approval audit could not be saved. Do not retry; open this RFQ in Odoo and check its chatter.");
+    }
+
+    let orderName = `RFQ #${orderId}`;
+    try {
+      const orders = await callOdoo<Array<{ id: number; name: string }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId]]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId] } });
+      orderName = orders?.[0]?.name ?? orderName;
+    } catch {
+      warnings.push("The draft was created. Open it in Odoo to review its reference and internal approval record; do not retry creation.");
+    }
     const baseUrl = odooBaseUrl();
     return NextResponse.json({
       id: orderId,
-      name: orders?.[0]?.name ?? `RFQ #${orderId}`,
+      name: orderName,
       supplier: supplier.name,
       url: `${baseUrl}/web#id=${orderId}&model=purchase.order&view_type=form`,
+      auditSaved,
+      ...(warnings.length ? { warning: warnings.join(" ") } : {}),
     }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return jsonError(error);

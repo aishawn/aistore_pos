@@ -36,7 +36,7 @@ try {
   await page.route("**/api/odoo/purchase-requests", async (route) => {
     if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ suppliers: [{ id: 77, name: "UAT Supplier (mock)", email: "uat@example.invalid" }] }) });
     submittedAudit = route.request().postDataJSON();
-    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ id: 887766, name: "UAT-RFQ-MOCK-002", supplier: "UAT Supplier (mock)", url: "https://odoo.orithos.com.au/web#id=887766&model=purchase.order&view_type=form" }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ id: 887766, name: "UAT-RFQ-MOCK-002", supplier: "UAT Supplier (mock)", url: "https://odoo.orithos.com.au/web#id=887766&model=purchase.order&view_type=form", auditSaved: true }) });
   });
 
   await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -48,6 +48,7 @@ try {
   await dialog.getByLabel("Order quantity").nth(1).fill("0");
   await dialog.getByRole("button", { name: "Create draft RFQ" }).click();
   await page.getByText("UAT-RFQ-MOCK-002", { exact: true }).first().waitFor({ timeout: 10000 });
+  await page.getByText("Internal approval audit saved to Odoo chatter.", { exact: false }).waitFor({ timeout: 10000 });
 
   if (!submittedAudit || submittedAudit.supplierId !== 77 || submittedAudit.coverageDays !== 21 || submittedAudit.method !== "rules_v1_weighted_velocity") throw new Error(`Approval snapshot metadata was not submitted: ${JSON.stringify(submittedAudit)}`);
   const [line] = submittedAudit.lines ?? [];

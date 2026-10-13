@@ -66,7 +66,8 @@ export function OdooReplenishmentPage() {
   }, []);
 
   const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store" });
@@ -203,7 +204,7 @@ export function OdooReplenishmentPage() {
 
       {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history/odoo" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2">Review Odoo sales history</Link></div>}
 
-      {createdRfq && <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950"><span><strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed.</span><a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">Open in Odoo <ExternalLink size={14} /></a></div>}
+      {createdRfq && <div role={createdRfq.auditSaved ? "status" : "alert"} className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm ${createdRfq.auditSaved ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-300 bg-amber-50 text-amber-950"}`}><span><strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed. {createdRfq.warning || (createdRfq.auditSaved ? "Internal approval audit saved to Odoo chatter." : "")}</span><a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">Open in Odoo <ExternalLink size={14} /></a></div>}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <SummaryCard title="Products to replenish" value={number.format(suggestedItems.length)} detail={`of ${number.format(data?.products.length ?? 0)} POS products`} />
@@ -256,7 +257,7 @@ export function OdooReplenishmentPage() {
       {auditEntries.length > 0 && (
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
           <h2 className="text-sm font-semibold text-[var(--oh-text)]">Recent draft RFQs</h2>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">The browser shows recent approvals from this device. Each RFQ now keeps the forecast method, coverage target, suggested and ordered quantities, and reasons in its Odoo purchase notes.</p>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">The browser shows recent approvals from this device. Each RFQ keeps the forecast method, coverage target, suggested and ordered quantities, and reasons in an internal Odoo chatter note.</p>
           <ul className="mt-3 divide-y divide-[var(--oh-border)]">
             {auditEntries.slice(0, 8).map((entry) => {
               const edited = entry.lines.filter((line) => Math.abs(line.orderedQuantity - line.suggestedQuantity) > 0.001).length;

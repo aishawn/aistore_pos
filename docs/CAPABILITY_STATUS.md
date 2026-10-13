@@ -36,7 +36,7 @@ Statuses:
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
-| Replenishment approval audit | In progress | RFQ creation now stores forecast method, cover target, suggested/ordered quantities and reasons in Odoo purchase notes; zeroed suggestions remain in the audit but are excluded from PO lines. Live Odoo RFQ acceptance is pending a safe vendor/sample |
+| Replenishment approval audit | In progress | RFQ creation now stores forecast method, cover target, suggested/ordered quantities and reasons as an internal Odoo chatter note (not supplier-facing terms); zeroed suggestions remain in the audit but are excluded from PO lines. Live Odoo RFQ acceptance is pending a safe vendor/sample |
 | Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; Classic MySQL save is **blocked** — use Odoo Purchases / Replenishment |
 | Banner / buyer-group price files | Planned | |
 

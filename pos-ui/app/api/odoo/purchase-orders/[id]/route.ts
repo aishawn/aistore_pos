@@ -78,7 +78,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const availableOrderFields = ["picking_ids", "receipt_status"].filter((field) => Object.hasOwn(orderFields ?? {}, field));
     const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "purchase.order", "search_read", [[
       ["id", "=", purchaseId], ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "partner_id", "date_order", "date_planned", "state", "amount_untaxed", "amount_tax", "amount_total", "currency_id", "company_id", "user_id", "origin", "notes", "order_line", ...availableOrderFields], limit: 1, context: { allowed_company_ids: companyIds } });
+    ]], { fields: ["id", "name", "partner_id", "date_order", "date_planned", "state", "amount_untaxed", "amount_tax", "amount_total", "currency_id", "company_id", "user_id", "origin", "message_ids", "order_line", ...availableOrderFields], limit: 1, context: { allowed_company_ids: companyIds } });
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Purchase order not found or you do not have access to it." }, { status: 404 });
     const orderLineIds = Array.isArray(order.order_line) ? order.order_line.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
@@ -109,6 +109,19 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         receiptsAvailable = false;
       }
     }
+    const messageIds = Array.isArray(order.message_ids) ? order.message_ids.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
+    let approvalAuditAvailable = true;
+    let approvalAudits: Array<{ id: number; date: string; body: string; author_id: [number, string] | false }> = [];
+    if (messageIds.length) {
+      try {
+        approvalAudits = await rpc<Array<{ id: number; date: string; body: string; author_id: [number, string] | false }>>(sessionId, "mail.message", "search_read", [[
+          ["id", "in", messageIds], ["subtype_id.internal", "=", true], ["body", "ilike", "Orithos replenishment approval audit v1"],
+        ]], { fields: ["id", "date", "body", "author_id"], limit: 10, order: "date desc, id desc", context: { allowed_company_ids: companyIds } }) ?? [];
+      } catch (error) {
+        if (!(error instanceof PurchaseOrderError) || error.status !== 403) throw error;
+        approvalAuditAvailable = false;
+      }
+    }
     const baseUrl = odooBaseUrl();
     return NextResponse.json({
       order,
@@ -118,6 +131,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         url: `${baseUrl}/web#id=${receipt.id}&model=stock.picking&view_type=form`,
       })),
       receiptsAvailable,
+      approvalAudits,
+      approvalAuditAvailable,
       url: `${baseUrl}/web#id=${purchaseId}&model=purchase.order&view_type=form`,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

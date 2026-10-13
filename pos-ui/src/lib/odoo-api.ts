@@ -107,7 +107,6 @@ export interface OdooPurchaseOrderDetail {
     amount_tax: number;
     user_id: [number, string] | false;
     origin: string | false;
-    notes: string | false;
   };
   lines: Array<{
     id: number;
@@ -134,6 +133,8 @@ export interface OdooPurchaseOrderDetail {
     url: string;
   }>;
   receiptsAvailable: boolean;
+  approvalAudits: Array<{ id: number; date: string; body: string; author_id: [number, string] | false }>;
+  approvalAuditAvailable: boolean;
   url: string;
 }
 
@@ -535,6 +536,8 @@ export interface OdooDraftRfq {
   name: string;
   supplier: string;
   url: string;
+  auditSaved: boolean;
+  warning?: string;
 }
 
 export async function createOdooDraftRfq(input: {
@@ -551,7 +554,7 @@ export async function createOdooDraftRfq(input: {
     body: JSON.stringify(input),
   });
   const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
-  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string") {
+  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string" || typeof payload.auditSaved !== "boolean") {
     throw new OdooApiError(payload?.message || `Draft RFQ creation failed (${response.status})`, response.status || 502);
   }
   return payload;
