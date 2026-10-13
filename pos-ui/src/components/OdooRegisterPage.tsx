@@ -657,13 +657,20 @@ export function OdooRegisterPage() {
                 const factor = packFactor || 1;
                 const quotedLine = quoteIsCurrent ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor) : undefined;
                 const lineTotal = splitMoney(quotedLine?.total ?? product.list_price * qty * factor);
+                const unitPriceLabel = quotedLine
+                  ? factor > 1
+                    ? `${money(quotedLine.total / qty)} per case inc. GST · ${factor} bottles/case`
+                    : `${money(quotedLine.total / qty)} each inc. GST`
+                  : factor > 1
+                    ? `${money(product.list_price * factor)} per case · ${factor}/pack`
+                    : `${money(product.list_price)} each`;
                 return (
                 <div key={`${product.id}-${factor}`} className="flex flex-col gap-1.5 border-b border-[#eee] px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="w-6 shrink-0 text-[16px] text-black">{qty}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[16px] text-black">{product.display_name || product.name}</span>
-                        <span className="text-[13px] text-[var(--sf-muted)]">{quotedLine ? `${money(quotedLine.total / qty)} each inc. GST` : `${money(product.list_price)} each`}{factor > 1 ? ` · ${factor}/pack` : ""}</span>
+                        <span className="text-[13px] text-[var(--sf-muted)]">{unitPriceLabel}</span>
                     </span>
                     <span className="shrink-0 text-[16px] text-black">${lineTotal.whole}.{lineTotal.cents}</span>
                     <div className="flex items-center gap-1">
