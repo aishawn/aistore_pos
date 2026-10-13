@@ -136,7 +136,12 @@ export function OdooReplenishmentPage() {
     setRfqSubmitting(true);
     setRfqError(null);
     try {
-      const result = await createOdooDraftRfq(supplierId, selectedRfqLines.map(({ productId, quantity }) => ({ productId, quantity })));
+      const result = await createOdooDraftRfq({
+        supplierId,
+        coverageDays,
+        method: data?.products.find((product) => product.method)?.method ?? "rules_v1_weighted_velocity",
+        lines: rfqLines.map(({ productId, quantity, suggestedQuantity, reason }) => ({ productId, quantity, suggestedQuantity, reason })),
+      });
       const supplier = rfqSuppliers.find((item) => item.id === supplierId);
       const audit = appendReplenishmentAudit({
         company: data?.company ?? "Current company",
@@ -146,7 +151,7 @@ export function OdooReplenishmentPage() {
         supplierName: supplier?.name ?? result.supplier,
         rfqName: result.name,
         rfqUrl: result.url,
-        lines: selectedRfqLines.map((line) => ({
+        lines: rfqLines.map((line) => ({
           productId: line.productId,
           name: line.name,
           suggestedQuantity: line.suggestedQuantity,
@@ -250,8 +255,8 @@ export function OdooReplenishmentPage() {
 
       {auditEntries.length > 0 && (
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-          <h2 className="text-sm font-semibold text-[var(--oh-text)]">Approval audit (this browser)</h2>
-          <p className="mt-1 text-xs text-[var(--oh-muted)]">Each draft RFQ records suggested vs ordered quantities for pilot metrics (adoption and edit rate). Not synced to Odoo yet.</p>
+          <h2 className="text-sm font-semibold text-[var(--oh-text)]">Recent draft RFQs</h2>
+          <p className="mt-1 text-xs text-[var(--oh-muted)]">The browser shows recent approvals from this device. Each RFQ now keeps the forecast method, coverage target, suggested and ordered quantities, and reasons in its Odoo purchase notes.</p>
           <ul className="mt-3 divide-y divide-[var(--oh-border)]">
             {auditEntries.slice(0, 8).map((entry) => {
               const edited = entry.lines.filter((line) => Math.abs(line.orderedQuantity - line.suggestedQuantity) > 0.001).length;

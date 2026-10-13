@@ -537,13 +537,18 @@ export interface OdooDraftRfq {
   url: string;
 }
 
-export async function createOdooDraftRfq(supplierId: number, lines: Array<{ productId: number; quantity: number }>): Promise<OdooDraftRfq> {
+export async function createOdooDraftRfq(input: {
+  supplierId: number;
+  coverageDays: number;
+  method: string;
+  lines: Array<{ productId: number; quantity: number; suggestedQuantity: number; reason: string }>;
+}): Promise<OdooDraftRfq> {
   const response = await fetchOdooApi("/api/odoo/purchase-requests", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     cache: "no-store",
-    body: JSON.stringify({ supplierId, lines }),
+    body: JSON.stringify(input),
   });
   const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
   if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string") {

@@ -35,7 +35,7 @@ try {
     order_line: [1],
   };
   const detail = {
-    order: { ...order, date_planned: "2026-10-20 10:00:00", receipt_status: "pending", amount_untaxed: 52, amount_tax: 5.2, user_id: [1, "UAT"], origin: "MOCK ONLY", notes: false },
+    order: { ...order, date_planned: "2026-10-20 10:00:00", receipt_status: "pending", amount_untaxed: 52, amount_tax: 5.2, user_id: [1, "UAT"], origin: "MOCK ONLY", notes: "<p><strong>Orithos replenishment approval audit v1</strong></p><p>Forecast method: rules_v1_weighted_velocity · Target coverage: 21 days.</p><table><tr><td>Suggested</td><td>9</td><td>7</td></tr></table>" },
     lines: [{ id: 1, product_id: [51, "DEMO Sauvignon Blanc"], name: "DEMO Sauvignon Blanc", product_qty: 2, product_uom: [1, "Units"], price_unit: 26, price_subtotal: 52, qty_received: 0, date_planned: "2026-10-20 10:00:00" }],
     receipts: [],
     receiptsAvailable: true,
@@ -52,6 +52,8 @@ try {
   const detailDialog = page.getByRole("dialog", { name: "UAT-RFQ-MOCK-001" });
   await detailDialog.waitFor({ timeout: 15000 });
   await detailDialog.getByText("No incoming receipts are linked yet. Confirm the purchase order in Odoo to start the receiving workflow.").waitFor({ timeout: 10000 });
+  await detailDialog.getByText("Orithos replenishment approval audit v1", { exact: false }).waitFor({ timeout: 10000 });
+  await detailDialog.getByText("Forecast method: rules_v1_weighted_velocity · Target coverage: 21 days.", { exact: true }).waitFor({ timeout: 10000 });
   await detailDialog.getByRole("button", { name: "Confirm purchase order" }).click();
   const confirmDialog = page.getByRole("alertdialog", { name: "Confirm this purchase order?" });
   await confirmDialog.waitFor({ timeout: 10000 });

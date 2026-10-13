@@ -68,6 +68,26 @@ function relationName(value: [number, string] | false | undefined) {
   return Array.isArray(value) ? value[1] : "";
 }
 
+function noteText(value: string | false | undefined) {
+  if (!value) return "";
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div|li|tr|h[1-6])\s*>/gi, "\n")
+    .replace(/<\/(?:td|th)\s*>/gi, " · ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (match, value: string) => Number(value) <= 0x10ffff ? String.fromCodePoint(Number(value)) : match)
+    .replace(/&#x([\da-f]+);/gi, (match, value: string) => Number.parseInt(value, 16) <= 0x10ffff ? String.fromCodePoint(Number.parseInt(value, 16)) : match)
+    .replace(/[\t ]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function OdooPurchaseOrdersPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooPurchaseOrderRecord[]>([]);
@@ -218,6 +238,7 @@ export function OdooPurchaseOrdersPage() {
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 md:px-6">
               <div className="overflow-auto rounded-lg border border-[var(--oh-border)]"><table className="w-full min-w-[680px] border-collapse text-left text-sm"><thead className="bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-3 py-2.5">Product</th><th className="px-3 py-2.5 text-right">Quantity</th><th className="px-3 py-2.5 text-right">Received</th><th className="px-3 py-2.5 text-right">Unit price</th><th className="px-3 py-2.5 text-right">Subtotal</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{detail.lines.map((line) => { const unit = relationName(line.product_uom) || relationName(line.product_uom_id); return <tr key={line.id}><td className="px-3 py-3"><span className="block font-medium text-[var(--oh-text)]">{relationName(line.product_id) || line.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Expected {formatDate(line.date_planned)}</span></td><td className="px-3 py-3 text-right tabular-nums">{line.product_qty} {unit}</td><td className="px-3 py-3 text-right tabular-nums">{line.qty_received}</td><td className="px-3 py-3 text-right tabular-nums">{formatMoney(line.price_unit, detail.order.currency_id)}</td><td className="px-3 py-3 text-right font-medium tabular-nums">{formatMoney(line.price_subtotal, detail.order.currency_id)}</td></tr>; })}{!detail.lines.length && <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--oh-muted)]">This RFQ has no product lines.</td></tr>}</tbody></table></div>
               <dl className="ml-auto grid max-w-sm grid-cols-2 gap-x-8 gap-y-2 text-sm"><dt className="text-[var(--oh-muted)]">Untaxed</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{formatMoney(detail.order.amount_untaxed, detail.order.currency_id)}</dd><dt className="text-[var(--oh-muted)]">Tax</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{formatMoney(detail.order.amount_tax, detail.order.currency_id)}</dd><dt className="font-semibold text-[var(--oh-text)]">Total</dt><dd className="text-right font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(detail.order.amount_total, detail.order.currency_id)}</dd></dl>
+              {noteText(detail.order.notes) && <section aria-labelledby="purchase-notes-title" className="rounded-lg border border-[var(--oh-border)] px-4 py-3"><h3 id="purchase-notes-title" className="text-sm font-semibold text-[var(--oh-text)]">Purchase notes and approval record</h3><p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--oh-text-secondary)]">{noteText(detail.order.notes)}</p></section>}
               <section aria-labelledby="receipt-list-title" className="rounded-lg border border-[var(--oh-border)]">
                 <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3">
                   <div><h3 id="receipt-list-title" className="text-sm font-semibold text-[var(--oh-text)]">Incoming receipts</h3><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Receipt status and quantities are managed in Odoo Inventory.</p></div>

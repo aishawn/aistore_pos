@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
 const MAX_LINES = 100;
+const COVERAGE_DAYS = new Set([7, 14, 21, 28, 42]);
+const REPLENISHMENT_METHOD = "rules_v1_weighted_velocity";
 
 type OdooError = { message?: string; data?: { message?: string; name?: string } };
 
@@ -70,6 +72,21 @@ function jsonError(error: unknown) {
   return response;
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ?? character);
+}
+
+function makeReplenishmentNotes(coverageDays: number, method: string, lines: Array<{ productId: number; quantity: number; suggestedQuantity: number; reason: string }>, products: Array<{ id: number; name?: string; display_name?: string }>) {
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const rows = lines.map((line) => {
+    const product = productById.get(line.productId);
+    const name = escapeHtml(product?.display_name || product?.name || `Product ${line.productId}`);
+    const reason = escapeHtml(line.reason.slice(0, 500) || "No explanation supplied.");
+    return `<tr><td>${name}</td><td>${line.suggestedQuantity}</td><td>${line.quantity}</td><td>${reason}</td></tr>`;
+  }).join("");
+  return `<p><strong>Orithos replenishment approval audit v1</strong></p><p>Forecast method: ${escapeHtml(method)} · Target coverage: ${coverageDays} days. These quantities were reviewed by a person before this RFQ was created; this record does not confirm or send the order.</p><table><thead><tr><th>Product</th><th>Suggested</th><th>Ordered</th><th>Reason</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
@@ -102,56 +119,72 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ message: "Invalid RFQ request" }, { status: 400 });
   }
-  if (Object.keys(body).some((key) => !["supplierId", "lines"].includes(key))) {
+  if (Object.keys(body).some((key) => !["supplierId", "coverageDays", "method", "lines"].includes(key))) {
     return NextResponse.json({ message: "This RFQ request contains unsupported fields" }, { status: 400 });
   }
   const supplierId = body.supplierId;
+  const coverageDays = body.coverageDays;
+  const method = body.method;
   const lines = body.lines;
   if (!Number.isSafeInteger(supplierId) || Number(supplierId) < 1) return NextResponse.json({ message: "Choose a valid supplier" }, { status: 400 });
+  if (!Number.isSafeInteger(coverageDays) || !COVERAGE_DAYS.has(Number(coverageDays)) || method !== REPLENISHMENT_METHOD) return NextResponse.json({ message: "Refresh the replenishment plan before creating this RFQ" }, { status: 400 });
   if (!Array.isArray(lines) || lines.length < 1 || lines.length > MAX_LINES) return NextResponse.json({ message: `Choose between 1 and ${MAX_LINES} products` }, { status: 400 });
 
-  const lineMap = new Map<number, number>();
+  const lineMap = new Map<number, { quantity: number; suggestedQuantity: number; reason: string }>();
   for (const rawLine of lines) {
     if (!rawLine || typeof rawLine !== "object" || Array.isArray(rawLine)) return NextResponse.json({ message: "Invalid product line" }, { status: 400 });
     const line = rawLine as Record<string, unknown>;
-    if (Object.keys(line).some((key) => !["productId", "quantity"].includes(key))) return NextResponse.json({ message: "RFQ lines contain unsupported fields" }, { status: 400 });
+    if (Object.keys(line).some((key) => !["productId", "quantity", "suggestedQuantity", "reason"].includes(key))) return NextResponse.json({ message: "RFQ lines contain unsupported fields" }, { status: 400 });
     const productId = line.productId;
     const quantity = line.quantity;
-    if (!Number.isSafeInteger(productId) || Number(productId) < 1 || typeof quantity !== "number" || !Number.isFinite(quantity) || quantity <= 0 || quantity > 100_000) {
-      return NextResponse.json({ message: "Enter a valid positive quantity for each product" }, { status: 400 });
+    const suggestedQuantity = line.suggestedQuantity;
+    const reason = line.reason;
+    if (!Number.isSafeInteger(productId) || Number(productId) < 1 || typeof quantity !== "number" || !Number.isFinite(quantity) || quantity < 0 || quantity > 100_000) {
+      return NextResponse.json({ message: "Enter a valid non-negative quantity for each product" }, { status: 400 });
+    }
+    if (!Number.isSafeInteger(suggestedQuantity) || Number(suggestedQuantity) < 0 || Number(suggestedQuantity) > 100_000 || typeof reason !== "string" || reason.length > 2000) {
+      return NextResponse.json({ message: "Refresh the replenishment plan before creating this RFQ" }, { status: 400 });
     }
     if (lineMap.has(Number(productId))) return NextResponse.json({ message: "A product can only appear once on an RFQ" }, { status: 400 });
-    lineMap.set(Number(productId), quantity);
+    lineMap.set(Number(productId), { quantity, suggestedQuantity: Number(suggestedQuantity), reason: reason.trim() });
   }
+  const orderLineMap = new Map(Array.from(lineMap).filter(([, line]) => line.quantity > 0));
+  if (!orderLineMap.size) return NextResponse.json({ message: "Keep at least one product with a quantity above zero" }, { status: 400 });
 
   try {
     const { companyId } = await getSessionContext(sessionId);
-    const [suppliers, products, orderLineFields] = await Promise.all([
+    const [suppliers, products, orderLineFields, orderFields] = await Promise.all([
       callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[["id", "=", Number(supplierId)], ["supplier_rank", ">", 0]]], { fields: ["id", "name"], limit: 1 }),
-      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[["id", "in", Array.from(lineMap.keys())], ["purchase_ok", "=", true]]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId] } }),
+      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[ ["id", "in", Array.from(lineMap.keys())] ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId] } }),
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }),
+      callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order", "fields_get", [["notes"]], { attributes: ["type"] }),
     ]);
     const supplier = suppliers?.[0];
     if (!supplier) return NextResponse.json({ message: "This supplier is unavailable to your Odoo account" }, { status: 404 });
-    if ((products?.length ?? 0) !== lineMap.size) return NextResponse.json({ message: "One or more selected products are not available for purchasing in Odoo" }, { status: 422 });
+    if ((products?.length ?? 0) !== lineMap.size) return NextResponse.json({ message: "One or more selected products are not available in Odoo" }, { status: 422 });
     const unitField = orderLineFields && Object.hasOwn(orderLineFields, "product_uom") ? "product_uom" : orderLineFields && Object.hasOwn(orderLineFields, "product_uom_id") ? "product_uom_id" : null;
     if (!unitField) throw new OdooRequestError("Odoo did not expose a purchase unit field for RFQ lines.", 422);
 
     const productById = new Map((products ?? []).map((product) => [product.id, product]));
-    const orderLines = Array.from(lineMap, ([productId, quantity]) => {
+    const noteField = Object.hasOwn(orderFields ?? {}, "notes") ? "notes" : null;
+    if (!noteField) throw new OdooRequestError("Odoo does not expose purchase notes, so the replenishment approval cannot be saved with this RFQ.", 422);
+    const orderLines = Array.from(orderLineMap, ([productId, line]) => {
       const product = productById.get(productId);
-      if (!product || !Array.isArray(product.uom_id)) throw new OdooRequestError("A selected product has no unit of measure configured.", 422);
+      if (!product || product.purchase_ok !== true) throw new OdooRequestError("One or more selected products are not available for purchasing in Odoo.", 422);
+      if (!Array.isArray(product.uom_id)) throw new OdooRequestError("A selected product has no unit of measure configured.", 422);
       return [0, 0, {
         product_id: productId,
-        product_qty: quantity,
+        product_qty: line.quantity,
         [unitField]: product.uom_id[0],
         name: product.display_name || product.name || "Product",
       }];
     });
+    const notes = makeReplenishmentNotes(Number(coverageDays), String(method), Array.from(lineMap, ([productId, line]) => ({ productId, ...line })), products ?? []);
     const orderId = await callOdoo<number>(sessionId, "purchase.order", "create", [{
       partner_id: Number(supplierId),
       company_id: companyId,
       order_line: orderLines,
+      [noteField]: notes,
     }], { context: { allowed_company_ids: [companyId], force_company: companyId } });
     if (!Number.isSafeInteger(orderId) || orderId < 1) throw new OdooRequestError("Odoo did not confirm the draft RFQ", 502);
 
