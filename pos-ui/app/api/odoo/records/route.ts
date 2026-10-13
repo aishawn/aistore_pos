@@ -161,7 +161,54 @@ export async function POST(request: NextRequest) {
       const status = /session|log in|authenticate/i.test(payload.error.message ?? "") ? 401 : 502;
       return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo could not load records" }, { status });
     }
-    return NextResponse.json({ items: payload.result ?? [], limit, offset }, { status: 200 });
+    let items = payload.result ?? [];
+    if (type === "posCategories") {
+      const productResponse = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: `session_id=${sessionId}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "call",
+          params: {
+            model: "product.product",
+            method: "search_read",
+            args: [[["available_in_pos", "=", true]]],
+            kwargs: { fields: ["pos_categ_ids"], limit: 5000, order: "id asc" },
+          },
+          id: Date.now(),
+        }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (!productResponse.ok) return NextResponse.json({ message: "Odoo product categories are unavailable" }, { status: 502 });
+      const productPayload = (await productResponse.json()) as {
+        result?: Array<{ pos_categ_ids?: unknown }>;
+        error?: { message?: string };
+      };
+      if (productPayload.error) {
+        const status = /session|log in|authenticate/i.test(productPayload.error.message ?? "") ? 401 : 502;
+        return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo product categories are unavailable" }, { status });
+      }
+
+      const products = productPayload.result ?? [];
+      // If the scan reaches its cap, keep the full category list rather than
+      // accidentally hiding categories that may belong to later products.
+      if (products.length < 5000) {
+        const usedCategoryIds = new Set(
+          products.flatMap((product) => Array.isArray(product.pos_categ_ids)
+            ? product.pos_categ_ids.filter((id): id is number => typeof id === "number")
+            : []),
+        );
+        items = items.filter((item) => {
+          if (!item || typeof item !== "object" || !("id" in item)) return false;
+          return usedCategoryIds.has(Number(item.id));
+        });
+      }
+    }
+    return NextResponse.json({ items, limit, offset }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
