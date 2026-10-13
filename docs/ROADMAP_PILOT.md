@@ -292,3 +292,10 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - 补货接口返回 2 款酒、56 天回看期、21 天目标覆盖期；每款已售数量 0、现货/预测库存 12、建议进货数量 0，原因明确说明没有已完成销售，未声称库存充足。
 - Odoo 设置数据集返回 11 个有效销售税，含 `10% GST`、`29% WET`；收银支付方式为 Card、Cash、Customer Account；门店/公司 1、收银配置 1。分类接口仍只返回 Red Wine 与 White Wine。
 - 此轮均为只读 GET/records 查询，已注销测试 Orithos 会话；没有写入销售、采购、客户、库存或设置。浏览器视觉/页面按钮交互仍未验收。
+
+### POS 商品搜索、分类筛选与登出边界验收（2026-10-13）
+
+- 生产登录态商品 records API 返回 2 款商品；关键词 `Sauvignon` 只返回 Adelaide Hills Sauvignon Blanc；Red Wine 分类只返回 Barossa Shiraz，White Wine 分类只返回 Sauvignon Blanc；分类接口只返回这两类。上述均为 HTTP 200。
+- 非法 `categoryId=0` 请求被校验为 HTTP 400。
+- Orithos 登出 HTTP 200 后，POS bootstrap、Odoo session、records 查询和只读 quote 接口均返回 HTTP 401，未登录无法继续读取业务数据或报价。
+- 测试只触发 Odoo 读取与报价，无销售、库存或班次写入。该结果验证搜索/过滤 API 与服务端会话保护；尚未覆盖浏览器中实际点击、焦点、键盘扫码与下拉选择的 UI 行为。
