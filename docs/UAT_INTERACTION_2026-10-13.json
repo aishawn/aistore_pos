@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T11:44:57.751Z",
+  "generatedAt": "2026-10-13T12:02:21.065Z",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {
@@ -30,7 +30,7 @@
     {
       "name": "Sales history searches and opens a refunded receipt",
       "status": "PASS",
-      "evidence": "Receipt search matched `260-1-000009`; detail opened and closed without a refund action."
+      "evidence": "Receipt search matched `260-1-000009`; detail identified the prior refund and hid the duplicate full-refund action."
     },
     {
       "name": "Replenishment coverage control refreshes the estimate",

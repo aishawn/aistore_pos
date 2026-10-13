@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T11:38:22.765Z",
+  "generatedAt": "2026-10-13T12:03:25.996Z",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -40,7 +40,7 @@
     {
       "path": "/stock/replenishment",
       "status": "PASS",
-      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin Account set"
+      "snippet": "orithos Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Replenishment Plan Scan Supplier Invoice Wine Assistant Find a Wine Identify Wine Label Setup ONLINE admin STOCK PLANN"
     },
     {
       "path": "/reports/dashboard",
