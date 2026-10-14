@@ -88,6 +88,17 @@ function noteText(value: string | false | undefined) {
     .trim();
 }
 
+function PurchaseOrdersEmptyState({ filtered, onReset }: { filtered: boolean; onReset: () => void }) {
+  return (
+    <div role="status" className="flex min-h-64 flex-col items-center justify-center px-5 py-12 text-center">
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileText size={20} aria-hidden="true" /></span>
+      <h3 className="mt-4 text-sm font-semibold text-[var(--oh-text)]">{filtered ? "No matching purchases" : "No purchase orders yet"}</h3>
+      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{filtered ? "Try a different search term or status." : "RFQs and purchase orders available to this Odoo account will appear here."}</p>
+      {filtered && <button type="button" onClick={onReset} className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button>}
+    </div>
+  );
+}
+
 export function OdooPurchaseOrdersPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooPurchaseOrderRecord[]>([]);
@@ -182,6 +193,15 @@ export function OdooPurchaseOrdersPage() {
     }
   }
 
+  function resetFilters() {
+    setQuery("");
+    setDebouncedQuery("");
+    setState("all");
+    setOffset(0);
+  }
+
+  const hasActiveFilters = Boolean(debouncedQuery) || state !== "all";
+
   if (connected === false && !loading) return (
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
@@ -215,7 +235,7 @@ export function OdooPurchaseOrdersPage() {
           <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-4 py-3">Reference</th><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Order date</th><th className="px-4 py-3 text-right">Lines</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
           <tbody className="divide-y divide-[var(--oh-border)]">
             {loading && !items.length ? <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading purchases…</span></td></tr>
-              : !items.length ? <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]">{debouncedQuery || state !== "all" ? "No purchase orders match these filters." : "No RFQs or purchase orders are available to this Odoo account."}</td></tr>
+              : !items.length ? <tr><td colSpan={7} className="p-0"><PurchaseOrdersEmptyState filtered={hasActiveFilters} onReset={resetFilters} /></td></tr>
                 : items.map((order) => <tr key={order.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                   <td className="px-4 py-3"><button type="button" onClick={() => void openDetail(order.id)} className="rounded font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">{order.name}</button><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{order.id}</span></td>
                   <td className="px-4 py-3 font-medium text-[var(--oh-text)]">{order.partner_id ? order.partner_id[1] : "No supplier"}</td>
@@ -231,7 +251,7 @@ export function OdooPurchaseOrdersPage() {
           {loading && !items.length ? (
             <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading purchases…</span></div>
           ) : !items.length ? (
-            <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{debouncedQuery || state !== "all" ? "No purchase orders match these filters." : "No RFQs or purchase orders are available to this Odoo account."}</div>
+            <PurchaseOrdersEmptyState filtered={hasActiveFilters} onReset={resetFilters} />
           ) : items.map((order) => (
             <article key={order.id} className="px-4 py-3.5">
               <header className="flex items-start justify-between gap-3">
@@ -249,7 +269,7 @@ export function OdooPurchaseOrdersPage() {
         </div>
       </section>
 
-      <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between"><span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span><nav aria-label="Purchase orders pagination" className="flex w-full items-center gap-2 sm:w-auto"><button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button><button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button></nav></footer>
+      {items.length > 0 && <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between"><span>Showing {offset + 1}–{offset + items.length}</span><nav aria-label="Purchase orders pagination" className="flex w-full items-center gap-2 sm:w-auto"><button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button><button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button></nav></footer>}
 
       {(detail || detailLoading || detailError) && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !confirming) closeDetail(); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="purchase-detail-title" className="my-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
