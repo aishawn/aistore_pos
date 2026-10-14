@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T04:53:17.920Z",
-  "sourceCommit": "72f3b4df8a1a4f201aebba8ed007d48431a60d46",
+  "generatedAt": "2026-10-14T05:51:29.839Z",
+  "sourceCommit": "f981aa70ceea38f447a5eedcc7d325327143db0d",
   "target": "https://app.orithos.com.au",
   "scope": "authenticated read-only production UI checks; no Odoo write",
   "status": "PASS",
@@ -18,6 +18,7 @@
     "/settings/loyalty: sample and unavailable states, no overflow at 390px",
     "/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at 390px",
     "/settings/surcharging: honest sample states and no checkout effect claim at 390px",
+    "/settings/statements: preview link, explicit disconnected preferences and no overflow at 390px",
     "/settings/payment: semantic Odoo table(s), source notice and no overflow at 1440px",
     "/settings/tax: semantic Odoo table(s), source notice and no overflow at 1440px",
     "/settings/registers-outlets: semantic Odoo table(s), source notice and no overflow at 1440px",
@@ -26,6 +27,7 @@
     "/settings/hardware: local device status and no overflow at 1440px",
     "/settings/loyalty: sample and unavailable states, no overflow at 1440px",
     "/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at 1440px",
-    "/settings/surcharging: honest sample states and no checkout effect claim at 1440px"
+    "/settings/surcharging: honest sample states and no checkout effect claim at 1440px",
+    "/settings/statements: preview link, explicit disconnected preferences and no overflow at 1440px"
   ]
 }

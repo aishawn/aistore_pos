@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T04:46:56.154Z",
-  "deployment": "03548b769cc8155bd85a83d31d6103a3df05e8da",
+  "generatedAt": "2026-10-14T05:55:12.996Z",
+  "deployment": "4811d6324664bfc9fd8aaf642c781c0274141057",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -32,6 +32,11 @@
       "path": "/customers/odoo",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Customers Customer records available to your Odoo "
+    },
+    {
+      "path": "/customers/balances",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Balances View customer balances, statements and payments 1 R"
     },
     {
       "path": "/suppliers/odoo",
@@ -107,6 +112,11 @@
       "path": "/settings/surcharging",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Surcharging Surcharge rule status for this POS Surcharge set"
+    },
+    {
+      "path": "/settings/statements",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Statements Customer statement previews and delivery status S"
     },
     {
       "path": "/settings/company/general",

@@ -8,9 +8,10 @@
 
 | 项目 | 当前状态 | 完成证据 |
 |---|---|---|
-| Git、origin、Dokploy SHA 一致 | **BLOCKED** | 当前 `HEAD`/`origin` 为 `74431c4`；需在 Dokploy 记录对应 Done 部署并确认工作区无未提交变更 |
-| 生产页面与安全回归 | PASS | 页面矩阵、30 页 × 2 视口布局、设置、交互、安全响应头和匿名访问 UAT JSON |
-| Odoo 会话自动恢复与登出拒绝 | PASS | `UAT_ODOO_AUTORECOVER_2026-10-13.json` |
+| Git、origin、Dokploy SHA 一致 | **BLOCKED** | `origin/main` 已含应用提交 `9520a74`；本地文档/UAT 汇总提交 `7cbc59b` 尚待推送。Dokploy 最近可核实 Done 为 `9b6e9c9`，`9520a74` 部署状态未知 |
+| 生产入口可用性 | **BLOCKED** | 该环境请求 `/login`、`/`、`/api/auth/me` 超时；浏览器 `/login` 同样超时。容器 frontend/backend running，MySQL/Redis healthy；Dokploy build log 显示 0 lines，根因未定 |
+| 生产页面与安全回归 | **STALE / BLOCKED** | 最近证据仅到 `4811d63`：32/32 路由、32 页 × 390/1440 布局 64/64；设置专项 20/20 对应 `f981aa7`。当前 `9b6e9c9` 的新一轮 26 项设置验收在登录阶段超时，尚未进入页面 |
+| Odoo 会话自动恢复与登出拒绝 | **STALE / BLOCKED** | 历史证据见 `UAT_ODOO_AUTORECOVER_2026-10-13.json`；生产入口当前不可达，无法确认 `9b6e9c9` 运行状态 |
 | 班次 `orithos_store1/00004` 整班对账 | **BLOCKED** | 需要只读导出销售/退款/支付流水并与 Odoo 对账 |
 | 现金实点与班次关账 | **BLOCKED** | 店主实点现金、确认差异后，记录关账结果和新班次状态 |
 | 真实采购、审批、收货、库存增加 | **BLOCKED** | 需要隔离测试供应商或测试库；fixture 不计入此项 |
@@ -31,4 +32,4 @@
 
 ## 放行规则
 
-只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。
+只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。当前 Git 与 Dokploy SHA 不一致、生产入口可用性未通过，因此不得放行；先解决生产超时，再评审本地领先提交和 UAT 变更，部署后以新的精确 SHA 重新执行页面回归。

@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-10-14T04:23:56.864Z",
-  "deployment": "19bc60b",
-  "pagesChecked": 30,
+  "generatedAt": "2026-10-14T05:57:40.075Z",
+  "deployment": "4811d63",
+  "pagesChecked": 32,
   "viewportWidths": [
     390,
     1440
   ],
-  "checks": 60,
-  "passed": 60,
+  "checks": 64,
+  "passed": 64,
   "failed": 0,
   "results": [
     {
@@ -16,7 +16,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": null,
+      "heading": "18px",
       "status": "PASS"
     },
     {
@@ -62,6 +62,15 @@
       "document": 390,
       "body": 390,
       "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/customers/balances",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "36px",
       "status": "PASS"
     },
     {
@@ -193,6 +202,15 @@
     {
       "width": 390,
       "route": "/settings/surcharging",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/statements",
       "viewport": 390,
       "document": 390,
       "body": 390,
@@ -336,6 +354,15 @@
     },
     {
       "width": 1440,
+      "route": "/customers/balances",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
       "route": "/suppliers/odoo",
       "viewport": 1440,
       "document": 1440,
@@ -463,6 +490,15 @@
     {
       "width": 1440,
       "route": "/settings/surcharging",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/statements",
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
