@@ -16,10 +16,16 @@ export function OutletSettingsScaffold({
   subSectionTitle,
   activeHref,
   children,
+  showOutletSelector = true,
+  showSearch = true,
+  showSave = true,
 }: {
   subSectionTitle: string;
   activeHref: string;
   children: React.ReactNode;
+  showOutletSelector?: boolean;
+  showSearch?: boolean;
+  showSave?: boolean;
 }) {
   const tabs = COMPANY_SETTINGS_TABS.map((tab) => ({
     label: tab.label,
@@ -38,10 +44,12 @@ export function OutletSettingsScaffold({
       title="General Settings"
       sectionTitle="Outlets"
       subSectionTitle={subSectionTitle}
+      showSearch={showSearch}
+      showSave={showSave}
       tabs={tabs}
       subTabs={subTabs}
     >
-      <SelectRow label="Outlet" value="Main Outlet" />
+      {showOutletSelector && <SelectRow label="Outlet" value="Main Outlet" />}
       {children}
     </SettingsScaffold>
   );
