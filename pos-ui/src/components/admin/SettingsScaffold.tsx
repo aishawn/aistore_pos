@@ -237,7 +237,7 @@ export function SettingsScaffold({
       : undefined;
 
   return (
-    <div className="h-full overflow-auto bg-[var(--oh-surface)] p-6 font-sans">
+    <div className="h-full overflow-auto bg-[var(--oh-surface)] p-4 font-sans md:p-6">
       <div className="w-full">
         <h1 className="oh-type-display mb-4 text-[var(--oh-text)]">{title}</h1>
         <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
@@ -250,9 +250,9 @@ export function SettingsScaffold({
             </div>
           )}
           {tabs && tabs.length > 0 && (
-            <div className="flex border-b border-[var(--oh-border)]">
+            <nav aria-label="Settings sections" className="flex max-w-full overflow-x-auto border-b border-[var(--oh-border)]">
               {tabs.map((t) => {
-                const className = `flex flex-1 items-center justify-center gap-2 py-3 text-[16px] ${
+                const className = `flex min-w-max items-center justify-center gap-2 whitespace-nowrap px-4 py-3 text-sm sm:min-w-0 sm:flex-1 sm:text-base ${
                   t.active ? "border-b-2 border-[var(--oh-primary)] text-[var(--oh-primary)]" : "text-[var(--oh-text)]"
                 }`;
                 return t.href ? (
@@ -265,12 +265,12 @@ export function SettingsScaffold({
                   </span>
                 );
               })}
-            </div>
+            </nav>
           )}
           {subTabs && subTabs.length > 0 && (
-            <div className="flex flex-wrap gap-1 border-b border-[var(--oh-border)] px-4 py-2">
+            <nav aria-label="Settings subsections" className="flex max-w-full flex-nowrap gap-1 overflow-x-auto border-b border-[var(--oh-border)] px-4 py-2 lg:flex-wrap lg:overflow-visible">
               {subTabs.map((t) => {
-                const className = `rounded-md px-3 py-1.5 text-[14px] ${
+                const className = `shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm ${
                   t.active
                     ? "bg-[var(--oh-tile-blue-bg)] font-medium text-[var(--oh-primary)]"
                     : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
@@ -285,9 +285,9 @@ export function SettingsScaffold({
                   </span>
                 );
               })}
-            </div>
+            </nav>
           )}
-          <div className="px-6 py-5">
+          <div className="px-4 py-4 sm:px-6 sm:py-5">
             {resolvedSection && (
               <h2 className="mb-3 flex items-center gap-2 text-[24px] font-bold text-[var(--oh-text)]">
                 {sectionIcon}
@@ -302,10 +302,10 @@ export function SettingsScaffold({
             {children}
           </div>
           {showSave && (
-            <div className="flex justify-end border-t border-[var(--oh-border)] px-6 py-4">
-              <button
-                type="button"
-                className="inline-flex min-h-11 min-w-[160px] items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-8 py-3 text-[18px] font-medium text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              <div className="flex justify-end border-t border-[var(--oh-border)] px-4 py-3 sm:px-6 sm:py-4">
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-5 py-3 text-base font-medium text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:w-auto sm:min-w-[160px] sm:px-8 sm:text-lg"
               >
                 <SaveIcon size={20} /> Save
               </button>
