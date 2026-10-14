@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-14T11:56:13.705Z",
+  "testedApplicationCommit": "cdb0f8f",
+  "deployment": null,
+  "target": "https://app.orithos.com.au",
+  "scope": "supplier editor visual/responsive read-only UAT; save not clicked",
+  "results": [
+    {
+      "viewport": 390,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "overlayBackground": "oklab(0.128998 -0.0038857 -0.0418156 / 0.35)",
+      "headingColor": "rgb(31, 41, 55)",
+      "saveVisible": true,
+      "overlayHasLightScrim": true,
+      "saveBox": {
+        "x": 181,
+        "y": 814,
+        "width": 97,
+        "height": 47
+      },
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "overlayBackground": "oklab(0.128998 -0.0038857 -0.0418156 / 0.35)",
+      "headingColor": "rgb(31, 41, 55)",
+      "saveVisible": true,
+      "overlayHasLightScrim": true,
+      "saveBox": {
+        "x": 1189,
+        "y": 798,
+        "width": 97,
+        "height": 47
+      },
+      "status": "PASS"
+    }
+  ],
+  "pageErrors": [],
+  "mutatingApiRequests": [],
+  "passed": 2,
+  "failed": 0
+}
