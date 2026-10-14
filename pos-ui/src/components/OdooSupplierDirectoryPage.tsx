@@ -23,6 +23,7 @@ export function OdooSupplierDirectoryPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -59,9 +60,10 @@ export function OdooSupplierDirectoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE, offset });
+      const page = await searchOdooRecords<OdooSupplierRecord>("suppliers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset });
       if (revision !== requestRevision.current) return;
-      setItems(page.items);
+      setItems(page.items.slice(0, PAGE_SIZE));
+      setHasNext(page.items.length > PAGE_SIZE);
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
     } finally {
@@ -181,14 +183,14 @@ export function OdooSupplierDirectoryPage() {
             <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={items.length < PAGE_SIZE || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
+              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
             </div>
           </footer>
         </>
       )}
       {createOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !creating) setCreateOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="supplier-create-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
-          <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] p-4 sm:p-5"><div><h2 id="supplier-create-title" className="text-lg font-semibold text-[var(--oh-text)]">Add supplier to Odoo</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Use the distributor’s real business details. This creates a company contact in Odoo.</p></div><button type="button" onClick={() => setCreateOpen(false)} disabled={creating} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button></header>
+          <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] p-4 sm:p-5"><div><h2 id="supplier-create-title" className="text-lg font-semibold text-[var(--oh-text)]">Add supplier to Odoo</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Use the distributor’s real business details. This creates a company contact in Odoo.</p></div><button type="button" onClick={() => setCreateOpen(false)} disabled={creating} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button></header>
           <form onSubmit={(event) => void createSupplier(event)} className="grid gap-3 p-4 sm:gap-4 sm:p-5">
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Business name <span className="text-red-700">*</span></span><input required maxLength={120} autoFocus value={createForm.name} onChange={(event) => setCreateForm((form) => ({ ...form, name: event.target.value }))} className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100" /></label>
             <div className="grid gap-3 sm:grid-cols-2 sm:gap-4"><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Phone<input maxLength={32} type="tel" value={createForm.phone} onChange={(event) => setCreateForm((form) => ({ ...form, phone: event.target.value }))} className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100" /></label><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Email<input maxLength={254} type="email" value={createForm.email} onChange={(event) => setCreateForm((form) => ({ ...form, email: event.target.value }))} className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100" /></label></div>
