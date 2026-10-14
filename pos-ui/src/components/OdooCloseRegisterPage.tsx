@@ -162,7 +162,7 @@ export function OdooCloseRegisterPage() {
           </div>
         )}
 
-        {bootstrap?.configs.length ? (
+        {selected?.session ? (
           <>
             <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
               Counted cash {requiresCashCount ? "(required)" : "(optional)"}
@@ -175,7 +175,7 @@ export function OdooCloseRegisterPage() {
                 aria-describedby="counted-cash-help"
                 value={countedCash}
                 onChange={(event) => setCountedCash(event.target.value)}
-                placeholder={requiresCashCount ? "Enter the amount counted in the drawer (AUD)" : "Leave blank to skip cash count write-back"}
+                placeholder={requiresCashCount ? "Amount counted in AUD" : "Optional cash count"}
                 className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
               />
               <span id="counted-cash-help" className="text-xs font-normal leading-5 text-[var(--oh-muted)]">
@@ -197,7 +197,7 @@ export function OdooCloseRegisterPage() {
               className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? <LoaderCircle size={16} className="animate-spin" /> : null}
-              {busy ? "Closing…" : "Close register in Odoo"}
+              {busy ? "Closing…" : "Review before closing"}
             </button>
           </>
         ) : null}
@@ -235,7 +235,7 @@ export function OdooCloseRegisterPage() {
                 type="button"
                 onClick={() => void handleClose()}
                 disabled={busy}
-                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-danger)] px-4 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-danger)] disabled:opacity-50 sm:w-auto"
               >
                 {busy && <LoaderCircle size={16} className="animate-spin" />}
                 {busy ? "Closing…" : "Confirm close"}
