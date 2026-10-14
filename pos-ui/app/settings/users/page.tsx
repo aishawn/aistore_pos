@@ -284,7 +284,7 @@ export default function UsersSettingsPage() {
             </div>
           )}
 
-          <div className="mt-5 overflow-x-auto border-t border-[var(--oh-border)]">
+          <div className="mt-5 border-t border-[var(--oh-border)]">
             {loading && !data ? (
               <p className="py-8 text-center text-sm text-[var(--oh-muted)]">Loading users…</p>
             ) : error ? (
@@ -292,47 +292,99 @@ export default function UsersSettingsPage() {
             ) : users.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No users yet. Invite the first teammate above.</p>
             ) : (
-              <table className="mt-2 w-full min-w-[640px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
-                    <th className="px-2 py-3 font-semibold">Name</th>
-                    <th className="px-2 py-3 font-semibold">Username</th>
-                    <th className="px-2 py-3 font-semibold">Email</th>
-                    <th className="px-2 py-3 font-semibold">Role</th>
-                    <th className="px-2 py-3 font-semibold">Status</th>
-                    <th className="px-2 py-3 font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((staff) => (
-                    <tr key={String(staff.id)} className="border-b border-[var(--oh-border)]/70">
-                      <td className="px-2 py-3 font-medium text-[var(--oh-text)]">
-                        {staff.name}
-                        {staffIsAdmin(staff) ? <span className="ml-2 rounded bg-[var(--oh-tile-blue-bg)] px-1.5 py-0.5 text-[13px] font-bold uppercase text-[var(--oh-primary)]">Admin</span> : null}
-                      </td>
-                      <td className="px-2 py-3 text-[var(--oh-text-secondary)]">{staff.username}</td>
-                      <td className="px-2 py-3 break-all text-[var(--oh-text-secondary)]">{staff.email || "—"}</td>
-                      <td className="px-2 py-3 text-[var(--oh-text-secondary)]">
-                        {staffIsAdmin(staff) ? "Administrator" : roles.find((role) => String(role.id) === String(staff.roleId ?? ""))?.name || "No role"}
-                      </td>
-                      <td className="px-2 py-3 text-[var(--oh-muted)]">
-                        {staff.pendingPasswordReset ? "Must set password" : "Active"}
-                      </td>
-                      <td className="px-2 py-3">
+              <>
+                <ul className="mt-4 grid gap-3 xl:hidden">
+                  {users.map((staff) => {
+                    const admin = staffIsAdmin(staff);
+                    const roleName = admin
+                      ? "Administrator"
+                      : roles.find((role) => String(role.id) === String(staff.roleId ?? ""))?.name || "No role";
+                    const busy = actionBusyId === String(staff.id);
+
+                    return (
+                      <li key={String(staff.id)} className="rounded-lg border border-[var(--oh-border)] bg-white p-4">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{staff.name || staff.username}</h3>
+                            <p className="mt-0.5 break-all text-xs text-[var(--oh-muted)]">@{staff.username}</p>
+                          </div>
+                          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${staff.pendingPasswordReset ? "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200" : "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200"}`}>
+                            {staff.pendingPasswordReset ? "Set password" : "Active"}
+                          </span>
+                        </div>
+
+                        <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-[var(--oh-border)] pt-3 text-sm">
+                          <div className="min-w-0">
+                            <dt className="text-xs font-medium text-[var(--oh-muted)]">Email</dt>
+                            <dd className="mt-0.5 break-all text-[var(--oh-text-secondary)]">{staff.email || "—"}</dd>
+                          </div>
+                          <div className="min-w-0">
+                            <dt className="text-xs font-medium text-[var(--oh-muted)]">Role</dt>
+                            <dd className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[var(--oh-text-secondary)]">
+                              {roleName}
+                              {admin && <span className="rounded bg-[var(--oh-tile-blue-bg)] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[var(--oh-primary)]">Admin</span>}
+                            </dd>
+                          </div>
+                        </dl>
+
                         <button
                           type="button"
-                          disabled={actionBusyId === String(staff.id)}
+                          disabled={busy}
                           onClick={() => void issueReset(staff.id)}
-                          className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-xs font-semibold hover:bg-[var(--oh-surface)] disabled:opacity-60"
+                          className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60"
                         >
-                          {actionBusyId === String(staff.id) ? <LoaderCircle size={14} className="animate-spin" /> : <KeyRound size={14} />}
-                          Reset link
+                          {busy ? <LoaderCircle size={15} className="animate-spin" /> : <KeyRound size={15} />}
+                          {busy ? "Creating reset link…" : "Create reset link"}
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="mt-2 hidden overflow-x-auto xl:block">
+                  <table className="w-full min-w-[820px] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
+                        <th scope="col" className="px-2 py-3 font-semibold">Name</th>
+                        <th scope="col" className="px-2 py-3 font-semibold">Username</th>
+                        <th scope="col" className="px-2 py-3 font-semibold">Email</th>
+                        <th scope="col" className="px-2 py-3 font-semibold">Role</th>
+                        <th scope="col" className="px-2 py-3 font-semibold">Status</th>
+                        <th scope="col" className="px-2 py-3 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((staff) => (
+                        <tr key={String(staff.id)} className="border-b border-[var(--oh-border)]/70 last:border-0 hover:bg-[var(--oh-surface)]/60">
+                          <th scope="row" className="px-2 py-3 font-medium text-[var(--oh-text)]">
+                            {staff.name || staff.username}
+                            {staffIsAdmin(staff) ? <span className="ml-2 rounded bg-[var(--oh-tile-blue-bg)] px-1.5 py-0.5 text-[11px] font-bold uppercase text-[var(--oh-primary)]">Admin</span> : null}
+                          </th>
+                          <td className="px-2 py-3 text-[var(--oh-text-secondary)]">{staff.username}</td>
+                          <td className="max-w-[220px] break-all px-2 py-3 text-[var(--oh-text-secondary)]">{staff.email || "—"}</td>
+                          <td className="px-2 py-3 text-[var(--oh-text-secondary)]">
+                            {staffIsAdmin(staff) ? "Administrator" : roles.find((role) => String(role.id) === String(staff.roleId ?? ""))?.name || "No role"}
+                          </td>
+                          <td className="px-2 py-3 text-[var(--oh-muted)]">
+                            {staff.pendingPasswordReset ? "Must set password" : "Active"}
+                          </td>
+                          <td className="px-2 py-3">
+                            <button
+                              type="button"
+                              disabled={actionBusyId === String(staff.id)}
+                              onClick={() => void issueReset(staff.id)}
+                              className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-xs font-semibold hover:bg-[var(--oh-surface)] disabled:opacity-60"
+                            >
+                              {actionBusyId === String(staff.id) ? <LoaderCircle size={14} className="animate-spin" /> : <KeyRound size={14} />}
+                              Reset link
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </section>
