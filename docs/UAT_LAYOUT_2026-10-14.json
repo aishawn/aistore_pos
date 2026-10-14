@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-13T17:53:14.124Z",
-  "deployment": "1982ea8",
+  "generatedAt": "2026-10-14T00:15:41.970Z",
+  "deployment": "bf811ae",
   "pagesChecked": 25,
   "viewportWidths": [
     390,
@@ -205,7 +205,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": "22px",
+      "heading": "20px",
       "status": "PASS"
     },
     {
@@ -214,7 +214,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": "22px",
+      "heading": "20px",
       "status": "PASS"
     },
     {
@@ -223,7 +223,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": "22px",
+      "heading": "20px",
       "status": "PASS"
     },
     {
@@ -430,7 +430,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "26px",
+      "heading": "24px",
       "status": "PASS"
     },
     {
@@ -439,7 +439,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "26px",
+      "heading": "24px",
       "status": "PASS"
     },
     {
@@ -448,7 +448,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "26px",
+      "heading": "24px",
       "status": "PASS"
     },
     {

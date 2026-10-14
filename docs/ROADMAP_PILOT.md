@@ -4,35 +4,16 @@
 
 ## 最新执行进度（2026-10-14）
 
-> 以下为当前快照。文末更早的日记段落保留作历史；若冲突，以本段与 [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) 为准。
+> 本节为当前状态快照；后续更早日期的记录是历史日志，发生冲突时以本节和 [交接文档](HANDOFF_2026-10-13.md) 为准。
 
-- 工作区/GitHub `main` 最新为 `b40eb02`；Dokploy 部署列表当前最新可见 Done SHA 为 `319125d`，`b40eb02` 尚无部署记录。`319125d` 出现两条相同 SHA 的 Done 部署记录，重复触发问题仍待查明；`b40eb02` 的移动端导航与 Odoo 401 恢复顺序改动暂不能视为生产功能。
-- 在 `319125d` 上生产回归：页面矩阵 **25/25**，布局 **50/50**（25 路由 × 390px/1440px），报表只读 **2/2**；此前只读交互 **9 项**、运营只读 **3 项**、Odoo 自动恢复 **6 项**、酒款助手只读回归 **6 项**通过。报表显示退款与销售分列、净销售额扣除退款；具体证据见 `UAT_LAYOUT_2026-10-14.json`、`UAT_REPORTING_2026-10-14.json` 与其他 UAT JSON。
-- 最新 TypeScript 检查通过；ESLint 0 error、55 warnings。warning 按关键业务模块逐步治理。Node 22 低于项目要求 Node 24，未在本机运行 production build。
-- Autodeploy 开关开启，GitHub branch=`main`、Watch Paths 为空；显式 hook `696888898` 已删除。当前需调查为什么 `319125d` 有两条 Done 记录而 `b40eb02` 没有部署记录。不要重新添加显式 hook；部署状态以 Dokploy SHA 为准。
-- 当前只读回归没有新建销售、退款、RFQ、收货或关班；页面矩阵角色临时 CRUD 测试完成后已删除。当前班次 `orithos_store1/00004` 仍 opened，DEMO 商品库存 12/12。AI 仍关闭；SMTP、真实打印机/钱箱、价目表和库存库位语义仍待配置/验收；生产没有供应商及 Draft RFQ。
-- `/overview` 页面矩阵曾记录两次 `/api/odoo/reporting-dashboard` 401，随后同一路由成功 200；页面加载成功，但不能假定 401 已消除。`b40eb02` 调整只读请求的恢复顺序，部署后需核实。
-- 应用基线 `fe9b163` 提供角色权限分配、公司设置/Sale Keys 诚实状态页和试点侧栏清理；后续 `f2f16db` 增加角色列表权限摘要。应用提交 `17ef0f5` 加入现金实点 UI 保护，`3c2618e` 在 Odoo close API 再强制校验；`9460243` 移除 AI 报表账户源码弱默认密码并要求显式配置，Dokploy 已标记 **Done**。
-- 应用代码已部署 `5b5d48f`（Odoo 会话过期后只重试明确只读的 GET、商品/客户记录查询和购物车报价；checkout、RFQ、产品/客户写入、关账等写操作不自动重放）；Dokploy 记录 **Done**。生产通过 24/24 路由、8/8 一般交互、3/3 运营检查，以及会话失效后补货页与商品页恢复验收。
-- Odoo 自动恢复覆盖首个业务页请求和页面内续期：清除会话后直接访问补货页可自动恢复；商品页已加载后再次清会话，点 Refresh 后只读记录 POST 会恢复并重试，无需手动 Connect。6 项证据见 [UAT_ODOO_AUTORECOVER_2026-10-13.json](UAT_ODOO_AUTORECOVER_2026-10-13.json)。
-- 当前测试班次 `orithos_store1/00004` **opened**；两款 DEMO 酒 free/on-hand **12**（本轮浏览器销售后退款已回滚）。
-- 浏览器页面矩阵：试点侧栏路由已逐页验收，证据见 [UAT_PAGE_MATRIX_2026-10-13.json](UAT_PAGE_MATRIX_2026-10-13.json)。
-- 复跑修正：原唯一失败是验收正则没有匹配页面格式 `12Units`，并非商品数据缺失；改用 API 登录、等待商品目录 hydrate 后，24/24 路由通过。角色 API 创建/删除通过；上一轮遗留的 `Pilot Clerk 344840` 临时角色已删除并核对不存在。
-- 角色 UI 端到端复验（部署 `f2f16db`）：在 `/settings/roles` 创建临时角色、勾选 `AI Report Cost`，权限在列表中可见，随后从 UI 删除，结果通过且无残留。生产 Odoo 会话 DELETE 后 GET 自动恢复成功；Orithos 注销后匿名会话请求为 401。
-- 生产交互验收：8/8 只读检查通过。除商品、客户、CSV 预览、补货和报表交互外，退款收据 `260-1-000009` 明确显示已退款并隐藏重复全额退款按钮；没有执行任何业务写入。证据见 [UAT_INTERACTION_2026-10-13.json](UAT_INTERACTION_2026-10-13.json)。
-- 运营交互验收：集成页显示 Odoo 自动重连与当前班次；现金计数必填，关账 API 对缺少现金数的请求返回 422，并确认 `00004` 仍打开；采购状态筛选加载成功，当前无草稿 RFQ 并显示筛选空状态。未确认采购、未向 Odoo 发送关账写操作；证据见 [UAT_OPS_READONLY_2026-10-13.json](UAT_OPS_READONLY_2026-10-13.json)。
-- 浏览器交易 UAT（本轮）：Card 收据 `260-1-000009` `$28.60`；Cash 收据 `260-1-000010` `$38.39`；随后全额退款；库存恢复 12；证据 [UAT_WRITE_2026-10-13.json](UAT_WRITE_2026-10-13.json)。未关 `00004`（本轮净额为零）。
-- 设置诚实性：支付/税/门店只读 Odoo；收据/硬件/公司设置为未接通状态页；角色可勾选权限并创建/删除。
-- AI 保持关闭；报表只读账户不再有源码内置弱密码，启用报表隔离前必须配置 `AI_REPORT_RO_PASSWORD`。SMTP 仍未配置（邀请/重置走复制链接文案）。本机 JDK 8 低于项目要求的 Java 21，未能本地编译；须以 Dokploy 的 Java 21 构建结果作为部署门槛。
-- `8721a08` 修复报表授权使用旧 JWT 权限的问题：每次报表请求从当前启用员工的数据库角色计算权限，撤权立即在下一次请求生效。`ee0cb0b` 在 Dokploy **Done**；构建执行 113 项后端测试，全部通过（0 失败/错误/跳过）。因 AI 仍关闭，本次未调用生产报表或模型。
-- `9cba779` 增加 Odoo 供应商目录的新增流程：表单明确录入真实经销商，公司名称必填、邮件格式和长度校验、ABN 重复时阻止创建；成功后刷新列表并提供回到补货页的入口。Odoo `aipos` 只读 schema 确认字段可写，生产浏览器 UAT 对创建 API 做网络拦截，没有写入供应商；证据 `UAT_SUPPLIER_CREATE_MOCK_2026-10-13.json`。生产没有供应商/RFQ，仍需店主录入真实供货商后才能验收实时采购链路。
-- `9cba779` 后复跑生产回归：24/24 页面、8/8 一般交互、3/3 运营只读、6/6 自动恢复通过；角色 UI CRUD 通过并清理临时角色。补货审计、采购详情、供应商创建三项浏览器 mock 均通过，均拦截写请求，没有新增供应商/RFQ。班次 `orithos_store1/00004` 仍打开，两款 DEMO 商品库存 12/12。证据分别更新于 `UAT_PAGE_MATRIX_2026-10-13.json`、`UAT_INTERACTION_2026-10-13.json`、`UAT_OPS_READONLY_2026-10-13.json`、`UAT_ODOO_AUTORECOVER_2026-10-13.json` 和三个 mock UAT JSON。
-- 供应商 API 附加安全验收：authenticated cross-origin POST 返回 403；同源请求缺少 Odoo 会话返回 401，均在 payload 处理/写入前拒绝。无业务写入，脚本 `scripts/pilot-supplier-api-guard-uat.mjs`。
-- 最近部署 `ac6bd23` 由 Dokploy 标记 Done，且在 GitHub `main` push 后约一分钟自动出现；已确认 auto-deploy 本轮可用。Sommelier `4ac9c0d` 在该部署中已上线，生产 API 只读验收见 `UAT_SOMMELIER_2026-10-13.json`；全站页面矩阵 24/24 及角色临时 CRUD 清理通过，见 `UAT_PAGE_MATRIX_2026-10-13.json`。
-- 跟进库存/价格一致性：Sell 报价读取 Odoo `lst_price`，报价和结账库存边界读取 `free_qty`；Sommelier 原先取 `list_price` / `qty_available`。本轮改为优先使用 POS 的两个字段并加回归测试；须待 Java 21 `mvn clean verify` 及部署后只读复核。多仓库源库位上下文和动态价目表仍未验证。
-- 酒款助手可信度修复 `4ac9c0d` 已部署（Dokploy 部署头 `ac6bd23`，Done），线上只读验收见 `UAT_SOMMELIER_2026-10-13.json`：Odoo 已配置时空目录不回退旧 MySQL；Find 页面不再误称 AI；recommend、identify、wine detail、pitch、similar、ask 正常，匿名访问为 401。前端检查通过；Dockerfile 执行 Java 21 `mvn clean verify` 且部署 Done。GitHub `main` 自动部署已在 `ac6bd23` 上复核通过；Sommelier 的 POS 实际价目表及门店 free-stock 口径仍待验证。
-
-## 产品目标
+- GitHub `main` 当前为 `5944f4c`；最近确认 Dokploy Done 为 `bf811ae`（完整 SHA `bf811aea1116d6f7467c24fe18c3525c64470a9d`），包含 `1982ea8` Overview 响应式分析和 `0544ef8` 酒款助手浅色主题。`5944f4c` 增加收银/结账 AI 助手入口，尚待确认是否部署和专项验收。
+- 部署后生产只读回归：页面矩阵 **25/25**、交互 **10/10**、运营 **3/3**、Odoo 自动恢复 **6/6**、酒款助手 **6/6**、布局 **50/50**（25 路由 × 390px/1440px）、报表 **2/2** 通过。详见对应 `UAT_*.json`。
+- Overview 的首次 `GET /api/odoo/reporting-dashboard` 仍有 **401 后自动恢复重试 200**；页面最终正常加载，首个 401 原因待查。
+- Odoo 自动恢复已配置并通过清 Cookie 回归；班次 `orithos_store1/00004` 仍 opened，DEMO 库存 12/12。本轮没有新建销售、退款、RFQ、收货或关账。
+- 尚未完成：实点现金并关账；真实供应商/RFQ/收货验收；POS 价目表、GST 和门店库存位置口径核对；SMTP 与打印机/钱箱接入；AI 只读试点。AI 保持关闭。
+- Dokploy 曾对 `4b09d19` 与 `319125d` 出现重复 Done 行，根因未查明；最新 `bf811ae` 的部署已明确 Done。`5944f4c` 的收银 AI UX 改动已提交，但尚未确认生产部署；它不属于 `bf811ae` 的 UAT。
+- `npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。
+`npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。\n\n## 产品目标
 
 为澳洲独立酒类零售店提供简洁、可靠的 POS 和日常经营工作台：店员能快速完成收银，老板能掌握商品、库存、采购和销售，并逐步借助 AI 改善补货、定价和推荐。
 
@@ -113,7 +94,7 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - 补货审批审计正在从仅浏览器存储改为随 Odoo 草稿 RFQ 保存为**内部 chatter note**：包含预测方法、覆盖天数、每款建议量/实际数量/理由；将数量改为 0 的建议仍记入审计但不会出现在采购行。生产 schema 查询确认 `purchase.order.note` 是供应商可见的 Terms and Conditions，因此没有将内部预测信息写进该字段；改用 `message_post` 的 `mail.mt_note`。采购详情页只显示内部审核消息的纯文本。Schema 只读证据见 [UAT_ODOO_PURCHASE_AUDIT_SCHEMA_2026-10-13.json](UAT_ODOO_PURCHASE_AUDIT_SCHEMA_2026-10-13.json)。UI mock 已跑；真实 RFQ 创建、内部消息权限和读取仍需安全测试供应商。
 - 当前可继续自主完成的生产验收已基本收敛。剩余关账需要实点现金和班次最终核对；供应商/RFQ 需要店主提供或确认测试对象；AI 需要模型预算；SMTP、打印机和钱箱需要各自配置/设备。不要用模拟数据替代这些生产验收。
 
-### 产品目标指标（用于判断试点是否值得继续）
+#`npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。\n\n## 产品目标指标（用于判断试点是否值得继续）
 
 - 收银金额、GST、支付与 Odoo 对账差异为 **0**；测试单退款与库存回滚结果一致。
 - 登录到 Odoo 的正常操作无需反复手工 Connect；会话过期时恢复或明确报错，不显示旧数据冒充新数据。
