@@ -81,6 +81,9 @@ function latestReceipts(databasePath: string) {
   }
   let stage = "schema query";
   try {
+    // The archive volume is read-only and the container may not have a usable
+    // SQLite temp directory. Keep GROUP BY / ORDER BY work in memory.
+    db.exec("PRAGMA temp_store = MEMORY");
     const schemas = db.prepare("SELECT headers_json FROM records WHERE dataset = 'sales_receipts' GROUP BY headers_json").all() as Array<{ headers_json: string }>;
     const candidates: RawReceipt[] = [];
     for (const schema of schemas) {
