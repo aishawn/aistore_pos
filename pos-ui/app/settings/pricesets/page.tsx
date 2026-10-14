@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight, Layers3, Plus, Tag } from "lucide-react";
+import { ArrowRight, Layers3, LoaderCircle, Plus, Tag } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { EntityFormModal, type FormField } from "@/components/admin/EntityFormModal";
 import { api } from "@/lib/api";
@@ -75,13 +74,13 @@ export default function PriceSetsPage() {
     <AdminPageLayout
       title="Price Sets"
       subtitle="Organise reusable pricing groups and parent relationships"
-      count={priceSets.length}
+      count={loading || error ? undefined : priceSets.length}
       countLabel="Price sets"
       actions={
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
           <Plus size={17} aria-hidden="true" /> Add price set
         </button>
@@ -113,8 +112,22 @@ export default function PriceSetsPage() {
         </p>
       )}
 
-      <AsyncState loading={loading} error={error} empty={priceSets.length === 0} emptyText="No price sets yet. Add one to organise pricing groups.">
-        {priceSets.length > 0 && (
+      {loading ? (
+        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
+          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
+          Loading price sets…
+        </div>
+      ) : error ? (
+        <div role="alert" className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <p>{error}</p>
+          <button type="button" onClick={reload} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-amber-300 bg-white px-4 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Try again</button>
+        </div>
+      ) : priceSets.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center">
+          <h2 className="text-base font-semibold text-[var(--oh-text)]">No price sets yet</h2>
+          <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-[var(--oh-muted)]">Add a price set to organise related pricing groups.</p>
+        </div>
+      ) : (
           <>
             <div className="hidden overflow-hidden rounded-xl border border-[var(--oh-border)] md:block">
               <table className="w-full border-collapse text-left text-sm">
@@ -132,8 +145,8 @@ export default function PriceSetsPage() {
                       <td className="px-4 py-3.5 text-[var(--oh-muted)]">{parentName(item.parentId) ?? "Top level"}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <button type="button" onClick={() => setEditing(item)} className="rounded-md px-3 py-2 font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
-                          <button type="button" onClick={() => setDeleting(item)} className="rounded-md px-3 py-2 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
+                          <button type="button" onClick={() => setEditing(item)} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
+                          <button type="button" onClick={() => setDeleting(item)} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -155,15 +168,14 @@ export default function PriceSetsPage() {
                     </div>
                   </div>
                   <div className="mt-3 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-3">
-                    <button type="button" onClick={() => setEditing(item)} className="min-h-10 rounded-md px-3 text-sm font-medium text-[var(--oh-primary)] hover:bg-sky-50">Edit</button>
-                    <button type="button" onClick={() => setDeleting(item)} className="min-h-10 rounded-md px-3 text-sm font-medium text-rose-700 hover:bg-rose-50">Delete</button>
+                    <button type="button" onClick={() => setEditing(item)} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
+                    <button type="button" onClick={() => setDeleting(item)} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
                   </div>
                 </li>
               ))}
             </ul>
           </>
-        )}
-      </AsyncState>
+      )}
 
       {editing && (
         <EntityFormModal
