@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T12:54:01.456Z",
+  "generatedAt": "2026-10-14T13:00:45.270Z",
   "deployment": null,
-  "sourceCommit": "a97e7245e8ea04768a4c309a7a35f9007a67211a",
+  "sourceCommit": "da572e83f62a7f4539546f139ca5f8a5f991b323",
   "scope": "production read-only R2 mirror integration status, authentication and responsive UI; no sync trigger or Odoo business writes",
   "checks": [
     {
@@ -39,6 +39,7 @@
     "nextAttemptAt": null,
     "timezone": "Australia/Adelaide",
     "scheduleEnabled": false,
+    "workerScheduleEnabled": false,
     "snapshotId": "20261014T120340Z",
     "snapshot": {
       "syncedAt": "2026-10-14T22:33:56+10:30",
