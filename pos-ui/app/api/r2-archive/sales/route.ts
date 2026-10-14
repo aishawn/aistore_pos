@@ -63,7 +63,22 @@ function currentDatabase() {
 }
 
 function latestReceipts(databasePath: string) {
-  const db = new DatabaseSync(databasePath, { readOnly: true });
+  let db: DatabaseSync;
+  try {
+    db = new DatabaseSync(databasePath, { readOnly: true });
+  } catch (error) {
+    const file = fs.statSync(databasePath);
+    console.error("R2 SQLite open diagnostics", JSON.stringify({
+      mode: file.mode & 0o777,
+      fileUid: file.uid,
+      fileGid: file.gid,
+      processUid: process.getuid?.(),
+      processGid: process.getgid?.(),
+      processGroups: process.getgroups?.(),
+      openError: error instanceof Error ? error.message : "unknown error",
+    }));
+    throw error;
+  }
   try {
     const schemas = db.prepare("SELECT headers_json FROM records WHERE dataset = 'sales_receipts' GROUP BY headers_json").all() as Array<{ headers_json: string }>;
     const candidates: RawReceipt[] = [];
