@@ -840,17 +840,17 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-[#555e65]/95 p-4 font-sans md:p-6">
+    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-slate-950/40 p-2 font-sans sm:p-4 md:p-6">
       <div className="flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl">
         {/* Header */}
-        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4">
-          <h1 className="text-center text-[18px] font-semibold text-[var(--oh-muted)] md:text-[20px]">
+        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6 sm:py-4">
+          <h1 className="break-words px-10 text-center text-lg font-semibold leading-6 text-[var(--oh-text)] md:text-xl">
             {displayName}
           </h1>
           <button
             type="button"
             onClick={leavePage}
-            className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-1.5 text-[var(--oh-muted)] hover:text-[var(--oh-text)]"
+            className="absolute right-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-md text-[var(--oh-muted)] outline-none hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] sm:right-4"
             aria-label="Close"
           >
             <XIcon size={20} />
@@ -858,20 +858,21 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
         </div>
 
         {/* Body */}
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* Sidebar */}
-          <nav className="hidden w-[220px] shrink-0 overflow-y-auto border-r border-[var(--oh-border)] bg-[#eef3f8] md:block">
-            <ul className="py-2">
+          <nav aria-label="Customer form sections" className="max-w-full shrink-0 overflow-x-auto border-b border-[var(--oh-border)] bg-[var(--oh-surface)] md:w-[220px] md:overflow-x-hidden md:overflow-y-auto md:border-b-0 md:border-r">
+            <ul className="flex w-max gap-1 px-2 py-2 md:block md:w-auto md:gap-0 md:px-0">
               {SECTIONS.map(({ id, label, Icon }) => (
-                <li key={id}>
+                <li key={id} className="shrink-0 md:shrink">
                   <button
                     type="button"
                     onClick={() => scrollToSection(id)}
+                    aria-current={activeSection === id ? "location" : undefined}
                     className={cn(
-                      "flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium transition-colors",
+                      "flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:rounded-none md:px-4 md:py-2.5",
                       activeSection === id
-                        ? "bg-[#d4e4f4] text-[var(--oh-text)]"
-                        : "text-[var(--oh-text-secondary)] hover:bg-[#e4edf5] hover:text-[var(--oh-text)]",
+                        ? "bg-white text-[var(--oh-primary)] shadow-sm md:shadow-none"
+                        : "text-[var(--oh-text-secondary)] hover:bg-white hover:text-[var(--oh-text)]",
                     )}
                   >
                     <Icon size={16} strokeWidth={1.75} />
@@ -885,19 +886,19 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
           {/* Main content */}
           <div
             ref={scrollContainerRef}
-            className="min-h-0 flex-1 overflow-y-auto bg-[#555e65] px-4 py-5 md:px-6"
+            className="min-h-0 flex-1 overflow-y-auto bg-[var(--oh-surface)] px-3 py-4 sm:px-5 sm:py-5 md:px-6"
           >
             {isEdit && customerQuery.loading && !hydrated ? (
-              <div className="flex h-full min-h-[240px] items-center justify-center text-[15px] text-white/80">
+              <div className="flex h-full min-h-[240px] items-center justify-center text-[15px] text-[var(--oh-muted)]">
                 Loading customer…
               </div>
             ) : isEdit && customerQuery.error ? (
               <div className="mx-auto max-w-xl space-y-3 py-8 text-center">
-                <p className="text-[15px] text-red-200">{customerQuery.error}</p>
+                <p role="alert" className="text-[15px] text-[var(--oh-danger)]">{customerQuery.error}</p>
                 <button
                   type="button"
                   onClick={leavePage}
-                  className="text-[14px] font-medium text-white underline"
+                  className="inline-flex min-h-11 items-center rounded-md px-3 text-[14px] font-medium text-[var(--oh-primary)] underline outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                 >
                   Back to Customers
                 </button>
@@ -915,7 +916,6 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                 <label className="block">
                   <FormLabel required>First Name</FormLabel>
                   <input
-                    autoFocus
                     value={form.firstName}
                     onChange={(e) => set("firstName", e.target.value)}
                     maxLength={CUSTOMER_FIELD_LIMITS.firstName}
@@ -1197,19 +1197,19 @@ export function CreateCustomerPage({ customerId }: { customerId?: string } = {})
                 </label>
               </FormSection>
 
-              {error && <p className="text-[14px] text-red-200">{error}</p>}
             </div>
             )}
           </div>
         </div>
 
-        {/* Save button */}
-        <div className="pointer-events-none absolute bottom-6 right-6 md:bottom-8 md:right-8">
+        {/* Persistent form action */}
+        <div className="flex shrink-0 flex-col gap-2 border-t border-[var(--oh-border)] bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 md:px-6">
+          {error && <p role="alert" className="min-w-0 text-sm text-red-900 sm:flex-1">{error}</p>}
           <button
             type="button"
             onClick={save}
             disabled={busy || (isEdit && !hydrated)}
-            className="pointer-events-auto flex items-center gap-2 rounded-[var(--oh-radius)] bg-[#3aa0e3] px-5 py-3 text-[15px] font-semibold text-white shadow-lg transition-colors hover:bg-[#3493d4] disabled:opacity-60"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-5 py-2.5 text-[15px] font-semibold text-white outline-none transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
           >
             <SaveIcon size={18} />
             {busy ? "Saving…" : "Save"}
