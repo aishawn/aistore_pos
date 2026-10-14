@@ -17,6 +17,21 @@ interface OdooSupplierRecord {
   supplier_rank: number;
 }
 
+function SupplierEmptyState({ hasSearch, onClear, onAdd }: { hasSearch: boolean; onClear: () => void; onAdd: () => void }) {
+  return (
+    <div role="status" className="flex min-h-64 flex-col items-center justify-center px-5 py-12 text-center">
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><Store size={20} aria-hidden="true" /></span>
+      <h2 className="mt-4 text-sm font-semibold text-[var(--oh-text)]">{hasSearch ? "No suppliers found" : "No suppliers yet"}</h2>
+      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{hasSearch ? "Try a different name, phone, email or reference." : "Add a distributor to use it when preparing purchase requests."}</p>
+      {hasSearch ? (
+        <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear search</button>
+      ) : (
+        <button type="button" onClick={onAdd} className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Plus size={15} /> Add supplier</button>
+      )}
+    </div>
+  );
+}
+
 export function OdooSupplierDirectoryPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooSupplierRecord[]>([]);
@@ -99,6 +114,17 @@ export function OdooSupplierDirectoryPage() {
     }
   }
 
+  function openCreateSupplier() {
+    setCreateError(null);
+    setCreateOpen(true);
+  }
+
+  function clearSearch() {
+    setQuery("");
+    setDebouncedQuery("");
+    setOffset(0);
+  }
+
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -108,7 +134,7 @@ export function OdooSupplierDirectoryPage() {
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
           <Link href="/stock/replenishment" className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:px-3"><span className="sm:hidden">Replenish</span><span className="hidden sm:inline">Open replenishment</span></Link>
-          <button type="button" onClick={() => { setCreateError(null); setCreateOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><Plus size={16} /> Add supplier</button>
+          <button type="button" onClick={openCreateSupplier} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><Plus size={16} /> Add supplier</button>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={connected !== true || loading} aria-label="Refresh suppliers" title="Refresh suppliers" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:gap-2 sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
@@ -141,7 +167,7 @@ export function OdooSupplierDirectoryPage() {
                 {loading && items.length === 0 ? (
                   <tr><td colSpan={4} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading suppliers…</span></td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-16 text-center text-[var(--oh-muted)]">{debouncedQuery ? "No suppliers match this search." : <span className="mx-auto block max-w-md"><span className="block font-medium text-[var(--oh-text)]">No suppliers are available to this Odoo account.</span><span className="mt-1 block">Add a real wine distributor here, then return to replenishment to create a draft RFQ.</span></span>}</td></tr>
+                  <tr><td colSpan={4} className="p-0"><SupplierEmptyState hasSearch={Boolean(debouncedQuery)} onClear={clearSearch} onAdd={openCreateSupplier} /></td></tr>
                 ) : items.map((supplier) => (
                   <tr key={supplier.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3"><span className="flex items-center gap-2 font-medium text-[var(--oh-text)]"><Store size={16} className="text-[var(--oh-muted)]" />{supplier.name}</span><span className="ml-6 block text-xs text-[var(--oh-muted)]">Odoo #{supplier.id}</span></td>
@@ -160,7 +186,7 @@ export function OdooSupplierDirectoryPage() {
               {loading && items.length === 0 ? (
                 <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading suppliers…</span></div>
               ) : items.length === 0 ? (
-                <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{debouncedQuery ? "No suppliers match this search." : <span className="mx-auto block max-w-md"><span className="block font-medium text-[var(--oh-text)]">No suppliers are available to this Odoo account.</span><span className="mt-1 block">Add a real wine distributor here, then return to replenishment to create a draft RFQ.</span></span>}</div>
+                <SupplierEmptyState hasSearch={Boolean(debouncedQuery)} onClear={clearSearch} onAdd={openCreateSupplier} />
               ) : items.map((supplier) => (
                 <article key={supplier.id} className="px-4 py-3.5">
                   <header className="flex items-start justify-between gap-3">
@@ -179,13 +205,13 @@ export function OdooSupplierDirectoryPage() {
             </div>
           </section>
 
-          <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
+          {items.length > 0 && <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
+            <span>Showing {offset + 1}–{offset + items.length}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
               <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
             </div>
-          </footer>
+          </footer>}
         </>
       )}
       {createOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !creating) setCreateOpen(false); }}>
