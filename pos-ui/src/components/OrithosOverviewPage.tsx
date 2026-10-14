@@ -177,6 +177,7 @@ export function OrithosOverviewPage() {
   const hasAnalyticsData = hasTrendData || hasCategoryData;
   const trendData = data?.trend ?? [];
   const trendGranularity = data?.trendGranularity ?? "hour";
+  const trendLabelInterval = Math.max(1, Math.ceil(trendData.length / 6));
   const currency = data?.currency ?? "AUD";
   const donutGradient = useMemo(() => {
     if (!data?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
@@ -331,11 +332,20 @@ export function OrithosOverviewPage() {
                   {trendData.map((item, index) => {
                     const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
                     const label = formatSydney(item.label, trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+                    const showLabel = index === 0 || index === trendData.length - 1 || index % trendLabelInterval === 0;
                     return (
                       <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">
-                        <div className="oh-type-meta mb-0.5 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, currency)}</div>
-                        <div className="relative mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`} />
-                        <span className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{label}</span>
+                        <div aria-hidden="true" className="oh-type-meta mb-0.5 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, currency)}</div>
+                        <div
+                          role="img"
+                          aria-label={`${label}: ${formatMoney(item.revenue, currency)}, ${item.transactions} sales`}
+                          className="relative mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]"
+                          style={{ height: `${percent}%` }}
+                          title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`}
+                        />
+                        <span className="oh-type-meta mt-1 min-h-[1.25rem] truncate text-[var(--oh-muted)]" aria-hidden={!showLabel}>
+                          {showLabel ? label : ""}
+                        </span>
                       </div>
                     );
                   })}
