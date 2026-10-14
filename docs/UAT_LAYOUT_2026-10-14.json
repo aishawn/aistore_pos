@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-10-14T02:16:29.925Z",
-  "deployment": "e8d7252",
-  "pagesChecked": 26,
+  "generatedAt": "2026-10-14T04:23:56.864Z",
+  "deployment": "19bc60b",
+  "pagesChecked": 30,
   "viewportWidths": [
     390,
     1440
   ],
-  "checks": 52,
-  "passed": 52,
+  "checks": 60,
+  "passed": 60,
   "failed": 0,
   "results": [
     {
@@ -165,6 +165,42 @@
     },
     {
       "width": 390,
+      "route": "/settings/loyalty",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/barcodes",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/utilities/barcodes",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/settings/surcharging",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
       "route": "/settings/company/general",
       "viewport": 390,
       "document": 390,
@@ -250,7 +286,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "18px",
+      "heading": null,
       "status": "PASS"
     },
     {
@@ -391,6 +427,42 @@
     {
       "width": 1440,
       "route": "/settings/customerdisplay",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/loyalty",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/barcodes",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/utilities/barcodes",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/surcharging",
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
