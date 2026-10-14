@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/images/orithos-mark-icon.png", type: "image/png" }],
     shortcut: "/images/orithos-mark-icon.png",
-    apple: "/images/orithos-touch-icon.png",
+    apple: "/apple-icon.png",
   },
 };
 
