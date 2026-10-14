@@ -1,5 +1,6 @@
 {
-  "generatedAt": "2026-10-14T00:28:37.846Z",
+  "generatedAt": "2026-10-14T02:07:28.667Z",
+  "deployment": "b0b5260dd0ad03c2bbca3b84108c4acfa80c90c2",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {
@@ -15,12 +16,12 @@
     {
       "name": "Product search filters the Odoo catalogue",
       "status": "PASS",
-      "evidence": "Search `shiraz` returned Barossa Shiraz only."
+      "evidence": "At 390px the product cards replaced the wide table; search `shiraz` returned Barossa Shiraz only."
     },
     {
       "name": "Product edit dialog is prefilled from Odoo",
       "status": "PASS",
-      "evidence": "Barossa Shiraz edit dialog showed the Odoo sale price 34.90 and was closed without saving."
+      "evidence": "At 390px the edit dialog fit the viewport, showed the Odoo sale price 34.90, and was closed without saving."
     },
     {
       "name": "New product form blocks submission without a name",
@@ -35,7 +36,12 @@
     {
       "name": "Customer creation form is required-field guarded",
       "status": "PASS",
-      "evidence": "Customer name is required; an empty form fails browser validation and was not submitted."
+      "evidence": "At 390px the customer dialog fit the viewport; Customer name is required and the empty form was cancelled without submission."
+    },
+    {
+      "name": "Customer mobile card and edit dialog render from a read-only fixture",
+      "status": "PASS",
+      "evidence": "Mobile customer card showed Odoo fixture details and tap-to-call; edit dialog fit the viewport and was closed without saving."
     },
     {
       "name": "Sales history searches and opens a refunded receipt",
@@ -45,12 +51,12 @@
     {
       "name": "Replenishment coverage control refreshes the estimate",
       "status": "PASS",
-      "evidence": "Coverage changed to 7 days; no-sales state remains explicitly qualified."
+      "evidence": "At 390px, replenishment showed product cards without overflow (390px); coverage changed to 7 days; no-sales state remains explicitly qualified."
     },
     {
       "name": "Reporting period selector reloads Odoo dashboard",
       "status": "PASS",
-      "evidence": "Dashboard changed to the 24-hour Odoo reporting window."
+      "evidence": "At 390px the reporting dashboard has no horizontal overflow (390px); range changed to 24 hours, chart marks are accessible, and the AI assistant opens/closes."
     }
   ]
 }

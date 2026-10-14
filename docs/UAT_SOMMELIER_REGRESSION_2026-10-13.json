@@ -1,5 +1,6 @@
 {
-  "generatedAt": "2026-10-14T00:34:47.274Z",
+  "generatedAt": "2026-10-14T01:41:00.889Z",
+  "deployment": "05b880749a3728093ecfb849c7aff051cfc0924e",
   "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
   "checks": [
     {

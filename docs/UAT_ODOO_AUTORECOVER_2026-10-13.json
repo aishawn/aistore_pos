@@ -1,5 +1,6 @@
 {
-  "generatedAt": "2026-10-14T00:34:00.715Z",
+  "generatedAt": "2026-10-14T01:48:00.726Z",
+  "deployment": "a2afed416a14ea2c81591ec0aa28b37dc39a0bde",
   "scope": "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
   "checks": [
     {

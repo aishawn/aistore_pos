@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-14T01:43:23.556Z",
+  "deployment": "a2afed416a14ea2c81591ec0aa28b37dc39a0bde",
+  "status": "PASS",
+  "viewport": 390,
+  "fixture": "mock RFQ only; no Odoo write",
+  "checks": [
+    "mobile purchase list has no horizontal overflow",
+    "RFQ is displayed as a supplier card, not a wide table",
+    "mobile detail dialog fits viewport",
+    "purchase line uses mobile card instead of table",
+    "RFQ detail and line rendered",
+    "AUD total and tax rendered",
+    "internal approval chatter rendered as escaped plain text",
+    "empty incoming receipt state rendered",
+    "purchase confirmation requires a second dialog",
+    "confirmation dialog cancelled",
+    "no purchase confirmation POST observed"
+  ]
+}

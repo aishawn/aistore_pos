@@ -298,11 +298,16 @@ try {
     const range = page.locator("#dashboard-range");
     await range.waitFor({ timeout: 15000 });
     await page.getByRole("region", { name: "Sales summary" }).waitFor({ timeout: 30000 });
+    const updatedRange = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "24" && response.ok();
+    }, { timeout: 30000 });
+    await range.selectOption("24");
+    await updatedRange;
+    await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     if (dimensions.document > dimensions.viewport) throw new Error(`Mobile reporting dashboard overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
     if (!(await page.getByRole("img").count())) throw new Error("Reporting trend has no accessible chart marks");
-    await range.selectOption("24");
-    await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
     const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
     await launcher.waitFor({ timeout: 10000 });
     await launcher.click();

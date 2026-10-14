@@ -1,11 +1,12 @@
 {
-  "generatedAt": "2026-10-14T00:32:28.037Z",
+  "generatedAt": "2026-10-14T02:13:02.990Z",
+  "deployment": "e8d7252d5e6e9b6d44e61e8bac31a2673c9cf918",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
       "path": "/overview",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout My Company Good morning Sales and store activity from the la"
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout My Company Good afternoon Sales and store activity from the "
     },
     {
       "path": "/",
@@ -83,6 +84,11 @@
       "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Account se"
     },
     {
+      "path": "/settings/customerdisplay",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Customer Display Customer-facing screen status for this POS "
+    },
+    {
       "path": "/settings/company/general",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup Integrations Company Settings Users Roles & Permissions Registers & Outlets Payment Methods Tax Rates Receipts Hardware Account ONLINE admin Account se"
@@ -130,9 +136,29 @@
   ],
   "uiChecks": [
     {
+      "name": "Overview restores Odoo session before loading reports",
+      "status": "PASS",
+      "evidence": "The first reporting-dashboard request succeeded without a transient 401."
+    },
+    {
       "name": "Checkout AI entry and panel interaction",
       "status": "PASS",
       "evidence": "The header entry is excluded from the checkout keyboard-tab sequence; it opens and closes the assistant without submitting a prompt."
+    },
+    {
+      "name": "Products AI entry and panel interaction",
+      "status": "PASS",
+      "evidence": "The products header entry opens and closes the assistant without submitting a prompt."
+    },
+    {
+      "name": "Customers AI entry and panel interaction",
+      "status": "PASS",
+      "evidence": "The customers header entry opens and closes the assistant without submitting a prompt."
+    },
+    {
+      "name": "Reporting AI entry and panel interaction",
+      "status": "PASS",
+      "evidence": "The reporting header entry opens and closes the assistant without submitting a prompt."
     },
     {
       "name": "Overview mobile layout",
@@ -140,21 +166,8 @@
       "evidence": "390px viewport has no horizontal page overflow (390px content)."
     }
   ],
-  "unauthorizedResponses": [
-    {
-      "route": "/overview",
-      "method": "GET",
-      "path": "/api/odoo/reporting-dashboard",
-      "resourceType": "fetch"
-    }
-  ],
+  "unauthorizedResponses": [],
   "reportingResponses": [
-    {
-      "route": "/overview",
-      "method": "GET",
-      "status": 401,
-      "hours": "24"
-    },
     {
       "route": "/overview",
       "method": "GET",
@@ -175,6 +188,18 @@
     }
   ],
   "recoveryResponses": [
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
     {
       "route": null,
       "path": "/api/odoo/session",

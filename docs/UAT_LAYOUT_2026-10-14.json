@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-10-14T00:33:38.895Z",
-  "deployment": "2fe69d4",
-  "pagesChecked": 25,
+  "generatedAt": "2026-10-14T02:16:29.925Z",
+  "deployment": "e8d7252",
+  "pagesChecked": 26,
   "viewportWidths": [
     390,
     1440
   ],
-  "checks": 50,
-  "passed": 50,
+  "checks": 52,
+  "passed": 52,
   "failed": 0,
   "results": [
     {
@@ -156,6 +156,15 @@
     },
     {
       "width": 390,
+      "route": "/settings/customerdisplay",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
       "route": "/settings/company/general",
       "viewport": 390,
       "document": 390,
@@ -241,7 +250,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": null,
+      "heading": "18px",
       "status": "PASS"
     },
     {
@@ -373,6 +382,15 @@
     {
       "width": 1440,
       "route": "/settings/hardware",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/settings/customerdisplay",
       "viewport": 1440,
       "document": 1440,
       "body": 1440,

@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-10-14T01:41:17.521Z",
+  "deployment": "05b880749a3728093ecfb849c7aff051cfc0924e",
+  "status": "PASS",
+  "viewport": 390,
+  "fixture": "create API intercepted; no Odoo write",
+  "checks": [
+    "mobile supplier directory has no horizontal overflow",
+    "mobile card replaces wide supplier table",
+    "supplier create dialog fits mobile viewport",
+    "browser rejects malformed email before API",
+    "duplicate ABN response is shown and form remains editable",
+    "unique ABN and contact fields submit",
+    "created supplier fixture appears with tap-to-call and email links"
+  ]
+}
