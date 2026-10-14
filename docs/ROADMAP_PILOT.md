@@ -6,12 +6,12 @@
 
 > 本节为当前状态快照；后续更早日期的记录是历史日志，发生冲突时以本节和 [交接文档](HANDOFF_2026-10-13.md) 为准。
 
-- GitHub `main` 当前 HEAD 为 `f9f8f3c`（文档更新），最新应用代码为 `5944f4c`；最近确认 Dokploy Done 为 `bf811ae`（完整 SHA `bf811aea1116d6f7467c24fe18c3525c64470a9d`），包含 `1982ea8` Overview 响应式分析和 `0544ef8` 酒款助手浅色主题。`5944f4c` 增加收银/结账 AI 助手入口，尚待确认是否部署和专项验收。
+- GitHub `main` 当前 HEAD 为 `bf90d20`（文档更新），最新已提交应用代码为 `5944f4c`；最近确认 Dokploy Done 为 `bf811ae`（完整 SHA `bf811aea1116d6f7467c24fe18c3525c64470a9d`），包含 `1982ea8` Overview 响应式分析和 `0544ef8` 酒款助手浅色主题。`5944f4c` 增加收银/结账 AI 助手入口，尚待确认是否部署和专项验收。
 - 部署后生产只读回归：页面矩阵 **25/25**、交互 **10/10**、运营 **3/3**、Odoo 自动恢复 **6/6**、酒款助手 **6/6**、布局 **50/50**（25 路由 × 390px/1440px）、报表 **2/2** 通过。详见对应 `UAT_*.json`。
 - Overview 的首次 `GET /api/odoo/reporting-dashboard` 仍有 **401 后自动恢复重试 200**；页面最终正常加载，首个 401 原因待查。
 - Odoo 自动恢复已配置并通过清 Cookie 回归；班次 `orithos_store1/00004` 仍 opened，DEMO 库存 12/12。本轮没有新建销售、退款、RFQ、收货或关账。
 - 尚未完成：实点现金并关账；真实供应商/RFQ/收货验收；POS 价目表、GST 和门店库存位置口径核对；SMTP 与打印机/钱箱接入；AI 只读试点。AI 保持关闭。
-- Dokploy 曾对 `4b09d19` 与 `319125d` 出现重复 Done 行，根因未查明；最新 `bf811ae` 的部署已明确 Done。`5944f4c` 的收银 AI UX 改动已提交，但尚未确认生产部署；它不属于 `bf811ae` 的 UAT。
+- Dokploy 曾对 `4b09d19` 与 `319125d` 出现重复 Done 行，根因未查明；最新 `bf811ae` 的部署已明确 Done。`5944f4c` 的收银 AI UX 改动已提交，但尚未确认生产部署；它不属于 `bf811ae` 的 UAT。工作区另有销售历史移动端布局改动，尚未提交或部署。
 - `npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。
 ## 产品目标
 
