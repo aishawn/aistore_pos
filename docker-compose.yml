@@ -46,6 +46,11 @@ services:
       dockerfile: Dockerfile
     image: orithos-backend:latest
     restart: unless-stopped
+    # The R2 worker owns the shared archive volume as UID 10001 / GID 1001.
+    # Add the archive group so the admin API can create REQUEST_SYNC without
+    # making the snapshot world-writable.
+    group_add:
+      - "1001"
     depends_on:
       mysql:
         condition: service_healthy
