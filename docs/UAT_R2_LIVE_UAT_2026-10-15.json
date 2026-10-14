@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-10-15T00:02:46+08:00",
+  "deploymentSha": "67bd1b6387b88642b23055317736799d277420cf",
+  "snapshot": {
+    "databaseKey": "shopfront/shopfront.sqlite3",
+    "sizeBytes": 254558208,
+    "sha256": "2fc62e86c5f0fd1045a5c8f830c544dcc168b232bc384afd8d6eddcbd6625116",
+    "sqliteQuickCheck": "ok"
+  },
+  "catalogSync": {
+    "sourceProductCount": 4716,
+    "sourcePricedCount": 4572,
+    "sourcePriceMissingCount": 144,
+    "dryRunRemainingChanges": 0,
+    "readbackMismatches": 0,
+    "stockFieldsWritten": 0,
+    "result": "PASS"
+  },
+  "salesHistory": {
+    "unauthenticatedSameOrigin": {
+      "httpStatus": 403,
+      "result": "PASS"
+    },
+    "adminApi": {
+      "httpStatus": 200,
+      "snapshotSha256Matches": true,
+      "receiptCount": 16,
+      "newestReceipt": "#00046369",
+      "oldestReceipt": "#00046354",
+      "itemLineCount": 21,
+      "paymentEntryCount": 19,
+      "receiptLevelGstTotalAud": 46.41,
+      "result": "PASS"
+    },
+    "browser": {
+      "page": "/history/odoo",
+      "adminVisible": true,
+      "archiveLabel": "R2 · TEST",
+      "latestReceiptDetailOpened": true,
+      "latestReceiptLineItemsVisible": true,
+      "latestReceiptShowsGstAndPayment": true,
+      "latestReceiptNumber": "#00046369",
+      "latestReceiptGstAud": 5.09,
+      "latestReceiptTotalAud": 55.97,
+      "latestReceiptPaymentMethod": "EFTPOS NO CASHOUT",
+      "readOnlyAndExcludedFromOdooAccountingAndStock": true,
+      "result": "PASS"
+    }
+  },
+  "sideEffects": {
+    "r2SyncMode": "manual only; scheduled sync remains disabled",
+    "r2SalesReplayedAsOdooOrders": false,
+    "odooSalesOrRefundsCreated": false,
+    "stockWrittenByCatalogSync": false
+  },
+  "limitations": [
+    "R2 provides GST at receipt level, not per product line.",
+    "144 products have no source retail price; products without a verifiable price or supported tax mapping remain unavailable in POS pending owner/accountant review.",
+    "No product image/photo/URL field was found in the R2 SQLite schema reviewed for this import."
+  ]
+}
