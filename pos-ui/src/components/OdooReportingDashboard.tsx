@@ -11,6 +11,7 @@ type DashboardData = {
   to: string;
   company: string;
   currency: string;
+  timezone: string;
   trendGranularity: "hour" | "day";
   revenue: number;
   grossSales: number;
@@ -46,10 +47,18 @@ function formatMoney(value: number, currency: string) {
   }
 }
 
-function formatDate(value: string, options: Intl.DateTimeFormatOptions) {
+function formatDate(value: string, options: Intl.DateTimeFormatOptions, timezone: string) {
   const date = new Date(`${value.replace(" ", "T")}Z`);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", ...options }).format(date);
+  return new Intl.DateTimeFormat("en-AU", { timeZone: timezone, ...options }).format(date);
+}
+
+function formatGroupedDate(value: string, options: Intl.DateTimeFormatOptions) {
+  // Odoo groups dates in the supplied store timezone. Preserve that local wall time while formatting.
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(`${normalized}${normalized.length === 10 ? "T12:00:00Z" : "Z"}`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-AU", { timeZone: "UTC", ...options }).format(date);
 }
 
 export function OdooReportingDashboard() {
@@ -119,7 +128,7 @@ export function OdooReportingDashboard() {
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             Live sales totals from Odoo. For a lighter daily view, open{" "}
             <Link href="/overview" className="font-semibold text-[var(--oh-primary)] hover:underline">Overview</Link>.
-            {" "}All times shown in Sydney time.
+            {" "}Times use the store timezone ({data?.timezone ?? "Odoo company timezone"}).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -155,14 +164,14 @@ export function OdooReportingDashboard() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]">
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div><h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{ranges.find((item) => item.hours === rangeHours)?.label} · {data ? `${formatDate(data.from, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</p></div>
+            <div><h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{ranges.find((item) => item.hours === rangeHours)?.label} · {data ? `${formatDate(data.from, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone)} – ${formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone)}` : ""}</p></div>
           </div>
           {data?.trend.length ? (
             <>
             <div className="mt-6 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2 sm:gap-3">
               {data.trend.map((item, index) => {
                 const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
-                const label = formatDate(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+                const label = formatGroupedDate(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
                 return <div key={`${item.label}-${index}`} role="img" aria-label={`${label}: ${formatMoney(item.revenue, data.currency)}, ${item.transactions} sales`} tabIndex={0} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
                   <div className="oh-type-meta mb-1 w-full min-w-0 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
                   <div className="relative mx-auto w-full max-w-14 rounded-t bg-[var(--oh-orange)]/85 transition-colors group-hover:bg-[var(--oh-orange)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
@@ -171,8 +180,8 @@ export function OdooReportingDashboard() {
               })}
             </div>
             <div className="mt-2 flex justify-between gap-3 text-xs text-[var(--oh-muted)] sm:hidden" aria-hidden="true">
-              <span>{formatDate(data.trend[0].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
-              <span>{formatDate(data.trend[data.trend.length - 1].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
+              <span>{formatGroupedDate(data.trend[0].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
+              <span>{formatGroupedDate(data.trend[data.trend.length - 1].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
             </div>
             </>
           ) : <div className="grid h-48 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No sales in this period</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Open a register session and complete a sale to see the trend.</p><Link href="/" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link></div></div>}
@@ -186,7 +195,7 @@ export function OdooReportingDashboard() {
           <div>
             {data?.recentSales.length ? <ul className="divide-y divide-[var(--oh-border)]">
               {data.recentSales.map((sale) => <li key={sale.id} className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
-                <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.amount_total < 0 ? "Refund · " : "Sale · "}{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
+                <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.amount_total < 0 ? "Refund · " : "Sale · "}{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone)}</p></div>
                 <span className={`oh-type-body-strong shrink-0 tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>{formatMoney(sale.amount_total, data.currency)}</span>
               </li>)}
             </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
@@ -194,7 +203,7 @@ export function OdooReportingDashboard() {
         </section>
       </div>
 
-      <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
+      <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
     </main>
   );
 }

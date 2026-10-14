@@ -128,11 +128,11 @@ function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: 
   );
 }
 
-function formatOrderDate(value: string) {
+function formatOrderDate(value: string, timezone: string) {
   const date = new Date(`${value.replace(" ", "T")}Z`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Sydney",
+    timeZone: timezone,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -176,6 +176,7 @@ export function OdooSalesHistoryPage() {
   const [saleDetailLoading, setSaleDetailLoading] = useState(false);
   const [saleDetailError, setSaleDetailError] = useState<string | null>(null);
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
+  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [refundBusy, setRefundBusy] = useState(false);
   const [confirmingRefund, setConfirmingRefund] = useState(false);
   const [refundComplete, setRefundComplete] = useState(false);
@@ -204,7 +205,10 @@ export function OdooSalesHistoryPage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
-      if (pos) setBootstrap(pos);
+      if (pos) {
+        setBootstrap(pos);
+        setStoreTimezone(pos.configs.find((config) => config.session)?.timezone ?? pos.configs[0]?.timezone ?? "UTC");
+      }
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo sales.");
     } finally {
@@ -396,7 +400,7 @@ export function OdooSalesHistoryPage() {
                 ) : items.map((sale) => (
                   <tr key={sale.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold text-[var(--oh-orange-dark)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><FileText size={15} aria-hidden="true" />{sale.pos_reference || sale.name}</button></td>
-                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order)}</td>
+                    <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order, storeTimezone)}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
                     <td className="px-4 py-3"><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(sale.state)}`}>{stateLabel(sale.state)}</span></td>
@@ -431,7 +435,7 @@ export function OdooSalesHistoryPage() {
                     </span>
                   </span>
                   <span className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-[var(--oh-muted)]">
-                    <span>{formatOrderDate(sale.date_order)}</span>
+                    <span>{formatOrderDate(sale.date_order, storeTimezone)}</span>
                     <span className="max-w-[55%] truncate text-right">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</span>
                   </span>
                   <span className="mt-2 flex items-center justify-between gap-3">
@@ -464,7 +468,7 @@ export function OdooSalesHistoryPage() {
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-[var(--oh-muted)]">{saleDetail.company?.name || "Orithos POS"}</p>
             <h3 className="mt-2 text-xl font-bold tracking-tight text-[var(--oh-text)]">{saleDetail.order.pos_reference || saleDetail.order.name}</h3>
-            <p className="mt-1 text-sm text-[var(--oh-muted)]">{formatOrderDate(saleDetail.order.date_order)}</p>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">{formatOrderDate(saleDetail.order.date_order, saleDetail.company?.timezone ?? storeTimezone)}</p>
             <p className="mt-1 text-xs text-[var(--oh-muted)]">{saleDetail.order.session_id ? saleDetail.order.session_id[1] : "POS sale"} · {saleDetail.order.user_id ? saleDetail.order.user_id[1] : "Staff"}</p>
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">

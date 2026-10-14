@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -81,15 +82,20 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
           })
         : Promise.resolve([]),
       Array.isArray(order.company_id)
-        ? rpc<Array<{ id: number; name: string; currency_id: [number, string] | false }>>(sessionId, "res.company", "search_read", [[["id", "=", order.company_id[0]]]], { fields: ["id", "name", "currency_id"], limit: 1 })
+        ? rpc<Array<{ id: number; name: string; currency_id: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[["id", "=", order.company_id[0]]]], { fields: ["id", "name", "currency_id", "partner_id"], limit: 1 })
         : Promise.resolve([]),
     ]);
+
+    const company = companies?.[0] ?? null;
+    const partnerId = Array.isArray(company?.partner_id) ? company.partner_id[0] : null;
+    const partners = partnerId ? await rpc<Array<{ state_id?: [number, string] | false; country_id?: [number, string] | false }>>(sessionId, "res.partner", "search_read", [[["id", "=", partnerId]]], { fields: ["state_id", "country_id"], limit: 1 }) : [];
+    const timezone = getOdooCompanyTimezone(partners?.[0]?.country_id, partners?.[0]?.state_id);
 
     return NextResponse.json({
       order,
       lines: (lines ?? []).sort((left, right) => Number(left.id) - Number(right.id)),
       payments: payments ?? [],
-      company: companies?.[0] ?? null,
+      company: company ? { id: company.id, name: company.name, currency_id: company.currency_id, timezone } : null,
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SaleSessionExpiredError) {

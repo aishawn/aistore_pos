@@ -24,6 +24,7 @@ type OverviewData = {
   to: string;
   company: string;
   currency: string;
+  timezone: string;
   trendGranularity: "hour" | "day";
   revenue: number;
   grossSales?: number;
@@ -68,15 +69,17 @@ function formatMoney(value: number, currency: string) {
   }
 }
 
-function formatSydney(value: string, options: Intl.DateTimeFormatOptions) {
-  const date = new Date(`${value.replace(" ", "T")}Z`);
+function formatGroupedStoreTime(value: string, options: Intl.DateTimeFormatOptions) {
+  // Odoo returns date buckets in the store timezone supplied to read_group.
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const date = new Date(`${normalized}${normalized.length === 10 ? "T12:00:00Z" : "Z"}`);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", ...options }).format(date);
+  return new Intl.DateTimeFormat("en-AU", { timeZone: "UTC", ...options }).format(date);
 }
 
-function greetingForSydney() {
+function greetingForTimezone(timezone: string) {
   const hour = Number(
-    new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", hour: "numeric", hour12: false }).format(new Date()),
+    new Intl.DateTimeFormat("en-AU", { timeZone: timezone, hour: "numeric", hour12: false }).format(new Date()),
   );
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
@@ -119,7 +122,7 @@ export function OrithosOverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
-  const greeting = useMemo(() => greetingForSydney(), []);
+  const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -331,7 +334,7 @@ export function OrithosOverviewPage() {
                 <div className="mt-2 flex min-h-[7rem] flex-1 items-end gap-1.5 border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1">
                   {trendData.map((item, index) => {
                     const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
-                    const label = formatSydney(item.label, trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+                    const label = formatGroupedStoreTime(item.label, trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
                     const showLabel = index === 0 || index === trendData.length - 1 || index % trendLabelInterval === 0;
                     return (
                       <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">

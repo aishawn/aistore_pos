@@ -87,7 +87,7 @@ export interface OdooSaleDetail {
     amount: number;
     payment_date: string;
   }[];
-  company: { id: number; name: string; currency_id: [number, string] | false } | null;
+  company: { id: number; name: string; currency_id: [number, string] | false; timezone?: string } | null;
 }
 
 export interface OdooPurchaseOrderRecord {
@@ -168,6 +168,7 @@ export interface OdooPosBootstrap {
     id: number;
     name: string;
     company: [number, string] | false;
+    timezone: string;
     session: {
       id: number;
       name: string;

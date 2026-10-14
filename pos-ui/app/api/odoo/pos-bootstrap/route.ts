@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -116,6 +117,25 @@ export async function GET(request: NextRequest) {
       order: "name asc, id asc",
     })) ?? [];
 
+    const configuredCompanyIds = [...new Set(configs.map((config) => Array.isArray(config.company_id) ? config.company_id[0] : null).filter((id): id is number => typeof id === "number"))];
+    const companies = configuredCompanyIds.length
+      ? (await rpc<Array<{ id: number; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
+          ["id", "in", configuredCompanyIds],
+        ]], { fields: ["id", "partner_id"], limit: 100 })) ?? []
+      : [];
+    const partnerIds = [...new Set(companies.map((company) => Array.isArray(company.partner_id) ? company.partner_id[0] : null).filter((id): id is number => typeof id === "number"))];
+    const partners = partnerIds.length
+      ? (await rpc<Array<{ id: number; state_id?: [number, string] | false; country_id?: [number, string] | false }>>(sessionId, "res.partner", "search_read", [[
+          ["id", "in", partnerIds],
+        ]], { fields: ["id", "state_id", "country_id"], limit: 100 })) ?? []
+      : [];
+    const partnerById = new Map(partners.map((partner) => [partner.id, partner]));
+    const timezoneByCompanyId = new Map(companies.map((company) => {
+      const partnerId = Array.isArray(company.partner_id) ? company.partner_id[0] : null;
+      const partner = partnerId ? partnerById.get(partnerId) : null;
+      return [company.id, getOdooCompanyTimezone(partner?.country_id, partner?.state_id)];
+    }));
+
     const sessionIds = configs
       .map((config) => Array.isArray(config.current_session_id) ? config.current_session_id[0] : null)
       .filter((id): id is number => typeof id === "number");
@@ -156,6 +176,7 @@ export async function GET(request: NextRequest) {
         id: config.id,
         name: config.name,
         company: config.company_id,
+        timezone: Array.isArray(config.company_id) ? timezoneByCompanyId.get(config.company_id[0]) ?? "UTC" : "UTC",
         session: sessionIdForConfig ? sessionsById.get(sessionIdForConfig) ?? null : null,
         paymentMethods: config.payment_method_ids.map((id) => methodsById.get(id)).filter(Boolean),
         pricelistIds: config.available_pricelist_ids,
