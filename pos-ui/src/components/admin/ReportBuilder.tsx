@@ -17,7 +17,7 @@ export function ReportBuilder({
   columns: string[];
   totals: (string | null)[];
 }) {
-  const tableMinWidth = Math.max(720, columns.length * 112);
+  const tableMinWidth = Math.max(720, columns.length * 104);
 
   return (
     <main className="h-full overflow-auto bg-[var(--oh-surface)] p-3 font-sans sm:p-4 lg:p-6">
