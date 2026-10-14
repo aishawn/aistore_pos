@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-14T09:15:46Z",
+  "deployment": "b0c62f918edc8801d932c7ba9921f5e2a13bdf6f",
+  "sourceCommit": "b0c62f918edc8801d932c7ba9921f5e2a13bdf6f",
+  "target": "https://app.orithos.com.au",
+  "route": "/pricelists",
+  "scope": "authenticated read-only production UI checks; no create/delete",
+  "status": "PASS",
+  "viewports": [390, 1440],
+  "checks": [
+    "Price Lists heading visible",
+    "Add price list action visible",
+    "Search price lists input visible",
+    "Explicit no-price-lists empty state visible",
+    "No horizontal overflow at either viewport"
+  ],
+  "results": [
+    { "width": 390, "documentWidth": 390, "bodyWidth": 390, "status": "PASS" },
+    { "width": 1440, "documentWidth": 1440, "bodyWidth": 1440, "status": "PASS" }
+  ],
+  "limitations": [
+    "Production currently has zero price lists, so populated table, pagination, selection and batch-delete behavior were not exercised."
+  ]
+}

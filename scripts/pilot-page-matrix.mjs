@@ -45,7 +45,7 @@ const pages = [
   { path: "/settings/customerdisplay", expect: [/Customer display is not available in this pilot/i, /Check peripheral status/i] },
   { path: "/settings/loyalty", expect: [/Loyalty Settings/i, /These loyalty rules are not connected to this screen/i, /Sample value/i] },
   { path: "/settings/pricesets", expect: [/Price Sets/i, /Price sets and product prices are managed separately/i, /Manage price lists/i] },
-  { path: "/pricelists", expect: [/Add Price List/i, /Results/i] },
+  { path: "/pricelists", expect: [/Add price list/i, /Price Lists/i] },
   { path: "/settings/rules", expect: [/Page Rules/i, /These rules are not configured here/i, /Refund reasons/i] },
   { path: "/settings/barcodes", expect: [/Barcode label printing is not connected/i, /Choose products/i, /Unavailable/i] },
   { path: "/utilities/barcodes", expect: [/Barcode label printing is not connected/i, /Choose a label/i, /No label document is generated/i] },
@@ -64,6 +64,19 @@ const pages = [
 
 function matchAll(text, patterns) {
   return patterns.every((pattern) => pattern.test(text));
+}
+
+async function gotoWithTransientRetry(targetPage, url, label) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await targetPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    } catch (error) {
+      const transient = /timeout|timed out|ERR_TIMED_OUT|ECONNRESET|ERR_CONNECTION_RESET/i.test(String(error));
+      if (!transient || attempt === 3) throw new Error(`${label} navigation failed after ${attempt} attempt(s): ${String(error)}`);
+      await targetPage.waitForTimeout(attempt * 1000);
+    }
+  }
+  throw new Error(`${label} navigation failed without a result`);
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -139,13 +152,13 @@ const loginBody = await loginResponse.json().catch(() => ({}));
 if (!loginResponse.ok() || loginBody.code !== 0) {
   throw new Error(`Pilot page matrix login failed (${loginResponse.status()}): ${loginBody.message || "unknown error"}`);
 }
-await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
+await gotoWithTransientRetry(page, `${base}/`, "home");
 if (new URL(page.url()).pathname === "/login") throw new Error("Login API succeeded but browser session was not established");
 
 const matrix = [];
 const uiChecks = [];
 for (const entry of pages) {
-  await page.goto(`${base}${entry.path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await gotoWithTransientRetry(page, `${base}${entry.path}`, entry.path);
   await page.waitForTimeout(1200);
   let text = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   // Odoo-backed pages hydrate after the shell. Retry the content assertion
@@ -254,7 +267,7 @@ for (const entry of pages) {
 
 try {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await gotoWithTransientRetry(page, `${base}/overview`, "overview before role CRUD");
   await page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }).waitFor({ timeout: 20000 });
   const dimensions = await page.evaluate(() => ({
     viewport: document.documentElement.clientWidth,
@@ -274,7 +287,7 @@ let temporaryRoleId;
 let roleName;
 try {
   roleName = `Pilot UAT ${Date.now().toString().slice(-6)}`;
-  await page.goto(`${base}/settings/roles`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await gotoWithTransientRetry(page, `${base}/settings/roles`, "roles settings");
   await page.getByRole("button", { name: /New role/i }).click();
   await page.getByLabel(/Role name/i).fill(roleName);
   const permissionsResponse = await context.request.get(`${base}/api/permissions`);

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T08:45:01.135Z",
-  "sourceCommit": "e857a6f0bfa0251f04186fd7bb142a73ed8ccf77",
-  "deployment": "e857a6f0bfa0251f04186fd7bb142a73ed8ccf77",
+  "generatedAt": "2026-10-14T09:02:14.565Z",
+  "sourceCommit": "24d8894a5f2030ce8baade2e8e605bc750fc3bc8",
+  "deployment": "24d8894a5f2030ce8baade2e8e605bc750fc3bc8",
   "target": "https://app.orithos.com.au",
   "scope": "authenticated read-only production UI checks; no Odoo write",
   "status": "PASS",

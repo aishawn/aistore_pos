@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T08:42:28.561Z",
-  "deployment": "e857a6f0bfa0251f04186fd7bb142a73ed8ccf77",
-  "sourceCommit": "e857a6f0bfa0251f04186fd7bb142a73ed8ccf77",
+  "generatedAt": "2026-10-14T09:15:24.270Z",
+  "deployment": "b0c62f918edc8801d932c7ba9921f5e2a13bdf6f",
+  "sourceCommit": "6953c8f3b48ddfbe270b54a75de5671f5e883995",
   "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
@@ -108,7 +108,7 @@
     {
       "path": "/pricelists",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Add Price List 0 Results Loading…"
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Price Lists Manage reusable pricing groups and discount rule"
     },
     {
       "path": "/settings/rules",
