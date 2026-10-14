@@ -221,6 +221,9 @@ def publish_snapshot(s3, bucket: str) -> dict:
             "databaseIntegrity": integrity,
             "files": summaries,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
+        # mkdtemp creates 0700, which blocks the read-only POS frontend even
+        # when it belongs to the shared archive group.
+        os.chmod(stage, 0o750)
 
         snapshot_name = timestamp + "Z"
         final_path = SNAPSHOTS_DIR / snapshot_name

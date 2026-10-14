@@ -131,6 +131,9 @@ services:
         BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
     image: orithos-frontend:latest
     restart: unless-stopped
+    # Read-only access to the worker-owned snapshot volume for admin archive UI.
+    group_add:
+      - "1001"
     depends_on:
       - backend
     expose:
