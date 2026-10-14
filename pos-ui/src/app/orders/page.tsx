@@ -165,6 +165,12 @@ export default function OrdersPage() {
 
   const hasActiveFilters = hasNonDefaultFilters(filters);
 
+  function clearFilters() {
+    setFilters(DEFAULT_ORDER_FILTERS);
+    setAppliedQuery(orderFiltersToQuery(DEFAULT_ORDER_FILTERS));
+    setPage(1);
+  }
+
   return (
     <AdminPageLayout
       title="Orders"
@@ -248,9 +254,29 @@ export default function OrdersPage() {
           <button type="button" onClick={reload} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-amber-300 bg-white px-4 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Try again</button>
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center">
-          <h2 className="text-base font-semibold text-[var(--oh-text)]">No orders found</h2>
-          <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-[var(--oh-muted)]">Try adjusting your filters or create a new stock order from the menu.</p>
+        <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-[var(--oh-border)] bg-white px-5 py-9 text-center">
+          <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-[var(--oh-primary)] ring-1 ring-inset ring-blue-100">
+            <ClipboardIcon size={20} strokeWidth={1.7} aria-hidden="true" />
+          </div>
+          <h2 className="text-base font-semibold text-[var(--oh-text)]">
+            {hasActiveFilters ? "No orders match these filters" : "No orders yet"}
+          </h2>
+          <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-[var(--oh-muted)]">
+            {hasActiveFilters
+              ? "Try clearing your filters to see all orders."
+              : "Create a stock order to start tracking deliveries and receipts."}
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {hasActiveFilters ? (
+              <AdminSecondaryButton onClick={clearFilters} className="min-h-11 justify-center px-4">
+                Clear filters
+              </AdminSecondaryButton>
+            ) : (
+              <AdminPrimaryButton onClick={() => router.push("/orders/new")} className="min-h-11 justify-center px-4">
+                <ClipboardIcon size={16} aria-hidden="true" /> Create stock order
+              </AdminPrimaryButton>
+            )}
+          </div>
         </div>
       ) : (
         <>
