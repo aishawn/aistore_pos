@@ -140,7 +140,16 @@ export function OdooReportingDashboard() {
         <MetricCard title="Sales" value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)} detail={`Average ${formatMoney(averageOrder, data?.currency ?? "AUD")} per sale`} icon={<Activity size={18} />} />
         <MetricCard title="Refunds" value={formatMoney(data?.refunds ?? 0, data?.currency ?? "AUD")} detail={`${new Intl.NumberFormat("en-AU").format(data?.refundTransactions ?? 0)} refunded orders`} icon={<RotateCcw size={18} />} />
         <MetricCard title="Net tax" value={formatMoney(data?.tax ?? 0, data?.currency ?? "AUD")} detail="Sales tax less refunded tax" icon={<ArrowUpRight size={18} />} />
-        <div className="col-span-2 xl:col-span-1"><MetricCard title="Open registers" value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)} detail="Across the current Odoo company" icon={<Store size={18} />} /></div>
+        <div className="col-span-2 xl:col-span-1">
+          <article className="flex min-h-[72px] items-center justify-between gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 shadow-[var(--oh-shadow-card)] xl:hidden">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#fff2da] text-[var(--oh-orange-dark)]"><Store size={18} /></span>
+              <div className="min-w-0"><p className="oh-type-label text-[var(--oh-muted)]">Open registers</p><p className="oh-type-meta truncate text-[var(--oh-muted)]">Across the current Odoo company</p></div>
+            </div>
+            <p className="oh-type-kpi shrink-0 text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)}</p>
+          </article>
+          <div className="hidden xl:block"><MetricCard title="Open registers" value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)} detail="Across the current Odoo company" icon={<Store size={18} />} /></div>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]">
