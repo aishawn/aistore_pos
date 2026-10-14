@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T04:16:48.961Z",
-  "deployment": "e253ab3cf3135e5ac20669f0f2ca391b1027e8b5",
+  "generatedAt": "2026-10-14T04:46:56.154Z",
+  "deployment": "03548b769cc8155bd85a83d31d6103a3df05e8da",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -51,7 +51,7 @@
     {
       "path": "/reports/dashboard",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
+      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout DEEP DIVE · MY COMPANY Reporting Dashboa"
     },
     {
       "path": "/settings/integrations",
