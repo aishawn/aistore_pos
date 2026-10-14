@@ -79,10 +79,12 @@ function latestReceipts(databasePath: string) {
     }));
     throw error;
   }
+  let stage = "schema query";
   try {
     const schemas = db.prepare("SELECT headers_json FROM records WHERE dataset = 'sales_receipts' GROUP BY headers_json").all() as Array<{ headers_json: string }>;
     const candidates: RawReceipt[] = [];
     for (const schema of schemas) {
+      stage = "receipt query";
       const headers = parseJson<string[]>(schema.headers_json, []);
       const index = (name: string) => headers.indexOf(name);
       const fields = ["invoice_number", "status", "base_price", "savings", "discount", "tax", "items_json", "payments_json", "sale_date", "sale_time", "sale_id"];
@@ -98,6 +100,7 @@ function latestReceipts(databasePath: string) {
       candidates.push(...query.all(schema.headers_json) as RawReceipt[]);
     }
 
+    stage = "receipt normalization";
     const unique = new Map<string, RawReceipt>();
     for (const row of candidates) {
       const key = String(row.sale_id || row.invoice_number || "");
@@ -137,6 +140,13 @@ function latestReceipts(databasePath: string) {
       .filter((receipt) => receipt.invoiceNumber && receipt.dateTime)
       .sort((left, right) => right.dateTime.localeCompare(left.dateTime))
       .slice(0, MAX_RECEIPTS);
+  } catch (error) {
+    console.error("R2 SQLite query diagnostics", JSON.stringify({
+      stage,
+      error: error instanceof Error ? error.message : "unknown error",
+      code: error && typeof error === "object" && "code" in error ? String(error.code) : undefined,
+    }));
+    throw error;
   } finally {
     db.close();
   }
