@@ -23,7 +23,7 @@ function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: 
       <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileText size={20} aria-hidden="true" /></span>
       <h2 className="mt-4 text-sm font-semibold text-[var(--oh-text)]">{searching ? "No matching sales" : "No sales yet"}</h2>
       <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{searching ? "Try another receipt or order reference." : "Sales available to this Odoo account will appear here."}</p>
-      {searching && <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear search</button>}
+      {searching && <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear search</button>}
     </div>
   );
 }
@@ -262,7 +262,7 @@ export function OdooSalesHistoryPage() {
             <AlertCircle className="mx-auto text-amber-600" size={28} />
             <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view sales</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect with your Odoo staff account to view the sales available to that account.</p>
-            <Link href="/settings/integrations" className="mt-4 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+            <Link href="/settings/integrations" className="mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
           </div>
         </section>
       ) : (
@@ -293,7 +293,7 @@ export function OdooSalesHistoryPage() {
                   <tr><td colSpan={6} className="p-0"><SalesEmptyState searching={hasActiveSearch} onClear={clearSearch} /></td></tr>
                 ) : items.map((sale) => (
                   <tr key={sale.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
-                    <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex items-center gap-1.5 font-semibold text-[var(--oh-orange-dark)] hover:underline"><FileText size={15} />{sale.pos_reference || sale.name}</button></td>
+                    <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold text-[var(--oh-orange-dark)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><FileText size={15} aria-hidden="true" />{sale.pos_reference || sale.name}</button></td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order)}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
@@ -353,11 +353,11 @@ export function OdooSalesHistoryPage() {
 
       {(saleDetailLoading || saleDetailError || saleDetail) && <div className="receipt-overlay fixed inset-0 z-50 grid grid-cols-[minmax(0,1fr)] place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSale(); }}>
         {saleDetailLoading && <section role="status" className="rounded-xl bg-white p-8 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={22} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sale details…</span></section>}
-        {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><button type="button" onClick={closeSale} className="mt-5 h-10 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Close</button></section>}
+        {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><button type="button" onClick={closeSale} className="mt-5 h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button></section>}
         {saleDetail && <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="receipt-print my-auto max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-7">
           <header className="receipt-print-hidden mb-4 flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
             <div><h2 id="receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale receipt</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Review this Odoo order or print a copy.</p></div>
-            <button type="button" onClick={closeSale} aria-label="Close receipt" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button>
+            <button type="button" onClick={closeSale} aria-label="Close receipt" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
           </header>
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-[var(--oh-muted)]">{saleDetail.company?.name || "Orithos POS"}</p>
