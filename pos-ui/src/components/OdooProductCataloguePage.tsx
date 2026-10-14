@@ -77,13 +77,13 @@ export function OdooProductCataloguePage() {
     try {
       const page = await searchOdooRecords<OdooProductRecord>("products", {
         query: debouncedQuery,
-        limit: PAGE_SIZE,
+        limit: PAGE_SIZE + 1,
         offset,
         categoryId: categoryId ?? undefined,
       });
       if (revision !== requestRevision.current) return;
-      setItems(page.items);
-      setHasNext(page.items.length === PAGE_SIZE);
+      setItems(page.items.slice(0, PAGE_SIZE));
+      setHasNext(page.items.length > PAGE_SIZE);
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo products.");
     } finally {
@@ -319,9 +319,9 @@ export function OdooProductCataloguePage() {
                       <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</p>
                     </header>
                     <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                      <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-[11px] text-[var(--oh-muted)]">Category</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</dd></div>
-                      <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-[11px] text-[var(--oh-muted)]">Barcode</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]" title={product.barcode || undefined}>{product.barcode || "—"}</dd></div>
-                      <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-[11px] text-[var(--oh-muted)]">On hand</dt><dd className={`tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</dd></div>
+                      <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Category</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</dd></div>
+                      <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Barcode</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]" title={product.barcode || undefined}>{product.barcode || "—"}</dd></div>
+                      <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">On hand</dt><dd className={`tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</dd></div>
                     </dl>
                     <footer className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--oh-border)] pt-2">
                       {product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available in POS</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden from POS</span>}
