@@ -280,8 +280,8 @@ export default function OrdersPage() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-lg md:block">
-            <div className="min-w-[1080px]">
+          <div className="hidden overflow-x-auto rounded-lg xl:block">
+            <div className="min-w-[920px]">
               <ListTable
                 compact
                 headerClassName="bg-[var(--oh-surface)] text-[var(--oh-text-secondary)] ring-1 ring-inset ring-[var(--oh-border)]"
@@ -306,7 +306,7 @@ export default function OrdersPage() {
               />
             </div>
           </div>
-          <ul className="grid gap-3 md:hidden">
+          <ul className="grid gap-3 xl:hidden">
             {items.map((order) => {
               const TypeIcon = TYPE_ICONS[order.type] ?? ClipboardIcon;
               return (
