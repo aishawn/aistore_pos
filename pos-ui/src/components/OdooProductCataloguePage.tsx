@@ -227,9 +227,9 @@ export function OdooProductCataloguePage() {
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
-          <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button>
-          <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60 sm:w-auto sm:px-3">
+          <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button>
+          <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -247,13 +247,13 @@ export function OdooProductCataloguePage() {
       ) : (
         <>
           <div className="flex shrink-0 flex-wrap gap-3">
-            <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
+            <label className="flex h-11 w-full min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
               <Search size={17} className="text-[var(--oh-muted)]" />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search product, barcode or SKU" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
             </label>
             <label className="oh-type-label grid w-full min-w-0 gap-1 text-[var(--oh-muted)] sm:w-[220px] sm:flex-none">
               POS category
-              <select value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] disabled:opacity-60">
+              <select value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60">
                 <option value="">All categories</option>
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
               </select>
@@ -292,7 +292,7 @@ export function OdooProductCataloguePage() {
                       <td className={`px-4 py-3 text-right tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-xs text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</td>
                       <td className="px-4 py-3">{product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden</span>}</td>
-                      <td className="px-4 py-3 text-right"><button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${product.display_name || product.name}`} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-[var(--oh-border)] px-2.5 text-xs font-semibold text-[var(--oh-text)] hover:border-[var(--oh-orange)] hover:bg-[#fff8ec]"><Pencil size={14} /> Edit</button></td>
+                      <td className="px-4 py-3 text-right"><button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${product.display_name || product.name}`} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-xs font-semibold text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={14} /> Edit</button></td>
                     </tr>
                   );
                 })}
@@ -325,7 +325,7 @@ export function OdooProductCataloguePage() {
                     </dl>
                     <footer className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--oh-border)] pt-2">
                       {product.available_in_pos ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Available in POS</span> : <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Hidden from POS</span>}
-                      <button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${product.display_name || product.name}`} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-md border border-[var(--oh-border)] px-3 text-xs font-semibold text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:bg-blue-50"><Pencil size={14} /> Edit</button>
+                      <button type="button" onClick={() => { setEditingProduct(product); setCategoriesTouched(false); setEditError(null); }} aria-label={`Edit ${product.display_name || product.name}`} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-xs font-semibold text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Pencil size={14} /> Edit</button>
                     </footer>
                   </article>
                 );
@@ -347,31 +347,31 @@ export function OdooProductCataloguePage() {
         <section role="dialog" aria-modal="true" aria-labelledby="product-edit-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
             <div><h2 id="product-edit-title" className="text-lg font-semibold text-[var(--oh-text)]">Edit product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingProduct.display_name || editingProduct.name} · Odoo #{editingProduct.id}</p></div>
-            <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+            <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form onSubmit={(event) => void saveProduct(event)} className="mt-5 grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Sale price
-                <input name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue={editingProduct.list_price} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+                <input name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue={editingProduct.list_price} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">SKU
-                <input name="default_code" maxLength={64} defaultValue={editingProduct.default_code || ""} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+                <input name="default_code" maxLength={64} defaultValue={editingProduct.default_code || ""} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
               </label>
             </div>
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Barcode
-              <input name="barcode" maxLength={64} defaultValue={editingProduct.barcode || ""} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+              <input name="barcode" maxLength={64} defaultValue={editingProduct.barcode || ""} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
             </label>
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium text-[var(--oh-text)]">POS categories</legend>
-              <div className="grid max-h-44 gap-1 overflow-y-auto rounded-md border border-[var(--oh-border)] p-2 sm:grid-cols-2">
-                {categories.map((category) => <label key={category.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
-                  <input type="checkbox" name="pos_categ_ids" value={category.id} defaultChecked={editingProduct.pos_categ_ids.includes(category.id)} onChange={() => setCategoriesTouched(true)} className="accent-[var(--oh-orange)]" />
+                <div className="grid max-h-48 gap-1 overflow-y-auto rounded-lg border border-[var(--oh-border)] p-2 sm:grid-cols-2">
+                {categories.map((category) => <label key={category.id} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
+                  <input type="checkbox" name="pos_categ_ids" value={category.id} defaultChecked={editingProduct.pos_categ_ids.includes(category.id)} onChange={() => setCategoriesTouched(true)} className="accent-[var(--oh-primary)]" />
                   <span className="truncate">{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</span>
                 </label>)}
                 {!categories.length && <p className="px-2 py-3 text-sm text-[var(--oh-muted)]">No POS categories are available.</p>}
               </div>
             </fieldset>
-            <label className="flex items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked={editingProduct.available_in_pos} className="mt-0.5 accent-[var(--oh-orange)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Hide this product from register searches without deleting it.</span></span></label>
+            <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked={editingProduct.available_in_pos} className="mt-0.5 accent-[var(--oh-primary)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Hide this product from register searches without deleting it.</span></span></label>
             <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">Stock on hand is controlled by Odoo receipts and inventory adjustments, so it cannot be edited here.</p>
             {editError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{editError}</p>}
             <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end">
@@ -386,12 +386,12 @@ export function OdooProductCataloguePage() {
         <section role="dialog" aria-modal="true" aria-labelledby="product-import-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
             <div><h2 id="product-import-title" className="text-lg font-semibold text-[var(--oh-text)]">Import products from CSV</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Preview and validate your catalogue before adding products to Odoo.</p></div>
-            <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+            <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <div className="mt-5 grid gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-4">
               <div><p className="text-sm font-semibold text-[var(--oh-text)]">CSV columns</p><p className="mt-1 text-xs leading-5 text-[var(--oh-muted)]">Required: Product Name, Sale Price. Optional: SKU, Barcode, Cost, POS Category. English and common Chinese headers are supported.</p></div>
-              <a href="/product-import-template.csv" download className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)] hover:border-[var(--oh-orange)]"><Download size={14} /> Download template</a>
+              <a href="/product-import-template.csv" download className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Download size={14} /> Download template</a>
             </div>
             <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Choose a CSV file
               <input type="file" accept=".csv,text/csv" onChange={(event) => void selectImportFile(event)} disabled={importBusy || categoryLoading} className="block w-full rounded-md border border-[var(--oh-border)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--oh-text)] disabled:opacity-60" />
@@ -422,34 +422,34 @@ export function OdooProductCataloguePage() {
         <section role="dialog" aria-modal="true" aria-labelledby="product-create-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
             <div><h2 id="product-create-title" className="text-lg font-semibold text-[var(--oh-text)]">New product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Add a stock-tracked product to the Odoo POS catalogue.</p></div>
-            <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+            <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form key="new-product" onSubmit={(event) => void createProduct(event)} className="mt-4 grid gap-3 sm:mt-5 sm:gap-4">
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Product name <span className="text-red-700">*</span></span>
-              <input name="name" autoFocus maxLength={120} required className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+              <input name="name" autoFocus maxLength={120} required className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Sale price (AUD)
-                <input name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue="0" className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+                <input name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue="0" className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">SKU
-                <input name="default_code" maxLength={64} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+                <input name="default_code" maxLength={64} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
               </label>
             </div>
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Barcode
-              <input name="barcode" maxLength={64} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
+              <input name="barcode" maxLength={64} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
             </label>
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium text-[var(--oh-text)]">POS categories <span className="font-normal text-[var(--oh-muted)]">(optional)</span></legend>
-              <div className="grid max-h-36 gap-1 overflow-y-auto rounded-md border border-[var(--oh-border)] p-2 sm:grid-cols-2">
-                {categories.map((category) => <label key={category.id} className="flex min-h-9 items-center gap-2 rounded px-2 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
-                  <input type="checkbox" name="pos_categ_ids" value={category.id} className="accent-[var(--oh-orange)]" />
+              <div className="grid max-h-48 gap-1 overflow-y-auto rounded-lg border border-[var(--oh-border)] p-2 sm:grid-cols-2">
+                {categories.map((category) => <label key={category.id} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
+                  <input type="checkbox" name="pos_categ_ids" value={category.id} className="accent-[var(--oh-primary)]" />
                   <span className="truncate">{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</span>
                 </label>)}
                 {!categories.length && <p className="px-2 py-3 text-sm text-[var(--oh-muted)]">No POS categories are available. You can create the product without one.</p>}
               </div>
             </fieldset>
-            <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked className="mt-0.5 accent-[var(--oh-orange)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Make the product searchable at the register.</span></span></label>
+            <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked className="mt-0.5 accent-[var(--oh-primary)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Make the product searchable at the register.</span></span></label>
             <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">Odoo tracks stock quantities. Load opening stock through an Odoo receipt or adjustment.</p>
             {createError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{createError}</p>}
             <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end">
