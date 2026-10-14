@@ -45,7 +45,7 @@ async function requireAdmin(request: NextRequest): Promise<boolean> {
 
 function currentDatabase() {
   const snapshotId = fs.readFileSync(path.join(DATA_DIR, "CURRENT"), "utf8").trim();
-  if (!/^\d{8}T\d{6}$/.test(snapshotId)) throw new Error("R2 snapshot pointer is invalid");
+  if (!/^\d{8}T\d{6}Z$/.test(snapshotId)) throw new Error("R2 snapshot pointer is invalid");
   const root = path.resolve(DATA_DIR, "snapshots", snapshotId);
   const metadataPath = path.join(root, "snapshot.json");
   const databasePath = path.join(root, "shopfront", "shopfront.sqlite3");
