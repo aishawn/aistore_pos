@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Pencil, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { AsyncState } from "@/components/admin/AsyncState";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Modal } from "@/components/admin/Modal";
 import { useApi } from "@/hooks/useApi";
 import { api, ApiError } from "@/lib/api";
@@ -56,6 +57,7 @@ export default function RolesPage() {
   const [loadingRolePermissions, setLoadingRolePermissions] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState<Role | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -151,14 +153,15 @@ export default function RolesPage() {
 
   async function removeRole(role: Role, userCount: number) {
     if (userCount > 0) return;
-    if (!window.confirm(`Delete the “${role.name}” role? This cannot be undone.`)) return;
     setDeletingId(String(role.id));
     setPageError(null);
     try {
       await api.del(`${BASE}/${role.id}`);
       await rolesState.reload();
+      setConfirmingDelete(null);
     } catch (error) {
       setPageError(errorMessage(error, "Could not delete this role."));
+      setConfirmingDelete(null);
     } finally {
       setDeletingId(null);
     }
@@ -203,8 +206,56 @@ export default function RolesPage() {
           empty={roles.length === 0}
           emptyText="No staff roles yet. Create a role before inviting staff who need non-administrator permissions."
         >
-          <div className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <div className="overflow-x-auto">
+            <ul className="grid gap-3 xl:hidden">
+              {roles.map((role) => {
+                const roleUsers = users.filter((staff) => String(staff.roleId ?? "") === String(role.id));
+                const assignedPermissions = rolePermissionSnapshot.byRole[String(role.id)];
+                return (
+                  <li key={String(role.id)} className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="min-w-0 break-words text-sm font-semibold text-[var(--oh-text)]">{role.name}</h2>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">
+                        <UsersRound size={14} aria-hidden="true" /> {roleUsers.length} staff
+                      </span>
+                    </div>
+                    <div className="mt-4 border-t border-[var(--oh-border)] pt-3">
+                      <h3 className="text-xs font-semibold text-[var(--oh-muted)]">Permissions</h3>
+                      {rolePermissionSnapshot.key !== roleKey ? (
+                        <p className="mt-2 text-sm text-[var(--oh-muted)]">Loading access…</p>
+                      ) : assignedPermissions === null ? (
+                        <p className="mt-2 text-sm text-red-800">Could not load permissions</p>
+                      ) : assignedPermissions?.length ? (
+                        <ul className="mt-2 flex flex-wrap gap-1.5">
+                          {assignedPermissions.map((permissionName) => (
+                            <li key={permissionName} className="rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{permissionName}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-2 text-sm text-[var(--oh-muted)]">No permissions assigned</p>
+                      )}
+                    </div>
+                    <div className="mt-4 flex gap-2 border-t border-[var(--oh-border)] pt-3">
+                      <button type="button" onClick={() => void openEdit(role)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+                        <Pencil size={15} aria-hidden="true" /> Edit access
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDelete(role)}
+                        disabled={roleUsers.length > 0 || deletingId === String(role.id)}
+                        title={roleUsers.length > 0 ? "Reassign staff before deleting this role" : "Delete role"}
+                        aria-label={`Delete ${role.name} role`}
+                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-[var(--oh-border)] text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700"
+                      >
+                        {deletingId === String(role.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} aria-hidden="true" />}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="hidden overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:block">
+              <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
                   <tr>
@@ -246,7 +297,7 @@ export default function RolesPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => void removeRole(role, roleUsers.length)}
+                              onClick={() => setConfirmingDelete(role)}
                               disabled={isAssigned || deletingId === String(role.id)}
                               title={isAssigned ? "Reassign staff before deleting this role" : "Delete role"}
                               aria-label={`Delete ${role.name} role`}
@@ -304,6 +355,22 @@ export default function RolesPage() {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={!!confirmingDelete}
+        title="Delete role"
+        message={confirmingDelete ? `Delete the “${confirmingDelete.name}” role? This cannot be undone.` : ""}
+        confirmLabel="Delete role"
+        busy={deletingId === String(confirmingDelete?.id ?? "")}
+        onConfirm={() => {
+          if (!confirmingDelete) return;
+          const userCount = users.filter((staff) => String(staff.roleId ?? "") === String(confirmingDelete.id)).length;
+          void removeRole(confirmingDelete, userCount);
+        }}
+        onCancel={() => {
+          if (!deletingId) setConfirmingDelete(null);
+        }}
+      />
     </AdminPageLayout>
   );
 }
