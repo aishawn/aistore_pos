@@ -607,7 +607,9 @@ export function OdooRegisterPage() {
                   <option value="">All categories</option>
                   {posCategories.map((category) => (
                     <option key={category.id} value={category.id}>
-                      {Array.isArray(category.parent_id) ? `${category.parent_id[1]} / ${category.name}` : category.name}
+                      {Array.isArray(category.parent_id)
+                        ? `${friendlyProductLabel(category.parent_id[1])} / ${friendlyProductLabel(category.name)}`
+                        : friendlyProductLabel(category.name)}
                     </option>
                   ))}
                 </select>
