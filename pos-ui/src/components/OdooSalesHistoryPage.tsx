@@ -41,6 +41,17 @@ function stateLabel(state: string) {
   return labels[state] ?? state;
 }
 
+function stateClass(state: string) {
+  const styles: Record<string, string> = {
+    draft: "border border-amber-200 bg-amber-50 text-amber-800",
+    paid: "border border-emerald-200 bg-emerald-50 text-emerald-700",
+    done: "border border-emerald-200 bg-emerald-50 text-emerald-700",
+    invoiced: "border border-indigo-200 bg-indigo-50 text-indigo-700",
+    cancel: "border border-neutral-200 bg-neutral-100 text-neutral-600",
+  };
+  return styles[state] ?? "border border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]";
+}
+
 export function OdooSalesHistoryPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooSaleRecord[]>([]);
@@ -213,7 +224,7 @@ export function OdooSalesHistoryPage() {
           <h1 className="oh-type-title text-[var(--oh-text)]">Sales History</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Sales recorded by the Odoo register, newest first.</p>
         </div>
-        <button type="button" onClick={() => void loadSales()} disabled={loading} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+        <button type="button" onClick={() => void loadSales()} disabled={loading} aria-label={loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
         </button>
       </header>
@@ -229,7 +240,7 @@ export function OdooSalesHistoryPage() {
         </section>
       ) : (
         <>
-          <label className="flex h-11 max-w-xl shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
+          <label aria-label="Search sales" className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search receipt or order reference" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
@@ -254,12 +265,12 @@ export function OdooSalesHistoryPage() {
                 ) : items.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]">{query ? "No sales match this reference." : "No Odoo sales are available for this account."}</td></tr>
                 ) : items.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-sky-50/50">
+                  <tr key={sale.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex items-center gap-1.5 font-semibold text-[var(--oh-orange-dark)] hover:underline"><FileText size={15} />{sale.pos_reference || sale.name}</button></td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatOrderDate(sale.date_order)}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{stateLabel(sale.state)}</span></td>
+                    <td className="px-4 py-3"><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(sale.state)}`}>{stateLabel(sale.state)}</span></td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]">{money(sale.amount_total)}</td>
                   </tr>
                 ))}
@@ -276,7 +287,7 @@ export function OdooSalesHistoryPage() {
                   type="button"
                   onClick={() => void openSale(sale.id)}
                   aria-label={`View receipt ${sale.pos_reference || sale.name}`}
-                  className="block min-h-11 w-full px-4 py-3.5 text-left transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--oh-primary)]"
+                  className="block min-h-11 w-full px-4 py-3.5 text-left transition-colors hover:bg-[var(--oh-surface)]/70 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--oh-primary)]"
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="min-w-0 truncate text-sm font-semibold text-[var(--oh-primary)]">{sale.pos_reference || sale.name}</span>
@@ -288,19 +299,19 @@ export function OdooSalesHistoryPage() {
                   </span>
                   <span className="mt-2 flex items-center justify-between gap-3">
                     <span className="min-w-0 truncate text-xs text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</span>
-                    <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{stateLabel(sale.state)}</span>
+                    <span className={`inline-flex min-h-6 shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(sale.state)}`}>{stateLabel(sale.state)}</span>
                   </span>
                 </button>
               ))}
             </div>
           </section>
 
-          <footer className="flex shrink-0 items-center justify-between text-sm text-[var(--oh-muted)]">
+          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-[var(--oh-muted)]">
             <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 items-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 items-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40">Next <ChevronRight size={16} /></button>
-            </div>
+            <nav aria-label="Sales history pagination" className="flex items-center gap-2">
+              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>
+              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={16} /></button>
+            </nav>
           </footer>
         </>
       )}
@@ -321,7 +332,7 @@ export function OdooSalesHistoryPage() {
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
             <span className="text-[var(--oh-muted)]">Customer</span><span className="text-right font-medium text-[var(--oh-text)]">{saleDetail.order.partner_id ? saleDetail.order.partner_id[1] : "Walk-in customer"}</span>
-            <span className="text-[var(--oh-muted)]">Status</span><span className="text-right font-medium text-[var(--oh-text)]">{stateLabel(saleDetail.order.state)}</span>
+            <span className="text-[var(--oh-muted)]">Status</span><span className={`justify-self-end rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(saleDetail.order.state)}`}>{stateLabel(saleDetail.order.state)}</span>
           </div>
           <div className="mt-5">
             <table className="hidden w-full min-w-[420px] text-sm md:table">
