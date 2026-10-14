@@ -156,7 +156,7 @@ export function OdooReportingDashboard() {
                 return <div key={`${item.label}-${index}`} role="img" aria-label={`${label}: ${formatMoney(item.revenue, data.currency)}, ${item.transactions} sales`} tabIndex={0} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
                   <div className="oh-type-meta mb-1 w-full min-w-0 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
                   <div className="relative mx-auto w-full max-w-14 rounded-t bg-[var(--oh-orange)]/85 transition-colors group-hover:bg-[var(--oh-orange)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
-                  <span className="oh-type-meta mt-2 w-full min-w-0 truncate text-[var(--oh-muted)]">{label}</span>
+                  <span className="oh-type-meta mt-2 hidden w-full min-w-0 truncate text-[var(--oh-muted)] sm:block">{label}</span>
                 </div>;
               })}
             </div>
