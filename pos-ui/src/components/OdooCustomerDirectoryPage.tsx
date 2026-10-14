@@ -50,10 +50,10 @@ export function OdooCustomerDirectoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE, offset });
+      const page = await searchOdooRecords<OdooCustomerRecord>("customers", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset });
       if (revision !== requestRevision.current) return;
-      setItems(page.items);
-      setHasNext(page.items.length === PAGE_SIZE);
+      setItems(page.items.slice(0, PAGE_SIZE));
+      setHasNext(page.items.length > PAGE_SIZE);
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo customers.");
     } finally {
