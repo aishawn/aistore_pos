@@ -17,6 +17,17 @@ import {
 const PAGE_SIZE = 40;
 const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
 
+function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: () => void }) {
+  return (
+    <div role="status" className="flex min-h-64 flex-col items-center justify-center px-5 py-12 text-center">
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileText size={20} aria-hidden="true" /></span>
+      <h2 className="mt-4 text-sm font-semibold text-[var(--oh-text)]">{searching ? "No matching sales" : "No sales yet"}</h2>
+      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{searching ? "Try another receipt or order reference." : "Sales available to this Odoo account will appear here."}</p>
+      {searching && <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear search</button>}
+    </div>
+  );
+}
+
 function formatOrderDate(value: string) {
   const date = new Date(`${value.replace(" ", "T")}Z`);
   if (Number.isNaN(date.getTime())) return value;
@@ -56,6 +67,7 @@ export function OdooSalesHistoryPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooSaleRecord[]>([]);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -86,7 +98,7 @@ export function OdooSalesHistoryPage() {
         return;
       }
       const [page, pos] = await Promise.all([
-        searchOdooRecords<OdooSaleRecord>("sales", { query, limit: PAGE_SIZE + 1, offset }),
+        searchOdooRecords<OdooSaleRecord>("sales", { query: debouncedQuery, limit: PAGE_SIZE + 1, offset }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
@@ -98,14 +110,29 @@ export function OdooSalesHistoryPage() {
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
-  }, [offset, query]);
+  }, [debouncedQuery, offset]);
 
   useEffect(() => { void loadSales(); }, [loadSales]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query.trim());
+      setOffset(0);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
   function updateQuery(value: string) {
     setQuery(value);
+  }
+
+  function clearSearch() {
+    setQuery("");
+    setDebouncedQuery("");
     setOffset(0);
   }
+
+  const hasActiveSearch = Boolean(debouncedQuery);
 
   async function openSale(saleId: number) {
     const revision = ++detailRevision.current;
@@ -249,7 +276,7 @@ export function OdooSalesHistoryPage() {
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
-              <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+              <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th className="px-4 py-3">Receipt</th>
                   <th className="px-4 py-3">Date &amp; time</th>
@@ -263,7 +290,7 @@ export function OdooSalesHistoryPage() {
                 {loading && items.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sales…</span></td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]">{query ? "No sales match this reference." : "No Odoo sales are available for this account."}</td></tr>
+                  <tr><td colSpan={6} className="p-0"><SalesEmptyState searching={hasActiveSearch} onClear={clearSearch} /></td></tr>
                 ) : items.map((sale) => (
                   <tr key={sale.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3"><button type="button" onClick={() => void openSale(sale.id)} className="inline-flex items-center gap-1.5 font-semibold text-[var(--oh-orange-dark)] hover:underline"><FileText size={15} />{sale.pos_reference || sale.name}</button></td>
@@ -285,7 +312,7 @@ export function OdooSalesHistoryPage() {
               {loading && items.length === 0 ? (
                 <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sales…</span></div>
               ) : items.length === 0 ? (
-                <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{query ? "No sales match this reference." : "No Odoo sales are available for this account."}</div>
+                <SalesEmptyState searching={hasActiveSearch} onClear={clearSearch} />
               ) : items.map((sale) => (
                 <button
                   key={sale.id}
@@ -314,13 +341,13 @@ export function OdooSalesHistoryPage() {
             </div>
           </section>
 
-          <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-[var(--oh-muted)]">
-            <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
+          {items.length > 0 && <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 text-sm text-[var(--oh-muted)]">
+            <span>Showing {offset + 1}–{offset + items.length}</span>
             <nav aria-label="Sales history pagination" className="flex items-center gap-2">
               <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>
               <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 items-center gap-1 whitespace-nowrap rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight size={16} /></button>
             </nav>
-          </footer>
+          </footer>}
         </>
       )}
 
