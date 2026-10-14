@@ -30,7 +30,7 @@ export function Pagination({
           type="button"
           disabled={page <= 1}
           onClick={() => onPage(page - 1)}
-          className="flex items-center gap-1 rounded-md border border-neutral-300 px-2 py-1 disabled:opacity-40"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40"
         >
           <ChevronRightIcon size={14} className="rotate-180" /> Prev
         </button>
@@ -41,7 +41,7 @@ export function Pagination({
           type="button"
           disabled={page >= pages}
           onClick={() => onPage(page + 1)}
-          className="flex items-center gap-1 rounded-md border border-neutral-300 px-2 py-1 disabled:opacity-40"
+          className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40"
         >
           Next <ChevronRightIcon size={14} />
         </button>

@@ -91,7 +91,7 @@ function CustomersPageInner() {
       countLabel="Customers"
       compact
       actions={(
-        <AdminPrimaryButton onClick={() => setCreating(true)} className="min-h-11">
+        <AdminPrimaryButton onClick={() => setCreating(true)} className="min-h-11 w-full justify-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:w-auto">
           <PlusIcon size={16} /> Add Customer
         </AdminPrimaryButton>
       )}
@@ -109,12 +109,40 @@ function CustomersPageInner() {
               setPage(1);
             }}
             placeholder="Name, customer code or email"
-            className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]"
+            className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]"
           />
         </div>
       )}
     >
-      <AsyncState loading={loading} error={error} empty={items.length === 0}>
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={items.length === 0}
+        emptyText={searchQuery ? "No customers match this search." : "No customers yet. Add a customer to get started."}
+      >
+        <div className="space-y-3 lg:hidden">
+          {items.map((c) => (
+            <article key={c.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+              <div className="flex items-start justify-between gap-3">
+                <button type="button" onClick={() => router.push(`/customers/${c.id}/view`)} className="min-w-0 text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">
+                  <span className="block break-words font-semibold text-[var(--oh-text)]">{c.name}</span>
+                  {c.code && <span className="mt-0.5 block text-sm text-[var(--oh-muted)]">{c.code}</span>}
+                </button>
+                {c.customerGroupName && <span className="max-w-[42%] shrink-0 truncate rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{c.customerGroupName}</span>}
+              </div>
+              <div className="mt-3 space-y-1 border-t border-[var(--oh-border)] pt-3 text-sm text-[var(--oh-text-secondary)]">
+                {c.email && <p className="break-words">{c.email}</p>}
+                {c.phone && <p>{c.phone}</p>}
+                {!c.email && !c.phone && <p className="text-[var(--oh-muted)]">No contact details</p>}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-[var(--oh-border)] pt-3">
+                <button type="button" onClick={() => router.push(`/customers/${c.id}/edit`)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[var(--oh-border)] text-sm font-medium text-[var(--oh-primary)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><EditIcon size={16} /> Edit</button>
+                <button type="button" onClick={() => setDeleting(c)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-red-200 text-sm font-medium text-[var(--oh-danger)] outline-none hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)]"><DeleteIcon size={16} /> Delete</button>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden lg:block">
         <ListTable
           rowClassName="py-3"
           columns={[
@@ -164,6 +192,7 @@ function CustomersPageInner() {
             </div>,
           ])}
         />
+        </div>
       </AsyncState>
       <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
 
