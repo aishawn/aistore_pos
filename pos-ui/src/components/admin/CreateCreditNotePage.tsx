@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
-import { CircleCheckIcon, SelectChevronIcon } from "@/components/icons";
+import { SelectChevronIcon } from "@/components/icons";
 
 interface Named {
   id: string;
@@ -12,12 +13,12 @@ interface Named {
 }
 
 const fieldClass =
-  "h-11 w-full rounded border border-[#bdbdbd] px-3 text-[15px] text-black outline-none placeholder:text-neutral-400 focus:border-[#5cb3e0]";
+  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70";
 const readOnlyFieldClass =
-  "h-11 w-full rounded border border-[#bdbdbd] bg-neutral-100 px-3 text-[15px] text-black outline-none";
-const labelClass = "mb-1 block text-[14px] font-bold text-black";
+  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text-secondary)] outline-none";
+const labelClass = "mb-1.5 block text-sm font-semibold text-[var(--oh-text-secondary)]";
 const textareaClass =
-  "min-h-0 w-full flex-1 resize-none rounded border border-[#bdbdbd] px-3 py-2.5 text-[15px] text-black outline-none placeholder:text-neutral-400 focus:border-[#5cb3e0]";
+  "min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
 
 function formatToday(): string {
   const d = new Date();
@@ -61,12 +62,14 @@ function FormSelect({
   onChange,
   options,
   placeholder,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: Array<{ label: string; value: string }>;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <FormField label={label}>
@@ -74,6 +77,7 @@ function FormSelect({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
           className={`${fieldClass} appearance-none pr-10`}
         >
           {placeholder && <option value="">{placeholder}</option>}
@@ -183,62 +187,71 @@ export function CreateCreditNotePage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="shrink-0 bg-[#5cb3e0] px-6 py-3">
-        <h1 className="text-[20px] font-semibold text-white">Create Credit</h1>
-        <p className="mt-1 text-[13px] text-white/90">
-          Credit notes do not adjust your costs or inventory, they only adjust your reporting.
-        </p>
-      </div>
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+        <div>
+          <h1 className="oh-type-title text-[var(--oh-text)]">Create Credit Note</h1>
+          <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Record a supplier credit for reporting</p>
+        </div>
+        <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+          <ArrowLeft size={16} aria-hidden="true" /> <span className="hidden sm:inline">Back to orders</span><span className="sm:hidden">Back</span>
+        </button>
+      </header>
 
-      <div className="flex min-h-0 flex-1 flex-col px-6 py-5">
-        <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-4">
-          <div className="grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-2">
+      <main aria-busy={busy} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
+          <div className="flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2.5 text-sm leading-5 text-sky-950">
+            <Info size={17} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />
+            <p>Credit notes adjust reporting only. They do not change product cost or inventory.</p>
+          </div>
+
+          <section aria-label="Supplier and outlet" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormSelect
-              label="From"
+              label="From supplier"
               value={fromId}
               onChange={setFromId}
-              placeholder="Select Supplier..."
+              placeholder={suppliers.loading ? "Loading suppliers…" : suppliers.error ? "Suppliers unavailable" : "Select supplier"}
+              disabled={suppliers.loading || Boolean(suppliers.error)}
               options={supplierOptions}
             />
             <FormField label="To">
-              <input readOnly value={outletName} className={readOnlyFieldClass} />
+              <input readOnly value={outletName} placeholder={outlets.loading ? "Loading outlet…" : outlets.error ? "Outlet unavailable" : "No outlet available"} className={readOnlyFieldClass} />
             </FormField>
-          </div>
+          </section>
+          {(suppliers.error || outlets.error || (!outlets.loading && outletOptions.length === 0)) && (
+            <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+              {outlets.error ? "The destination outlet could not be loaded. Refresh and try again before creating a credit note." : !outlets.loading && outletOptions.length === 0 ? "No destination outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before creating a credit note."}
+            </p>
+          )}
 
-          <div className="grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-3">
+          <section aria-label="Credit note details" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <FormField label="Credit Note Date">
               <input
                 value={creditNoteDate}
                 onChange={(e) => setCreditNoteDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
+                inputMode="numeric"
                 className={fieldClass}
               />
             </FormField>
             <FormField label="Credit Note Number">
-              <div className="relative">
-                <input
-                  value={creditNoteNumber}
-                  onChange={(e) => setCreditNoteNumber(e.target.value)}
-                  className={`${fieldClass} pr-10`}
-                />
-                {creditNoteNumber.trim() && (
-                  <CircleCheckIcon
-                    size={18}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#3cb44b]"
-                  />
-                )}
-              </div>
+              <input
+                value={creditNoteNumber}
+                onChange={(e) => setCreditNoteNumber(e.target.value)}
+                className={fieldClass}
+                autoComplete="off"
+              />
             </FormField>
             <FormField label="Due Date">
               <input
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
+                inputMode="numeric"
                 className={fieldClass}
               />
             </FormField>
-          </div>
+          </section>
 
           <FormField label="Internal Reference" className="shrink-0">
             <input
@@ -248,37 +261,40 @@ export function CreateCreditNotePage() {
             />
           </FormField>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="Public Notes" className="min-h-[120px] h-full">
+          <section aria-label="Credit note comments" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField label="Public Notes" className="min-h-[180px]">
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className={textareaClass}
               />
             </FormField>
-            <FormField label="Internal Notes" className="min-h-[120px] h-full">
+            <FormField label="Internal Notes" className="min-h-[180px]">
               <textarea
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
                 className={textareaClass}
               />
             </FormField>
-          </div>
+          </section>
 
-          {error && <p className="shrink-0 text-[14px] text-red-600">{error}</p>}
+          {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{error}</p>}
         </div>
-      </div>
+      </main>
 
-      <div className="flex shrink-0 justify-end border-t border-neutral-200 px-6 py-3">
+      <footer className="flex shrink-0 justify-end gap-2 border-t border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+        <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+          Cancel
+        </button>
         <button
           type="button"
           onClick={() => void submit()}
           disabled={busy}
-          className="rounded bg-[#5cb3e0] px-10 py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-[#4aa8d8] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-11 min-w-28 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create"}
         </button>
-      </div>
+      </footer>
     </div>
   );
 }
