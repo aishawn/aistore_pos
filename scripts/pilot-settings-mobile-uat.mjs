@@ -123,6 +123,15 @@ try {
       if ((await surchargeSettings.count()) !== 4) throw new Error("Surcharge settings do not show all four configuration states");
       await page.getByText("do not change checkout totals", { exact: false }).waitFor({ timeout: 10000 });
       checks.push(`/settings/surcharging: honest sample states and no checkout effect claim at ${width}px`);
+
+      await page.goto(`${base}/settings/statements`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("status").getByText("Statement previews are available").waitFor({ timeout: 15000 });
+      const statementSettings = page.locator('[aria-labelledby="statement-settings-title"] ul > li');
+      const statementsLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (statementsLayout.document > statementsLayout.viewport) throw new Error(`/settings/statements overflows at ${width}px: ${JSON.stringify(statementsLayout)}`);
+      if ((await statementSettings.count()) !== 3) throw new Error("Statement settings do not distinguish all three disconnected email preferences");
+      await page.getByRole("link", { name: /Open customer balances/ }).waitFor({ timeout: 10000 });
+      checks.push(`/settings/statements: preview link, explicit disconnected preferences and no overflow at ${width}px`);
     } finally {
       await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
       await context.close();
