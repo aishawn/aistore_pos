@@ -3,7 +3,6 @@ import {
   AdminPrimaryButton,
   AdminSecondaryButton,
 } from "@/components/admin/AdminPageLayout";
-import { FilterSelect } from "@/components/admin/FilterSelect";
 import { SelectChevronIcon, ViewIcon } from "@/components/icons";
 
 const CUSTOMERS = ["Aliyah Roberts", "Benjamin Kovacek", "Billie Nader", "Brandt Willms", "Calista Cremin"];

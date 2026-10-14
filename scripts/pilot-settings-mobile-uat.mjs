@@ -96,6 +96,33 @@ try {
       if (hardwareLayout.document > hardwareLayout.viewport) throw new Error(`/settings/hardware overflows at ${width}px: ${JSON.stringify(hardwareLayout)}`);
       if ((await hardwareDevices.count()) !== 4) throw new Error("Hardware settings do not show all four device statuses");
       checks.push(`/settings/hardware: local device status and no overflow at ${width}px`);
+
+      await page.goto(`${base}/settings/loyalty`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("status").getByText("These loyalty rules are not connected to this screen").waitFor({ timeout: 15000 });
+      const loyaltySettings = page.locator('[aria-labelledby="loyalty-status-title"] ul > li');
+      const loyaltyLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (loyaltyLayout.document > loyaltyLayout.viewport) throw new Error(`/settings/loyalty overflows at ${width}px: ${JSON.stringify(loyaltyLayout)}`);
+      if ((await loyaltySettings.count()) !== 4) throw new Error("Loyalty settings do not clearly list all four configured or disconnected states");
+      await page.getByText("Sample value", { exact: true }).first().waitFor({ timeout: 10000 });
+      checks.push(`/settings/loyalty: sample and unavailable states, no overflow at ${width}px`);
+
+      await page.goto(`${base}/settings/barcodes`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("status").getByText("Barcode label printing is not connected").waitFor({ timeout: 15000 });
+      if (!page.url().endsWith("/utilities/barcodes")) throw new Error("Barcode settings did not redirect to the barcode utility status page");
+      const barcodeSteps = page.locator('[aria-labelledby="barcode-process-title"] ol > li');
+      const barcodeLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (barcodeLayout.document > barcodeLayout.viewport) throw new Error(`/utilities/barcodes overflows at ${width}px: ${JSON.stringify(barcodeLayout)}`);
+      if ((await barcodeSteps.count()) !== 3) throw new Error("Barcode workflow does not show all three unavailable capabilities");
+      checks.push(`/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at ${width}px`);
+
+      await page.goto(`${base}/settings/surcharging`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("status").getByText("Surcharge settings are not connected here").waitFor({ timeout: 15000 });
+      const surchargeSettings = page.locator('[aria-labelledby="surcharge-status-title"] ul > li');
+      const surchargeLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (surchargeLayout.document > surchargeLayout.viewport) throw new Error(`/settings/surcharging overflows at ${width}px: ${JSON.stringify(surchargeLayout)}`);
+      if ((await surchargeSettings.count()) !== 4) throw new Error("Surcharge settings do not show all four configuration states");
+      await page.getByText("do not change checkout totals", { exact: false }).waitFor({ timeout: 10000 });
+      checks.push(`/settings/surcharging: honest sample states and no checkout effect claim at ${width}px`);
     } finally {
       await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
       await context.close();

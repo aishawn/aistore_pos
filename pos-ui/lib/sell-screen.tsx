@@ -94,10 +94,6 @@ function toCustomer(hit: SellCustomerHit): Customer {
   };
 }
 
-function toLine(p: SellProductHit): SaleLine {
-  return { id: p.id, name: p.name, unitPrice: p.price, qty: 1 };
-}
-
 interface SellScreenState {
   lines: SaleLine[];
   selectedId: string | null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { KeyboardIcon, ParkingIcon, SearchIcon } from "@/components/icons";
 import type { SaleKey } from "@/types/orithos";
 import { cn } from "@/lib/utils";

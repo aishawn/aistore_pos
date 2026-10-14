@@ -182,7 +182,7 @@ export default function LoginPage() {
             onClick={() => void doLogin("mobile")}
             className="min-h-10 rounded-md border border-[var(--oh-border-strong)] bg-transparent text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-70"
           >
-            {busy === "mobile" ? "Opening mobile workspace…" : "Use mobile workspace"}
+            {busy === "mobile" ? "Signing in to mobile workspace…" : "Sign in to mobile workspace"}
           </button>
         </form>
 

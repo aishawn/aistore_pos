@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T02:13:02.990Z",
-  "deployment": "e8d7252d5e6e9b6d44e61e8bac31a2673c9cf918",
+  "generatedAt": "2026-10-14T02:26:59.348Z",
+  "deployment": "846a4ca0053193bbf04eac85d10bc7ac872b189f",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "path": "/close",
-      "status": "PASS",
-      "snippet": "orithos Overview Register Point of sale Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Close register En"
+      "status": "FAIL",
+      "snippet": "orithos Overview Register Point of sale Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
     },
     {
       "path": "/products/odoo",
@@ -87,6 +87,26 @@
       "path": "/settings/customerdisplay",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Customer Display Customer-facing screen status for this POS "
+    },
+    {
+      "path": "/settings/loyalty",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Loyalty Settings Earn rates, redemptions, and customer balan"
+    },
+    {
+      "path": "/settings/barcodes",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Barcodes Barcode label generation status Barcode label print"
+    },
+    {
+      "path": "/utilities/barcodes",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Barcodes Barcode label generation status Barcode label print"
+    },
+    {
+      "path": "/settings/surcharging",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Surcharging Surcharge rule status for this POS Surcharge set"
     },
     {
       "path": "/settings/company/general",
@@ -188,18 +208,6 @@
     }
   ],
   "recoveryResponses": [
-    {
-      "route": null,
-      "path": "/api/odoo/session",
-      "method": "GET",
-      "status": 200
-    },
-    {
-      "route": null,
-      "path": "/api/odoo/session",
-      "method": "GET",
-      "status": 200
-    },
     {
       "route": null,
       "path": "/api/odoo/session",
