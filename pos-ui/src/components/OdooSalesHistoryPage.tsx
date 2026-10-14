@@ -271,7 +271,12 @@ export function OdooSalesHistoryPage() {
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{sale.session_id ? sale.session_id[1] : "—"}</td>
                     <td className="px-4 py-3"><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(sale.state)}`}>{stateLabel(sale.state)}</span></td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--oh-text)]">{money(sale.amount_total)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`font-semibold tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>{money(sale.amount_total)}</span>
+                        {sale.amount_total < 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold leading-4 text-[var(--oh-danger)]">Refund</span>}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -291,7 +296,10 @@ export function OdooSalesHistoryPage() {
                 >
                   <span className="flex items-start justify-between gap-3">
                     <span className="min-w-0 truncate text-sm font-semibold text-[var(--oh-primary)]">{sale.pos_reference || sale.name}</span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(sale.amount_total)}</span>
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      <span className={`text-sm font-semibold tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>{money(sale.amount_total)}</span>
+                      {sale.amount_total < 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold leading-4 text-[var(--oh-danger)]">Refund</span>}
+                    </span>
                   </span>
                   <span className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-[var(--oh-muted)]">
                     <span>{formatOrderDate(sale.date_order)}</span>
