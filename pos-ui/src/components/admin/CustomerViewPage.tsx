@@ -15,6 +15,7 @@ import {
   DeleteIcon,
   DollarSignIcon,
   EditIcon,
+  ArrowLeftIcon,
   HomeIcon,
   PrinterIcon,
   ScaleIcon,
@@ -120,17 +121,25 @@ function CustomerHomePanel({
   const email = customer.email ?? customer.emails?.[0];
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-8 sm:grid-cols-2">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
         <div>
           <p className="text-[13px] font-semibold text-[var(--oh-text)]">Email</p>
-          <p className="mt-1 text-[15px] text-[var(--oh-text-secondary)]">{display(email)}</p>
+          <p className="mt-1 break-words text-[15px] text-[var(--oh-text-secondary)]">{display(email)}</p>
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-[var(--oh-text)]">Phone</p>
+          <p className="mt-1 text-[15px] text-[var(--oh-text-secondary)]">{display(customer.phone ?? customer.mobile)}</p>
         </div>
         <div>
           <p className="text-[13px] font-semibold text-[var(--oh-text)]">Customer Group</p>
           <p className="mt-1 text-[15px] text-[var(--oh-text-secondary)]">
             {display(customer.customerGroupName)}
           </p>
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-[var(--oh-text)]">Customer Code</p>
+          <p className="mt-1 text-[15px] text-[var(--oh-text-secondary)]">{display(customer.code)}</p>
         </div>
       </div>
 
@@ -276,11 +285,11 @@ function CustomerBalancePanel({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <button
           type="button"
           onClick={onMakePayment}
-          className="flex items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-success)] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:opacity-90"
+          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[13px] font-semibold text-white outline-none transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
         >
           <DollarSignIcon size={16} />
           Make Payment
@@ -288,7 +297,7 @@ function CustomerBalancePanel({
         <button
           type="button"
           onClick={onViewStatement}
-          className="flex items-center gap-2 rounded-[var(--oh-radius)] bg-[#5cb3e0] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:opacity-90"
+          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] outline-none transition-colors hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
         >
           <StatementIcon size={16} />
           View Statement
@@ -296,7 +305,7 @@ function CustomerBalancePanel({
         <button
           type="button"
           onClick={() => window.print()}
-          className="flex items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]"
+          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] outline-none transition-colors hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
         >
           <PrinterIcon size={16} />
           Print
@@ -358,7 +367,7 @@ function CustomerBalancePanel({
                   key={`void-${p.id}`}
                   type="button"
                   onClick={() => onVoidPayment(p.id)}
-                  className="text-[13px] font-semibold text-[var(--oh-danger)] hover:underline"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-danger)] outline-none hover:bg-red-50 hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)]"
                 >
                   Void
                 </button>
@@ -472,17 +481,20 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
   const title = customer?.name || customer?.firstName || "Customer";
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4 text-center">
-        <h1 className="text-[18px] font-semibold uppercase tracking-wide text-[var(--oh-text)] md:text-[20px]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white font-sans">
+      <div className="relative flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] bg-white px-3 py-2.5 text-left sm:px-6 md:justify-center md:text-center">
+        <button type="button" onClick={() => router.push("/customers")} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium text-[var(--oh-text-secondary)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:absolute md:left-4">
+          <ArrowLeftIcon size={16} /> <span>Customers</span>
+        </button>
+        <h1 className="min-w-0 flex-1 break-words text-lg font-semibold leading-6 text-[var(--oh-text)] md:flex-none md:text-xl">
           {loading ? "Loading…" : title}
         </h1>
       </div>
 
       <AsyncState loading={loading} error={error} empty={false}>
         {customer && (
-          <div className="flex min-h-0 flex-1">
-            <main className="min-w-0 flex-1 overflow-auto p-6">
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <main className="order-last min-h-0 min-w-0 flex-1 overflow-auto p-4 sm:p-6 lg:order-first">
               {nav === "home" && (
                 <CustomerHomePanel
                   customer={customer}
@@ -541,19 +553,28 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
               )}
             </main>
 
-            <aside className="flex w-[280px] shrink-0 flex-col border-l border-[var(--oh-border)] bg-[#f3f3f3]">
-              <div className="p-4">
+            <aside className="order-first flex w-full shrink-0 flex-col border-b border-[var(--oh-border)] bg-[var(--oh-surface)] lg:order-last lg:w-[280px] lg:border-b-0 lg:border-l">
+              <div className="grid grid-cols-2 gap-2 p-3 lg:grid-cols-1 lg:p-4">
                 <button
                   type="button"
                   onClick={() => router.push(`/customers/${customerId}/edit`)}
-                  className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-success)] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:opacity-90"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[13px] font-semibold text-white outline-none transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
                 >
                   <EditIcon size={16} />
                   Edit
                 </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-danger)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] outline-none transition-colors hover:bg-[var(--oh-tile-red-bg)] focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)] focus-visible:ring-offset-2 disabled:opacity-60"
+                >
+                  <DeleteIcon size={16} />
+                  {deleting ? "Deleting…" : "Delete"}
+                </button>
               </div>
 
-              <nav className="flex-1 space-y-0.5 px-3">
+              <nav aria-label="Customer sections" className="flex shrink-0 gap-1 overflow-x-auto px-2 pb-2 lg:flex-1 lg:flex-col lg:space-y-0.5 lg:px-3 lg:pb-3">
                 {NAV.map(({ id, label, description, Icon }) => {
                   const active = nav === id;
                   return (
@@ -561,26 +582,27 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                       key={id}
                       type="button"
                       onClick={() => setNav(id)}
+                      aria-pressed={active}
                       className={cn(
-                        "relative flex w-full items-start gap-2.5 rounded-md px-3 py-3 text-left transition-colors",
+                        "relative flex min-h-11 w-auto shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] lg:w-full lg:items-start lg:gap-2.5 lg:py-3",
                         active
-                          ? "bg-white text-[#5cb3e0]"
-                          : "text-[var(--oh-text-secondary)] hover:bg-white/70",
+                          ? "bg-white text-[var(--oh-primary)] shadow-sm"
+                          : "text-[var(--oh-text-secondary)] hover:bg-white",
                       )}
                     >
                       {active && (
-                        <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-[#5cb3e0]" />
+                        <span className="absolute bottom-0 left-2 right-2 h-[3px] rounded-t bg-[var(--oh-primary)] lg:bottom-2 lg:left-0 lg:right-auto lg:top-2 lg:h-auto lg:w-[3px] lg:rounded-r lg:rounded-t-none" />
                       )}
                       <Icon
                         size={16}
-                        className={cn("mt-0.5 shrink-0", active && "text-[#5cb3e0]")}
+                        className={cn("shrink-0 lg:mt-0.5", active && "text-[var(--oh-primary)]")}
                         strokeWidth={1.75}
                       />
                       <div className="min-w-0">
-                        <div className={cn("text-[13px] font-semibold", active && "text-[#5cb3e0]")}>
+                        <div className={cn("whitespace-nowrap text-[13px] font-semibold lg:whitespace-normal", active && "text-[var(--oh-primary)]")}>
                           {label}
                         </div>
-                        <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">
+                        <div className="mt-0.5 hidden text-[13px] leading-snug text-[var(--oh-muted)] lg:block">
                           {description}
                         </div>
                       </div>
@@ -589,17 +611,6 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                 })}
               </nav>
 
-              <div className="p-4">
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-danger)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] transition-colors hover:bg-[var(--oh-tile-red-bg)] disabled:opacity-60"
-                >
-                  <DeleteIcon size={16} />
-                  {deleting ? "Deleting…" : "Delete"}
-                </button>
-              </div>
             </aside>
           </div>
         )}
