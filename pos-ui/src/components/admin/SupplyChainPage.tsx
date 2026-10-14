@@ -228,11 +228,12 @@ export function SupplyChainPage() {
       fullBleed
       actions={
         <>
-          <AdminOutlineButton onClick={() => router.push("/orders/manual")}>Manual order</AdminOutlineButton>
-          <AdminSecondaryButton onClick={() => setSettingsOpen((open) => !open)}>
+          <AdminOutlineButton className="min-h-11" onClick={() => router.push("/orders/manual")}>Manual order</AdminOutlineButton>
+          <AdminSecondaryButton className="min-h-11" onClick={() => setSettingsOpen((open) => !open)}>
             {settingsOpen ? "Back to plan" : "Rules & prices"}
           </AdminSecondaryButton>
           <AdminPrimaryButton
+            className="min-h-11"
             disabled={busy}
             onClick={() =>
               void run(async () => {
@@ -268,12 +269,12 @@ export function SupplyChainPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <section className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr]">
+          <section className="grid gap-3 xl:grid-cols-[1.4fr_1fr_1fr]">
             <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
               <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
                 This week · {plan.weekStart} to {plan.weekEnd}
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-3">
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Metric label="Products" value={String(plan.productCount)} />
                 <Metric label="Est. spend" value={money(plan.estimatedSpend)} />
                 <Metric label="AI saving" value={money(plan.estimatedSaving)} />
@@ -319,7 +320,8 @@ export function SupplyChainPage() {
                   selection?.kind === "other"
                     ? "border-[var(--oh-primary)] bg-white"
                     : "border-[var(--oh-border)] bg-white"
-                }`}
+                } min-h-11 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]`}
+                aria-pressed={selection?.kind === "other"}
               >
                 <div className="text-[13px] font-semibold uppercase tracking-wider text-sky-700">Other purchases</div>
                 <div className="mt-1 text-[18px] font-semibold text-[var(--oh-text)]">{plan.other.length}</div>
@@ -336,6 +338,7 @@ export function SupplyChainPage() {
               </div>
               {selection?.kind === "ready" && (
                 <AdminPrimaryButton
+                  className="min-h-11"
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
@@ -351,7 +354,7 @@ export function SupplyChainPage() {
                 </AdminPrimaryButton>
               )}
               {selection?.kind === "email" && draft && (
-                <AdminPrimaryButton onClick={() => setDraft(plan.emails.find((item) => item.id === draft.id) ?? draft)}>
+                <AdminPrimaryButton className="min-h-11" onClick={() => setDraft(plan.emails.find((item) => item.id === draft.id) ?? draft)}>
                   Open email draft
                 </AdminPrimaryButton>
               )}
@@ -362,7 +365,8 @@ export function SupplyChainPage() {
                 Stock covers the forecast for this channel. Regenerate after sales, prices, or a holiday change.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="hidden overflow-x-auto lg:block">
                 <table className="w-full min-w-[760px] text-left text-[13px]">
                   <thead className="text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">
                     <tr className="border-b border-[var(--oh-border)]">
@@ -393,6 +397,24 @@ export function SupplyChainPage() {
                   </tbody>
                 </table>
               </div>
+              <ul className="grid gap-3 p-3 lg:hidden">
+                {visibleLines.map((line) => (
+                  <LineCard
+                    key={line.id}
+                    line={line}
+                    open={openLineId === line.id}
+                    busy={busy}
+                    onToggle={() => setOpenLineId((id) => (id === line.id ? null : line.id))}
+                    onDecision={(status) =>
+                      void run(async () => {
+                        const next = await api.post<Plan>(`/api/supply-chain/lines/${line.id}/decision`, { status });
+                        setPlan(next);
+                      })
+                    }
+                  />
+                ))}
+              </ul>
+              </>
             )}
           </section>
         </div>
@@ -400,9 +422,9 @@ export function SupplyChainPage() {
 
       {draft && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-xl overflow-auto rounded-[var(--oh-radius)] bg-white p-5 shadow-xl">
+          <div role="dialog" aria-modal="true" aria-labelledby="supply-email-draft-title" className="max-h-[85vh] w-full max-w-xl overflow-auto rounded-[var(--oh-radius)] bg-white p-5 shadow-xl">
             <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Email draft</div>
-            <h3 className="mt-1 text-[16px] font-semibold">{draft.subject}</h3>
+            <h3 id="supply-email-draft-title" className="mt-1 text-[16px] font-semibold">{draft.subject}</h3>
             <p className="mt-1 text-[13px] text-[var(--oh-text-secondary)]">To: {draft.toEmail || "No rep email on file"}</p>
             <pre className="mt-3 whitespace-pre-wrap rounded bg-[var(--oh-surface)] p-3 text-[13px] leading-5 text-[var(--oh-text)]">
               {draft.body}
@@ -411,13 +433,15 @@ export function SupplyChainPage() {
               Orion keeps this as a draft. Copy it into your mailbox and send it yourself.
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <AdminSecondaryButton onClick={() => setDraft(null)}>Close</AdminSecondaryButton>
+              <AdminSecondaryButton className="min-h-11" onClick={() => setDraft(null)}>Close</AdminSecondaryButton>
               <AdminOutlineButton
+                className="min-h-11"
                 onClick={() => void navigator.clipboard.writeText(`To: ${draft.toEmail || ""}\nSubject: ${draft.subject}\n\n${draft.body}`)}
               >
                 Copy
               </AdminOutlineButton>
               <AdminPrimaryButton
+                className="min-h-11"
                 disabled={busy || draft.status === "REVIEWED"}
                 onClick={() =>
                   void run(async () => {
@@ -485,7 +509,8 @@ function ChannelCard({
             key={item.key}
             type="button"
             onClick={item.onClick}
-            className={`block w-full rounded border px-3 py-2 text-left ${
+            aria-pressed={item.active}
+            className={`block min-h-11 w-full rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${
               item.active ? "border-[var(--oh-orange)] bg-[var(--oh-orange-light)]" : "border-[var(--oh-border)]"
             }`}
           >
@@ -539,17 +564,17 @@ function LineRows({
           <div className="mt-1 text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">{line.status.replaceAll("_", " ")}</div>
         </td>
         <td className="px-4 py-3 text-right">
-          <button type="button" onClick={onToggle} className="text-[13px] font-semibold text-[var(--oh-orange)]">
-            {open ? "Hide" : "Why?"}
+          <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-10 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+            {open ? "Hide details" : "Why this quantity?"}
           </button>
           {line.status !== "ORDERED" && line.status !== "REJECTED" && (
             <div className="mt-1 flex justify-end gap-2">
               {line.status === "NEEDS_REVIEW" && (
-                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="text-[13px] font-semibold text-emerald-700">
+                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
                   Approve
                 </button>
               )}
-              <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="text-[13px] font-semibold text-[var(--oh-muted)]">
+              <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50">
                 Skip
               </button>
             </div>
@@ -586,6 +611,75 @@ function LineRows({
         </tr>
       )}
     </>
+  );
+}
+
+function LineCard({
+  line,
+  open,
+  busy,
+  onToggle,
+  onDecision,
+}: {
+  line: Line;
+  open: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onDecision: (status: "APPROVED" | "REJECTED") => void;
+}) {
+  const quotes = quotesOf(line);
+  return (
+    <li className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.productName}</h3>
+          <p className="mt-1 break-words text-xs leading-5 text-[var(--oh-muted)]">
+            {line.supplierName || "No supplier"}{line.supplierSku ? ` · ${line.supplierSku}` : ""}{line.unusual ? " · Unusual quantity" : ""}
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${confidenceClass(line.confidenceLabel)}`}>
+          {line.confidenceLabel} {line.confidence}%
+        </span>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3">
+        <div><p className="text-xs text-[var(--oh-muted)]">Order quantity</p><p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{qty(line.orderQty)} <span className="text-xs font-normal text-[var(--oh-muted)]">· {qty(line.caseQty)} cases</span></p></div>
+        <div><p className="text-xs text-[var(--oh-muted)]">Effective cost</p><p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(line.unitCost)} <span className="text-xs font-normal text-[var(--oh-muted)]">/ unit</span></p></div>
+        <div className="col-span-2"><p className="text-xs text-[var(--oh-muted)]">Reason</p><p className="mt-1 text-sm leading-5 text-[var(--oh-text-secondary)]">{line.reason || "No reason provided"}</p></div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--oh-border)] pt-2">
+        <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+          {open ? "Hide details" : "Why this quantity?"}
+        </button>
+        {line.status !== "ORDERED" && line.status !== "REJECTED" && (
+          <div className="flex gap-1">
+            {line.status === "NEEDS_REVIEW" && <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">Approve</button>}
+            <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50">Skip</button>
+          </div>
+        )}
+      </div>
+
+      {open && (
+        <div className="mt-2 grid gap-3 rounded-lg bg-[var(--oh-surface)] p-3 text-[13px] leading-5 text-[var(--oh-text-secondary)]">
+          <div>
+            <h4 className="font-semibold text-[var(--oh-text)]">Quantity breakdown</h4>
+            <p className="mt-1">Last week {qty(line.lastWeekSales)} · Forecast {qty(line.expectedDemand)} · On hand {qty(line.currentStock)} · Incoming {qty(line.incomingStock)} · Safety stock {qty(line.safetyStock)}</p>
+            <p>Recommended {qty(line.orderQty)} units / {qty(line.caseQty)} cases.</p>
+          </div>
+          <div>
+            <h4 className="font-semibold text-[var(--oh-text)]">Supplier comparison</h4>
+            <p className="mt-1">{line.decision || "No priced supplier."}</p>
+            {quotes.length === 0 ? <p className="mt-1 text-[var(--oh-muted)]">No supplier price was on file.</p> : quotes.map((quote) => (
+              <p key={`${quote.supplier}-${quote.total}`} className="mt-1 flex flex-wrap justify-between gap-x-3">
+                <span className={quote.chosen ? "font-semibold text-[var(--oh-text)]" : ""}>{quote.supplier}{quote.chosen ? " · selected" : ""}</span>
+                <span>{money(quote.effective)} / case{quote.note ? ` · ${quote.note}` : ""}</span>
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 
