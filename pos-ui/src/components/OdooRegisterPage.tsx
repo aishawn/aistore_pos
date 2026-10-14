@@ -74,21 +74,6 @@ function readParkedOdooSales(): ParkedOdooSale[] {
 
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
-const PRODUCT_MARK_TONES = [
-  { bg: "#eff6ff", fg: "#1d4ed8" },
-  { bg: "#ecfdf5", fg: "#047857" },
-  { bg: "#fff7ed", fg: "#c2410c" },
-  { bg: "#f5f3ff", fg: "#6d28d9" },
-  { bg: "#fdf2f8", fg: "#be185d" },
-  { bg: "#ecfeff", fg: "#0e7490" },
-] as const;
-
-function productMarkTone(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i += 1) hash = (hash + name.charCodeAt(i) * (i + 1)) % PRODUCT_MARK_TONES.length;
-  return PRODUCT_MARK_TONES[hash] ?? PRODUCT_MARK_TONES[0];
-}
-
 /** Prefer a human-readable product label; keep the full string for title tooltips. */
 function friendlyProductLabel(name: string) {
   const cleaned = name
@@ -622,7 +607,6 @@ export function OdooRegisterPage() {
                       {products.map((product) => {
                         const fullName = product.display_name || product.name;
                         const label = friendlyProductLabel(fullName);
-                        const tone = productMarkTone(label);
                         const initial = (label.replace(/[^A-Za-z0-9]/gu, "").charAt(0) || "?").toUpperCase();
                         return (
                           <button
@@ -633,7 +617,7 @@ export function OdooRegisterPage() {
                             disabled={!selectedConfig?.session || product.free_qty <= 0}
                             className="flex min-h-[112px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45"
                           >
-                            <span className="oh-type-label mb-2 grid h-9 w-9 place-items-center rounded-full font-bold" style={{ background: tone.bg, color: tone.fg }} aria-hidden="true">
+                            <span className="oh-type-label mb-2 grid h-9 w-9 place-items-center rounded-full bg-[var(--oh-orange-light)] font-bold text-[var(--oh-primary)]" aria-hidden="true">
                               {initial}
                             </span>
                             <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
