@@ -169,7 +169,7 @@ export function OdooPosConnectionCard() {
         </form>
       )}
 
-      {message && <p role="status" className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{message}</p>}
+      {message && <p role={state === "error" ? "alert" : "status"} className={`mt-4 rounded-md border px-3 py-2 text-sm ${state === "error" ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>{message}</p>}
       <p className="mt-4 text-xs leading-5 text-[var(--oh-muted)]">
         {autoRecoverConfigured
           ? "Odoo auto-reconnect is on for signed-in Orithos users when the session cookie expires."
