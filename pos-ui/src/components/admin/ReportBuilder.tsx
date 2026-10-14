@@ -9,12 +9,13 @@ export function ReportBuilder({
   query,
   panels,
   columns,
-  totals,
 }: {
   title: string;
   query: React.ReactNode;
   panels: Panel[];
   columns: string[];
+  /** Accepted for compatibility with legacy route fixtures; previews contain no rows or totals. */
+  totals?: Array<string | null>;
 }) {
   const tableMinWidth = Math.max(720, columns.length * 104);
 
