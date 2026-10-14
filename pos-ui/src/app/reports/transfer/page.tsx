@@ -13,7 +13,6 @@ export default function TransferReportsPage() {
         { label: "Precision", value: "None" },
       ]}
       columns={["Name", "From", "To", "Quantity", "Cost Value", "Retail Value"]}
-      totals={[null, null, null, "0", "$0.00", "$0.00"]}
     />
   );
 }

@@ -36,6 +36,13 @@ const pages = [
   { path: "/purchases/odoo", expect: [/Purchases|No purchase|empty|RFQ|0/i] },
   { path: "/stock/replenishment", expect: [/Replenishment|suggest|0|no completed sales/i] },
   { path: "/reports/dashboard", expect: [/Reporting|Sales|transaction|\$/i] },
+  { path: "/reports/actions", expect: [/Actions report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/advanced", expect: [/Advanced report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/inventory", expect: [/Inventory report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/misc", expect: [/Miscellaneous report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/purchase", expect: [/Purchase report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/sales", expect: [/Sales report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/transfer", expect: [/Transfer report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
   { path: "/settings/integrations", expect: [/Integrations|Odoo|Connected|auto-reconnect|auto recover/i] },
   { path: "/settings/payment", expect: [/Payment|Card|Cash/i] },
   { path: "/settings/tax", expect: [/Tax|GST|WET/i] },
@@ -69,7 +76,12 @@ function matchAll(text, patterns) {
 async function gotoWithTransientRetry(targetPage, url, label) {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      return await targetPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      const response = await targetPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      if (response && (response.status() >= 500 || response.status() === 404) && attempt < 3) {
+        await targetPage.waitForTimeout(attempt * 1000);
+        continue;
+      }
+      return response;
     } catch (error) {
       const transient = /timeout|timed out|ERR_TIMED_OUT|ECONNRESET|ERR_CONNECTION_RESET/i.test(String(error));
       if (!transient || attempt === 3) throw new Error(`${label} navigation failed after ${attempt} attempt(s): ${String(error)}`);

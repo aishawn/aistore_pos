@@ -13,7 +13,6 @@ export default function ActionsReportsPage() {
         { label: "Precision", value: "None" },
       ]}
       columns={["Action", "User", "Count", "Outlet", "Register"]}
-      totals={[null, null, "0", null, null]}
     />
   );
 }

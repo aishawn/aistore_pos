@@ -13,7 +13,6 @@ export default function AdvancedReportsPage() {
         { label: "Precision", value: "None" },
       ]}
       columns={["Name", "Revenue", "Profit", "Margin", "Transaction Count"]}
-      totals={[null, "$0.00", "$0.00", "0.00%", null]}
     />
   );
 }

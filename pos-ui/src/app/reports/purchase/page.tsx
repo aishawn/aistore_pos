@@ -13,7 +13,6 @@ export default function PurchaseReportsPage() {
         { label: "Precision", value: "None" },
       ]}
       columns={["Name", "Quantity Ordered", "Quantity Received", "Cost", "Outstanding", "Supplier"]}
-      totals={[null, "0", "0", "$0.00", "$0.00", null]}
     />
   );
 }

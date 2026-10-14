@@ -326,6 +326,19 @@ try {
       ? `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour trend renders ${rangeData.trend.length} accessible marks, and the AI assistant opens/closes.`
       : `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes.`;
   });
+
+  await check("Legacy report previews do not imply live Odoo data", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${base}/reports/sales`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.getByRole("heading", { name: "Sales report" }).waitFor({ timeout: 15000 });
+    await page.getByRole("status").getByText("Preview only · not connected to Odoo", { exact: true }).waitFor({ timeout: 10000 });
+    await page.getByText("No report rows to display for these filters.", { exact: true }).waitFor({ timeout: 10000 });
+    const misleadingTotals = await page.getByText(/\$0\.00|0\.00%/).count();
+    if (misleadingTotals) throw new Error("Legacy report preview exposes placeholder monetary totals");
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    if (dimensions.document > dimensions.viewport) throw new Error(`Legacy report preview overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
+    return "At 390px the sales report clearly identifies itself as a disconnected preview, displays no placeholder totals, and has no horizontal overflow.";
+  });
 } finally {
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
   await browser.close();

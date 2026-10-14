@@ -15,7 +15,6 @@ export function ReportBuilder({
   query: React.ReactNode;
   panels: Panel[];
   columns: string[];
-  totals: (string | null)[];
 }) {
   const tableMinWidth = Math.max(720, columns.length * 104);
 
@@ -26,8 +25,13 @@ export function ReportBuilder({
         <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{title}</h1>
       </header>
 
-      <section aria-label="Applied filters" className="mb-4">
-        <h2 className="oh-type-label mb-2 font-semibold text-[var(--oh-text)]">Applied filters</h2>
+      <div role="status" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+        <p className="font-semibold">Preview only · not connected to Odoo</p>
+        <p>Filters and report definitions are examples. This page does not load live sales, stock, purchase or transfer data.</p>
+      </div>
+
+      <section aria-label="Example filters" className="mb-4">
+        <h2 className="oh-type-label mb-2 font-semibold text-[var(--oh-text)]">Example filters</h2>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           {panels.map((panel) => (
             <div key={panel.label} className="flex min-h-[68px] min-w-0 flex-col justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 py-2.5 shadow-[var(--oh-shadow-card)]">
@@ -40,7 +44,7 @@ export function ReportBuilder({
 
       <details className="mb-4 rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
         <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-paper)]">
-          Report definition
+          Example report definition
         </summary>
         <div className="border-t border-[var(--oh-border)] px-4 py-3">
           <code className="block overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-5 text-[var(--oh-muted)]">{query}</code>
@@ -66,15 +70,6 @@ export function ReportBuilder({
                 </td>
               </tr>
             </tbody>
-            <tfoot>
-              <tr className="bg-[var(--oh-surface)] text-sm font-semibold text-[var(--oh-text)]">
-                {totals.map((total, index) => (
-                  <td key={`${columns[index] ?? "total"}-${index}`} className={`px-3 py-3 tabular-nums ${index === 0 ? "text-left" : "text-right"}`}>
-                    {total}
-                  </td>
-                ))}
-              </tr>
-            </tfoot>
           </table>
         </div>
       </section>

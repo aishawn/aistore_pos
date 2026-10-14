@@ -65,6 +65,7 @@ try {
     await page.goto(`${base}/settings/integrations`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("heading", { name: "Shopfront archive mirror" }).waitFor({ timeout: 30000 });
     await page.getByRole("button", { name: "Sync now" }).waitFor({ timeout: 10000 });
+    await page.getByText(`${data.scheduleTime} · ${data.timezone}`, { exact: true }).waitFor({ timeout: 30000 });
     const pageState = await page.evaluate(() => ({
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -73,7 +74,7 @@ try {
     if (pageState.scrollWidth > pageState.width + 1) throw new Error(`Integration page overflows at ${width}px`);
     if (!pageState.text.includes("Shopfront archive mirror")) throw new Error(`Archive card missing at ${width}px`);
     if (!pageState.text.includes(data.scheduleTime) || !pageState.text.includes(data.timezone)) {
-      throw new Error(`Daily schedule is not visible at ${width}px`);
+      throw new Error(`Daily schedule is not visible at ${width}px: ${pageState.text.slice(-900)}`);
     }
     if (!data.configured && await page.getByRole("button", { name: "Sync now" }).isEnabled()) {
       throw new Error("Sync now is enabled when R2 credentials are not configured");

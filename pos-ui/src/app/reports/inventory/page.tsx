@@ -13,7 +13,6 @@ export default function InventoryReportsPage() {
         { label: "Precision", value: "None" },
       ]}
       columns={["Name", "Inventory On Hand", "Cost Value", "Retail Value", "Average Cost", "Last Cost", "Markup"]}
-      totals={[null, "0", "$0.00", "$0.00", "$0.00", "$0.00", "0.00%"]}
     />
   );
 }

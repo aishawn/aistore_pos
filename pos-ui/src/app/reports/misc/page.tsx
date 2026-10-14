@@ -13,7 +13,6 @@ export default function MiscReportsPage() {
         { label: "Precision", value: "None" },
       ]}
       columns={["Name", "Value", "Type", "Count"]}
-      totals={[null, "$0.00", null, "0"]}
     />
   );
 }
