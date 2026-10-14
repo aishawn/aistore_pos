@@ -75,12 +75,12 @@ export function OdooSalesHistoryPage() {
         return;
       }
       const [page, pos] = await Promise.all([
-        searchOdooRecords<OdooSaleRecord>("sales", { query, limit: PAGE_SIZE, offset }),
+        searchOdooRecords<OdooSaleRecord>("sales", { query, limit: PAGE_SIZE + 1, offset }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
-      setItems(page.items);
-      setHasNext(page.items.length === PAGE_SIZE);
+      setItems(page.items.slice(0, PAGE_SIZE));
+      setHasNext(page.items.length > PAGE_SIZE);
       if (pos) setBootstrap(pos);
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo sales.");
@@ -237,7 +237,7 @@ export function OdooSalesHistoryPage() {
           {error && <div role="alert" className="shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <table className="hidden w-full min-w-[850px] border-collapse text-left text-sm md:table">
+            <table className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th className="px-4 py-3">Receipt</th>
@@ -265,7 +265,7 @@ export function OdooSalesHistoryPage() {
                 ))}
               </tbody>
             </table>
-            <div className="divide-y divide-[var(--oh-border)] md:hidden">
+            <div className="divide-y divide-[var(--oh-border)] xl:hidden">
               {loading && items.length === 0 ? (
                 <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sales…</span></div>
               ) : items.length === 0 ? (
@@ -311,7 +311,7 @@ export function OdooSalesHistoryPage() {
         {saleDetail && <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="receipt-print my-auto max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-7">
           <header className="receipt-print-hidden mb-4 flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
             <div><h2 id="receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale receipt</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Review this Odoo order or print a copy.</p></div>
-            <button type="button" onClick={closeSale} aria-label="Close receipt" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button>
+            <button type="button" onClick={closeSale} aria-label="Close receipt" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button>
           </header>
           <div className="text-center">
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-[var(--oh-muted)]">{saleDetail.company?.name || "Orithos POS"}</p>
@@ -412,7 +412,7 @@ export function OdooSalesHistoryPage() {
                 type="button"
                 onClick={() => setConfirmingRefund(false)}
                 disabled={refundBusy}
-                className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-50"
+                className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -420,7 +420,7 @@ export function OdooSalesHistoryPage() {
                 type="button"
                 onClick={() => void refundSale()}
                 disabled={refundBusy}
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50"
+                className="inline-flex h-11 items-center gap-2 rounded-md bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50"
               >
                 {refundBusy && <LoaderCircle size={16} className="animate-spin" />}
                 {refundBusy ? "Recording…" : "Record full refund"}
