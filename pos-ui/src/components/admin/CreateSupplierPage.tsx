@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
 import { ClassificationFormSelect } from "@/components/admin/ClassificationFormSelect";
+import { AdminActionFooter } from "@/components/admin/AdminPageLayout";
 import {
   BookOpenIcon,
   CalculatorIcon,
@@ -1082,17 +1083,17 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
           </div>
         </div>
 
-        <div className="pointer-events-none absolute bottom-6 right-24 md:bottom-8 md:right-28">
+        <AdminActionFooter>
           <button
             type="button"
             onClick={save}
             disabled={busy || (isEdit && !hydrated)}
-            className="pointer-events-auto flex items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-5 py-3 text-[15px] font-semibold text-white shadow-[var(--oh-shadow-card)] transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
+            className="flex min-h-11 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-5 text-[15px] font-semibold text-white shadow-[var(--oh-shadow-card)] transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <SaveIcon size={18} />
             {busy ? "Saving…" : "Save"}
           </button>
-        </div>
+        </AdminActionFooter>
       </div>
     </div>
   );
