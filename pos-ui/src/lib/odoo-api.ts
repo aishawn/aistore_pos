@@ -23,6 +23,9 @@ export interface OdooProductRecord {
   barcode: string | false;
   default_code: string | false;
   list_price: number;
+  taxes_id: number[];
+  price_included: number | null;
+  price_tax: number | null;
   qty_available: number;
   free_qty: number;
   uom_id: [number, string] | false;

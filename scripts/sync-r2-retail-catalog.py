@@ -101,7 +101,9 @@ def main():
         rate = item["tax_rate"]
         price = item["price_gross"]
         tax_ids = []
-        tax_supported = rate is None
+        # A missing source tax rate is not evidence that the product is GST-free.
+        # Keep it unavailable until a matching, verified Odoo sale tax exists.
+        tax_supported = False
         net_price = 0.0
         if price is not None:
             divisor = 1 + (rate or 0.0) / 100

@@ -10,7 +10,7 @@ const MAX_LIMIT = 100;
 const RECORD_TYPES = {
   products: {
     model: "product.product",
-    fields: ["id", "name", "display_name", "barcode", "default_code", "list_price", "qty_available", "free_qty", "uom_id", "pos_categ_ids", "available_in_pos"],
+    fields: ["id", "name", "display_name", "barcode", "default_code", "list_price", "taxes_id", "qty_available", "free_qty", "uom_id", "pos_categ_ids", "available_in_pos"],
     order: "name asc, id asc",
     searchFields: ["name", "barcode", "default_code"],
     baseDomain: [["available_in_pos", "=", true]],
@@ -81,6 +81,48 @@ const RECORD_TYPES = {
 } as const;
 
 type RecordType = keyof typeof RECORD_TYPES;
+
+async function withTaxInclusivePrices(sessionId: string, items: unknown[]) {
+  const products = items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < products.length) {
+      const product = products[cursor++];
+      const taxIds = Array.isArray(product.taxes_id) ? product.taxes_id.filter((id): id is number => Number.isSafeInteger(id)) : [];
+      if (!taxIds.length) {
+        product.price_included = Number(product.list_price);
+        product.price_tax = 0;
+        continue;
+      }
+      try {
+        const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "call",
+            params: { model: "account.tax", method: "compute_all", args: [taxIds, Number(product.list_price), null, 1, false, false], kwargs: {} },
+            id: Date.now(),
+          }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(12_000),
+        });
+        const payload = await response.json() as { result?: { total_included?: number; total_excluded?: number }; error?: unknown };
+        const included = Number(payload.result?.total_included);
+        const excluded = Number(payload.result?.total_excluded);
+        if (!response.ok || payload.error || !Number.isFinite(included) || !Number.isFinite(excluded)) throw new Error("tax quote unavailable");
+        product.price_included = Math.round(included * 100) / 100;
+        product.price_tax = Math.round((included - excluded) * 100) / 100;
+      } catch {
+        // Keep an explicit null so the UI can label the fallback as ex GST.
+        product.price_included = null;
+        product.price_tax = null;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(8, products.length) }, worker));
+  return items;
+}
 
 function getOdooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
@@ -162,6 +204,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo could not load records" }, { status });
     }
     let items = payload.result ?? [];
+    if (type === "products") items = await withTaxInclusivePrices(sessionId, items);
     if (type === "posCategories") {
       const productResponse = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
         method: "POST",

@@ -621,7 +621,10 @@ export function OdooRegisterPage() {
                               {initial}
                             </span>
                             <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
-                            <span className="oh-type-body-strong mt-auto pt-2 tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</span>
+                            <span className="oh-type-body-strong mt-auto pt-2 tabular-nums text-[var(--oh-text)]">{money(product.price_included ?? product.list_price)}</span>
+                            <span className="oh-type-label text-[var(--oh-text-secondary)]">
+                              {product.price_included === null ? "Ex GST · tax quote unavailable" : product.price_tax === null ? "Tax status unavailable" : product.price_tax > 0 ? "Incl. GST" : "GST-free"}
+                            </span>
                             <span className={cn("oh-type-label mt-0.5", product.free_qty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>
                               {product.free_qty > 0
                                 ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.free_qty)} avail.`

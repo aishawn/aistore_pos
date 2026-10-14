@@ -20,6 +20,11 @@ function amount(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function surchargeTotal(value: unknown): number {
+  const rows = parseJson<Array<Record<string, unknown>>>(value, []);
+  return rows.reduce((sum, row) => sum + amount(row.amount ?? row.total), 0);
+}
+
 function parseJson<T>(value: unknown, fallback: T): T {
   if (typeof value !== "string") return fallback;
   try { return JSON.parse(value) as T; } catch { return fallback; }
@@ -94,7 +99,7 @@ function latestReceipts(databasePath: string) {
       stage = "receipt query";
       const headers = parseJson<string[]>(schema.headers_json, []);
       const index = (name: string) => headers.indexOf(name);
-      const fields = ["invoice_number", "status", "base_price", "savings", "discount", "tax", "items_json", "payments_json", "sale_date", "sale_time", "sale_id"];
+      const fields = ["invoice_number", "status", "base_price", "savings", "discount", "tax", "items_json", "payments_json", "sale_date", "sale_time", "sale_id", "rounding", "change", "surcharges_json"];
       const indices = Object.fromEntries(fields.map((name) => [name, index(name)]));
       if (indices.invoice_number < 0 || indices.sale_date < 0 || indices.items_json < 0 || indices.payments_json < 0) continue;
       const expression = (name: string) => indices[name] >= 0 ? `json_extract(values_json, '$[${indices[name]}]')` : "NULL";
@@ -129,6 +134,12 @@ function latestReceipts(databasePath: string) {
         }));
         const date = String(row.sale_date ?? "");
         const time = String(row.sale_time ?? "");
+        const basePrice = amount(row.base_price);
+        const savings = amount(row.savings);
+        const discount = amount(row.discount);
+        const rounding = amount(row.rounding);
+        const surcharges = surchargeTotal(row.surcharges_json);
+        const subtotal = Math.max(0, basePrice - savings - discount);
         return {
           id: String(row.sale_id || row.invoice_number),
           invoiceNumber: String(row.invoice_number ?? ""),
@@ -136,10 +147,16 @@ function latestReceipts(databasePath: string) {
           time,
           dateTime: isoDate(date, time) ?? "",
           status: String(row.status ?? ""),
-          total: amount(row.base_price),
+          // Shopfront base_price is the pre-discount amount. Compute the amount
+          // actually due from source discounts, cash rounding, and surcharges.
+          total: Math.round((subtotal + rounding + surcharges) * 100) / 100,
+          basePrice,
+          subtotal: Math.round(subtotal * 100) / 100,
           tax: amount(row.tax),
-          savings: amount(row.savings),
-          discount: amount(row.discount),
+          savings,
+          discount,
+          rounding,
+          change: amount(row.change),
           items,
           payments,
         };
