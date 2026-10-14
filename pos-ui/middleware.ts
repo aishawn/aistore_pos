@@ -23,17 +23,26 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
+function withSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (isPublic(pathname)) return NextResponse.next();
+  if (isPublic(pathname)) return withSecurityHeaders(NextResponse.next());
 
   if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !(await hasOrithosSession(request))) {
-    return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
+    return withSecurityHeaders(NextResponse.json({ message: "Orithos session expired" }, { status: 401 }));
   }
 
   // API routes other than public auth still need a token, but the BFF returns 401;
   // only page navigations are redirected here.
-  if (pathname.startsWith("/api/")) return NextResponse.next();
+  if (pathname.startsWith("/api/")) return withSecurityHeaders(NextResponse.next());
 
   const hasSession =
     Boolean(request.cookies.get(ACCESS_COOKIE)?.value)
@@ -43,10 +52,10 @@ export async function middleware(request: NextRequest) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = `?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
-    return NextResponse.redirect(login);
+    return withSecurityHeaders(NextResponse.redirect(login));
   }
 
-  return NextResponse.next();
+  return withSecurityHeaders(NextResponse.next());
 }
 
 export const config = {
