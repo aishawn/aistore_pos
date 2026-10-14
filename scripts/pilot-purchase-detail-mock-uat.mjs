@@ -1,6 +1,10 @@
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(fs.readFileSync(new URL("../.env", import.meta.url), "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => {
   const index = line.indexOf("=");
   return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
@@ -9,7 +13,7 @@ if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const base = "https://app.orithos.com.au";
 const browser = await chromium.launch({ headless: true });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
@@ -50,9 +54,20 @@ try {
     : route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "Unexpected write blocked in UAT" }) }));
 
   await page.goto(`${base}/purchases/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByRole("button", { name: "UAT-RFQ-MOCK-001" }).click();
+  const listLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+  if (listLayout.viewport !== 390 || listLayout.document > listLayout.viewport) throw new Error(`Purchase list overflows at mobile width: ${JSON.stringify(listLayout)}`);
+  if (await page.locator("table").isVisible().catch(() => false)) throw new Error("Purchase table should be replaced by mobile cards below xl width");
+  const mobileCard = page.locator("article", { hasText: "UAT-RFQ-MOCK-001" });
+  await mobileCard.waitFor({ timeout: 10000 });
+  if (!(await mobileCard.getByText("UAT Mock Supplier (not saved)").count())) throw new Error("Mobile purchase card is missing supplier information");
+  await mobileCard.getByRole("button", { name: "View order" }).click();
   const detailDialog = page.getByRole("dialog", { name: "UAT-RFQ-MOCK-001" });
   await detailDialog.waitFor({ timeout: 15000 });
+  const detailBox = await detailDialog.boundingBox();
+  if (!detailBox || detailBox.width > 390 || detailBox.height > 844) throw new Error(`Purchase detail dialog does not fit mobile viewport: ${JSON.stringify(detailBox)}`);
+  const mobileLineCard = detailDialog.locator("article", { hasText: "DEMO Sauvignon Blanc" });
+  await mobileLineCard.waitFor({ timeout: 10000 });
+  if (await detailDialog.locator("table").isVisible().catch(() => false)) throw new Error("Purchase detail lines should use mobile cards below xl width");
   await detailDialog.getByText("No incoming receipts are linked yet. Confirm the purchase order in Odoo to start the receiving workflow.").waitFor({ timeout: 10000 });
   await detailDialog.getByText("Orithos replenishment approval audit v1", { exact: false }).waitFor({ timeout: 10000 });
   const displayedNotes = await detailDialog.getByRole("heading", { name: "Replenishment approval audit" }).locator("..", {}).innerText({ timeoutMs: 10000 });
@@ -64,7 +79,10 @@ try {
   await confirmDialog.waitFor({ state: "detached", timeout: 10000 });
   await detailDialog.getByRole("button", { name: "Close", exact: true }).last().click();
   if (writes.length) throw new Error("PURCHASE_CONFIRM_WRITE_DETECTED");
-  console.log(JSON.stringify({ status: "PASS", fixture: "mock RFQ only; no Odoo write", checks: ["RFQ detail and line rendered", "AUD total and tax rendered", "internal approval chatter rendered as escaped plain text", "empty incoming receipt state rendered", "purchase confirmation requires a second dialog", "confirmation dialog cancelled", "no purchase confirmation POST observed"] }));
+  const output = { generatedAt: new Date().toISOString(), deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), status: "PASS", viewport: 390, fixture: "mock RFQ only; no Odoo write", checks: ["mobile purchase list has no horizontal overflow", "RFQ is displayed as a supplier card, not a wide table", "mobile detail dialog fits viewport", "purchase line uses mobile card instead of table", "RFQ detail and line rendered", "AUD total and tax rendered", "internal approval chatter rendered as escaped plain text", "empty incoming receipt state rendered", "purchase confirmation requires a second dialog", "confirmation dialog cancelled", "no purchase confirmation POST observed"] };
+  const outputPath = path.join(root, "docs", "UAT_PURCHASE_MOBILE_2026-10-14.json");
+  fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
+  console.log(JSON.stringify({ outputPath, ...output }));
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await browser.close();

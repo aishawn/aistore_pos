@@ -29,7 +29,7 @@ export function Header({
   const ai = useOptionalAiAssistant();
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
-  const showHeaderAi = checkoutKeyboard || pathname === "/products/odoo" || pathname === "/customers/odoo" || pathname === "/suppliers/odoo";
+  const showHeaderAi = checkoutKeyboard || pathname === "/products/odoo" || pathname === "/customers/odoo" || pathname === "/suppliers/odoo" || pathname === "/reports/dashboard";
   const tabIndex = checkoutKeyboard ? -1 : undefined;
 
   useEffect(() => {

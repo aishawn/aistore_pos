@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -270,25 +271,44 @@ try {
   });
 
   await check("Replenishment coverage control refreshes the estimate", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const coverage = page.locator("#coverage-days");
     await coverage.waitFor({ timeout: 15000 });
     await coverage.selectOption("7");
     await page.getByText("Across a 7-day target", { exact: true }).waitFor({ timeout: 15000 });
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    if (dimensions.document > dimensions.viewport) throw new Error(`Mobile replenishment overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
+    if (await page.locator("main table").isVisible().catch(() => false)) throw new Error("Mobile replenishment should show product cards instead of the wide table");
+    await page.getByRole("button", { name: "Show all products" }).click();
+    await page.getByRole("heading", { name: "All POS products" }).waitFor({ timeout: 10000 });
+    const productSection = page.locator("main section").filter({ has: page.getByRole("heading", { name: "All POS products" }) });
+    if (!(await productSection.locator("article").count())) throw new Error("Mobile all-products view did not render product cards");
     const body = await page.locator("body").innerText();
     if (/No recent sales found/i.test(body) && !/Zero suggested orders does not mean stock is sufficient/i.test(body)) {
       throw new Error("No-sales warning does not explain that zero orders are not a stock sufficiency signal");
     }
-    return "Coverage changed to 7 days; no-sales state remains explicitly qualified.";
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return `At 390px, replenishment showed product cards without overflow (${dimensions.document}px); coverage changed to 7 days; no-sales state remains explicitly qualified.`;
   });
 
   await check("Reporting period selector reloads Odoo dashboard", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/reports/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const range = page.locator("#dashboard-range");
     await range.waitFor({ timeout: 15000 });
+    await page.getByRole("region", { name: "Sales summary" }).waitFor({ timeout: 30000 });
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    if (dimensions.document > dimensions.viewport) throw new Error(`Mobile reporting dashboard overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
+    if (!(await page.getByRole("img").count())) throw new Error("Reporting trend has no accessible chart marks");
     await range.selectOption("24");
     await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
-    return "Dashboard changed to the 24-hour Odoo reporting window.";
+    const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
+    await launcher.waitFor({ timeout: 10000 });
+    await launcher.click();
+    await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
+    await page.getByRole("button", { name: "Close assistant" }).click();
+    return `At 390px the reporting dashboard has no horizontal overflow (${dimensions.document}px); range changed to 24 hours, chart marks are accessible, and the AI assistant opens/closes.`;
   });
 } finally {
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
@@ -297,6 +317,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
+  deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   checks,
 };

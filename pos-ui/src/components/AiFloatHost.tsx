@@ -47,6 +47,9 @@ export function AiFloatHost() {
     if (getUiMode() === "mobile" && pathname === "/m") {
       setExpanded(false);
     }
+    if (pathname === "/reports/dashboard") {
+      setExpanded(false);
+    }
   }, [pathname, setExpanded]);
 
   if (!shouldShowAiFloat(pathname)) return null;
@@ -55,7 +58,7 @@ export function AiFloatHost() {
     <SellAiPanel
       expanded={expanded}
       onExpandedChange={setExpanded}
-      hideFab={pathname === "/" || pathname === "/finalise" || pathname === "/products/odoo" || pathname === "/customers/odoo" || pathname === "/suppliers/odoo"}
+      hideFab={pathname === "/" || pathname === "/finalise" || pathname === "/products/odoo" || pathname === "/customers/odoo" || pathname === "/suppliers/odoo" || pathname === "/reports/dashboard"}
     />
   );
 }

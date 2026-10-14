@@ -15,7 +15,7 @@ import {
   ShoppingBag,
   Store,
 } from "lucide-react";
-import { fetchOdooRoute } from "@/lib/odoo-api";
+import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
 import { cn } from "@/lib/utils";
 
 type OverviewData = {
@@ -126,6 +126,9 @@ export function OrithosOverviewPage() {
     else setLoading(true);
     setError(null);
     try {
+      // Establish or restore the browser's Odoo cookie before loading the
+      // dashboard, so the first report request does not need a 401 retry.
+      await getOdooSessionStatus();
       // Overview uses a rolling 24h window so “today” KPIs stay useful overnight.
       const response = await fetchOdooRoute("/api/odoo/reporting-dashboard?hours=24", {
         credentials: "same-origin",

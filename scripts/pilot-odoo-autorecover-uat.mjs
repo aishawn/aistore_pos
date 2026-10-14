@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
@@ -92,6 +93,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
+  deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   scope: "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
   checks,
 };

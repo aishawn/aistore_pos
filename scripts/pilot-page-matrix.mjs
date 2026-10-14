@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
 
@@ -131,6 +132,21 @@ for (const entry of pages) {
     await page.waitForTimeout(1000);
     text = (await page.locator("body").innerText()).replace(/\s+/g, " ");
   }
+  if (entry.path === "/overview") {
+    try {
+      if (!productDiagnostics.reportingResponses.some((response) => response.route === "/overview" && response.status === 200)) {
+        await page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return url.pathname === "/api/odoo/reporting-dashboard" && response.ok();
+        }, { timeout: 30000 });
+      }
+      const firstLoadUnauthorized = productDiagnostics.reportingResponses.some((response) => response.route === "/overview" && response.status === 401);
+      if (firstLoadUnauthorized) throw new Error("Overview report request received 401 before session warm-up");
+      uiChecks.push({ name: "Overview restores Odoo session before loading reports", status: "PASS", evidence: "The first reporting-dashboard request succeeded without a transient 401." });
+    } catch (error) {
+      uiChecks.push({ name: "Overview restores Odoo session before loading reports", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+    }
+  }
   const pass = matchAll(text, entry.expect);
   if (entry.path === "/products/odoo") {
     const api = await context.request.post(`${base}/api/odoo/records`, {
@@ -151,6 +167,18 @@ for (const entry of pages) {
       reportingResponses: productDiagnostics.reportingResponses,
       recoveryResponses: productDiagnostics.recoveryResponses,
     }));
+  }
+  if (entry.path === "/reports/dashboard") {
+    try {
+      const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
+      await launcher.waitFor({ timeout: 10000 });
+      await launcher.click();
+      await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
+      await page.getByRole("button", { name: "Close assistant" }).click();
+      uiChecks.push({ name: "Reporting AI entry and panel interaction", status: "PASS", evidence: "The reporting header entry opens and closes the assistant without submitting a prompt." });
+    } catch (error) {
+      uiChecks.push({ name: "Reporting AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+    }
   }
   matrix.push({
     path: entry.path,
@@ -268,7 +296,7 @@ try {
 console.log("ROLE_CRUD", roleResult);
 
 const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
-fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
+fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
 console.log("WROTE", outPath);
 
 await browser.close();

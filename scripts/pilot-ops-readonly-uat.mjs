@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -105,7 +106,7 @@ try {
   await browser.close();
 }
 
-const output = { generatedAt: new Date().toISOString(), scope: "read-only production validation; no purchase order confirmed; close UI was cancelled; an invalid close request was rejected before any Odoo write", checks };
+const output = { generatedAt: new Date().toISOString(), deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), scope: "read-only production validation; no purchase order confirmed; close UI was cancelled; an invalid close request was rejected before any Odoo write", checks };
 const outputPath = path.join(root, "docs", "UAT_OPS_READONLY_2026-10-13.json");
 fs.writeFileSync(outputPath, JSON.stringify(output, null, 2) + "\n");
 console.log(JSON.stringify({ outputPath, passed: checks.filter((item) => item.status === "PASS").length, failed: checks.filter((item) => item.status === "FAIL").length, checks }));

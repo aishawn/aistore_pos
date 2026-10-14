@@ -61,7 +61,8 @@ export function OdooReportingDashboard() {
   const [needsConnection, setNeedsConnection] = useState(false);
 
   const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${rangeHours}`, {
@@ -123,10 +124,10 @@ export function OdooReportingDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="dashboard-range">Reporting period</label>
-          <select id="dashboard-range" value={rangeHours} onChange={(event) => setRangeHours(Number(event.target.value))} className="h-10 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+          <select id="dashboard-range" value={rangeHours} onChange={(event) => setRangeHours(Number(event.target.value))} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
             {ranges.map((range) => <option key={range.hours} value={range.hours}>{range.label}</option>)}
           </select>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">
+          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">
             {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
         </div>
@@ -134,15 +135,15 @@ export function OdooReportingDashboard() {
 
       {error && <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
 
-      <section aria-label="Sales summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section aria-label="Sales summary" className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard title="Net sales" value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")} detail="Completed sales less refunds · incl. tax" icon={<ShoppingBag size={18} />} />
         <MetricCard title="Sales" value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)} detail={`Average ${formatMoney(averageOrder, data?.currency ?? "AUD")} per sale`} icon={<Activity size={18} />} />
         <MetricCard title="Refunds" value={formatMoney(data?.refunds ?? 0, data?.currency ?? "AUD")} detail={`${new Intl.NumberFormat("en-AU").format(data?.refundTransactions ?? 0)} refunded orders`} icon={<RotateCcw size={18} />} />
         <MetricCard title="Net tax" value={formatMoney(data?.tax ?? 0, data?.currency ?? "AUD")} detail="Sales tax less refunded tax" icon={<ArrowUpRight size={18} />} />
-        <MetricCard title="Open registers" value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)} detail="Across the current Odoo company" icon={<Store size={18} />} />
+        <div className="col-span-2 xl:col-span-1"><MetricCard title="Open registers" value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)} detail="Across the current Odoo company" icon={<Store size={18} />} /></div>
       </section>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]">
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div><h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{ranges.find((item) => item.hours === rangeHours)?.label} · {data ? `${formatDate(data.from, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</p></div>
@@ -152,10 +153,10 @@ export function OdooReportingDashboard() {
               {data.trend.map((item, index) => {
                 const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
                 const label = formatDate(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
-                return <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">
-                  <div className="oh-type-meta mb-1 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
+                return <div key={`${item.label}-${index}`} role="img" aria-label={`${label}: ${formatMoney(item.revenue, data.currency)}, ${item.transactions} sales`} tabIndex={0} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+                  <div className="oh-type-meta mb-1 w-full min-w-0 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
                   <div className="relative mx-auto w-full max-w-14 rounded-t bg-[var(--oh-orange)]/85 transition-colors group-hover:bg-[var(--oh-orange)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
-                  <span className="oh-type-meta mt-2 truncate text-[var(--oh-muted)]">{label}</span>
+                  <span className="oh-type-meta mt-2 w-full min-w-0 truncate text-[var(--oh-muted)]">{label}</span>
                 </div>;
               })}
             </div>
