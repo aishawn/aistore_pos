@@ -12,6 +12,7 @@ type ArchiveStatus = {
   lastAttemptAt?: string;
   lastSuccessAt?: string;
   nextRunAt?: string;
+  nextAttemptAt?: string | null;
   timezone?: string;
   scheduleTime?: string;
   snapshotId?: string;
@@ -137,7 +138,7 @@ export function R2ArchiveSyncCard() {
             <div><dt className="text-xs text-[var(--oh-muted)]">Daily schedule</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.scheduleTime || "03:30"} · {status?.timezone || "Australia/Adelaide"}</dd></div>
             <div><dt className="text-xs text-[var(--oh-muted)]">SQLite integrity</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.snapshot?.databaseIntegrity || "Not checked"}</dd></div>
           </dl>
-          {status?.lastErrorCode && <p role="status" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">Last sync failed: {status.lastErrorCode}. The previous verified snapshot is retained.</p>}
+          {status?.lastErrorCode && <p role="status" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">Last sync failed: {status.lastErrorCode}. The previous verified snapshot is retained.{status.nextAttemptAt ? ` Automatic retry: ${formatDate(status.nextAttemptAt)}.` : " No automatic retry is scheduled; check the worker configuration."}</p>}
           {files.length > 0 && (
             <div className="overflow-hidden rounded-lg border border-[var(--oh-border)]">
               <div className="border-b border-[var(--oh-border)] px-4 py-3 text-sm font-semibold text-[var(--oh-text)]">Verified snapshot files</div>

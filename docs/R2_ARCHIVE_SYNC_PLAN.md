@@ -2,12 +2,22 @@
 
 更新时间：2026-10-14
 
-## 最新状态（2026-10-14 20:00，上海时间）
+## 最新检查（2026-10-14 20:02，上海时间）
 
-- 当前源码 HEAD 与 `origin/main` 为 `86840b5cd1094547ca1eb1b353574b75582c0170`。生产浏览器 R2 安全状态专项 6/6；匿名访问被拒，管理员响应不含密钥，但生产仍 `configured=false / not_configured`，快照数为 0。未触发同步。
-- Dokploy 会话已过期，本轮无法核实该源码 SHA 的部署状态。
-- 用户希望每日拉取后同步到 POS 网站。现实现只把 R2 文件镜像进 Orithos 私有持久卷并显示归档状态；没有将 Shopfront 销售/库存数据写入 POS 或 Odoo，也没有可供 POS 使用的业务映射。
-- 下一步：轮换已公开的旧 key；店主在 Dokploy Environment 配置新 key 并部署；确认 `configured=true` 后手动首轮同步并审查文件/SQLite 完整性、重启持久性；随后连续观察两个每日周期。之后对数据库做 schema/门店/时区盘点，定义只读 POS 数据页面与权限，单独验收。
+- 重新检查当前仓库根目录 `.env`（只查看变量名和是否非空，没有读取值）：没有配置 `R2_ENDPOINT`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 等 R2 变量；`v1/.env` 不存在。请确认你配置的是 `orithopos-master/.env`，但生产仍必须在 Dokploy Compose Environment 独立配置。仓库 `.env.example` 已列出全部必要变量。
+- 已发现并修正 worker 镜像的时区可靠性：Alpine worker 镜像显式安装 `tzdata`；若配置时区不可用，worker 现在会明确失败，不再静默退回 UTC。此前静默回退可能导致日程按错误时区执行。
+- 已补齐同步失败的运维反馈：管理员状态 API 允许安全返回 `nextAttemptAt`（仅时间字段），状态卡会显示自动重试时间；无自动重试时提示检查 worker 配置，不暴露 R2 凭据。
+- 源码改动尚未部署；本轮没有本地 build。推送后需在 Dokploy 确认 worker 镜像重建和服务正常，再做线上验收。
+- 现有功能仍只是私有归档镜像。仓库中未发现 Shopfront `manifest.json` 样本，且尚无成功下载的 SQLite；因此还不能核对真实 manifest 校验字段或数据库 schema，也不能把归档数据展示成 POS 商品/库存/销售数据。
+
+### 启用每日拉取的必要配置与验收
+
+1. 轮换聊天里暴露过的旧 key；仅把新 key 放进 `orithopos-master/.env` 的本地私密配置和 Dokploy Compose Environment。必须设置 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`；其余使用 `R2_PREFIX=shopfront/`、`R2_DATABASE_KEY=shopfront/shopfront.sqlite3`、`R2_MANIFEST_KEY=shopfront/manifest.json` 默认值即可。
+2. 确认 `R2_SYNC_TIMEZONE`、`R2_SYNC_HOUR`、`R2_SYNC_MINUTE` 与上传任务时区和完成时间相符。当前默认每日 03:30 Australia/Adelaide；上游“02:30”时区尚未确认。
+3. Dokploy 保留现有 `shopfront-archive` 持久卷，禁止 Fresh Volume/重置卷。单个快照上限 2 GiB、保留至少两份，下载 staging 会额外占用空间；主机磁盘应预留足够容量。
+4. 部署后等 `/api/r2-archive/status` 显示 configured，再手动触发首轮同步。核实 manifest、文件数量/大小/SHA-256、SQLite `quick_check=ok`、状态时区为 Adelaide；检查失败时旧快照保留。
+5. 验证容器重启/普通部署后快照仍在，再观察连续两个计划周期成功。完成前不要称为每日同步已启用。
+6. 若要让老板在 POS 页面使用 Shopfront 数据，先只读盘点 SQLite schema、门店/时区、商品/库存/销售字段和权限；再设计独立只读报表或经过人工审阅的 Odoo 导入映射。当前没有这层数据读取/业务映射，不能通过配置 key 自动实现。
 
 
 ## 目标

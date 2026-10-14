@@ -37,9 +37,11 @@ MAX_TOTAL_BYTES = int(os.getenv("R2_MAX_TOTAL_BYTES", str(2 * 1024 * 1024 * 1024
 TIMEZONE_NAME = os.getenv("R2_SYNC_TIMEZONE", "Australia/Adelaide")
 try:
     TIMEZONE = ZoneInfo(TIMEZONE_NAME)
-except ZoneInfoNotFoundError:
-    TIMEZONE = ZoneInfo("UTC")
-    TIMEZONE_NAME = "UTC"
+except ZoneInfoNotFoundError as exc:
+    # Never silently run the store's schedule in UTC when its configured local
+    # timezone is unavailable or invalid. Fail visibly so Dokploy can restart
+    # the worker after the timezone configuration/image has been corrected.
+    raise RuntimeError(f"R2_SYNC_TIMEZONE is unavailable: {TIMEZONE_NAME}") from exc
 
 
 def now_iso() -> str:

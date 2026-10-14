@@ -69,7 +69,7 @@ public class R2ArchiveController {
             }
             Map<String, Object> safeStatus = new LinkedHashMap<>();
             for (String field : List.of("configured", "state", "reason", "lastAttemptAt", "lastSuccessAt",
-                    "nextRunAt", "timezone", "snapshotId", "lastErrorCode", "checkedAt")) {
+                    "nextRunAt", "nextAttemptAt", "timezone", "snapshotId", "lastErrorCode", "checkedAt")) {
                 if (workerStatus.containsKey(field)) safeStatus.put(field, workerStatus.get(field));
             }
             safeStatus.putIfAbsent("timezone", syncTimezone);

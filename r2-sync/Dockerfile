@@ -1,6 +1,6 @@
 FROM python:3.12-alpine
 
-RUN apk add --no-cache su-exec \
+RUN apk add --no-cache su-exec tzdata \
     && addgroup -S -g 1001 archive \
     && adduser -S -D -H -u 10001 -G archive archive \
     && mkdir -p /data \
