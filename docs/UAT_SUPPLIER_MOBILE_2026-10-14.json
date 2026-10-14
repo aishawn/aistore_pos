@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T01:41:17.521Z",
-  "deployment": "05b880749a3728093ecfb849c7aff051cfc0924e",
+  "generatedAt": "2026-10-14T04:26:47.375Z",
+  "deployment": "8525223312c4416d20243b1c17444a7f9546f3ed",
   "status": "PASS",
   "viewport": 390,
   "fixture": "create API intercepted; no Odoo write",
