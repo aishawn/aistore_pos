@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T02:26:59.348Z",
-  "deployment": "846a4ca0053193bbf04eac85d10bc7ac872b189f",
+  "generatedAt": "2026-10-14T04:16:48.961Z",
+  "deployment": "e253ab3cf3135e5ac20669f0f2ca391b1027e8b5",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -20,8 +20,8 @@
     },
     {
       "path": "/close",
-      "status": "FAIL",
-      "snippet": "orithos Overview Register Point of sale Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
+      "status": "PASS",
+      "snippet": "orithos Overview Register Point of sale Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Close register En"
     },
     {
       "path": "/products/odoo",
@@ -208,6 +208,12 @@
     }
   ],
   "recoveryResponses": [
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
     {
       "route": null,
       "path": "/api/odoo/session",
