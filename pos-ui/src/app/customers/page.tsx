@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { PlusIcon, EditIcon, DeleteIcon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { CreateCustomerWizard } from "@/components/admin/CreateCustomerWizard";
+import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 
 interface Customer {
   id: string;
@@ -83,80 +84,88 @@ function CustomersPageInner() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <div className="flex items-center gap-4">
-        <h1 className="shrink-0 text-[24px] font-bold text-black">Customers</h1>
-        <input
-          value={search}
-          maxLength={SEARCH_MAX_LENGTH}
-          onChange={(e) => {
-            setSearch(clampSearch(e.target.value));
-            setPage(1);
-          }}
-          placeholder="Search Customers..."
-          className="h-11 w-[320px] min-w-0 max-w-[320px] overflow-hidden rounded-lg border border-neutral-300 px-4 text-[15px] text-black outline-none placeholder:text-neutral-400 focus:border-neutral-400"
-        />
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
-        >
+    <AdminPageLayout
+      title="Customers"
+      subtitle="Manage customer records and contact details"
+      count={total}
+      countLabel="Customers"
+      compact
+      actions={(
+        <AdminPrimaryButton onClick={() => setCreating(true)} className="min-h-11">
           <PlusIcon size={16} /> Add Customer
-        </button>
-      </div>
-
-      <div className="mt-5">
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
-          <ListTable
-            headerRight={`Total ${total}`}
-            headerClassName="py-2.5 text-[13px]"
-            rowClassName="py-3"
-            columns={[
-              { label: "Customer" },
-              { label: "Group" },
-              { label: "Contact" },
-              { label: "Actions", align: "center", width: "w-[120px]" },
-            ]}
-            rows={items.map((c) => [
-              <button
-                key="c"
-                type="button"
-                onClick={() => router.push(`/customers/${c.id}/view`)}
-                className="block text-left leading-tight"
-              >
-                <span className="font-medium text-black">{c.name}</span>
-                {c.code ? (
-                  <>
-                    <br />
-                    <span className="text-[13px] text-neutral-500">{c.code}</span>
-                  </>
-                ) : null}
-              </button>,
-              c.customerGroupName ?? "",
-              c.email || c.phone || "",
-              <div key="a" className="flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  aria-label={`Edit ${c.name}`}
-                  onClick={() => router.push(`/customers/${c.id}/edit`)}
-                  className="text-[#3cb44b] hover:opacity-80"
-                >
-                  <EditIcon size={18} />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Delete ${c.name}`}
-                  onClick={() => setDeleting(c)}
-                  className="text-[#e2231a] hover:opacity-80"
-                >
-                  <DeleteIcon size={18} />
-                </button>
-              </div>,
-            ])}
+        </AdminPrimaryButton>
+      )}
+      search={(
+        <div className="w-full sm:max-w-md">
+          <label htmlFor="customer-search" className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">
+            Search customers
+          </label>
+          <input
+            id="customer-search"
+            value={search}
+            maxLength={SEARCH_MAX_LENGTH}
+            onChange={(e) => {
+              setSearch(clampSearch(e.target.value));
+              setPage(1);
+            }}
+            placeholder="Name, customer code or email"
+            className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]"
           />
-        </AsyncState>
-        <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-      </div>
+        </div>
+      )}
+    >
+      <AsyncState loading={loading} error={error} empty={items.length === 0}>
+        <ListTable
+          rowClassName="py-3"
+          columns={[
+            { label: "Customer" },
+            { label: "Group" },
+            { label: "Contact" },
+            { label: "Actions", align: "center", width: "w-[144px]" },
+          ]}
+          rows={items.map((c) => [
+            <button
+              key="c"
+              type="button"
+              onClick={() => router.push(`/customers/${c.id}/view`)}
+              className="block min-w-0 text-left leading-tight"
+            >
+              <span className="font-medium text-[var(--oh-text)]">{c.name}</span>
+              {c.code ? (
+                <>
+                  <br />
+                  <span className="text-[13px] text-[var(--oh-muted)]">{c.code}</span>
+                </>
+              ) : null}
+            </button>,
+            c.customerGroupName ?? "",
+            <div key="contact" className="min-w-0 text-[13px] leading-5 text-[var(--oh-text-secondary)]">
+              {c.email && <div className="truncate" title={c.email}>{c.email}</div>}
+              {c.phone && <div className="truncate" title={c.phone}>{c.phone}</div>}
+              {!c.email && !c.phone && <span>—</span>}
+            </div>,
+            <div key="a" className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                aria-label={`Edit ${c.name}`}
+                onClick={() => router.push(`/customers/${c.id}/edit`)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+              >
+                <EditIcon size={18} />
+              </button>
+              <button
+                type="button"
+                aria-label={`Delete ${c.name}`}
+                onClick={() => setDeleting(c)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-md text-[var(--oh-danger)] transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)]"
+              >
+                <DeleteIcon size={18} />
+              </button>
+            </div>,
+          ])}
+        />
+      </AsyncState>
+      <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
 
       <ConfirmDialog
         open={!!deleting}
@@ -183,6 +192,6 @@ function CustomersPageInner() {
           groups={groups.items}
         />
       )}
-    </div>
+    </AdminPageLayout>
   );
 }
