@@ -201,7 +201,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+        "flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
         active
           ? "bg-[var(--oh-orange-light)] text-[var(--oh-orange)]"
           : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
@@ -534,30 +534,35 @@ function PaymentActionStrip() {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <AdminNavyButton
+        className="min-h-11"
         onClick={() => sell.startPayment("EFTPOS VISA MasterCard")}
         disabled={!hasItems}
       >
         EFTPOS
       </AdminNavyButton>
       <AdminSecondaryButton
+        className="min-h-11"
         onClick={() => sell.startPayment("Exact Cash")}
         disabled={!hasItems}
       >
         Exact Cash
       </AdminSecondaryButton>
       <AdminSecondaryButton
+        className="min-h-11"
         onClick={() => sell.startPayment("Eftpos Cash Out")}
         disabled={!hasItems}
       >
         Cash Out
       </AdminSecondaryButton>
       <AdminSecondaryButton
+        className="min-h-11"
         onClick={() => sell.applyCaseQuantity()}
         disabled={!hasItems}
       >
         Case Quantity
       </AdminSecondaryButton>
       <AdminSecondaryButton
+        className="min-h-11"
         onClick={() => sell.requestClear()}
         disabled={!hasItems}
       >
@@ -575,7 +580,7 @@ function PaymentActionStrip() {
           disabled={!hasItems}
           onClick={() => router.push("/finalise")}
           className={cn(
-            "cursor-pointer rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors",
+            "min-h-11 cursor-pointer rounded-[var(--oh-radius)] px-5 text-[14px] font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
             hasItems
               ? "bg-[var(--oh-primary)] hover:bg-[var(--oh-primary-hover)]"
               : "cursor-not-allowed bg-[var(--oh-border-strong)]",
@@ -623,7 +628,7 @@ function CheckoutPanel({ className }: { className?: string }) {
               type="button"
               aria-label="Remove customer"
               onClick={() => sell.setCustomer(null)}
-              className="cursor-pointer text-[var(--oh-muted)] hover:text-[var(--oh-danger)]"
+              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
             >
               <XIcon size={16} />
             </button>
@@ -632,7 +637,7 @@ function CheckoutPanel({ className }: { className?: string }) {
           <button
             type="button"
             onClick={() => sell.setView("customers")}
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-2.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+          className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-2.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
           >
             <PlusIcon size={15} strokeWidth={1.75} />
             Add customer
@@ -678,7 +683,7 @@ function CheckoutPanel({ className }: { className?: string }) {
                         setQtyKeypadLineId(line.id);
                       }}
                       className={cn(
-                        "flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border bg-[var(--oh-surface)] text-[13px] font-semibold transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]",
+                        "flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg border bg-[var(--oh-surface)] text-[13px] font-semibold transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
                         isReturn
                           ? "border-[var(--oh-tile-red-border)] text-[var(--oh-danger)]"
                           : "border-[var(--oh-border)] text-[var(--oh-text-secondary)]",
@@ -718,7 +723,7 @@ function CheckoutPanel({ className }: { className?: string }) {
                         e.stopPropagation();
                         sell.removeLine(line.id);
                       }}
-                      className="shrink-0 cursor-pointer text-[var(--oh-muted)] hover:text-[var(--oh-danger)]"
+                      className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
                     >
                       <DeleteIcon size={15} strokeWidth={1.75} />
                     </button>
@@ -749,8 +754,12 @@ function CheckoutPanel({ className }: { className?: string }) {
         <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[13px] text-[var(--oh-muted)]">
           <span>{sell.itemCount} {sell.itemCount === 1 ? "item" : "items"}</span>
           <span className="text-right">{sell.productCount} products</span>
-          <span>Savings ${sell.discountTotal.toFixed(2)}</span>
-          <span className="text-right">Discount ${sell.discountTotal.toFixed(2)}</span>
+          {sell.discountTotal > 0 && (
+            <span className="col-span-2 flex justify-between text-[var(--oh-text-secondary)]">
+              <span>Discount</span>
+              <span>−${sell.discountTotal.toFixed(2)}</span>
+            </span>
+          )}
         </div>
         {hasItems && (
           <div className="mb-3">
@@ -952,7 +961,7 @@ function ProductsPanel() {
         <button
           type="button"
           onClick={() => sell.backToKeys()}
-          className="absolute left-0 cursor-pointer text-[13px] font-medium text-[var(--oh-text)] hover:text-[var(--oh-orange)]"
+          className="absolute left-0 flex min-h-11 cursor-pointer items-center rounded-lg px-2 text-[13px] font-medium text-[var(--oh-text)] hover:text-[var(--oh-orange)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
         >
           ← Back
         </button>
@@ -965,15 +974,15 @@ function ProductsPanel() {
       ) : sell.productItems.length === 0 ? (
         <p className="py-10 text-center text-[13px] text-[var(--oh-muted)]">No products found</p>
       ) : (
-        <div className="grid grid-cols-2 gap-[3px] bg-[#c8c8c8] sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {sell.productItems.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => sell.pickBrowseProduct(item)}
-              className="flex min-h-[72px] cursor-pointer items-center justify-center bg-[#4a4a4a] px-2 py-3 text-center transition-colors hover:bg-[#5a5a5a] active:bg-[#3a3a3a]"
+              className="flex min-h-[88px] cursor-pointer items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-3 text-center text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)] active:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
             >
-              <span className="line-clamp-3 text-[13px] font-medium leading-snug text-white sm:text-[13px]">
+              <span className="line-clamp-3 text-[13px] font-medium leading-snug">
                 {item.name}
               </span>
             </button>
@@ -1006,7 +1015,7 @@ function ToolBtn({
         if (!disabled) onClick();
       }}
       className={cn(
-        "cursor-pointer rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
+        "min-h-11 cursor-pointer rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
         variant === "danger"
           ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] text-[var(--oh-tile-red-text)] hover:opacity-90"
           : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] hover:text-[var(--oh-text)]",
