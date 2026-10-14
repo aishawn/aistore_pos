@@ -49,7 +49,8 @@ function currentDatabase() {
   const root = path.resolve(DATA_DIR, "snapshots", snapshotId);
   const metadataPath = path.join(root, "snapshot.json");
   const databasePath = path.join(root, "shopfront", "shopfront.sqlite3");
-  if (!fs.existsSync(metadataPath) || !fs.existsSync(databasePath)) throw new Error("R2 snapshot is incomplete");
+  if (!fs.existsSync(metadataPath)) throw new Error("R2 snapshot metadata is missing from the mounted archive");
+  if (!fs.existsSync(databasePath)) throw new Error("R2 SQLite database is missing from the mounted archive");
   const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as SnapshotMeta;
   if (metadata.databaseIntegrity !== "ok" || !/^[a-f0-9]{64}$/i.test(metadata.manifestSha256 ?? "")) {
     throw new Error("R2 snapshot integrity is not verified");
