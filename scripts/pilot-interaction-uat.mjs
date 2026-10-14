@@ -46,14 +46,23 @@ try {
     const navigation = page.locator("#main-navigation");
     const backdrop = page.locator('button[aria-label="Close navigation menu"]:not([aria-controls])');
     await trigger.waitFor({ timeout: 15000 });
+    await page.waitForFunction(() => {
+      const toggle = document.querySelector('button[aria-controls="main-navigation"]');
+      const navigation = document.querySelector("#main-navigation");
+      return toggle?.getAttribute("aria-expanded") === "false" && navigation?.getAttribute("aria-hidden") === "true";
+    }, null, { timeout: 15000 });
     await trigger.click();
     if (await trigger.getAttribute("aria-expanded") !== "true" || await navigation.getAttribute("aria-hidden") !== "false") {
       throw new Error("Mobile navigation did not expose its expanded state");
     }
+    // Let the open-state effect register its Escape handler before dispatching the key.
+    await page.waitForTimeout(50);
     await page.keyboard.press("Escape");
-    if (await trigger.getAttribute("aria-expanded") !== "false" || await navigation.getAttribute("aria-hidden") !== "true") {
-      throw new Error("Escape did not close the mobile navigation");
-    }
+    await page.waitForFunction(() => {
+      const toggle = document.querySelector('button[aria-controls="main-navigation"]');
+      const navigation = document.querySelector("#main-navigation");
+      return toggle?.getAttribute("aria-expanded") === "false" && navigation?.getAttribute("aria-hidden") === "true";
+    }, null, { timeout: 1500 }).catch(() => { throw new Error("Escape did not close the mobile navigation"); });
     await trigger.click();
     await backdrop.click({ position: { x: 350, y: 100 } });
     if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Outside click did not close the mobile navigation");
@@ -62,6 +71,7 @@ try {
   });
 
   await check("Compact account popover opens and closes accessibly", async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const trigger = page.locator("[data-user-menu-trigger]");
     const menu = page.getByRole("dialog", { name: "User menu" });
@@ -104,7 +114,7 @@ try {
     await page.getByRole("heading", { name: "Edit product" }).waitFor({ timeout: 10000 });
     const price = await page.getByLabel("Sale price").evaluate((input) => Number(input.value));
     if (price !== 34.9) throw new Error(`Odoo sale price was not prefilled (received ${price})`);
-    await page.getByRole("button", { name: "Close" }).click();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
     return "Barossa Shiraz edit dialog showed the Odoo sale price 34.90 and was closed without saving.";
   });
 
@@ -169,7 +179,7 @@ try {
     if (await name.getAttribute("required") === null) throw new Error("Customer name is not required");
     const emptyFormIsInvalid = await name.evaluate((input) => input.form?.checkValidity() === false);
     if (!emptyFormIsInvalid) throw new Error("An empty customer form passes browser validation");
-    await page.getByRole("button", { name: "Close" }).click();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
     return "Customer name is required; an empty form fails browser validation and was not submitted.";
   });
 

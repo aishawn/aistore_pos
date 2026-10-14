@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-13T17:23:50.687Z",
+  "generatedAt": "2026-10-13T17:49:16.513Z",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
       "path": "/overview",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout My Company Good morning Here's what's happening in your stor"
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout My Company Good morning Sales and store activity from the la"
     },
     {
       "path": "/",
@@ -50,7 +50,7 @@
     {
       "path": "/reports/dashboard",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout DEEP DIVE · MY COMPANY Reporting Dashboa"
+      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
     },
     {
       "path": "/settings/integrations",
@@ -147,21 +147,9 @@
       "method": "GET",
       "path": "/api/odoo/reporting-dashboard",
       "resourceType": "fetch"
-    },
-    {
-      "route": "/overview",
-      "method": "GET",
-      "path": "/api/odoo/reporting-dashboard",
-      "resourceType": "fetch"
     }
   ],
   "reportingResponses": [
-    {
-      "route": "/overview",
-      "method": "GET",
-      "status": 401,
-      "hours": "24"
-    },
     {
       "route": "/overview",
       "method": "GET",
@@ -185,6 +173,80 @@
       "method": "GET",
       "status": 200,
       "hours": "24"
+    }
+  ],
+  "recoveryResponses": [
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
     }
   ]
 }

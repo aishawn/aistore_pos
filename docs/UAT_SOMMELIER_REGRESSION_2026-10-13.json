@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T17:20:41.951Z",
+  "generatedAt": "2026-10-13T17:51:43.849Z",
   "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
   "checks": [
     {

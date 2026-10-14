@@ -1,7 +1,12 @@
 {
-  "generatedAt": "2026-10-13T17:19:06.876Z",
+  "generatedAt": "2026-10-13T17:50:57.315Z",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
+    {
+      "name": "Mobile navigation drawer opens and dismisses",
+      "status": "PASS",
+      "evidence": "At 390px, the navigation drawer opens and closes with Escape and the outside backdrop; ARIA state tracks visibility."
+    },
     {
       "name": "Compact account popover opens and closes accessibly",
       "status": "PASS",

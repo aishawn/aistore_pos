@@ -58,7 +58,7 @@ function matchAll(text, patterns) {
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const page = await context.newPage();
-const productDiagnostics = { consoleErrors: [], failedRequests: [], unauthorizedResponses: [], reportingResponses: [] };
+const productDiagnostics = { consoleErrors: [], failedRequests: [], unauthorizedResponses: [], reportingResponses: [], recoveryResponses: [] };
 const reportingRequestRoutes = new WeakMap();
 page.on("console", (message) => {
   if (message.type() === "error") productDiagnostics.consoleErrors.push(message.text());
@@ -78,6 +78,14 @@ page.on("response", (response) => {
       method: request.method(),
       status: response.status(),
       hours: url.searchParams.get("hours"),
+    });
+  }
+  if (url.pathname === "/api/odoo/session" || url.pathname === "/api/auth/refresh") {
+    productDiagnostics.recoveryResponses.push({
+      route: reportingRequestRoutes.get(request) ?? null,
+      path: url.pathname,
+      method: request.method(),
+      status: response.status(),
     });
   }
   if (response.status() === 401) {
@@ -141,6 +149,7 @@ for (const entry of pages) {
       failedRequests: productDiagnostics.failedRequests,
       unauthorizedResponses: productDiagnostics.unauthorizedResponses,
       reportingResponses: productDiagnostics.reportingResponses,
+      recoveryResponses: productDiagnostics.recoveryResponses,
     }));
   }
   matrix.push({
@@ -232,7 +241,7 @@ try {
 console.log("ROLE_CRUD", roleResult);
 
 const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
-fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses }, null, 2));
+fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
 console.log("WROTE", outPath);
 
 await browser.close();
