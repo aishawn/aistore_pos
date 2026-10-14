@@ -119,10 +119,22 @@ page.on("request", (request) => {
 
 // Authenticate via the same-origin login endpoint so browser autofill and
 // form navigation cannot turn a credential failure into a misleading timeout.
-const loginResponse = await context.request.post(`${base}/api/auth/login`, {
-  data: { username: "admin", password },
-  headers: { Origin: base },
-});
+let loginResponse;
+for (let attempt = 1; attempt <= 3; attempt += 1) {
+  try {
+    loginResponse = await context.request.post(`${base}/api/auth/login`, {
+      data: { username: "admin", password },
+      headers: { Origin: base },
+      timeout: 30000,
+    });
+    break;
+  } catch (error) {
+    const transient = /timeout|timed out|ERR_TIMED_OUT|ECONNRESET|ERR_CONNECTION_RESET/i.test(String(error));
+    if (!transient || attempt === 3) throw new Error(`Pilot page matrix login failed after ${attempt} attempt(s): ${String(error)}`);
+    await page.waitForTimeout(attempt * 1000);
+  }
+}
+if (!loginResponse) throw new Error("Pilot page matrix login failed without a response");
 const loginBody = await loginResponse.json().catch(() => ({}));
 if (!loginResponse.ok() || loginBody.code !== 0) {
   throw new Error(`Pilot page matrix login failed (${loginResponse.status()}): ${loginBody.message || "unknown error"}`);
@@ -273,7 +285,7 @@ try {
   const firstCheckbox = page.locator('input[type="checkbox"]').first();
   await firstCheckbox.check();
   await page.getByRole("button", { name: /Save role/i }).click();
-  await page.getByText(roleName, { exact: true }).waitFor({ timeout: 20000 });
+  await page.getByRole("cell", { name: roleName, exact: true }).waitFor({ timeout: 20000 });
   const rolesResponse = await context.request.get(`${base}/api/roles`);
   const rolesBody = await rolesResponse.json();
   temporaryRoleId = (rolesBody.data || []).find((role) => role.name === roleName)?.id;
@@ -284,9 +296,14 @@ try {
     throw new Error("The UI permission grant was not saved");
   }
   await page.locator("tr", { hasText: roleName }).getByText(firstPermission.name, { exact: true }).waitFor({ timeout: 15000 });
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: `Delete ${roleName} role` }).click();
-  await page.getByText(roleName, { exact: true }).waitFor({ state: "detached", timeout: 20000 });
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete role", exact: true }).click();
+  await page.getByRole("cell", { name: roleName, exact: true }).waitFor({ state: "detached", timeout: 20000 });
+  const remainingRolesResponse = await context.request.get(`${base}/api/roles`);
+  const remainingRolesBody = await remainingRolesResponse.json();
+  if (!remainingRolesResponse.ok() || (remainingRolesBody.data || []).some((role) => role.name === roleName)) {
+    throw new Error("The role was still present after UI deletion");
+  }
   temporaryRoleId = undefined;
   roleResult = "CREATED_PERMISSION_SAVED_DELETED";
 } catch (error) {
@@ -301,12 +318,19 @@ try {
     const deletion = await context.request.delete(`${base}/api/roles/${temporaryRoleId}`);
     const deletedBody = await deletion.json().catch(() => ({}));
     if (!deletion.ok() || deletedBody.code !== 0) roleResult = `CLEANUP_FAIL:${deletedBody.message || deletion.status()}`;
+    else {
+      const verifyResponse = await context.request.get(`${base}/api/roles`).catch(() => null);
+      const verifyBody = await verifyResponse?.json().catch(() => null);
+      if ((verifyBody?.data || []).some((role) => role.name === roleName)) {
+        roleResult = `CLEANUP_FAIL:role ${roleName} still exists`;
+      }
+    }
   }
 }
 console.log("ROLE_CRUD", roleResult);
 
 const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
-fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
+fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), deployment: process.env.PILOT_DEPLOYMENT_SHA || null, sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), target: base, roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
 console.log("WROTE", outPath);
 
 await browser.close();

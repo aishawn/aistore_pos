@@ -134,7 +134,7 @@ try {
       checks.push(`/settings/statements: preview link, explicit disconnected preferences and no overflow at ${width}px`);
 
       await page.goto(`${base}/settings/pricesets`, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.getByRole("heading", { name: "Price Sets" }).waitFor({ timeout: 15000 });
+      await page.getByRole("heading", { name: "Price Sets", exact: true }).waitFor({ timeout: 15000 });
       await page.getByText("Price sets and product prices are managed separately").waitFor({ timeout: 10000 });
       const priceSetsLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
       if (priceSetsLayout.document > priceSetsLayout.viewport) throw new Error(`/settings/pricesets overflows at ${width}px: ${JSON.stringify(priceSetsLayout)}`);
@@ -156,7 +156,9 @@ try {
       if (usersLayout.document > usersLayout.viewport) throw new Error(`/settings/users overflows at ${width}px: ${JSON.stringify(usersLayout)}`);
       if (width < 1280) {
         if (await page.locator("table:visible").count()) throw new Error("Users table is visible at mobile width");
-        if (!(await page.locator('ul[class*="xl:hidden"] > li').count())) throw new Error("Mobile user cards are missing");
+        const mobileUserCards = page.locator('ul[class*="xl:hidden"] > li');
+        await mobileUserCards.first().waitFor({ state: "visible", timeout: 15000 });
+        if (!(await mobileUserCards.count())) throw new Error("Mobile user cards are missing");
         checks.push(`/settings/users: staff cards and no overflow at ${width}px`);
       } else {
         if (await page.locator('ul[class*="xl:hidden"]').isVisible()) throw new Error("Mobile user cards are visible at desktop width");
@@ -177,6 +179,7 @@ try {
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA || null,
   target: base,
   scope: "authenticated read-only production UI checks; no Odoo write",
   status: "PASS",

@@ -1,12 +1,14 @@
 {
-  "generatedAt": "2026-10-14T05:55:12.996Z",
-  "deployment": "4811d6324664bfc9fd8aaf642c781c0274141057",
+  "generatedAt": "2026-10-14T07:11:57.135Z",
+  "deployment": "1b27e9b2dc8379981aed5eed18c0ac48898a1118",
+  "sourceCommit": "1b27e9b2dc8379981aed5eed18c0ac48898a1118",
+  "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
       "path": "/overview",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout My Company Good afternoon Sales and store activity from the "
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout My Company Good evening Sales and store activity from the la"
     },
     {
       "path": "/",
@@ -97,6 +99,21 @@
       "path": "/settings/loyalty",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Loyalty Settings Earn rates, redemptions, and customer balan"
+    },
+    {
+      "path": "/settings/pricesets",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Price Sets Organise reusable pricing groups and parent relat"
+    },
+    {
+      "path": "/pricelists",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Add Price List 0 Results No results found."
+    },
+    {
+      "path": "/settings/rules",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Page Rules Checkout behaviour and access controls These rule"
     },
     {
       "path": "/settings/barcodes",
@@ -218,6 +235,12 @@
     }
   ],
   "recoveryResponses": [
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
     {
       "route": null,
       "path": "/api/odoo/session",

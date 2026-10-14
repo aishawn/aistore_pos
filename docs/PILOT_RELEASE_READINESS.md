@@ -6,15 +6,13 @@
 
 | 项目 | 当前状态 | 证据/说明 |
 |---|---|---|
-| GitHub / Dokploy | **已核实到 `39d6a0b`** | `origin/main`=`39d6a0b47877c2beafbaaff78eb48ca379480028`；Dokploy 部署列表对应提交为 Done。 |
-| 本地提交 | **已同步** | 本地 `main` 与 `origin/main` 同步；`fafa6ce` 公司设置页和 `39d6a0b` Integrations 状态页均已发布。 |
-| Dokploy 容器 | **进程运行** | frontend/backend Running，MySQL Healthy；frontend 最近重启。该状态不证明公网入口可用。 |
-| 生产入口 | **BLOCKED / 根因未定** | `39d6a0b` Done 后，从当前环境请求 `/login` 和 `/api/odoo/session` 仍均 12 秒超时。Dokploy Requests 未启用，需从独立网络复测并使用可用的代理/容器日志定位。 |
-| 页面与布局回归 | **旧版本证据，不是当前回归** | 35/35 页面、70/70 布局对应 `358704c`；设置专项对应 `f981aa7`。不能作为 `53af338` 的通过证据。 |
-| UAT 脚本修正 | **工作区未提交，待复跑** | 修复角色删除确认框及清理后核验；证据增加 target deployment 与 source commit 区分。需入口恢复后重新运行。 |
-| 当前可放行性 | **NO-GO** | 生产可用性、`39d6a0b` 登录/页面回归、班次现金实点关账、真实采购收货仍未完成。 |
+| GitHub / Dokploy | **已核实到 `4191458`** | `origin/main`=`4191458404dcb013741712bc70af668062183a09`；Dokploy 对应部署 Done。 |
+| 已完成的完整 UAT | **PASS（目标 `1b27e9b`）** | 页面矩阵 35/35，设置 26/26，布局 70/70（有限网络重试后通过）；Odoo session recovery 6/6 HTTP 200。 |
+| 最新代码回归 | **部分 / BLOCKED** | `0c9338c` 商品分页/手机卡片、`4191458` 客户分页均已部署且目标文件 ESLint 通过；针对 `4191458` 的矩阵在登录 POST 阶段超时，未进入页面。 |
+| 生产入口 | **间歇不稳定 / 根因未定** | `/login`、`/api/odoo/session`、`/api/auth/me` 在当前环境时而超时、时而返回；本轮观察到 app/odoo DNS 为 `198.18.0.13` / `.23`，不能当作公网 DNS。Dokploy Requests 未启用，应用日志视图无可读行。 |
+| 当前可放行性 | **NO-GO** | 最新 SHA 回归未完成；班次现金实点关账、真实采购收货、价目表/GST/库存位置和硬件前置项仍未完成。 |
 
-当前工作区另有 5 个 UAT 脚本/证据文件的未提交修改。应先解决/确认生产入口可达，再决定是否发布 UAT 修正；发布后以最终 Dokploy SHA 重新验收。不要手工把历史 UAT JSON 的 deployment 改成新 SHA。
+当前工作区有三份 UAT JSON、三份 UAT 脚本的未提交更新，并有并行工具修改 `pos-ui/src/components/OdooRegisterPage.tsx`；不要覆盖该产品改动。UAT 结果必须保留真实 deployment SHA，不要手工把历史 UAT JSON 改成新 SHA。
 
 这份清单把代码可验证事项和必须依赖生产环境、店主或硬件的事项分开。没有证据的项目保持 `BLOCKED`，不能用 fixture、旧部署或页面可达性代替。
 
@@ -22,10 +20,10 @@
 
 | 项目 | 当前状态 | 完成证据 |
 |---|---|---|
-| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | `origin/main` 与 Dokploy Done 为 `39d6a0b`；5 个 UAT 脚本/证据工作区改动仍未提交 |
-| 生产入口可用性 | **BLOCKED** | `/login`、`/api/odoo/session` 在部署 Done 后仍 12 秒超时；frontend/backend 容器 Running、MySQL Healthy。Requests 未启用，根因未定 |
-| 生产页面与安全回归 | **STALE / BLOCKED** | 最新可复用证据为 `358704c` 的 35/35 页面、70/70 布局；设置专项为 `f981aa7`。没有 `39d6a0b` 的当前回归证据 |
-| Odoo 会话自动恢复与登出拒绝 | **STALE / BLOCKED** | 历史证据见 `UAT_ODOO_AUTORECOVER_2026-10-13.json`；生产入口当前不可达，无法确认 `9b6e9c9` 运行状态 |
+| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | `origin/main` 与 Dokploy Done 为 `4191458`；三份 UAT JSON、三份 UAT 脚本仍未提交 |
+| 生产入口可用性 | **BLOCKED / INTERMITTENT** | `/login`、`/api/odoo/session` 在当前环境多次超时，但同一时段也曾正常响应；服务端/网络路径根因未定 |
+| 生产页面与安全回归 | **PARTIAL / STALE** | `1b27e9b` 完整证据：35/35 页面、70/70 布局、设置专项 26/26；最新 `4191458` 页面矩阵因登录超时未开始 |
+| Odoo 会话自动恢复与登出拒绝 | **PARTIAL** | `1b27e9b` 页面矩阵 6 次 `/api/odoo/session` 均 HTTP 200；此前该端点返回 `autoRecoverConfigured:true`。最新 SHA 仍需复验登出拒绝与恢复链路 |
 | 班次 `orithos_store1/00004` 整班对账 | **BLOCKED** | 需要只读导出销售/退款/支付流水并与 Odoo 对账 |
 | 现金实点与班次关账 | **BLOCKED** | 店主实点现金、确认差异后，记录关账结果和新班次状态 |
 | 真实采购、审批、收货、库存增加 | **BLOCKED** | 需要隔离测试供应商或测试库；fixture 不计入此项 |
@@ -46,4 +44,4 @@
 
 ## 放行规则
 
-只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。当前生产入口超时、当前部署回归缺失，因此不得放行；先确定入口故障范围，部署后以新的精确 SHA 重新执行页面回归。
+只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。当前最新 SHA 回归未完成且生产访问间歇超时，因此不得放行；先确认服务/网络稳定，再以精确 SHA 完成全站回归。
