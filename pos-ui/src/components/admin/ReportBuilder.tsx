@@ -78,7 +78,7 @@ export function ReportBuilder({
 
       {/* Results table */}
       <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-        <div className="overflow-hidden rounded-lg font-sans text-[13px]">
+        <div className="overflow-hidden rounded-lg font-sans text-[13px]" style={{ minWidth: `${tableMinWidth}px` }}>
           <div
             className="grid items-center border-b border-[var(--oh-border)] bg-[var(--oh-paper)] px-3 py-2.5 text-center text-xs font-semibold text-[var(--oh-muted)]"
             style={tableGridStyle}
