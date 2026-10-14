@@ -208,9 +208,9 @@ export function OrithosOverviewPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col overflow-y-auto bg-[var(--oh-surface)] lg:overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col gap-2 p-3 lg:flex-row lg:gap-3 lg:overflow-hidden lg:p-3.5">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 lg:overflow-hidden">
+    <main className="flex h-full min-h-0 flex-col overflow-y-auto bg-[var(--oh-surface)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 p-3 lg:flex-row lg:gap-3 lg:p-3.5">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <header className="flex shrink-0 flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
@@ -242,7 +242,7 @@ export function OrithosOverviewPage() {
             </div>
           )}
 
-          <section aria-label="Today summary" className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label="Last 24 hours summary" className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
               title="Net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
