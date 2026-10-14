@@ -4,15 +4,22 @@
 
 ## 当前状态复核（2026-10-14，续）
 
+### 最新线上检查：`a6799a6`（2026-10-14 16:16，上海时间）
+
 | 项目 | 当前状态 | 证据/说明 |
 |---|---|---|
-| GitHub / Dokploy | **已核实到 `4191458`** | `origin/main`=`4191458404dcb013741712bc70af668062183a09`；Dokploy 对应部署 Done。 |
-| 已完成的完整 UAT | **PASS（目标 `1b27e9b`）** | 页面矩阵 35/35，设置 26/26，布局 70/70（有限网络重试后通过）；Odoo session recovery 6/6 HTTP 200。 |
-| 最新代码回归 | **部分 / BLOCKED** | `0c9338c` 商品分页/手机卡片、`4191458` 客户分页均已部署且目标文件 ESLint 通过；针对 `4191458` 的矩阵在登录 POST 阶段超时，未进入页面。 |
-| 生产入口 | **间歇不稳定 / 根因未定** | `/login`、`/api/odoo/session`、`/api/auth/me` 在当前环境时而超时、时而返回；本轮观察到 app/odoo DNS 为 `198.18.0.13` / `.23`，不能当作公网 DNS。Dokploy Requests 未启用，应用日志视图无可读行。 |
-| 当前可放行性 | **NO-GO** | 最新 SHA 回归未完成；班次现金实点关账、真实采购收货、价目表/GST/库存位置和硬件前置项仍未完成。 |
+| GitHub / Dokploy | **PASS** | `origin/main`=`a6799a6ca3b9a0e6dabd65e825a33b467b6dcf76`；Dokploy 最新项 Done；前序 `0959132`、`07ceb99` 也 Done。 |
+| 生产页面矩阵与角色安全 | **PASS** | 35/35 路由；角色临时创建、权限保存、删除与 API 清理通过；6 次 Odoo session/recovery 200；无 console error、API failed request、401。详见 `UAT_PAGE_MATRIX_2026-10-13.json`。 |
+| 双视口布局 | **PASS** | 35 页 × 390/1440，70/70，无失败；`UAT_LAYOUT_2026-10-14.json`。 |
+| 设置页手机/桌面专项 | **PASS** | 13 项 × 2 视口，26 项通过；`UAT_SETTINGS_MOBILE_2026-10-14.json`。 |
+| 生产接口可达性 | **PASS / 延迟待观察** | `/login` 200（8.3 秒），未登录 `/api/auth/me` 401（6.5 秒，预期），`/api/odoo/session` 200（14.3 秒）。单次探测不能证明持续稳定。 |
+| 当前可放行性 | **NO-GO** | 技术回归通过；现金实点/班次关账、真实采购收货、价目表/GST/库存位置、硬件和 AI 前置条件仍未完成。 |
 
-当前工作区有三份 UAT JSON、三份 UAT 脚本的未提交更新，并有并行工具修改 `pos-ui/src/components/OdooRegisterPage.tsx`；不要覆盖该产品改动。UAT 结果必须保留真实 deployment SHA，不要手工把历史 UAT JSON 改成新 SHA。
+当前三份 UAT 证据的 deployment/source SHA 均为 `a6799a6ca3b9a0e6dabd65e825a33b467b6dcf76`。页面矩阵会创建并清理临时权限记录；没有创建销售或采购，也没有执行 Odoo 业务写入。
+
+| 项目 | 当前状态 | 证据/说明 |
+|---|---|---|
+历史快照：早先 `4191458` 曾因登录请求超时未能回归；此状态已被上方 `a6799a6` 最新验证取代。当前工作区有三份 UAT JSON 和 `scripts/pilot-page-matrix.mjs` 待提交；请保留并行编辑，且勿修改 UAT 中实际记录的 deployment SHA。
 
 这份清单把代码可验证事项和必须依赖生产环境、店主或硬件的事项分开。没有证据的项目保持 `BLOCKED`，不能用 fixture、旧部署或页面可达性代替。
 
@@ -20,10 +27,10 @@
 
 | 项目 | 当前状态 | 完成证据 |
 |---|---|---|
-| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | `origin/main` 与 Dokploy Done 为 `4191458`；三份 UAT JSON、三份 UAT 脚本仍未提交 |
-| 生产入口可用性 | **BLOCKED / INTERMITTENT** | `/login`、`/api/odoo/session` 在当前环境多次超时，但同一时段也曾正常响应；服务端/网络路径根因未定 |
-| 生产页面与安全回归 | **PARTIAL / STALE** | `1b27e9b` 完整证据：35/35 页面、70/70 布局、设置专项 26/26；最新 `4191458` 页面矩阵因登录超时未开始 |
-| Odoo 会话自动恢复与登出拒绝 | **PARTIAL** | `1b27e9b` 页面矩阵 6 次 `/api/odoo/session` 均 HTTP 200；此前该端点返回 `autoRecoverConfigured:true`。最新 SHA 仍需复验登出拒绝与恢复链路 |
+| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | 当前均为 `a6799a6`；当前 UAT JSON 更新已在工作区 |
+| 生产入口可用性 | **PASS / 延迟待观察** | 只读端点在本轮返回预期状态码但延迟约 6–14 秒 |
+| 生产页面与安全回归 | **PASS** | `a6799a6` 页面矩阵 35/35、双视口 70/70、设置专项 26/26 |
+| Odoo 会话自动恢复与登出拒绝 | **PARTIAL** | 当前 SHA 的矩阵有 6 次 Odoo session/recovery HTTP 200；登出拒绝通过未登录 `/api/auth/me` 返回 401 复核；完整清理会话后自动恢复链路尚未在本轮单独重跑 |
 | 班次 `orithos_store1/00004` 整班对账 | **BLOCKED** | 需要只读导出销售/退款/支付流水并与 Odoo 对账 |
 | 现金实点与班次关账 | **BLOCKED** | 店主实点现金、确认差异后，记录关账结果和新班次状态 |
 | 真实采购、审批、收货、库存增加 | **BLOCKED** | 需要隔离测试供应商或测试库；fixture 不计入此项 |
