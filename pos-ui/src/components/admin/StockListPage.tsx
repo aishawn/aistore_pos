@@ -11,6 +11,7 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { useApi, useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { api, exportStockListCsv } from "@/lib/api";
 import { validateNonNegativeMoney, validatePositiveMoney, validatePositiveQuantity } from "@/lib/quantity";
+import { cn } from "@/lib/utils";
 
 interface Named {
   id: string;
@@ -201,7 +202,12 @@ function StockListRowEditor({
       <div className="min-w-0 flex-1 px-2">
         <div className="relative">
           <input
-            className={cellInput("pr-6 text-right")}
+            className={cn(
+              cellInput("pr-6 text-right"),
+              Number(profit) < 0
+                ? "border-red-200 bg-red-50 font-semibold text-[var(--oh-danger)]"
+                : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]",
+            )}
             aria-label={`Profit margin for ${row.name}`}
             value={profit}
             readOnly
