@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ACCESS_COOKIE, backendUrl, isSameOrigin } from "@/lib/server-auth";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +66,10 @@ function currentDatabase() {
 function latestReceipts(databasePath: string) {
   let db: DatabaseSync;
   try {
-    db = new DatabaseSync(databasePath, { readOnly: true });
+    // Snapshot files are immutable once published. The URI prevents SQLite
+    // from creating WAL/shared-memory sidecars on the read-only archive mount.
+    const databaseUri = `${pathToFileURL(databasePath).href}?mode=ro&immutable=1`;
+    db = new DatabaseSync(databaseUri, { readOnly: true });
   } catch (error) {
     const file = fs.statSync(databasePath);
     console.error("R2 SQLite open diagnostics", JSON.stringify({
