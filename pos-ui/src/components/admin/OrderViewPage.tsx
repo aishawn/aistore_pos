@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import { AsyncState } from "@/components/admin/AsyncState";
-import { ListTable } from "@/components/admin/ListTable";
 import { ArrowLeftIcon, EditIcon } from "@/components/icons";
 import { formatAuDate } from "@/lib/au";
 
@@ -37,11 +36,11 @@ interface OrderDetail {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  OPEN: "bg-[var(--oh-primary)]",
-  SENT: "bg-[var(--oh-tile-blue-text)]",
-  RECEIVED: "bg-[var(--oh-success)]",
-  CANCELLED: "bg-neutral-400",
-  OUTSTANDING: "bg-[var(--oh-orange)]",
+  OPEN: "border border-blue-200 bg-blue-50 text-blue-700",
+  SENT: "border border-indigo-200 bg-indigo-50 text-indigo-700",
+  RECEIVED: "border border-emerald-200 bg-emerald-50 text-emerald-700",
+  CANCELLED: "border border-neutral-200 bg-neutral-100 text-neutral-600",
+  OUTSTANDING: "border border-amber-200 bg-amber-50 text-amber-800",
 };
 
 function money(x?: number | null) {
@@ -57,9 +56,9 @@ function display(value?: string | number | null) {
 
 function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)]">{label}</p>
-      <p className="mt-1 text-[15px] text-[var(--oh-text)]">{value}</p>
+    <div className="min-w-0">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--oh-muted)]">{label}</p>
+      <p className="mt-1.5 break-words text-sm font-medium leading-5 text-[var(--oh-text)]">{value}</p>
     </div>
   );
 }
@@ -71,95 +70,132 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
   );
 
   const products = order?.products ?? [];
+  const lineCount = order?.lineCount ?? products.length;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.push("/orders")}
-              className="flex cursor-pointer items-center gap-1.5 text-[14px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]"
-            >
-              <ArrowLeftIcon size={16} />
-              Back
-            </button>
-            <h1 className="text-[20px] font-semibold text-[var(--oh-text)]">
-              {order?.invoiceNumber ? `Order ${order.invoiceNumber}` : "View Order"}
-            </h1>
-            {order?.status && (
-              <span
-                className={`rounded px-2 py-0.5 text-[13px] font-semibold uppercase tracking-wide text-white ${STATUS_STYLES[order.status] ?? "bg-neutral-500"}`}
-              >
-                {order.status}
-              </span>
-            )}
-          </div>
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push(`/orders/${orderId}/edit`)}
-            className="flex cursor-pointer items-center gap-2 rounded border border-[var(--oh-success)] px-4 py-2 text-[14px] font-medium text-[var(--oh-success)] transition-colors hover:bg-[var(--oh-success)]/5"
+            onClick={() => router.push("/orders")}
+            aria-label="Back to orders"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
-            <EditIcon size={16} />
-            Edit
+            <ArrowLeftIcon size={18} />
           </button>
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-auto bg-[var(--oh-surface)] p-6">
-        <AsyncState loading={loading} error={error} empty={!order}>
-          {order && (
-            <div className="mx-auto max-w-5xl space-y-6">
-              <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  <DetailField label="Type" value={display(order.type)} />
-                  <DetailField label="From" value={display(order.fromName || order.fromId)} />
-                  <DetailField label="To" value={display(order.toName || order.toId)} />
-                  <DetailField label="Order Date" value={display(formatAuDate(order.orderDate))} />
-                  <DetailField label="Due Date" value={display(formatAuDate(order.dueDate))} />
-                  <DetailField label="Reference" value={display(order.reference)} />
-                  <DetailField label="Expected Total" value={money(order.expectedTotal)} />
-                  <DetailField label="Total Cost" value={money(order.totalCost)} />
-                  <DetailField label="Line Count" value={String(order.lineCount ?? products.length)} />
-                </div>
-                {(order.notes || order.internalNotes) && (
-                  <div className="mt-5 grid gap-5 border-t border-[var(--oh-border)] pt-5 sm:grid-cols-2">
-                    <DetailField label="Public Notes" value={display(order.notes)} />
-                    <DetailField label="Internal Notes" value={display(order.internalNotes)} />
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
-                <h2 className="mb-4 text-[15px] font-semibold text-[var(--oh-text)]">Line Items</h2>
-                {products.length === 0 ? (
-                  <div className="py-8 text-center text-[16px] text-neutral-500">
-                    No line items on this order.
-                  </div>
-                ) : (
-                  <ListTable
-                    columns={[
-                      { label: "Product ID" },
-                      { label: "Supplier Code" },
-                      { label: "Ordered Qty", align: "right" },
-                      { label: "Received Qty", align: "right" },
-                      { label: "Cost", align: "right" },
-                    ]}
-                    rows={products.map((p) => [
-                      display(p.productId),
-                      display(p.supplierCode),
-                      p.orderedQuantity ?? "—",
-                      p.receivedQuantity ?? "—",
-                      money(p.orderedCost),
-                    ])}
-                  />
-                )}
-              </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="oh-type-title truncate text-[var(--oh-text)]">
+                {order?.invoiceNumber ? `Order ${order.invoiceNumber}` : "View Order"}
+              </h1>
+              {order?.status && (
+                <span
+                  className={`inline-flex min-h-6 items-center rounded-full px-2.5 text-[11px] font-bold tracking-wide ${STATUS_STYLES[order.status] ?? "border border-neutral-200 bg-neutral-100 text-neutral-700"}`}
+                >
+                  {order.status}
+                </span>
+              )}
             </div>
-          )}
-        </AsyncState>
-      </div>
+            <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Order details and line items</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.push(`/orders/${orderId}/edit`)}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-primary)] px-4 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-primary)]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        >
+          <EditIcon size={16} />
+          Edit order
+        </button>
+      </header>
+
+      <main aria-busy={loading} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-5xl space-y-4 sm:space-y-5">
+          <AsyncState loading={loading} error={error} empty={!order}>
+            {order && (
+              <>
+                <section aria-labelledby="order-summary-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+                  <div className="border-b border-[var(--oh-border)] px-4 py-3.5 sm:px-5">
+                    <h2 id="order-summary-heading" className="text-sm font-semibold text-[var(--oh-text)]">Order summary</h2>
+                  </div>
+                  <div className="grid gap-x-6 gap-y-5 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+                    <DetailField label="Type" value={display(order.type)} />
+                    <DetailField label="From" value={display(order.fromName || order.fromId)} />
+                    <DetailField label="To" value={display(order.toName || order.toId)} />
+                    <DetailField label="Order date" value={display(formatAuDate(order.orderDate))} />
+                    <DetailField label="Due date" value={display(formatAuDate(order.dueDate))} />
+                    <DetailField label="Reference" value={display(order.reference)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/70 p-4 sm:grid-cols-3 sm:px-5">
+                    <div className="rounded-lg border border-[var(--oh-border)] bg-white p-3">
+                      <p className="text-xs font-medium text-[var(--oh-muted)]">Expected total</p>
+                      <p className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{money(order.expectedTotal)}</p>
+                    </div>
+                    <div className="rounded-lg border border-[var(--oh-border)] bg-white p-3">
+                      <p className="text-xs font-medium text-[var(--oh-muted)]">Total cost</p>
+                      <p className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{money(order.totalCost)}</p>
+                    </div>
+                    <div className="col-span-2 rounded-lg border border-[var(--oh-border)] bg-white p-3 sm:col-span-1">
+                      <p className="text-xs font-medium text-[var(--oh-muted)]">Line items</p>
+                      <p className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{lineCount}</p>
+                    </div>
+                  </div>
+                  {(order.notes || order.internalNotes) && (
+                    <div className="grid gap-4 border-t border-[var(--oh-border)] p-4 sm:grid-cols-2 sm:p-5">
+                      {order.notes && <DetailField label="Public notes" value={order.notes} />}
+                      {order.internalNotes && <DetailField label="Internal notes" value={order.internalNotes} />}
+                    </div>
+                  )}
+                </section>
+
+                <section aria-labelledby="line-items-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+                  <div className="flex items-center justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-3.5 sm:px-5">
+                    <div>
+                      <h2 id="line-items-heading" className="text-sm font-semibold text-[var(--oh-text)]">Line items</h2>
+                      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Products included in this order</p>
+                    </div>
+                    <span className="rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--oh-text-secondary)]">
+                      {products.length} {products.length === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                  {products.length === 0 ? (
+                    <div className="px-4 py-10 text-center sm:py-12">
+                      <p className="text-sm font-medium text-[var(--oh-text-secondary)]">No line items on this order</p>
+                      <p className="mt-1 text-xs text-[var(--oh-muted)]">Product details will appear here when they are added.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[620px] border-collapse text-left text-sm">
+                        <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 sm:px-5">Product ID</th>
+                            <th scope="col" className="px-4 py-3">Supplier code</th>
+                            <th scope="col" className="px-4 py-3 text-right">Ordered</th>
+                            <th scope="col" className="px-4 py-3 text-right">Received</th>
+                            <th scope="col" className="px-4 py-3 text-right sm:px-5">Cost</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[var(--oh-border)]">
+                          {products.map((product) => (
+                            <tr key={product.id} className="transition-colors hover:bg-[var(--oh-surface)]/60">
+                              <td className="px-4 py-3.5 font-medium text-[var(--oh-text)] sm:px-5">{display(product.productId)}</td>
+                              <td className="px-4 py-3.5 text-[var(--oh-text-secondary)]">{display(product.supplierCode)}</td>
+                              <td className="px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{product.orderedQuantity ?? "—"}</td>
+                              <td className="px-4 py-3.5 text-right tabular-nums text-[var(--oh-text)]">{product.receivedQuantity ?? "—"}</td>
+                              <td className="px-4 py-3.5 text-right font-medium tabular-nums text-[var(--oh-text)] sm:px-5">{money(product.orderedCost)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
+          </AsyncState>
+        </div>
+      </main>
     </div>
   );
 }
