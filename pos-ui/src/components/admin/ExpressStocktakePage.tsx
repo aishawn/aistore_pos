@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi, useDebouncedValue } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
+import { LoaderCircle, PackageOpen, Search } from "lucide-react";
 
 interface StocktakeProductLine {
   id: string;
@@ -39,22 +40,24 @@ interface Outlet {
 function ToggleSwitch({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
+  label: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
-      className={cn(
-        "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors",
-        checked ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]",
-      )}
+      className="flex h-11 w-12 shrink-0 items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
     >
-      <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+      <span className={cn("flex h-6 w-11 items-center rounded-full p-0.5 transition-colors", checked ? "justify-end bg-[var(--oh-primary)]" : "bg-[var(--oh-border-strong)]")}>
+        <span className="h-5 w-5 rounded-full bg-white shadow-sm" />
+      </span>
     </button>
   );
 }
@@ -200,109 +203,113 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
 
   if (error && !session) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 bg-white px-6 font-sans">
-        <p className="text-[14px] text-[var(--oh-danger)]">{error}</p>
-        <Link href="/stocktake" className="text-[14px] font-medium text-[var(--oh-info)] hover:underline">
-          Back to Stocktakes
-        </Link>
-      </div>
+      <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-4 sm:p-6">
+        <section role="alert" className="w-full max-w-lg rounded-xl border border-rose-200 bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
+          <p className="text-sm leading-6 text-rose-800">{error}</p>
+          <Link href="/stocktake" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Back to stocktakes</Link>
+        </section>
+      </main>
     );
   }
 
   return (
-    <div className="flex h-full flex-col overflow-auto bg-white px-6 py-6 font-sans md:px-10 md:py-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[34px] font-bold leading-tight text-black">Express Stocktake</h1>
-          <p className="mt-1 text-[16px] text-neutral-500">Scanning {outletLabel}</p>
-        </div>
-        <label className="flex items-center gap-3 pt-2">
-          <ToggleSwitch checked={showPrices} onChange={setShowPrices} />
-          <span className="text-[14px] font-medium text-[var(--oh-text)]">Show Prices</span>
-        </label>
-      </div>
-
-      <div className="mt-8">
-        <input
-          ref={inputRef}
-          value={query}
-          disabled={!ready || loading}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setSearchOpen(true);
-            setScanError(null);
-          }}
-          onFocus={() => setSearchOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSubmitSearch();
-            }
-          }}
-          placeholder="Search for a product or scan a barcode"
-          className="h-[52px] w-full rounded-lg border border-black px-4 text-[16px] text-black outline-none placeholder:text-neutral-400 focus:ring-1 focus:ring-black disabled:cursor-not-allowed disabled:opacity-60"
-        />
-        {scanError && <p className="mt-2 text-[13px] text-[var(--oh-danger)]">{scanError}</p>}
-      </div>
-
-      <div className="mt-8">
-        <div className="text-center text-[13px] font-medium tracking-[0.08em] text-neutral-400">
-          SELECT A PRODUCT
-        </div>
-        <div className="mt-3 border-t border-neutral-200" />
-
-        {loading ? (
-          <div className="py-16 text-center text-[13px] font-medium tracking-[0.08em] text-neutral-400">
-            NO PRODUCTS HAVE BEEN STOCKTAKED YET
+    <main className="h-full overflow-y-auto bg-[var(--oh-surface)] p-4 font-sans sm:p-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Inventory · Express mode</p>
+            <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Express stocktake</h1>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">Scan a barcode or search products to record this count at {outletLabel}.</p>
           </div>
-        ) : hasResults && searchOpen ? (
-          <div className="mt-2 border border-neutral-200 bg-white">
-            {searchLoading ? (
-              <div className="px-4 py-6 text-center text-[14px] text-neutral-500">Searching…</div>
-            ) : searchResults.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[14px] text-neutral-500">No products found</div>
-            ) : (
-              searchResults.map((product) => (
-                <button
-                  key={product.id}
-                  type="button"
-                  disabled={scanning}
-                  onClick={() => handleSelectProduct(product.id)}
-                  className="flex w-full items-center justify-between border-b border-neutral-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-neutral-50 disabled:opacity-60"
-                >
-                  <span className="text-[15px] text-black">{product.name}</span>
-                  {showPrices && (
-                    <span className="text-[14px] text-neutral-500">{formatMoney(product.price)}</span>
-                  )}
-                </button>
-              ))
-            )}
+          <div className="flex items-center gap-2 self-start sm:gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2">
+              <ToggleSwitch checked={showPrices} onChange={setShowPrices} label="Show prices" />
+              <span className="pr-2 text-sm font-medium text-[var(--oh-text-secondary)]">Show prices</span>
+            </div>
+            <Link href="/stocktake" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-paper)]">All counts</Link>
           </div>
-        ) : products.length === 0 ? (
-          <div className="py-16 text-center text-[13px] font-medium tracking-[0.08em] text-neutral-400">
-            NO PRODUCTS HAVE BEEN STOCKTAKED YET
+        </header>
+
+        <section aria-label="Search and scan products" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+          <div className="relative">
+            <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
+            <input
+              ref={inputRef}
+              value={query}
+              disabled={!ready || loading}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSearchOpen(true);
+                setScanError(null);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmitSearch();
+                }
+              }}
+              placeholder="Search by product name or scan a barcode"
+              className="h-12 w-full rounded-lg border border-[var(--oh-border-strong)] bg-white pl-10 pr-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-60"
+            />
+            {searchLoading && <LoaderCircle size={17} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
           </div>
-        ) : (
-          <div className="mt-2">
-            {products.map((line) => (
-              <div
-                key={line.id}
-                className="flex items-center justify-between border-b border-neutral-100 py-4 last:border-b-0"
-              >
-                <div>
-                  <div className="text-[16px] font-medium text-black">{line.productName}</div>
-                  <div className="mt-1 text-[13px] text-neutral-500">
-                    Count: {line.actualCount ?? 0}
+          <p className="mt-2 text-xs text-[var(--oh-muted)]">Scan a barcode and press Enter, or choose a matching product below.</p>
+          {scanError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{scanError}</p>}
+        </section>
+
+        <section aria-label="Stocktake products" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
+            <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">Counted products</h2><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Products already scanned in this stocktake.</p></div>
+            <span className="rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-semibold tabular-nums text-[var(--oh-primary)]">{products.length} {products.length === 1 ? "product" : "products"}</span>
+          </header>
+
+          {hasResults && searchOpen ? (
+            <div className="max-h-[min(50dvh,420px)] overflow-y-auto divide-y divide-[var(--oh-border)]">
+              {searchLoading || query.trim() !== debouncedQuery.trim() ? (
+                <div role="status" className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[var(--oh-muted)]"><LoaderCircle size={17} className="animate-spin" />Searching products…</div>
+              ) : searchResults.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No products found. Check the barcode or try another name.</div>
+              ) : (
+                searchResults.map((product) => (
+                  <button
+                    key={product.id}
+                    type="button"
+                    disabled={scanning}
+                    onClick={() => handleSelectProduct(product.id)}
+                    className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
+                  >
+                    <span className="min-w-0 break-words font-medium text-[var(--oh-text)]">{product.name}</span>
+                    {showPrices && <span className="shrink-0 tabular-nums text-[var(--oh-text-secondary)]">{formatMoney(product.price)}</span>}
+                  </button>
+                ))
+              )}
+            </div>
+          ) : loading ? (
+            <div role="status" className="flex min-h-52 flex-col items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" />Loading stocktake…</div>
+          ) : products.length === 0 ? (
+            <div className="flex min-h-56 flex-col items-center justify-center px-5 py-10 text-center">
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><PackageOpen size={23} aria-hidden="true" /></span>
+              <p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">Ready to scan</p>
+              <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">Scanned products will appear here. Start with a barcode or search by name.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--oh-border)]">
+              {products.map((line) => (
+                <article key={line.id} className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
+                  <div className="min-w-0"><h3 className="break-words text-sm font-medium text-[var(--oh-text)]">{line.productName}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">Counted quantity</p></div>
+                  <div className="flex shrink-0 items-center gap-4 text-right">
+                    <span className="rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{line.actualCount ?? 0}</span>
+                    {showPrices && <span className="min-w-16 text-sm tabular-nums text-[var(--oh-text-secondary)]">{formatMoney(line.price)}</span>}
                   </div>
-                </div>
-                {showPrices && (
-                  <div className="text-[14px] text-neutral-600">{formatMoney(line.price)}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {scanning && <p role="status" className="text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="mr-2 inline animate-spin" />Adding product to this count…</p>}
       </div>
-    </div>
+    </main>
   );
 }

@@ -11,10 +11,13 @@ export default function ExpressStocktakeRoute() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-full flex-col overflow-auto bg-white px-6 py-6 font-sans md:px-10 md:py-8">
-          <h1 className="text-[34px] font-bold leading-tight text-black">Express Stocktake</h1>
-          <p className="mt-1 text-[16px] text-neutral-500">Scanning …</p>
-        </div>
+        <main role="status" className="h-full overflow-auto bg-[var(--oh-surface)] p-4 font-sans sm:p-6">
+          <div className="mx-auto w-full max-w-4xl">
+            <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Inventory · Express mode</p>
+            <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Express stocktake</h1>
+            <p className="mt-2 flex items-center gap-2 text-sm text-[var(--oh-muted)]"><span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--oh-border)] border-t-[var(--oh-primary)]" />Preparing scanner…</p>
+          </div>
+        </main>
       }
     >
       <ExpressStocktakeRouteInner />
