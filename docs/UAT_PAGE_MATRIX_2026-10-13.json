@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T10:51:34.122Z",
-  "deployment": "4afaff5c258827e82fbaf4eccd56c0a6bda1b314",
-  "sourceCommit": "354c328496360be22504fd5bd5c678ffd91a7b5e",
+  "generatedAt": "2026-10-14T11:52:09.545Z",
+  "deployment": null,
+  "sourceCommit": "04a4b9fd3a23d85a2b4f3594414204b6a8eceeb3",
   "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
@@ -59,6 +59,41 @@
       "path": "/reports/dashboard",
       "status": "PASS",
       "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout DEEP DIVE · MY COMPANY Reporting Dashboa"
+    },
+    {
+      "path": "/reports/actions",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Actions report Preview only · not connected to Odoo "
+    },
+    {
+      "path": "/reports/advanced",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Advanced report Preview only · not connected to Odoo"
+    },
+    {
+      "path": "/reports/inventory",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Inventory report Preview only · not connected to Odo"
+    },
+    {
+      "path": "/reports/misc",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Miscellaneous report Preview only · not connected to"
+    },
+    {
+      "path": "/reports/purchase",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Purchase report Preview only · not connected to Odoo"
+    },
+    {
+      "path": "/reports/sales",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Sales report Preview only · not connected to Odoo Fi"
+    },
+    {
+      "path": "/reports/transfer",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout REPORTS Transfer report Preview only · not connected to Odoo"
     },
     {
       "path": "/settings/integrations",

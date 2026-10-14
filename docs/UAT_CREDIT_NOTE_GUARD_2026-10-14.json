@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-10-14T11:50:18.878Z",
+  "sourceCommit": "04a4b9fd3a23d85a2b4f3594414204b6a8eceeb3",
+  "deployment": null,
+  "target": "https://app.orithos.com.au",
+  "scope": "production UI safety guard checks; supplier/outlet failures simulated in browser; no credit note or inventory writes",
+  "scenarios": [
+    {
+      "viewport": 390,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 390,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "The destination outlet could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 390,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 390,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "The destination outlet could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "The destination outlet could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/credit/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "The destination outlet could not be loaded. Refresh and try again before creating a credit note.",
+      "status": "PASS"
+    }
+  ],
+  "sideEffects": {
+    "mutatingApiRequests": [],
+    "pageErrors": []
+  },
+  "passed": 8,
+  "failed": 0
+}

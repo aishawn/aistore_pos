@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-10-14T11:46:22.448Z",
+  "sourceCommit": "86840b5cd1094547ca1eb1b353574b75582c0170",
+  "deployment": null,
+  "target": "https://app.orithos.com.au",
+  "scope": "production UI safety guard checks; supplier/outlet failures simulated in browser; no purchase, receipt, return, or inventory writes",
+  "scenarios": [
+    {
+      "viewport": 390,
+      "route": "/orders/receive/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before receiving stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 390,
+      "route": "/orders/receive/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "The destination outlet could not be loaded. Refresh and try again before receiving stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 390,
+      "route": "/orders/return/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before returning stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 390,
+      "route": "/orders/return/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 390,
+      "bodyWidth": 390,
+      "statusMessage": "The source outlet could not be loaded. Refresh and try again before returning stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/receive/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before receiving stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/receive/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "The destination outlet could not be loaded. Refresh and try again before receiving stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/return/new",
+      "unavailableDependency": "/api/suppliers",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "Suppliers could not be loaded. Refresh and try again before returning stock.",
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "route": "/orders/return/new",
+      "unavailableDependency": "/api/outlets",
+      "interceptedRequests": 1,
+      "createDisabled": true,
+      "documentWidth": 1440,
+      "bodyWidth": 1440,
+      "statusMessage": "The source outlet could not be loaded. Refresh and try again before returning stock.",
+      "status": "PASS"
+    }
+  ],
+  "sideEffects": {
+    "mutatingApiRequests": [],
+    "pageErrors": []
+  },
+  "passed": 8,
+  "failed": 0
+}

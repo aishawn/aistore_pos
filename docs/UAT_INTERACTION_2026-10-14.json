@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T04:18:12.217Z",
-  "deployment": "b8e4d1b48852033c6a9602aa172d292e9217d776",
+  "generatedAt": "2026-10-14T11:42:46.378Z",
+  "deployment": "c2322dfa9c7d5768aac1eaf70ea2aad59bbce886",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {
@@ -56,7 +56,12 @@
     {
       "name": "Reporting period selector reloads Odoo dashboard",
       "status": "PASS",
-      "evidence": "At 390px the reporting dashboard has no horizontal overflow (390px); range changed to 24 hours, chart marks are accessible, and the AI assistant opens/closes."
+      "evidence": "At 390px there is no horizontal overflow (390px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes."
+    },
+    {
+      "name": "Legacy report previews do not imply live Odoo data",
+      "status": "PASS",
+      "evidence": "At 390px the sales report clearly identifies itself as a disconnected preview, displays no placeholder totals, and has no horizontal overflow."
     }
   ]
 }

@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-14T09:08:43.558Z",
-  "deployment": "24d8894a5f2030ce8baade2e8e605bc750fc3bc8",
-  "sourceCommit": "24d8894a5f2030ce8baade2e8e605bc750fc3bc8",
+  "generatedAt": "2026-10-14T11:39:54.248Z",
+  "deployment": "14b39735f0deb0b512770fcd1783e41adc9ee160",
+  "sourceCommit": "14b39735f0deb0b512770fcd1783e41adc9ee160",
   "target": "https://app.orithos.com.au",
-  "pagesChecked": 35,
+  "pagesChecked": 42,
   "viewportWidths": [
     390,
     1440
   ],
-  "checks": 70,
-  "passed": 70,
+  "checks": 84,
+  "passed": 84,
   "failed": 0,
   "results": [
     {
@@ -88,7 +88,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": "20px",
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -98,7 +98,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": "24px",
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -119,6 +119,76 @@
       "document": 390,
       "body": 390,
       "heading": null,
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/actions",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/advanced",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/inventory",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/misc",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/purchase",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/sales",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "route": "/reports/transfer",
+      "viewport": 390,
+      "document": 390,
+      "body": 390,
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -218,7 +288,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": null,
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -388,7 +458,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "60px",
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -438,7 +508,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "20px",
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -448,7 +518,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": "24px",
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },
@@ -469,6 +539,76 @@
       "document": 1440,
       "body": 1440,
       "heading": null,
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/actions",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/advanced",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/inventory",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/misc",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/purchase",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/sales",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
+      "retries": 0,
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "route": "/reports/transfer",
+      "viewport": 1440,
+      "document": 1440,
+      "body": 1440,
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },

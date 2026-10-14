@@ -2,6 +2,14 @@
 
 更新时间：2026-10-14
 
+## 最新状态（2026-10-14 20:00，上海时间）
+
+- 当前源码 HEAD 与 `origin/main` 为 `86840b5cd1094547ca1eb1b353574b75582c0170`。生产浏览器 R2 安全状态专项 6/6；匿名访问被拒，管理员响应不含密钥，但生产仍 `configured=false / not_configured`，快照数为 0。未触发同步。
+- Dokploy 会话已过期，本轮无法核实该源码 SHA 的部署状态。
+- 用户希望每日拉取后同步到 POS 网站。现实现只把 R2 文件镜像进 Orithos 私有持久卷并显示归档状态；没有将 Shopfront 销售/库存数据写入 POS 或 Odoo，也没有可供 POS 使用的业务映射。
+- 下一步：轮换已公开的旧 key；店主在 Dokploy Environment 配置新 key 并部署；确认 `configured=true` 后手动首轮同步并审查文件/SQLite 完整性、重启持久性；随后连续观察两个每日周期。之后对数据库做 schema/门店/时区盘点，定义只读 POS 数据页面与权限，单独验收。
+
+
 ## 目标
 
 每天从 Cloudflare R2 私有存储拉取 Shopfront 的 SQLite 快照、稳定报表和 manifest，使 Orithos 能查看同步状态，并在明确数据语义后为后续分析提供受控数据源。
