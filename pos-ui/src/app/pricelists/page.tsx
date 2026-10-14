@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { SadEmptyState } from "@/components/admin/SadEmptyState";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { LoaderCircle, Search } from "lucide-react";
+import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { ListTable } from "@/components/admin/ListTable";
 import { CreatePriceListModal } from "@/components/admin/CreatePriceListModal";
 import { EntityFormModal, FormField } from "@/components/admin/EntityFormModal";
@@ -112,53 +112,58 @@ function PriceListsPageInner() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <div className="flex items-start">
-        <button
-          type="button"
-          onClick={() => {
-            clearInitial();
-            setCreating(true);
-          }}
-          className="flex items-center gap-2 rounded bg-[var(--oh-primary)] px-6 py-3 text-[16px] font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
-        >
-          <PlusIcon size={18} /> Add Price List
-        </button>
-        <div className="ml-auto text-center leading-none">
-          <div className="text-[28px] font-bold text-black">{total}</div>
-          <div className="text-[14px] text-black">Results</div>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-lg border border-neutral-300 p-3">
+      <AdminPageLayout
+        title="Price Lists"
+        subtitle="Manage reusable pricing groups and discount rules"
+        count={loading || error ? undefined : total}
+        countLabel="Price lists"
+        actions={<AdminPrimaryButton className="min-h-11" onClick={() => { clearInitial(); setCreating(true); }}><PlusIcon size={18} />Add price list</AdminPrimaryButton>}
+      >
+      <label className="flex min-h-11 items-center gap-2.5 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-muted)] shadow-[var(--oh-shadow-card)] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+        <Search size={17} aria-hidden="true" />
         <input
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          placeholder="Search for Price List"
-          className="w-full text-[16px] outline-none placeholder:text-neutral-400"
+          aria-label="Search price lists"
+          placeholder="Search price lists"
+          className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)]"
         />
-      </div>
+      </label>
 
-      <AsyncState loading={loading} error={error} empty={items.length === 0}>
-        {items.length === 0 ? (
-          <SadEmptyState message="We probably shouldn't start a private investigation company" />
-        ) : (
+      {loading ? (
+        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
+          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
+          Loading price lists…
+        </div>
+      ) : error ? (
+        <div role="alert" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{error}</div>
+      ) : items.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center">
+          <h2 className="text-base font-semibold text-[var(--oh-text)]">{search.trim() ? "No matching price lists" : "No price lists yet"}</h2>
+          <p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-[var(--oh-muted)]">
+            {search.trim() ? "Try another search term." : "Create a price list to organise reusable pricing and discount rules."}
+          </p>
+        </div>
+      ) : (
           <div className="mt-4">
-            <div className="mb-2.5 flex items-center justify-end">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-[var(--oh-muted)]">Select one or more lists to remove them together.</p>
               <button
                 type="button"
                 onClick={() => setBatchDeleting(true)}
                 disabled={!hasSelection}
-                className="rounded-md bg-[var(--oh-danger)] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 rounded-md bg-[var(--oh-danger)] px-4 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Batch Delete{hasSelection ? ` (${selectedIds.size})` : ""}
               </button>
             </div>
+            <div className="overflow-x-auto rounded-lg">
+            <div className="min-w-[760px]">
             <ListTable
-              headerClassName="bg-black"
+              headerClassName="bg-[var(--oh-surface)] text-[var(--oh-text-secondary)] ring-1 ring-inset ring-[var(--oh-border)]"
               columns={[
                 {
                   label: (
@@ -167,7 +172,7 @@ function PriceListsPageInner() {
                       checked={allPageSelected}
                       onChange={toggleSelectAll}
                       aria-label="Select all on page"
-                      className="h-3.5 w-3.5 cursor-pointer accent-white"
+                      className="h-4 w-4 cursor-pointer accent-[var(--oh-primary)]"
                     />
                   ),
                   align: "center",
@@ -185,7 +190,7 @@ function PriceListsPageInner() {
                   checked={selectedIds.has(p.id)}
                   onChange={() => toggleSelect(p.id)}
                   aria-label={`Select ${p.name}`}
-                  className="h-3.5 w-3.5 cursor-pointer accent-[var(--oh-orange)]"
+                  className="h-4 w-4 cursor-pointer accent-[var(--oh-primary)]"
                 />,
                 p.name,
                 <span key="higher" className="text-[var(--sf-tab-blue)]">
@@ -202,11 +207,11 @@ function PriceListsPageInner() {
                 />,
               ])}
             />
+            </div>
+            </div>
             <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
           </div>
         )}
-      </AsyncState>
-
       <CreatePriceListModal
         open={creating}
         initialName={initial?.name}
@@ -274,7 +279,7 @@ function PriceListsPageInner() {
           if (!batchDeleteBusy) setBatchDeleting(false);
         }}
       />
-    </div>
+      </AdminPageLayout>
   );
 }
 
