@@ -187,7 +187,7 @@ export default function RolesPage() {
       count={roles.length}
       countLabel="Roles"
       actions={
-        <AdminPrimaryButton onClick={openCreate} disabled={permissionsState.loading || Boolean(permissionsState.error)}>
+        <AdminPrimaryButton onClick={openCreate} disabled={permissionsState.loading || Boolean(permissionsState.error)} className="min-h-11">
           <Plus size={16} aria-hidden="true" /> New role
         </AdminPrimaryButton>
       }
