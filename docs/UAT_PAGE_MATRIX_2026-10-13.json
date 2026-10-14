@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T09:15:24.270Z",
-  "deployment": "b0c62f918edc8801d932c7ba9921f5e2a13bdf6f",
-  "sourceCommit": "6953c8f3b48ddfbe270b54a75de5671f5e883995",
+  "generatedAt": "2026-10-14T10:08:36.592Z",
+  "deployment": "fddb70c7784e04bc03f9ecfa102227f58097c5f2",
+  "sourceCommit": "623269bee92825996f7df931b41f2d4e55d64d67",
   "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
@@ -18,7 +18,7 @@
     {
       "path": "/history/odoo",
       "status": "PASS",
-      "snippet": "orithos Overview Register Point of sale Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Sales History Sal"
+      "snippet": "003 Completed -$38.39 260-1-000005 13 Oct 2026, 06:42 pm Walk-in customer orithos_store1/00003 Completed $38.39 260-1-000004 13 Oct 2026, 06:38 pm Walk-in customer orithos_store1/00003 Completed -$38.39 260-1-000003 13 Oct 2026, 06:38 pm Walk-in customer orithos_store1/00003 Completed $38.39 260-1-000002 13 Oct 2026, 06:28 pm Walk-in customer orithos_store1/00003 Completed -$28.60 260-1-000001 13 Oct 2026, 06:27 pm Walk-in customer orithos_store1/00003 Completed $28.60 Showing 1–12 Previous Next"
     },
     {
       "path": "/close",
@@ -58,7 +58,7 @@
     {
       "path": "/reports/dashboard",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout DEEP DIVE · MY COMPANY Reporting Dashboa"
+      "snippet": "orithos Overview Register Stock Customers Reporting Reporting Dashboard Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout"
     },
     {
       "path": "/settings/integrations",
@@ -235,12 +235,6 @@
     }
   ],
   "recoveryResponses": [
-    {
-      "route": null,
-      "path": "/api/odoo/session",
-      "method": "GET",
-      "status": 200
-    },
     {
       "route": null,
       "path": "/api/odoo/session",

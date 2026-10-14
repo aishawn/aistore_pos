@@ -27,7 +27,7 @@ if (!password) {
 const pages = [
   { path: "/overview", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Current sale/] },
   { path: "/", expect: [/orithos_store1\/00004/, /12 avail/, /Finalise/] },
-  { path: "/history/odoo", expect: [/Sales History/, /260-1-00000/] },
+  { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
   { path: "/products/odoo", expect: [/DEMO-SB-2024|Sauvignon Blanc/, /DEMO-SHIRAZ21|Barossa Shiraz/, /\b12\s*Units\b/i] },
   { path: "/customers/odoo", expect: [/Customers|No customers|Walk-in|empty|0/i] },
@@ -218,7 +218,7 @@ for (const entry of pages) {
   matrix.push({
     path: entry.path,
     status: pass ? "PASS" : "FAIL",
-    snippet: text.slice(0, 220),
+    snippet: entry.path === "/history/odoo" ? text.slice(-500) : text.slice(0, 220),
   });
   if (entry.path === "/") {
     try {

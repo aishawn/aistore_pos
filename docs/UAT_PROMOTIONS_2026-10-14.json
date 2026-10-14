@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-14T09:39:58Z",
+  "deployment": "396ef3ee6c729ddc9ff7ccdb32680e5e92ccd709",
+  "target": "https://app.orithos.com.au",
+  "scope": "authenticated read-only promotion browse route checks; no writes",
+  "route": "/promotions",
+  "viewports": [390, 1440],
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    { "width": 390, "path": "/promotions", "documentWidth": 390, "bodyWidth": 390, "status": "PASS", "state": "Read-only empty campaign list" },
+    { "width": 1440, "path": "/promotions", "documentWidth": 1440, "bodyWidth": 1440, "status": "PASS", "state": "Read-only empty campaign list" }
+  ],
+  "limitations": [
+    "No promotion campaigns exist in production, so populated campaign filters and details were not exercised."
+  ]
+}
