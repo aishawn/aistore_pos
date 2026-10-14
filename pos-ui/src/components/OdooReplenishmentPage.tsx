@@ -227,7 +227,7 @@ export function OdooReplenishmentPage() {
               : visibleItems.map((product) => <article key={product.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0"><h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]">{product.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{product.sku ? `SKU ${product.sku} · ` : ""}{product.unit}</p></div>
-                  {product.suggestedQuantity > 0 ? <span className="shrink-0 rounded-full bg-[#fff2da] px-2.5 py-1 text-xs font-bold tabular-nums text-[#8b4a00]">Order {number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">No order</span>}
+                  {product.suggestedQuantity > 0 ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">No order</span>}
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
                   <Metric label={`Sold · ${data?.historyDays}d`} value={number.format(product.soldUnits)} />
@@ -257,7 +257,7 @@ export function OdooReplenishmentPage() {
                     <td className={`px-4 py-3 text-right tabular-nums ${product.onHand <= 0 && product.soldUnits > 0 ? "font-semibold text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{number.format(product.onHand)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Odoo forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
-                    <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[#fff2da] px-2.5 py-1 text-xs font-bold tabular-nums text-[#8b4a00]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
+                    <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
                       <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange-dark)] hover:underline">
                         {expandedReasonId === product.id ? "Hide" : "Explain"}
