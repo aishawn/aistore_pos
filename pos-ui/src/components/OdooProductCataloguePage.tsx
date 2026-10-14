@@ -241,7 +241,7 @@ export function OdooProductCataloguePage() {
             <AlertCircle className="mx-auto text-amber-600" size={28} />
             <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view products</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Odoo staff account to view the POS catalogue and inventory available to that account.</p>
-            <Link href="/settings/integrations" className="mt-4 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+            <Link href="/settings/integrations" className="mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
           </div>
         </section>
       ) : (
@@ -281,7 +281,7 @@ export function OdooProductCataloguePage() {
                 {loading && items.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading products…</span></td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId ? "No matching products" : "No POS products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId ? "Try clearing search or category filters." : "Connect Odoo and confirm products are available in the POS catalogue."}</p>{debouncedQuery || categoryId ? <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Integrations</Link>}</div></td></tr>
+                  <tr><td colSpan={7} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId ? "No matching products" : "No POS products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId ? "Try clearing search or category filters." : "Connect Odoo and confirm products are available in the POS catalogue."}</p>{debouncedQuery || categoryId ? <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}</div></td></tr>
                 ) : items.map((product) => {
                   const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id)).filter(Boolean);
                   return (
@@ -334,10 +334,10 @@ export function OdooProductCataloguePage() {
           </section>
 
           <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
+            <span>{items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
+              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
+              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
             </div>
           </footer>
         </>
