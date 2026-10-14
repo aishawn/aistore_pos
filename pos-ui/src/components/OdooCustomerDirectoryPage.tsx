@@ -7,6 +7,27 @@ import { createOdooCustomer, getOdooSession, searchOdooRecords, updateOdooCustom
 
 const PAGE_SIZE = 40;
 
+function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClear: () => void }) {
+  return (
+    <div role="status" className="flex min-h-56 flex-col items-center justify-center px-5 py-10 text-center">
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
+        <UserRound size={19} aria-hidden="true" />
+      </span>
+      <p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">
+        {searching ? "No customers match this search" : "No customers available"}
+      </p>
+      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">
+        {searching ? "Try another name, phone number, email or customer code." : "Customer records available to this Odoo account will appear here."}
+      </p>
+      {searching && (
+        <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+          Clear search
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function OdooCustomerDirectoryPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooCustomerRecord[]>([]);
@@ -22,6 +43,12 @@ export function OdooCustomerDirectoryPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<OdooCustomerRecord | null>(null);
   const requestRevision = useRef(0);
+
+  function clearSearch() {
+    setQuery("");
+    setDebouncedQuery("");
+    setOffset(0);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -122,7 +149,7 @@ export function OdooCustomerDirectoryPage() {
         <>
           <label className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
             <Search size={17} className="text-[var(--oh-muted)]" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            <input aria-label="Search customers by name, phone, email or customer code" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
           {error && <p role="alert" className="shrink-0 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{error}</p>}
 
@@ -135,7 +162,7 @@ export function OdooCustomerDirectoryPage() {
                 {loading && items.length === 0 ? (
                   <tr><td colSpan={5} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading customers…</span></td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-16 text-center text-[var(--oh-muted)]">{debouncedQuery ? "No customers match this search." : "No customers are available to this Odoo account."}</td></tr>
+                  <tr><td colSpan={5} className="p-0"><CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} /></td></tr>
                 ) : items.map((customer) => (
                   <tr key={customer.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                     <td className="px-4 py-3"><span className="flex items-center gap-2 font-medium text-[var(--oh-text)]"><UserRound size={16} className="text-[var(--oh-muted)]" />{customer.name}</span><span className="ml-6 block text-xs text-[var(--oh-muted)]">Odoo #{customer.id}</span></td>
@@ -151,7 +178,7 @@ export function OdooCustomerDirectoryPage() {
               {loading && items.length === 0 ? (
                 <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading customers…</span></div>
               ) : items.length === 0 ? (
-                <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{debouncedQuery ? "No customers match this search." : "No customers are available to this Odoo account."}</div>
+                <CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} />
               ) : items.map((customer) => (
                 <article key={customer.id} className="px-4 py-3.5">
                   <header className="flex items-start justify-between gap-3">
@@ -173,7 +200,7 @@ export function OdooCustomerDirectoryPage() {
           </section>
 
           <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
-            <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
+            <span>{items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
               <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
               <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
