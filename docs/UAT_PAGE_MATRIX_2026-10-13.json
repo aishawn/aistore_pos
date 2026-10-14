@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T00:12:05.441Z",
+  "generatedAt": "2026-10-14T00:32:28.037Z",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
@@ -130,10 +130,9 @@
   ],
   "uiChecks": [
     {
-      "name": "AI launcher brand and panel interaction",
+      "name": "Checkout AI entry and panel interaction",
       "status": "PASS",
-      "background": "rgb(37, 99, 235)",
-      "evidence": "Launcher uses retail brand blue; opening and closing the assistant panel works without submitting a prompt."
+      "evidence": "The header entry is excluded from the checkout keyboard-tab sequence; it opens and closes the assistant without submitting a prompt."
     },
     {
       "name": "Overview mobile layout",

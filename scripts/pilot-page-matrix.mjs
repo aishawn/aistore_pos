@@ -159,17 +159,31 @@ for (const entry of pages) {
   });
   if (entry.path === "/") {
     try {
-      const fab = page.locator('button[aria-label="Open Orithos AI"] [role="img"][aria-label="Orithos AI"]');
-      await fab.waitFor({ timeout: 10000 });
-      const background = await fab.evaluate((element) => getComputedStyle(element).backgroundColor);
-      if (background !== "rgb(37, 99, 235)") throw new Error(`Expected brand blue, got ${background}`);
-      await page.getByRole("button", { name: "Open Orithos AI" }).click();
+      const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
+      await launcher.waitFor({ timeout: 10000 });
+      if (await launcher.getAttribute("tabindex") !== "-1") {
+        throw new Error("Checkout AI entry must stay outside the sale keyboard-tab sequence");
+      }
+      await launcher.click();
       await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
       await page.getByRole("button", { name: "Close assistant" }).click();
-      await page.getByRole("button", { name: "Open Orithos AI" }).waitFor({ timeout: 10000 });
-      uiChecks.push({ name: "AI launcher brand and panel interaction", status: "PASS", background, evidence: "Launcher uses retail brand blue; opening and closing the assistant panel works without submitting a prompt." });
+      await launcher.waitFor({ timeout: 10000 });
+      uiChecks.push({ name: "Checkout AI entry and panel interaction", status: "PASS", evidence: "The header entry is excluded from the checkout keyboard-tab sequence; it opens and closes the assistant without submitting a prompt." });
     } catch (error) {
-      uiChecks.push({ name: "AI launcher brand and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+      uiChecks.push({ name: "Checkout AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+    }
+  }
+  if (entry.path === "/products/odoo") {
+    try {
+      const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
+      await launcher.waitFor({ timeout: 10000 });
+      await launcher.click();
+      await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
+      await page.getByRole("button", { name: "Close assistant" }).click();
+      await launcher.waitFor({ timeout: 10000 });
+      uiChecks.push({ name: "Products AI entry and panel interaction", status: "PASS", evidence: "The products header entry opens and closes the assistant without submitting a prompt." });
+    } catch (error) {
+      uiChecks.push({ name: "Products AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
     }
   }
   console.log(`${pass ? "PASS" : "FAIL"} ${entry.path} :: ${text.slice(0, 140)}`);

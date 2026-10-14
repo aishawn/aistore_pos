@@ -91,31 +91,44 @@ try {
   });
 
   await check("Product search filters the Odoo catalogue", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const search = page.getByPlaceholder("Search product, barcode or SKU");
     await page.waitForFunction(() => {
-      const rows = [...(document.querySelector("tbody")?.querySelectorAll("tr") ?? [])];
-      const text = document.querySelector("tbody")?.innerText ?? "";
-      return rows.length === 2 && /Barossa Shiraz/i.test(text) && /Sauvignon Blanc/i.test(text);
+      const cards = [...document.querySelectorAll("main section article")];
+      const text = document.querySelector("main section")?.innerText ?? "";
+      return cards.length === 2 && /Barossa Shiraz/i.test(text) && /Sauvignon Blanc/i.test(text);
     }, null, { timeout: 30000 });
+    const table = page.locator("table");
+    if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
+      throw new Error("The wide product table is visible at the mobile viewport");
+    }
     await search.fill("shiraz");
     await page.waitForFunction(() => {
-      const rows = [...(document.querySelector("tbody")?.querySelectorAll("tr") ?? [])];
-      const text = document.querySelector("tbody")?.innerText ?? "";
-      return rows.length === 1 && /Barossa Shiraz/i.test(text) && !/Sauvignon Blanc/i.test(text);
+      const cards = [...document.querySelectorAll("main section article")];
+      const text = document.querySelector("main section")?.innerText ?? "";
+      return cards.length === 1 && /Barossa Shiraz/i.test(text) && !/Sauvignon Blanc/i.test(text);
     }, null, { timeout: 30000 });
-    return "Search `shiraz` returned Barossa Shiraz only.";
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return "At 390px the product cards replaced the wide table; search `shiraz` returned Barossa Shiraz only.";
   });
 
   await check("Product edit dialog is prefilled from Odoo", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const row = page.getByRole("row").filter({ hasText: "Barossa Shiraz 2021" });
-    await row.getByRole("button", { name: /Edit.*Barossa Shiraz 2021/i }).click();
-    await page.getByRole("heading", { name: "Edit product" }).waitFor({ timeout: 10000 });
+    const card = page.locator("main section article").filter({ hasText: "Barossa Shiraz 2021" });
+    await card.getByRole("button", { name: /Edit Barossa Shiraz 2021/i }).click();
+    const dialog = page.getByRole("dialog", { name: "Edit product" });
+    await dialog.waitFor({ timeout: 10000 });
+    const dialogBox = await dialog.boundingBox();
+    if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
+      throw new Error(`Product edit dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
+    }
     const price = await page.getByLabel("Sale price").evaluate((input) => Number(input.value));
     if (price !== 34.9) throw new Error(`Odoo sale price was not prefilled (received ${price})`);
     await page.getByRole("button", { name: "Close", exact: true }).click();
-    return "Barossa Shiraz edit dialog showed the Odoo sale price 34.90 and was closed without saving.";
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return "At 390px the edit dialog fit the viewport, showed the Odoo sale price 34.90, and was closed without saving.";
   });
 
   await check("New product form blocks submission without a name", async () => {
@@ -184,20 +197,30 @@ try {
   });
 
   await check("Sales history searches and opens a refunded receipt", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/history/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const search = page.getByPlaceholder("Search receipt or order reference");
     await search.fill("260-1-000009");
-    const receipt = page.getByRole("button", { name: /260-1-000009/ });
+    const table = page.locator("table");
+    const receipt = page.getByRole("button", { name: "View receipt 260-1-000009", exact: true });
     await receipt.waitFor({ timeout: 15000 });
+    if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
+      throw new Error("The wide sales table is visible at the mobile viewport");
+    }
     await receipt.click();
     const detail = page.getByRole("dialog", { name: /Sale receipt/i });
     await detail.waitFor({ timeout: 10000 });
+    const dialogBox = await detail.boundingBox();
+    if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
+      throw new Error(`Receipt dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
+    }
     await detail.getByRole("status").filter({ hasText: /refund has already been recorded/i }).waitFor({ timeout: 10000 });
     if (await detail.getByRole("button", { name: "Refund full sale" }).count()) {
       throw new Error("A previously refunded sale still exposes the full-refund action");
     }
     await page.getByRole("button", { name: "Close receipt" }).click();
-    return "Receipt search matched `260-1-000009`; detail identified the prior refund and hid the duplicate full-refund action.";
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return "At 390px the mobile receipt card replaced the wide table; the receipt dialog fit the viewport, showed the prior refund, and hid the duplicate full-refund action.";
   });
 
   await check("Replenishment coverage control refreshes the estimate", async () => {
@@ -231,7 +254,7 @@ const output = {
   scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   checks,
 };
-const outputPath = path.join(root, "docs", "UAT_INTERACTION_2026-10-13.json");
+const outputPath = path.join(root, "docs", "UAT_INTERACTION_2026-10-14.json");
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: checks.filter((item) => item.status === "PASS").length, failed: checks.filter((item) => item.status === "FAIL").length, checks }));
 if (checks.some((item) => item.status === "FAIL")) process.exitCode = 2;

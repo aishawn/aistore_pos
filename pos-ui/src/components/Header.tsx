@@ -29,6 +29,7 @@ export function Header({
   const ai = useOptionalAiAssistant();
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
+  const showHeaderAi = checkoutKeyboard || pathname === "/products/odoo";
   const tabIndex = checkoutKeyboard ? -1 : undefined;
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export function Header({
           )}
           <span className={`hidden sm:inline ${online ? "text-[var(--sf-online-green)]" : ""}`}>{online ? "ONLINE" : "OFFLINE"}</span>
         </div>
-        {checkoutKeyboard ? (
+        {showHeaderAi ? (
           <button
             type="button"
             tabIndex={tabIndex}
