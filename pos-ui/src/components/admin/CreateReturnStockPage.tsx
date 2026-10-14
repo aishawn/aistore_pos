@@ -276,7 +276,7 @@ export function CreateReturnStockPage() {
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={busy}
+          disabled={busy || outlets.loading || Boolean(outlets.error) || !fromId || suppliers.loading || Boolean(suppliers.error) || !toId}
           className="inline-flex min-h-11 min-w-28 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create"}
