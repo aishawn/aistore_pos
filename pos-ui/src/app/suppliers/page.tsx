@@ -37,7 +37,7 @@ function Actions({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-center gap-14 text-[13px] font-medium">
+    <div className="flex min-h-8 items-center justify-center gap-3 whitespace-nowrap text-[13px] font-medium">
       <button
         type="button"
         onClick={() => onEdit(supplierId)}
@@ -169,7 +169,11 @@ export default function SuppliersPage() {
             type="button"
             onClick={() => setBatchDeleting(true)}
             disabled={!hasSelection}
-            className="rounded-md bg-[var(--oh-danger)] px-4 py-2 text-[13px] font-medium text-white transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className={`rounded-md px-4 py-2 text-[13px] font-medium transition-colors disabled:cursor-not-allowed ${
+              hasSelection
+                ? "bg-[var(--oh-danger)] text-white hover:opacity-90"
+                : "bg-slate-100 text-slate-400"
+            }`}
           >
             Batch Delete{hasSelection ? ` (${selectedIds.size})` : ""}
           </button>
@@ -193,7 +197,7 @@ export default function SuppliersPage() {
             { label: "No.", align: "center" },
             { label: "Name" },
             { label: "Product Count", align: "center" },
-            { label: "Actions", align: "center" },
+            { label: "Actions", align: "center", width: "w-[220px]" },
           ]}
           rows={items.map((s, i) => [
             <input
