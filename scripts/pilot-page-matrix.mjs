@@ -31,7 +31,7 @@ const pages = [
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
   { path: "/products/odoo", expect: [/DEMO-SB-2024|Sauvignon Blanc/, /DEMO-SHIRAZ21|Barossa Shiraz/, /\b12\s*Units\b/i] },
   { path: "/customers/odoo", expect: [/Customers|No customers|Walk-in|empty|0/i] },
-  { path: "/customers/balances", expect: [/Balances/i, /View customer balances, statements and payments/i, /Results/i] },
+  { path: "/customers/balances", expect: [/Customer Balances/i, /not connected to Odoo for this pilot/i, /not show legacy or sample balances/i] },
   { path: "/suppliers/odoo", expect: [/Suppliers|No suppliers|empty|0/i] },
   { path: "/purchases/odoo", expect: [/Purchases|No purchase|empty|RFQ|0/i] },
   { path: "/stock/replenishment", expect: [/Replenishment|suggest|0|no completed sales/i] },
