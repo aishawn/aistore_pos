@@ -90,7 +90,6 @@ export const NAVIGATION: NavEntry[] = [
         { label: "Customer Display", href: "/settings/customerdisplay" },
         { label: "Surcharging", href: "/settings/surcharging" },
         { label: "Hardware", href: "/settings/hardware" },
-        { label: "Barcode Templates", href: "/settings/barcodes" },
         { label: "Price Sets", href: "/settings/pricesets" },
         { label: "Registers & Outlets", href: "/settings/registers-outlets" },
         { label: "Enterprise Policies", href: "/enterprise" },

@@ -1,34 +1,75 @@
-import {
-  AdminPageLayout,
-  AdminPrimaryButton,
-} from "@/components/admin/AdminPageLayout";
-import { FilterSelect } from "@/components/admin/FilterSelect";
-import { PrinterIcon } from "@/components/icons";
+import { PackageSearch, Printer, Ruler, ScanLine, TriangleAlert, type LucideIcon } from "lucide-react";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+
+const barcodeSteps: {
+  title: string;
+  detail: string;
+  icon: LucideIcon;
+}[] = [
+  {
+    title: "Choose products",
+    detail: "The product picker is not connected to the live catalogue on this page.",
+    icon: PackageSearch,
+  },
+  {
+    title: "Choose a label",
+    detail: "EAN-13 and 40 × 28 mm were sample values, not saved templates.",
+    icon: Ruler,
+  },
+  {
+    title: "Print labels",
+    detail: "No label document is generated or sent to a printer by this page.",
+    icon: Printer,
+  },
+];
 
 export default function BarcodesPage() {
   return (
     <AdminPageLayout
       title="Barcodes"
-      subtitle="Generate and print product barcode labels"
+      subtitle="Barcode label generation status"
     >
-      <div className="max-w-2xl">
-        <h2 className="mb-4 text-[15px] font-semibold text-[var(--oh-text)]">Generate Barcodes</h2>
-        <div className="flex flex-col gap-4">
-          <FilterSelect label="Products" placeholder="Select Products…" />
-          <FilterSelect label="Template" placeholder="EAN-13 (40mm x 28mm)" />
-          <label className="flex flex-col">
-            <span className="mb-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)]">Quantity per product</span>
-            <input
-              type="number"
-              defaultValue={1}
-              className="h-10 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
-            />
-          </label>
-          <AdminPrimaryButton className="mt-2 w-fit">
-            <PrinterIcon size={16} /> Generate &amp; Print
-          </AdminPrimaryButton>
+      <section
+        role="status"
+        className="flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-4 sm:p-5"
+      >
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm ring-1 ring-amber-200/80">
+          <TriangleAlert size={18} aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-amber-950">Barcode label printing is not connected</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-900/80">
+            The selectors and “Generate &amp; Print” button previously shown here were visual placeholders. This page does not load products, create labels, or send print jobs.
+          </p>
         </div>
-      </div>
+      </section>
+
+      <section aria-labelledby="barcode-process-title" className="mt-6">
+        <div className="mb-3">
+          <h2 id="barcode-process-title" className="text-sm font-semibold text-[var(--oh-text)]">Label workflow</h2>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">The steps required to generate and print labels</p>
+        </div>
+
+        <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {barcodeSteps.map(({ title, detail, icon: Icon }, index) => (
+            <li key={title} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+              <span className="relative flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
+                <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+                <span className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-[var(--oh-primary)] text-[10px] font-semibold text-white ring-2 ring-white">{index + 1}</span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h3>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200">
+                    <ScanLine size={12} aria-hidden="true" /> Unavailable
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-5 text-[var(--oh-muted)]">{detail}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
     </AdminPageLayout>
   );
 }
