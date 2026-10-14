@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/admin/ReportBuilder";
 export default function MiscReportsPage() {
   return (
     <ReportBuilder
+      title="Miscellaneous report"
       query={`SELECT BY_NAME AS "Name", value AS "Value", type AS "Type"`}
       panels={[
         { label: "Report Type", value: "Miscellaneous" },

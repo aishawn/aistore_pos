@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/admin/ReportBuilder";
 export default function PurchaseReportsPage() {
   return (
     <ReportBuilder
+      title="Purchase report"
       query={`SELECT BY_NAME AS "Name", quantity_ordered AS "Quantity Ordered", quantity_received AS "Quantity Received", cost AS "Cost"`}
       panels={[
         { label: "Report Type", value: "Supplier" },

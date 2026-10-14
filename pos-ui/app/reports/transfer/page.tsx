@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/admin/ReportBuilder";
 export default function TransferReportsPage() {
   return (
     <ReportBuilder
+      title="Transfer report"
       query={`SELECT BY_NAME AS "Name", from_outlet AS "From", to_outlet AS "To", quantity AS "Quantity", cost AS "Cost Value"`}
       panels={[
         { label: "Report Type", value: "Outlet" },

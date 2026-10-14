@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/admin/ReportBuilder";
 export default function InventoryReportsPage() {
   return (
     <ReportBuilder
+      title="Inventory report"
       query={`SELECT BY_NAME AS "Name", inventory AS "Inventory On Hand", cost AS "Cost Value", retail AS "Retail Value", FORMAT(cost / inventory) AS "Average Cost"`}
       panels={[
         { label: "Report Type", value: "Outlet" },

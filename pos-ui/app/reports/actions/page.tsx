@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/admin/ReportBuilder";
 export default function ActionsReportsPage() {
   return (
     <ReportBuilder
+      title="Actions report"
       query={`SELECT action AS "Action", user AS "User", COUNT(*) AS "Count", outlet AS "Outlet"`}
       panels={[
         { label: "Report Type", value: "User" },

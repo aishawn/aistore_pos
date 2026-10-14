@@ -3,6 +3,7 @@ import { ReportBuilder } from "@/components/admin/ReportBuilder";
 export default function AdvancedReportsPage() {
   return (
     <ReportBuilder
+      title="Advanced report"
       query={`SELECT BY_NAME AS "Name", SUM(revenue) AS "Revenue", SUM(profit) AS "Profit", FORMAT(profit / revenue * 100) AS "Margin"`}
       panels={[
         { label: "Report Type", value: "Custom" },

@@ -11,6 +11,7 @@ const PANELS = [
 export default function SalesReportsPage() {
   return (
     <ReportBuilder
+      title="Sales report"
       query={`SELECT BY_NAME AS "Name", revenue AS "Revenue", cost AS "Cost of Goods Sold", transaction_count AS "Transaction Count", FORMAT(revenue / transaction_count) AS "Average Sale"`}
       panels={PANELS}
       columns={["Name", "Revenue", "Cost of Goods Sold", "Transaction Count", "Average Sale", "Profit", "Profit Percentage", "Tax Amount", "Discount Amount"]}
