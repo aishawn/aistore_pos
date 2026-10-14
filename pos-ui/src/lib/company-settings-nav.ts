@@ -31,7 +31,6 @@ export const OUTLET_SETTINGS_NAV: SettingsNavItem[] = [
 export const REGISTER_SETTINGS_NAV: SettingsNavItem[] = [
   { label: "General", href: "/settings/registers/general" },
   { label: "Sell Screen", href: "/settings/registers/sell-screen" },
-  { label: "Customer Display", href: "/settings/registers/customer-display" },
   { label: "Invoices", href: "/settings/registers/invoices" },
   { label: "Miscellaneous", href: "/settings/registers/miscellaneous" },
 ];
