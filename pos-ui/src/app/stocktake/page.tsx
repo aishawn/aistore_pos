@@ -41,6 +41,13 @@ function formatTimestamp(ts?: string) {
   return formatAuDateTime(ts);
 }
 
+function stocktakeStatus(status: string) {
+  if (status === "IN_PROGRESS") return <span className="inline-flex min-h-6 items-center rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">In progress</span>;
+  if (status === "COMPLETED") return <span className="inline-flex min-h-6 items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Completed</span>;
+  if (status === "CANCELLED") return <span className="inline-flex min-h-6 items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Cancelled</span>;
+  return <span className="inline-flex min-h-6 items-center rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--oh-text-secondary)]">{status.replaceAll("_", " ").toLowerCase()}</span>;
+}
+
 export default function StocktakePage() {
   return (
     <Suspense fallback={null}>
@@ -115,7 +122,7 @@ function StocktakePageInner() {
               aria-expanded={menuOpen}
               aria-haspopup="dialog"
               aria-label="Menu"
-              className="relative flex h-10 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+              className="relative flex h-11 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               {menuOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
               Menu
@@ -128,11 +135,11 @@ function StocktakePageInner() {
               <div
                 role="dialog"
                 aria-label="Stocktakes menu"
-                className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(960px,calc(100vw-2rem))] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-8 py-7 shadow-[var(--oh-shadow-card)]"
+                className="absolute right-0 top-[calc(100%+8px)] z-30 max-h-[calc(100dvh-2rem)] w-[min(960px,calc(100vw-2rem))] overflow-y-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-4 shadow-[var(--oh-shadow-card)] sm:px-6 sm:py-5 lg:px-8 lg:py-7"
               >
-                <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 lg:gap-3">
                   <AdminPrimaryButton
-                    className="w-full justify-center px-2 text-[13px]"
+                    className="min-h-11 w-full justify-center px-2 text-[13px]"
                     onClick={() => {
                       setMenuOpen(false);
                       clearStocktakePrefill();
@@ -142,7 +149,7 @@ function StocktakePageInner() {
                     <ClipboardIcon size={16} className="shrink-0" /> Advanced Stocktake
                   </AdminPrimaryButton>
                   <AdminPrimaryButton
-                    className="w-full justify-center px-2 text-[13px]"
+                    className="min-h-11 w-full justify-center px-2 text-[13px]"
                     onClick={() => {
                       setMenuOpen(false);
                       router.push("/stocktake/express");
@@ -151,7 +158,7 @@ function StocktakePageInner() {
                     <ScanIcon size={16} className="shrink-0" /> Express Stocktake
                   </AdminPrimaryButton>
                   <AdminPrimaryButton
-                    className="w-full justify-center px-2 text-[13px]"
+                    className="min-h-11 w-full justify-center px-2 text-[13px]"
                     onClick={() => {
                       setMenuOpen(false);
                       router.push("/stocktake/external");
@@ -161,8 +168,8 @@ function StocktakePageInner() {
                   </AdminPrimaryButton>
                 </div>
 
-                <div className="mt-7 border-t border-[var(--oh-border)] pt-7">
-                  <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-x-5 gap-y-5">
+                <div className="mt-5 border-t border-[var(--oh-border)] pt-5 lg:mt-7 lg:pt-7">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-5 lg:gap-y-5">
                     <FilterSelect
                       label="Status"
                       value={status}
@@ -204,10 +211,10 @@ function StocktakePageInner() {
           compact
           columns={[
             { label: "Name" },
-            { label: "Status", align: "center" },
+            { label: "Status", align: "center", width: "w-[150px]" },
             { label: "Created", align: "center" },
           ]}
-          rows={items.map((s) => [s.name, s.status, formatTimestamp(s.createdAt)])}
+          rows={items.map((s) => [s.name, stocktakeStatus(s.status), formatTimestamp(s.createdAt)])}
         />
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
       </AsyncState>
