@@ -141,6 +141,9 @@ services:
       ODOO_DATABASE: ${ODOO_DATABASE:-aipos}
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}
+      R2_ARCHIVE_DATA_DIR: /var/lib/orithos/shopfront
+    volumes:
+      - shopfront-archive:/var/lib/orithos/shopfront:ro
 
 volumes:
   mysql-data:

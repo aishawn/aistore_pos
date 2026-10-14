@@ -17,6 +17,106 @@ import {
 const PAGE_SIZE = 40;
 const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
 
+type R2Receipt = {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  time: string;
+  dateTime: string;
+  status: string;
+  total: number;
+  tax: number;
+  savings: number;
+  discount: number;
+  items: Array<{ id: string; name: string; quantity: number; amount: number }>;
+  payments: Array<{ id: string; method: string; amount: number; status: string }>;
+};
+
+function R2ArchivePanel({ query }: { query: string }) {
+  const [items, setItems] = useState<R2Receipt[]>([]);
+  const [databaseSha256, setDatabaseSha256] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(true);
+  const [selected, setSelected] = useState<R2Receipt | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/r2-archive/sales", { credentials: "same-origin", cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401 || response.status === 403) return null;
+        if (!response.ok) throw new Error("Archive unavailable");
+        return response.json() as Promise<{ items?: R2Receipt[]; databaseSha256?: string }>;
+      })
+      .then((payload) => {
+        if (!active || !payload) return;
+        setItems(Array.isArray(payload.items) ? payload.items : []);
+        setDatabaseSha256(payload.databaseSha256 ?? "");
+        setError(null);
+      })
+      .catch(() => { if (active) setError("R2 test receipts are temporarily unavailable."); });
+    return () => { active = false; };
+  }, []);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = items.filter((item) => !normalizedQuery
+    || item.invoiceNumber.toLowerCase().includes(normalizedQuery)
+    || item.items.some((line) => line.name.toLowerCase().includes(normalizedQuery)));
+  if (!items.length && !error) return null;
+
+  return (
+    <>
+      <section className="shrink-0 overflow-hidden rounded-lg border border-amber-200 bg-amber-50/60">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--oh-text)]">Imported Shopfront R2 test history</h2>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only source archive · excluded from Odoo accounting and stock.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900">R2 · TEST</span>
+            <button type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 text-sm font-semibold text-[var(--oh-text)]">
+              {expanded ? "Hide" : `Show ${filtered.length}`}
+            </button>
+          </div>
+        </header>
+        {error && <p role="status" className="px-4 py-3 text-sm text-amber-950">{error}</p>}
+        {expanded && !error && (
+          <div className="max-h-72 divide-y divide-amber-100 overflow-y-auto bg-white/70">
+            {filtered.length ? filtered.map((receipt) => (
+              <button key={receipt.id} type="button" onClick={() => setSelected(receipt)} className="flex min-h-12 w-full flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5 text-left hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--oh-primary)]">
+                <span className="min-w-32 font-semibold text-[var(--oh-primary)]">{receipt.invoiceNumber}</span>
+                <span className="text-sm text-[var(--oh-text-secondary)]">{receipt.date} {receipt.time}</span>
+                <span className="text-xs text-[var(--oh-muted)]">{receipt.items.length} lines · GST {money(receipt.tax)}</span>
+                <span className="font-semibold tabular-nums text-[var(--oh-text)]">{money(receipt.total)}</span>
+              </button>
+            )) : <p className="px-4 py-6 text-center text-sm text-[var(--oh-muted)]">No R2 receipts match this search.</p>}
+          </div>
+        )}
+        {expanded && databaseSha256 && <p className="border-t border-amber-100 px-4 py-2 text-[11px] text-[var(--oh-muted)]">Snapshot SHA-256: {databaseSha256}</p>}
+      </section>
+
+      {selected && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-3 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="r2-receipt-title" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-6">
+            <header className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
+              <div><h2 id="r2-receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">R2 receipt {selected.invoiceNumber}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{selected.date} {selected.time} · Imported read-only test data</p></div>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Close R2 receipt" className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text)]"><X size={18} /></button>
+            </header>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[420px] text-left text-sm">
+                <thead className="text-xs uppercase text-[var(--oh-muted)]"><tr><th className="py-2">Product</th><th className="py-2 text-right">Qty</th><th className="py-2 text-right">Line total</th></tr></thead>
+                <tbody className="divide-y divide-[var(--oh-border)]">{selected.items.map((line) => <tr key={line.id}><td className="py-2.5 pr-3">{line.name}</td><td className="py-2.5 text-right tabular-nums">{line.quantity}</td><td className="py-2.5 text-right font-medium tabular-nums">{money(line.amount)}</td></tr>)}</tbody>
+              </table>
+            </div>
+            <div className="ml-auto mt-4 grid max-w-xs grid-cols-2 gap-y-2 text-sm"><span className="text-[var(--oh-muted)]">GST (receipt total)</span><span className="text-right tabular-nums">{money(selected.tax)}</span><span className="border-t border-[var(--oh-border)] pt-2 font-semibold">Receipt total</span><span className="border-t border-[var(--oh-border)] pt-2 text-right font-bold tabular-nums">{money(selected.total)}</span></div>
+            <p className="mt-3 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The archive provides GST at receipt level; it does not provide a GST amount for each individual product line. These records are not Odoo transactions and cannot be refunded here.</p>
+            <section className="mt-4 border-t border-[var(--oh-border)] pt-4"><h3 className="text-sm font-semibold">Payments</h3>{selected.payments.length ? <ul className="mt-2 space-y-1.5 text-sm">{selected.payments.map((payment) => <li key={payment.id} className="flex justify-between gap-4"><span>{payment.method}{payment.status ? ` · ${payment.status}` : ""}</span><span className="tabular-nums">{money(payment.amount)}</span></li>)}</ul> : <p className="mt-2 text-sm text-[var(--oh-muted)]">No payment details in this receipt.</p>}</section>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
+
 function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: () => void }) {
   return (
     <div role="status" className="flex min-h-64 flex-col items-center justify-center px-5 py-12 text-center">
@@ -249,7 +349,7 @@ export function OdooSalesHistoryPage() {
       <header className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Sales History</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Sales recorded by the Odoo register, newest first.</p>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Odoo register sales and the separate read-only R2 test archive.</p>
         </div>
         <button type="button" onClick={() => void loadSales()} disabled={loading} aria-label={loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
@@ -273,6 +373,8 @@ export function OdooSalesHistoryPage() {
           </label>
 
           {error && <div role="alert" className="shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>}
+
+          <R2ArchivePanel query={debouncedQuery} />
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
