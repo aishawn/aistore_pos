@@ -21,7 +21,7 @@ Odoo 是 Orithos 当前商品、库存、客户、采购、销售和 POS 班次�
 
 如需商品或库存进入 Odoo，必须先完成字段映射、主键/条码冲突检查、价格/GST/包装单位核对、门店与库存位置映射，并通过预览/人工确认导入；不能把整库覆盖到现有业务库。
 
-## 已实现（待部署和实源验证）
+## 已实现并部署（实际 R2 下载待配置验证）
 
 - 已增加独立 Python worker，凭据只注入 worker；缺少凭据时 worker idle，后端不接触 R2 密钥。
 - worker 默认在 Australia/Adelaide 每日 03:30 拉取（需确认上传任务时区）；缺少当前快照时启动即执行首轮下载。
@@ -32,12 +32,13 @@ Odoo 是 Orithos 当前商品、库存、客户、采购、销售和 POS 班次�
 
 ## 当前状态与待办
 
-- 代码已写入当前工作区，尚未推送/部署；本机没有执行 build。
+- R2 worker、后端管理员状态/触发 API、集成页卡片已部署；最新生产部署 `18a21d2`。本轮未做本地 build。
+- 最新生产 UAT 6/6：匿名 GET `/api/r2-archive/status` 为 401；管理员 API 返回 `configured=false, state=not_configured`，未暴露密钥字段；390px 和 1440px 页面无横向溢出；未触发同步。证据：[UAT_R2_ARCHIVE_2026-10-14.json](UAT_R2_ARCHIVE_2026-10-14.json)。
 - 用户提到的上游 `r2_sync.py`、`run-daily.ps1` 和 Shopfront 工作目录位于另一台机器/路径，本工作区不可用；当前项目只能消费 R2 对象，不能复用上游本地文件。
-- 部署前/部署后需在 Dokploy 配置 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`。聊天中共享的密钥建议轮换后再填入 Dokploy；不得写入 Git、应用日志或前端变量。
+- 仍需在 Dokploy 配置 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`。生产状态当前 `configured=false`；本机 `.env` 也没有这些变量。聊天中共享的密钥建议轮换后再填入 Dokploy；不得写入 Git、应用日志或前端变量。
 - 默认目标为私有只读归档镜像；商品/库存/销售绝不自动导入 Odoo。
 - 上游计划为 02:30；代码默认 03:30 Australia/Adelaide，必须确认上传任务时区和结束时间后再最终设定。
-- 尚待 Dokploy Done、首次 R2 成功同步、连续计划周期、重启持久化、未登录/非管理员拒绝和集成页生产验收。
+- 尚待首轮 R2 成功同步、连续两个计划周期、快照/状态重启持久性、非管理员拒绝和上游 schema/报表字段盘点。当前 UAT 已验证匿名用户拒绝。
 
 ## 验收标准
 

@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-10-14T10:58:32.225Z",
+  "deployment": "18a21d225049dd36b5e3821fb828366f6794a3af",
+  "scope": "production read-only R2 mirror integration status, authentication and responsive UI; no sync trigger or Odoo business writes",
+  "checks": [
+    {
+      "name": "Unauthenticated status is rejected",
+      "status": "PASS",
+      "evidence": "GET /api/r2-archive/status returns HTTP 401 without an Orithos session."
+    },
+    {
+      "name": "Orithos admin login",
+      "status": "PASS",
+      "evidence": "Authenticated using the same-origin login API."
+    },
+    {
+      "name": "Admin status is safe and valid",
+      "status": "PASS",
+      "evidence": "configured=false; state=not_configured; no secret fields returned."
+    },
+    {
+      "name": "Integration card layout 390px",
+      "status": "PASS",
+      "evidence": "Card visible without horizontal overflow; no sync was triggered."
+    },
+    {
+      "name": "Integration card layout 1440px",
+      "status": "PASS",
+      "evidence": "Card visible without horizontal overflow; no sync was triggered."
+    },
+    {
+      "name": "Credentials-not-configured state",
+      "status": "PASS",
+      "evidence": "UI leaves manual sync disabled until private R2 credentials are configured."
+    }
+  ],
+  "status": {
+    "configured": false,
+    "state": "not_configured",
+    "lastSuccessAt": null,
+    "nextRunAt": null,
+    "timezone": "Australia/Adelaide",
+    "snapshotFileCount": 0,
+    "databaseIntegrity": null,
+    "lastErrorCode": null
+  }
+}

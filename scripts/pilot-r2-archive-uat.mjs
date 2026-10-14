@@ -1,0 +1,98 @@
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
+  .split(/\r?\n/)
+  .filter((line) => line && !line.startsWith("#") && line.includes("="))
+  .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
+const base = "https://app.orithos.com.au";
+if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext();
+const page = await context.newPage();
+const checks = [];
+const record = (name, status, evidence) => checks.push({ name, status, evidence });
+let safeStatus = null;
+
+try {
+  const anonymous = await context.request.get(`${base}/api/r2-archive/status`);
+  if (anonymous.status() !== 401) throw new Error(`Anonymous archive status was not rejected (HTTP ${anonymous.status()})`);
+  record("Unauthenticated status is rejected", "PASS", "GET /api/r2-archive/status returns HTTP 401 without an Orithos session.");
+
+  const login = await context.request.post(`${base}/api/auth/login`, {
+    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    headers: { Origin: base },
+  });
+  const loginBody = await login.json().catch(() => ({}));
+  if (!login.ok() || loginBody.code !== 0) throw new Error("Orithos admin login failed");
+  record("Orithos admin login", "PASS", "Authenticated using the same-origin login API.");
+
+  const response = await context.request.get(`${base}/api/r2-archive/status`);
+  const envelope = await response.json().catch(() => ({}));
+  if (!response.ok() || envelope.code !== 0 || typeof envelope.data?.configured !== "boolean") {
+    throw new Error(`Admin archive status unavailable (HTTP ${response.status()})`);
+  }
+  const data = envelope.data;
+  if (Object.keys(data).some((key) => /secret|access.?key|credential|endpoint|bucket/i.test(key))) {
+    throw new Error("Archive status response includes a credential/configuration field");
+  }
+  if (data.state === "success" && data.snapshot?.databaseIntegrity !== "ok") {
+    throw new Error("Successful snapshot does not report SQLite integrity=ok");
+  }
+  safeStatus = {
+    configured: data.configured,
+    state: data.state,
+    lastSuccessAt: data.lastSuccessAt ?? null,
+    nextRunAt: data.nextRunAt ?? null,
+    timezone: data.timezone ?? null,
+    snapshotFileCount: data.snapshot?.files?.length ?? 0,
+    databaseIntegrity: data.snapshot?.databaseIntegrity ?? null,
+    lastErrorCode: data.lastErrorCode ?? null,
+  };
+  record("Admin status is safe and valid", "PASS", `configured=${data.configured}; state=${data.state}; no secret fields returned.`);
+
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`${base}/settings/integrations`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.getByRole("heading", { name: "Shopfront archive mirror" }).waitFor({ timeout: 30000 });
+    await page.getByRole("button", { name: "Sync now" }).waitFor({ timeout: 10000 });
+    const pageState = await page.evaluate(() => ({
+      width: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      text: document.querySelector("main")?.innerText ?? document.body.innerText,
+    }));
+    if (pageState.scrollWidth > pageState.width + 1) throw new Error(`Integration page overflows at ${width}px`);
+    if (!pageState.text.includes("Shopfront archive mirror")) throw new Error(`Archive card missing at ${width}px`);
+    if (!data.configured && await page.getByRole("button", { name: "Sync now" }).isEnabled()) {
+      throw new Error("Sync now is enabled when R2 credentials are not configured");
+    }
+    record(`Integration card layout ${width}px`, "PASS", "Card visible without horizontal overflow; no sync was triggered.");
+  }
+
+  if (!data.configured) {
+    record("Credentials-not-configured state", "PASS", "UI leaves manual sync disabled until private R2 credentials are configured.");
+  }
+} catch (error) {
+  record("R2 archive production UAT", "FAIL", error instanceof Error ? error.message : "Unexpected failure");
+} finally {
+  try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* token expires normally */ }
+  await browser.close();
+}
+
+const output = {
+  generatedAt: new Date().toISOString(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  scope: "production read-only R2 mirror integration status, authentication and responsive UI; no sync trigger or Odoo business writes",
+  checks,
+  status: safeStatus,
+};
+const outputPath = path.join(root, "docs", "UAT_R2_ARCHIVE_2026-10-14.json");
+fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
+for (const check of checks) console.log(`${check.status} ${check.name} :: ${check.evidence}`);
+console.log(`WROTE ${outputPath}`);
+if (checks.some((check) => check.status === "FAIL")) process.exitCode = 1;
