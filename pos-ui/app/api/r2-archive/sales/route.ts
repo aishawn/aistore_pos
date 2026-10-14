@@ -134,7 +134,8 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: { "Cache-Control": "no-store" },
     });
-  } catch {
+  } catch (error) {
+    console.error("R2 archive sales lookup failed", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ message: "R2 test archive is unavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
