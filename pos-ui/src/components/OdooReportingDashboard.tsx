@@ -143,7 +143,7 @@ export function OdooReportingDashboard() {
         <div className="col-span-2 xl:col-span-1">
           <article className="flex min-h-[72px] items-center justify-between gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 shadow-[var(--oh-shadow-card)] xl:hidden">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#fff2da] text-[var(--oh-orange-dark)]"><Store size={18} /></span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><Store size={18} /></span>
               <div className="min-w-0"><p className="oh-type-label text-[var(--oh-muted)]">Open registers</p><p className="oh-type-meta truncate text-[var(--oh-muted)]">Across the current Odoo company</p></div>
             </div>
             <p className="oh-type-kpi shrink-0 text-[var(--oh-text)]">{new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)}</p>
@@ -187,7 +187,7 @@ export function OdooReportingDashboard() {
             {data?.recentSales.length ? <ul className="divide-y divide-[var(--oh-border)]">
               {data.recentSales.map((sale) => <li key={sale.id} className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
                 <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.amount_total < 0 ? "Refund · " : "Sale · "}{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
-                <span className={`oh-type-body-strong shrink-0 tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-orange-dark)]" : "text-[var(--oh-text)]"}`}>{formatMoney(sale.amount_total, data.currency)}</span>
+                <span className={`oh-type-body-strong shrink-0 tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>{formatMoney(sale.amount_total, data.currency)}</span>
               </li>)}
             </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
           </div>
@@ -201,7 +201,7 @@ export function OdooReportingDashboard() {
 
 function MetricCard({ title, value, detail, icon }: { title: string; value: string; detail: string; icon: React.ReactNode }) {
   return <article className="rounded-lg border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)]">
-    <div className="flex items-center justify-between gap-3"><p className="oh-type-label text-[var(--oh-muted)]">{title}</p><span className="grid h-9 w-9 place-items-center rounded-md bg-[#fff2da] text-[var(--oh-orange-dark)]">{icon}</span></div>
+    <div className="flex items-center justify-between gap-3"><p className="oh-type-label text-[var(--oh-muted)]">{title}</p><span className="grid h-9 w-9 place-items-center rounded-md bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">{icon}</span></div>
     <p className="oh-type-kpi mt-3 text-[var(--oh-text)]">{value}</p>
     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{detail}</p>
   </article>;
