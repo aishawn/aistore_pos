@@ -15,8 +15,9 @@
   },
   "images": {
     "productDetailRowsScanned": 4748,
+    "exportCsvFilesScanned": 4,
     "imageRelatedFieldsFound": [],
-    "result": "No product image field or URL exists in this R2 snapshot; no images could be sourced for upload."
+    "result": "No product image field or URL exists in the SQLite product detail records or the four CSV exports; no images could be sourced for upload."
   },
   "storeTimezone": {
     "country": "Australia",
@@ -38,6 +39,27 @@
     "viewports": [390, 1440],
     "temporaryRole": "created, permission saved, deleted and verified absent",
     "result": "PASS"
+  },
+  "reportingAndOperations": {
+    "reportingDashboard": {
+      "last8HoursHttp": 200,
+      "last24HoursHttp": 200,
+      "netSalesMatchesGrossMinusRefunds": true,
+      "taxAndTransactionMetricsValid": true,
+      "storeTimezoneVisible": "Australia/Adelaide",
+      "last8HoursAnd24HoursHaveNoOdooSales": true,
+      "r2HistoricalReceiptsIncludedInLiveOdooTotals": false,
+      "result": "PASS"
+    },
+    "operationsReadOnlyChecks": {
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "registerCloseDialogCancelled": true,
+      "closeWithoutCashHttp": 422,
+      "draftPurchaseFilter": "explicit empty state; no RFQ created",
+      "sessionStillOpen": "orithos_store1/00004",
+      "result": "PASS"
+    }
   },
   "sideEffects": {
     "odooSalesCreated": 0,

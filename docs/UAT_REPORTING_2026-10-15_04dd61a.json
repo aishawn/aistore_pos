@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-10-14T17:20:35.720Z",
+  "deployment": "5cf5309",
+  "scope": "read-only reporting dashboard UAT; no model call or business writes",
+  "autoRecoverConfigured": true,
+  "reportingResponses": [
+    {
+      "method": "GET",
+      "status": 200,
+      "hours": "8"
+    },
+    {
+      "method": "GET",
+      "status": 200,
+      "hours": "24"
+    }
+  ],
+  "initialDashboard": "DEEP DIVE · ORITHOS PILOT LIQUOR STORE (TEST) Reporting Dashboard Live sales totals from Odoo. For a lighter daily view, open Overview. Times use the store timezone (Australia/Adelaide). Reporting period Last 8 hours Last 24 hours Last 7 days Last 30 days Refresh Net sales $0.00 Completed sales less refunds · incl. tax Sales 0 Average $0.00 per sale Refunds $0.00 0 refunded orders Net tax $0.00 Sales tax less refunded tax Open registers 1 Across the current Odoo company Sales trend Last 8 hours · 14 Oct, 07:50 pm – 15 Oct, 03:50 am No sales in this period Open a register session and complete a sale to see the trend. Go to Sell Recent sales & refunds Latest completed Odoo POS orders View all No recent sales Completed Odoo POS orders will appear here. Open sales history Updated 15 Oct, 03:50 am. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.",
+  "rangeDashboard": "DEEP DIVE · ORITHOS PILOT LIQUOR STORE (TEST) Reporting Dashboard Live sales totals from Odoo. For a lighter daily view, open Overview. Times use the store timezone (Australia/Adelaide). Reporting period Last 8 hours Last 24 hours Last 7 days Last 30 days Refresh Net sales $0.00 Completed sales less refunds · incl. tax Sales 0 Average $0.00 per sale Refunds $0.00 0 refunded orders Net tax $0.00 Sales tax less refunded tax Open registers 1 Across the current Odoo company Sales trend Last 24 hours · 14 Oct, 03:50 am – 15 Oct, 03:50 am No sales in this period Open a register session and complete a sale to see the trend. Go to Sell Recent sales & refunds Latest completed Odoo POS orders View all No recent sales Completed Odoo POS orders will appear here. Open sales history Updated 15 Oct, 03:50 am. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.",
+  "reportMetrics": {
+    "last8Hours": {
+      "grossSales": 0,
+      "refunds": 0,
+      "netSales": 0,
+      "salesCount": 0,
+      "refundCount": 0,
+      "netTax": 0,
+      "recentRefunds": 0
+    },
+    "last24Hours": {
+      "grossSales": 0,
+      "refunds": 0,
+      "netSales": 0,
+      "salesCount": 0,
+      "refundCount": 0,
+      "netTax": 0,
+      "recentRefunds": 0
+    }
+  },
+  "result": "PASS",
+  "failure": null
+}
