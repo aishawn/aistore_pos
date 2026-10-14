@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T08:13:30.215Z",
-  "deployment": "a6799a6ca3b9a0e6dabd65e825a33b467b6dcf76",
-  "sourceCommit": "a6799a6ca3b9a0e6dabd65e825a33b467b6dcf76",
+  "generatedAt": "2026-10-14T08:44:17.542Z",
+  "deployment": "e857a6f0bfa0251f04186fd7bb142a73ed8ccf77",
+  "sourceCommit": "e857a6f0bfa0251f04186fd7bb142a73ed8ccf77",
   "target": "https://app.orithos.com.au",
   "pagesChecked": 35,
   "viewportWidths": [
@@ -18,7 +18,7 @@
       "viewport": 390,
       "document": 390,
       "body": 390,
-      "heading": "18px",
+      "heading": null,
       "retries": 0,
       "status": "PASS"
     },
@@ -468,7 +468,7 @@
       "viewport": 1440,
       "document": 1440,
       "body": 1440,
-      "heading": null,
+      "heading": "18px",
       "retries": 0,
       "status": "PASS"
     },

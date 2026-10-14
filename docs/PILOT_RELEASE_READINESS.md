@@ -4,22 +4,22 @@
 
 ## 当前状态复核（2026-10-14，续）
 
-### 最新线上检查：`a6799a6`（2026-10-14 16:16，上海时间）
+### 最新线上检查：`e857a6f`（2026-10-14 16:45，上海时间）
 
 | 项目 | 当前状态 | 证据/说明 |
 |---|---|---|
-| GitHub / Dokploy | **PASS** | `origin/main`=`a6799a6ca3b9a0e6dabd65e825a33b467b6dcf76`；Dokploy 最新项 Done；前序 `0959132`、`07ceb99` 也 Done。 |
-| 生产页面矩阵与角色安全 | **PASS** | 35/35 路由；角色临时创建、权限保存、删除与 API 清理通过；6 次 Odoo session/recovery 200；无 console error、API failed request、401。详见 `UAT_PAGE_MATRIX_2026-10-13.json`。 |
+| GitHub / Dokploy | **PASS** | 应用源 SHA `e857a6f0bfa0251f04186fd7bb142a73ed8ccf77`；Dokploy Done；包含其前序 `0959132`、`07ceb99`、`a6799a6`、`0cf91d3`、`1d288dd`、`36f5aaa`、`8dd1411`。 |
+| 生产页面矩阵与角色安全 | **PASS** | `e857a6f` 上 35/35 路由；角色临时创建、权限保存、删除与 API 清理通过；6 次 Odoo session/recovery 200；无 console error、API failed request、401。详见 `UAT_PAGE_MATRIX_2026-10-13.json`。 |
 | 双视口布局 | **PASS** | 35 页 × 390/1440，70/70，无失败；`UAT_LAYOUT_2026-10-14.json`。 |
 | 设置页手机/桌面专项 | **PASS** | 13 项 × 2 视口，26 项通过；`UAT_SETTINGS_MOBILE_2026-10-14.json`。 |
 | 生产接口可达性 | **PASS / 延迟待观察** | `/login` 200（8.3 秒），未登录 `/api/auth/me` 401（6.5 秒，预期），`/api/odoo/session` 200（14.3 秒）。单次探测不能证明持续稳定。 |
 | 当前可放行性 | **NO-GO** | 技术回归通过；现金实点/班次关账、真实采购收货、价目表/GST/库存位置、硬件和 AI 前置条件仍未完成。 |
 
-当前三份 UAT 证据的 deployment/source SHA 均为 `a6799a6ca3b9a0e6dabd65e825a33b467b6dcf76`。页面矩阵会创建并清理临时权限记录；没有创建销售或采购，也没有执行 Odoo 业务写入。
+当前三份 UAT 证据的 deployment/source SHA 均为 `e857a6f0bfa0251f04186fd7bb142a73ed8ccf77`。页面矩阵会创建并清理临时权限记录；没有创建销售或采购，也没有执行 Odoo 业务写入。
 
 | 项目 | 当前状态 | 证据/说明 |
 |---|---|---|
-历史快照：早先 `4191458` 曾因登录请求超时未能回归；此状态已被上方 `a6799a6` 最新验证取代。当前工作区有三份 UAT JSON 和 `scripts/pilot-page-matrix.mjs` 待提交；请保留并行编辑，且勿修改 UAT 中实际记录的 deployment SHA。
+历史快照：早先 `4191458` 曾因登录请求超时未能回归；此状态已被上方 `e857a6f` 最新验证取代。当前工作区有三份 UAT JSON 和 `scripts/pilot-page-matrix.mjs` 待提交；另有角色页与 Modal 的并行代码编辑，均应保留；请勿修改 UAT 实际记录的 deployment SHA。
 
 这份清单把代码可验证事项和必须依赖生产环境、店主或硬件的事项分开。没有证据的项目保持 `BLOCKED`，不能用 fixture、旧部署或页面可达性代替。
 
@@ -27,9 +27,9 @@
 
 | 项目 | 当前状态 | 完成证据 |
 |---|---|---|
-| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | 当前均为 `a6799a6`；当前 UAT JSON 更新已在工作区 |
+| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | 当前应用源均为 `e857a6f`；UAT JSON 更新待提交 |
 | 生产入口可用性 | **PASS / 延迟待观察** | 只读端点在本轮返回预期状态码但延迟约 6–14 秒 |
-| 生产页面与安全回归 | **PASS** | `a6799a6` 页面矩阵 35/35、双视口 70/70、设置专项 26/26 |
+| 生产页面与安全回归 | **PASS** | `e857a6f` 页面矩阵 35/35、双视口 70/70、设置专项 26/26 |
 | Odoo 会话自动恢复与登出拒绝 | **PARTIAL** | 当前 SHA 的矩阵有 6 次 Odoo session/recovery HTTP 200；登出拒绝通过未登录 `/api/auth/me` 返回 401 复核；完整清理会话后自动恢复链路尚未在本轮单独重跑 |
 | 班次 `orithos_store1/00004` 整班对账 | **BLOCKED** | 需要只读导出销售/退款/支付流水并与 Odoo 对账 |
 | 现金实点与班次关账 | **BLOCKED** | 店主实点现金、确认差异后，记录关账结果和新班次状态 |
