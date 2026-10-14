@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T10:58:07.360Z",
-  "deployment": "18a21d225049dd36b5e3821fb828366f6794a3af",
+  "generatedAt": "2026-10-14T11:01:23.591Z",
+  "deployment": "05dffdb9fd3ae74026803d1587deedcabdd6117d",
   "target": "https://app.orithos.com.au",
   "scope": "authenticated read-only orders list, supply-chain plan, and manual order form responsive checks; no order submitted",
   "routes": [

@@ -2,22 +2,22 @@
 
 更新时间：2026-10-14
 
-## 当前状态复核（2026-10-14 18:58，上海时间）
+## 当前状态复核（2026-10-14 19:01，上海时间）
 
-### 最新生产部署：`18a21d225049dd36b5e3821fb828366f6794a3af`（Dokploy Done）
+### 最新生产部署：`05dffdb9fd3ae74026803d1587deedcabdd6117d`（Dokploy Done）
 
 | 项目 | 状态 | 证据 |
 |---|---|---|
-| GitHub / Dokploy | **PASS** | 精确 SHA `18a21d2` 已在 Dokploy 标记 Done；`main` push 会触发部署。 |
+| GitHub / Dokploy | **PASS** | 精确 SHA `05dffdb` 已在 Dokploy 标记 Done；`main` push 会触发部署。 |
 | 全站页面与角色权限 | **PASS** | 35/35 路由通过；管理员角色临时创建、权限保存和清理通过；没有失败页。见 `UAT_PAGE_MATRIX_2026-10-13.json`。 |
-| 订单/采购相关页面 | **PASS（只读专项）** | `18a21d2` 8 路由 × 2 视口，16/16；页面错误 0、横向溢出 0、业务写请求 0。见 `UAT_ORDER_PAGES_2026-10-14.json`。 |
+| 订单/采购相关页面 | **PASS（只读专项）** | `05dffdb` 8 路由 × 2 视口，16/16；页面错误 0、横向溢出 0、业务写请求 0。见 `UAT_ORDER_PAGES_2026-10-14.json`。 |
 | Odoo 自动连接 | **PASS** | 删除 Odoo session 后首个业务页自动连接，目录只读请求自动恢复重试，6/6；班次 `orithos_store1/00004` 仍打开。见 `UAT_ODOO_AUTORECOVER_2026-10-13.json`。 |
 | 客户余额路由 | **PASS（状态说明）** | 修复原 `/customers/balances` 自我导入导致的 404；现在清楚标明本试点尚未从 Odoo 接入客户欠款/还款，不显示旧模拟余额。 |
-| R2 worker / 集成页 | **代码已部署，未配置上游** | `18a21d2` 上 R2 UAT 6/6，匿名状态 API 为 401，管理员响应无密钥字段，手机/桌面无溢出。真实状态为 `configured=false`，未下载任何对象。见 `UAT_R2_ARCHIVE_2026-10-14.json`。 |
+| R2 worker / 集成页 | **代码已部署，未配置上游** | `05dffdb` 上 R2 UAT 6/6，匿名状态 API 为 401，管理员响应无密钥字段，手机/桌面无溢出。真实状态为 `configured=false`，未下载任何对象。见 `UAT_R2_ARCHIVE_2026-10-14.json`。 |
 | POS 业务写入 | **未改动** | 本轮没有销售、退款、采购、收货、库存调整或关账写入；AI 保持关闭。 |
 | 试点放行 | **NO-GO** | R2 凭据/首次下载未完成；现金实点与关班、真实采购收货、价目表/GST/库存位置和硬件/SMTP 等运营项也未完成。 |
 
-R2 worker 默认每日 03:30 `Australia/Adelaide` 运行（比上游所述 02:30 晚一小时），但是当前没有 R2 凭据，计划任务不会执行。生产 API 在 `18a21d2` 上仍返回 `configured=false / not_configured`。需轮换聊天中分享过的旧密钥，再由店主在 Dokploy app compose 的 Environment 填入 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 后部署；核实状态、手动同步并验 manifest 与 SQLite `quick_check`。核对上游时区/结束时间后再确认日程。不能把此状态表述为“每日同步已生效”。
+R2 worker 默认每日 03:30 `Australia/Adelaide` 运行（比上游所述 02:30 晚一小时），但是当前没有 R2 凭据，计划任务不会执行。生产 API 在 `05dffdb` 上仍返回 `configured=false / not_configured`。需轮换聊天中分享过的旧密钥，再由店主在 Dokploy app compose 的 Environment 填入 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 后部署；核实状态、手动同步并验 manifest 与 SQLite `quick_check`。核对上游时区/结束时间后再确认日程。不能把此状态表述为“每日同步已生效”。
 
 ## 历史状态复核（2026-10-14 18:17；以下内容由上方最新状态取代）
 

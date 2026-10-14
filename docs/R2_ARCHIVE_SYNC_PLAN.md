@@ -32,7 +32,7 @@ Odoo 是 Orithos 当前商品、库存、客户、采购、销售和 POS 班次�
 
 ## 当前状态与待办
 
-- R2 worker、后端管理员状态/触发 API、集成页卡片已部署；最新生产部署 `18a21d2`。本轮未做本地 build。
+- R2 worker、后端管理员状态/触发 API、集成页卡片已部署；最新生产部署 `05dffdb`。本轮未做本地 build。
 - 最新生产 UAT 6/6：匿名 GET `/api/r2-archive/status` 为 401；管理员 API 返回 `configured=false, state=not_configured`，未暴露密钥字段；390px 和 1440px 页面无横向溢出；未触发同步。证据：[UAT_R2_ARCHIVE_2026-10-14.json](UAT_R2_ARCHIVE_2026-10-14.json)。
 - 用户提到的上游 `r2_sync.py`、`run-daily.ps1` 和 Shopfront 工作目录位于另一台机器/路径，本工作区不可用；当前项目只能消费 R2 对象，不能复用上游本地文件。
 - 仍需在 Dokploy 配置 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`。生产状态当前 `configured=false`；本机 `.env` 也没有这些变量。聊天中共享的密钥建议轮换后再填入 Dokploy；不得写入 Git、应用日志或前端变量。

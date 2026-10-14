@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T10:58:32.225Z",
-  "deployment": "18a21d225049dd36b5e3821fb828366f6794a3af",
+  "generatedAt": "2026-10-14T11:01:28.737Z",
+  "deployment": "05dffdb9fd3ae74026803d1587deedcabdd6117d",
   "scope": "production read-only R2 mirror integration status, authentication and responsive UI; no sync trigger or Odoo business writes",
   "checks": [
     {
