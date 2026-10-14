@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Info } from "lucide-react";
+import { Info, LoaderCircle } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 
@@ -54,7 +54,7 @@ export default function RegistersOutletsPage() {
     <AdminPageLayout
       title="Registers & Outlets"
       subtitle="Stores and POS registers assigned to your Odoo account"
-      count={outlets.length + registers.length}
+      count={loading || error ? undefined : outlets.length + registers.length}
       countLabel="Stores + registers"
       fullBleed
     >
@@ -69,7 +69,10 @@ export default function RegistersOutletsPage() {
           {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
         </div>
       ) : loading ? (
-        <div className="py-16 text-center text-sm text-[var(--oh-muted)]">Loading Odoo stores and registers…</div>
+        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
+          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
+          Loading Odoo stores and registers…
+        </div>
       ) : (
         <div className="grid gap-5">
           <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
