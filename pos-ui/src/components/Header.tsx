@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { PanelLeft, PanelLeftClose, Wifi, WifiOff } from "lucide-react";
+import { MessageCircle, PanelLeft, PanelLeftClose, Wifi, WifiOff } from "lucide-react";
 import { UserIcon } from "@/components/icons";
 import { OrithosLogo } from "@/components/OrithosLogo";
+import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 
 /**
  * Orithos top bar — light chrome (50px) shared by Sell and admin pages.
@@ -25,6 +26,7 @@ export function Header({
   onUserClick?: () => void;
 }) {
   const [online, setOnline] = useState(true);
+  const ai = useOptionalAiAssistant();
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
   const tabIndex = checkoutKeyboard ? -1 : undefined;
@@ -76,6 +78,20 @@ export function Header({
           )}
           <span className={`hidden sm:inline ${online ? "text-[var(--sf-online-green)]" : ""}`}>{online ? "ONLINE" : "OFFLINE"}</span>
         </div>
+        {checkoutKeyboard ? (
+          <button
+            type="button"
+            tabIndex={tabIndex}
+            onClick={() => ai?.setExpanded(true)}
+            title="Open Orithos AI assistant"
+            aria-label="Open Orithos AI assistant"
+            aria-haspopup="dialog"
+            aria-expanded={Boolean(ai?.expanded)}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--oh-primary)] transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <MessageCircle size={19} aria-hidden="true" />
+          </button>
+        ) : null}
         <button
           type="button"
           tabIndex={tabIndex}

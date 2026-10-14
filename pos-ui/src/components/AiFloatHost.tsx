@@ -31,7 +31,7 @@ const AI_FLOAT_PREFIXES = [
 export function shouldShowAiFloat(pathname: string): boolean {
   if (pathname === "/sommelier" || pathname.startsWith("/sommelier/")) return false;
   if (pathname === "/invoices/scan" || pathname.startsWith("/invoices/")) return false;
-  // Sell home (/) and mobile AI home (/m) use the same floating AI entry.
+  // Sell home (/), mobile AI home (/m), and checkout share the assistant panel.
   if (pathname === "/" || pathname === "/m" || pathname === "/finalise") return true;
   return AI_FLOAT_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
@@ -55,6 +55,7 @@ export function AiFloatHost() {
     <SellAiPanel
       expanded={expanded}
       onExpandedChange={setExpanded}
+      hideFab={pathname === "/" || pathname === "/finalise"}
     />
   );
 }
