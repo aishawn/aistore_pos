@@ -43,6 +43,7 @@ try {
     configured: data.configured,
     state: data.state,
     scheduleEnabled: data.scheduleEnabled ?? null,
+    workerScheduleEnabled: data.workerScheduleEnabled ?? null,
     scheduleTime: data.scheduleTime ?? null,
     nextRunAt: data.nextRunAt ?? null,
     nextAttemptAt: data.nextAttemptAt ?? null,
@@ -62,7 +63,7 @@ try {
       throw new Error("A verified snapshot file has an invalid size or SHA-256");
     }
   }
-  if (data.scheduleEnabled !== false || data.scheduleTime !== null || data.nextRunAt !== null || data.nextAttemptAt !== null) {
+  if (data.scheduleEnabled !== false || data.workerScheduleEnabled !== false || data.scheduleTime !== null || data.nextRunAt !== null || data.nextAttemptAt !== null) {
     throw new Error(`R2 sync is not in manual-only mode: ${JSON.stringify(safeStatus)}`);
   }
   safeStatus = {
@@ -74,6 +75,7 @@ try {
     nextAttemptAt: data.nextAttemptAt ?? null,
     timezone: data.timezone ?? null,
     scheduleEnabled: data.scheduleEnabled,
+    workerScheduleEnabled: data.workerScheduleEnabled ?? null,
     snapshotId: data.snapshotId ?? null,
     snapshot: data.snapshot ? {
       syncedAt: data.snapshot.syncedAt ?? null,

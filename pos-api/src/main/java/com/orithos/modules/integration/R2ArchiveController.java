@@ -78,6 +78,9 @@ public class R2ArchiveController {
             }
             safeStatus.putIfAbsent("timezone", syncTimezone);
             safeStatus.put("scheduleEnabled", syncScheduleEnabled);
+            if (workerStatus.get("scheduleEnabled") instanceof Boolean workerScheduleEnabled) {
+                safeStatus.put("workerScheduleEnabled", workerScheduleEnabled);
+            }
             safeStatus.put("scheduleTime", syncScheduleEnabled ? scheduleTime() : null);
             if (!syncScheduleEnabled) {
                 safeStatus.put("nextRunAt", null);

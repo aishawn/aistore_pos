@@ -16,6 +16,7 @@ type ArchiveStatus = {
   timezone?: string;
   scheduleTime?: string;
   scheduleEnabled?: boolean;
+  workerScheduleEnabled?: boolean;
   snapshotId?: string;
   lastErrorCode?: string | null;
   snapshot?: {
@@ -131,6 +132,11 @@ export function R2ArchiveSyncCard() {
           {!status?.configured && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
               Add the R2 endpoint, bucket and rotated read-only credentials to Dokploy, then deploy. The sync worker stays idle until they are configured.
+            </p>
+          )}
+          {status?.workerScheduleEnabled !== undefined && status.workerScheduleEnabled !== status.scheduleEnabled && (
+            <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900">
+              The R2 worker schedule does not match the app configuration. Check both Dokploy services before relying on manual-only sync.
             </p>
           )}
           <dl className="grid gap-3 rounded-lg bg-[var(--oh-surface)] p-4 sm:grid-cols-2 lg:grid-cols-4">
