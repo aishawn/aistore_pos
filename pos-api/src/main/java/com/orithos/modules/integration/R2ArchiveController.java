@@ -29,18 +29,21 @@ public class R2ArchiveController {
     private final String syncTimezone;
     private final int syncHour;
     private final int syncMinute;
+    private final boolean syncScheduleEnabled;
 
     public R2ArchiveController(
             ObjectMapper objectMapper,
             @Value("${R2_ARCHIVE_DATA_DIR:/var/lib/orithos/shopfront}") String dataDir,
             @Value("${R2_SYNC_TIMEZONE:Australia/Adelaide}") String syncTimezone,
             @Value("${R2_SYNC_HOUR:3}") int syncHour,
-            @Value("${R2_SYNC_MINUTE:30}") int syncMinute) {
+            @Value("${R2_SYNC_MINUTE:30}") int syncMinute,
+            @Value("${R2_SYNC_SCHEDULE_ENABLED:false}") boolean syncScheduleEnabled) {
         this.objectMapper = objectMapper;
         this.dataDir = Path.of(dataDir);
         this.syncTimezone = syncTimezone;
         this.syncHour = syncHour;
         this.syncMinute = syncMinute;
+        this.syncScheduleEnabled = syncScheduleEnabled;
     }
 
     @GetMapping("/status")
@@ -53,6 +56,7 @@ public class R2ArchiveController {
             emptyStatus.put("state", "not_configured");
             emptyStatus.put("timezone", syncTimezone);
             emptyStatus.put("scheduleTime", scheduleTime());
+            emptyStatus.put("scheduleEnabled", syncScheduleEnabled);
             return ApiResult.ok(emptyStatus);
         }
         try {
@@ -73,7 +77,12 @@ public class R2ArchiveController {
                 if (workerStatus.containsKey(field)) safeStatus.put(field, workerStatus.get(field));
             }
             safeStatus.putIfAbsent("timezone", syncTimezone);
-            safeStatus.put("scheduleTime", scheduleTime());
+            safeStatus.put("scheduleEnabled", syncScheduleEnabled);
+            safeStatus.put("scheduleTime", syncScheduleEnabled ? scheduleTime() : null);
+            if (!syncScheduleEnabled) {
+                safeStatus.put("nextRunAt", null);
+                safeStatus.put("nextAttemptAt", null);
+            }
             safeStatus.put("snapshot", safeSnapshot);
             return ApiResult.ok(safeStatus);
         } catch (IOException e) {

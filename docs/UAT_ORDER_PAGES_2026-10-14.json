@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T11:47:15.451Z",
+  "generatedAt": "2026-10-14T12:43:04.167Z",
   "deployment": null,
   "target": "https://app.orithos.com.au",
   "scope": "authenticated read-only orders list, supply-chain plan, and manual order form responsive checks; no order submitted",

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T11:52:09.545Z",
+  "generatedAt": "2026-10-14T12:34:57.256Z",
   "deployment": null,
-  "sourceCommit": "04a4b9fd3a23d85a2b4f3594414204b6a8eceeb3",
+  "sourceCommit": "9b052dcf0a825f12e4d01047a6dafaf47a9235eb",
   "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
@@ -18,7 +18,7 @@
     {
       "path": "/history/odoo",
       "status": "PASS",
-      "snippet": "003 Completed -$38.39 260-1-000005 13 Oct 2026, 06:42 pm Walk-in customer orithos_store1/00003 Completed $38.39 260-1-000004 13 Oct 2026, 06:38 pm Walk-in customer orithos_store1/00003 Completed -$38.39 260-1-000003 13 Oct 2026, 06:38 pm Walk-in customer orithos_store1/00003 Completed $38.39 260-1-000002 13 Oct 2026, 06:28 pm Walk-in customer orithos_store1/00003 Completed -$28.60 260-1-000001 13 Oct 2026, 06:27 pm Walk-in customer orithos_store1/00003 Completed $28.60 Showing 1–12 Previous Next"
+      "snippet": " Refund 260-1-000005 13 Oct 2026, 06:42 pm Walk-in customer orithos_store1/00003 Completed $38.39 260-1-000004 13 Oct 2026, 06:38 pm Walk-in customer orithos_store1/00003 Completed -$38.39 Refund 260-1-000003 13 Oct 2026, 06:38 pm Walk-in customer orithos_store1/00003 Completed $38.39 260-1-000002 13 Oct 2026, 06:28 pm Walk-in customer orithos_store1/00003 Completed -$28.60 Refund 260-1-000001 13 Oct 2026, 06:27 pm Walk-in customer orithos_store1/00003 Completed $28.60 Showing 1–12 Previous Next"
     },
     {
       "path": "/close",

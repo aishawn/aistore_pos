@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T11:56:13.705Z",
+  "generatedAt": "2026-10-14T12:44:49.215Z",
   "testedApplicationCommit": "cdb0f8f",
   "deployment": null,
   "target": "https://app.orithos.com.au",
@@ -15,9 +15,9 @@
       "overlayHasLightScrim": true,
       "saveBox": {
         "x": 181,
-        "y": 814,
+        "y": 828,
         "width": 97,
-        "height": 47
+        "height": 44
       },
       "status": "PASS"
     },
@@ -30,10 +30,10 @@
       "saveVisible": true,
       "overlayHasLightScrim": true,
       "saveBox": {
-        "x": 1189,
-        "y": 798,
+        "x": 1197,
+        "y": 820,
         "width": 97,
-        "height": 47
+        "height": 44
       },
       "status": "PASS"
     }

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T11:50:18.878Z",
-  "sourceCommit": "04a4b9fd3a23d85a2b4f3594414204b6a8eceeb3",
+  "generatedAt": "2026-10-14T12:44:10.292Z",
+  "sourceCommit": "669cddf36b3d197600a9390ab9f130c756f228bd",
   "deployment": null,
   "target": "https://app.orithos.com.au",
   "scope": "production UI safety guard checks; supplier/outlet failures simulated in browser; no credit note or inventory writes",

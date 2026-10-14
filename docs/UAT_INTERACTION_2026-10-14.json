@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T11:42:46.378Z",
-  "deployment": "c2322dfa9c7d5768aac1eaf70ea2aad59bbce886",
+  "generatedAt": "2026-10-14T12:39:36.006Z",
+  "deployment": "865d8613728c783079774599032f7f0aa1cb1f1c",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {

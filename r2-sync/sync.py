@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -33,6 +34,7 @@ SYNC_HOUR = int(os.getenv("R2_SYNC_HOUR", "3"))
 SYNC_MINUTE = int(os.getenv("R2_SYNC_MINUTE", "30"))
 RETAIN_SNAPSHOTS = max(2, int(os.getenv("R2_RETAIN_SNAPSHOTS", "2")))
 MAX_TOTAL_BYTES = int(os.getenv("R2_MAX_TOTAL_BYTES", str(2 * 1024 * 1024 * 1024)))
+SCHEDULE_ENABLED = os.getenv("R2_SYNC_SCHEDULE_ENABLED", "false").strip().lower() == "true"
 
 TIMEZONE_NAME = os.getenv("R2_SYNC_TIMEZONE", "Australia/Adelaide")
 try:
@@ -109,6 +111,43 @@ def sqlite_integrity(path: Path) -> str:
         connection.close()
 
 
+def validate_manifest(path: Path, objects: list[dict], summaries: list[dict]) -> None:
+    """Require the manifest to describe every non-manifest object exactly."""
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("manifest is not valid JSON") from exc
+    entries = manifest.get("objects") if isinstance(manifest, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError("manifest object list is missing")
+
+    actual_objects = {item["key"]: item for item in objects if item["key"] != MANIFEST_KEY}
+    actual_summaries = {item["key"]: item for item in summaries if item["key"] != MANIFEST_KEY}
+    declared: dict[str, dict] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("manifest contains an invalid object entry")
+        key = entry.get("key")
+        if not isinstance(key, str) or key in declared:
+            raise ValueError("manifest contains a missing or duplicate object key")
+        size = entry.get("bytes")
+        sha256 = entry.get("sha256")
+        if type(size) is not int or size < 0 or not isinstance(sha256, str) or not re.fullmatch(r"[a-fA-F0-9]{64}", sha256):
+            raise ValueError("manifest object size or SHA-256 is invalid")
+        source = actual_objects.get(key)
+        downloaded = actual_summaries.get(key)
+        if source is None or downloaded is None:
+            raise ValueError("manifest references an object absent from the archive")
+        if size != source["size"] or size != downloaded["sizeBytes"]:
+            raise ValueError("manifest object size does not match the archived file")
+        if sha256.lower() != downloaded["sha256"].lower():
+            raise ValueError("manifest SHA-256 does not match the archived file")
+        declared[key] = entry
+
+    if set(declared) != set(actual_objects):
+        raise ValueError("manifest does not cover every archived object")
+
+
 def list_objects(s3, bucket: str) -> list[dict]:
     paginator = s3.get_paginator("list_objects_v2")
     objects: list[dict] = []
@@ -163,6 +202,8 @@ def publish_snapshot(s3, bucket: str) -> dict:
             })
             if key == MANIFEST_KEY:
                 manifest_hash = sha256
+
+        validate_manifest(stage / safe_relative_key(MANIFEST_KEY), objects, summaries)
 
         # Confirm every object remained on the same upstream version for the
         # entire download; never publish a mixed snapshot.
@@ -254,7 +295,8 @@ def run_sync(reason: str) -> None:
             "reason": reason,
             "lastAttemptAt": completed,
             "lastSuccessAt": completed,
-            "nextRunAt": next_run(datetime.now(TIMEZONE)).isoformat(timespec="seconds"),
+            "nextRunAt": next_run(datetime.now(TIMEZONE)).isoformat(timespec="seconds") if SCHEDULE_ENABLED else None,
+            "scheduleEnabled": SCHEDULE_ENABLED,
             "timezone": TIMEZONE_NAME,
             "attemptCountToday": attempt_count,
             "snapshot": snapshot,
@@ -272,8 +314,9 @@ def run_sync(reason: str) -> None:
             "reason": reason,
             "lastAttemptAt": now_iso(),
             "lastErrorCode": code,
-            "nextRunAt": next_run(datetime.now(TIMEZONE)).isoformat(timespec="seconds"),
-            "nextAttemptAt": (datetime.now(TIMEZONE) + timedelta(minutes=30)).isoformat(timespec="seconds") if attempt_count < 4 else None,
+            "nextRunAt": next_run(datetime.now(TIMEZONE)).isoformat(timespec="seconds") if SCHEDULE_ENABLED else None,
+            "nextAttemptAt": (datetime.now(TIMEZONE) + timedelta(minutes=30)).isoformat(timespec="seconds") if SCHEDULE_ENABLED and attempt_count < 4 else None,
+            "scheduleEnabled": SCHEDULE_ENABLED,
             "attemptCountToday": attempt_count,
             "timezone": TIMEZONE_NAME,
         })
@@ -294,8 +337,8 @@ def main() -> None:
     remove_abandoned_downloads()
     status = load_status()
     if not credentials_configured():
-        save_status({**status, "configured": False, "state": "not_configured", "checkedAt": now_iso(), "timezone": TIMEZONE_NAME})
-        LOG.warning("R2 credentials are not configured; scheduled mirror is idle")
+        save_status({**status, "configured": False, "state": "not_configured", "checkedAt": now_iso(), "timezone": TIMEZONE_NAME, "scheduleEnabled": SCHEDULE_ENABLED})
+        LOG.warning("R2 credentials are not configured; archive worker is idle")
     elif not current_snapshot_exists():
         run_sync("initial")
 
@@ -304,7 +347,7 @@ def main() -> None:
             if REQUEST_FILE.exists():
                 REQUEST_FILE.unlink(missing_ok=True)
                 run_sync("manual")
-            elif credentials_configured():
+            elif credentials_configured() and SCHEDULE_ENABLED:
                 now = datetime.now(TIMEZONE)
                 status = load_status()
                 last_attempt = status.get("lastAttemptAt", "")

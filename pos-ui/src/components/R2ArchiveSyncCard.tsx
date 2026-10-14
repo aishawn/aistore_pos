@@ -15,6 +15,7 @@ type ArchiveStatus = {
   nextAttemptAt?: string | null;
   timezone?: string;
   scheduleTime?: string;
+  scheduleEnabled?: boolean;
   snapshotId?: string;
   lastErrorCode?: string | null;
   snapshot?: {
@@ -46,7 +47,7 @@ function stateLabel(status: ArchiveStatus | null) {
   if (status.state === "syncing") return "Syncing";
   if (status.state === "success") return "Up to date";
   if (status.state === "error" || status.state === "status_unavailable") return "Needs attention";
-  return "Waiting for schedule";
+  return status.scheduleEnabled ? "Waiting for schedule" : "Manual test mode";
 }
 
 export function R2ArchiveSyncCard() {
@@ -110,7 +111,7 @@ export function R2ArchiveSyncCard() {
             )}
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--oh-muted)]">
-            A private, read-only copy of the daily Shopfront archive. It is kept separate from Odoo products, stock and sales.
+            A private, read-only Shopfront snapshot for development and testing. It is kept separate from Odoo products, stock and sales; sync runs only when requested.
           </p>
         </div>
         <div className="flex gap-2">
@@ -134,8 +135,8 @@ export function R2ArchiveSyncCard() {
           )}
           <dl className="grid gap-3 rounded-lg bg-[var(--oh-surface)] p-4 sm:grid-cols-2 lg:grid-cols-4">
             <div><dt className="text-xs text-[var(--oh-muted)]">Last successful sync</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{formatDate(status?.lastSuccessAt)}</dd></div>
-            <div><dt className="text-xs text-[var(--oh-muted)]">Next scheduled run</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{formatDate(status?.nextRunAt)}</dd></div>
-            <div><dt className="text-xs text-[var(--oh-muted)]">Daily schedule</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.scheduleTime || "03:30"} · {status?.timezone || "Australia/Adelaide"}</dd></div>
+            <div><dt className="text-xs text-[var(--oh-muted)]">Next sync</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.scheduleEnabled ? formatDate(status?.nextRunAt) : "Not scheduled"}</dd></div>
+            <div><dt className="text-xs text-[var(--oh-muted)]">Sync mode</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.scheduleEnabled ? `${status.scheduleTime || "03:30"} · ${status.timezone || "Australia/Adelaide"}` : "Manual only"}</dd></div>
             <div><dt className="text-xs text-[var(--oh-muted)]">SQLite integrity</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.snapshot?.databaseIntegrity || "Not checked"}</dd></div>
           </dl>
           {status?.lastErrorCode && <p role="status" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">Last sync failed: {status.lastErrorCode}. The previous verified snapshot is retained.{status.nextAttemptAt ? ` Automatic retry: ${formatDate(status.nextAttemptAt)}.` : " No automatic retry is scheduled; check the worker configuration."}</p>}
