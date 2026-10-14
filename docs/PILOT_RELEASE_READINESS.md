@@ -6,15 +6,15 @@
 
 | 项目 | 当前状态 | 证据/说明 |
 |---|---|---|
-| GitHub / Dokploy | **已核实到 `53af338`** | `origin/main`=`53af338f03e099994c13c1d8ccfc254e2238c36a`；Dokploy 部署列表对应提交为 Done。 |
-| 本地提交 | **待发布** | 本地 `main` 领先一个提交 `fafa6ce`（Miscellaneous 公司设置状态页），尚未推送或部署。 |
+| GitHub / Dokploy | **已核实到 `39d6a0b`** | `origin/main`=`39d6a0b47877c2beafbaaff78eb48ca379480028`；Dokploy 部署列表对应提交为 Done。 |
+| 本地提交 | **已同步** | 本地 `main` 与 `origin/main` 同步；`fafa6ce` 公司设置页和 `39d6a0b` Integrations 状态页均已发布。 |
 | Dokploy 容器 | **进程运行** | frontend/backend Running，MySQL Healthy；frontend 最近重启。该状态不证明公网入口可用。 |
-| 生产入口 | **BLOCKED / 根因未定** | 本次从当前环境请求 `/login` 和 `/api/odoo/session` 均 12 秒超时；需检查 Dokploy Requests/代理日志并从独立网络复测。 |
+| 生产入口 | **BLOCKED / 根因未定** | `39d6a0b` Done 后，从当前环境请求 `/login` 和 `/api/odoo/session` 仍均 12 秒超时。Dokploy Requests 未启用，需从独立网络复测并使用可用的代理/容器日志定位。 |
 | 页面与布局回归 | **旧版本证据，不是当前回归** | 35/35 页面、70/70 布局对应 `358704c`；设置专项对应 `f981aa7`。不能作为 `53af338` 的通过证据。 |
 | UAT 脚本修正 | **工作区未提交，待复跑** | 修复角色删除确认框及清理后核验；证据增加 target deployment 与 source commit 区分。需入口恢复后重新运行。 |
-| 当前可放行性 | **NO-GO** | 生产可用性、当前 SHA 登录/页面回归、班次现金实点关账、真实采购收货仍未完成。 |
+| 当前可放行性 | **NO-GO** | 生产可用性、`39d6a0b` 登录/页面回归、班次现金实点关账、真实采购收货仍未完成。 |
 
-当前工作区另有一个未推送应用提交及 5 个 UAT 脚本/证据文件的未提交修改。应先解决/确认生产入口可达，再决定是否发布 UAT 修正；发布后以最终 Dokploy SHA 重新验收。不要手工把历史 UAT JSON 的 deployment 改成新 SHA。
+当前工作区另有 5 个 UAT 脚本/证据文件的未提交修改。应先解决/确认生产入口可达，再决定是否发布 UAT 修正；发布后以最终 Dokploy SHA 重新验收。不要手工把历史 UAT JSON 的 deployment 改成新 SHA。
 
 这份清单把代码可验证事项和必须依赖生产环境、店主或硬件的事项分开。没有证据的项目保持 `BLOCKED`，不能用 fixture、旧部署或页面可达性代替。
 
@@ -22,9 +22,9 @@
 
 | 项目 | 当前状态 | 完成证据 |
 |---|---|---|
-| Git、origin、Dokploy SHA 一致 | **BLOCKED** | Dokploy Done 与 `origin/main` 为 `53af338`；本地另有未推送应用提交 `fafa6ce`，UAT 修改也未提交 |
-| 生产入口可用性 | **BLOCKED** | `/login`、`/api/odoo/session` 本次均 12 秒超时；frontend/backend 容器 Running、MySQL Healthy。根因未定，需查代理/Requests 并独立网络复测 |
-| 生产页面与安全回归 | **STALE / BLOCKED** | 最新可复用证据为 `358704c` 的 35/35 页面、70/70 布局；设置专项为 `f981aa7`。没有 `53af338` 的当前回归证据 |
+| Git、origin、Dokploy SHA 一致 | **PASS (deployment)** | `origin/main` 与 Dokploy Done 为 `39d6a0b`；5 个 UAT 脚本/证据工作区改动仍未提交 |
+| 生产入口可用性 | **BLOCKED** | `/login`、`/api/odoo/session` 在部署 Done 后仍 12 秒超时；frontend/backend 容器 Running、MySQL Healthy。Requests 未启用，根因未定 |
+| 生产页面与安全回归 | **STALE / BLOCKED** | 最新可复用证据为 `358704c` 的 35/35 页面、70/70 布局；设置专项为 `f981aa7`。没有 `39d6a0b` 的当前回归证据 |
 | Odoo 会话自动恢复与登出拒绝 | **STALE / BLOCKED** | 历史证据见 `UAT_ODOO_AUTORECOVER_2026-10-13.json`；生产入口当前不可达，无法确认 `9b6e9c9` 运行状态 |
 | 班次 `orithos_store1/00004` 整班对账 | **BLOCKED** | 需要只读导出销售/退款/支付流水并与 Odoo 对账 |
 | 现金实点与班次关账 | **BLOCKED** | 店主实点现金、确认差异后，记录关账结果和新班次状态 |
@@ -46,4 +46,4 @@
 
 ## 放行规则
 
-只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。当前本地 `fafa6ce` 尚未部署、生产入口超时、当前部署回归缺失，因此不得放行；先确定入口故障范围，再评审发布内容，部署后以新的精确 SHA 重新执行页面回归。
+只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。当前生产入口超时、当前部署回归缺失，因此不得放行；先确定入口故障范围，部署后以新的精确 SHA 重新执行页面回归。
