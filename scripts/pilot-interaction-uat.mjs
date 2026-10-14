@@ -303,17 +303,28 @@ try {
       return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "24" && response.ok();
     }, { timeout: 30000 });
     await range.selectOption("24");
-    await updatedRange;
+    const rangeResponse = await updatedRange;
+    const rangeData = await rangeResponse.json();
     await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     if (dimensions.document > dimensions.viewport) throw new Error(`Mobile reporting dashboard overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
-    if (!(await page.getByRole("img").count())) throw new Error("Reporting trend has no accessible chart marks");
+    const chartMarks = page.locator('[role="img"][aria-label]');
+    if (rangeData.trend?.length) {
+      if (await chartMarks.count() !== rangeData.trend.length) throw new Error("Reporting trend marks do not match the returned data");
+    } else {
+      if (Number(rangeData.transactions) !== 0 || Number(rangeData.refundTransactions) !== 0) {
+        throw new Error("Reporting trend is empty despite sales or refunds in the selected period");
+      }
+      await page.getByText("No sales in this period", { exact: true }).waitFor({ timeout: 10000 });
+    }
     const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
     await launcher.waitFor({ timeout: 10000 });
     await launcher.click();
     await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
     await page.getByRole("button", { name: "Close assistant" }).click();
-    return `At 390px the reporting dashboard has no horizontal overflow (${dimensions.document}px); range changed to 24 hours, chart marks are accessible, and the AI assistant opens/closes.`;
+    return rangeData.trend?.length
+      ? `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour trend renders ${rangeData.trend.length} accessible marks, and the AI assistant opens/closes.`
+      : `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes.`;
   });
 } finally {
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
@@ -322,7 +333,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   checks,
 };

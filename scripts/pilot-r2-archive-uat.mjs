@@ -44,12 +44,16 @@ try {
   if (data.state === "success" && data.snapshot?.databaseIntegrity !== "ok") {
     throw new Error("Successful snapshot does not report SQLite integrity=ok");
   }
+  if (!/^\d{2}:\d{2}$/.test(data.scheduleTime ?? "") || !data.timezone) {
+    throw new Error("Configured daily schedule is missing from the archive status");
+  }
   safeStatus = {
     configured: data.configured,
     state: data.state,
     lastSuccessAt: data.lastSuccessAt ?? null,
     nextRunAt: data.nextRunAt ?? null,
     timezone: data.timezone ?? null,
+    scheduleTime: data.scheduleTime ?? null,
     snapshotFileCount: data.snapshot?.files?.length ?? 0,
     databaseIntegrity: data.snapshot?.databaseIntegrity ?? null,
     lastErrorCode: data.lastErrorCode ?? null,
@@ -68,6 +72,9 @@ try {
     }));
     if (pageState.scrollWidth > pageState.width + 1) throw new Error(`Integration page overflows at ${width}px`);
     if (!pageState.text.includes("Shopfront archive mirror")) throw new Error(`Archive card missing at ${width}px`);
+    if (!pageState.text.includes(data.scheduleTime) || !pageState.text.includes(data.timezone)) {
+      throw new Error(`Daily schedule is not visible at ${width}px`);
+    }
     if (!data.configured && await page.getByRole("button", { name: "Sync now" }).isEnabled()) {
       throw new Error("Sync now is enabled when R2 credentials are not configured");
     }

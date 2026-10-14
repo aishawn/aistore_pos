@@ -26,12 +26,21 @@ import java.util.Map;
 public class R2ArchiveController {
     private final ObjectMapper objectMapper;
     private final Path dataDir;
+    private final String syncTimezone;
+    private final int syncHour;
+    private final int syncMinute;
 
     public R2ArchiveController(
             ObjectMapper objectMapper,
-            @Value("${R2_ARCHIVE_DATA_DIR:/var/lib/orithos/shopfront}") String dataDir) {
+            @Value("${R2_ARCHIVE_DATA_DIR:/var/lib/orithos/shopfront}") String dataDir,
+            @Value("${R2_SYNC_TIMEZONE:Australia/Adelaide}") String syncTimezone,
+            @Value("${R2_SYNC_HOUR:3}") int syncHour,
+            @Value("${R2_SYNC_MINUTE:30}") int syncMinute) {
         this.objectMapper = objectMapper;
         this.dataDir = Path.of(dataDir);
+        this.syncTimezone = syncTimezone;
+        this.syncHour = syncHour;
+        this.syncMinute = syncMinute;
     }
 
     @GetMapping("/status")
@@ -39,7 +48,12 @@ public class R2ArchiveController {
         AdminAccess.requireAdmin();
         Path statusFile = dataDir.resolve("status.json");
         if (!Files.isRegularFile(statusFile)) {
-            return ApiResult.ok(Map.of("configured", false, "state", "not_configured"));
+            Map<String, Object> emptyStatus = new LinkedHashMap<>();
+            emptyStatus.put("configured", false);
+            emptyStatus.put("state", "not_configured");
+            emptyStatus.put("timezone", syncTimezone);
+            emptyStatus.put("scheduleTime", scheduleTime());
+            return ApiResult.ok(emptyStatus);
         }
         try {
             Map<String, Object> workerStatus = objectMapper.readValue(
@@ -58,11 +72,17 @@ public class R2ArchiveController {
                     "nextRunAt", "timezone", "snapshotId", "lastErrorCode", "checkedAt")) {
                 if (workerStatus.containsKey(field)) safeStatus.put(field, workerStatus.get(field));
             }
+            safeStatus.putIfAbsent("timezone", syncTimezone);
+            safeStatus.put("scheduleTime", scheduleTime());
             safeStatus.put("snapshot", safeSnapshot);
             return ApiResult.ok(safeStatus);
         } catch (IOException e) {
             return ApiResult.ok(Map.of("configured", true, "state", "status_unavailable"));
         }
+    }
+
+    private String scheduleTime() {
+        return "%02d:%02d".formatted(syncHour, syncMinute);
     }
 
     @PostMapping("/sync")

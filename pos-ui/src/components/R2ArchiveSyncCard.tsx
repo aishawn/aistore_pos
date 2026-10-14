@@ -13,6 +13,7 @@ type ArchiveStatus = {
   lastSuccessAt?: string;
   nextRunAt?: string;
   timezone?: string;
+  scheduleTime?: string;
   snapshotId?: string;
   lastErrorCode?: string | null;
   snapshot?: {
@@ -133,7 +134,7 @@ export function R2ArchiveSyncCard() {
           <dl className="grid gap-3 rounded-lg bg-[var(--oh-surface)] p-4 sm:grid-cols-2 lg:grid-cols-4">
             <div><dt className="text-xs text-[var(--oh-muted)]">Last successful sync</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{formatDate(status?.lastSuccessAt)}</dd></div>
             <div><dt className="text-xs text-[var(--oh-muted)]">Next scheduled run</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{formatDate(status?.nextRunAt)}</dd></div>
-            <div><dt className="text-xs text-[var(--oh-muted)]">Schedule timezone</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.timezone || "Australia/Adelaide"}</dd></div>
+            <div><dt className="text-xs text-[var(--oh-muted)]">Daily schedule</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.scheduleTime || "03:30"} · {status?.timezone || "Australia/Adelaide"}</dd></div>
             <div><dt className="text-xs text-[var(--oh-muted)]">SQLite integrity</dt><dd className="mt-1 text-sm font-semibold text-[var(--oh-text)]">{status?.snapshot?.databaseIntegrity || "Not checked"}</dd></div>
           </dl>
           {status?.lastErrorCode && <p role="status" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">Last sync failed: {status.lastErrorCode}. The previous verified snapshot is retained.</p>}
