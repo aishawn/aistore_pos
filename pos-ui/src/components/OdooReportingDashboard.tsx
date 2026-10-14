@@ -104,7 +104,7 @@ export function OdooReportingDashboard() {
           <Store className="mx-auto text-amber-600" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to view live reports</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">The dashboard reads completed sales and open register sessions from your connected Odoo company.</p>
-          <Link href="/settings/integrations" className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+          <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
         </section>
       </main>
     );
@@ -149,6 +149,7 @@ export function OdooReportingDashboard() {
             <div><h2 className="oh-type-title text-[var(--oh-text)]">Sales trend</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{ranges.find((item) => item.hours === rangeHours)?.label} · {data ? `${formatDate(data.from, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}</p></div>
           </div>
           {data?.trend.length ? (
+            <>
             <div className="mt-6 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2 sm:gap-3">
               {data.trend.map((item, index) => {
                 const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
@@ -160,13 +161,18 @@ export function OdooReportingDashboard() {
                 </div>;
               })}
             </div>
-          ) : <div className="grid h-48 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No sales in this period</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Open a register session and complete a sale to see the trend.</p><Link href="/" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link></div></div>}
+            <div className="mt-2 flex justify-between gap-3 text-xs text-[var(--oh-muted)] sm:hidden" aria-hidden="true">
+              <span>{formatDate(data.trend[0].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
+              <span>{formatDate(data.trend[data.trend.length - 1].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
+            </div>
+            </>
+          ) : <div className="grid h-48 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No sales in this period</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Open a register session and complete a sale to see the trend.</p><Link href="/" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link></div></div>}
         </section>
 
         <section className="flex flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] px-4 py-4 md:px-5">
             <div><h2 className="oh-type-title text-[var(--oh-text)]">Recent sales &amp; refunds</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Latest completed Odoo POS orders</p></div>
-            <Link href="/history/odoo" className="oh-type-label inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--oh-primary)] hover:underline">View all <ArrowUpRight size={15} /></Link>
+            <Link href="/history/odoo" className="oh-type-label inline-flex min-h-11 shrink-0 items-center gap-1 px-1 font-semibold text-[var(--oh-primary)] hover:underline">View all <ArrowUpRight size={15} /></Link>
           </div>
           <div>
             {data?.recentSales.length ? <ul className="divide-y divide-[var(--oh-border)]">
@@ -174,7 +180,7 @@ export function OdooReportingDashboard() {
                 <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.amount_total < 0 ? "Refund · " : "Sale · "}{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div>
                 <span className={`oh-type-body-strong shrink-0 tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-orange-dark)]" : "text-[var(--oh-text)]"}`}>{formatMoney(sale.amount_total, data.currency)}</span>
               </li>)}
-            </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
+            </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
           </div>
         </section>
       </div>
