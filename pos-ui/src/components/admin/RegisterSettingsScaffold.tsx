@@ -16,10 +16,16 @@ export function RegisterSettingsScaffold({
   subSectionTitle,
   activeHref,
   children,
+  showRegisterSelector = true,
+  showSearch = true,
+  showSave = true,
 }: {
   subSectionTitle: string;
   activeHref: string;
   children: React.ReactNode;
+  showRegisterSelector?: boolean;
+  showSearch?: boolean;
+  showSave?: boolean;
 }) {
   const tabs = COMPANY_SETTINGS_TABS.map((tab) => ({
     label: tab.label,
@@ -38,14 +44,18 @@ export function RegisterSettingsScaffold({
       title="General Settings"
       sectionTitle="Registers"
       subSectionTitle={subSectionTitle}
+      showSearch={showSearch}
+      showSave={showSave}
       tabs={tabs}
       subTabs={subTabs}
     >
-      <SelectRow
-        label="Register"
-        value="Register"
-        description="Select the register to configure. Settings apply to the selected register only."
-      />
+      {showRegisterSelector && (
+        <SelectRow
+          label="Register"
+          value="Register"
+          description="Select the register to configure. Settings apply to the selected register only."
+        />
+      )}
       {children}
     </SettingsScaffold>
   );
