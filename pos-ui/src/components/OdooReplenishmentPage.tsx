@@ -199,7 +199,7 @@ export function OdooReplenishmentPage() {
               {coverageOptions.map((days) => <option key={days} value={days}>{days} days</option>)}
             </select>
           </label>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">{refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
+          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] outline-none hover:bg-[var(--oh-paper)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-60">{refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
       </header>
 
@@ -218,8 +218,8 @@ export function OdooReplenishmentPage() {
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
         <header className="flex flex-col items-stretch gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5 xl:flex-row xl:items-center xl:justify-between">
           <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Replenishment suggestions"}</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Demand trend compares the latest {data?.periodDays ?? 28} days with the previous period.</p></div>
-          <div className="flex flex-col items-stretch gap-2 xl:flex-row xl:items-center"><button type="button" onClick={() => void openRfqDialog()} disabled={!suggestedItems.length} className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
-            <button type="button" onClick={() => setShowAll((value) => !value)} className="min-h-11 px-2 text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline">{showAll ? "Show suggestions only" : "Show all products"}</button></div>
+          <div className="flex flex-col items-stretch gap-2 xl:flex-row xl:items-center"><button type="button" onClick={() => void openRfqDialog()} disabled={!suggestedItems.length} className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
+            <button type="button" onClick={() => setShowAll((value) => !value)} aria-pressed={showAll} className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:bg-[var(--oh-orange-light)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">{showAll ? "Show suggestions only" : "Show all products"}</button></div>
         </header>
         <div className="divide-y divide-[var(--oh-border)] xl:hidden">
           {loading && !data ? <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></div>
@@ -237,7 +237,7 @@ export function OdooReplenishmentPage() {
                   <Metric label="Stock cover" value={product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`} />
                   <div><p className="text-xs text-[var(--oh-muted)]">Trend · {data?.periodDays}d</p><div className="mt-1">{product.trend === "new" ? <span className="rounded-full bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">New demand</span> : product.trend === "up" ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">↑ {number.format(product.trendPercent ?? 0)}%</span> : product.trend === "down" ? <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">↓ {number.format(Math.abs(product.trendPercent ?? 0))}%</span> : product.trend === "steady" ? <span className="text-sm text-[var(--oh-text-secondary)]">Steady</span> : <span className="text-sm text-[var(--oh-muted)]">—</span>}</div></div>
                 </div>
-                <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="mt-2 inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange-dark)]">{expandedReasonId === product.id ? "Hide explanation" : "Explain suggestion"}</button>
+                <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="mt-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">{expandedReasonId === product.id ? "Hide explanation" : "Explain suggestion"}</button>
                 {expandedReasonId === product.id && <ul className="ml-1 list-disc space-y-1 pl-4 text-sm leading-5 text-[var(--oh-text-secondary)]">{(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => <li key={part}>{part}</li>)}</ul>}
               </article>)}
         </div>
@@ -259,7 +259,7 @@ export function OdooReplenishmentPage() {
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
                     <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
-                      <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange-dark)] hover:underline">
+                      <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">
                         {expandedReasonId === product.id ? "Hide" : "Explain"}
                       </button>
                       {expandedReasonId === product.id && (
@@ -354,7 +354,7 @@ export function OdooReplenishmentPage() {
 function SummaryCard({ title, value, detail }: { title: string; value: string; detail: string }) {
   return <article className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
     <p className="text-sm font-medium text-[var(--oh-muted)]">{title}</p>
-    <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">{value}</p>
+    <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-[var(--oh-text)]">{value}</p>
     <p className="mt-1 text-xs text-[var(--oh-muted)]">{detail}</p>
   </article>;
 }
