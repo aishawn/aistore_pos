@@ -110,7 +110,7 @@ export function OdooPosConnectionCard() {
           </p>
         </div>
         {state === "connected" && (
-          <button type="button" onClick={() => void refreshConnection()} disabled={busy} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+          <button type="button" onClick={() => void refreshConnection()} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
             {busy ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} Refresh
           </button>
         )}
@@ -125,7 +125,7 @@ export function OdooPosConnectionCard() {
               <p className="text-sm font-semibold text-[var(--oh-text)]">{user?.name || user?.username}</p>
               <p className="text-xs text-[var(--oh-muted)]">Signed in as {user?.username}</p>
             </div>
-            <button type="button" onClick={() => void disconnect()} disabled={busy} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+            <button type="button" onClick={() => void disconnect()} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {busy ? <LoaderCircle size={15} className="animate-spin" /> : <LogOut size={15} />} Disconnect
             </button>
           </div>
@@ -154,16 +154,16 @@ export function OdooPosConnectionCard() {
           </div>
         </div>
       ) : (
-        <form onSubmit={connect} className="mt-5 grid max-w-3xl gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+        <form onSubmit={connect} className="mt-5 grid max-w-3xl gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
             Odoo username
-            <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" required maxLength={120} className="h-10 max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+            <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" required maxLength={120} className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
           </label>
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
             Odoo password
-            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required maxLength={256} className="h-10 max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+            <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required maxLength={256} className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
           </label>
-          <button type="submit" disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
+          <button type="submit" disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <LogIn size={16} />} Connect Odoo
           </button>
         </form>
