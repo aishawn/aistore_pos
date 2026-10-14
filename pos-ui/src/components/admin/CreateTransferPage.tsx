@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRightLeft } from "lucide-react";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { SelectChevronIcon } from "@/components/icons";
+import { AdminActionFooter } from "@/components/admin/AdminPageLayout";
 
 interface Named {
   id: string;
@@ -281,19 +282,19 @@ export function CreateTransferPage() {
         </div>
       </main>
 
-      <footer className="flex shrink-0 justify-end gap-2 border-t border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+      <AdminActionFooter>
         <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
           Cancel
         </button>
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={busy}
+          disabled={busy || outlets.loading || Boolean(outlets.error) || outletOptions.length < 2 || !fromId || !toId || fromId === toId}
           className="inline-flex min-h-11 min-w-28 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create"}
         </button>
-      </footer>
+      </AdminActionFooter>
     </div>
   );
 }

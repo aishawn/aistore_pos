@@ -81,6 +81,15 @@ export function AdminSecondaryButton({
   );
 }
 
+/** Fixed form actions with space reserved for the floating assistant button. */
+export function AdminActionFooter({ children }: { children: React.ReactNode }) {
+  return (
+    <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+      <div className="mr-20 flex gap-2">{children}</div>
+    </footer>
+  );
+}
+
 /** Pill action button for toolbars (Manage Cash, Orders). */
 export function AdminPillButton({
   children,

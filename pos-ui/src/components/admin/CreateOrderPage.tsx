@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { FormDatePicker } from "@/components/admin/FormDatePicker";
 import { SelectChevronIcon } from "@/components/icons";
+import { AdminActionFooter } from "@/components/admin/AdminPageLayout";
 
 interface Named {
   id: string;
@@ -276,8 +277,7 @@ export function CreateOrderPage() {
         </div>
       </main>
 
-      <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
-        <div className="mr-14 flex gap-2 sm:mr-20">
+      <AdminActionFooter>
           <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
             Cancel
           </button>
@@ -289,8 +289,7 @@ export function CreateOrderPage() {
           >
             {busy ? "Creating…" : "Create"}
           </button>
-        </div>
-      </footer>
+      </AdminActionFooter>
     </div>
   );
 }

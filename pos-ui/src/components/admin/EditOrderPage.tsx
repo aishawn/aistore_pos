@@ -8,6 +8,7 @@ import { useApi, useApiList } from "@/hooks/useApi";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { FormDatePicker } from "@/components/admin/FormDatePicker";
 import { SelectChevronIcon } from "@/components/icons";
+import { AdminActionFooter } from "@/components/admin/AdminPageLayout";
 
 interface Named {
   id: string;
@@ -283,7 +284,7 @@ export function EditOrderPage({ orderId }: { orderId: string }) {
       </main>
 
       {order && (
-        <footer className="flex shrink-0 justify-end gap-2 border-t border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+        <AdminActionFooter>
           <button
             type="button"
             onClick={() => router.push(`/orders/${orderId}/view`)}
@@ -301,7 +302,7 @@ export function EditOrderPage({ orderId }: { orderId: string }) {
             {!busy && <Save size={16} aria-hidden="true" />}
             {busy ? "Saving…" : "Save"}
           </button>
-        </footer>
+        </AdminActionFooter>
       )}
     </div>
   );
