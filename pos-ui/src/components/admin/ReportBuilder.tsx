@@ -1,3 +1,5 @@
+import { BarChart3, Info } from "lucide-react";
+
 interface Panel {
   label: string;
   value: string;
@@ -26,9 +28,12 @@ export function ReportBuilder({
         <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{title}</h1>
       </header>
 
-      <div role="status" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-        <p className="font-semibold">Preview only · not connected to Odoo</p>
-        <p>Filters and report definitions are examples. This page does not load live sales, stock, purchase or transfer data.</p>
+      <div role="status" className="mb-4 flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950">
+        <Info size={18} className="mt-1 shrink-0 text-sky-700" aria-hidden="true" />
+        <div>
+          <p className="font-semibold">Static preview · no live Odoo data</p>
+          <p>Filters and report definitions are examples. This page does not load live sales, stock, purchase or transfer data.</p>
+        </div>
       </div>
 
       <section aria-label="Example filters" className="mb-4">
@@ -67,7 +72,10 @@ export function ReportBuilder({
             <tbody>
               <tr>
                 <td colSpan={columns.length} className="h-36 border-b border-[var(--oh-border)] px-4 text-center text-[var(--oh-muted)]">
-                  No report rows to display for these filters.
+                  <span className="inline-flex flex-col items-center gap-2 text-sm">
+                    <BarChart3 size={20} className="text-[var(--oh-border-strong)]" aria-hidden="true" />
+                    No sample rows are available in this preview.
+                  </span>
                 </td>
               </tr>
             </tbody>
