@@ -67,7 +67,7 @@ try {
   });
   if (!clearInPageSession) throw new Error("Could not clear the Odoo browser session while the product page was open");
   const refreshedRecords = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/odoo/records" && response.status() === 200, { timeout: 30000 });
-  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh products", exact: true }).click();
   await refreshedRecords;
   await page.locator("tbody tr").first().waitFor({ timeout: 30000 });
   record("In-page read recovers and retries safely", "PASS", "With the products page already loaded, its read-only POST recovered an expired Odoo session and refreshed the catalogue without an error or manual reconnect.");

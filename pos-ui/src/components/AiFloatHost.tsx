@@ -55,7 +55,7 @@ export function AiFloatHost() {
     <SellAiPanel
       expanded={expanded}
       onExpandedChange={setExpanded}
-      hideFab={pathname === "/" || pathname === "/finalise" || pathname === "/products/odoo"}
+      hideFab={pathname === "/" || pathname === "/finalise" || pathname === "/products/odoo" || pathname === "/customers/odoo"}
     />
   );
 }

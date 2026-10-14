@@ -89,9 +89,9 @@ export function OdooProductCataloguePage() {
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
-  }, [categoryId, connected, debouncedQuery, offset, refreshKey]);
+  }, [categoryId, connected, debouncedQuery, offset]);
 
-  useEffect(() => { void loadProducts(); }, [loadProducts]);
+  useEffect(() => { void loadProducts(); }, [loadProducts, refreshKey]);
 
   useEffect(() => {
     if (connected !== true) return;

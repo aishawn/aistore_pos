@@ -24,6 +24,7 @@ const checks = [];
 
 async function check(name, run) {
   try {
+    await page.setViewportSize({ width: 1440, height: 900 });
     const evidence = await run();
     checks.push({ name, status: "PASS", evidence });
   } catch (error) {
@@ -117,7 +118,7 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     const card = page.locator("main section article").filter({ hasText: "Barossa Shiraz 2021" });
-    await card.getByRole("button", { name: /Edit Barossa Shiraz 2021/i }).click();
+    await card.getByRole("button", { name: /Edit .*Barossa Shiraz 2021/i }).click();
     const dialog = page.getByRole("dialog", { name: "Edit product" });
     await dialog.waitFor({ timeout: 10000 });
     const dialogBox = await dialog.boundingBox();
@@ -185,15 +186,60 @@ try {
   });
 
   await check("Customer creation form is required-field guarded", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/customers/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("button", { name: /New customer/i }).click();
-    const name = page.getByLabel(/Customer name/i);
+    const dialog = page.getByRole("dialog", { name: "New customer" });
+    const name = dialog.getByLabel(/Customer name/i);
     await name.waitFor({ timeout: 10000 });
+    const dialogBox = await dialog.boundingBox();
+    if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
+      throw new Error(`Customer creation dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
+    }
     if (await name.getAttribute("required") === null) throw new Error("Customer name is not required");
     const emptyFormIsInvalid = await name.evaluate((input) => input.form?.checkValidity() === false);
     if (!emptyFormIsInvalid) throw new Error("An empty customer form passes browser validation");
     await page.getByRole("button", { name: "Close", exact: true }).click();
-    return "Customer name is required; an empty form fails browser validation and was not submitted.";
+    return "At 390px the customer dialog fit the viewport; Customer name is required and the empty form was cancelled without submission.";
+  });
+
+  await check("Customer mobile card and edit dialog render from a read-only fixture", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/api/odoo/records", async (route) => {
+      const body = route.request().postDataJSON();
+      if (body?.type !== "customers") return route.continue();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ items: [{ id: 987654, name: "Pilot Fixture Customer", phone: "0400 123 456", email: "fixture@example.test", customer_rank: 1, ref: "PILOT-FIXTURE" }] }),
+      });
+    });
+    try {
+      await page.goto(`${base}/customers/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      const card = page.locator("main section article").filter({ hasText: "Pilot Fixture Customer" });
+      await card.waitFor({ timeout: 15000 });
+      const table = page.locator("table");
+      if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
+        throw new Error("The wide customer table is visible at the mobile viewport");
+      }
+      if (await card.getByRole("link", { name: /0400 123 456/ }).getAttribute("href") !== "tel:0400%20123%20456") {
+        throw new Error("Customer phone card does not expose the expected tap-to-call link");
+      }
+      await card.getByRole("button", { name: "Edit", exact: true }).click();
+      const dialog = page.getByRole("dialog", { name: "Edit customer" });
+      await dialog.waitFor({ timeout: 10000 });
+      const dialogBox = await dialog.boundingBox();
+      if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
+        throw new Error(`Customer edit dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
+      }
+      if (await dialog.getByLabel("Customer name").inputValue() !== "Pilot Fixture Customer") {
+        throw new Error("Customer edit dialog did not prefill the fixture record");
+      }
+      await page.getByRole("button", { name: "Close", exact: true }).click();
+      return "Mobile customer card showed Odoo fixture details and tap-to-call; edit dialog fit the viewport and was closed without saving.";
+    } finally {
+      await page.unroute("**/api/odoo/records");
+    }
   });
 
   await check("Sales history searches and opens a refunded receipt", async () => {

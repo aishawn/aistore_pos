@@ -173,6 +173,19 @@ for (const entry of pages) {
       uiChecks.push({ name: "Checkout AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
     }
   }
+  if (entry.path === "/customers/odoo") {
+    try {
+      const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
+      await launcher.waitFor({ timeout: 10000 });
+      await launcher.click();
+      await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
+      await page.getByRole("button", { name: "Close assistant" }).click();
+      await launcher.waitFor({ timeout: 10000 });
+      uiChecks.push({ name: "Customers AI entry and panel interaction", status: "PASS", evidence: "The customers header entry opens and closes the assistant without submitting a prompt." });
+    } catch (error) {
+      uiChecks.push({ name: "Customers AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+    }
+  }
   if (entry.path === "/products/odoo") {
     try {
       const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });

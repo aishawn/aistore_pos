@@ -59,9 +59,9 @@ export function OdooCustomerDirectoryPage() {
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
-  }, [connected, debouncedQuery, offset, refreshKey]);
+  }, [connected, debouncedQuery, offset]);
 
-  useEffect(() => { void loadCustomers(); }, [loadCustomers]);
+  useEffect(() => { void loadCustomers(); }, [loadCustomers, refreshKey]);
 
   async function submitCustomer(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,14 +96,14 @@ export function OdooCustomerDirectoryPage() {
 
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
-      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
-        <div>
+      <header className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Customer records available to your Odoo staff account.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => { setEditingCustomer(null); setCreateOpen(true); setCreateError(null); }} disabled={connected !== true} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+          <button type="button" onClick={() => { setEditingCustomer(null); setCreateOpen(true); setCreateError(null); }} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh customers" title="Refresh customers" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
         </div>
@@ -120,14 +120,14 @@ export function OdooCustomerDirectoryPage() {
         </section>
       ) : (
         <>
-          <label className="flex h-11 max-w-xl shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
+          <label className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3">
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
           {error && <p role="alert" className="shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</p>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <table className="w-full min-w-[840px] border-collapse text-left text-sm">
+            <table className="hidden w-full min-w-[840px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Reference</th><th className="px-4 py-3 text-right">Actions</th></tr>
               </thead>
@@ -147,26 +147,49 @@ export function OdooCustomerDirectoryPage() {
                 ))}
               </tbody>
             </table>
+            <div className="divide-y divide-[var(--oh-border)] xl:hidden">
+              {loading && items.length === 0 ? (
+                <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading customers…</span></div>
+              ) : items.length === 0 ? (
+                <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{debouncedQuery ? "No customers match this search." : "No customers are available to this Odoo account."}</div>
+              ) : items.map((customer) => (
+                <article key={customer.id} className="px-4 py-3.5">
+                  <header className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-semibold text-[var(--oh-text)]">{customer.name}</p>
+                      <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{customer.id}{customer.ref ? ` · ${customer.ref}` : ""}</p>
+                    </div>
+                  </header>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {customer.phone ? <a className="flex min-h-11 min-w-0 items-center gap-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text-secondary)] hover:text-[var(--sf-link-blue)]" href={`tel:${encodeURIComponent(customer.phone)}`}><Phone size={15} className="shrink-0 text-[var(--oh-muted)]" /><span className="break-all">{customer.phone}</span></a> : <p className="flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-muted)]"><Phone size={15} />No phone</p>}
+                    {customer.email ? <a className="flex min-h-11 min-w-0 items-center gap-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text-secondary)] hover:text-[var(--sf-link-blue)]" href={`mailto:${encodeURIComponent(customer.email)}`}><Mail size={15} className="shrink-0 text-[var(--oh-muted)]" /><span className="break-all">{customer.email}</span></a> : <p className="flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-muted)]"><Mail size={15} />No email</p>}
+                  </div>
+                  <footer className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3">
+                    <button type="button" onClick={() => { setEditingCustomer(customer); setCreateError(null); setCreateOpen(true); }} disabled={connected !== true} className="inline-flex h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-blue-50 disabled:opacity-50"><Pencil size={14} /> Edit</button>
+                  </footer>
+                </article>
+              ))}
+            </div>
           </section>
 
-          <footer className="flex shrink-0 items-center justify-between text-sm text-[var(--oh-muted)]">
+          <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
             <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40">Next <ChevronRight size={16} /></button>
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
+              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
             </div>
           </footer>
         </>
       )}
 
       {createOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !creating) { setCreateOpen(false); setEditingCustomer(null); } }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="customer-create-title" className="my-auto w-full max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl md:p-6">
+        <section role="dialog" aria-modal="true" aria-labelledby="customer-create-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
             <div><h2 id="customer-create-title" className="text-lg font-semibold text-[var(--oh-text)]">{editingCustomer ? "Edit customer" : "New customer"}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingCustomer ? "Update this customer record in Odoo." : "Create a contact in Odoo for sales and customer lookup."}</p></div>
             <button type="button" onClick={() => { setCreateOpen(false); setEditingCustomer(null); }} disabled={creating} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form key={editingCustomer?.id ?? "new-customer"} onSubmit={(event) => void submitCustomer(event)} className="mt-5 grid gap-4">
-            <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Customer name <span className="text-red-700">*</span>
+            <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Customer name <span className="text-red-700">*</span></span>
               <input name="name" autoFocus defaultValue={editingCustomer?.name ?? ""} maxLength={120} required className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -181,9 +204,9 @@ export function OdooCustomerDirectoryPage() {
               <input name="ref" defaultValue={editingCustomer?.ref || ""} maxLength={64} className="h-10 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030]" />
             </label>
             {createError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{createError}</p>}
-            <footer className="flex justify-end gap-2 border-t border-[var(--oh-border)] pt-4">
-              <button type="button" onClick={() => { setCreateOpen(false); setEditingCustomer(null); }} disabled={creating} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
-              <button type="submit" disabled={creating} className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">{creating ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {editingCustomer ? "Save changes" : "Create customer"}</button>
+            <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => { setCreateOpen(false); setEditingCustomer(null); }} disabled={creating} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50 sm:w-auto">Cancel</button>
+              <button type="submit" disabled={creating} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">{creating ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {editingCustomer ? "Save changes" : "Create customer"}</button>
             </footer>
           </form>
         </section>
