@@ -39,6 +39,15 @@ try {
     throw new Error(`Admin archive status unavailable (HTTP ${response.status()})`);
   }
   const data = envelope.data;
+  safeStatus = {
+    configured: data.configured,
+    state: data.state,
+    scheduleEnabled: data.scheduleEnabled ?? null,
+    scheduleTime: data.scheduleTime ?? null,
+    nextRunAt: data.nextRunAt ?? null,
+    nextAttemptAt: data.nextAttemptAt ?? null,
+    timezone: data.timezone ?? null,
+  };
   if (Object.keys(data).some((key) => /secret|access.?key|credential|endpoint|bucket/i.test(key))) {
     throw new Error("Archive status response includes a credential/configuration field");
   }
@@ -53,8 +62,8 @@ try {
       throw new Error("A verified snapshot file has an invalid size or SHA-256");
     }
   }
-  if (!/^\d{2}:\d{2}$/.test(data.scheduleTime ?? "") || !data.timezone) {
-    throw new Error("Configured daily schedule is missing from the archive status");
+  if (data.scheduleEnabled !== false || data.scheduleTime !== null || data.nextRunAt !== null || data.nextAttemptAt !== null) {
+    throw new Error(`R2 sync is not in manual-only mode: ${JSON.stringify(safeStatus)}`);
   }
   safeStatus = {
     configured: data.configured,
@@ -64,7 +73,7 @@ try {
     nextRunAt: data.nextRunAt ?? null,
     nextAttemptAt: data.nextAttemptAt ?? null,
     timezone: data.timezone ?? null,
-    scheduleTime: data.scheduleTime ?? null,
+    scheduleEnabled: data.scheduleEnabled,
     snapshotId: data.snapshotId ?? null,
     snapshot: data.snapshot ? {
       syncedAt: data.snapshot.syncedAt ?? null,
@@ -83,7 +92,7 @@ try {
     await page.goto(`${base}/settings/integrations`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("heading", { name: "Shopfront archive mirror" }).waitFor({ timeout: 30000 });
     await page.getByRole("button", { name: "Sync now" }).waitFor({ timeout: 10000 });
-    await page.getByText(`${data.scheduleTime} · ${data.timezone}`, { exact: true }).waitFor({ timeout: 30000 });
+    await page.getByText("Manual only", { exact: true }).waitFor({ timeout: 30000 });
     const pageState = await page.evaluate(() => ({
       width: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -91,13 +100,13 @@ try {
     }));
     if (pageState.scrollWidth > pageState.width + 1) throw new Error(`Integration page overflows at ${width}px`);
     if (!pageState.text.includes("Shopfront archive mirror")) throw new Error(`Archive card missing at ${width}px`);
-    if (!pageState.text.includes(data.scheduleTime) || !pageState.text.includes(data.timezone)) {
-      throw new Error(`Daily schedule is not visible at ${width}px: ${pageState.text.slice(-900)}`);
+    if (!pageState.text.includes("Manual only") || !pageState.text.includes("Not scheduled")) {
+      throw new Error(`Manual-only schedule state is not visible at ${width}px: ${pageState.text.slice(-900)}`);
     }
     if (!data.configured && await page.getByRole("button", { name: "Sync now" }).isEnabled()) {
       throw new Error("Sync now is enabled when R2 credentials are not configured");
     }
-    record(`Integration card layout ${width}px`, "PASS", "Card visible without horizontal overflow; no sync was triggered.");
+    record(`Integration card layout ${width}px`, "PASS", "Manual-only card visible without horizontal overflow; no sync was triggered.");
   }
 
   if (!data.configured) {
