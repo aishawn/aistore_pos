@@ -8,9 +8,8 @@ export interface ListColumn {
 }
 
 /**
- * Orithos admin list table — rounded black header with white
- * uppercase-ish bold labels, and zebra-striped rows (white / #f3f3f3). Used by
- * Products, Customers, Suppliers, Classifications, Promotions, etc.
+ * Orithos admin list table — light header, clear row dividers and responsive
+ * horizontal scrolling for dense tables.
  */
 export function ListTable({
   columns,
@@ -36,15 +35,17 @@ export function ListTable({
     ? { gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }
     : undefined;
   const rowLayout = equalColumns ? "grid" : "flex";
+  const tableMinWidth = Math.max(720, columns.length * 112);
 
   return (
-    <div className="font-sans text-[13px]">
+    <div className="overflow-x-auto rounded-lg">
+    <div className="font-sans text-[13px]" style={{ minWidth: `${tableMinWidth}px` }}>
       {/* Header */}
       <div
         className={cn(
           rowLayout,
-          "relative items-center rounded-md bg-black px-3 font-bold text-white",
-          compact ? "py-1 text-[13px]" : "py-2 text-[13px]",
+          "relative items-center border-b border-[var(--oh-border)] bg-[var(--oh-paper)] px-3 font-semibold text-[var(--oh-muted)]",
+          compact ? "py-1.5 text-xs" : "py-2.5 text-xs uppercase tracking-wide",
           headerRight && "pr-24",
           headerClassName,
         )}
@@ -67,9 +68,9 @@ export function ListTable({
           key={r}
           className={cn(
             rowLayout,
-            "items-center px-3",
-            compact ? "py-1" : "py-2",
-            r % 2 === 1 ? "bg-[#f3f3f3]" : "bg-white",
+            "items-center border-b border-[var(--oh-border)] px-3 transition-colors hover:bg-[var(--oh-paper)]",
+            compact ? "py-1.5" : "py-2.5",
+            r % 2 === 1 ? "bg-[var(--oh-surface)]" : "bg-white",
             headerRight && "pr-24",
             rowClassName,
           )}
@@ -79,7 +80,7 @@ export function ListTable({
             <div
               key={c}
               className={cn(
-                "px-1.5 text-black",
+                "px-1.5 text-[var(--oh-text-secondary)]",
                 columns[c]?.width ?? "min-w-0",
                 !equalColumns && !columns[c]?.width && "flex-1 basis-0",
                 align(columns[c]?.align),
@@ -90,6 +91,7 @@ export function ListTable({
           ))}
         </div>
       ))}
+    </div>
     </div>
   );
 }
