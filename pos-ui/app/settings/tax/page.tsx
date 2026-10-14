@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Info } from "lucide-react";
+import { Info, LoaderCircle } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { getOdooSession, searchOdooRecords, type OdooTaxRecord } from "@/lib/odoo-api";
 
@@ -39,7 +39,7 @@ export default function TaxRatesPage() {
     <AdminPageLayout
       title="Tax Rates"
       subtitle="Active sales taxes visible to your Odoo account"
-      count={taxes.length}
+      count={loading || error ? undefined : taxes.length}
       countLabel="Rates"
     >
       <section aria-label="Tax rate source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
@@ -52,7 +52,10 @@ export default function TaxRatesPage() {
           {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
         </div>
       ) : loading ? (
-        <div className="py-16 text-center text-sm text-[var(--oh-muted)]">Loading Odoo tax rates…</div>
+        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
+          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
+          Loading Odoo tax rates…
+        </div>
       ) : taxes.length === 0 ? (
         <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
           No active sales tax rates are visible to this Odoo account.
