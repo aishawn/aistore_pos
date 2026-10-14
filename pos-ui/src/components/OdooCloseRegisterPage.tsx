@@ -77,7 +77,7 @@ export function OdooCloseRegisterPage() {
   }
 
   if (loading) {
-    return <main className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></main>;
+    return <main role="status" aria-live="polite" className="grid h-full place-items-center bg-[var(--oh-surface)]"><span className="text-center text-sm text-[var(--oh-muted)]"><LoaderCircle className="mx-auto animate-spin" /><span className="mt-2 block">Loading register and session details…</span></span></main>;
   }
 
   if (!connected) {
@@ -87,7 +87,7 @@ export function OdooCloseRegisterPage() {
           <CircleAlert className="mx-auto text-amber-600" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to close a register</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Closing a register ends the open Odoo POS session for that terminal.</p>
-          <Link href="/settings/integrations" className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+          <Link href="/settings/integrations" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
         </section>
       </main>
     );
@@ -97,34 +97,40 @@ export function OdooCloseRegisterPage() {
     <main className="mx-auto flex h-full max-w-2xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Close register</h1>
+          <h1 className="oh-type-title text-[var(--oh-text)]">Close register</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">End the open Odoo POS session after reconciling cash.</p>
         </div>
-        <button type="button" onClick={() => void load()} className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)]">
-          <RefreshCw size={16} /> Refresh
+        <button type="button" onClick={() => void load()} disabled={loading || busy} aria-label={loading ? "Refreshing registers" : "Refresh registers"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
+          {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
         </button>
       </header>
 
-      {error && <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{error}</div>}
+      {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{error}</div>}
       {result && (
-        <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-5 text-emerald-950">
           <p className="font-semibold inline-flex items-center gap-2"><Check size={16} /> {result.registerName} · {result.sessionName}</p>
           <p className="mt-1">{result.message}</p>
           <p className="mt-1 text-xs">Odoo session state: <strong>{result.state}</strong></p>
         </div>
       )}
 
-      <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+      <section aria-labelledby="close-register-form-heading" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+        <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
+          <h2 id="close-register-form-heading" className="text-sm font-semibold text-[var(--oh-text)]">Session and cash count</h2>
+          <p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Review the active session before submitting its closing control.</p>
+        </div>
         <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
           Register
           <select
             value={configId ?? ""}
+            disabled={!bootstrap?.configs.length || busy}
             onChange={(event) => {
               setConfigId(Number(event.target.value));
               setCountedCash("");
             }}
-            className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal"
+            className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)]"
           >
+            {!bootstrap?.configs.length && <option value="">No POS registers available</option>}
             {bootstrap?.configs.map((config) => (
               <option key={config.id} value={config.id}>
                 {config.name}{config.session ? ` · ${config.session.name}` : " · No open session"}
@@ -133,57 +139,68 @@ export function OdooCloseRegisterPage() {
           </select>
         </label>
 
-        {selected?.session ? (
-          <dl className="mt-4 grid grid-cols-2 gap-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
+        {!bootstrap?.configs.length ? (
+          <div role="status" className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-5 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />No POS registers are available to this Odoo account.</span>
+            <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+          </div>
+        ) : selected?.session ? (
+          <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg bg-[var(--oh-surface)] p-3 text-sm sm:grid-cols-2">
             <dt className="text-[var(--oh-muted)]">Open session</dt>
-            <dd className="text-right font-medium text-[var(--oh-text)]">{selected.session.name}</dd>
+            <dd className="min-w-0 break-words font-medium text-[var(--oh-text)] sm:text-right">{selected.session.name}</dd>
             <dt className="text-[var(--oh-muted)]">Started</dt>
-            <dd className="text-right text-[var(--oh-text-secondary)]">
+            <dd className="min-w-0 text-[var(--oh-text-secondary)] sm:text-right">
               {selected.session.start_at
                 ? new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(`${String(selected.session.start_at).replace(" ", "T")}Z`))
                 : "—"}
             </dd>
           </dl>
         ) : (
-          <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+          <div role="status" className="mt-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-5 text-amber-950 sm:flex-row sm:items-center">
             <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />This register has no open session. Open one in Odoo before closing.</span>
-            <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center justify-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+            <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
           </div>
         )}
 
-        <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
-          Counted cash {requiresCashCount ? "(required)" : "(optional)"}
-          <input
-            type="number"
-            min="0"
-            step="0.05"
-            required={requiresCashCount}
-            value={countedCash}
-            onChange={(event) => setCountedCash(event.target.value)}
-            placeholder={requiresCashCount ? "Enter the amount counted in the drawer (AUD)" : "Leave blank to skip cash count write-back"}
-            className="h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-normal tabular-nums"
-          />
-          <span className="text-xs font-normal text-[var(--oh-muted)]">
-            {requiresCashCount
-              ? "Required for this cash-enabled register. The counted amount is written to Odoo when you confirm."
-              : "This register has no cash payment method, so a cash count is optional."}
-          </span>
-        </label>
+        {bootstrap?.configs.length ? (
+          <>
+            <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
+              Counted cash {requiresCashCount ? "(required)" : "(optional)"}
+              <input
+                id="counted-cash"
+                type="number"
+                min="0"
+                step="0.05"
+                required={requiresCashCount}
+                aria-describedby="counted-cash-help"
+                value={countedCash}
+                onChange={(event) => setCountedCash(event.target.value)}
+                placeholder={requiresCashCount ? "Enter the amount counted in the drawer (AUD)" : "Leave blank to skip cash count write-back"}
+                className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+              />
+              <span id="counted-cash-help" className="text-xs font-normal leading-5 text-[var(--oh-muted)]">
+                {requiresCashCount
+                  ? "Required for this cash-enabled register. The counted amount is written to Odoo when you confirm."
+                  : "This register has no cash payment method, so a cash count is optional."}
+              </span>
+            </label>
 
-        <p className="mt-3 text-xs leading-5 text-[var(--oh-muted)]">
-          Closing sends Odoo&apos;s session closing control. If cash differences remain, finish reconciliation in Odoo.
-          Parked sales on this browser are local drafts and are not uploaded by close.
-        </p>
+            <p className="mt-3 rounded-lg bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]">
+              Closing sends Odoo&apos;s session closing control. If cash differences remain, finish reconciliation in Odoo.
+              Parked sales on this browser are local drafts and are not uploaded by close.
+            </p>
 
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          disabled={!selected?.session || busy || (requiresCashCount && !countedCash.trim())}
-          className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {busy ? <LoaderCircle size={16} className="animate-spin" /> : null}
-          {busy ? "Closing…" : "Close register in Odoo"}
-        </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={!selected?.session || busy || (requiresCashCount && !countedCash.trim())}
+              className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busy ? <LoaderCircle size={16} className="animate-spin" /> : null}
+              {busy ? "Closing…" : "Close register in Odoo"}
+            </button>
+          </>
+        ) : null}
       </section>
 
       {confirming && selected?.session && (
@@ -205,12 +222,12 @@ export function OdooCloseRegisterPage() {
                 Cash count to record: <strong>{new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(Number(countedCash) || 0)}</strong>
               </p>
             )}
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={busy}
-                className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-50"
+                className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto"
               >
                 Keep session open
               </button>
@@ -218,7 +235,7 @@ export function OdooCloseRegisterPage() {
                 type="button"
                 onClick={() => void handleClose()}
                 disabled={busy}
-                className="inline-flex h-10 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-50"
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto"
               >
                 {busy && <LoaderCircle size={16} className="animate-spin" />}
                 {busy ? "Closing…" : "Confirm close"}
