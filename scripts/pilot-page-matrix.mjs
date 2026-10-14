@@ -26,7 +26,7 @@ if (!password) {
 
 const pages = [
   { path: "/overview", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Current sale/] },
-  { path: "/", expect: [/orithos_store1\/00004/, /12 avail/, /Finalise/] },
+  { path: "/", expect: [/orithos_store1\/00004/, /R2 TEST \|/, /Finalise/] },
   { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
   { path: "/products/odoo", expect: [/R2 TEST \|/, /SKU R2-/] },
@@ -239,9 +239,11 @@ for (const entry of pages) {
       const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
       await launcher.waitFor({ timeout: 10000 });
       await launcher.click();
-      await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
-      await page.getByRole("button", { name: "Close assistant" }).click();
-      await launcher.waitFor({ timeout: 10000 });
+      const assistant = page.locator('[role="dialog"][aria-label="Orithos AI assistant"]');
+      await assistant.waitFor({ state: "visible", timeout: 10000 });
+      if (await launcher.getAttribute("aria-expanded") !== "true") throw new Error("The customer-page assistant launcher did not report its open state");
+      await assistant.getByRole("button", { name: "Close assistant" }).click();
+      await assistant.waitFor({ state: "hidden", timeout: 10000 });
       uiChecks.push({ name: "Customers AI entry and panel interaction", status: "PASS", evidence: "The customers header entry opens and closes the assistant without submitting a prompt." });
     } catch (error) {
       uiChecks.push({ name: "Customers AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
@@ -340,7 +342,8 @@ try {
 }
 console.log("ROLE_CRUD", roleResult);
 
-const outPath = path.join(root, "docs", "UAT_PAGE_MATRIX_2026-10-13.json");
+const outputName = process.env.PILOT_UAT_FILENAME || "UAT_PAGE_MATRIX_2026-10-13.json";
+const outPath = path.join(root, "docs", outputName);
 fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), deployment: process.env.PILOT_DEPLOYMENT_SHA || null, sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), target: base, roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
 console.log("WROTE", outPath);
 

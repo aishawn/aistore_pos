@@ -97,7 +97,8 @@ const output = {
   scope: "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
   checks,
 };
-const outputPath = path.join(root, "docs", "UAT_ODOO_AUTORECOVER_2026-10-13.json");
+const outputName = process.env.PILOT_UAT_FILENAME || "UAT_ODOO_AUTORECOVER_2026-10-13.json";
+const outputPath = path.join(root, "docs", outputName);
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: checks.filter((check) => check.status === "PASS").length, failed: checks.filter((check) => check.status === "FAIL").length, checks }));
 if (checks.some((check) => check.status === "FAIL")) process.exitCode = 2;

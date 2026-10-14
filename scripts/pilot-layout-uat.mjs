@@ -9,7 +9,8 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8").
 const base = "https://app.orithos.com.au";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const deployment = process.env.PILOT_DEPLOYMENT_SHA || null;
-const pages = JSON.parse(fs.readFileSync(path.join(root, "docs/UAT_PAGE_MATRIX_2026-10-13.json"), "utf8")).matrix.map((entry) => entry.path);
+const pageMatrixName = process.env.PILOT_PAGE_MATRIX_FILENAME || "UAT_PAGE_MATRIX_2026-10-13.json";
+const pages = JSON.parse(fs.readFileSync(path.join(root, "docs", pageMatrixName), "utf8")).matrix.map((entry) => entry.path);
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 const browser = await chromium.launch({ headless: true });
 const results = [];
@@ -48,7 +49,8 @@ for (const width of [390, 1440]) {
 await browser.close();
 const failed = results.filter((item) => item.status !== "PASS");
 const output = { generatedAt: new Date().toISOString(), deployment, sourceCommit, target: base, pagesChecked: pages.length, viewportWidths: [390, 1440], checks: results.length, passed: results.length - failed.length, failed: failed.length, results };
-const outputPath = path.join(root, "docs/UAT_LAYOUT_2026-10-14.json");
+const outputName = process.env.PILOT_UAT_FILENAME || "UAT_LAYOUT_2026-10-14.json";
+const outputPath = path.join(root, "docs", outputName);
 fs.writeFileSync(outputPath, JSON.stringify(output, null, 2) + "\n");
 console.log(JSON.stringify({ outputPath, pagesChecked: pages.length, checks: results.length, passed: output.passed, failed, details: failed }));
 if (failed.length) process.exitCode = 1;
