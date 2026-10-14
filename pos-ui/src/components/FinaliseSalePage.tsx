@@ -431,13 +431,19 @@ export function FinaliseSalePage() {
 
             <div className="w-full min-w-0 max-w-[320px]">
 
-              <div className="mb-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-5 text-center">
+              <div className="mb-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-4 text-center">
 
+                <p className="mb-2 text-[13px] font-semibold text-[var(--oh-text-secondary)]">
+                  Tender amount <span className="font-normal text-[var(--oh-muted)]">(optional)</span>
+                </p>
                 <span className="text-[36px] font-bold leading-none tracking-tight text-[var(--oh-text)]">
 
                   {formatDisplay(tenderInput)}
 
                 </span>
+                <p className="mt-2 text-[13px] text-[var(--oh-muted)]">
+                  Enter a value to split the payment. Cash is rounded to the nearest 5c.
+                </p>
 
               </div>
 
@@ -457,13 +463,15 @@ export function FinaliseSalePage() {
 
                       type="button"
 
+                      aria-label={key === "backspace" ? "Delete last digit" : key === "." ? "Decimal point" : `Enter ${key}`}
+
                       disabled={phase !== "idle"}
 
                       onClick={() => (key === "backspace" ? backspace() : appendDigit(key))}
 
                       className={cn(
 
-                        "flex h-12 cursor-pointer items-center justify-center rounded-[var(--oh-radius)] text-[20px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-[22px]",
+                        "flex h-12 cursor-pointer items-center justify-center rounded-[var(--oh-radius)] text-[20px] font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-[22px]",
 
                         isSpecial
 
@@ -515,11 +523,10 @@ export function FinaliseSalePage() {
 
                   className={cn(
 
-                    "cursor-pointer rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 py-3 text-[13px] font-semibold leading-snug text-[var(--oh-text)] transition-colors sm:px-3 sm:py-4 sm:text-[13px]",
+                    "min-h-12 cursor-pointer rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 py-3 text-[13px] font-semibold leading-snug text-[var(--oh-text)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] sm:px-3 sm:py-4 sm:text-[13px]",
 
                     "hover:border-[var(--oh-orange)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50",
 
-                    phase === "processing" && "animate-pulse",
 
                   )}
 
@@ -663,7 +670,7 @@ export function FinaliseSalePage() {
 
                   onClick={completeAndReturn}
 
-                  className="mt-4 cursor-pointer rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
+                  className="mt-4 min-h-11 cursor-pointer rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-6 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
 
                 >
 
@@ -801,7 +808,7 @@ function FinaliseSidebar({
 
               onClick={() => sell.setCustomer(null)}
 
-              className="cursor-pointer text-[var(--oh-muted)] hover:text-[var(--oh-danger)]"
+              className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
 
             >
 
@@ -819,7 +826,7 @@ function FinaliseSidebar({
 
             onClick={onAddCustomer}
 
-            className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-2.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+            className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-2.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
 
           >
 
@@ -1011,7 +1018,7 @@ function FinaliseSidebar({
 
           onClick={onReturn}
 
-          className="w-full cursor-pointer border-t border-[var(--oh-border)] bg-[var(--oh-navy)] py-4 pr-16 text-[14px] font-semibold uppercase tracking-wide text-white transition-colors hover:brightness-110 lg:pr-4"
+          className="min-h-12 w-full cursor-pointer border-t border-[var(--oh-border)] bg-white px-4 py-3 text-[14px] font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-orange)]"
 
         >
 
@@ -1182,4 +1189,3 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
   );
 
 }
-
