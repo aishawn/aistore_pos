@@ -339,8 +339,19 @@ def main() -> None:
     if not credentials_configured():
         save_status({**status, "configured": False, "state": "not_configured", "checkedAt": now_iso(), "timezone": TIMEZONE_NAME, "scheduleEnabled": SCHEDULE_ENABLED})
         LOG.warning("R2 credentials are not configured; archive worker is idle")
-    elif not current_snapshot_exists():
-        run_sync("initial")
+    else:
+        now = datetime.now(TIMEZONE)
+        save_status({
+            **status,
+            "configured": True,
+            "scheduleEnabled": SCHEDULE_ENABLED,
+            "timezone": TIMEZONE_NAME,
+            "nextRunAt": next_run(now).isoformat(timespec="seconds") if SCHEDULE_ENABLED else None,
+            "nextAttemptAt": status.get("nextAttemptAt") if SCHEDULE_ENABLED else None,
+            "checkedAt": now_iso(),
+        })
+        if not current_snapshot_exists():
+            run_sync("initial")
 
     while True:
         try:
