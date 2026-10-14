@@ -709,7 +709,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           <nav className="hidden w-[220px] shrink-0 overflow-y-auto border-r border-[var(--oh-border)] bg-[#eef3f8] md:block">
             <ul className="py-2">
               {SECTIONS.map(({ id, label, Icon }) => (
