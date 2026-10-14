@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-14T09:31:30Z",
+  "deployment": "060dc899c6fe2ea1aa31aa1490980f5280e2dea1",
+  "sourceCommit": "060dc899c6fe2ea1aa31aa1490980f5280e2dea1",
+  "target": "https://app.orithos.com.au",
+  "scope": "authenticated read-only route and responsive rendering checks; no writes",
+  "viewports": [390, 1440],
+  "passed": 8,
+  "failed": 0,
+  "results": [
+    { "route": "/settings/pricesets", "viewports": [390, 1440], "status": "PASS", "emptyState": "No price sets" },
+    { "route": "/promotion/categories", "viewports": [390, 1440], "status": "PASS", "emptyState": "No promotion categories" },
+    { "route": "/giftcards", "viewports": [390, 1440], "status": "PASS", "emptyState": "No gift cards" },
+    { "route": "/giftcards/import", "viewports": [390, 1440], "status": "PASS", "state": "Import instructions and file upload page visible" }
+  ],
+  "layout": "All checked routes had document and body widths equal to the viewport.",
+  "limitations": [
+    "Price sets, promotion categories and gift card lists were empty; populated list operations were not exercised.",
+    "Gift card import was not submitted; no file was uploaded and no gift cards were written."
+  ]
+}
