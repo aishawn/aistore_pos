@@ -8,8 +8,8 @@
 
 | 项目 | 当前状态 | 完成证据 |
 |---|---|---|
-| Git、origin、Dokploy SHA 一致 | **BLOCKED** | 当前 `HEAD`/`origin` 为 `846a4ca`，交接快照记录的 Dokploy Done 为 `e8d7252`；需完成一次部署并记录精确 SHA |
-| 26 页生产回归 | PASS | 最新页面矩阵、设置、布局和交互 UAT JSON |
+| Git、origin、Dokploy SHA 一致 | **BLOCKED** | 当前 `HEAD`/`origin` 为 `74431c4`；需在 Dokploy 记录对应 Done 部署并确认工作区无未提交变更 |
+| 生产页面与安全回归 | PASS | 页面矩阵、30 页 × 2 视口布局、设置、交互、安全响应头和匿名访问 UAT JSON |
 | Odoo 会话自动恢复与登出拒绝 | PASS | `UAT_ODOO_AUTORECOVER_2026-10-13.json` |
 | 班次 `orithos_store1/00004` 整班对账 | **BLOCKED** | 需要只读导出销售/退款/支付流水并与 Odoo 对账 |
 | 现金实点与班次关账 | **BLOCKED** | 店主实点现金、确认差异后，记录关账结果和新班次状态 |
