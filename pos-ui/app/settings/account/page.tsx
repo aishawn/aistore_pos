@@ -63,8 +63,8 @@ export default function AccountSecurityPage() {
           </div>
         </div>
         <dl className="mt-5 grid gap-4 border-t border-[var(--oh-border)] pt-4 sm:grid-cols-3">
-          <div><dt className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Name</dt><dd className="mt-1 text-sm font-medium text-[var(--oh-text)]">{user?.name || "—"}</dd></div>
-          <div><dt className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Username</dt><dd className="mt-1 text-sm font-medium text-[var(--oh-text)]">{user?.username || "—"}</dd></div>
+          <div><dt className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Name</dt><dd className="mt-1 break-words text-sm font-medium text-[var(--oh-text)]">{user?.name || "—"}</dd></div>
+          <div><dt className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Username</dt><dd className="mt-1 break-words text-sm font-medium text-[var(--oh-text)]">{user?.username || "—"}</dd></div>
           <div><dt className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Email</dt><dd className="mt-1 break-all text-sm font-medium text-[var(--oh-text)]">{user?.email || "Not set"}</dd></div>
         </dl>
       </section>
@@ -93,9 +93,9 @@ export default function AccountSecurityPage() {
 
           {error && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{error}</p>}
           {notice && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">{notice}</p>}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs leading-5 text-[var(--oh-muted)]">Forgot your current password? Use Forgot password on the sign-in page, or ask an administrator for a reset link.</p>
-            <button type="submit" disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <p className="max-w-xl text-xs leading-5 text-[var(--oh-muted)]">Forgot your current password? Use Forgot password on the sign-in page, or ask an administrator for a reset link.</p>
+            <button type="submit" disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">
               {busy && <LoaderCircle size={16} className="animate-spin" />}{busy ? "Updating…" : "Update password"}
             </button>
           </div>
