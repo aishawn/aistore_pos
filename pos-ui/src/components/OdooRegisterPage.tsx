@@ -583,7 +583,7 @@ export function OdooRegisterPage() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
         <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           {saleView === "sell" ? (
             <>
@@ -616,7 +616,7 @@ export function OdooRegisterPage() {
               <div className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
                 {products.length ? (
                   <div className="flex min-h-full flex-col">
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                       {products.map((product) => {
                         const fullName = product.display_name || product.name;
                         const label = friendlyProductLabel(fullName);
@@ -734,7 +734,7 @@ export function OdooRegisterPage() {
           </div>
         </section>
 
-        <section className="flex w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:w-[400px] lg:shrink-0">
+        <section className="flex w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:w-[400px] xl:shrink-0">
           <div className="flex h-14 shrink-0 items-center border-b border-[var(--oh-border)] px-1">
             {customer ? (
               <>
