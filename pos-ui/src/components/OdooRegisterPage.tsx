@@ -557,12 +557,12 @@ export function OdooRegisterPage() {
               ))}
             </select>
             <span className="hidden truncate text-xs text-[var(--oh-text-secondary)] sm:inline">{sessionOpen ? "Open" : "Closed"}</span>
-            <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
+            <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" aria-label="Refresh register data" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             </button>
           </div>
           {lines.length > 0 && (
-            <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] shadow-sm hover:bg-[var(--oh-orange-light)] disabled:opacity-50">
+            <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] shadow-sm hover:bg-[var(--oh-orange-light)] disabled:opacity-50">
               <Archive size={15} /> Park
             </button>
           )}
@@ -573,13 +573,13 @@ export function OdooRegisterPage() {
       {!selectedConfig?.session && (
         <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
           <span>No open session — open one in Odoo, then refresh.</span>
-          <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Odoo POS</a>
+          <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Odoo POS</a>
         </div>
       )}
       {error && (
         <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
           <span>{error}</span>
-          <button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="font-bold">×</button>
+          <button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="grid h-11 w-11 shrink-0 place-items-center rounded-md font-bold hover:bg-red-100">×</button>
         </div>
       )}
 
@@ -602,7 +602,7 @@ export function OdooRegisterPage() {
                   aria-label="POS category"
                   value={categoryId ?? ""}
                   onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)}
-                  className="hidden h-9 max-w-[160px] rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-xs font-medium text-[var(--oh-text)] sm:block"
+                  className="hidden h-11 max-w-[160px] rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-xs font-medium text-[var(--oh-text)] sm:block"
                 >
                   <option value="">All categories</option>
                   {posCategories.map((category) => (
@@ -683,8 +683,8 @@ export function OdooRegisterPage() {
                         {sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}
                       </p>
                       <div className="mt-3 flex gap-2">
-                        <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
-                        <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-9 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:text-red-700">Discard</button>
+                        <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
+                        <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:text-red-700">Discard</button>
                       </div>
                     </article>
                   ))}
@@ -742,7 +742,7 @@ export function OdooRegisterPage() {
                   <span className="oh-type-body ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--oh-primary)] font-bold text-white">{customer.name.charAt(0)}</span>
                   <span className="oh-type-body-strong mx-2 truncate text-[var(--oh-text)]">{customer.name}</span>
                 </button>
-                <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="mr-2 grid h-8 w-8 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"><X size={18} /></button>
+                <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="mr-2 grid h-11 w-11 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"><X size={18} /></button>
               </>
             ) : (
               <label className="flex h-full flex-1 cursor-text items-center">
@@ -791,12 +791,12 @@ export function OdooRegisterPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 pl-9">
                     <div className="flex items-center gap-1">
-                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={15} /></button>
-                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-9 w-9 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={15} /></button>
-                      <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={16} /></button>
+                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={15} /></button>
+                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={15} /></button>
+                      <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={16} /></button>
                     </div>
                     <label className="oh-type-label flex items-center gap-2 text-[var(--oh-text-secondary)]">Pack
-                      <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="oh-type-label h-9 rounded-md border border-[var(--oh-border)] bg-white px-2 font-semibold text-[var(--oh-text)]">
+                      <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="oh-type-label h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-semibold text-[var(--oh-text)]">
                         {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each" : `Case ×${size}`}</option>)}
                       </select>
                     </label>
