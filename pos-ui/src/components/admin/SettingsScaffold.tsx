@@ -214,6 +214,7 @@ export function SettingsScaffold({
   sectionIcon,
   subSectionTitle = "General",
   showSubSectionTitle = true,
+  showSearch = true,
   showSave = true,
   tabs,
   subTabs,
@@ -224,6 +225,7 @@ export function SettingsScaffold({
   sectionIcon?: React.ReactNode;
   subSectionTitle?: string;
   showSubSectionTitle?: boolean;
+  showSearch?: boolean;
   showSave?: boolean;
   tabs?: SettingsTab[];
   subTabs?: SettingsTab[];
@@ -239,12 +241,14 @@ export function SettingsScaffold({
       <div className="w-full">
         <h1 className="oh-type-display mb-4 text-[var(--oh-text)]">{title}</h1>
         <div className="flex flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
-          <div className="p-4">
-            <input
-              placeholder="Search settings..."
-              className="h-[48px] w-full max-w-md rounded-lg border border-[var(--oh-border)] px-4 text-[16px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
-            />
-          </div>
+          {showSearch && (
+            <div className="p-4">
+              <input
+                placeholder="Search settings..."
+                className="h-[48px] w-full max-w-md rounded-lg border border-[var(--oh-border)] px-4 text-[16px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
+              />
+            </div>
+          )}
           {tabs && tabs.length > 0 && (
             <div className="flex border-b border-[var(--oh-border)]">
               {tabs.map((t) => {

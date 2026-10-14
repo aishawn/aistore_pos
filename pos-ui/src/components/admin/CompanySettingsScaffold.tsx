@@ -17,10 +17,14 @@ export function CompanySettingsScaffold({
   subSectionTitle,
   activeHref,
   children,
+  showSearch = true,
+  showSave = true,
 }: {
   subSectionTitle: string;
   activeHref: string;
   children: React.ReactNode;
+  showSearch?: boolean;
+  showSave?: boolean;
 }) {
   const tabs = COMPANY_SETTINGS_TABS.map((tab) => ({
     label: tab.label,
@@ -39,6 +43,8 @@ export function CompanySettingsScaffold({
       title="General Settings"
       sectionTitle="Company Settings"
       subSectionTitle={subSectionTitle}
+      showSearch={showSearch}
+      showSave={showSave}
       tabs={tabs}
       subTabs={subTabs}
     >
