@@ -192,10 +192,13 @@ export function OdooReplenishmentPage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock. Draft RFQs require human approval — nothing auto-orders.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-xs font-medium text-[var(--oh-muted)]"><CalendarRange size={15} /> Cover</label>
-          <select id="coverage-days" value={coverageDays} onChange={(event) => setCoverageDays(Number(event.target.value))} className="-ml-2 h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-medium text-[var(--oh-text)]">
-            {coverageOptions.map((days) => <option key={days} value={days}>{days} days</option>)}
-          </select>
+          <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white pl-3 pr-2 text-sm font-medium text-[var(--oh-muted)]">
+            <CalendarRange size={16} aria-hidden="true" />
+            <span>Coverage</span>
+            <select id="coverage-days" value={coverageDays} onChange={(event) => setCoverageDays(Number(event.target.value))} aria-label="Coverage target" className="h-full min-w-24 border-0 bg-transparent pl-1 pr-2 text-sm font-semibold text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--oh-primary)]">
+              {coverageOptions.map((days) => <option key={days} value={days}>{days} days</option>)}
+            </select>
+          </label>
           <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">{refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
       </header>
