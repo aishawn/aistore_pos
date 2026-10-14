@@ -11,6 +11,7 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
 const base = "https://app.orithos.com.au";
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
@@ -44,17 +45,34 @@ try {
   if (data.state === "success" && data.snapshot?.databaseIntegrity !== "ok") {
     throw new Error("Successful snapshot does not report SQLite integrity=ok");
   }
+  const files = data.snapshot?.files ?? [];
+  if (data.state === "success") {
+    if (!files.some((file) => file.name === "shopfront.sqlite3")) throw new Error("Verified snapshot is missing shopfront.sqlite3");
+    if (!files.some((file) => file.name === "manifest.json")) throw new Error("Verified snapshot is missing manifest.json");
+    if (files.some((file) => !Number.isFinite(file.sizeBytes) || file.sizeBytes <= 0 || !/^[a-f0-9]{64}$/i.test(file.sha256 ?? ""))) {
+      throw new Error("A verified snapshot file has an invalid size or SHA-256");
+    }
+  }
   if (!/^\d{2}:\d{2}$/.test(data.scheduleTime ?? "") || !data.timezone) {
     throw new Error("Configured daily schedule is missing from the archive status");
   }
   safeStatus = {
     configured: data.configured,
     state: data.state,
+    reason: data.reason ?? null,
     lastSuccessAt: data.lastSuccessAt ?? null,
     nextRunAt: data.nextRunAt ?? null,
+    nextAttemptAt: data.nextAttemptAt ?? null,
     timezone: data.timezone ?? null,
     scheduleTime: data.scheduleTime ?? null,
-    snapshotFileCount: data.snapshot?.files?.length ?? 0,
+    snapshotId: data.snapshotId ?? null,
+    snapshot: data.snapshot ? {
+      syncedAt: data.snapshot.syncedAt ?? null,
+      manifestSha256: data.snapshot.manifestSha256 ?? null,
+      databaseIntegrity: data.snapshot.databaseIntegrity ?? null,
+      files,
+    } : null,
+    snapshotFileCount: files.length,
     databaseIntegrity: data.snapshot?.databaseIntegrity ?? null,
     lastErrorCode: data.lastErrorCode ?? null,
   };
@@ -94,7 +112,8 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA || null,
+  sourceCommit,
   scope: "production read-only R2 mirror integration status, authentication and responsive UI; no sync trigger or Odoo business writes",
   checks,
   status: safeStatus,

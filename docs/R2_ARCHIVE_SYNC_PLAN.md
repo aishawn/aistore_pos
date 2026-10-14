@@ -2,22 +2,20 @@
 
 更新时间：2026-10-14
 
-## 最新检查（2026-10-14 20:02，上海时间）
+## 最新检查（2026-10-14 20:05，上海时间）
 
-- 重新检查当前仓库根目录 `.env`（只查看变量名和是否非空，没有读取值）：没有配置 `R2_ENDPOINT`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 等 R2 变量；`v1/.env` 不存在。请确认你配置的是 `orithopos-master/.env`，但生产仍必须在 Dokploy Compose Environment 独立配置。仓库 `.env.example` 已列出全部必要变量。
-- 已发现并修正 worker 镜像的时区可靠性：Alpine worker 镜像显式安装 `tzdata`；若配置时区不可用，worker 现在会明确失败，不再静默退回 UTC。此前静默回退可能导致日程按错误时区执行。
-- 已补齐同步失败的运维反馈：管理员状态 API 允许安全返回 `nextAttemptAt`（仅时间字段），状态卡会显示自动重试时间；无自动重试时提示检查 worker 配置，不暴露 R2 凭据。
-- 源码改动尚未部署；本轮没有本地 build。推送后需在 Dokploy 确认 worker 镜像重建和服务正常，再做线上验收。
-- 现有功能仍只是私有归档镜像。仓库中未发现 Shopfront `manifest.json` 样本，且尚无成功下载的 SQLite；因此还不能核对真实 manifest 校验字段或数据库 schema，也不能把归档数据展示成 POS 商品/库存/销售数据。
+- 生产 R2 已成功配置并完成首轮自动同步：`configured=true`、`state=success`、`reason=initial`；2026-10-14 22:33:56 `Australia/Adelaide` 完成，快照含 6 个文件，SQLite `quick_check=ok`。SQLite 对象大小 250,114,048 字节；manifest、4 份 CSV 报表和数据库均记录了 SHA-256。下次计划为 2026-10-15 03:30 `Australia/Adelaide`。见 [R2 生产 UAT](UAT_R2_ARCHIVE_2026-10-14.json)。
+- 首轮成功证明线上某套 R2 凭据可用，但不能核实其是否已轮换聊天中曾公开的旧 key；请确认旧 key 已撤销。当前工作区根 `.env` 仍未发现 R2 变量（仅核对变量名/是否非空），而 Dokploy 线上状态已 configured；确认本地配置文件路径为 `orithopos-master/.env`。
+- 代码已补 worker 镜像 `tzdata` 并取消时区缺失时静默 fallback UTC；同步失败状态 UI/API 显示安全的 `nextAttemptAt`。这些改动已推送，Dokploy 精确部署 SHA 仍未核实；本地未 build。
+- 本轮首次匿名状态请求曾短暂返回 502，立即复测后恢复为预期 401；需要观察这是否与 Dokploy 自动部署窗口有关。
+- **仍未把归档内容变成 POS 业务数据/页面**：当前状态卡只列文件名/大小/hash。我们还没有读取 manifest 的实际校验结构，也没有核对数据库 schema/CSV 字段，因此不能映射为商品、库存或销售数据。下一步先安全提取 schema/manifest 元数据并评审只读展示的数据口径，再做 POS 报表页面；不直接写 Odoo。
 
-### 启用每日拉取的必要配置与验收
+### 每日拉取剩余验收
 
-1. 轮换聊天里暴露过的旧 key；仅把新 key 放进 `orithopos-master/.env` 的本地私密配置和 Dokploy Compose Environment。必须设置 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`；其余使用 `R2_PREFIX=shopfront/`、`R2_DATABASE_KEY=shopfront/shopfront.sqlite3`、`R2_MANIFEST_KEY=shopfront/manifest.json` 默认值即可。
-2. 确认 `R2_SYNC_TIMEZONE`、`R2_SYNC_HOUR`、`R2_SYNC_MINUTE` 与上传任务时区和完成时间相符。当前默认每日 03:30 Australia/Adelaide；上游“02:30”时区尚未确认。
-3. Dokploy 保留现有 `shopfront-archive` 持久卷，禁止 Fresh Volume/重置卷。单个快照上限 2 GiB、保留至少两份，下载 staging 会额外占用空间；主机磁盘应预留足够容量。
-4. 部署后等 `/api/r2-archive/status` 显示 configured，再手动触发首轮同步。核实 manifest、文件数量/大小/SHA-256、SQLite `quick_check=ok`、状态时区为 Adelaide；检查失败时旧快照保留。
-5. 验证容器重启/普通部署后快照仍在，再观察连续两个计划周期成功。完成前不要称为每日同步已启用。
-6. 若要让老板在 POS 页面使用 Shopfront 数据，先只读盘点 SQLite schema、门店/时区、商品/库存/销售字段和权限；再设计独立只读报表或经过人工审阅的 Odoo 导入映射。当前没有这层数据读取/业务映射，不能通过配置 key 自动实现。
+1. 保持 Compose `shopfront-archive` 卷不变，不选择 Fresh Volume；为当前快照（两份保留）和 staging 留够磁盘空间（单快照限制 2 GiB）。
+2. 等 2026-10-15 03:30 Adelaide 计划周期结束，确认下一次成功时间、新快照 ID、文件哈希和 SQLite `quick_check=ok`；之后再确认第三个周期或至少重启后快照仍在，才能称日常任务稳定。
+3. 核对上游 02:30 的时区/结束时间；当前已设 Adelaide 03:30，但两者关系尚未由上游运行时证据证实。
+
 
 
 ## 目标
@@ -39,7 +37,7 @@ Odoo 是 Orithos 当前商品、库存、客户、采购、销售和 POS 班次�
 
 如需商品或库存进入 Odoo，必须先完成字段映射、主键/条码冲突检查、价格/GST/包装单位核对、门店与库存位置映射，并通过预览/人工确认导入；不能把整库覆盖到现有业务库。
 
-## 已实现并部署（实际 R2 下载待配置验证）
+## 已实现能力与生产实测边界
 
 - 已增加独立 Python worker，凭据只注入 worker；缺少凭据时 worker idle，后端不接触 R2 密钥。
 - worker 默认在 Australia/Adelaide 每日 03:30 拉取（需确认上传任务时区）；缺少当前快照时启动即执行首轮下载。
@@ -50,13 +48,13 @@ Odoo 是 Orithos 当前商品、库存、客户、采购、销售和 POS 班次�
 
 ## 当前状态与待办
 
-- R2 worker、后端管理员状态/触发 API、集成页卡片已部署；最新生产部署 `05dffdb`。本轮未做本地 build。
-- 最新生产 UAT 6/6：匿名 GET `/api/r2-archive/status` 为 401；管理员 API 返回 `configured=false, state=not_configured`，未暴露密钥字段；390px 和 1440px 页面无横向溢出；未触发同步。证据：[UAT_R2_ARCHIVE_2026-10-14.json](UAT_R2_ARCHIVE_2026-10-14.json)。
-- 用户提到的上游 `r2_sync.py`、`run-daily.ps1` 和 Shopfront 工作目录位于另一台机器/路径，本工作区不可用；当前项目只能消费 R2 对象，不能复用上游本地文件。
-- 仍需在 Dokploy 配置 `R2_ENDPOINT`、`R2_BUCKET`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`。生产状态当前 `configured=false`；本机 `.env` 也没有这些变量。聊天中共享的密钥建议轮换后再填入 Dokploy；不得写入 Git、应用日志或前端变量。
-- 默认目标为私有只读归档镜像；商品/库存/销售绝不自动导入 Odoo。
-- 上游计划为 02:30；代码默认 03:30 Australia/Adelaide，必须确认上传任务时区和结束时间后再最终设定。
-- 尚待首轮 R2 成功同步、连续两个计划周期、快照/状态重启持久性、非管理员拒绝和上游 schema/报表字段盘点。当前 UAT 已验证匿名用户拒绝。
+- R2 worker、管理员状态/触发 API、集成页和独立 `shopfront-archive` 持久卷已在应用架构中。生产最近一次只读 UAT 实测 configured=true / success，首轮同步 6 个对象且 DB quick_check=ok。UAT 记录源代码 SHA；Dokploy 精确部署 SHA 尚未核实。
+- 当前根目录 `.env` 没有 R2 配置键（只检查键名和是否非空）；线上运行凭据已可用。凭据不得进入 Git、前端、UAT、日志或聊天。旧 key 是否轮换仍待用户确认。
+- worker 镜像已提交 `tzdata` 安装和时区配置 fail-fast；controller/UI 已提交安全返回并显示 `nextAttemptAt`。需通过 Dokploy 日志/部署详情确认这些提交对应的新镜像已完成部署。
+- 首轮成功快照时间、6 个文件名/大小/SHA-256、Adelaide 时区、03:30 下次计划和 SQLite `quick_check` 见 UAT。还需等下一计划周期，验证定时触发产生新快照；另外检查普通容器重启/部署后命名卷中的 CURRENT 和快照仍在。
+- worker 没有解析 manifest 的内部 checksum 结构；目前通过 S3 ETag/大小、独立 SHA-256 和 SQLite quick_check 验证。首次成功后需审阅 manifest 实际字段，再补上 manifest checksum 对照（若其中提供）。
+- 归档不向 POS 业务页面提供 CSV/SQLite 查询，未把 Shopfront 销售/库存更新到 POS 或 Odoo。需要后续只读 schema/字段盘点、权限和门店时区映射，再决定报告页；任何业务导入另行评审。
+- 上传方声称约 02:30，时区和任务完成时间未核实；当前调度是 03:30 Australia/Adelaide。需确认是否留有充分缓冲。
 
 ## 验收标准
 
