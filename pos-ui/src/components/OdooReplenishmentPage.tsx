@@ -241,14 +241,14 @@ export function OdooReplenishmentPage() {
                 {expandedReasonId === product.id && <ul className="ml-1 list-disc space-y-1 pl-4 text-sm leading-5 text-[var(--oh-text-secondary)]">{(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => <li key={part}>{part}</li>)}</ul>}
               </article>)}
         </div>
-        <div className="hidden min-h-0 flex-1 overflow-auto xl:block">
+        <div className="hidden min-h-0 flex-1 overflow-auto xl:block xl:min-h-[104px]">
         <table className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
               <tr><th className="px-4 py-3">Product</th><th className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th className="px-4 py-3 text-right">Forecast / day</th><th className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th><th className="px-4 py-3 text-right">On hand</th><th className="px-4 py-3 text-right">Forecast stock</th><th className="px-4 py-3 text-right">Stock cover</th><th className="px-4 py-3 text-right">Suggested order</th><th className="px-4 py-3">Why</th></tr>
             </thead>
             <tbody className="divide-y divide-[var(--oh-border)]">
               {loading && !data ? <tr><td colSpan={9} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
-                : !visibleItems.length ? <tr><td colSpan={9} className="px-4 py-16 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
+                : !visibleItems.length ? <tr><td colSpan={9} className="px-4 py-5 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
                   : visibleItems.map((product) => <tr key={product.id} className="hover:bg-sky-50/40">
                     <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]">{product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{product.sku ? `SKU ${product.sku} · ` : ""}{product.unit}</span></td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
@@ -259,7 +259,7 @@ export function OdooReplenishmentPage() {
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
                     <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[#fff2da] px-2.5 py-1 text-xs font-bold tabular-nums text-[#8b4a00]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
-                      <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="font-semibold text-[var(--oh-orange-dark)] hover:underline">
+                      <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange-dark)] hover:underline">
                         {expandedReasonId === product.id ? "Hide" : "Explain"}
                       </button>
                       {expandedReasonId === product.id && (
