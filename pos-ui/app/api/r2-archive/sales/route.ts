@@ -50,7 +50,7 @@ function currentDatabase() {
   const metadataPath = path.join(root, "snapshot.json");
   const databasePath = path.join(root, "shopfront", "shopfront.sqlite3");
   if (!fs.existsSync(metadataPath)) {
-    console.error("R2 mounted snapshot path check", JSON.stringify({ dataDir: DATA_DIR, snapshotId, rootExists: fs.existsSync(root), snapshotsExists: fs.existsSync(path.join(DATA_DIR, "snapshots")) }));
+    console.error("R2 mounted snapshot path check", JSON.stringify({ dataDir: DATA_DIR, snapshotId, rootExists: fs.existsSync(root), snapshotsExists: fs.existsSync(path.join(DATA_DIR, "snapshots")), rootEntries: fs.existsSync(root) ? fs.readdirSync(root).slice(0, 8) : [] }));
     throw new Error("R2 snapshot metadata is missing from the mounted archive");
   }
   if (!fs.existsSync(databasePath)) throw new Error("R2 SQLite database is missing from the mounted archive");
