@@ -234,7 +234,7 @@ export default function UsersSettingsPage() {
                 <button
                   type="button"
                   onClick={() => void copyText(lastInviteUrl, "invite")}
-                  className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold"
                 >
                   {copied === "invite" ? <Check size={16} /> : <Copy size={16} />}
                   {copied === "invite" ? "Copied" : "Copy link"}
@@ -276,7 +276,7 @@ export default function UsersSettingsPage() {
               <button
                 type="button"
                 onClick={() => void copyText(lastResetUrl, "reset")}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold"
               >
                 {copied === "reset" ? <Check size={16} /> : <Copy size={16} />}
                 {copied === "reset" ? "Copied" : "Copy link"}
@@ -331,7 +331,7 @@ export default function UsersSettingsPage() {
                           type="button"
                           disabled={busy}
                           onClick={() => void issueReset(staff.id)}
-                          className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60"
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60"
                         >
                           {busy ? <LoaderCircle size={15} className="animate-spin" /> : <KeyRound size={15} />}
                           {busy ? "Creating reset link…" : "Create reset link"}
@@ -373,7 +373,7 @@ export default function UsersSettingsPage() {
                               type="button"
                               disabled={actionBusyId === String(staff.id)}
                               onClick={() => void issueReset(staff.id)}
-                              className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-xs font-semibold hover:bg-[var(--oh-surface)] disabled:opacity-60"
+                              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-xs font-semibold hover:bg-[var(--oh-surface)] disabled:opacity-60"
                             >
                               {actionBusyId === String(staff.id) ? <LoaderCircle size={14} className="animate-spin" /> : <KeyRound size={14} />}
                               Reset link

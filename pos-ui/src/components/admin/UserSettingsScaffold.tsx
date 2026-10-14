@@ -18,6 +18,7 @@ export function UserSettingsScaffold({ children }: { children: React.ReactNode }
       sectionTitle="Users"
       sectionIcon={<UsersIcon size={24} strokeWidth={1.75} />}
       showSubSectionTitle={false}
+      showSearch={false}
       tabs={tabs}
     >
       {children}
