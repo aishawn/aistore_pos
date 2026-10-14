@@ -132,6 +132,39 @@ try {
       if ((await statementSettings.count()) !== 3) throw new Error("Statement settings do not distinguish all three disconnected email preferences");
       await page.getByRole("link", { name: /Open customer balances/ }).waitFor({ timeout: 10000 });
       checks.push(`/settings/statements: preview link, explicit disconnected preferences and no overflow at ${width}px`);
+
+      await page.goto(`${base}/settings/pricesets`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("heading", { name: "Price Sets" }).waitFor({ timeout: 15000 });
+      await page.getByText("Price sets and product prices are managed separately").waitFor({ timeout: 10000 });
+      const priceSetsLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (priceSetsLayout.document > priceSetsLayout.viewport) throw new Error(`/settings/pricesets overflows at ${width}px: ${JSON.stringify(priceSetsLayout)}`);
+      await page.getByRole("link", { name: /Manage price lists/ }).waitFor({ timeout: 10000 });
+      await page.getByRole("button", { name: /Add price set/ }).waitFor({ timeout: 10000 });
+      checks.push(`/settings/pricesets: live management entry, separate price-list notice and no overflow at ${width}px`);
+
+      await page.goto(`${base}/settings/rules`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("status").getByText("These rules are not configured here").waitFor({ timeout: 15000 });
+      const ruleCards = page.locator('[aria-labelledby="rule-status-heading"] ul > li');
+      const rulesLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (rulesLayout.document > rulesLayout.viewport) throw new Error(`/settings/rules overflows at ${width}px: ${JSON.stringify(rulesLayout)}`);
+      if ((await ruleCards.count()) !== 4) throw new Error("Page Rules does not explain all four unconfigured controls");
+      checks.push(`/settings/rules: honest control status and no overflow at ${width}px`);
+
+      await page.goto(`${base}/settings/users`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.getByRole("heading", { name: "Store users" }).waitFor({ timeout: 15000 });
+      const usersLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+      if (usersLayout.document > usersLayout.viewport) throw new Error(`/settings/users overflows at ${width}px: ${JSON.stringify(usersLayout)}`);
+      if (width < 1280) {
+        if (await page.locator("table:visible").count()) throw new Error("Users table is visible at mobile width");
+        if (!(await page.locator('ul[class*="xl:hidden"] > li').count())) throw new Error("Mobile user cards are missing");
+        checks.push(`/settings/users: staff cards and no overflow at ${width}px`);
+      } else {
+        if (await page.locator('ul[class*="xl:hidden"]').isVisible()) throw new Error("Mobile user cards are visible at desktop width");
+        for (const header of ["Name", "Username", "Email", "Role", "Status", "Actions"]) {
+          await page.getByRole("columnheader", { name: header, exact: true }).waitFor({ timeout: 10000 });
+        }
+        checks.push(`/settings/users: semantic staff table and no overflow at ${width}px`);
+      }
     } finally {
       await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
       await context.close();
