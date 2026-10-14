@@ -163,6 +163,27 @@ function formatInventory(p: Product) {
     </span>
   );
 }
+
+function ProductDetails({ product }: { product: Product }) {
+  const details = [
+    product.categoryName?.trim(),
+    formatAbv(product),
+    formatVolume(product),
+    formatLiquorText(product, product.region),
+    formatLiquorText(product, product.vintage),
+  ].filter((value): value is string => Boolean(value && value !== "—"));
+
+  return (
+    <div className="min-w-0" title={product.name}>
+      <div className="truncate text-[13px] font-medium text-[var(--oh-text)]">{product.name}</div>
+      {details.length > 0 && (
+        <div className="mt-1 truncate text-xs leading-4 text-[var(--oh-muted)]" title={details.join(" · ")}>
+          {details.join(" · ")}
+        </div>
+      )}
+    </div>
+  );
+}
 const toOptions = (rows?: Named[] | null): SelectOption[] =>
   (rows ?? []).map((r) => ({
     label: r.productCount != null ? `${r.name} (${r.productCount})` : r.name,
@@ -468,18 +489,13 @@ function ProductsPageInner() {
               align: "center",
               width: "w-[44px]",
             },
-            { label: "No.", align: "center", width: "w-[52px]" },
-            { label: "Status", align: "center" },
+            { label: "No.", align: "center", width: "w-[48px]" },
+            { label: "Status", align: "center", width: "w-[80px]" },
             { label: "Product" },
-            { label: "Category" },
-            { label: "ABV", align: "right", width: "w-[72px]" },
-            { label: "Volume", align: "right", width: "w-[88px]" },
-            { label: "Region" },
-            { label: "Vintage", align: "center", width: "w-[80px]" },
-            { label: "Cost", align: "right" },
-            { label: "Inventory", align: "center" },
-            { label: "Price", align: "right" },
-            { label: "Actions", align: "center" },
+            { label: "Cost", align: "right", width: "w-[84px]" },
+            { label: "Inventory", align: "center", width: "w-[96px]" },
+            { label: "Price", align: "right", width: "w-[88px]" },
+            { label: "Actions", align: "center", width: "w-[176px]" },
           ]}
           rows={items.map((p, i) => [
             <input
@@ -492,21 +508,17 @@ function ProductsPageInner() {
             />,
             (page - 1) * PAGE_SIZE + i + 1,
             <Status key="s" status={p.status} />,
-            <span key="n" className="text-[13px] font-medium">{p.name}</span>,
-            p.categoryName ?? "",
-            formatAbv(p),
-            formatVolume(p),
-            formatLiquorText(p, p.region),
-            formatLiquorText(p, p.vintage),
+            <ProductDetails key="n" product={p} />,
             money(p.cost),
             formatInventory(p),
             <PriceCell key="price" price={p.price} />,
-            <AdminRowActions
-              key="a"
-              onView={() => router.push(`/products/${p.id}/view`)}
-              onEdit={() => router.push(`/products/${p.id}/edit`)}
-              onDelete={() => setDeleting(p)}
-            />,
+            <div key="a" className="[&_button]:min-h-9 [&_button]:rounded [&_button]:px-1.5 [&_button]:py-2">
+              <AdminRowActions
+                onView={() => router.push(`/products/${p.id}/view`)}
+                onEdit={() => router.push(`/products/${p.id}/edit`)}
+                onDelete={() => setDeleting(p)}
+              />
+            </div>,
           ])}
         />
       </AsyncState>
