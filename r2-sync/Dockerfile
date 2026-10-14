@@ -4,7 +4,7 @@ RUN apk add --no-cache su-exec \
     && addgroup -S -g 1001 archive \
     && adduser -S -D -H -u 10001 -G archive archive \
     && mkdir -p /data \
-    && chown app:app /data
+    && chown archive:archive /data
 
 WORKDIR /app
 COPY requirements.txt ./
