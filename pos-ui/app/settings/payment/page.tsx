@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Info } from "lucide-react";
+import { Info, LoaderCircle } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { getOdooPosBootstrap, getOdooSession, type OdooPosBootstrap } from "@/lib/odoo-api";
 
@@ -65,7 +65,7 @@ export default function PaymentMethodsPage() {
     <AdminPageLayout
       title="Payment Methods"
       subtitle="Payment methods assigned to your Odoo POS registers"
-      count={rows.length}
+      count={loading || error ? undefined : rows.length}
       countLabel="Methods"
     >
       <section aria-label="Payment method source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
@@ -78,7 +78,10 @@ export default function PaymentMethodsPage() {
           {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
         </div>
       ) : loading ? (
-        <div className="py-16 text-center text-sm text-[var(--oh-muted)]">Loading Odoo payment methods…</div>
+        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
+          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
+          Loading Odoo payment methods…
+        </div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
           No payment methods are assigned to the Odoo POS registers available to this account.
