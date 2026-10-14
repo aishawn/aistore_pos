@@ -13,7 +13,7 @@
 - 尚未完成：实点现金并关账；真实供应商/RFQ/收货验收；POS 价目表、GST 和门店库存位置口径核对；SMTP 与打印机/钱箱接入；AI 只读试点。AI 保持关闭。
 - Dokploy 曾对 `4b09d19` 与 `319125d` 出现重复 Done 行，根因未查明；最新 `bf811ae` 的部署已明确 Done。`5944f4c` 的收银 AI UX 改动已提交，但尚未确认生产部署；它不属于 `bf811ae` 的 UAT。
 - `npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。
-`npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。\n\n## 产品目标
+## 产品目标
 
 为澳洲独立酒类零售店提供简洁、可靠的 POS 和日常经营工作台：店员能快速完成收银，老板能掌握商品、库存、采购和销售，并逐步借助 AI 改善补货、定价和推荐。
 
@@ -94,7 +94,7 @@ Odoo 是业务数据唯一事实源。Orithos 负责简洁交互和增值能力�
 - 补货审批审计正在从仅浏览器存储改为随 Odoo 草稿 RFQ 保存为**内部 chatter note**：包含预测方法、覆盖天数、每款建议量/实际数量/理由；将数量改为 0 的建议仍记入审计但不会出现在采购行。生产 schema 查询确认 `purchase.order.note` 是供应商可见的 Terms and Conditions，因此没有将内部预测信息写进该字段；改用 `message_post` 的 `mail.mt_note`。采购详情页只显示内部审核消息的纯文本。Schema 只读证据见 [UAT_ODOO_PURCHASE_AUDIT_SCHEMA_2026-10-13.json](UAT_ODOO_PURCHASE_AUDIT_SCHEMA_2026-10-13.json)。UI mock 已跑；真实 RFQ 创建、内部消息权限和读取仍需安全测试供应商。
 - 当前可继续自主完成的生产验收已基本收敛。剩余关账需要实点现金和班次最终核对；供应商/RFQ 需要店主提供或确认测试对象；AI 需要模型预算；SMTP、打印机和钱箱需要各自配置/设备。不要用模拟数据替代这些生产验收。
 
-#`npm run lint` 为 0 errors、54 warnings。没有本地 build（Node 22 低于项目 Node 24）；本地 typecheck 因缺少 `.next/types/routes.js` 报错。本次 Dokploy 日志显示 Node 24 的 Next.js build 和 TypeScript 检查通过。\n\n## 产品目标指标（用于判断试点是否值得继续）
+## 产品目标指标（用于判断试点是否值得继续）
 
 - 收银金额、GST、支付与 Odoo 对账差异为 **0**；测试单退款与库存回滚结果一致。
 - 登录到 Odoo 的正常操作无需反复手工 Connect；会话过期时恢复或明确报错，不显示旧数据冒充新数据。
