@@ -53,7 +53,10 @@ function currentDatabase() {
     console.error("R2 mounted snapshot path check", JSON.stringify({ dataDir: DATA_DIR, snapshotId, rootExists: fs.existsSync(root), snapshotsExists: fs.existsSync(path.join(DATA_DIR, "snapshots")), rootEntries: fs.existsSync(root) ? fs.readdirSync(root).slice(0, 8) : [] }));
     throw new Error("R2 snapshot metadata is missing from the mounted archive");
   }
-  if (!fs.existsSync(databasePath)) throw new Error("R2 SQLite database is missing from the mounted archive");
+  if (!fs.existsSync(databasePath)) {
+    console.error("R2 mounted database path check", JSON.stringify({ snapshotId, rootEntries: fs.readdirSync(root).slice(0, 12), expectedDatabaseRelativePath: path.relative(root, databasePath) }));
+    throw new Error("R2 SQLite database is missing from the mounted archive");
+  }
   const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8")) as SnapshotMeta;
   if (metadata.databaseIntegrity !== "ok" || !/^[a-f0-9]{64}$/i.test(metadata.manifestSha256 ?? "")) {
     throw new Error("R2 snapshot integrity is not verified");
