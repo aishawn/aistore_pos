@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-10-14T14:48:00+08:00",
+  "environment": "Odoo aipos development/pilot database",
+  "status": "PASS_WITH_MOCK_FALLBACKS",
+  "source": {
+    "object": "s3://generate-image/shopfront/shopfront.sqlite3",
+    "bytes": 254558208,
+    "sha256": "2fc62e86c5f0fd1045a5c8f830c544dcc168b232bc384afd8d6eddcbd6625116",
+    "sqliteQuickCheck": "ok"
+  },
+  "import": {
+    "uniqueProducts": 4716,
+    "duplicateHistoricalRowsSkipped": 32,
+    "sourceActive": 4712,
+    "sourceInactive": 4,
+    "archivedDuplicateTemplates": 4,
+    "demoProductsArchived": 2,
+    "demoStockAdjustedToZero": 24,
+    "positiveStockProducts": 1089,
+    "positiveStockUnits": 46575.33,
+    "negativeSourceStockRowsNormalizedToMockZero": 1060,
+    "sourcePrices": 4572,
+    "mockCostFallbackPrices": 144,
+    "pricesGeneratedByAI": 0,
+    "sourceTax10Percent": 4603,
+    "mockTaxFallbackTo10Percent": 113,
+    "sourceRowsWithBarcode": 4573,
+    "retainedBarcodes": 4565,
+    "barcodeFieldsOmittedForOdooValidation": 8,
+    "salesReceiptsImported": 0,
+    "customersImported": 0,
+    "inventoryReconciliation": "Final quantities match source; stock counts are set idempotently rather than incremented"
+  },
+  "mockData": {
+    "priceFallback": "cost multiplier / median cost fallback; explicitly tagged MOCK_COST_FALLBACK",
+    "taxFallback": "10% GST mapping for missing/nonstandard source values, explicitly tagged MOCK",
+    "negativeStock": "normalized to zero and tagged MOCK",
+    "company": "Orithos Pilot Liquor Store (TEST), Adelaide SA; mock address; no ABN invented"
+  },
+  "operationalState": {
+    "posSession": "orithos_store1/00004 remains opened",
+    "salesRefundPurchasesReceiptsOrCloseCreatedThisImport": false
+  },
+  "verification": {
+    "importerSyntax": "PASS (python -m py_compile)",
+    "verifiedManifestAndDedupDryRun": "PASS (4716 products; 32 historical duplicates skipped)",
+    "fullProductionUAT": "See other UAT evidence; transaction creation and cash close against imported products are still pending"
+  },
+  "limitations": [
+    "DashScope TLS connection failed; fallback prices were deterministic MOCK values, not AI-generated.",
+    "R2 source availability and Odoo deployment are separate; this import is a development validation fixture, not production business data."
+  ]
+}

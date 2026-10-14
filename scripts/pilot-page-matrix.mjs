@@ -29,20 +29,20 @@ const pages = [
   { path: "/", expect: [/orithos_store1\/00004/, /12 avail/, /Finalise/] },
   { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
-  { path: "/products/odoo", expect: [/DEMO-SB-2024|Sauvignon Blanc/, /DEMO-SHIRAZ21|Barossa Shiraz/, /\b12\s*Units\b/i] },
+  { path: "/products/odoo", expect: [/R2 TEST \|/, /SKU R2-/] },
   { path: "/customers/odoo", expect: [/Customers|No customers|Walk-in|empty|0/i] },
   { path: "/customers/balances", expect: [/Customer Balances/i, /not connected to Odoo for this pilot/i, /not show legacy or sample balances/i] },
   { path: "/suppliers/odoo", expect: [/Suppliers|No suppliers|empty|0/i] },
   { path: "/purchases/odoo", expect: [/Purchases|No purchase|empty|RFQ|0/i] },
   { path: "/stock/replenishment", expect: [/Replenishment|suggest|0|no completed sales/i] },
   { path: "/reports/dashboard", expect: [/Reporting|Sales|transaction|\$/i] },
-  { path: "/reports/actions", expect: [/Actions report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
-  { path: "/reports/advanced", expect: [/Advanced report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
-  { path: "/reports/inventory", expect: [/Inventory report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
-  { path: "/reports/misc", expect: [/Miscellaneous report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
-  { path: "/reports/purchase", expect: [/Purchase report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
-  { path: "/reports/sales", expect: [/Sales report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
-  { path: "/reports/transfer", expect: [/Transfer report/i, /Preview only · not connected to Odoo/i, /Example filters/i, /No report rows to display/i] },
+  { path: "/reports/actions", expect: [/Actions report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/advanced", expect: [/Advanced report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/inventory", expect: [/Inventory report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/misc", expect: [/Miscellaneous report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/purchase", expect: [/Purchase report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/sales", expect: [/Sales report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
+  { path: "/reports/transfer", expect: [/Transfer report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/settings/integrations", expect: [/Integrations|Odoo|Connected|auto-reconnect|auto recover/i] },
   { path: "/settings/payment", expect: [/Payment|Card|Cash/i] },
   { path: "/settings/tax", expect: [/Tax|GST|WET/i] },
@@ -201,19 +201,6 @@ for (const entry of pages) {
       headers: { Origin: base },
     });
     const apiBody = await api.json().catch(() => ({}));
-    console.log("PRODUCT_DEBUG", JSON.stringify({
-      status: api.status(),
-      apiCode: apiBody.code,
-      apiMessage: apiBody.message,
-      itemCount: apiBody.items?.length,
-      itemNames: apiBody.items?.map((item) => item.name),
-      body: text,
-      consoleErrors: productDiagnostics.consoleErrors,
-      failedRequests: productDiagnostics.failedRequests,
-      unauthorizedResponses: productDiagnostics.unauthorizedResponses,
-      reportingResponses: productDiagnostics.reportingResponses,
-      recoveryResponses: productDiagnostics.recoveryResponses,
-    }));
   }
   if (entry.path === "/reports/dashboard") {
     try {
@@ -230,7 +217,6 @@ for (const entry of pages) {
   matrix.push({
     path: entry.path,
     status: pass ? "PASS" : "FAIL",
-    snippet: entry.path === "/history/odoo" ? text.slice(-500) : text.slice(0, 220),
   });
   if (entry.path === "/") {
     try {
@@ -274,7 +260,7 @@ for (const entry of pages) {
       uiChecks.push({ name: "Products AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
     }
   }
-  console.log(`${pass ? "PASS" : "FAIL"} ${entry.path} :: ${text.slice(0, 140)}`);
+  console.log(`${pass ? "PASS" : "FAIL"} ${entry.path}`);
 }
 
 try {

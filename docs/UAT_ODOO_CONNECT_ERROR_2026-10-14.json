@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-10-14T14:46:45.938Z",
+  "sourceCommit": "42844b86422bf81ad38d74122dddd3b8a3b1d8fe",
+  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
+  "target": "https://app.orithos.com.au",
+  "status": "PASS",
+  "scope": "connection failure presentation only; Odoo session API intercepted in browser, no Odoo credentials or requests sent",
+  "viewport": 390,
+  "checks": [
+    "disconnected Odoo connection form renders",
+    "mock 401 shows an accessible alert",
+    "failure alert uses error styling",
+    "only one intercepted login attempt occurred"
+  ],
+  "observed": {
+    "mockLoginCalls": 1,
+    "alertRole": "alert",
+    "style": {
+      "background": "lab(96.5005 4.18508 1.52328)",
+      "color": "lab(28.5139 44.5539 29.0463)"
+    }
+  }
+}

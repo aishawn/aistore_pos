@@ -38,7 +38,7 @@ try {
     const countedCash = page.getByLabel("Counted cash (required)");
     await countedCash.waitFor({ timeout: 10000 });
     if (await countedCash.getAttribute("required") === null) throw new Error("Cash count input is not marked required");
-    const closeButton = page.getByRole("button", { name: "Close register in Odoo" });
+    const closeButton = page.getByRole("button", { name: "Review before closing" });
     if (await closeButton.isEnabled()) throw new Error("Register close is enabled before a cash count is entered");
     await countedCash.fill("0.00");
     if (!(await closeButton.isEnabled())) throw new Error("Entering a cash count did not enable the close confirmation");
@@ -86,8 +86,8 @@ try {
     const bodyText = await page.locator("tbody").innerText();
     const viewButtons = page.getByRole("button", { name: "View" });
     const dataRows = await viewButtons.count();
-    if (dataRows === 0 && !bodyText.includes("No purchase orders match these filters.")) {
-      const emptyStateKind = bodyText.includes("No RFQs or purchase orders") ? "unfiltered-empty-copy" : bodyText.includes("Loading purchases") ? "loading-copy" : bodyText.trim() ? "unexpected-copy" : "blank";
+    if (dataRows === 0 && !bodyText.includes("No matching purchases")) {
+      const emptyStateKind = bodyText.includes("No purchase orders yet") ? "unfiltered-empty-copy" : bodyText.includes("Loading purchases") ? "loading-copy" : bodyText.trim() ? "unexpected-copy" : "blank";
       throw new Error("Draft RFQ filter returned no View buttons; empty state=" + emptyStateKind + ", table row count=" + await page.locator("tbody > tr").count() + ", requested states=" + purchaseStatesRequested.join(","));
     }
     let detailOpened = false;

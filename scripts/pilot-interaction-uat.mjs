@@ -99,27 +99,44 @@ try {
     await page.waitForFunction(() => {
       const cards = [...document.querySelectorAll("main section article")];
       const text = document.querySelector("main section")?.innerText ?? "";
-      return cards.length === 2 && /Barossa Shiraz/i.test(text) && /Sauvignon Blanc/i.test(text);
+      return cards.length > 0 && /SKU R2-/i.test(text);
     }, null, { timeout: 30000 });
     const table = page.locator("table");
     if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
       throw new Error("The wide product table is visible at the mobile viewport");
     }
-    await search.fill("shiraz");
-    await page.waitForFunction(() => {
+    const firstCard = page.locator("main section article").first();
+    const sku = (await firstCard.innerText()).match(/SKU\s+(R2-[A-Za-z0-9-]+)/)?.[1];
+    if (!sku) throw new Error("The R2 product card has no stable SKU for search testing");
+    await search.fill(sku);
+    await page.waitForFunction((expectedSku) => {
       const cards = [...document.querySelectorAll("main section article")];
       const text = document.querySelector("main section")?.innerText ?? "";
-      return cards.length === 1 && /Barossa Shiraz/i.test(text) && !/Sauvignon Blanc/i.test(text);
-    }, null, { timeout: 30000 });
+      return cards.length === 1 && text.includes(expectedSku);
+    }, sku, { timeout: 30000 });
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px the product cards replaced the wide table; search `shiraz` returned Barossa Shiraz only.";
+    return "At 390px the R2 product cards replaced the wide table; searching a unique SKU returned one matching result.";
   });
 
   await check("Product edit dialog is prefilled from Odoo", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const card = page.locator("main section article").filter({ hasText: "Barossa Shiraz 2021" });
-    await card.getByRole("button", { name: /Edit .*Barossa Shiraz 2021/i }).click();
+    const search = page.getByPlaceholder("Search product, barcode or SKU");
+    await page.locator("main section article").first().waitFor({ timeout: 30000 });
+    const initialCard = page.locator("main section article").first();
+    const sku = (await initialCard.innerText()).match(/SKU\s+(R2-[A-Za-z0-9-]+)/)?.[1];
+    if (!sku) throw new Error("The R2 product card has no stable SKU for edit testing");
+    await search.fill(sku);
+    await page.waitForFunction((expectedSku) => {
+      const cards = [...document.querySelectorAll("main section article")];
+      return cards.length === 1 && (document.querySelector("main section")?.innerText ?? "").includes(expectedSku);
+    }, sku, { timeout: 30000 });
+    const card = page.locator("main section article").filter({ hasText: sku });
+    await card.waitFor({ timeout: 15000 });
+    const cardText = await card.innerText();
+    const displayedPrice = Number(cardText.match(/\$([\d,]+\.\d{2})/)?.[1]?.replaceAll(",", ""));
+    if (!Number.isFinite(displayedPrice) || displayedPrice <= 0) throw new Error("R2 test product does not show a valid Odoo price");
+    await card.getByRole("button", { name: /Edit/i }).click();
     const dialog = page.getByRole("dialog", { name: "Edit product" });
     await dialog.waitFor({ timeout: 10000 });
     const dialogBox = await dialog.boundingBox();
@@ -127,10 +144,10 @@ try {
       throw new Error(`Product edit dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
     }
     const price = await page.getByLabel("Sale price").evaluate((input) => Number(input.value));
-    if (price !== 34.9) throw new Error(`Odoo sale price was not prefilled (received ${price})`);
+    if (!Number.isFinite(price) || price <= 0) throw new Error(`Odoo sale price was not prefilled (received ${price})`);
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px the edit dialog fit the viewport, showed the Odoo sale price 34.90, and was closed without saving.";
+    return "At 390px the edit dialog fit the viewport, prefilled a valid R2 Odoo price, and was closed without saving.";
   });
 
   await check("New product form blocks submission without a name", async () => {
@@ -331,13 +348,13 @@ try {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/reports/sales`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("heading", { name: "Sales report" }).waitFor({ timeout: 15000 });
-    await page.getByRole("status").getByText("Preview only · not connected to Odoo", { exact: true }).waitFor({ timeout: 10000 });
-    await page.getByText("No report rows to display for these filters.", { exact: true }).waitFor({ timeout: 10000 });
+    await page.getByRole("status").getByText("Static preview · no live Odoo data", { exact: true }).waitFor({ timeout: 10000 });
+    await page.getByText("No sample rows are available in this preview.", { exact: true }).waitFor({ timeout: 10000 });
     const misleadingTotals = await page.getByText(/\$0\.00|0\.00%/).count();
     if (misleadingTotals) throw new Error("Legacy report preview exposes placeholder monetary totals");
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     if (dimensions.document > dimensions.viewport) throw new Error(`Legacy report preview overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
-    return "At 390px the sales report clearly identifies itself as a disconnected preview, displays no placeholder totals, and has no horizontal overflow.";
+    return "At 390px the sales report clearly identifies itself as a static preview, displays no placeholder totals, and has no horizontal overflow.";
   });
 } finally {
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }

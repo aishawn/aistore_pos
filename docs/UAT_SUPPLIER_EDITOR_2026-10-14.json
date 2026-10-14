@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T12:44:49.215Z",
-  "testedApplicationCommit": "cdb0f8f",
-  "deployment": null,
+  "generatedAt": "2026-10-14T13:17:21.471Z",
+  "sourceCommit": "8a27df59d2c5f788553adb547f55abe052c4a897",
+  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
   "target": "https://app.orithos.com.au",
   "scope": "supplier editor visual/responsive read-only UAT; save not clicked",
   "results": [

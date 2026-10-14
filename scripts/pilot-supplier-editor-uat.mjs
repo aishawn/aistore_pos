@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -19,7 +20,7 @@ try {
     if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
     const page = await context.newPage();
     page.on("pageerror", (error) => errors.push(`${width}px ${error.message}`));
-    page.on("request", (request) => { const url = new URL(request.url()); if (url.pathname.startsWith("/api/") && request.method() !== "GET") writes.push(`${request.method()} ${url.pathname}`); });
+    page.on("request", (request) => { const url = new URL(request.url()); if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/") && request.method() !== "GET") writes.push(`${request.method()} ${url.pathname}`); });
     await page.goto(`${base}/suppliers/new`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("button", { name: "Save", exact: true }).waitFor({ state: "visible", timeout: 30000 });
     await page.getByRole("heading", { name: "New Supplier", exact: true }).waitFor({ state: "visible", timeout: 15000 });
@@ -45,7 +46,7 @@ try {
     await context.close();
   }
 } finally { await browser.close(); }
-const report = { generatedAt: new Date().toISOString(), testedApplicationCommit: "cdb0f8f", deployment: null, target: base, scope: "supplier editor visual/responsive read-only UAT; save not clicked", results, pageErrors: errors, mutatingApiRequests: writes, passed: results.filter((r) => r.status === "PASS").length, failed: results.filter((r) => r.status !== "PASS").length };
+const report = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: process.env.PILOT_DEPLOYMENT_SHA || null, target: base, scope: "supplier editor visual/responsive read-only UAT; save not clicked", results, pageErrors: errors, mutatingApiRequests: writes, passed: results.filter((r) => r.status === "PASS").length, failed: results.filter((r) => r.status !== "PASS").length };
 const out = path.join(root, "docs/UAT_SUPPLIER_EDITOR_2026-10-14.json");
 fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath: out, passed: report.passed, failed: report.failed, results, pageErrors: errors, mutatingApiRequests: writes }));

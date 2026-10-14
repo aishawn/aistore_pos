@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T12:44:35.619Z",
-  "deployment": "669cddf36b3d197600a9390ab9f130c756f228bd",
+  "generatedAt": "2026-10-14T13:16:06.899Z",
+  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
   "status": "PASS",
   "viewport": 390,
   "fixture": "mock RFQ only; no Odoo write",

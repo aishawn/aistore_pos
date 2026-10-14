@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T12:39:36.006Z",
-  "deployment": "865d8613728c783079774599032f7f0aa1cb1f1c",
+  "generatedAt": "2026-10-14T14:50:21.551Z",
+  "deployment": "42844b86422bf81ad38d74122dddd3b8a3b1d8fe",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {
@@ -16,12 +16,12 @@
     {
       "name": "Product search filters the Odoo catalogue",
       "status": "PASS",
-      "evidence": "At 390px the product cards replaced the wide table; search `shiraz` returned Barossa Shiraz only."
+      "evidence": "At 390px the R2 product cards replaced the wide table; searching a unique SKU returned one matching result."
     },
     {
       "name": "Product edit dialog is prefilled from Odoo",
       "status": "PASS",
-      "evidence": "At 390px the edit dialog fit the viewport, showed the Odoo sale price 34.90, and was closed without saving."
+      "evidence": "At 390px the edit dialog fit the viewport, prefilled a valid R2 Odoo price, and was closed without saving."
     },
     {
       "name": "New product form blocks submission without a name",
@@ -61,7 +61,7 @@
     {
       "name": "Legacy report previews do not imply live Odoo data",
       "status": "PASS",
-      "evidence": "At 390px the sales report clearly identifies itself as a disconnected preview, displays no placeholder totals, and has no horizontal overflow."
+      "evidence": "At 390px the sales report clearly identifies itself as a static preview, displays no placeholder totals, and has no horizontal overflow."
     }
   ]
 }
