@@ -170,7 +170,7 @@ export default function BalancesPage() {
               aria-expanded={menuOpen}
               aria-haspopup="dialog"
               aria-label="Menu"
-              className="relative flex h-10 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+              className="relative flex h-11 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white outline-none transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
             >
               {menuOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
               Menu
@@ -183,9 +183,9 @@ export default function BalancesPage() {
               <div
                 role="dialog"
                 aria-label="Balances menu"
-                className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(960px,calc(100vw-2rem))] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-8 py-7 shadow-[var(--oh-shadow-card)]"
+                className="absolute right-0 top-[calc(100%+8px)] z-30 w-[min(960px,calc(100vw-2rem))] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-6"
               >
-                <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                   <AdminPrimaryButton
                     className="w-full justify-center px-2 text-[13px]"
                     onClick={() => {
@@ -207,8 +207,8 @@ export default function BalancesPage() {
                   </AdminPrimaryButton>
                 </div>
 
-                <div className="mt-7 border-t border-[var(--oh-border)] pt-7">
-                  <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] gap-x-5 gap-y-5">
+                <div className="mt-5 border-t border-[var(--oh-border)] pt-5 sm:mt-6 sm:pt-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-5 sm:gap-y-5">
                     <FilterMultiSelect
                       label="Customer Group"
                       options={[{ label: "No Group", value: "__none__" }, ...toOptions(groups.items)]}
@@ -237,6 +237,7 @@ export default function BalancesPage() {
                           value={draftMinOwing}
                           onChange={(e) => setDraftMinOwing(e.target.value)}
                           placeholder="$ Min"
+                          aria-label="Minimum customer balance"
                           className={inputClass}
                         />
                         <input
@@ -246,6 +247,7 @@ export default function BalancesPage() {
                           value={draftMaxOwing}
                           onChange={(e) => setDraftMaxOwing(e.target.value)}
                           placeholder="$ Max"
+                          aria-label="Maximum customer balance"
                           className={inputClass}
                         />
                       </span>
@@ -263,14 +265,34 @@ export default function BalancesPage() {
       }
     >
       <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] text-[13px]">
-        <div className="flex bg-[var(--oh-primary)] font-semibold text-white">
-          <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">Customer</div>
-          <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">Total Balance</div>
-          <div className="flex-1 px-4 py-3 text-center">Actions</div>
+        <div className="md:hidden">
+          <AsyncState loading={loading} error={error} empty={items.length === 0}>
+            {items.map((c) => (
+              <article key={c.id} className="border-b border-[var(--oh-border)] bg-white p-4 last:border-b-0">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{c.name ?? ""}</p>
+                  <p className="shrink-0 text-right text-lg font-semibold tabular-nums text-[var(--oh-text)]">${Number(c.currentOwing || 0).toFixed(2)}</p>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[var(--oh-border)] pt-3">
+                  <button type="button" aria-label={`View ${c.name}`} onClick={() => router.push(`/customers/${c.id}/view`)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-1 text-xs font-medium text-[var(--oh-info)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><ViewIcon size={16} /> View</button>
+                  <button type="button" aria-label={`View statement for ${c.name}`} onClick={() => setStatementModal({ open: true, customerId: c.id, customerName: c.name ?? "" })} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-1 text-xs font-medium text-[var(--oh-orange-dark)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><StatementIcon size={16} /> Statement</button>
+                  <button type="button" aria-label={`Make payment for ${c.name}`} onClick={() => router.push(`/customers/${c.id}/payment`)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-md px-1 text-xs font-medium text-[var(--oh-success)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><DollarSignIcon size={16} /> Payment</button>
+                </div>
+              </article>
+            ))}
+          </AsyncState>
+          {items.length > 0 && <div className="flex items-center justify-between gap-3 bg-[var(--oh-surface)] px-4 py-3 text-sm"><span className="font-medium text-[var(--oh-muted)]">This page total</span><span className="font-semibold tabular-nums text-[var(--oh-text)]">${totalOwing.toFixed(2)}</span></div>}
         </div>
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
-          {items.map((c) => (
-            <div key={c.id} className="flex items-center border-b border-[var(--oh-border)]">
+
+        <div className="hidden md:block">
+          <div className="flex bg-[var(--oh-primary)] font-semibold text-white">
+            <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">Customer</div>
+            <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">Total Balance</div>
+            <div className="flex-1 px-4 py-3 text-center">Actions</div>
+          </div>
+          <AsyncState loading={loading} error={error} empty={items.length === 0}>
+            {items.map((c) => (
+              <div key={c.id} className="flex items-center border-b border-[var(--oh-border)] last:border-b-0">
               <div className="w-[260px] border-r border-[var(--oh-border)] px-4 py-4 text-[var(--oh-text)]">
                 {c.name ?? ""}
               </div>
@@ -281,7 +303,7 @@ export default function BalancesPage() {
                 <button
                   type="button"
                   onClick={() => router.push(`/customers/${c.id}/view`)}
-                  className="flex cursor-pointer flex-col items-center text-[var(--oh-info)] transition-opacity hover:opacity-80"
+                  className="flex min-h-11 cursor-pointer flex-col items-center justify-center rounded-md px-3 text-[var(--oh-info)] outline-none transition-opacity hover:bg-[var(--oh-surface)] hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                 >
                   <ViewIcon size={18} /> View Customer
                 </button>
@@ -290,27 +312,28 @@ export default function BalancesPage() {
                   onClick={() =>
                     setStatementModal({ open: true, customerId: c.id, customerName: c.name ?? "" })
                   }
-                  className="flex cursor-pointer flex-col items-center text-[var(--oh-orange)] transition-opacity hover:opacity-80"
+                  className="flex min-h-11 cursor-pointer flex-col items-center justify-center rounded-md px-3 text-[var(--oh-orange-dark)] outline-none transition-opacity hover:bg-[var(--oh-surface)] hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                 >
                   <StatementIcon size={18} /> View Statement
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push(`/customers/${c.id}/payment`)}
-                  className="flex cursor-pointer flex-col items-center text-[var(--oh-success)] transition-opacity hover:opacity-80"
+                  className="flex min-h-11 cursor-pointer flex-col items-center justify-center rounded-md px-3 text-[var(--oh-success)] outline-none transition-opacity hover:bg-[var(--oh-surface)] hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                 >
                   <DollarSignIcon size={18} /> Make Payment
                 </button>
               </div>
             </div>
           ))}
-        </AsyncState>
-        <div className="flex bg-[var(--oh-primary)] font-semibold text-white">
-          <div className="w-[260px] border-r border-white/20 px-4 py-3" />
-          <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">
-            {`$${totalOwing.toFixed(2)}`}
-          </div>
-          <div className="flex-1 px-4 py-3" />
+          </AsyncState>
+          {items.length > 0 && <div className="flex bg-[var(--oh-primary)] font-semibold text-white">
+            <div className="w-[260px] border-r border-white/20 px-4 py-3 text-right text-xs uppercase tracking-wide">This page total</div>
+            <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">
+              {`$${totalOwing.toFixed(2)}`}
+            </div>
+            <div className="flex-1 px-4 py-3" />
+          </div>}
         </div>
       </div>
 
