@@ -3,7 +3,7 @@ import { OdooPosConnectionCard } from "@/components/OdooPosConnectionCard";
 
 export default function IntegrationsPage() {
   return (
-    <SettingsScaffold title="Integrations" showSubSectionTitle={false} showSave={false}>
+    <SettingsScaffold title="Integrations" showSubSectionTitle={false} showSearch={false} showSave={false}>
       <div className="grid gap-4">
         <OdooPosConnectionCard />
       </div>

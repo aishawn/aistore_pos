@@ -96,9 +96,9 @@ export function OdooPosConnectionCard() {
   return (
     <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-[var(--oh-text)]">Odoo point of sale</h2>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="min-w-0 break-words text-base font-semibold text-[var(--oh-text)]">Odoo point of sale</h2>
             {state === "connected" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800"><CheckCircle2 size={14} /> Connected</span>
             ) : state === "error" ? (
