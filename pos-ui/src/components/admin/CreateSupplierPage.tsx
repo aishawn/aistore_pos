@@ -689,13 +689,13 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
     }
   }
 
-  const displayName = form.name.trim() || "Untitled Supplier";
+  const displayName = form.name.trim() || "New Supplier";
 
   return (
-    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-[#555e65]/95 p-4 font-sans md:p-6">
+    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-slate-950/35 p-4 font-sans md:p-6">
       <div className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl">
         <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4">
-          <h1 className="text-center text-[18px] font-semibold uppercase tracking-wide text-[var(--oh-muted)] md:text-[20px]">
+          <h1 className="text-center text-[18px] font-semibold text-[var(--oh-text)] md:text-[20px]">
             {displayName}
           </h1>
           <button
@@ -731,18 +731,18 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
             </ul>
           </nav>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-[#555e65] px-4 py-5 md:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--oh-surface)] px-4 py-5 md:px-6">
             {isEdit && supplierQuery.loading && !hydrated ? (
-              <div className="flex h-full min-h-[240px] items-center justify-center text-[15px] text-white/80">
+              <div className="flex h-full min-h-[240px] items-center justify-center text-[15px] text-[var(--oh-muted)]">
                 Loading supplier…
               </div>
             ) : isEdit && supplierQuery.error ? (
               <div className="mx-auto max-w-xl space-y-3 py-8 text-center">
-                <p className="text-[15px] text-red-200">{supplierQuery.error}</p>
+                <p className="text-[15px] text-rose-700">{supplierQuery.error}</p>
                 <button
                   type="button"
                   onClick={leavePage}
-                  className="text-[14px] font-medium text-white underline"
+                  className="text-[14px] font-medium text-[var(--oh-primary)] underline"
                 >
                   Back to Suppliers
                 </button>
@@ -1076,18 +1076,18 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                   />
                 </FormSection>
 
-                {error && <p className="text-[14px] text-red-200">{error}</p>}
+                {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[14px] text-rose-800">{error}</p>}
               </div>
             )}
           </div>
         </div>
 
-        <div className="pointer-events-none absolute bottom-6 right-6 md:bottom-8 md:right-8">
+        <div className="pointer-events-none absolute bottom-6 right-24 md:bottom-8 md:right-28">
           <button
             type="button"
             onClick={save}
             disabled={busy || (isEdit && !hydrated)}
-            className="pointer-events-auto flex items-center gap-2 rounded-[var(--oh-radius)] bg-[#3aa0e3] px-5 py-3 text-[15px] font-semibold text-white shadow-lg transition-colors hover:bg-[#3493d4] disabled:opacity-60"
+            className="pointer-events-auto flex items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-5 py-3 text-[15px] font-semibold text-white shadow-[var(--oh-shadow-card)] transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
           >
             <SaveIcon size={18} />
             {busy ? "Saving…" : "Save"}
