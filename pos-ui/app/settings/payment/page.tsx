@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Info } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { ListTable } from "@/components/admin/ListTable";
 import { getOdooPosBootstrap, getOdooSession, type OdooPosBootstrap } from "@/lib/odoo-api";
 
 type PaymentRow = {
@@ -68,9 +68,10 @@ export default function PaymentMethodsPage() {
       count={rows.length}
       countLabel="Methods"
     >
-      <section className="mb-4 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
-        <p className="font-semibold text-[var(--oh-text)]">Live from Odoo · Read only</p>
-        <p className="mt-1">Changes to payment methods should be made in Odoo. Orithos does not save a second copy.</p>
+      <section aria-label="Payment method source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
+        <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />
+        <div><p className="font-semibold text-[var(--oh-text)]">Live from Odoo <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
+          <p className="mt-1">Changes to payment methods should be made in Odoo. Orithos does not save a second copy.</p></div>
       </section>
       {error ? (
         <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -83,10 +84,30 @@ export default function PaymentMethodsPage() {
           No payment methods are assigned to the Odoo POS registers available to this account.
         </div>
       ) : (
-        <ListTable
-          columns={[{ label: "Payment method" }, { label: "Type" }, { label: "Odoo register" }]}
-          rows={rows.map((row) => [row.name, row.type, row.registers.join(", ")])}
-        />
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:hidden">
+            {rows.map((row) => <article key={row.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="min-w-0 break-words font-semibold text-[var(--oh-text)]">{row.name}</h2>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${row.type === "Cash" ? "bg-emerald-50 text-emerald-800" : row.type === "Card / bank" ? "bg-blue-50 text-blue-800" : "bg-amber-50 text-amber-900"}`}>{row.type}</span>
+              </div>
+              <div className="mt-3 border-t border-[var(--oh-border)] pt-3">
+                <p className="text-xs font-medium text-[var(--oh-muted)]">Odoo registers</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">{row.registers.map((register) => <span key={register} className="rounded-md bg-[var(--oh-surface)] px-2 py-1 text-sm text-[var(--oh-text-secondary)]">{register}</span>)}</div>
+              </div>
+            </article>)}
+          </div>
+          <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white xl:block">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
+                <tr><th scope="col" className="px-4 py-3">Payment method</th><th scope="col" className="px-4 py-3">Type</th><th scope="col" className="px-4 py-3">Odoo register</th></tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--oh-border)]">
+                {rows.map((row) => <tr key={row.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{row.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{row.type}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{row.registers.join(", ")}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </AdminPageLayout>
   );
