@@ -87,7 +87,7 @@ export default function LoginPage() {
       </div>
 
       <section className="relative z-10 grid w-full max-w-[760px] overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] md:grid-cols-2">
-        <form onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-8 sm:p-10" aria-labelledby="login-title">
+        <form onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-6 sm:p-8 lg:p-10" aria-labelledby="login-title">
           <div>
             <h1 id="login-title" className="text-xl font-semibold tracking-tight text-[var(--oh-text)]">Sign in</h1>
             <p className="mt-1 text-sm text-[var(--oh-text-secondary)]">Orithos retail workspace</p>
@@ -101,7 +101,6 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              autoFocus
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
@@ -132,7 +131,7 @@ export default function LoginPage() {
                 onClick={() => setShowPassword((visible) => !visible)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 aria-pressed={showPassword}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded text-[var(--oh-placeholder)] hover:text-[var(--oh-text)]"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded text-[var(--oh-placeholder)] hover:text-[var(--oh-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]"
               >
                 {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>
@@ -140,7 +139,7 @@ export default function LoginPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <label htmlFor="remember-username" className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-[var(--oh-text-secondary)]">
+            <label htmlFor="remember-username" className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-[var(--oh-text-secondary)]">
               <input
                 id="remember-username"
                 type="checkbox"
@@ -150,7 +149,7 @@ export default function LoginPage() {
               />
               Remember username on this device
             </label>
-            <Link href="/forgot-password" className="text-sm font-semibold text-[var(--oh-primary)] hover:underline">
+            <Link href="/forgot-password" className="inline-flex min-h-11 items-center rounded px-1 text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
               Forgot password?
             </Link>
           </div>
@@ -180,7 +179,7 @@ export default function LoginPage() {
             type="button"
             disabled={busy !== null}
             onClick={() => void doLogin("mobile")}
-            className="min-h-10 rounded-md border border-[var(--oh-border-strong)] bg-transparent text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-70"
+            className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-transparent text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
           >
             {busy === "mobile" ? "Signing in to mobile workspace…" : "Sign in to mobile workspace"}
           </button>
