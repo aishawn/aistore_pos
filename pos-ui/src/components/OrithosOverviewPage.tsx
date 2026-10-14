@@ -201,7 +201,7 @@ export function OrithosOverviewPage() {
           <Store className="mx-auto text-amber-600" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to open Overview</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Overview reads completed sales from your connected Odoo company.</p>
-          <Link href="/settings/integrations" className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+          <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
         </section>
       </main>
     );
@@ -225,12 +225,12 @@ export function OrithosOverviewPage() {
                 type="button"
                 onClick={() => void load(true)}
                 disabled={refreshing}
-                className="oh-type-meta inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] shadow-sm hover:bg-white disabled:opacity-60"
+                className="oh-type-meta inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] shadow-sm hover:bg-white disabled:opacity-60"
               >
                 {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                 Refresh
               </button>
-              <Link href="/" className="oh-type-label inline-flex h-9 items-center gap-1 rounded-lg bg-[var(--oh-primary)] px-3 font-semibold text-white no-underline hover:bg-[var(--oh-primary-hover)] lg:hidden">
+              <Link href="/" className="oh-type-label inline-flex h-11 items-center gap-1 rounded-lg bg-[var(--oh-primary)] px-3 font-semibold text-white no-underline hover:bg-[var(--oh-primary-hover)] lg:hidden">
                 Open point of sale <ArrowRight size={15} />
               </Link>
             </div>
@@ -278,7 +278,7 @@ export function OrithosOverviewPage() {
                 <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Top products</h2>
                 <p className="oh-type-meta text-[var(--oh-muted)]">Last 24 hours</p>
               </div>
-              <Link href="/products/odoo" className="oh-type-meta font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
+              <Link href="/products/odoo" className="oh-type-meta inline-flex min-h-11 items-center px-2 font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
             </div>
             {data?.topProducts.length ? (
               <div className="overflow-x-auto">
@@ -316,7 +316,7 @@ export function OrithosOverviewPage() {
                 <div>
                   <p className="oh-type-label font-medium text-[var(--oh-text)]">No product sales yet</p>
                   <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Complete a sale to see top products.</p>
-                  <Link href="/" className="oh-type-label mt-2 inline-flex h-8 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open point of sale</Link>
+                  <Link href="/" className="oh-type-label mt-2 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open point of sale</Link>
                 </div>
               </div>
             )}
@@ -346,7 +346,7 @@ export function OrithosOverviewPage() {
                     <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
                     <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No sales in the last 24 hours</p>
                     <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Complete a sale to see activity by hour.</p>
-                    <Link href="/" className="oh-type-meta mt-2 inline-flex min-h-9 items-center gap-1 rounded-md px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-accent)]">Open point of sale <ArrowRight size={14} /></Link>
+                    <Link href="/" className="oh-type-meta mt-2 inline-flex min-h-11 items-center gap-1 rounded-md px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-accent)]">Open point of sale <ArrowRight size={14} /></Link>
                   </div>
                 </div>
               )}
@@ -413,13 +413,13 @@ export function OrithosOverviewPage() {
           <div className="shrink-0 border-t border-[var(--oh-border)] p-3">
             <Link
               href="/"
-              className="oh-type-label inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--oh-primary)] font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
+              className="oh-type-label inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-[var(--oh-primary)] font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
             >
               Open point of sale <ArrowRight size={16} />
             </Link>
             <Link
               href="/history/odoo"
-              className="oh-type-label mt-1.5 inline-flex h-9 w-full items-center justify-center rounded-lg border border-[var(--oh-border)] font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
+              className="oh-type-label mt-1.5 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[var(--oh-border)] font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
             >
               Sales history
             </Link>
