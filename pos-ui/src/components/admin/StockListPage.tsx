@@ -44,7 +44,7 @@ function num(v?: number | null) {
 }
 
 function cellInput(className?: string) {
-  return `h-[34px] w-full rounded border border-neutral-300 bg-white px-2 text-[13px] text-black outline-none focus:border-[#6eb5e0] ${className ?? ""}`;
+  return `h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20 ${className ?? ""}`;
 }
 
 function Toggle({
@@ -57,19 +57,19 @@ function Toggle({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-neutral-700">
+    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[13px] text-[var(--oh-text-secondary)]">
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`flex h-[22px] w-[38px] shrink-0 items-center rounded-full p-0.5 transition-colors ${
-          checked ? "bg-[#6eb5e0]" : "bg-neutral-300"
+        className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+          checked ? "bg-[var(--oh-primary)]" : "bg-[var(--oh-border-strong)]"
         }`}
       >
         <span
-          className={`h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform ${
-            checked ? "translate-x-4" : "translate-x-0"
+          className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0"
           }`}
         />
       </button>
@@ -139,12 +139,15 @@ function StockListRowEditor({
   }, [cost, name, onSaved, price, quantity, row]);
 
   const profit = profitPct(cost === "" ? null : Number(cost), price === "" ? null : Number(price));
+  const hasStock = Number(row.casesOnHand ?? 0) > 0 || Number(row.itemsOnHand ?? 0) > 0;
 
   return (
-    <div className="flex items-center border-b border-neutral-200 bg-white py-1.5 text-[13px] text-black">
+    <>
+    <div className="flex items-center border-b border-[var(--oh-border)] bg-white py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]/60">
       <div className="w-[22%] shrink-0 px-2">
         <input
           className={cellInput()}
+          aria-label={`Product name for ${row.name}`}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => void save()}
@@ -153,14 +156,15 @@ function StockListRowEditor({
       <div className="w-[10%] shrink-0 px-2">{row.categoryName ?? ""}</div>
       <div className="w-[8%] shrink-0 px-2">{row.priceSetName ?? ""}</div>
       <div className="w-[7%] shrink-0 px-2 text-center">{num(row.caseQuantity)}</div>
-      <div className="w-[7%] shrink-0 px-2 text-center">{num(row.casesOnHand)}</div>
-      <div className="w-[7%] shrink-0 px-2 text-center">{num(row.itemsOnHand)}</div>
+      <div className={`w-[7%] shrink-0 px-2 text-center tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.casesOnHand)}</div>
+      <div className={`w-[7%] shrink-0 px-2 text-center tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.itemsOnHand)}</div>
       <div className="w-[6%] shrink-0 px-2">
         <input
           type="number"
           min="1"
           step="1"
           className={cellInput("text-center")}
+          aria-label={`Price quantity for ${row.name}`}
           value={quantity}
           onChange={(e) => {
             setQuantity(e.target.value);
@@ -175,6 +179,7 @@ function StockListRowEditor({
           <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
           <input
             className={cellInput("pl-5")}
+            aria-label={`Cost for ${row.name}`}
             value={cost}
             onChange={(e) => setCost(e.target.value)}
             onBlur={() => void save()}
@@ -186,6 +191,7 @@ function StockListRowEditor({
           <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
           <input
             className={cellInput("pl-5")}
+            aria-label={`Price for ${row.name}`}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             onBlur={() => void save()}
@@ -196,6 +202,7 @@ function StockListRowEditor({
         <div className="relative">
           <input
             className={cellInput("pr-6 text-right")}
+            aria-label={`Profit margin for ${row.name}`}
             value={profit}
             readOnly
             tabIndex={-1}
@@ -204,6 +211,8 @@ function StockListRowEditor({
         </div>
       </div>
     </div>
+    {saveError && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-800">{saveError}</p>}
+    </>
   );
 }
 
@@ -261,32 +270,33 @@ function StockListPageInner() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-neutral-200 px-6 py-4">
-        <h1 className="text-[28px] font-normal text-black">Stock List</h1>
-        <AdminPrimaryButton onClick={() => void onExport()} disabled={exporting}>
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+        <h1 className="oh-type-title text-[var(--oh-text)]">Stock List</h1>
+        <AdminPrimaryButton onClick={() => void onExport()} disabled={exporting} className="min-h-11">
           <ExportIcon size={16} />
           Export to CSV
         </AdminPrimaryButton>
-        <div className="ml-auto text-[15px] text-neutral-700">
-          <span className="font-semibold text-black">{total.toLocaleString()}</span> Products
+        <div className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
+          <span className="font-semibold tabular-nums text-[var(--oh-text)]">{total.toLocaleString()}</span> Products
         </div>
       </div>
 
-      <div className="shrink-0 space-y-3 border-b border-neutral-200 px-6 py-4">
+      <div className="shrink-0 space-y-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <div className="flex flex-wrap items-center gap-3">
           <input
+            aria-label="Search stock products"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
             placeholder="Search for Product or Classification..."
-            className="h-[38px] w-full max-w-md rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
+            className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20"
           />
-          <div className="w-[240px] shrink-0">
+          <div className="w-full shrink-0 sm:w-[240px]">
             <FilterSelect
-              label=""
+              label="Category"
               value={categoryId}
               onChange={(v) => {
                 setCategoryId(v);
@@ -307,8 +317,8 @@ function StockListPageInner() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
-        <div className="sticky top-0 z-10 flex items-center rounded-md bg-black px-3 py-2 text-[13px] font-bold text-white">
+      <div className="min-h-0 flex-1 overflow-auto px-3 pb-5 sm:px-4 md:px-6">
+        <div className="sticky top-0 z-10 flex items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">
           <div className="w-[22%] shrink-0 px-2">Product</div>
           <div className="w-[10%] shrink-0 px-2">Category</div>
           <div className="w-[8%] shrink-0 px-2">Price Set</div>
