@@ -137,7 +137,7 @@ export function OrithosOverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
-  const [rangeHours, setRangeHours] = useState<number>(24);
+  const [rangeHours, setRangeHours] = useState<number>(720);
   const [r2Receipts, setR2Receipts] = useState<R2Receipt[]>([]);
   const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
@@ -287,7 +287,7 @@ export function OrithosOverviewPage() {
             </div>
           )}
 
-          <section aria-label="Last 24 hours summary" className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label={`${rangeLabel} Odoo summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
               title="Odoo net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
@@ -386,7 +386,7 @@ export function OrithosOverviewPage() {
           <div className={cn("grid gap-2 sm:grid-cols-2", hasAnalyticsData ? "min-h-0 flex-1" : "min-h-[15rem] shrink-0")}>
             <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales trend</h2>
-              <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Last 24 hours</p>
+                <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Odoo POS · {rangeLabel}</p>
               {hasTrendData ? (
                 <div className="mt-2 flex min-h-[7rem] flex-1 items-end gap-1.5 border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1">
                   {trendData.map((item, index) => {
