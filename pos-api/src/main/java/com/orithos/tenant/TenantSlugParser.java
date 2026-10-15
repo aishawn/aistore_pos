@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 public class TenantSlugParser {
 
     private static final Pattern SLUG_PATTERN =
-            Pattern.compile("^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$");
+            Pattern.compile("^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$");
 
     private final TenantProperties props;
 

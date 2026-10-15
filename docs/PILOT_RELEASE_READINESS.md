@@ -170,3 +170,9 @@ UAT JSON 保留各自实际 deployment SHA：完整矩阵 `fddb70c`，订单/补
 
 - 失败日志根因已确认：`TenantSlugParser.HostTenant` 与 `TenantHolder.ResolvedTenant` 的静态 `controlPlane()` 工厂与 record accessor 冲突；同时 `TenantResolverFilter.isUnavailable` 为包私有，无法被认证控制器调用。
 - 已改为 `controlPlaneTenant()` 工厂并公开 `isUnavailable`。推送后应重新执行 Java 21 `mvn -B clean verify`；只有 Dokploy 构建成功并部署新 SHA 后，才能复核注册路由和 256/256 页面矩阵。
+
+### Tenant slug 单字符回归修复
+
+- 最新 Dokploy 测试发现 `TenantSlugParserTest.slugValidation` 允许单字符 slug `a`，与租户规则不符。
+- 已修复为 2-63 个字符，首尾为字母或数字，中间允许小写字母、数字和连字符；待下一次 Dokploy Java 21 构建确认 123 个后端测试全部通过。
+- 在构建和部署成功前，注册、多租户公开 API 与全站 256/256 矩阵保持未放行状态。
