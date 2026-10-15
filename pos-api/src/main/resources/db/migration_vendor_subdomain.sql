@@ -1,11 +1,6 @@
 -- Vendor subdomain multi-tenant (idempotent where practical).
 -- Adds vendor.subdomain/status, outlet.vendor_id, app_user.vendor_id.
 
--- Ensure a default vendor row exists for legacy single-tenant data.
-INSERT INTO vendor (id, name, subdomain, status, created_at, updated_at, outlet_id)
-SELECT 1, 'Default', 'default', 'active', NOW(), NOW(), 1
-WHERE NOT EXISTS (SELECT 1 FROM vendor WHERE id = 1);
-
 -- vendor.subdomain
 SET @col := (SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vendor' AND COLUMN_NAME = 'subdomain');
@@ -21,6 +16,12 @@ SET @sql := IF(@col = 0,
   'ALTER TABLE `vendor` ADD COLUMN `status` VARCHAR(16) NOT NULL DEFAULT ''active'' COMMENT ''trial|active|suspended|expired'' AFTER `subdomain`',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Ensure a default vendor row exists for legacy single-tenant data after the
+-- columns above have been added to older installations.
+INSERT INTO vendor (id, name, subdomain, status, created_at, updated_at, outlet_id)
+SELECT 1, 'Default', 'default', 'active', NOW(), NOW(), 1
+WHERE NOT EXISTS (SELECT 1 FROM vendor WHERE id = 1);
 
 UPDATE vendor SET subdomain = 'default' WHERE id = 1 AND (subdomain IS NULL OR subdomain = '');
 UPDATE vendor SET status = 'active' WHERE id = 1 AND (status IS NULL OR status = '');
