@@ -17,8 +17,9 @@ const env = Object.fromEntries(
     }),
 );
 
-const base = "https://app.orithos.com.au";
-const password = env.INITIAL_ADMIN_PASSWORD;
+const base = process.env.PILOT_BASE_URL ?? "https://app.orithos.com.au";
+const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const subdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "default";
 if (!password) {
   console.error("MISSING_ADMIN_PASSWORD");
   process.exit(1);
@@ -149,7 +150,7 @@ let loginResponse;
 for (let attempt = 1; attempt <= 3; attempt += 1) {
   try {
     loginResponse = await context.request.post(`${base}/api/auth/login`, {
-      data: { username: "admin", password },
+      data: { username: "admin", password, subdomain },
       headers: { Origin: base },
       timeout: 30000,
     });
