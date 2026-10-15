@@ -18,6 +18,14 @@ Login on a tenant host uses Host → vendor. Login on `app.` requires a subdomai
 - Issue a certificate covering `*.orithos.com.au` (and apex if needed)
 - Reverse proxy must forward `Host` / `X-Forwarded-Host` and `X-Forwarded-Proto` to the Next.js frontend (which forwards them to the API)
 
+## Dokploy
+
+Dokploy’s Domains UI rejects `*.orithos.com.au`. Keep Domains as:
+
+- `app.orithos.com.au` → `frontend` / port `3000` / HTTPS
+
+Wildcard routing is declared on the `frontend` service in [`docker-compose.yml`](../docker-compose.yml) via Traefik `HostRegexp` labels (low priority so `app` / `odoo` Host rules still win). After pull, run a normal **Deploy** (not Fresh Volumes). With Cloudflare orange-cloud on `*`, browser TLS is usually fine without a separate LE wildcard.
+
 ## Environment
 
 | Variable | Purpose |

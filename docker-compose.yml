@@ -144,6 +144,19 @@ services:
       - backend
     expose:
       - "3000"
+    # Dokploy Domains UI rejects "*.orithos.com.au". These Traefik labels route
+    # tenant hosts ({slug}.orithos.com.au) to this same frontend. Keep priority
+    # low so Dokploy's Host(`app.orithos.com.au`) / odoo routes still win.
+    # In Compose, escape regex end-anchors as $$ so they survive interpolation.
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.orithos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`)
+      - traefik.http.routers.orithos-tenant-secure.entrypoints=websecure
+      - traefik.http.routers.orithos-tenant-secure.priority=1
+      - traefik.http.routers.orithos-tenant-secure.tls=true
+      - traefik.http.routers.orithos-tenant-secure.service=orithos-tenant-svc
+      - traefik.http.services.orithos-tenant-svc.loadbalancer.server.port=3000
+      - traefik.http.services.orithos-tenant-svc.loadbalancer.passhostheader=true
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
