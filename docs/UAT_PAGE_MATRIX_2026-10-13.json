@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T14:54:30.998Z",
-  "deployment": "42844b86422bf81ad38d74122dddd3b8a3b1d8fe",
-  "sourceCommit": "42844b86422bf81ad38d74122dddd3b8a3b1d8fe",
+  "generatedAt": "2026-10-15T00:52:36.201Z",
+  "deployment": null,
+  "sourceCommit": "940eae7338481b32e71e6bfc96fac87cdac5dca8",
   "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
@@ -228,12 +228,6 @@
     }
   ],
   "recoveryResponses": [
-    {
-      "route": null,
-      "path": "/api/odoo/session",
-      "method": "GET",
-      "status": 200
-    },
     {
       "route": null,
       "path": "/api/odoo/session",

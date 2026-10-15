@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AlertCircle, ArrowUpRight } from "lucide-react";
-import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 export default function CustomerBalancesPage() {
   return (
