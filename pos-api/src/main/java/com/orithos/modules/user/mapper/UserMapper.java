@@ -11,6 +11,12 @@ public interface UserMapper {
     @Select("SELECT * FROM app_user WHERE username = #{username} AND deleted_at IS NULL")
     User findByUsername(String username);
 
+    @Select("""
+            SELECT * FROM app_user
+            WHERE vendor_id = #{vendorId} AND username = #{username} AND deleted_at IS NULL
+            """)
+    User findByVendorAndUsername(@Param("vendorId") Long vendorId, @Param("username") String username);
+
     @Select("SELECT * FROM app_user WHERE email = #{email} AND deleted_at IS NULL LIMIT 1")
     User findByEmail(String email);
 
@@ -25,9 +31,9 @@ public interface UserMapper {
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
-        INSERT INTO app_user (name, username, password_hash, email, phone, image,
+        INSERT INTO app_user (vendor_id, name, username, password_hash, email, phone, image,
                               role_id, is_admin, is_api_user, dark_mode, pending_password_reset, outlet_id)
-        VALUES (#{name}, #{username}, #{passwordHash}, #{email}, #{phone}, #{image},
+        VALUES (#{vendorId}, #{name}, #{username}, #{passwordHash}, #{email}, #{phone}, #{image},
                 #{roleId}, #{isAdmin}, #{isApiUser}, #{darkMode}, #{pendingPasswordReset}, #{outletId})
         """)
     int insert(User u);

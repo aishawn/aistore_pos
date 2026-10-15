@@ -46,7 +46,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     var principal = new AuthUser(Long.parseLong(claims.getSubject()),
                             claims.get("username", String.class),
                             Boolean.TRUE.equals(claims.get("admin", Boolean.class)),
-                            JwtService.claimAsLong(claims, "outletId"));
+                            JwtService.claimAsLong(claims, "outletId"),
+                            JwtService.claimAsLong(claims, "vendorId"));
                     var auth = new UsernamePasswordAuthenticationToken(principal, null, authorities);
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);

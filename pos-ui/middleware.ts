@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasOrithosSession } from "@/lib/server-auth";
+import { parseTenantSlugFromHost } from "@/lib/tenant-host";
 
 const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_COOKIE = "orithos_refresh_token";
@@ -7,6 +8,8 @@ const REFRESH_COOKIE = "orithos_refresh_token";
 /** Routes that must stay reachable without a session. */
 const PUBLIC_PREFIXES = [
   "/login",
+  "/signup",
+  "/auth/bootstrap",
   "/forgot-password",
   "/reset-password",
   "/api/auth/login",
@@ -14,6 +17,8 @@ const PUBLIC_PREFIXES = [
   "/api/auth/forgot-password",
   "/api/auth/reset-password",
   "/api/auth/reset-token",
+  "/api/auth/bootstrap",
+  "/api/public",
 ];
 
 function isPublic(pathname: string): boolean {
@@ -23,26 +28,53 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function withSecurityHeaders(response: NextResponse): NextResponse {
+function withSecurityHeaders(response: NextResponse, tenantSlug: string | null): NextResponse {
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "SAMEORIGIN");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (tenantSlug) {
+    response.headers.set("x-orithos-tenant-slug", tenantSlug);
+  }
   return response;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (isPublic(pathname)) return withSecurityHeaders(NextResponse.next());
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const tenantSlug = parseTenantSlugFromHost(host);
+
+  const requestHeaders = new Headers(request.headers);
+  if (tenantSlug) {
+    requestHeaders.set("x-orithos-tenant-slug", tenantSlug);
+  }
+  if (host) {
+    requestHeaders.set("x-forwarded-host", host.split(",")[0].trim());
+  }
+
+  if (isPublic(pathname)) {
+    return withSecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      tenantSlug,
+    );
+  }
 
   if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !(await hasOrithosSession(request))) {
-    return withSecurityHeaders(NextResponse.json({ message: "Orithos session expired" }, { status: 401 }));
+    return withSecurityHeaders(
+      NextResponse.json({ message: "Orithos session expired" }, { status: 401 }),
+      tenantSlug,
+    );
   }
 
   // API routes other than public auth still need a token, but the BFF returns 401;
   // only page navigations are redirected here.
-  if (pathname.startsWith("/api/")) return withSecurityHeaders(NextResponse.next());
+  if (pathname.startsWith("/api/")) {
+    return withSecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } }),
+      tenantSlug,
+    );
+  }
 
   const hasSession =
     Boolean(request.cookies.get(ACCESS_COOKIE)?.value)
@@ -52,10 +84,13 @@ export async function middleware(request: NextRequest) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = `?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
-    return withSecurityHeaders(NextResponse.redirect(login));
+    return withSecurityHeaders(NextResponse.redirect(login), tenantSlug);
   }
 
-  return withSecurityHeaders(NextResponse.next());
+  return withSecurityHeaders(
+    NextResponse.next({ request: { headers: requestHeaders } }),
+    tenantSlug,
+  );
 }
 
 export const config = {

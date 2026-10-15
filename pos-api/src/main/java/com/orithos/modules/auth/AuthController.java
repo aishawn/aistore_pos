@@ -10,11 +10,17 @@ import com.orithos.modules.auth.dto.ResetPasswordRequest;
 import com.orithos.modules.auth.dto.TokenResponse;
 import com.orithos.modules.user.UserService;
 import com.orithos.modules.user.entity.User;
+import com.orithos.modules.vendor.Vendor;
+import com.orithos.modules.vendor.VendorMapper;
 import com.orithos.security.AccountTokenStore;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.JwtProperties;
 import com.orithos.security.JwtService;
 import com.orithos.security.TokenStore;
+import com.orithos.tenant.TenantHolder;
+import com.orithos.tenant.TenantProperties;
+import com.orithos.tenant.TenantResolverFilter;
+import com.orithos.tenant.TenantSlugParser;
 import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -32,34 +38,77 @@ public class AuthController {
     private final TokenStore tokenStore;
     private final JwtProperties props;
     private final AccountLifecycleService accountLifecycle;
+    private final VendorMapper vendorMapper;
+    private final TenantSlugParser slugParser;
+    private final TenantProperties tenantProperties;
+    private final AccountTokenStore accountTokenStore;
 
     public AuthController(UserService userService, JwtService jwtService,
                           TokenStore tokenStore, JwtProperties props,
-                          AccountLifecycleService accountLifecycle) {
+                          AccountLifecycleService accountLifecycle,
+                          VendorMapper vendorMapper, TenantSlugParser slugParser,
+                          TenantProperties tenantProperties,
+                          AccountTokenStore accountTokenStore) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
         this.props = props;
         this.accountLifecycle = accountLifecycle;
+        this.vendorMapper = vendorMapper;
+        this.slugParser = slugParser;
+        this.tenantProperties = tenantProperties;
+        this.accountTokenStore = accountTokenStore;
     }
 
     @PostMapping("/login")
     public ApiResult<TokenResponse> login(@Valid @RequestBody LoginRequest req) {
-        User u = userService.authenticate(req.username(), req.password());
+        Vendor vendor = resolveLoginVendor(req.subdomain());
+        if (TenantResolverFilter.isUnavailable(vendor)) {
+            throw new BusinessException(40200, "This trial or store is no longer available");
+        }
+        User u = userService.authenticate(vendor.getId(), req.username(), req.password());
         if (u.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
         }
-        List<String> authorities = userService.authorities(u);
+        String redirectHost = tenantProperties.storeUrl(vendor.getSubdomain());
+        TenantHolder.ResolvedTenant hostTenant = TenantHolder.get();
+        boolean onControlPlane = hostTenant == null || hostTenant.controlPlane();
+        if (onControlPlane) {
+            // Cookies set on app.* cannot be read on {slug}.* — hand off via one-time token.
+            String bootstrap = accountTokenStore.issue(
+                    u.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, java.time.Duration.ofMinutes(5));
+            var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
+                    Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(),
+                    u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
+            return ApiResult.ok(new TokenResponse(null, null, 0, info, redirectHost, bootstrap));
+        }
+        TokenResponse tokens = issueTokens(u);
+        return ApiResult.ok(new TokenResponse(
+                tokens.accessToken(), tokens.refreshToken(), tokens.expiresIn(), tokens.user(),
+                redirectHost, null));
+    }
 
-        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), authorities);
-        var refresh = jwtService.issueRefresh(u.getId(), u.getUsername());
-        tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
-
-        var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
-        return ApiResult.ok(new TokenResponse(access.token(), refresh.token(),
-                props.getAccessTokenTtlMinutes() * 60, info));
+    @PostMapping("/bootstrap")
+    public ApiResult<TokenResponse> bootstrap(@RequestBody Map<String, String> body) {
+        String token = body == null ? null : body.get("token");
+        if (token == null || token.isBlank()) {
+            throw new BusinessException(40001, "Missing bootstrap token");
+        }
+        Long userId = accountTokenStore.consume(token, AccountTokenStore.PURPOSE_BOOTSTRAP);
+        if (userId == null) {
+            throw new BusinessException(40103, "Bootstrap token expired or invalid");
+        }
+        User u = userService.require(userId);
+        TenantHolder.ResolvedTenant tenant = TenantHolder.get();
+        if (tenant != null && !tenant.controlPlane()) {
+            if (u.getVendorId() == null || !u.getVendorId().equals(tenant.vendorId())) {
+                throw new BusinessException(40310, "Bootstrap token does not belong to this store");
+            }
+        }
+        if (u.getOutletId() == null) {
+            throw new BusinessException(40104, "User is not bound to an outlet");
+        }
+        return ApiResult.ok(issueTokens(u));
     }
 
     @PostMapping("/refresh")
@@ -81,13 +130,7 @@ public class AuthController {
         if (u.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
         }
-        List<String> authorities = userService.authorities(u);
-        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), authorities);
-        var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
-        return ApiResult.ok(new TokenResponse(access.token(), refreshToken,
-                props.getAccessTokenTtlMinutes() * 60, info));
+        return ApiResult.ok(issueTokens(u, refreshToken));
     }
 
     @PostMapping("/logout")
@@ -122,15 +165,7 @@ public class AuthController {
             }
         }
         User user = userService.require(userId);
-        var authorities = userService.authorities(user);
-        var access = jwtService.issueAccess(user.getId(), user.getUsername(),
-                Boolean.TRUE.equals(user.getIsAdmin()), user.getOutletId(), authorities);
-        var refresh = jwtService.issueRefresh(user.getId(), user.getUsername());
-        tokenStore.saveRefresh(user.getId(), refresh.jti(), refresh.expiry());
-        var info = new TokenResponse.UserInfo(user.getId(), user.getName(), user.getUsername(),
-                Boolean.TRUE.equals(user.getIsAdmin()), user.getOutletId(), user.getEmail(), false);
-        return ApiResult.ok(new TokenResponse(access.token(), refresh.token(),
-                props.getAccessTokenTtlMinutes() * 60, info));
+        return ApiResult.ok(issueTokens(user));
     }
 
     @PostMapping("/forgot-password")
@@ -180,8 +215,53 @@ public class AuthController {
         body.put("isAdmin", Boolean.TRUE.equals(u.getIsAdmin()));
         body.put("darkMode", u.getDarkMode() == null ? "default" : u.getDarkMode());
         body.put("outletId", u.getOutletId());
+        body.put("vendorId", u.getVendorId());
         body.put("email", u.getEmail());
         body.put("pendingPasswordReset", Boolean.TRUE.equals(u.getPendingPasswordReset()));
+        TenantHolder.ResolvedTenant tenant = TenantHolder.get();
+        if (tenant != null && !tenant.controlPlane() && tenant.slug() != null) {
+            body.put("subdomain", tenant.slug());
+        }
         return ApiResult.ok(body);
     }
+
+    private Vendor resolveLoginVendor(String requestSubdomain) {
+        TenantHolder.ResolvedTenant tenant = TenantHolder.get();
+        if (tenant != null && !tenant.controlPlane() && tenant.vendor() != null) {
+            return tenant.vendor();
+        }
+        String slug = slugParser.normalizeSlug(requestSubdomain);
+        if (slug == null) {
+            throw new BusinessException(40001, "Store subdomain is required");
+        }
+        Vendor vendor = vendorMapper.findBySubdomain(slug);
+        if (vendor == null) {
+            throw new BusinessException(40410, "Store not found");
+        }
+        return vendor;
+    }
+
+    private TokenResponse issueTokens(User u) {
+        List<String> authorities = userService.authorities(u);
+        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(), authorities);
+        var refresh = jwtService.issueRefresh(u.getId(), u.getUsername());
+        tokenStore.saveRefresh(u.getId(), refresh.jti(), refresh.expiry());
+        return toResponse(u, access.token(), refresh.token());
+    }
+
+    private TokenResponse issueTokens(User u, String existingRefresh) {
+        List<String> authorities = userService.authorities(u);
+        var access = jwtService.issueAccess(u.getId(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(), authorities);
+        return toResponse(u, access.token(), existingRefresh);
+    }
+
+    private TokenResponse toResponse(User u, String access, String refresh) {
+        var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(),
+                u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
+        return new TokenResponse(access, refresh, props.getAccessTokenTtlMinutes() * 60L, info);
+    }
+
 }

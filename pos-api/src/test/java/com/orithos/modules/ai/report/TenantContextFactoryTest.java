@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -29,12 +30,13 @@ class TenantContextFactoryTest {
         // The token still carries the cost grant, but the user's current role no longer does.
         when(users.authoritiesForActiveUser(7L)).thenReturn(List.of(TenantContext.PERM_QUERY));
         var authentication = new UsernamePasswordAuthenticationToken(
-                new AuthUser(7L, "cashier", false, 1L), null,
+                new AuthUser(7L, "cashier", false, 1L, 1L), null,
                 List.of(() -> TenantContext.PERM_QUERY, () -> TenantContext.PERM_COST));
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         TenantContext tenant = new TenantContextFactory(outlets, users).fromSecurity();
 
+        assertEquals(1L, tenant.vendorId());
         assertTrue(tenant.canQueryReport());
         assertFalse(tenant.canQueryCost());
     }

@@ -2,12 +2,16 @@ package com.orithos.config;
 
 import com.orithos.common.ApiResult;
 import com.orithos.security.JwtAuthenticationFilter;
+import com.orithos.tenant.TenantMatchFilter;
+import com.orithos.tenant.TenantResolverFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,9 +26,12 @@ import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final TenantResolverFilter tenantResolverFilter;
+    private final TenantMatchFilter tenantMatchFilter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -36,13 +43,41 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:http://localhost:3000}")
     private String allowedOrigins;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtFilter,
+                          TenantResolverFilter tenantResolverFilter,
+                          TenantMatchFilter tenantMatchFilter) {
         this.jwtFilter = jwtFilter;
+        this.tenantResolverFilter = tenantResolverFilter;
+        this.tenantMatchFilter = tenantMatchFilter;
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /** Keep tenant/JWT filters only inside the Security chain (avoid double execution). */
+    @Bean
+    public FilterRegistrationBean<TenantResolverFilter> tenantResolverRegistration(
+            TenantResolverFilter filter) {
+        FilterRegistrationBean<TenantResolverFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<TenantMatchFilter> tenantMatchRegistration(TenantMatchFilter filter) {
+        FilterRegistrationBean<TenantMatchFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
+            JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
     }
 
     @Bean
@@ -58,6 +93,8 @@ public class SecurityConfig {
                         "/api/auth/forgot-password",
                         "/api/auth/reset-password",
                         "/api/auth/reset-token",
+                        "/api/auth/bootstrap",
+                        "/api/public/**",
                         "/authorized").permitAll()
                 .requestMatchers("/actuator/**", "/error").permitAll()
                 .anyRequest().authenticated())
@@ -67,7 +104,9 @@ public class SecurityConfig {
                 res.getWriter().write(objectMapper.writeValueAsString(
                         ApiResult.fail(40100, "Unauthorized")));
             }))
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(tenantMatchFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 

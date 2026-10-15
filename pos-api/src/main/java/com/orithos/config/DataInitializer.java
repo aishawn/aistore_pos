@@ -8,6 +8,8 @@ import com.orithos.modules.supplier.Supplier;
 import com.orithos.modules.supplier.SupplierMapper;
 import com.orithos.modules.user.entity.User;
 import com.orithos.modules.user.mapper.UserMapper;
+import com.orithos.modules.vendor.Vendor;
+import com.orithos.modules.vendor.VendorMapper;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.dao.DataAccessException;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +33,7 @@ public class DataInitializer implements CommandLineRunner {
             "Lion Nathan", "CUB", "Diageo");
 
     private final UserMapper userMapper;
+    private final VendorMapper vendorMapper;
     private final ClassificationMapper classificationMapper;
     private final SupplierMapper supplierMapper;
     private final CustomerGroupService customerGroupService;
@@ -40,11 +43,13 @@ public class DataInitializer implements CommandLineRunner {
     private String initialAdminPassword;
 
     public DataInitializer(UserMapper userMapper,
+                           VendorMapper vendorMapper,
                            ClassificationMapper classificationMapper,
                            SupplierMapper supplierMapper,
                            CustomerGroupService customerGroupService,
                            PasswordEncoder encoder) {
         this.userMapper = userMapper;
+        this.vendorMapper = vendorMapper;
         this.classificationMapper = classificationMapper;
         this.supplierMapper = supplierMapper;
         this.customerGroupService = customerGroupService;
@@ -53,9 +58,12 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        ensureDefaultVendor();
         try {
-            if (userMapper.findByUsername("admin") == null) {
+            if (userMapper.findByVendorAndUsername(1L, "admin") == null
+                    && userMapper.findByUsername("admin") == null) {
                 User admin = new User();
+                admin.setVendorId(1L);
                 admin.setName("admin");
                 admin.setUsername("admin");
                 admin.setPasswordHash(encoder.encode(initialAdminPassword));
@@ -75,6 +83,22 @@ public class DataInitializer implements CommandLineRunner {
         seedDefaultFamilies();
         seedDefaultSuppliers();
         seedDefaultCustomerGroup();
+    }
+
+    private void ensureDefaultVendor() {
+        try {
+            if (vendorMapper.findById(1L) != null) return;
+            if (vendorMapper.findBySubdomain("default") != null) return;
+            Vendor vendor = new Vendor();
+            vendor.setName("Default");
+            vendor.setSubdomain("default");
+            vendor.setStatus("active");
+            vendor.setOutletId(1L);
+            vendorMapper.insert(vendor);
+            System.out.println("[DataInitializer] Seeded default vendor (subdomain=default).");
+        } catch (DataAccessException e) {
+            System.out.println("[DataInitializer] Skipped default vendor seeding: " + e.getMessage());
+        }
     }
 
     private void seedDefaultCustomerGroup() {

@@ -70,6 +70,10 @@ services:
       SQL_INIT_MODE: never
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in Dokploy}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      APP_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
+      APP_TENANT_RESERVED_SLUGS: ${APP_TENANT_RESERVED_SLUGS:-www,app,api,odoo,demo,cdn,support,mail,status}
+      APP_TRIAL_DAYS: ${APP_TRIAL_DAYS:-14}
+      APP_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
@@ -128,6 +132,8 @@ services:
       target: runner
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+        NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
+        NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
         BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
     image: orithos-frontend:latest
     restart: unless-stopped
@@ -142,6 +148,8 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+      NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
+      NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}
       # Used by the server-side Odoo session/data bridge. Keep credentials out
       # of the browser bundle. Staff may sign in with their own Odoo users, or
       # an optional least-privilege service account can restore sessions.

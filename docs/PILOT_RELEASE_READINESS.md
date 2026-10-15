@@ -10,8 +10,8 @@
 ## 全静态页面回归
 
 - 128 个静态路由在 390/1440 两个视口共 256 项检查，252 项通过；126 个页面无 404/5xx、页面错误或横向溢出。
-- `/auth/bootstrap`、`/signup` 两个入口各在两个视口返回 404，因为对应租户注册页面/API 目前仍是工作区未提交改动。该项保持 BLOCKED，完成租户提交后必须重新部署复验。
-- 租户前端 typecheck 通过；后端测试受本机 Java 8 限制，项目要求 Java 21，需在 Java 21/Dokploy 环境完成编译和测试。
+- 租户注册/子域名登录整套代码已整理并随本次部署提交；前端 typecheck 通过、lint 0 errors / 50 warnings。后端测试必须由 Dockerfile 的 Java 21 builder 完成，本机 Java 8 无法运行 Maven 验证。
+- `/auth/bootstrap`、`/signup` 的生产 404 需要在本次 Dokploy 部署完成后重新验证；在 200 响应、租户 API 安全和 Java 21 构建证据出现前，P0 仍保持 BLOCKED。
 
 ## 2026-10-15 追加复验
 

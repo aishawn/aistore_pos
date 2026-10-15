@@ -15,6 +15,8 @@ public class AccountTokenStore {
 
     public static final String PURPOSE_RESET = "reset";
     public static final String PURPOSE_INVITE = "invite";
+    /** One-time cross-subdomain login handoff after signup. */
+    public static final String PURPOSE_BOOTSTRAP = "bootstrap";
 
     private final StringRedisTemplate redis;
 

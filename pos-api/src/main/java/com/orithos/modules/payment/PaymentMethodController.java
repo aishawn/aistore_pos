@@ -1,6 +1,7 @@
 package com.orithos.modules.payment;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.CurrentUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,10 @@ public class PaymentMethodController {
 
     @PostMapping
     public ApiResult<PaymentMethod> create(@RequestBody PaymentMethod p) {
+        if (p.getOutletId() == null) {
+            Long outletId = CurrentUser.outletId();
+            p.setOutletId(outletId != null ? outletId : 1L);
+        }
         mapper.insert(p);
         return ApiResult.ok(p);
     }

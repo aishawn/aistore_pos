@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   let body: unknown;
   try { body = await request.json(); } catch { return authProxyError("Invalid login request", 400); }
   try {
-    return await respondWithAuthTokens(await postAuthBackend("login", body));
+    return await respondWithAuthTokens(await postAuthBackend("login", body, null, request));
   } catch {
     return authProxyError("Authentication service is unavailable", 502);
   }

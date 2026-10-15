@@ -34,6 +34,17 @@ public class UserService {
         return u;
     }
 
+    public User authenticate(Long vendorId, String username, String rawPassword) {
+        if (vendorId == null) {
+            throw new BusinessException(40101, "Invalid username or password");
+        }
+        User u = userMapper.findByVendorAndUsername(vendorId, username);
+        if (u == null || !encoder.matches(rawPassword, u.getPasswordHash())) {
+            throw new BusinessException(40101, "Invalid username or password");
+        }
+        return u;
+    }
+
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         User user = require(userId);
         if (!encoder.matches(currentPassword, user.getPasswordHash())) {
@@ -96,9 +107,11 @@ public class UserService {
     }
 
     public User create(User u, String rawPassword) {
-        if (userMapper.findByUsername(u.getUsername()) != null) {
+        Long vendorId = u.getVendorId() != null ? u.getVendorId() : 1L;
+        if (userMapper.findByVendorAndUsername(vendorId, u.getUsername()) != null) {
             throw new BusinessException(40901, "Username already exists");
         }
+        u.setVendorId(vendorId);
         u.setPasswordHash(encoder.encode(rawPassword));
         if (u.getDarkMode() == null) u.setDarkMode("default");
         if (u.getIsAdmin() == null) u.setIsAdmin(false);

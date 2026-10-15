@@ -102,6 +102,7 @@ public class AccountLifecycleService {
         u.setIsAdmin(Boolean.TRUE.equals(isAdmin));
         Long resolvedOutlet = outletId != null ? outletId : CurrentUser.outletId();
         u.setOutletId(resolvedOutlet);
+        u.setVendorId(CurrentUser.vendorId() != null ? CurrentUser.vendorId() : 1L);
         u.setPendingPasswordReset(true);
         // Random placeholder until the invitee sets a real password.
         User created = userService.create(u, randomPassword());

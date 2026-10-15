@@ -1,6 +1,7 @@
 package com.orithos.modules.tax;
 
 import com.orithos.common.ApiResult;
+import com.orithos.security.CurrentUser;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,10 @@ public class TaxRateController {
     @PostMapping
     public ApiResult<TaxRate> create(@RequestBody TaxRate t) {
         if (t.getIsDefault() == null) t.setIsDefault(false);
+        if (t.getOutletId() == null) {
+            Long outletId = CurrentUser.outletId();
+            t.setOutletId(outletId != null ? outletId : 1L);
+        }
         mapper.insert(t);
         return ApiResult.ok(t);
     }

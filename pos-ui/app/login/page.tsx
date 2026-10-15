@@ -6,9 +6,15 @@ import { Eye, EyeOff, LogIn } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
+import {
+  isControlPlaneHost,
+  parseTenantSlugFromHost,
+  tenantBaseDomain,
+} from "@/lib/tenant-host";
 
 type UiMode = "web" | "mobile";
 const REMEMBERED_USERNAME_KEY = "orithos-remembered-username";
+const REMEMBERED_SUBDOMAIN_KEY = "orithos-remembered-subdomain";
 
 function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -17,8 +23,10 @@ function safeReturnPath(value: string | null): string | null {
     if (
       parsed.origin !== window.location.origin
       || parsed.pathname === "/login"
+      || parsed.pathname === "/signup"
       || parsed.pathname === "/forgot-password"
       || parsed.pathname === "/reset-password"
+      || parsed.pathname.startsWith("/auth/")
     ) return null;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
@@ -30,6 +38,9 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [subdomain, setSubdomain] = useState("");
+  const [controlPlane, setControlPlane] = useState(true);
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
   const [rememberUsername, setRememberUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +48,18 @@ export default function LoginPage() {
   const [passwordResetNotice, setPasswordResetNotice] = useState(false);
 
   useEffect(() => {
+    const host = window.location.host;
+    const slug = parseTenantSlugFromHost(host);
+    setTenantSlug(slug);
+    setControlPlane(isControlPlaneHost(host));
     try {
       const rememberedUsername = localStorage.getItem(REMEMBERED_USERNAME_KEY);
       if (rememberedUsername) {
         setUsername(rememberedUsername);
         setRememberUsername(true);
       }
+      const rememberedSubdomain = localStorage.getItem(REMEMBERED_SUBDOMAIN_KEY);
+      if (rememberedSubdomain && !slug) setSubdomain(rememberedSubdomain);
     } catch {
       // Storage may be unavailable in private browsing; sign-in still works.
     }
@@ -53,14 +70,35 @@ export default function LoginPage() {
     setBusy(mode);
     setError(null);
     try {
-      await login(username.trim(), password);
+      const res = await login(
+        username.trim(),
+        password,
+        controlPlane ? subdomain.trim() : undefined,
+      );
       try {
-        if (rememberUsername) localStorage.setItem(REMEMBERED_USERNAME_KEY, username.trim());
-        else localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+        if (rememberUsername) {
+          localStorage.setItem(REMEMBERED_USERNAME_KEY, username.trim());
+          if (controlPlane && subdomain.trim()) {
+            localStorage.setItem(REMEMBERED_SUBDOMAIN_KEY, subdomain.trim().toLowerCase());
+          }
+        } else {
+          localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+          localStorage.removeItem(REMEMBERED_SUBDOMAIN_KEY);
+        }
       } catch {
         // Remembering the username is optional and must not block sign-in.
       }
       setUiMode(mode);
+
+      if (res.bootstrapToken && res.redirectHost) {
+        const url = new URL("/auth/bootstrap", res.redirectHost.endsWith("/")
+          ? res.redirectHost
+          : `${res.redirectHost}/`);
+        url.searchParams.set("token", res.bootstrapToken);
+        window.location.assign(url.toString());
+        return;
+      }
+
       const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
       window.location.assign(returnPath ?? (mode === "mobile" ? "/m" : "/"));
     } catch (err) {
@@ -90,8 +128,38 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-6 sm:p-8 lg:p-10" aria-labelledby="login-title">
           <div>
             <h1 id="login-title" className="text-xl font-semibold tracking-tight text-[var(--oh-text)]">Sign in</h1>
-            <p className="mt-1 text-sm text-[var(--oh-text-secondary)]">Orithos retail workspace</p>
+            <p className="mt-1 text-sm text-[var(--oh-text-secondary)]">
+              {tenantSlug
+                ? `Store ${tenantSlug}.${tenantBaseDomain()}`
+                : "Orithos retail workspace"}
+            </p>
           </div>
+
+          {controlPlane && (
+            <div>
+              <label htmlFor="subdomain" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">
+                Store subdomain
+              </label>
+              <div className="flex h-11 items-center overflow-hidden rounded-md border border-[var(--oh-border-strong)] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/20">
+                <input
+                  id="subdomain"
+                  name="subdomain"
+                  type="text"
+                  value={subdomain}
+                  onChange={(event) => setSubdomain(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  required
+                  maxLength={63}
+                  placeholder="acme"
+                  className="h-full min-w-0 flex-1 bg-transparent px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]"
+                />
+                <span className="shrink-0 border-l border-[var(--oh-border)] px-3 text-xs text-[var(--oh-text-secondary)]">
+                  .{tenantBaseDomain()}
+                </span>
+              </div>
+            </div>
+          )}
 
           <div>
             <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">Username</label>
@@ -183,6 +251,15 @@ export default function LoginPage() {
           >
             {busy === "mobile" ? "Signing in to mobile workspace…" : "Sign in to mobile workspace"}
           </button>
+
+          {controlPlane && (
+            <p className="text-center text-sm text-[var(--oh-text-secondary)]">
+              New to Orithos?{" "}
+              <Link href="/signup" className="font-semibold text-[var(--oh-primary)] hover:underline">
+                Start free trial
+              </Link>
+            </p>
+          )}
         </form>
 
         <aside className="relative hidden min-h-[360px] flex-col justify-end overflow-hidden md:flex">
@@ -197,10 +274,10 @@ export default function LoginPage() {
             <p className="text-base font-semibold leading-snug">Sell, stock and store ops</p>
             <p className="mt-1 text-sm text-white/75">Australian liquor retail workspace</p>
             <Link
-              href="https://orithos.com.au/apply-for-pilot?request=demo"
+              href="/signup"
               className="mt-3 inline-block text-sm font-semibold text-sky-200 hover:text-white hover:underline"
             >
-              More Info…
+              Start free trial
             </Link>
           </div>
         </aside>

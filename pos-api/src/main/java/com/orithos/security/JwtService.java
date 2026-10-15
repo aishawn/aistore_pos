@@ -28,18 +28,18 @@ public class JwtService {
     public record IssuedToken(String token, String jti, Date expiry) {}
 
     public IssuedToken issueAccess(Long userId, String username, boolean admin, Long outletId,
-                                   List<String> authorities) {
-        return issue(userId, username, "access", admin, outletId, authorities,
+                                   Long vendorId, List<String> authorities) {
+        return issue(userId, username, "access", admin, outletId, vendorId, authorities,
                 props.getAccessTokenTtlMinutes() * 60_000L);
     }
 
     public IssuedToken issueRefresh(Long userId, String username) {
-        return issue(userId, username, "refresh", false, null, List.of(),
+        return issue(userId, username, "refresh", false, null, null, List.of(),
                 props.getRefreshTokenTtlDays() * 24 * 60 * 60_000L);
     }
 
     private IssuedToken issue(Long userId, String username, String type, boolean admin, Long outletId,
-                              List<String> authorities, long ttlMillis) {
+                              Long vendorId, List<String> authorities, long ttlMillis) {
         String jti = UUID.randomUUID().toString();
         Date now = new Date();
         Date exp = new Date(now.getTime() + ttlMillis);
@@ -50,6 +50,9 @@ public class JwtService {
         claims.put("authorities", authorities);
         if (outletId != null) {
             claims.put("outletId", outletId);
+        }
+        if (vendorId != null) {
+            claims.put("vendorId", vendorId);
         }
         String token = Jwts.builder()
                 .issuer(props.getIssuer())

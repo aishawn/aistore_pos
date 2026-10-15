@@ -41,6 +41,17 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
 
+  // Preserve browser Host so the API can resolve {slug}.orithos.com.au tenants.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
+    || request.headers.get("host");
+  if (forwardedHost) headers.set("x-forwarded-host", forwardedHost);
+  const tenantSlug = request.headers.get("x-orithos-tenant-slug");
+  if (tenantSlug) headers.set("x-orithos-tenant-slug", tenantSlug);
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+  if (forwardedProto) headers.set("x-forwarded-proto", forwardedProto);
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+
   const method = request.method.toUpperCase();
   try {
     const upstream = await fetch(upstreamUrl, {

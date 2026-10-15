@@ -15,4 +15,5 @@ public class PaymentMethod {
     private Boolean defaultPayExact;
     private String backgroundColour;
     private String textColour;
+    private Long outletId;
 }

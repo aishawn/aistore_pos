@@ -8,14 +8,19 @@ export interface AuthUser {
   name: string;
   username: string;
   isAdmin: boolean;
-  /** SaaS tenant id. Missing on sessions cached before this field existed. */
+  /** Store / outlet id. Missing on sessions cached before this field existed. */
   outletId?: number;
+  /** SaaS vendor id (subdomain tenant). */
+  vendorId?: number;
   email?: string | null;
   pendingPasswordReset?: boolean;
+  subdomain?: string | null;
 }
 
 interface LoginResponse {
   user: CurrentUserResponse;
+  redirectHost?: string | null;
+  bootstrapToken?: string | null;
 }
 
 type CurrentUserResponse = Omit<AuthUser, "id"> & { id: string | number };
@@ -27,7 +32,7 @@ function normalizeUser(user: CurrentUserResponse): AuthUser {
 interface AuthState {
   user: AuthUser | null;
   ready: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, subdomain?: string) => Promise<LoginResponse>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -68,11 +73,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await api.post<LoginResponse>("/api/auth/login", { username, password });
+  const login = useCallback(async (username: string, password: string, subdomain?: string) => {
+    const body: Record<string, string> = { username, password };
+    if (subdomain?.trim()) body.subdomain = subdomain.trim().toLowerCase();
+    const res = await api.post<LoginResponse>("/api/auth/login", body);
     const normalized = normalizeUser(res.user);
     setUser(normalized);
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(normalized));
+    return res;
   }, []);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {

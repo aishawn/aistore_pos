@@ -14,7 +14,7 @@ import { MobileTopBar } from "@/components/MobileAiApp";
 import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/ui-mode";
 
 /** Routes that render standalone, without the app chrome + auth guard. */
-const CHROMELESS = ["/login", "/forgot-password", "/reset-password"];
+const CHROMELESS = ["/login", "/signup", "/auth/bootstrap", "/forgot-password", "/reset-password"];
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
 
@@ -25,6 +25,8 @@ function safeInternalPath(value: string | null): string | null {
     if (
       target.origin !== window.location.origin
       || target.pathname === "/login"
+      || target.pathname === "/signup"
+      || target.pathname.startsWith("/auth/")
       || target.pathname === "/forgot-password"
       || target.pathname === "/reset-password"
     ) return null;
@@ -94,7 +96,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/settings/account");
       return;
     }
-    if (user && (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password")) {
+    if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/auth/bootstrap"
+        || pathname === "/forgot-password" || pathname === "/reset-password")) {
       const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
       router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
       return;

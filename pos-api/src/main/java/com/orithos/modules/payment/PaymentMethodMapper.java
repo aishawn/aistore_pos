@@ -20,9 +20,9 @@ public interface PaymentMethodMapper {
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO payment_method (name, type, surcharge, always_open_drawer, always_print, "
-            + "use_rounding, default_pay_exact, background_colour, text_colour) "
+            + "use_rounding, default_pay_exact, background_colour, text_colour, outlet_id) "
             + "VALUES (#{name}, #{type}, #{surcharge}, #{alwaysOpenDrawer}, #{alwaysPrint}, "
-            + "#{useRounding}, #{defaultPayExact}, #{backgroundColour}, #{textColour})")
+            + "#{useRounding}, #{defaultPayExact}, #{backgroundColour}, #{textColour}, #{outletId})")
     int insert(PaymentMethod p);
 
     @Update("UPDATE payment_method SET name=#{name}, type=#{type}, surcharge=#{surcharge} WHERE id=#{id}")

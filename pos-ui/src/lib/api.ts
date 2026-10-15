@@ -87,7 +87,9 @@ function isAuthExemptPath(path: string): boolean {
     || path.startsWith("/api/auth/change-password")
     || path.startsWith("/api/auth/forgot-password")
     || path.startsWith("/api/auth/reset-password")
-    || path.startsWith("/api/auth/reset-token");
+    || path.startsWith("/api/auth/reset-token")
+    || path.startsWith("/api/auth/bootstrap")
+    || path.startsWith("/api/public/");
 }
 
 function handleAuthFailure(path: string, status: number, code: number) {

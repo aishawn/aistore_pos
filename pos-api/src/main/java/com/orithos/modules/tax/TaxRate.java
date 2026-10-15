@@ -10,4 +10,5 @@ public class TaxRate {
     private BigDecimal amount;
     private Integer mdbId;
     private Boolean isDefault;
+    private Long outletId;
 }

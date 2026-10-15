@@ -52,14 +52,31 @@ export async function hasOrithosSession(request: NextRequest) {
   }
 }
 
-export async function postAuthBackend(path: string, body?: unknown, authorization?: string | null) {
+export async function postAuthBackend(
+  path: string,
+  body?: unknown,
+  authorization?: string | null,
+  forwardFrom?: NextRequest | null,
+) {
   const base = backendUrl().replace(/\/+$/, "");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(authorization ? { Authorization: authorization } : {}),
+  };
+  if (forwardFrom) {
+    const forwardedHost = forwardFrom.headers.get("x-forwarded-host")?.split(",")[0].trim()
+      || forwardFrom.headers.get("host");
+    if (forwardedHost) headers["X-Forwarded-Host"] = forwardedHost;
+    const tenantSlug = forwardFrom.headers.get("x-orithos-tenant-slug");
+    if (tenantSlug) headers["X-Orithos-Tenant-Slug"] = tenantSlug;
+    const forwardedProto = forwardFrom.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+    if (forwardedProto) headers["X-Forwarded-Proto"] = forwardedProto;
+    const forwardedFor = forwardFrom.headers.get("x-forwarded-for");
+    if (forwardedFor) headers["X-Forwarded-For"] = forwardedFor;
+  }
   return fetch(`${base}/api/auth/${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(authorization ? { Authorization: authorization } : {}),
-    },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),

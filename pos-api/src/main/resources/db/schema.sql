@@ -26,6 +26,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE vendor (
   id BIGINT NOT NULL AUTO_INCREMENT,
   name            VARCHAR(255) NOT NULL,
+  subdomain       VARCHAR(63)  NOT NULL COMMENT 'Public store slug → {subdomain}.orithos.com.au',
+  status          VARCHAR(16)  NOT NULL DEFAULT 'active' COMMENT 'trial|active|suspended|expired',
   url             VARCHAR(255) NULL,
   business_type   VARCHAR(32)  NULL COMMENT 'BusinessTypeEnum',
   contact_name    VARCHAR(255) NULL,
@@ -33,9 +35,10 @@ CREATE TABLE vendor (
   trial_ends_at   DATETIME     NULL,
   created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  outlet_id BIGINT NOT NULL DEFAULT 1 COMMENT 'SaaS tenant (outlet) id',
+  outlet_id BIGINT NOT NULL DEFAULT 1 COMMENT 'Legacy default outlet id',
 
   PRIMARY KEY (id),
+  UNIQUE KEY uq_vendor_subdomain (subdomain),
   KEY idx_vendor_outlet (outlet_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -80,6 +83,7 @@ CREATE TABLE contact (
 
 CREATE TABLE outlet (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  vendor_id BIGINT NOT NULL DEFAULT 1 COMMENT 'Owning SaaS vendor',
   name             VARCHAR(255) NOT NULL,
   contact_id BIGINT NULL,
   logo             VARCHAR(512) NULL,
@@ -93,6 +97,7 @@ CREATE TABLE outlet (
   created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at       DATETIME     NULL,
   PRIMARY KEY (id),
+  KEY idx_outlet_vendor (vendor_id),
   KEY idx_outlet_contact (contact_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -227,6 +232,7 @@ CREATE TABLE role_permission (
 
 CREATE TABLE app_user (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  vendor_id BIGINT NOT NULL DEFAULT 1 COMMENT 'Owning SaaS vendor',
   name          VARCHAR(255) NOT NULL,
   username      VARCHAR(128) NOT NULL,
   password_hash VARCHAR(255) NOT NULL COMMENT 'BCrypt — never store plaintext',
@@ -245,7 +251,8 @@ CREATE TABLE app_user (
 
   PRIMARY KEY (id),
   KEY idx_app_user_outlet (outlet_id),
-  UNIQUE KEY uq_user_username (username),
+  KEY idx_app_user_vendor (vendor_id),
+  UNIQUE KEY uq_user_vendor_username (vendor_id, username),
   KEY idx_user_role (role_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

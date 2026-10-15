@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 public class Outlet {
     private Long id;
+    private Long vendorId;
     private String name;
     private Long contactId;
     private String logo;

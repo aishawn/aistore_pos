@@ -45,8 +45,9 @@ public class TenantContextFactory {
         // from the active user record so revocations take effect on the next report request.
         Set<String> authorities = Set.copyOf(userService.authoritiesForActiveUser(user.id()));
 
+        long vendorId = user.vendorId() != null ? user.vendorId() : TenantContext.DEFAULT_VENDOR_ID;
         return new TenantContext(
-                TenantContext.DEFAULT_VENDOR_ID,
+                vendorId,
                 user.id(),
                 user.outletId(),
                 List.copyOf(new ArrayList<>(outlets)),

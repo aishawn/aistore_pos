@@ -19,9 +19,15 @@ public final class CurrentUser {
         return u == null ? null : u.id();
     }
 
-    /** SaaS tenant id (outlet). */
+    /** Store / outlet id. */
     public static Long outletId() {
         AuthUser u = get();
         return u == null ? null : u.outletId();
+    }
+
+    /** SaaS vendor id (subdomain tenant). */
+    public static Long vendorId() {
+        AuthUser u = get();
+        return u == null ? null : u.vendorId();
     }
 }

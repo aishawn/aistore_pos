@@ -13,9 +13,9 @@ public interface OutletMapper {
     Outlet findById(Long id);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO outlet (name, contact_id, logo, business_number, loyalty_enabled, "
+    @Insert("INSERT INTO outlet (vendor_id, name, contact_id, logo, business_number, loyalty_enabled, "
             + "loyalty_name, loyalty_earn_rate, loyalty_redeem_rate, has_kitchen_screen, ticketing_price_set_id) "
-            + "VALUES (#{name}, #{contactId}, #{logo}, #{businessNumber}, #{loyaltyEnabled}, "
+            + "VALUES (#{vendorId}, #{name}, #{contactId}, #{logo}, #{businessNumber}, #{loyaltyEnabled}, "
             + "#{loyaltyName}, #{loyaltyEarnRate}, #{loyaltyRedeemRate}, #{hasKitchenScreen}, #{ticketingPriceSetId})")
     int insert(Outlet o);
 
