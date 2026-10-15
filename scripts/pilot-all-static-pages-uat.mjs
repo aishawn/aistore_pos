@@ -34,7 +34,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: viewports[0] });
 const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password: adminPassword, subdomain: adminSubdomain },
-  headers: { Origin: base },
+  headers: { Origin: base, "X-Orithos-Tenant-Slug": adminSubdomain },
 });
 const loginBody = await login.json().catch(() => ({}));
 if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
@@ -75,7 +75,7 @@ const output = {
   failures,
   result: failures.length ? "FAIL" : "PASS",
 };
-const outputPath = path.join(root, "docs", "UAT_ALL_STATIC_PAGES_2026-10-15.json");
+const outputPath = path.join(root, "docs", process.env.PILOT_UAT_FILENAME || "UAT_ALL_STATIC_PAGES_2026-10-15.json");
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(`WROTE ${outputPath}`);
 if (failures.length) process.exitCode = 1;

@@ -27,7 +27,9 @@ if (!password) {
 
 const pages = [
   { path: "/overview", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Current sale/] },
-  { path: "/dashboard", expect: [/Reporting Dashboard|No sales in the last 24 hours|Connect Odoo to open Overview/, /Australia|Odoo|sales/i] },
+  // `/dashboard` remains a supported alias and intentionally renders the
+  // current Overview surface; accept its current title and live metrics.
+  { path: "/dashboard", expect: [/Odoo POS activity|Reporting Dashboard|No sales in the last 24 hours|Connect Odoo to open Overview/, /Australia|Odoo|sales/i] },
   { path: "/", expect: [/orithos_store1\/00004/, /R2 TEST \|/, /Finalise/] },
   { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
@@ -151,7 +153,7 @@ for (let attempt = 1; attempt <= 3; attempt += 1) {
   try {
     loginResponse = await context.request.post(`${base}/api/auth/login`, {
       data: { username: "admin", password, subdomain },
-      headers: { Origin: base },
+      headers: { Origin: base, "X-Orithos-Tenant-Slug": subdomain },
       timeout: 30000,
     });
     break;

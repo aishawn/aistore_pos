@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T13:00:45.270Z",
-  "deployment": null,
-  "sourceCommit": "da572e83f62a7f4539546f139ca5f8a5f991b323",
+  "generatedAt": "2026-10-15T08:15:14.517Z",
+  "deployment": "3e67a35",
+  "sourceCommit": "1b0f9abdc881fcd6cd3e05aa67c9e3ecf738c464",
   "scope": "production read-only R2 mirror integration status, authentication and responsive UI; no sync trigger or Odoo business writes",
   "checks": [
     {
@@ -33,17 +33,17 @@
   "status": {
     "configured": true,
     "state": "success",
-    "reason": "initial",
-    "lastSuccessAt": "2026-10-14T22:33:56+10:30",
+    "reason": "manual",
+    "lastSuccessAt": "2026-10-15T02:14:01+10:30",
     "nextRunAt": null,
     "nextAttemptAt": null,
     "timezone": "Australia/Adelaide",
     "scheduleEnabled": false,
     "workerScheduleEnabled": false,
-    "snapshotId": "20261014T120340Z",
+    "snapshotId": "20261014T154350Z",
     "snapshot": {
-      "syncedAt": "2026-10-14T22:33:56+10:30",
-      "manifestSha256": "a3107986e4264e2f8ac5f793b92ed2c01c5c90c65223c21c789e531153d31691",
+      "syncedAt": "2026-10-15T02:14:01+10:30",
+      "manifestSha256": "75e3a7d3bd958eb44418e7cdbb6fdd2619d4ee0e90af92d3059a5f5e2336d5d4",
       "databaseIntegrity": "ok",
       "files": [
         {
@@ -69,12 +69,12 @@
         {
           "name": "manifest.json",
           "sizeBytes": 1056,
-          "sha256": "a3107986e4264e2f8ac5f793b92ed2c01c5c90c65223c21c789e531153d31691"
+          "sha256": "75e3a7d3bd958eb44418e7cdbb6fdd2619d4ee0e90af92d3059a5f5e2336d5d4"
         },
         {
           "name": "shopfront.sqlite3",
-          "sizeBytes": 250114048,
-          "sha256": "07e4a6081edc26b38596fe7cc36e5de3bd19e4ea8733ce0b5f1842b546c5e8e3"
+          "sizeBytes": 254558208,
+          "sha256": "2fc62e86c5f0fd1045a5c8f830c544dcc168b232bc384afd8d6eddcbd6625116"
         }
       ]
     },

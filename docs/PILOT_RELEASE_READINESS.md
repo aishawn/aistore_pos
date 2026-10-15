@@ -170,6 +170,14 @@ UAT JSON 保留各自实际 deployment SHA：完整矩阵 `fddb70c`，订单/补
 - 数据不混源：R2 测试档案没有回放到 Odoo，不计入 Odoo 营业额、会计或库存。此前 24 小时窗口没有 Odoo 订单，所以原 Overview 的 Odoo KPI 显示为零；这不是连接故障。
 - 本项 Overview 数据展示验收通过；整体试点放行状态仍以 P0/NO-GO 条件为准，不能因本项通过而变更。
 
+## 2026-10-15 全站真实数据回归
+
+- 认证页面矩阵：43/43 通过，覆盖商品、库存、历史销售、Overview、报表、采购、客户、供应商和设置；角色权限 CRUD 及 Odoo 会话恢复通过。证据：`UAT_PAGE_MATRIX_2026-10-15_CONTINUATION.json`。
+- 全静态路由：128 路由 × 390/1440，共 256/256 通过，无页面错误或横向溢出。证据：`UAT_ALL_STATIC_PAGES_2026-10-15_CONTINUATION.json`。
+- R2 首次真实快照当前已配置并成功校验：`configured=true`、`state=success`、SQLite integrity `ok`、6 个快照文件 SHA-256 有效；仍是手动同步，不能表述为每日自动拉取已启用。证据：`UAT_R2_ARCHIVE_2026-10-14.json`。
+- R2 商品源没有图片字段或 URL，因此图片上传无法从该数据源完成；这仍是上游数据限制，不应使用占位图冒充真实商品图片。
+- 本轮仍保持 NO-GO：现金实点/关班、真实采购收货闭环、价目表/GST/库存位置最终运营确认、SMTP/硬件和 AI 前置条件仍未完成。
+
 > 2026-10-15 继续复核：`origin/main` 已确认包含 `2a46c2d`，推送后约 90 秒生产仍为 `/signup` 307、`/auth/bootstrap` 307、公开子域名 API 401，说明 Dokploy webhook/部署仍未切换；该状态待下一次部署事件后复核。
 
 ### Dokploy Java 21 构建修复

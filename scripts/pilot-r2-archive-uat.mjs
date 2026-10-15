@@ -10,6 +10,7 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
 const base = "https://app.orithos.com.au";
+const subdomain = process.env.PILOT_SUBDOMAIN || env.PILOT_SUBDOMAIN || "default";
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 
@@ -27,7 +28,7 @@ try {
 
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
-    headers: { Origin: base },
+    headers: { Origin: base, "X-Orithos-Tenant-Slug": subdomain },
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error("Orithos admin login failed");
