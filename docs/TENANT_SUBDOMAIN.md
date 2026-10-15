@@ -6,9 +6,11 @@ Orithos stores are addressed as `{slug}.orithos.com.au`, similar to Shopfront’
 
 | Host | Role |
 |---|---|
-| `https://app.orithos.com.au` | **Control plane / console** — signup, `PlatformShell` + `/platform/*` (Stores). No store Sidebar / Sell / Odoo register chrome. |
-| `https://demo.orithos.com.au` | **Pilot / demo store** — full POS shell (Sidebar, Sell, history, stock, settings) |
+| `https://app.orithos.com.au` | **Control plane / console** — signup, `PlatformShell` + `/platform/*` (Stores). No store Sidebar / Sell / Odoo register chrome. P0 gap spec: [PLATFORM_ADMIN_P0_SPEC.md](PLATFORM_ADMIN_P0_SPEC.md). |
+| `https://demo.orithos.com.au` | **Pilot / demo store** — full POS shell (Sidebar, Sell, history, stock, settings). Store ops P0: [STORE_ADMIN_P0_SPEC.md](STORE_ADMIN_P0_SPEC.md). |
 | `https://{slug}.orithos.com.au` | Other registered tenant stores (same POS shell as demo) |
+
+Scope decision (platform-first): [ADMIN_GAP_SCOPE.md](ADMIN_GAP_SCOPE.md).
 
 ## Two admin types
 
