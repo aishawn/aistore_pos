@@ -2,6 +2,13 @@
 
 更新时间：2026-10-15
 
+## 域名分工（app 控制台 / demo 试点店）
+
+- 控制台：`https://app.orithos.com.au`（signup、`/platform/stores`、运营登录）。
+- 试点店：`https://demo.orithos.com.au`（原 `app.*` 上的商店 POS）。
+- 部署后验收：匿名打开 demo 登录页 200；用 admin 登录 demo 可进 Sell；在 app 用 subdomain `demo` 登录平台运营可进 `/platform/stores`。
+- 历史 UAT JSON 中 `target: https://app.orithos.com.au` 记录的是改域名前的证据；后续门店矩阵以 `demo.orithos.com.au` 为准。
+
 ## Dashboard mock 清理
 
 - `/dashboard` 已移除固定退款演示数据，统一读取 Odoo 实时报表；重复 dashboard 入口和无引用的演示销售注入器同步清理。

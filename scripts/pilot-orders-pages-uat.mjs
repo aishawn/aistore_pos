@@ -15,7 +15,7 @@ const env = Object.fromEntries(
 );
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 
-const base = "https://app.orithos.com.au";
+const base = "https://demo.orithos.com.au";
 const deployment = process.env.PILOT_DEPLOYMENT_SHA || null;
 const browser = await chromium.launch({ headless: true });
 const results = [];

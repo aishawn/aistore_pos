@@ -6,7 +6,7 @@ const env = Object.fromEntries(fs.readFileSync(new URL("../.env", import.meta.ur
 }));
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 
-const base = "https://app.orithos.com.au";
+const base = "https://demo.orithos.com.au";
 const loginResponse = await fetch(`${base}/api/auth/login`, {
   method: "POST", headers: { "Content-Type": "application/json", Origin: base },
   body: JSON.stringify({ username: "admin", password: env.INITIAL_ADMIN_PASSWORD }),

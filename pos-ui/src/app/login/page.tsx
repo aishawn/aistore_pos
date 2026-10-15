@@ -61,7 +61,11 @@ export default function LoginPage() {
         setRememberUsername(true);
       }
       const rememberedSubdomain = localStorage.getItem(REMEMBERED_SUBDOMAIN_KEY);
-      if (rememberedSubdomain && !slug) setSubdomain(rememberedSubdomain);
+      if (!slug) {
+        const normalizedRemembered = normalizeSlug(rememberedSubdomain);
+        const migrated = normalizedRemembered === "default" ? "demo" : normalizedRemembered;
+        setSubdomain(migrated && !isReservedSlug(migrated) ? migrated : "demo");
+      }
     } catch {
       // Storage may be unavailable in private browsing; sign-in still works.
     }
@@ -165,7 +169,7 @@ export default function LoginPage() {
                   spellCheck={false}
                   required
                   maxLength={63}
-                  placeholder="acme"
+                  placeholder="demo"
                   className="h-full min-w-0 flex-1 bg-transparent px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]"
                 />
                 <span className="shrink-0 border-l border-[var(--oh-border)] px-3 text-xs text-[var(--oh-text-secondary)]">
@@ -273,11 +277,18 @@ export default function LoginPage() {
                 Start free trial
               </Link>
               <span className="mt-2 block text-xs">
-                Platform operators: sign in with store subdomain{" "}
-                <code className="rounded bg-[var(--oh-surface)] px-1">default</code>
-                {" "}to open{" "}
+                Console: sign in with subdomain{" "}
+                <code className="rounded bg-[var(--oh-surface)] px-1">demo</code>
+                {" "}for platform admin, or open the store at{" "}
+                <a
+                  href={`https://demo.${tenantBaseDomain()}/login`}
+                  className="font-semibold text-[var(--oh-primary)] hover:underline"
+                >
+                  demo.{tenantBaseDomain()}
+                </a>
+                .{" "}
                 <Link href="/platform/stores" className="font-semibold text-[var(--oh-primary)] hover:underline">
-                  all stores
+                  All stores
                 </Link>
                 .
               </span>

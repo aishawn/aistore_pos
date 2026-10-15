@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => { const i = line.indexOf("="); return [line.slice(0, i).trim(), line.slice(i + 1).trim()]; }));
-const base = "https://app.orithos.com.au";
+const base = "https://demo.orithos.com.au";
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const deployment = process.env.PILOT_DEPLOYMENT_SHA || null;
 const pageMatrixName = process.env.PILOT_PAGE_MATRIX_FILENAME || "UAT_PAGE_MATRIX_2026-10-13.json";

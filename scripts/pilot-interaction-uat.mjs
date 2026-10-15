@@ -14,7 +14,7 @@ const env = Object.fromEntries(
       return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
     }),
 );
-const base = "https://app.orithos.com.au";
+const base = "https://demo.orithos.com.au";
 const password = env.INITIAL_ADMIN_PASSWORD;
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 

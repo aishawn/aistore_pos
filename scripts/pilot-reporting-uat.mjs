@@ -9,7 +9,7 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8").
   const index = line.indexOf("=");
   return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
 }));
-const base = "https://app.orithos.com.au";
+const base = "https://demo.orithos.com.au";
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });

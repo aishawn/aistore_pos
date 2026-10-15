@@ -1,6 +1,7 @@
 {
   "generatedAt": "2026-10-15T08:08:36.176Z",
-  "target": "https://app.orithos.com.au",
+  "target": "https://demo.orithos.com.au",
+  "targetNote": "Store POS host after app→console / demo→store split. Historical run was against app.orithos.com.au before the split.",
   "sourceCommit": "3e67a35",
   "staticRoutes": 128,
   "viewports": [

@@ -17,9 +17,9 @@ const env = Object.fromEntries(
     }),
 );
 
-const base = process.env.PILOT_BASE_URL ?? "https://app.orithos.com.au";
+const base = process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au";
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
-const subdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "default";
+const subdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "demo";
 if (!password) {
   console.error("MISSING_ADMIN_PASSWORD");
   process.exit(1);

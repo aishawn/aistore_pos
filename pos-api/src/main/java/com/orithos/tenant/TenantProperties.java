@@ -14,14 +14,15 @@ import java.util.stream.Collectors;
 public class TenantProperties {
 
     private String baseDomain = "orithos.com.au";
-    private String reservedSlugs = "www,app,api,odoo,demo,cdn,support,mail,status";
+    /** Infra hosts only — `demo` is the pilot store at demo.{baseDomain}. */
+    private String reservedSlugs = "www,app,api,odoo,cdn,support,mail,status";
     private int trialDays = 14;
     private String scheme = "https";
     /**
      * Vendor subdomain whose admins may manage all stores from the control plane
-     * (app.orithos.com.au). Defaults to the seeded {@code default} vendor.
+     * (app.orithos.com.au). Defaults to the seeded {@code demo} vendor.
      */
-    private String platformOperatorSlug = "default";
+    private String platformOperatorSlug = "demo";
 
     public String getBaseDomain() {
         return baseDomain;
@@ -64,8 +65,8 @@ public class TenantProperties {
     }
 
     public String platformOperatorSlugNormalized() {
-        String raw = platformOperatorSlug == null ? "default" : platformOperatorSlug.trim();
-        return raw.isEmpty() ? "default" : raw.toLowerCase(Locale.ROOT);
+        String raw = platformOperatorSlug == null ? "demo" : platformOperatorSlug.trim();
+        return raw.isEmpty() ? "demo" : raw.toLowerCase(Locale.ROOT);
     }
 
     public Set<String> reservedSlugSet() {

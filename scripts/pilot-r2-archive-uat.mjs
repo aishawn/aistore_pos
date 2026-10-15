@@ -9,8 +9,8 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .split(/\r?\n/)
   .filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
-const base = "https://app.orithos.com.au";
-const subdomain = process.env.PILOT_SUBDOMAIN || env.PILOT_SUBDOMAIN || "default";
+const base = "https://demo.orithos.com.au";
+const subdomain = process.env.PILOT_SUBDOMAIN || env.PILOT_SUBDOMAIN || "demo";
 if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 

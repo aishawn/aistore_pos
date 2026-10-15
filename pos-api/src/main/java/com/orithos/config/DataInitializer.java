@@ -88,14 +88,14 @@ public class DataInitializer implements CommandLineRunner {
     private void ensureDefaultVendor() {
         try {
             if (vendorMapper.findById(1L) != null) return;
-            if (vendorMapper.findBySubdomain("default") != null) return;
+            if (vendorMapper.findBySubdomain("demo") != null) return;
             Vendor vendor = new Vendor();
-            vendor.setName("Default");
-            vendor.setSubdomain("default");
+            vendor.setName("Orithos Demo");
+            vendor.setSubdomain("demo");
             vendor.setStatus("active");
             vendor.setOutletId(1L);
             vendorMapper.insert(vendor);
-            System.out.println("[DataInitializer] Seeded default vendor (subdomain=default).");
+            System.out.println("[DataInitializer] Seeded demo vendor (subdomain=demo).");
         } catch (DataAccessException e) {
             System.out.println("[DataInitializer] Skipped default vendor seeding: " + e.getMessage());
         }

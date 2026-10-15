@@ -96,12 +96,12 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://*.localhost:3000}
   tenant:
     base-domain: ${APP_TENANT_BASE_DOMAIN:orithos.com.au}
-    reserved-slugs: ${APP_TENANT_RESERVED_SLUGS:www,app,api,odoo,demo,cdn,support,mail,status}
+    reserved-slugs: ${APP_TENANT_RESERVED_SLUGS:www,app,api,odoo,cdn,support,mail,status}
     trial-days: ${APP_TRIAL_DAYS:14}
     # Local: http — production should be https
     scheme: ${APP_TENANT_SCHEME:https}
     # Admins of this store can list/create tenants on app.* (control plane)
-    platform-operator-slug: ${APP_PLATFORM_OPERATOR_SLUG:default}
+    platform-operator-slug: ${APP_PLATFORM_OPERATOR_SLUG:demo}
   initial-admin-password: ${INITIAL_ADMIN_PASSWORD:123456}
   ai:
     # 设为 true 并配置 AI_DASHSCOPE_API_KEY 后启用 Graph 智能助手 + 语音转写 + 酒标识别

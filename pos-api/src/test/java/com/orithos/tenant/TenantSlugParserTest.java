@@ -16,7 +16,7 @@ class TenantSlugParserTest {
     void setUp() {
         TenantProperties props = new TenantProperties();
         props.setBaseDomain("orithos.com.au");
-        props.setReservedSlugs("www,app,api,odoo,demo,cdn,support,mail,status");
+        props.setReservedSlugs("www,app,api,odoo,cdn,support,mail,status");
         parser = new TenantSlugParser(props);
     }
 
@@ -25,6 +25,13 @@ class TenantSlugParserTest {
         var host = parser.resolveHost("acme.orithos.com.au");
         assertFalse(host.controlPlane());
         assertEquals("acme", host.slug());
+    }
+
+    @Test
+    void demoStoreIsTenantHost() {
+        var host = parser.resolveHost("demo.orithos.com.au");
+        assertFalse(host.controlPlane());
+        assertEquals("demo", host.slug());
     }
 
     @Test
@@ -47,6 +54,7 @@ class TenantSlugParserTest {
         assertNull(parser.normalizeSlug("-bad"));
         assertNull(parser.normalizeSlug("a"));
         assertTrue(parser.isReserved("app"));
+        assertFalse(parser.isReserved("demo"));
         assertFalse(parser.isReserved("acme"));
     }
 }

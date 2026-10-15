@@ -16,7 +16,7 @@ const env = Object.fromEntries(
     }),
 );
 
-const base = "https://app.orithos.com.au";
+const base = "https://demo.orithos.com.au";
 const password = env.INITIAL_ADMIN_PASSWORD;
 
 async function login(page) {

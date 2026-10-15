@@ -121,7 +121,7 @@ export default function PlatformStoresPage() {
       <div className="min-h-0 flex-1">
         <AdminPageLayout
           title="Stores"
-          subtitle="Vendors registered in this environment. Use the subdomain on app.orithos.com.au login, or open the store URL directly."
+          subtitle="Vendors registered in this environment. Control plane: app.orithos.com.au. Pilot store: demo.orithos.com.au."
           count={total}
           countLabel="Stores"
           search={

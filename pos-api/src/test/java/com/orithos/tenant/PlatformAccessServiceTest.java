@@ -16,14 +16,14 @@ class PlatformAccessServiceTest {
     @BeforeEach
     void setUp() {
         TenantProperties props = new TenantProperties();
-        props.setPlatformOperatorSlug("default");
+        props.setPlatformOperatorSlug("demo");
         service = new PlatformAccessService(props, mock(VendorMapper.class));
     }
 
     @Test
     void recognisesPlatformOperatorVendor() {
         Vendor vendor = new Vendor();
-        vendor.setSubdomain("default");
+        vendor.setSubdomain("demo");
         assertTrue(service.isPlatformOperatorVendor(vendor));
     }
 

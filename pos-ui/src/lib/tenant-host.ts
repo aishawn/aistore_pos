@@ -1,8 +1,9 @@
 /** Client/server helpers for {slug}.orithos.com.au multi-tenant hosts. */
 
 const DEFAULT_BASE = "orithos.com.au";
+/** Reserved infra hosts — not usable as store slugs. `demo` is the pilot store. */
 const RESERVED = new Set([
-  "www", "app", "api", "odoo", "demo", "cdn", "support", "mail", "status",
+  "www", "app", "api", "odoo", "cdn", "support", "mail", "status",
 ]);
 
 export function tenantBaseDomain(): string {

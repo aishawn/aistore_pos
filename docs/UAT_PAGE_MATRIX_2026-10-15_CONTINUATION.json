@@ -2,7 +2,8 @@
   "generatedAt": "2026-10-15T08:18:42.900Z",
   "deployment": "3e67a35",
   "sourceCommit": "1b0f9abdc881fcd6cd3e05aa67c9e3ecf738c464",
-  "target": "https://app.orithos.com.au",
+  "target": "https://demo.orithos.com.au",
+  "targetNote": "Store POS host after app→console / demo→store split. Historical run was against app.orithos.com.au before the split.",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {

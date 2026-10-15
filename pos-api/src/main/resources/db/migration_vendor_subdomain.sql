@@ -20,10 +20,12 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- Ensure a default vendor row exists for legacy single-tenant data after the
 -- columns above have been added to older installations.
 INSERT INTO vendor (id, name, subdomain, status, created_at, updated_at, outlet_id)
-SELECT 1, 'Default', 'default', 'active', NOW(), NOW(), 1
+SELECT 1, 'Orithos Demo', 'demo', 'active', NOW(), NOW(), 1
 WHERE NOT EXISTS (SELECT 1 FROM vendor WHERE id = 1);
 
-UPDATE vendor SET subdomain = 'default' WHERE id = 1 AND (subdomain IS NULL OR subdomain = '');
+-- Prefer the public demo store slug; keep any non-empty custom slug.
+UPDATE vendor SET subdomain = 'demo' WHERE id = 1 AND (subdomain IS NULL OR subdomain = '' OR subdomain = 'default');
+UPDATE vendor SET name = 'Orithos Demo' WHERE id = 1 AND (name IS NULL OR name = '' OR name = 'Default');
 UPDATE vendor SET status = 'active' WHERE id = 1 AND (status IS NULL OR status = '');
 
 SET @idx := (SELECT COUNT(*) FROM information_schema.STATISTICS
