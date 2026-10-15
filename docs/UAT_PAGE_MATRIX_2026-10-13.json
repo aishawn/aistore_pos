@@ -1,12 +1,16 @@
 {
-  "generatedAt": "2026-10-15T00:52:36.201Z",
+  "generatedAt": "2026-10-15T01:17:40.003Z",
   "deployment": null,
-  "sourceCommit": "940eae7338481b32e71e6bfc96fac87cdac5dca8",
+  "sourceCommit": "78c12c71e79c4f63567995d6ebfc74e21f60ec27",
   "target": "https://app.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
     {
       "path": "/overview",
+      "status": "PASS"
+    },
+    {
+      "path": "/dashboard",
       "status": "PASS"
     },
     {
@@ -215,10 +219,10 @@
       "hours": "24"
     },
     {
-      "route": "/reports/dashboard",
+      "route": "/dashboard",
       "method": "GET",
       "status": 200,
-      "hours": "8"
+      "hours": "24"
     },
     {
       "route": "/overview",
@@ -228,6 +232,12 @@
     }
   ],
   "recoveryResponses": [
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
     {
       "route": null,
       "path": "/api/odoo/session",

@@ -26,6 +26,7 @@ if (!password) {
 
 const pages = [
   { path: "/overview", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Current sale/] },
+  { path: "/dashboard", expect: [/Reporting Dashboard|No sales in the last 24 hours|Connect Odoo to open Overview/, /Australia|Odoo|sales/i] },
   { path: "/", expect: [/orithos_store1\/00004/, /R2 TEST \|/, /Finalise/] },
   { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
