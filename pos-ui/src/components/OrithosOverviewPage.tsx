@@ -48,6 +48,21 @@ type OverviewData = {
   };
 };
 
+type R2Receipt = {
+  invoiceNumber: string;
+  date: string;
+  time: string;
+  total: number;
+  tax: number;
+  items: Array<{ quantity: number }>;
+};
+
+const OVERVIEW_RANGES = [
+  { hours: 24, label: "24 hours" },
+  { hours: 168, label: "7 days" },
+  { hours: 720, label: "30 days" },
+] as const;
+
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
 
 const MARK_TONES = [
@@ -122,9 +137,12 @@ export function OrithosOverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
+  const [rangeHours, setRangeHours] = useState<number>(24);
+  const [r2Receipts, setR2Receipts] = useState<R2Receipt[]>([]);
+  const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
-  const load = useCallback(async (refresh = false) => {
+  const load = useCallback(async (refresh = false, hours = rangeHours) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -132,8 +150,7 @@ export function OrithosOverviewPage() {
       // Establish or restore the browser's Odoo cookie before loading the
       // dashboard, so the first report request does not need a 401 retry.
       await getOdooSessionStatus();
-      // Overview uses a rolling 24h window so “today” KPIs stay useful overnight.
-      const response = await fetchOdooRoute("/api/odoo/reporting-dashboard?hours=24", {
+      const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${hours}`, {
         credentials: "same-origin",
         cache: "no-store",
       });
@@ -168,10 +185,25 @@ export function OrithosOverviewPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [rangeHours]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setParkedCount(readParkedCount()); }, []);
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/r2-archive/sales", { credentials: "same-origin", cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("R2 archive unavailable");
+        return response.json() as Promise<{ items?: R2Receipt[] }>;
+      })
+      .then((payload) => {
+        if (!active) return;
+        setR2Receipts(Array.isArray(payload.items) ? payload.items : []);
+        setR2ArchiveUnavailable(false);
+      })
+      .catch(() => { if (active) setR2ArchiveUnavailable(true); });
+    return () => { active = false; };
+  }, []);
 
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
@@ -182,6 +214,9 @@ export function OrithosOverviewPage() {
   const trendGranularity = data?.trendGranularity ?? "hour";
   const trendLabelInterval = Math.max(1, Math.ceil(trendData.length / 6));
   const currency = data?.currency ?? "AUD";
+  const rangeLabel = OVERVIEW_RANGES.find((range) => range.hours === rangeHours)?.label ?? "24 hours";
+  const r2Total = r2Receipts.reduce((sum, receipt) => sum + receipt.total, 0);
+  const r2ItemsSold = r2Receipts.reduce((sum, receipt) => sum + receipt.items.reduce((lineSum, line) => lineSum + line.quantity, 0), 0);
   const donutGradient = useMemo(() => {
     if (!data?.byCategory.length) return "conic-gradient(#e2e8f0 0 100%)";
     let cursor = 0;
@@ -219,12 +254,18 @@ export function OrithosOverviewPage() {
             <div className="min-w-0">
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
               <h1 className="oh-type-title mt-0.5 text-[var(--oh-text)]">{greeting}</h1>
-              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Sales and store activity from the last 24 hours.</p>
+              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Odoo POS activity · {rangeLabel}</p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="oh-type-meta inline-flex h-8 items-center rounded-full border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] shadow-sm">
-                Last 24 hours
-              </span>
+              <div role="group" aria-label="Odoo sales reporting range" className="inline-flex h-9 items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
+                {OVERVIEW_RANGES.map((range) => (
+                  <button key={range.hours} type="button" aria-pressed={rangeHours === range.hours}
+                    onClick={() => { setRangeHours(range.hours); void load(true, range.hours); }}
+                    className={cn("oh-type-meta min-h-8 rounded-md px-2 font-medium", rangeHours === range.hours ? "bg-[var(--oh-accent)] text-[var(--oh-primary)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
+                    {range.label}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
                 onClick={() => void load(true)}
@@ -248,7 +289,7 @@ export function OrithosOverviewPage() {
 
           <section aria-label="Last 24 hours summary" className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <KpiCard
-              title="Net sales"
+              title="Odoo net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
               detail="After refunds · incl. tax"
               delta={data?.compare.revenueDeltaPct}
@@ -276,11 +317,27 @@ export function OrithosOverviewPage() {
             />
           </section>
 
+          <section aria-label="R2 archived sales summary" className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2.5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Shopfront R2 archive</h2>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">R2 · TEST · read-only</span>
+              </div>
+              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
+                {r2ArchiveUnavailable ? "Archive temporarily unavailable." : `${r2Receipts.length} latest archived receipts · ${r2ItemsSold} items · excluded from Odoo accounting and stock.`}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {!r2ArchiveUnavailable && <p className="oh-type-label font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(r2Total, currency)}</p>}
+              <Link href="/history/odoo" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>
+            </div>
+          </section>
+
           <section className="min-h-0 shrink-0 overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
               <div>
                 <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Top products</h2>
-                <p className="oh-type-meta text-[var(--oh-muted)]">Last 24 hours</p>
+                <p className="oh-type-meta text-[var(--oh-muted)]">Odoo POS · {rangeLabel}</p>
               </div>
               <Link href="/products/odoo" className="oh-type-meta inline-flex min-h-11 items-center px-2 font-semibold text-[var(--oh-primary)] hover:underline">View all →</Link>
             </div>
@@ -357,8 +414,8 @@ export function OrithosOverviewPage() {
                 <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
                   <div className="max-w-xs">
                     <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
-                    <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No sales in the last 24 hours</p>
-                    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Complete a sale to see activity by hour.</p>
+                    <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No Odoo sales in this period</p>
+                    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">R2 archive receipts are shown separately above.</p>
                     <Link href="/" className="oh-type-meta mt-2 inline-flex min-h-11 items-center gap-1 rounded-md px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-accent)]">Open point of sale <ArrowRight size={14} /></Link>
                   </div>
                 </div>
