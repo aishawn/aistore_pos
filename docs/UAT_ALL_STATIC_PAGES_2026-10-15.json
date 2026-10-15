@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-10-15T01:30:10.243Z",
+  "target": "https://app.orithos.com.au",
+  "sourceCommit": "8f49db9",
+  "staticRoutes": 128,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 252,
+  "checksTotal": 256,
+  "failures": [
+    {
+      "route": "/auth/bootstrap",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/signup",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/auth/bootstrap",
+      "viewport": 1440,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/signup",
+      "viewport": 1440,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    }
+  ],
+  "result": "FAIL"
+}
