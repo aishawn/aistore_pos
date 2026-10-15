@@ -39,6 +39,7 @@ public class UserController {
         u.setEmail(req.email());
         u.setRoleId(req.roleId());
         u.setIsAdmin(req.isAdmin());
+        u.setVendorId(CurrentUser.vendorId());
         Long outletId = req.outletId() != null ? req.outletId() : CurrentUser.outletId();
         u.setOutletId(outletId);
         return ApiResult.ok(userService.create(u, req.password()));

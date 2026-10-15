@@ -32,6 +32,13 @@ public interface UserMapper {
     @Select("""
             SELECT * FROM app_user
             WHERE vendor_id = #{vendorId} AND deleted_at IS NULL
+            ORDER BY created_at DESC, id DESC
+            """)
+    List<User> findAllByVendor(@Param("vendorId") Long vendorId);
+
+    @Select("""
+            SELECT * FROM app_user
+            WHERE vendor_id = #{vendorId} AND deleted_at IS NULL
             ORDER BY is_admin DESC, id ASC
             LIMIT 1
             """)

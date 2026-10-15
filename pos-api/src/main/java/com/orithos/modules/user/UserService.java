@@ -6,6 +6,7 @@ import com.orithos.modules.user.entity.Role;
 import com.orithos.modules.user.entity.User;
 import com.orithos.modules.user.mapper.RoleMapper;
 import com.orithos.modules.user.mapper.UserMapper;
+import com.orithos.security.CurrentUser;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -72,6 +73,7 @@ public class UserService {
     public User require(Long id) {
         User u = userMapper.findById(id);
         if (u == null) throw new BusinessException(40400, "User not found");
+        assertSameVendor(u);
         return u;
     }
 
@@ -103,11 +105,15 @@ public class UserService {
     }
 
     public List<User> list() {
-        return userMapper.findAll();
+        Long vendorId = requireVendorId();
+        return userMapper.findAllByVendor(vendorId);
     }
 
     public User create(User u, String rawPassword) {
-        Long vendorId = u.getVendorId() != null ? u.getVendorId() : 1L;
+        Long vendorId = u.getVendorId() != null ? u.getVendorId() : requireVendorId();
+        if (vendorId == null) {
+            throw new BusinessException(40100, "Unauthorized");
+        }
         if (userMapper.findByVendorAndUsername(vendorId, u.getUsername()) != null) {
             throw new BusinessException(40901, "Username already exists");
         }
@@ -117,7 +123,13 @@ public class UserService {
         if (u.getIsAdmin() == null) u.setIsAdmin(false);
         if (u.getIsApiUser() == null) u.setIsApiUser(false);
         if (u.getPendingPasswordReset() == null) u.setPendingPasswordReset(false);
-        if (u.getOutletId() == null) u.setOutletId(1L);
+        if (u.getOutletId() == null) {
+            Long outletId = CurrentUser.outletId();
+            if (outletId == null) {
+                throw new BusinessException(40001, "Outlet is required");
+            }
+            u.setOutletId(outletId);
+        }
         userMapper.insert(u);
         return u;
     }
@@ -138,10 +150,34 @@ public class UserService {
     }
 
     public void delete(Long id) {
+        require(id);
         userMapper.softDelete(id);
     }
 
     public void updateDashboard(Long id, String dashboard) {
+        require(id);
         userMapper.updateDashboard(id, dashboard);
+    }
+
+    private Long requireVendorId() {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) {
+            throw new BusinessException(40100, "Unauthorized");
+        }
+        return vendorId;
+    }
+
+    /**
+     * When an authenticated session has a vendor, hide users from other tenants.
+     * Unauthenticated token flows (bootstrap / invite / reset peek) skip this check.
+     */
+    private void assertSameVendor(User u) {
+        Long vendorId = CurrentUser.vendorId();
+        if (vendorId == null) {
+            return;
+        }
+        if (u.getVendorId() == null || !vendorId.equals(u.getVendorId())) {
+            throw new BusinessException(40400, "User not found");
+        }
     }
 }
