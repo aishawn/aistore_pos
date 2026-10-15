@@ -12,9 +12,14 @@ import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
 import { MobileTopBar } from "@/components/MobileAiApp";
 import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/ui-mode";
+import { isControlPlaneHost } from "@/lib/tenant-host";
 
 /** Routes that render standalone, without the app chrome + auth guard. */
 const CHROMELESS = ["/login", "/signup", "/auth/bootstrap", "/forgot-password", "/reset-password"];
+
+function isPlatformPath(pathname: string): boolean {
+  return pathname === "/platform" || pathname.startsWith("/platform/");
+}
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
 
@@ -50,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, ready, logout } = useAuth();
 
-  const chromeless = CHROMELESS.includes(pathname);
+  const chromeless = CHROMELESS.includes(pathname) || isPlatformPath(pathname);
   const isSellPath = ODOO_REGISTER_PATHS.has(pathname);
 
   useEffect(() => {
@@ -99,7 +104,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/auth/bootstrap"
         || pathname === "/forgot-password" || pathname === "/reset-password")) {
       const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
-      router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
+      // Platform-operator sessions stay on the control plane (no tenant redirect).
+      const onControlPlane = isControlPlaneHost(window.location.host);
+      router.replace(next ?? (onControlPlane ? "/platform/stores" : mode === "mobile" ? "/m" : "/"));
       return;
     }
     if (user && mode === "mobile" && !isMobileAllowedPath(pathname) && pathname !== "/login") {

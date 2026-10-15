@@ -3,8 +3,11 @@ package com.orithos.modules.vendor;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
 
 @Mapper
 public interface VendorMapper {
@@ -17,6 +20,31 @@ public interface VendorMapper {
 
     @Select("SELECT COUNT(*) FROM vendor WHERE subdomain = #{subdomain}")
     long countBySubdomain(String subdomain);
+
+    @Select("""
+            SELECT * FROM vendor
+            WHERE (#{q} IS NULL OR #{q} = ''
+                   OR subdomain LIKE CONCAT('%', #{q}, '%')
+                   OR name LIKE CONCAT('%', #{q}, '%')
+                   OR IFNULL(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
+              AND (#{status} IS NULL OR #{status} = '' OR status = #{status})
+            ORDER BY created_at DESC, id DESC
+            LIMIT #{size} OFFSET #{offset}
+            """)
+    List<Vendor> page(@Param("q") String q,
+                      @Param("status") String status,
+                      @Param("size") int size,
+                      @Param("offset") int offset);
+
+    @Select("""
+            SELECT COUNT(*) FROM vendor
+            WHERE (#{q} IS NULL OR #{q} = ''
+                   OR subdomain LIKE CONCAT('%', #{q}, '%')
+                   OR name LIKE CONCAT('%', #{q}, '%')
+                   OR IFNULL(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
+              AND (#{status} IS NULL OR #{status} = '' OR status = #{status})
+            """)
+    long countFiltered(@Param("q") String q, @Param("status") String status);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""

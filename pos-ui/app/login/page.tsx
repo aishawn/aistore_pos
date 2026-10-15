@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
 import {
   isControlPlaneHost,
+  isReservedSlug,
+  normalizeSlug,
   parseTenantSlugFromHost,
   tenantBaseDomain,
 } from "@/lib/tenant-host";
@@ -70,6 +72,17 @@ export default function LoginPage() {
     setBusy(mode);
     setError(null);
     try {
+      if (controlPlane) {
+        const slug = normalizeSlug(subdomain);
+        if (!slug) {
+          setError("Enter a valid store subdomain (letters, numbers, hyphens).");
+          return;
+        }
+        if (isReservedSlug(slug)) {
+          setError(`“${slug}” is reserved. Use your store name (e.g. footestdomain), not app.`);
+          return;
+        }
+      }
       const res = await login(
         username.trim(),
         password,
@@ -100,7 +113,8 @@ export default function LoginPage() {
       }
 
       const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
-      window.location.assign(returnPath ?? (mode === "mobile" ? "/m" : "/"));
+      // Platform operators stay on the control plane after login.
+      window.location.assign(returnPath ?? (controlPlane ? "/platform/stores" : mode === "mobile" ? "/m" : "/"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn’t sign you in. Check your details and try again.");
     } finally {
@@ -258,6 +272,15 @@ export default function LoginPage() {
               <Link href="/signup" className="font-semibold text-[var(--oh-primary)] hover:underline">
                 Start free trial
               </Link>
+              <span className="mt-2 block text-xs">
+                Platform operators: sign in with store subdomain{" "}
+                <code className="rounded bg-[var(--oh-surface)] px-1">default</code>
+                {" "}to open{" "}
+                <Link href="/platform/stores" className="font-semibold text-[var(--oh-primary)] hover:underline">
+                  all stores
+                </Link>
+                .
+              </span>
             </p>
           )}
         </form>

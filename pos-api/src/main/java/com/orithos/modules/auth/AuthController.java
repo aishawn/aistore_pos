@@ -17,6 +17,7 @@ import com.orithos.security.CurrentUser;
 import com.orithos.security.JwtProperties;
 import com.orithos.security.JwtService;
 import com.orithos.security.TokenStore;
+import com.orithos.tenant.PlatformAccessService;
 import com.orithos.tenant.TenantHolder;
 import com.orithos.tenant.TenantProperties;
 import com.orithos.tenant.TenantResolverFilter;
@@ -42,13 +43,15 @@ public class AuthController {
     private final TenantSlugParser slugParser;
     private final TenantProperties tenantProperties;
     private final AccountTokenStore accountTokenStore;
+    private final PlatformAccessService platformAccess;
 
     public AuthController(UserService userService, JwtService jwtService,
                           TokenStore tokenStore, JwtProperties props,
                           AccountLifecycleService accountLifecycle,
                           VendorMapper vendorMapper, TenantSlugParser slugParser,
                           TenantProperties tenantProperties,
-                          AccountTokenStore accountTokenStore) {
+                          AccountTokenStore accountTokenStore,
+                          PlatformAccessService platformAccess) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
@@ -58,6 +61,7 @@ public class AuthController {
         this.slugParser = slugParser;
         this.tenantProperties = tenantProperties;
         this.accountTokenStore = accountTokenStore;
+        this.platformAccess = platformAccess;
     }
 
     @PostMapping("/login")
@@ -73,6 +77,14 @@ public class AuthController {
         String redirectHost = tenantProperties.storeUrl(vendor.getSubdomain());
         TenantHolder.ResolvedTenant hostTenant = TenantHolder.get();
         boolean onControlPlane = hostTenant == null || hostTenant.controlPlane();
+        if (onControlPlane && platformAccess.isPlatformOperatorVendor(vendor)
+                && Boolean.TRUE.equals(u.getIsAdmin())) {
+            // Platform operators stay on app.* so they can manage all stores.
+            TokenResponse tokens = issueTokens(u);
+            return ApiResult.ok(new TokenResponse(
+                    tokens.accessToken(), tokens.refreshToken(), tokens.expiresIn(), tokens.user(),
+                    null, null));
+        }
         if (onControlPlane) {
             // Cookies set on app.* cannot be read on {slug}.* — hand off via one-time token.
             String bootstrap = accountTokenStore.issue(

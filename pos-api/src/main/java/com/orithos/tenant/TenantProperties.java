@@ -17,6 +17,11 @@ public class TenantProperties {
     private String reservedSlugs = "www,app,api,odoo,demo,cdn,support,mail,status";
     private int trialDays = 14;
     private String scheme = "https";
+    /**
+     * Vendor subdomain whose admins may manage all stores from the control plane
+     * (app.orithos.com.au). Defaults to the seeded {@code default} vendor.
+     */
+    private String platformOperatorSlug = "default";
 
     public String getBaseDomain() {
         return baseDomain;
@@ -48,6 +53,19 @@ public class TenantProperties {
 
     public void setScheme(String scheme) {
         this.scheme = scheme;
+    }
+
+    public String getPlatformOperatorSlug() {
+        return platformOperatorSlug;
+    }
+
+    public void setPlatformOperatorSlug(String platformOperatorSlug) {
+        this.platformOperatorSlug = platformOperatorSlug;
+    }
+
+    public String platformOperatorSlugNormalized() {
+        String raw = platformOperatorSlug == null ? "default" : platformOperatorSlug.trim();
+        return raw.isEmpty() ? "default" : raw.toLowerCase(Locale.ROOT);
     }
 
     public Set<String> reservedSlugSet() {

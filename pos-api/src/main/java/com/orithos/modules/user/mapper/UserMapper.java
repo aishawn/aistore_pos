@@ -29,6 +29,14 @@ public interface UserMapper {
     @Select("SELECT * FROM app_user WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC")
     List<User> findAll();
 
+    @Select("""
+            SELECT * FROM app_user
+            WHERE vendor_id = #{vendorId} AND deleted_at IS NULL
+            ORDER BY is_admin DESC, id ASC
+            LIMIT 1
+            """)
+    User findPrimaryByVendor(@Param("vendorId") Long vendorId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
         INSERT INTO app_user (vendor_id, name, username, password_hash, email, phone, image,
