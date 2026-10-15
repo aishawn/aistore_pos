@@ -150,3 +150,16 @@ UAT JSON 保留各自实际 deployment SHA：完整矩阵 `fddb70c`，订单/补
 ## 放行规则
 
 只有当 P0 全部为 `PASS`，并且未接入的 SMTP、硬件和 AI 能力在界面中明确标注时，才允许称为“核心试点闭环完成”。当前 `4afaff5` 页面回归通过，但关班、真实采购/收货及价格/GST/库存语义仍未通过，因此保持 NO-GO。
+
+## 2026-10-15 租户注册部署复核
+
+- 本地 `main` 与 `origin/main` 已同步到 `311f396`（Add tenant signup and subdomain isolation）。代码中的 Next middleware 将 `/signup`、`/auth/bootstrap`、`/api/auth/bootstrap` 与 `/api/public/*` 明确列为公开路径。
+- 生产 `https://app.orithos.com.au` 当前仍返回旧构建行为：未登录访问 `/signup` 与 `/auth/bootstrap` 返回 `307` 到登录页；`GET /api/public/subdomain-available?slug=testshop` 返回 `401`。因此 311f396 尚未在生产生效，不能把本地代码或重定向后的 200 计为注册功能通过。
+- 生产只读 `GET /api/odoo/session` 返回 `200` 且 `autoRecoverConfigured=true`，说明 Odoo 自动恢复配置仍在；本轮没有写入销售、退款、采购、收货、库存或关班数据。
+- 最新全站脚本 `scripts/pilot-all-static-pages-uat.mjs` 于 2026-10-15 02:24 UTC 对 128 个静态路由、390/1440 两个视口执行：252/256 通过，4 个失败均为上述两个新路由的生产 `404`；其余页面无横向溢出、无页面错误。证据：[UAT_ALL_STATIC_PAGES_2026-10-15.json](UAT_ALL_STATIC_PAGES_2026-10-15.json)。
+
+### 继续执行
+
+1. 在 Dokploy 确认 `311f396`（或其后的文档提交）构建状态为 Done，并确认构建日志使用 Java 21；若没有新部署记录，重新检查 GitHub webhook/应用部署事件。
+2. 部署后用匿名请求复核：`/signup` 和 `/auth/bootstrap` 应为 `200` 页面，`/api/public/subdomain-available?slug=testshop` 应返回公开 API 响应而不是 `401`。
+3. 重新运行 `GIT_COMMIT=311f396 node scripts/pilot-all-static-pages-uat.mjs`，目标为 256/256；在此之前不得把注册/多租户能力标为 PASS。
