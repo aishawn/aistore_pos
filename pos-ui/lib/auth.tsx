@@ -22,7 +22,7 @@ interface LoginResponse {
 interface AuthState {
   user: AuthUser | null;
   ready: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, subdomain?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -51,8 +51,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await api.post<LoginResponse>("/api/auth/login", { username, password });
+  const login = useCallback(async (username: string, password: string, subdomain?: string) => {
+    const res = await api.post<LoginResponse>("/api/auth/login", {
+      username,
+      password,
+      ...(subdomain ? { subdomain } : {}),
+    });
     setToken(res.accessToken);
     setUser(res.user);
     if (typeof localStorage !== "undefined") localStorage.setItem(USER_KEY, JSON.stringify(res.user));

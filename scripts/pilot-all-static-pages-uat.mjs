@@ -8,8 +8,10 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .split(/\r?\n/)
   .filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
-const base = "https://app.orithos.com.au";
-if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const base = process.env.PILOT_BASE_URL ?? "https://app.orithos.com.au";
+const adminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const adminSubdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "default";
+if (!adminPassword) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const appRoot = path.join(root, "pos-ui", "app");
 function collect(dir, relative = "") {
@@ -31,7 +33,7 @@ const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: viewports[0] });
 const login = await context.request.post(`${base}/api/auth/login`, {
-  data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username: "admin", password: adminPassword, subdomain: adminSubdomain },
   headers: { Origin: base },
 });
 const loginBody = await login.json().catch(() => ({}));
