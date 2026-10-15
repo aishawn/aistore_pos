@@ -163,3 +163,5 @@ UAT JSON 保留各自实际 deployment SHA：完整矩阵 `fddb70c`，订单/补
 1. 在 Dokploy 确认 `311f396`（或其后的文档提交）构建状态为 Done，并确认构建日志使用 Java 21；若没有新部署记录，重新检查 GitHub webhook/应用部署事件。
 2. 部署后用匿名请求复核：`/signup` 和 `/auth/bootstrap` 应为 `200` 页面，`/api/public/subdomain-available?slug=testshop` 应返回公开 API 响应而不是 `401`。
 3. 重新运行 `GIT_COMMIT=311f396 node scripts/pilot-all-static-pages-uat.mjs`，目标为 256/256；在此之前不得把注册/多租户能力标为 PASS。
+
+> 2026-10-15 继续复核：`origin/main` 已确认包含 `2a46c2d`，推送后约 90 秒生产仍为 `/signup` 307、`/auth/bootstrap` 307、公开子域名 API 401，说明 Dokploy webhook/部署仍未切换；该状态待下一次部署事件后复核。
