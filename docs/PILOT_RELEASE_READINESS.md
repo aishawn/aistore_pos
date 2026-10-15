@@ -164,6 +164,12 @@ UAT JSON 保留各自实际 deployment SHA：完整矩阵 `fddb70c`，订单/补
 2. 部署后用匿名请求复核：`/signup` 和 `/auth/bootstrap` 应为 `200` 页面，`/api/public/subdomain-available?slug=testshop` 应返回公开 API 响应而不是 `401`。
 3. 重新运行 `GIT_COMMIT=311f396 node scripts/pilot-all-static-pages-uat.mjs`，目标为 256/256；在此之前不得把注册/多租户能力标为 PASS。
 
+## 2026-10-15 Overview 生产验收
+
+- `3e67a35` 已部署并通过认证浏览器检查：Overview 默认查询 30 天（`?hours=720`），Odoo 显示 6 笔销售及 6 笔退款；独立的 `R2 · TEST · read-only` 区域显示 16 张小票、AUD 510.62。所有页面断言通过。
+- 数据不混源：R2 测试档案没有回放到 Odoo，不计入 Odoo 营业额、会计或库存。此前 24 小时窗口没有 Odoo 订单，所以原 Overview 的 Odoo KPI 显示为零；这不是连接故障。
+- 本项 Overview 数据展示验收通过；整体试点放行状态仍以 P0/NO-GO 条件为准，不能因本项通过而变更。
+
 > 2026-10-15 继续复核：`origin/main` 已确认包含 `2a46c2d`，推送后约 90 秒生产仍为 `/signup` 307、`/auth/bootstrap` 307、公开子域名 API 401，说明 Dokploy webhook/部署仍未切换；该状态待下一次部署事件后复核。
 
 ### Dokploy Java 21 构建修复
