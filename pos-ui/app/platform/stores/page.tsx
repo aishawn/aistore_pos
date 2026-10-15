@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   AdminPageLayout,
   AdminSearchInput,
@@ -11,11 +9,9 @@ import {
 import { AsyncState } from "@/components/admin/AsyncState";
 import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
-import { OrithosLogo } from "@/components/OrithosLogo";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAuth } from "@/lib/auth";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
-import { isControlPlaneHost } from "@/lib/tenant-host";
 
 interface StoreRow {
   id: number;
@@ -47,24 +43,18 @@ function formatDate(value: string | null | undefined): string {
 }
 
 export default function PlatformStoresPage() {
-  const router = useRouter();
-  const { user, ready, logout } = useAuth();
-  const [controlPlane, setControlPlane] = useState(false);
+  const { user, ready } = useAuth();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
-    setControlPlane(isControlPlaneHost(window.location.host));
-  }, []);
-
-  useEffect(() => {
     setPage(1);
   }, [debouncedSearch, status]);
 
   const { items, total, loading, error, reload } = useApiList<StoreRow>(
-    ready && user && controlPlane ? "/api/admin/tenants" : null,
+    ready && user ? "/api/admin/tenants" : null,
     {
       q: debouncedSearch || undefined,
       status: status || undefined,
@@ -73,138 +63,95 @@ export default function PlatformStoresPage() {
     },
   );
 
-  async function onLogout() {
-    await logout();
-    router.replace("/login");
-  }
-
-  if (!ready) {
-    return <div className="grid min-h-dvh place-items-center text-sm text-[var(--oh-text-secondary)]">Loading…</div>;
-  }
-
-  if (!controlPlane) {
-    return (
-      <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 px-4 py-10">
-        <OrithosLogo />
-        <h1 className="text-xl font-semibold text-[var(--oh-text)]">Platform admin</h1>
-        <p className="text-sm text-[var(--oh-text-secondary)]">
-          Store list is only available on the control plane host (for example{" "}
-          <code className="rounded bg-[var(--oh-surface)] px-1">app.orithos.com.au</code>).
-        </p>
-        <Link href="/login" className="text-sm font-semibold text-[var(--oh-primary)] hover:underline">
-          Back to sign in
-        </Link>
-      </main>
-    );
-  }
-
-  if (!user) {
+  if (!ready || !user) {
     return null;
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[var(--oh-surface)]">
-      <header className="flex items-center justify-between border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-3">
-          <OrithosLogo compact />
-          <div>
-            <p className="text-sm font-semibold text-[var(--oh-text)]">Platform admin</p>
-            <p className="text-xs text-[var(--oh-text-secondary)]">All Orithos stores</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-[var(--oh-text-secondary)]">
-          <span>{user.name || user.username}</span>
-          <AdminSecondaryButton onClick={() => void onLogout()}>Sign out</AdminSecondaryButton>
-        </div>
-      </header>
-
-      <div className="min-h-0 flex-1">
-        <AdminPageLayout
-          title="Stores"
-          subtitle="Vendors registered in this environment. Control plane: app.orithos.com.au. Pilot store: demo.orithos.com.au."
-          count={total}
-          countLabel="Stores"
-          search={
-            <AdminSearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search name, subdomain, contact…"
-            />
-          }
-          filters={
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="h-10 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
-              aria-label="Filter by status"
-            >
-              <option value="">All statuses</option>
-              <option value="trial">Trial</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="expired">Expired</option>
-            </select>
-          }
-          actions={
-            <AdminSecondaryButton onClick={() => reload()}>Refresh</AdminSecondaryButton>
-          }
+    <AdminPageLayout
+      title="Stores"
+      subtitle="SaaS console for all vendors. Open a store URL to use the POS shell (demo.orithos.com.au for the pilot)."
+      count={total}
+      countLabel="Stores"
+      search={
+        <AdminSearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search name, subdomain, contact…"
+        />
+      }
+      filters={
+        <select
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+          className="h-10 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
+          aria-label="Filter by status"
         >
-          <AsyncState
-            loading={loading}
-            error={error}
-            empty={items.length === 0}
-            emptyText="No stores found. Create one via Start free trial or POST /api/admin/tenants."
-          >
-            <ListTable
-              columns={[
-                { label: "Store", width: "w-[220px]" },
-                { label: "Subdomain", width: "w-[180px]" },
-                { label: "Status", width: "w-[120px]", align: "center" },
-                { label: "Contact", width: "w-[160px]" },
-                { label: "Trial ends", width: "w-[120px]" },
-                { label: "Created", width: "w-[120px]" },
-                { label: "Open", width: "w-[100px]", align: "center" },
-              ]}
-              rows={items.map((store) => [
-                <div key={`${store.id}-name`} className="min-w-0">
-                  <div className="truncate font-medium text-[var(--oh-text)]">{store.name}</div>
-                  {store.platformOperator ? (
-                    <div className="text-xs text-[var(--oh-text-secondary)]">Platform operator</div>
-                  ) : null}
-                </div>,
-                <code key={`${store.id}-slug`} className="text-[12px] text-[var(--oh-text)]">
-                  {store.subdomain}
-                </code>,
-                <span
-                  key={`${store.id}-status`}
-                  className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusTone(store.status)}`}
-                >
-                  {store.status || "unknown"}
-                </span>,
-                <span key={`${store.id}-contact`} className="truncate text-[var(--oh-text-secondary)]">
-                  {store.contactName || "—"}
-                </span>,
-                <span key={`${store.id}-trial`}>{formatDate(store.trialEndsAt)}</span>,
-                <span key={`${store.id}-created`}>{formatDate(store.createdAt)}</span>,
-                store.storeUrl ? (
-                  <a
-                    key={`${store.id}-open`}
-                    href={`${store.storeUrl.replace(/\/$/, "")}/login`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-semibold text-[var(--oh-primary)] hover:underline"
-                  >
-                    Login
-                  </a>
-                ) : (
-                  <span key={`${store.id}-open`}>—</span>
-                ),
-              ])}
-            />
-            <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-          </AsyncState>
-        </AdminPageLayout>
-      </div>
-    </div>
+          <option value="">All statuses</option>
+          <option value="trial">Trial</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+          <option value="expired">Expired</option>
+        </select>
+      }
+      actions={
+        <AdminSecondaryButton onClick={() => reload()}>Refresh</AdminSecondaryButton>
+      }
+    >
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={items.length === 0}
+        emptyText="No stores found. Use Create store or POST /api/admin/tenants."
+      >
+        <ListTable
+          columns={[
+            { label: "Store", width: "w-[220px]" },
+            { label: "Subdomain", width: "w-[180px]" },
+            { label: "Status", width: "w-[120px]", align: "center" },
+            { label: "Contact", width: "w-[160px]" },
+            { label: "Trial ends", width: "w-[120px]" },
+            { label: "Created", width: "w-[120px]" },
+            { label: "Open", width: "w-[100px]", align: "center" },
+          ]}
+          rows={items.map((store) => [
+            <div key={`${store.id}-name`} className="min-w-0">
+              <div className="truncate font-medium text-[var(--oh-text)]">{store.name}</div>
+              {store.platformOperator ? (
+                <div className="text-xs text-[var(--oh-text-secondary)]">Platform operator</div>
+              ) : null}
+            </div>,
+            <code key={`${store.id}-slug`} className="text-[12px] text-[var(--oh-text)]">
+              {store.subdomain}
+            </code>,
+            <span
+              key={`${store.id}-status`}
+              className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusTone(store.status)}`}
+            >
+              {store.status || "unknown"}
+            </span>,
+            <span key={`${store.id}-contact`} className="truncate text-[var(--oh-text-secondary)]">
+              {store.contactName || "—"}
+            </span>,
+            <span key={`${store.id}-trial`}>{formatDate(store.trialEndsAt)}</span>,
+            <span key={`${store.id}-created`}>{formatDate(store.createdAt)}</span>,
+            store.storeUrl ? (
+              <a
+                key={`${store.id}-open`}
+                href={`${store.storeUrl.replace(/\/$/, "")}/login`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-[var(--oh-primary)] hover:underline"
+              >
+                Login
+              </a>
+            ) : (
+              <span key={`${store.id}-open`}>—</span>
+            ),
+          ])}
+        />
+        <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+      </AsyncState>
+    </AdminPageLayout>
   );
 }

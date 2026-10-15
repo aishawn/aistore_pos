@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasOrithosSession } from "@/lib/server-auth";
-import { parseTenantSlugFromHost } from "@/lib/tenant-host";
+import { isControlPlanePageAllowed, parseTenantSlugFromHost } from "@/lib/tenant-host";
 
 const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_COOKIE = "orithos_refresh_token";
@@ -76,6 +76,14 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  const onControlPlane = tenantSlug === null;
+  if (onControlPlane && !isControlPlanePageAllowed(pathname)) {
+    const consoleHome = request.nextUrl.clone();
+    consoleHome.pathname = "/platform/stores";
+    consoleHome.search = "";
+    return withSecurityHeaders(NextResponse.redirect(consoleHome), tenantSlug);
+  }
+
   const hasSession =
     Boolean(request.cookies.get(ACCESS_COOKIE)?.value)
     || Boolean(request.cookies.get(REFRESH_COOKIE)?.value);
@@ -83,7 +91,10 @@ export async function middleware(request: NextRequest) {
   if (!hasSession) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
-    login.search = `?next=${encodeURIComponent(`${pathname}${request.nextUrl.search}`)}`;
+    const nextPath = onControlPlane
+      ? "/platform/stores"
+      : `${pathname}${request.nextUrl.search}`;
+    login.search = `?next=${encodeURIComponent(nextPath)}`;
     return withSecurityHeaders(NextResponse.redirect(login), tenantSlug);
   }
 

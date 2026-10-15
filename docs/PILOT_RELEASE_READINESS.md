@@ -4,10 +4,10 @@
 
 ## 域名分工（app 控制台 / demo 试点店）
 
-- 控制台：`https://app.orithos.com.au`（signup、`/platform/stores`、运营登录）。
-- 试点店：`https://demo.orithos.com.au`（原 `app.*` 上的商店 POS）。
-- 部署后验收：匿名打开 demo 登录页 200；用 admin 登录 demo 可进 Sell；在 app 用 subdomain `demo` 登录平台运营可进 `/platform/stores`。
-- 历史 UAT JSON 中 `target: https://app.orithos.com.au` 记录的是改域名前的证据；后续门店矩阵以 `demo.orithos.com.au` 为准。
+- 控制台：`https://app.orithos.com.au` — 仅 `PlatformShell` + `/platform/*`（无商店侧栏）。访问 `/` 或 `?next=/` 应落到 `/platform/stores`。
+- 试点店：`https://demo.orithos.com.au` — 完整 POS 壳（Sidebar / Sell）。
+- 部署后验收：`app/` 不出现收银页；`app/platform/stores` 有 Stores 导航；demo 登录后仍为商店 POS。
+- 历史 UAT JSON 中旧 `target: app.orithos.com.au` 门店矩阵证据已迁移目标为 demo；控制台专项单独验。
 
 ## Dashboard mock 清理
 

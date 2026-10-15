@@ -50,6 +50,41 @@ export function isControlPlaneHost(hostHeader: string | null | undefined): boole
   return parseTenantSlugFromHost(hostHeader) === null;
 }
 
+/** Auth + platform console pages allowed on app.* (no store POS chrome). */
+export function isControlPlanePageAllowed(pathname: string): boolean {
+  if (
+    pathname === "/login"
+    || pathname === "/signup"
+    || pathname === "/forgot-password"
+    || pathname === "/reset-password"
+    || pathname === "/settings/account"
+  ) {
+    return true;
+  }
+  if (pathname === "/auth" || pathname.startsWith("/auth/")) return true;
+  if (pathname === "/platform" || pathname.startsWith("/platform/")) return true;
+  return false;
+}
+
+/** Safe post-login path on the control plane (never land on store Sell `/`). */
+export function controlPlaneLandingPath(next: string | null | undefined): string {
+  if (
+    next
+    && next.startsWith("/")
+    && !next.startsWith("//")
+    && !next.includes("\\")
+    && isControlPlanePageAllowed(next.split("?")[0] || next)
+    && next !== "/login"
+    && next !== "/signup"
+    && !next.startsWith("/auth/")
+    && next !== "/forgot-password"
+    && next !== "/reset-password"
+  ) {
+    return next;
+  }
+  return "/platform/stores";
+}
+
 export function storeOrigin(slug: string, protocol?: string): string {
   const scheme = protocol
     || process.env.NEXT_PUBLIC_TENANT_SCHEME

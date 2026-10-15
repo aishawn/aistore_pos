@@ -6,11 +6,17 @@ Orithos stores are addressed as `{slug}.orithos.com.au`, similar to Shopfront’
 
 | Host | Role |
 |---|---|
-| `https://app.orithos.com.au` | **Control plane / console** — signup, platform store list (`/platform/stores`), operator login with a store subdomain field |
-| `https://demo.orithos.com.au` | **Pilot / demo store** — the previous single-tenant POS that lived on `app.*`; sell, inventory, reports, settings |
-| `https://{slug}.orithos.com.au` | Other registered tenant stores |
+| `https://app.orithos.com.au` | **Control plane / console** — signup, `PlatformShell` + `/platform/*` (Stores). No store Sidebar / Sell / Odoo register chrome. |
+| `https://demo.orithos.com.au` | **Pilot / demo store** — full POS shell (Sidebar, Sell, history, stock, settings) |
+| `https://{slug}.orithos.com.au` | Other registered tenant stores (same POS shell as demo) |
 
 Legacy slug `default` is renamed to `demo` on deploy (see `migration_vendor_demo_slug.sql`). Do not treat `demo` as a reserved infra host.
+
+### Console vs store shells
+
+- **Reuse:** brand tokens, Logo, login styling, `AdminPageLayout` / `ListTable` / auth.
+- **Do not reuse on `app.*`:** store `Sidebar`, Sell cart panel, Odoo register chrome, AI float on POS.
+- Middleware and `AppShell` hard-lock the control plane: paths outside auth + `/platform/*` (and `/settings/account` for password reset) redirect to `/platform/stores`. Login ignores `?next=/` and always lands on the console.
 
 ## Flow
 

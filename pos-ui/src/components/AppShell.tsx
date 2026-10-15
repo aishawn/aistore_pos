@@ -12,7 +12,11 @@ import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
 import { MobileTopBar } from "@/components/MobileAiApp";
 import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/ui-mode";
-import { isControlPlaneHost } from "@/lib/tenant-host";
+import {
+  controlPlaneLandingPath,
+  isControlPlaneHost,
+  isControlPlanePageAllowed,
+} from "@/lib/tenant-host";
 
 /** Routes that render standalone, without the app chrome + auth guard. */
 const CHROMELESS = ["/login", "/signup", "/auth/bootstrap", "/forgot-password", "/reset-password"];
@@ -55,7 +59,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, ready, logout } = useAuth();
 
-  const chromeless = CHROMELESS.includes(pathname) || isPlatformPath(pathname);
+  const onControlPlaneHost =
+    typeof window !== "undefined" && isControlPlaneHost(window.location.host);
+  // Password reset must work on app.* without the store Sidebar/POS chrome.
+  const chromeless =
+    CHROMELESS.includes(pathname)
+    || isPlatformPath(pathname)
+    || (onControlPlaneHost && pathname === "/settings/account");
   const isSellPath = ODOO_REGISTER_PATHS.has(pathname);
 
   useEffect(() => {
@@ -92,8 +102,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const mode = getUiMode();
     setUiModeState(mode);
     if (!ready) return;
+    const onControlPlane = isControlPlaneHost(window.location.host);
+    if (onControlPlane && !isControlPlanePageAllowed(pathname) && !pathname.startsWith("/api/")) {
+      router.replace("/platform/stores");
+      return;
+    }
     if (!user && !chromeless) {
-      const next = `${pathname}${window.location.search}`;
+      const next = onControlPlane ? "/platform/stores" : `${pathname}${window.location.search}`;
       router.replace(`/login?next=${encodeURIComponent(next)}`);
       return;
     }
@@ -104,9 +119,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (user && (pathname === "/login" || pathname === "/signup" || pathname === "/auth/bootstrap"
         || pathname === "/forgot-password" || pathname === "/reset-password")) {
       const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"));
-      // Platform-operator sessions stay on the control plane (no tenant redirect).
-      const onControlPlane = isControlPlaneHost(window.location.host);
-      router.replace(next ?? (onControlPlane ? "/platform/stores" : mode === "mobile" ? "/m" : "/"));
+      if (onControlPlane) {
+        router.replace(controlPlaneLandingPath(next));
+        return;
+      }
+      router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
+      return;
+    }
+    if (onControlPlane) {
       return;
     }
     if (user && mode === "mobile" && !isMobileAllowedPath(pathname) && pathname !== "/login") {

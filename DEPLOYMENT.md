@@ -36,7 +36,7 @@ After a change is pushed to `main`, Dokploy should deploy the Compose services i
 ### Smoke checklist after every Deploy
 
 1. Dokploy deployment status is **Done** and the commit SHA matches `origin/main` (or contains at least the intended fix commit).
-2. **Console**: https://app.orithos.com.au/login → sign in as `admin` with store subdomain `demo` → should land on `/platform/stores`.
+2. **Console**: https://app.orithos.com.au/login → sign in as `admin` with store subdomain `demo` → `/platform/stores` with PlatformShell (not store Sidebar). Opening https://app.orithos.com.au/ must redirect to `/platform/stores`, not Sell.
 3. **Pilot store**: https://demo.orithos.com.au/login → sign in as `admin` (no subdomain field) → Sell `/` and store pages.
 4. Optional: https://app.orithos.com.au/signup → create a trial store → land on `{slug}.orithos.com.au` already signed in.
 5. On the demo store host, **Setup → Integrations**: Odoo shows Connected (or Connect with staff account). Confirm the auto-recover note matches Dokploy (`autoRecoverConfigured` via `/api/odoo/session` when logged in).

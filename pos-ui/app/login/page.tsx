@@ -7,6 +7,7 @@ import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
 import {
+  controlPlaneLandingPath,
   isControlPlaneHost,
   isReservedSlug,
   normalizeSlug,
@@ -117,8 +118,12 @@ export default function LoginPage() {
       }
 
       const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
-      // Platform operators stay on the control plane after login.
-      window.location.assign(returnPath ?? (controlPlane ? "/platform/stores" : mode === "mobile" ? "/m" : "/"));
+      // Control plane never lands on store Sell `/` (e.g. ignore ?next=/).
+      if (controlPlane) {
+        window.location.assign(controlPlaneLandingPath(returnPath));
+        return;
+      }
+      window.location.assign(returnPath ?? (mode === "mobile" ? "/m" : "/"));
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn’t sign you in. Check your details and try again.");
     } finally {
