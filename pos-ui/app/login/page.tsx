@@ -9,15 +9,13 @@ import { setUiMode } from "@/lib/ui-mode";
 import {
   controlPlaneLandingPath,
   isControlPlaneHost,
-  isReservedSlug,
-  normalizeSlug,
   parseTenantSlugFromHost,
+  storeOrigin,
   tenantBaseDomain,
 } from "@/lib/tenant-host";
 
 type UiMode = "web" | "mobile";
 const REMEMBERED_USERNAME_KEY = "orithos-remembered-username";
-const REMEMBERED_SUBDOMAIN_KEY = "orithos-remembered-subdomain";
 
 function safeReturnPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -41,7 +39,6 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [subdomain, setSubdomain] = useState("");
   const [controlPlane, setControlPlane] = useState(true);
   const [tenantSlug, setTenantSlug] = useState<string | null>(null);
   const [rememberUsername, setRememberUsername] = useState(false);
@@ -61,12 +58,8 @@ export default function LoginPage() {
         setUsername(rememberedUsername);
         setRememberUsername(true);
       }
-      const rememberedSubdomain = localStorage.getItem(REMEMBERED_SUBDOMAIN_KEY);
-      if (!slug) {
-        const normalizedRemembered = normalizeSlug(rememberedSubdomain);
-        const migrated = normalizedRemembered === "default" ? "demo" : normalizedRemembered;
-        setSubdomain(migrated && !isReservedSlug(migrated) ? migrated : "demo");
-      }
+      // Legacy key from when the console asked for a subdomain — clear it.
+      localStorage.removeItem("orithos-remembered-subdomain");
     } catch {
       // Storage may be unavailable in private browsing; sign-in still works.
     }
@@ -77,31 +70,14 @@ export default function LoginPage() {
     setBusy(mode);
     setError(null);
     try {
-      if (controlPlane) {
-        const slug = normalizeSlug(subdomain);
-        if (!slug) {
-          setError("Enter a valid store subdomain (letters, numbers, hyphens).");
-          return;
-        }
-        if (isReservedSlug(slug)) {
-          setError(`“${slug}” is reserved. Use your store name (e.g. footestdomain), not app.`);
-          return;
-        }
-      }
-      const res = await login(
-        username.trim(),
-        password,
-        controlPlane ? subdomain.trim() : undefined,
-      );
+      // Control plane: no subdomain — API uses the platform-operator vendor.
+      // Store host: tenant comes from Host; do not send subdomain.
+      const res = await login(username.trim(), password, undefined);
       try {
         if (rememberUsername) {
           localStorage.setItem(REMEMBERED_USERNAME_KEY, username.trim());
-          if (controlPlane && subdomain.trim()) {
-            localStorage.setItem(REMEMBERED_SUBDOMAIN_KEY, subdomain.trim().toLowerCase());
-          }
         } else {
           localStorage.removeItem(REMEMBERED_USERNAME_KEY);
-          localStorage.removeItem(REMEMBERED_SUBDOMAIN_KEY);
         }
       } catch {
         // Remembering the username is optional and must not block sign-in.
@@ -118,7 +94,6 @@ export default function LoginPage() {
       }
 
       const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
-      // Control plane never lands on store Sell `/` (e.g. ignore ?next=/).
       if (controlPlane) {
         window.location.assign(controlPlaneLandingPath(returnPath));
         return;
@@ -135,6 +110,8 @@ export default function LoginPage() {
     event.preventDefault();
     await doLogin("web");
   }
+
+  const demoStoreLogin = `${storeOrigin("demo")}/login`;
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--oh-surface)] px-4 py-8 font-sans text-[var(--oh-text)]">
@@ -154,35 +131,9 @@ export default function LoginPage() {
             <p className="mt-1 text-sm text-[var(--oh-text-secondary)]">
               {tenantSlug
                 ? `Store ${tenantSlug}.${tenantBaseDomain()}`
-                : "Orithos retail workspace"}
+                : "Orithos platform console"}
             </p>
           </div>
-
-          {controlPlane && (
-            <div>
-              <label htmlFor="subdomain" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">
-                Store subdomain
-              </label>
-              <div className="flex h-11 items-center overflow-hidden rounded-md border border-[var(--oh-border-strong)] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/20">
-                <input
-                  id="subdomain"
-                  name="subdomain"
-                  type="text"
-                  value={subdomain}
-                  onChange={(event) => setSubdomain(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  required
-                  maxLength={63}
-                  placeholder="demo"
-                  className="h-full min-w-0 flex-1 bg-transparent px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]"
-                />
-                <span className="shrink-0 border-l border-[var(--oh-border)] px-3 text-xs text-[var(--oh-text-secondary)]">
-                  .{tenantBaseDomain()}
-                </span>
-              </div>
-            </div>
-          )}
 
           <div>
             <label htmlFor="username" className="mb-1.5 block text-sm font-medium text-[var(--oh-text-secondary)]">Username</label>
@@ -266,36 +217,32 @@ export default function LoginPage() {
             {busy === "web" ? "Signing in…" : "Login"}
           </button>
 
-          <button
-            type="button"
-            disabled={busy !== null}
-            onClick={() => void doLogin("mobile")}
-            className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-transparent text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
-          >
-            {busy === "mobile" ? "Signing in to mobile workspace…" : "Sign in to mobile workspace"}
-          </button>
+          {!controlPlane && (
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void doLogin("mobile")}
+              className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-transparent text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
+            >
+              {busy === "mobile" ? "Signing in to mobile workspace…" : "Sign in to mobile workspace"}
+            </button>
+          )}
 
           {controlPlane && (
             <p className="text-center text-sm text-[var(--oh-text-secondary)]">
-              New to Orithos?{" "}
+              New store?{" "}
               <Link href="/signup" className="font-semibold text-[var(--oh-primary)] hover:underline">
                 Start free trial
               </Link>
               <span className="mt-2 block text-xs">
-                Console: sign in with subdomain{" "}
-                <code className="rounded bg-[var(--oh-surface)] px-1">demo</code>
-                {" "}for platform admin, or open the store at{" "}
+                Store staff sign in at their shop URL (for example{" "}
                 <a
-                  href={`https://demo.${tenantBaseDomain()}/login`}
+                  href={demoStoreLogin}
                   className="font-semibold text-[var(--oh-primary)] hover:underline"
                 >
                   demo.{tenantBaseDomain()}
                 </a>
-                .{" "}
-                <Link href="/platform/stores" className="font-semibold text-[var(--oh-primary)] hover:underline">
-                  All stores
-                </Link>
-                .
+                ). Subdomains are chosen at signup — not on this console login.
               </span>
             </p>
           )}
@@ -308,21 +255,26 @@ export default function LoginPage() {
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/75 via-slate-900/25 to-transparent" />
-          <div className="relative z-10 px-6 pb-6 pt-16 text-white">
-            <p className="text-base font-semibold leading-snug">Sell, stock and store ops</p>
-            <p className="mt-1 text-sm text-white/75">Australian liquor retail workspace</p>
-            <Link
-              href="/signup"
-              className="mt-3 inline-block text-sm font-semibold text-sky-200 hover:text-white hover:underline"
-            >
-              Start free trial
-            </Link>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/35 to-transparent" />
+          <div className="relative z-10 space-y-2 p-8 text-white">
+            <p className="text-lg font-semibold tracking-tight">
+              {controlPlane ? "Manage every Orithos store" : "Sell, stock and store ops"}
+            </p>
+            <p className="max-w-sm text-sm text-white/85">
+              {controlPlane
+                ? "Platform console for signup, store list and operator access."
+                : "Australian liquor retail workspace."}
+            </p>
+            {controlPlane && (
+              <Link href="/signup" className="inline-flex min-h-10 items-center text-sm font-semibold text-white underline-offset-4 hover:underline">
+                Start free trial
+              </Link>
+            )}
           </div>
         </aside>
       </section>
 
-      <footer className="relative z-10 mt-6 flex w-full max-w-[760px] flex-wrap items-center justify-between gap-2 text-xs text-[var(--oh-text-secondary)]">
+      <footer className="relative z-10 mt-8 flex w-full max-w-[760px] items-center justify-between px-1 text-xs text-[var(--oh-text-secondary)]">
         <span>© {new Date().getFullYear()} Orithos</span>
         <Link href="https://orithos.com.au" className="hover:text-[var(--oh-primary)]">Orithos home</Link>
       </footer>

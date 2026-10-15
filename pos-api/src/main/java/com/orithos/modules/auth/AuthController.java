@@ -239,18 +239,28 @@ public class AuthController {
 
     private Vendor resolveLoginVendor(String requestSubdomain) {
         TenantHolder.ResolvedTenant tenant = TenantHolder.get();
+        // Store host: tenant comes from Host ({slug}.orithos.com.au).
         if (tenant != null && !tenant.controlPlane() && tenant.vendor() != null) {
             return tenant.vendor();
         }
-        String slug = slugParser.normalizeSlug(requestSubdomain);
-        if (slug == null) {
-            throw new BusinessException(40001, "Store subdomain is required");
+        // Control plane (app.*): console login only — no subdomain field.
+        // Authenticate against the platform-operator vendor.
+        if (tenant == null || tenant.controlPlane()) {
+            if (requestSubdomain != null && !requestSubdomain.isBlank()) {
+                // Backward-compatible: still accept an explicit slug if a client sends one.
+                String slug = slugParser.normalizeSlug(requestSubdomain);
+                if (slug == null) {
+                    throw new BusinessException(40001, "Invalid store subdomain");
+                }
+                Vendor vendor = vendorMapper.findBySubdomain(slug);
+                if (vendor == null) {
+                    throw new BusinessException(40410, "Store not found");
+                }
+                return vendor;
+            }
+            return platformAccess.requirePlatformOperatorVendor();
         }
-        Vendor vendor = vendorMapper.findBySubdomain(slug);
-        if (vendor == null) {
-            throw new BusinessException(40410, "Store not found");
-        }
-        return vendor;
+        throw new BusinessException(40001, "Store subdomain is required");
     }
 
     private TokenResponse issueTokens(User u) {

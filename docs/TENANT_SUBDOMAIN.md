@@ -26,7 +26,7 @@ Legacy slug `default` is renamed to `demo` on deploy (see `migration_vendor_demo
 4. Browser redirects to `https://{slug}.orithos.com.au/auth/bootstrap?token=…`
 5. Bootstrap exchanges the one-time token for HttpOnly JWT cookies on that host
 
-Login on a tenant host (e.g. `demo.orithos.com.au`) uses Host → vendor. Login on `app.` requires a subdomain field; platform-operator admins of slug `demo` stay on the console, other users hand off via the same bootstrap token to their store host.
+Login on a tenant host (e.g. `demo.orithos.com.au`) uses Host → vendor (no subdomain field). Login on `app.` is **console-only**: username/password against the platform-operator vendor — no subdomain field (stores get their slug at signup). Platform-operator admins stay on the console; other users of that vendor may still hand off via bootstrap to the store host.
 
 ## DNS / TLS
 
