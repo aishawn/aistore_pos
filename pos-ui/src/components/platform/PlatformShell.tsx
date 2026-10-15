@@ -45,6 +45,22 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  if (!user.platformOperator) {
+    return (
+      <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center gap-4 px-4 py-10">
+        <OrithosLogo />
+        <h1 className="text-xl font-semibold text-[var(--oh-text)]">Platform admin required</h1>
+        <p className="text-sm text-[var(--oh-text-secondary)]">
+          This console lists every store. Sign in with a platform operator account
+          on app.{tenantBaseDomain()} (not a store owner from the brand signup form).
+        </p>
+        <Link href="/login" className="text-sm font-semibold text-[var(--oh-primary)] hover:underline">
+          Back to sign in
+        </Link>
+      </main>
+    );
+  }
+
   const demoLogin = `${storeOrigin("demo")}/login`;
 
   return (
@@ -57,7 +73,7 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--oh-text)]">Platform admin</p>
                 <p className="text-xs text-[var(--oh-text-secondary)]">
-                  Console · app.{tenantBaseDomain()}
+                  All stores · app.{tenantBaseDomain()}
                 </p>
               </div>
             </div>

@@ -10,6 +10,15 @@ Orithos stores are addressed as `{slug}.orithos.com.au`, similar to Shopfront’
 | `https://demo.orithos.com.au` | **Pilot / demo store** — full POS shell (Sidebar, Sell, history, stock, settings) |
 | `https://{slug}.orithos.com.au` | Other registered tenant stores (same POS shell as demo) |
 
+## Two admin types
+
+| Role | Who | Capabilities |
+|---|---|---|
+| **Platform admin** | Admin user of the platform-operator vendor (`APP_PLATFORM_OPERATOR_SLUG`, default `demo`) on `app.*` | List / create all stores via `/platform/stores` and `/api/admin/tenants`. Flag: `platformOperator` on `/api/auth/me`. |
+| **Store admin** | Owner created by brand-site trial signup or `POST /api/public/signup` (`isAdmin=true` on that vendor) | Invite / create staff in **this store only** (Settings → Users). Cannot open the platform store list. |
+
+Both share the DB column `app_user.is_admin`. Platform scope is **extra**: control-plane host + membership in the operator vendor — not a second column.
+
 Legacy slug `default` is renamed to `demo` on deploy (see `migration_vendor_demo_slug.sql`). Do not treat `demo` as a reserved infra host.
 
 ### Console vs store shells

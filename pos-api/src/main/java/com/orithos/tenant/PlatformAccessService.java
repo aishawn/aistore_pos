@@ -28,6 +28,16 @@ public class PlatformAccessService {
                 .equalsIgnoreCase(vendor.getSubdomain().trim());
     }
 
+    /**
+     * SaaS-wide platform admin: admin of the configured operator vendor (default {@code demo}).
+     * Distinct from store admins created by brand-site / public signup (store-scoped only).
+     */
+    public boolean isPlatformAdmin(boolean isAdmin, Long vendorId) {
+        if (!isAdmin || vendorId == null) return false;
+        Vendor platform = vendorMapper.findBySubdomain(tenantProperties.platformOperatorSlugNormalized());
+        return platform != null && vendorId.equals(platform.getId());
+    }
+
     public Vendor requirePlatformOperatorVendor() {
         Vendor platform = vendorMapper.findBySubdomain(tenantProperties.platformOperatorSlugNormalized());
         if (platform == null) {
@@ -42,11 +52,7 @@ public class PlatformAccessService {
             throw new BusinessException(40300, "Platform admin is only available on the control plane");
         }
         AuthUser user = CurrentUser.get();
-        if (user == null || !user.admin()) {
-            throw new BusinessException(40300, "Administrator access required");
-        }
-        Vendor platform = requirePlatformOperatorVendor();
-        if (user.vendorId() == null || !user.vendorId().equals(platform.getId())) {
+        if (user == null || !isPlatformAdmin(user.admin(), user.vendorId())) {
             throw new BusinessException(40300, "Platform operator access required");
         }
     }

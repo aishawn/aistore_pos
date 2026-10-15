@@ -70,7 +70,7 @@ export default function PlatformStoresPage() {
   return (
     <AdminPageLayout
       title="Stores"
-      subtitle="SaaS console for all vendors. Open a store URL to use the POS shell (demo.orithos.com.au for the pilot)."
+      subtitle="Platform admin view of every vendor. Store owners from brand signup manage staff only inside their own store URL."
       count={total}
       countLabel="Stores"
       search={

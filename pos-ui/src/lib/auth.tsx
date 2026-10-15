@@ -7,7 +7,13 @@ export interface AuthUser {
   id: string;
   name: string;
   username: string;
+  /** Store administrator — can manage staff in this vendor only. */
   isAdmin: boolean;
+  /**
+   * SaaS platform admin (operator vendor, e.g. demo on app.*).
+   * Can list all stores; distinct from store-scoped isAdmin.
+   */
+  platformOperator?: boolean;
   /** Store / outlet id. Missing on sessions cached before this field existed. */
   outletId?: number;
   /** SaaS vendor id (subdomain tenant). */

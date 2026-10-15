@@ -13,5 +13,6 @@ public record TokenResponse(
     }
 
     public record UserInfo(Long id, String name, String username, boolean isAdmin, Long outletId,
-                           Long vendorId, String email, boolean pendingPasswordReset) {}
+                           Long vendorId, String email, boolean pendingPasswordReset,
+                           boolean platformOperator) {}
 }

@@ -89,9 +89,7 @@ public class AuthController {
             // Cookies set on app.* cannot be read on {slug}.* — hand off via one-time token.
             String bootstrap = accountTokenStore.issue(
                     u.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, java.time.Duration.ofMinutes(5));
-            var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
-                    Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(),
-                    u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
+            var info = userInfo(u);
             return ApiResult.ok(new TokenResponse(null, null, 0, info, redirectHost, bootstrap));
         }
         TokenResponse tokens = issueTokens(u);
@@ -225,6 +223,8 @@ public class AuthController {
         body.put("name", u.getName());
         body.put("username", u.getUsername());
         body.put("isAdmin", Boolean.TRUE.equals(u.getIsAdmin()));
+        body.put("platformOperator", platformAccess.isPlatformAdmin(
+                Boolean.TRUE.equals(u.getIsAdmin()), u.getVendorId()));
         body.put("darkMode", u.getDarkMode() == null ? "default" : u.getDarkMode());
         body.put("outletId", u.getOutletId());
         body.put("vendorId", u.getVendorId());
@@ -280,10 +280,21 @@ public class AuthController {
     }
 
     private TokenResponse toResponse(User u, String access, String refresh) {
-        var info = new TokenResponse.UserInfo(u.getId(), u.getName(), u.getUsername(),
-                Boolean.TRUE.equals(u.getIsAdmin()), u.getOutletId(), u.getVendorId(),
-                u.getEmail(), Boolean.TRUE.equals(u.getPendingPasswordReset()));
-        return new TokenResponse(access, refresh, props.getAccessTokenTtlMinutes() * 60L, info);
+        return new TokenResponse(access, refresh, props.getAccessTokenTtlMinutes() * 60L, userInfo(u));
+    }
+
+    private TokenResponse.UserInfo userInfo(User u) {
+        boolean admin = Boolean.TRUE.equals(u.getIsAdmin());
+        return new TokenResponse.UserInfo(
+                u.getId(),
+                u.getName(),
+                u.getUsername(),
+                admin,
+                u.getOutletId(),
+                u.getVendorId(),
+                u.getEmail(),
+                Boolean.TRUE.equals(u.getPendingPasswordReset()),
+                platformAccess.isPlatformAdmin(admin, u.getVendorId()));
     }
 
 }

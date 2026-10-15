@@ -120,7 +120,8 @@ export default function UsersSettingsPage() {
     return (
       <UserSettingsScaffold>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-6 py-8 text-[16px] text-amber-950">
-          Only store administrators can manage user accounts.
+          Only store administrators can manage user accounts. The account created
+          when you registered this store (brand site or signup) is the store admin.
         </div>
       </UserSettingsScaffold>
     );
@@ -128,6 +129,12 @@ export default function UsersSettingsPage() {
 
   return (
     <UserSettingsScaffold>
+      <p className="mb-4 max-w-2xl text-[14px] text-neutral-600">
+        Store admin for this shop only — invite or create staff who can sign in at
+        this store URL. Platform-wide store listing is on{" "}
+        <code className="rounded bg-neutral-100 px-1">app.orithos.com.au</code> for
+        platform operators, not here.
+      </p>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <button
           type="button"
