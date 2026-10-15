@@ -10,6 +10,7 @@ import {
   controlPlaneLandingPath,
   isControlPlaneHost,
   parseTenantSlugFromHost,
+  storeLandingPath,
   storeOrigin,
   tenantBaseDomain,
 } from "@/lib/tenant-host";
@@ -98,7 +99,7 @@ export default function LoginPage() {
         window.location.assign(controlPlaneLandingPath(returnPath));
         return;
       }
-      window.location.assign(returnPath ?? (mode === "mobile" ? "/m" : "/"));
+      window.location.assign(storeLandingPath(returnPath, mode));
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn’t sign you in. Check your details and try again.");
     } finally {

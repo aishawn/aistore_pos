@@ -85,6 +85,30 @@ export function controlPlaneLandingPath(next: string | null | undefined): string
   return "/platform/stores";
 }
 
+/** Default store web landing after login (Overview, not Sell `/`). */
+export const STORE_WEB_LANDING_PATH = "/overview";
+
+/** Safe post-login path on a store host. */
+export function storeLandingPath(
+  next: string | null | undefined,
+  mode: "web" | "mobile" = "web",
+): string {
+  if (
+    next
+    && next.startsWith("/")
+    && !next.startsWith("//")
+    && !next.includes("\\")
+    && next !== "/login"
+    && next !== "/signup"
+    && !next.startsWith("/auth/")
+    && next !== "/forgot-password"
+    && next !== "/reset-password"
+  ) {
+    return next;
+  }
+  return mode === "mobile" ? "/m" : STORE_WEB_LANDING_PATH;
+}
+
 export function storeOrigin(slug: string, protocol?: string): string {
   const scheme = protocol
     || process.env.NEXT_PUBLIC_TENANT_SCHEME

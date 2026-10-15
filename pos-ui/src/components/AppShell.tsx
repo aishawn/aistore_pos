@@ -16,6 +16,8 @@ import {
   controlPlaneLandingPath,
   isControlPlaneHost,
   isControlPlanePageAllowed,
+  storeLandingPath,
+  STORE_WEB_LANDING_PATH,
 } from "@/lib/tenant-host";
 
 /** Routes that render standalone, without the app chrome + auth guard. */
@@ -123,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         router.replace(controlPlaneLandingPath(next));
         return;
       }
-      router.replace(next ?? (mode === "mobile" ? "/m" : "/"));
+      router.replace(storeLandingPath(next, mode));
       return;
     }
     if (onControlPlane) {
@@ -134,7 +136,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     if (user && mode !== "mobile" && pathname === "/m") {
-      router.replace("/");
+      router.replace(STORE_WEB_LANDING_PATH);
     }
   }, [ready, user, chromeless, pathname, router]);
 
