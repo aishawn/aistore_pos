@@ -70,21 +70,6 @@ export interface PaymentState {
   error: string | null;
 }
 
-/** Fallback when the backend is offline — matches the live-site demo list. */
-export const CUSTOMERS: Customer[] = [
-  { id: "aliyah-roberts", name: "Aliyah Roberts", group: "Loyalty Customers", loyaltyPoints: 75 },
-  { id: "benjamin-kovacek", name: "Benjamin Kovacek", group: "Loyalty Customers", loyaltyPoints: 1722.5 },
-  { id: "billie-nader", name: "Billie Nader", group: "Loyalty Customers", loyaltyPoints: 2 },
-  { id: "brandt-willms", name: "Brandt Willms", group: "Loyalty Customers", loyaltyPoints: 4.5 },
-];
-
-/** Default quick-key product when the backend lookup fails. */
-export const CARLTON_PRODUCT = {
-  id: "carltondraughtbtl375ml00000001",
-  name: "Carlton Draught Btl 375ml",
-  unitPrice: 4.5,
-};
-
 function toCustomer(hit: SellCustomerHit): Customer {
   return {
     id: hit.id,
@@ -178,7 +163,7 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   const [searchQuery, setSearchQueryState] = useState("");
   const [searchResults, setSearchResults] = useState<SellSearchResult | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>(CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [parkedLoading, setParkedLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -363,13 +348,16 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
     (key: string) => {
       quickKeyProduct(key)
         .then((hit) => {
-          if (hit) {
-            addProduct({ id: hit.id, name: hit.name, unitPrice: hit.price });
-          } else {
-            addProduct(CARLTON_PRODUCT);
+          if (hit) addProduct({ id: hit.id, name: hit.name, unitPrice: hit.price });
+          else {
+            setPendingAction("Quick key");
+            setActionMessage("This quick key is not mapped to a live Odoo product.");
           }
         })
-        .catch(() => addProduct(CARLTON_PRODUCT));
+        .catch(() => {
+          setPendingAction("Quick key");
+          setActionMessage("Could not load the live product for this quick key.");
+        });
     },
     [addProduct],
   );
@@ -379,10 +367,17 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
     const targetId = selectedId ?? lines[lines.length - 1]?.id;
     sellAction("CASE_QUANTITY", targetId)
       .then((res) => {
-        const amount = res.caseQuantity ?? 24;
-        incQty(amount);
+        const amount = res.caseQuantity;
+        if (amount && amount > 0) incQty(amount);
+        else {
+          setPendingAction("Case quantity");
+          setActionMessage("Case quantity is not configured for this live product.");
+        }
       })
-      .catch(() => incQty(24));
+      .catch(() => {
+        setPendingAction("Case quantity");
+        setActionMessage("Could not load case quantity from the POS backend.");
+      });
   }, [lines, selectedId, incQty]);
 
   const cartPayload = useCallback(
@@ -456,11 +451,11 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
         if (res.customers.length > 0) {
           setCustomers(res.customers.map(toCustomer));
         } else if (!q) {
-          setCustomers(CUSTOMERS);
+          setCustomers([]);
         }
       })
       .catch(() => {
-        if (!q) setCustomers(CUSTOMERS);
+        if (!q) setCustomers([]);
       });
   }, []);
 
