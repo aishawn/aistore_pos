@@ -19,7 +19,7 @@ public class TenantSlugParser {
     }
 
     public record HostTenant(boolean controlPlane, String slug) {
-        public static HostTenant controlPlane() {
+        public static HostTenant controlPlaneTenant() {
             return new HostTenant(true, null);
         }
 
@@ -35,7 +35,7 @@ public class TenantSlugParser {
             if (normalized != null && !props.reservedSlugSet().contains(normalized)) {
                 return HostTenant.tenant(normalized);
             }
-            return HostTenant.controlPlane();
+            return HostTenant.controlPlaneTenant();
         }
 
         String host = firstHost(request.getHeader("X-Forwarded-Host"));
@@ -47,7 +47,7 @@ public class TenantSlugParser {
 
     public HostTenant resolveHost(String hostHeader) {
         if (hostHeader == null || hostHeader.isBlank()) {
-            return HostTenant.controlPlane();
+            return HostTenant.controlPlaneTenant();
         }
         String host = hostHeader.trim().toLowerCase(Locale.ROOT);
         int colon = host.indexOf(':');
@@ -57,21 +57,21 @@ public class TenantSlugParser {
         String base = props.getBaseDomain().trim().toLowerCase(Locale.ROOT);
         if (host.equals(base) || host.equals("www." + base) || host.equals("app." + base)
                 || host.equals("localhost") || host.equals("127.0.0.1")) {
-            return HostTenant.controlPlane();
+                return HostTenant.controlPlaneTenant();
         }
         String suffix = "." + base;
         if (host.endsWith(suffix) && host.length() > suffix.length()) {
             String slug = host.substring(0, host.length() - suffix.length());
             if (slug.contains(".")) {
-                return HostTenant.controlPlane();
+                return HostTenant.controlPlaneTenant();
             }
             String normalized = normalizeSlug(slug);
             if (normalized == null || props.reservedSlugSet().contains(normalized)) {
-                return HostTenant.controlPlane();
+                return HostTenant.controlPlaneTenant();
             }
             return HostTenant.tenant(normalized);
         }
-        return HostTenant.controlPlane();
+        return HostTenant.controlPlaneTenant();
     }
 
     public String normalizeSlug(String raw) {

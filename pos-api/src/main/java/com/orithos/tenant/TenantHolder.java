@@ -10,7 +10,7 @@ public final class TenantHolder {
     private TenantHolder() {}
 
     public record ResolvedTenant(boolean controlPlane, String slug, Vendor vendor) {
-        public static ResolvedTenant controlPlane() {
+        public static ResolvedTenant controlPlaneTenant() {
             return new ResolvedTenant(true, null, null);
         }
 

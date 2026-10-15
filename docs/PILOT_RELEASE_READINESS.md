@@ -165,3 +165,8 @@ UAT JSON 保留各自实际 deployment SHA：完整矩阵 `fddb70c`，订单/补
 3. 重新运行 `GIT_COMMIT=311f396 node scripts/pilot-all-static-pages-uat.mjs`，目标为 256/256；在此之前不得把注册/多租户能力标为 PASS。
 
 > 2026-10-15 继续复核：`origin/main` 已确认包含 `2a46c2d`，推送后约 90 秒生产仍为 `/signup` 307、`/auth/bootstrap` 307、公开子域名 API 401，说明 Dokploy webhook/部署仍未切换；该状态待下一次部署事件后复核。
+
+### Dokploy Java 21 构建修复
+
+- 失败日志根因已确认：`TenantSlugParser.HostTenant` 与 `TenantHolder.ResolvedTenant` 的静态 `controlPlane()` 工厂与 record accessor 冲突；同时 `TenantResolverFilter.isUnavailable` 为包私有，无法被认证控制器调用。
+- 已改为 `controlPlaneTenant()` 工厂并公开 `isUnavailable`。推送后应重新执行 Java 21 `mvn -B clean verify`；只有 Dokploy 构建成功并部署新 SHA 后，才能复核注册路由和 256/256 页面矩阵。

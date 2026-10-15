@@ -38,7 +38,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
         try {
             TenantSlugParser.HostTenant hostTenant = slugParser.resolve(request);
             if (hostTenant.controlPlane()) {
-                TenantHolder.set(TenantHolder.ResolvedTenant.controlPlane());
+                TenantHolder.set(TenantHolder.ResolvedTenant.controlPlaneTenant());
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -59,7 +59,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
         }
     }
 
-    static boolean isUnavailable(Vendor vendor) {
+    public static boolean isUnavailable(Vendor vendor) {
         if (vendor == null) return true;
         String status = vendor.getStatus() == null ? "" : vendor.getStatus().toLowerCase();
         if ("suspended".equals(status) || "expired".equals(status)) {
