@@ -121,21 +121,38 @@ export async function POST(request: NextRequest) {
     );
     if (!sessions?.length) throw new CloseError("The POS session is no longer open.", 409);
 
-    if (body.countedCash != null) {
-      await rpc(odooSession, "pos.session", "write", [[sessionId], {
-        cash_register_balance_end_real: Math.round(Number(body.countedCash) * 100) / 100,
-      }]);
-    }
-
-    // Prefer the UI closing control used by Odoo POS; fall back to closing control action.
+    const originalCountedCash = sessions[0].cash_register_balance_end_real ?? null;
+    let countedCashWritten = false;
     try {
-      await rpc(odooSession, "pos.session", "action_pos_session_closing_control", [[sessionId]]);
-    } catch (primary) {
-      try {
-        await rpc(odooSession, "pos.session", "close_session_from_ui", [[sessionId]]);
-      } catch {
-        throw primary;
+      if (body.countedCash != null) {
+        await rpc(odooSession, "pos.session", "write", [[sessionId], {
+          cash_register_balance_end_real: Math.round(Number(body.countedCash) * 100) / 100,
+        }]);
+        countedCashWritten = true;
       }
+
+      // Prefer the UI closing control used by Odoo POS; fall back to closing control action.
+      try {
+        await rpc(odooSession, "pos.session", "action_pos_session_closing_control", [[sessionId]]);
+      } catch (primary) {
+        try {
+          await rpc(odooSession, "pos.session", "close_session_from_ui", [[sessionId]]);
+        } catch {
+          throw primary;
+        }
+      }
+    } catch (closeError) {
+      // A failed closing action must not leave a new drawer count behind.
+      if (countedCashWritten) {
+        try {
+          await rpc(odooSession, "pos.session", "write", [[sessionId], {
+            cash_register_balance_end_real: originalCountedCash,
+          }]);
+        } catch {
+          throw new CloseError("Register close failed and the counted cash could not be rolled back in Odoo.", 502);
+        }
+      }
+      throw closeError;
     }
 
     const after = await rpc<Array<{ id: number; state: string }>>(
