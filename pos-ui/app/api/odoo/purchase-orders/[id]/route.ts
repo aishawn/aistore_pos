@@ -106,7 +106,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     } | null = null;
     if (receiptsAvailable && pickingIds.length) {
       try {
-        const pickingFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.picking", "fields_get", [["move_ids_without_package", "move_ids"]], { attributes: ["type"] });
+        const pickingFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.picking", "fields_get", [], { attributes: ["type"] });
         const moveRelationField = Object.hasOwn(pickingFields ?? {}, "move_ids_without_package")
           ? "move_ids_without_package"
           : Object.hasOwn(pickingFields ?? {}, "move_ids")
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
             ? moveIds.filter((id) => Number.isSafeInteger(id) && Number(id) > 0).map((id) => Number(id))
             : [];
           if (ids.length) {
-            const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [["quantity", "quantity_done"]], { attributes: ["type"] });
+            const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [], { attributes: ["type"] });
             const qtyField = Object.hasOwn(moveFields ?? {}, "quantity")
               ? "quantity"
               : Object.hasOwn(moveFields ?? {}, "quantity_done")
