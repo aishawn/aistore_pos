@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.orithos.modules.register.Outlet;
+import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
@@ -28,6 +30,7 @@ public class OdooTenantProvisioner {
     private static final Logger log = LoggerFactory.getLogger(OdooTenantProvisioner.class);
 
     private final VendorMapper vendorMapper;
+    private final OutletMapper outletMapper;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -40,12 +43,14 @@ public class OdooTenantProvisioner {
 
     public OdooTenantProvisioner(
             VendorMapper vendorMapper,
+            OutletMapper outletMapper,
             ObjectMapper objectMapper,
             @Value("${ODOO_BASE_URL:}") String baseUrl,
             @Value("${ODOO_DATABASE:aipos}") String database,
             @Value("${ODOO_SERVICE_USERNAME:}") String username,
             @Value("${ODOO_SERVICE_PASSWORD:}") String password) {
         this.vendorMapper = vendorMapper;
+        this.outletMapper = outletMapper;
         this.objectMapper = objectMapper;
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
         this.database = database == null ? "" : database.trim();
@@ -58,14 +63,22 @@ public class OdooTenantProvisioner {
     }
 
     public void provisionAsyncSafe(Long vendorId) {
+        provisionAsyncSafe(vendorId, false);
+    }
+
+    public void provisionAsyncSafe(Long vendorId, boolean seedDummyData) {
         try {
-            provision(vendorId);
+            provision(vendorId, seedDummyData);
         } catch (Exception e) {
             log.warn("Odoo provision failed for vendor {}: {}", vendorId, e.getMessage());
         }
     }
 
     public Vendor provision(Long vendorId) {
+        return provision(vendorId, false);
+    }
+
+    public Vendor provision(Long vendorId, boolean seedDummyData) {
         Vendor vendor = vendorMapper.findById(vendorId);
         if (vendor == null) throw new IllegalArgumentException("vendor not found");
 
@@ -89,11 +102,35 @@ public class OdooTenantProvisioner {
             prepareCompanyBasics(sessionId, companyId, vendor.getName());
             long[] warehouse = ensureWarehouse(sessionId, companyId, vendor.getName(), vendor.getSubdomain());
             ensurePaymentMethods(sessionId, companyId);
-            long posConfigId = createPosConfig(sessionId, vendor.getName(), companyId, warehouse);
+
+            List<Outlet> outlets = outletMapper.findByVendorId(vendorId);
+            long primaryPosConfigId = 0;
+            if (outlets == null || outlets.isEmpty()) {
+                primaryPosConfigId = ensurePosConfig(sessionId, vendor.getName() + " Register", companyId);
+            } else {
+                for (Outlet outlet : outlets) {
+                    String configName = (outlet.getName() == null || outlet.getName().isBlank()
+                            ? vendor.getName()
+                            : outlet.getName()) + " Register";
+                    long configId = ensurePosConfig(sessionId, configName, companyId);
+                    if (primaryPosConfigId <= 0) primaryPosConfigId = configId;
+                }
+            }
+            if (primaryPosConfigId <= 0) {
+                throw new IllegalStateException("No POS config was created for the new Odoo company.");
+            }
+
             addCompanyToServiceUser(sessionId, companyId);
+            if (seedDummyData) {
+                try {
+                    seedDummyCatalog(sessionId, companyId);
+                } catch (Exception seedError) {
+                    log.warn("Dummy catalog seed failed for vendor {}: {}", vendorId, seedError.getMessage());
+                }
+            }
 
             vendor.setOdooCompanyId(companyId);
-            vendor.setOdooPosConfigId(posConfigId);
+            vendor.setOdooPosConfigId(primaryPosConfigId);
             vendor.setOdooWarehouseId(warehouse[0] > 0 ? warehouse[0] : null);
             vendor.setOdooStockLocationId(warehouse[1] > 0 ? warehouse[1] : null);
             vendor.setOdooProvisionStatus("ready");
@@ -355,13 +392,18 @@ public class OdooTenantProvisioner {
         return List.of(cashId.longValue(), cardId.longValue());
     }
 
-    private long createPosConfig(String sessionId, String name, long companyId, long[] warehouse) throws Exception {
+    private long ensurePosConfig(String sessionId, String configName, long companyId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
         ArrayNode companyClause = objectMapper.createArrayNode();
         companyClause.add("company_id");
         companyClause.add("=");
         companyClause.add(companyId);
         domain.add(companyClause);
+        ArrayNode nameClause = objectMapper.createArrayNode();
+        nameClause.add("name");
+        nameClause.add("=");
+        nameClause.add(configName);
+        domain.add(nameClause);
         ObjectNode findKwargs = kwargsWithCompany(companyId);
         findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("name"));
         findKwargs.put("limit", 1);
@@ -380,7 +422,7 @@ public class OdooTenantProvisioner {
         long saleJournal = ensureJournal(sessionId, companyId, "Sales", shortCode("SAL", companyId), "sale");
 
         ObjectNode values = objectMapper.createObjectNode();
-        values.put("name", name + " Register");
+        values.put("name", configName);
         values.put("company_id", companyId);
         values.put("picking_type_id", outTypeId);
         values.put("journal_id", posJournal);
@@ -397,6 +439,113 @@ public class OdooTenantProvisioner {
         Number id = callKw(sessionId, "pos.config", "create", List.of(values), kwargsWithCompany(companyId));
         if (id == null) throw new IllegalStateException("pos.config.create returned no id");
         return id.longValue();
+    }
+
+    private void seedDummyCatalog(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode companyClause = objectMapper.createArrayNode();
+        companyClause.add("company_id");
+        companyClause.add("=");
+        companyClause.add(companyId);
+        domain.add(companyClause);
+        ArrayNode posClause = objectMapper.createArrayNode();
+        posClause.add("available_in_pos");
+        posClause.add("=");
+        posClause.add(true);
+        domain.add(posClause);
+        ObjectNode countKwargs = kwargsWithCompany(companyId);
+        JsonNode existing = callKwNode(sessionId, "product.product", "search_count", List.of(domain), countKwargs);
+        if (existing != null && existing.isNumber() && existing.asInt() > 0) {
+            return;
+        }
+
+        long taxId = ensureSaleGstTax(sessionId, companyId);
+        String[][] samples = {
+                {"DEMO Shiraz 750ml", "DEMO-SHIRAZ", "28.50"},
+                {"DEMO Sauvignon Blanc 750ml", "DEMO-SB", "24.90"},
+                {"DEMO IPA 4-pack", "DEMO-IPA", "22.00"},
+        };
+        for (String[] sample : samples) {
+            ObjectNode values = objectMapper.createObjectNode();
+            values.put("name", sample[0]);
+            values.put("default_code", sample[1]);
+            values.put("list_price", Double.parseDouble(sample[2]));
+            values.put("available_in_pos", true);
+            values.put("sale_ok", true);
+            values.put("purchase_ok", true);
+            values.put("type", "consu");
+            values.put("company_id", companyId);
+            if (taxId > 0) {
+                ArrayNode taxes = values.putArray("taxes_id");
+                ArrayNode cmd = taxes.addArray();
+                cmd.add(6);
+                cmd.add(0);
+                ArrayNode ids = cmd.addArray();
+                ids.add(taxId);
+            }
+            callKw(sessionId, "product.template", "create", List.of(values), kwargsWithCompany(companyId));
+        }
+        log.info("Seeded dummy POS catalog for Odoo company {}", companyId);
+    }
+
+    private long ensureSaleGstTax(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode companyClause = objectMapper.createArrayNode();
+        companyClause.add("company_id");
+        companyClause.add("=");
+        companyClause.add(companyId);
+        domain.add(companyClause);
+        ArrayNode typeClause = objectMapper.createArrayNode();
+        typeClause.add("type_tax_use");
+        typeClause.add("=");
+        typeClause.add("sale");
+        domain.add(typeClause);
+        ArrayNode amountClause = objectMapper.createArrayNode();
+        amountClause.add("amount");
+        amountClause.add("=");
+        amountClause.add(10);
+        domain.add(amountClause);
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        findKwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "account.tax", "search_read", List.of(domain), findKwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            return existing.get(0).path("id").asLong(0);
+        }
+
+        // Prefer an existing company tax of any sale rate over failing create without chart/tax groups.
+        ArrayNode anySaleDomain = objectMapper.createArrayNode();
+        anySaleDomain.add(companyClause.deepCopy());
+        anySaleDomain.add(typeClause.deepCopy());
+        JsonNode anySale = callKwNode(sessionId, "account.tax", "search_read", List.of(anySaleDomain), findKwargs);
+        if (anySale != null && anySale.isArray() && !anySale.isEmpty()) {
+            return anySale.get(0).path("id").asLong(0);
+        }
+
+        long taxGroupId = 0;
+        try {
+            ObjectNode groupKwargs = kwargsWithCompany(companyId);
+            groupKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+            groupKwargs.put("limit", 1);
+            JsonNode groups = callKwNode(sessionId, "account.tax.group", "search_read", List.of(objectMapper.createArrayNode()), groupKwargs);
+            if (groups != null && groups.isArray() && !groups.isEmpty()) {
+                taxGroupId = groups.get(0).path("id").asLong(0);
+            }
+        } catch (Exception ignored) {
+            // Odoo builds without tax groups / chart stay product-only for dummy seed.
+        }
+        if (taxGroupId <= 0) return 0;
+
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("name", "GST 10%");
+        values.put("amount", 10);
+        values.put("amount_type", "percent");
+        values.put("type_tax_use", "sale");
+        values.put("price_include", true);
+        values.put("company_id", companyId);
+        values.put("tax_group_id", taxGroupId);
+        Number id = callKw(sessionId, "account.tax", "create", List.of(values), kwargsWithCompany(companyId));
+        return id == null ? 0 : id.longValue();
     }
 
     private void addCompanyToServiceUser(String sessionId, long companyId) throws Exception {

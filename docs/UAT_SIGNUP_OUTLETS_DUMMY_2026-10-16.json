@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-16T03:20:00.000Z",
+  "scope": "Brand signup multi-step: outlets + dummy data + Odoo provision",
+  "audit": {
+    "uiBefore": "Single-page signup; did not send outlets/dummyData",
+    "apiBefore": {
+      "outlets": "Accepted and created Classic MySQL outlet+registers",
+      "dummyData": "Accepted but unused",
+      "odoo": "One company + one POS config; no per-outlet POS; no sample products"
+    }
+  },
+  "implemented": {
+    "ui": "4-step signup: Business → Store → Outlets → Sample data",
+    "api": "outlets (max 5, 1–10 registers) + dummyData wired to OdooTenantProvisioner",
+    "odoo": "One pos.config per Classic outlet; optional DEMO product.template seed on company"
+  },
+  "odooProbe": {
+    "product.template.create": "PASS (template id created on company 2)",
+    "account.tax.createWithoutTaxGroup": "FAIL expected — provisioner now requires tax_group_id or skips tax"
+  },
+  "result": "CODE_READY_PENDING_DEPLOY_SIGNUP_E2E"
+}

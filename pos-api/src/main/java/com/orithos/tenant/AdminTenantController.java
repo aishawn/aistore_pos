@@ -68,7 +68,9 @@ public class AdminTenantController {
             @NotBlank String email,
             @NotBlank String password,
             String phone,
-            Integer trialDays
+            Integer trialDays,
+            List<TenantProvisionService.OutletSpec> outlets,
+            Boolean dummyData
     ) {}
 
     public record StatusBody(@NotBlank String status) {}
@@ -125,9 +127,9 @@ public class AdminTenantController {
                         req.password(),
                         req.phone(),
                         req.trialDays(),
-                        null,
-                        false));
-        odooTenantProvisioner.provisionAsyncSafe(result.vendorId());
+                        req.outlets(),
+                        req.dummyData()));
+        odooTenantProvisioner.provisionAsyncSafe(result.vendorId(), Boolean.TRUE.equals(req.dummyData()));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("vendorId", result.vendorId());
         body.put("subdomain", result.subdomain());

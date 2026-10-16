@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
@@ -142,13 +143,19 @@ public class TenantProvisionService {
         List<OutletSpec> requestedOutlets = req.outlets() == null || req.outlets().isEmpty()
                 ? List.of(new OutletSpec(org, 1))
                 : req.outlets();
+        if (requestedOutlets.size() > 5) {
+            throw new BusinessException(40001, "Trial stores support up to 5 outlets");
+        }
         Outlet firstOutlet = null;
         for (OutletSpec spec : requestedOutlets) {
             String outletName = trim(spec.name());
             if (outletName == null) throw new BusinessException(40001, "Outlet name is required");
+            if (outletName.length() > 120) {
+                throw new BusinessException(40001, "Outlet name is too long");
+            }
             int registerCount = spec.registerCount() == null ? 1 : spec.registerCount();
-            if (registerCount < 1 || registerCount > 20) {
-                throw new BusinessException(40001, "Register count must be between 1 and 20");
+            if (registerCount < 1 || registerCount > 10) {
+                throw new BusinessException(40001, "Register count must be between 1 and 10");
             }
             Outlet outlet = new Outlet();
             outlet.setVendorId(vendor.getId());

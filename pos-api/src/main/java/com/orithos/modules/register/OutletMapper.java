@@ -9,6 +9,9 @@ public interface OutletMapper {
     @Select("SELECT * FROM outlet WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC")
     List<Outlet> findAll();
 
+    @Select("SELECT * FROM outlet WHERE vendor_id = #{vendorId} AND deleted_at IS NULL ORDER BY id ASC")
+    List<Outlet> findByVendorId(Long vendorId);
+
     @Select("SELECT * FROM outlet WHERE id = #{id}")
     Outlet findById(Long id);
 

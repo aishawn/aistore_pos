@@ -77,7 +77,8 @@ public class PublicSignupController {
                         null,
                         req.outlets(),
                         req.dummyData()));
-        odooTenantProvisioner.provisionAsyncSafe(result.vendorId());
+        boolean seedDummy = Boolean.TRUE.equals(req.dummyData());
+        odooTenantProvisioner.provisionAsyncSafe(result.vendorId(), seedDummy);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("vendorId", result.vendorId());
         body.put("subdomain", result.subdomain());
@@ -85,6 +86,8 @@ public class PublicSignupController {
         body.put("bootstrapToken", result.bootstrapToken());
         body.put("outletId", result.outletId());
         body.put("userId", result.userId());
+        body.put("dummyData", seedDummy);
+        body.put("outletCount", req.outlets() == null || req.outlets().isEmpty() ? 1 : req.outlets().size());
         return ApiResult.ok(body);
     }
 
