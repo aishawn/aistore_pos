@@ -130,6 +130,10 @@ public class OdooTenantProvisioner {
                 throw new IllegalStateException("No POS config was created for the new Odoo company.");
             }
 
+            // Odoo requires every cash journal used by a POS payment method to
+            // have explicit profit/loss accounts before a session can open.
+            ensureCashDifferenceAccounts(sessionId, companyId);
+
             addCompanyToServiceUser(sessionId, companyId);
             if (seedDummyData) {
                 try {
@@ -309,6 +313,53 @@ public class OdooTenantProvisioner {
         String suffix = Long.toString(companyId);
         String code = prefix + suffix;
         return code.length() <= 5 ? code : prefix.substring(0, Math.max(1, 5 - suffix.length())) + suffix;
+    }
+
+    private void ensureCashDifferenceAccounts(String sessionId, long companyId) throws Exception {
+        ArrayNode accountDomain = objectMapper.createArrayNode();
+        ArrayNode companyIds = objectMapper.createArrayNode().add(companyId);
+        accountDomain.add(objectMapper.createArrayNode().add("company_ids").add("in").add(companyIds));
+        ArrayNode accountTypes = objectMapper.createArrayNode().add("expense").add("income");
+        accountDomain.add(objectMapper.createArrayNode().add("account_type").add("in").add(accountTypes));
+        ObjectNode accountKwargs = kwargsWithCompany(companyId);
+        accountKwargs.set("fields", objectMapper.createArrayNode().add("id").add("account_type"));
+        accountKwargs.put("limit", 100);
+        JsonNode accounts = callKwNode(sessionId, "account.account", "search_read", List.of(accountDomain), accountKwargs);
+        long lossAccountId = 0;
+        long profitAccountId = 0;
+        if (accounts != null && accounts.isArray()) {
+            for (JsonNode account : accounts) {
+                long id = account.path("id").asLong(0);
+                String type = account.path("account_type").asText("");
+                if (lossAccountId <= 0 && "expense".equals(type)) lossAccountId = id;
+                if (profitAccountId <= 0 && "income".equals(type)) profitAccountId = id;
+            }
+        }
+        if (lossAccountId <= 0 || profitAccountId <= 0) {
+            throw new IllegalStateException("Australian chart did not provide cash difference accounts for company " + companyId);
+        }
+
+        ArrayNode journalDomain = objectMapper.createArrayNode();
+        journalDomain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        ObjectNode journalKwargs = kwargsWithCompany(companyId);
+        journalKwargs.set("fields", objectMapper.createArrayNode()
+                .add("id").add("type").add("loss_account_id").add("profit_account_id"));
+        journalKwargs.put("limit", 200);
+        JsonNode journals = callKwNode(sessionId, "account.journal", "search_read", List.of(journalDomain), journalKwargs);
+        if (journals == null || !journals.isArray()) return;
+        for (JsonNode journal : journals) {
+            if (!"cash".equals(journal.path("type").asText())) continue;
+            ObjectNode values = objectMapper.createObjectNode();
+            if (!journal.path("loss_account_id").isArray() || journal.path("loss_account_id").isEmpty()) {
+                values.put("loss_account_id", lossAccountId);
+            }
+            if (!journal.path("profit_account_id").isArray() || journal.path("profit_account_id").isEmpty()) {
+                values.put("profit_account_id", profitAccountId);
+            }
+            if (!values.isEmpty()) {
+                callKw(sessionId, "account.journal", "write", List.of(List.of(journal.path("id").asLong()), values), journalKwargs);
+            }
+        }
     }
 
     private long ensureJournal(String sessionId, long companyId, String name, String code, String type) throws Exception {
