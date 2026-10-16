@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
 
@@ -55,8 +56,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     });
     if (!sessionResponse.ok) throw new SaleSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
-    const companyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
     if (session.error || !session.result?.uid) throw new SaleSessionExpiredError();
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
+    const companyIds = forced.companyIds;
     if (!companyIds.length) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
 
     const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [[

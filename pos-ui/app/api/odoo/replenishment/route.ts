@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -61,9 +62,11 @@ export async function GET(request: NextRequest) {
     });
     if (!sessionResponse.ok) throw new ReplenishmentSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
-    const companyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
-    const companyId = companyIds[0];
     if (session.error || !session.result?.uid) throw new ReplenishmentSessionExpiredError();
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
+    const companyId = forced.companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
 
     const salesBaseDomain = [
@@ -75,7 +78,8 @@ export async function GET(request: NextRequest) {
       rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom], ["order_id.date_order", "<", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
-      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId] } }),
+        ["company_id", "=", companyId],
+      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }),
       rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }),
     ]);
 

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -174,6 +176,39 @@ export async function POST(request: NextRequest) {
   // Filters are deliberately not forwarded from the browser. The initial
   // bridge only exposes named, read-only datasets with fixed model/field lists.
   try {
+    const sessionInfoResponse = await fetch(`${getOdooBaseUrl()}/web/session/get_session_info`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    const sessionInfo = (await sessionInfoResponse.json()) as {
+      result?: { uid?: number; user_context?: { allowed_company_ids?: number[] } };
+      error?: unknown;
+    };
+    if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) {
+      return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+    }
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) {
+      return NextResponse.json({ message: forced.error }, { status: forced.status });
+    }
+    const companyIds = forced.companyIds;
+    if (!companyIds.length) {
+      return NextResponse.json({ message: "No accessible Odoo company is mapped to this store." }, { status: 403 });
+    }
+    const context = odooCompanyContext(companyIds);
+
+    // Scope every dataset to the store's company. Shared company_id=False products
+    // are excluded so a new empty company cannot inherit the demo catalog.
+    if (type === "outlets") {
+      domain.push(["id", "in", companyIds]);
+    } else if (type !== "posCategories") {
+      domain.push(["company_id", "in", companyIds]);
+    }
+
     const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
       method: "POST",
       headers: {
@@ -187,7 +222,7 @@ export async function POST(request: NextRequest) {
           model: config.model,
           method: "search_read",
           args: [domain],
-          kwargs: { fields: [...config.fields], limit, offset, order: config.order },
+          kwargs: { fields: [...config.fields], limit, offset, order: config.order, context },
         },
         id: Date.now(),
       }),
@@ -200,7 +235,11 @@ export async function POST(request: NextRequest) {
       error?: { message?: string; data?: { message?: string } };
     };
     if (payload.error) {
-      const status = /session|log in|authenticate/i.test(payload.error.message ?? "") ? 401 : 502;
+      const detail = `${payload.error.message ?? ""} ${payload.error.data?.message ?? ""}`;
+      const status = /(session expired|invalid session|not authenticated|please log in|\bauthenticate\b)/i.test(detail)
+        && !/pos\.session/i.test(detail)
+        ? 401
+        : 502;
       return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo could not load records" }, { status });
     }
     let items = payload.result ?? [];
@@ -218,8 +257,8 @@ export async function POST(request: NextRequest) {
           params: {
             model: "product.product",
             method: "search_read",
-            args: [[["available_in_pos", "=", true]]],
-            kwargs: { fields: ["pos_categ_ids"], limit: 5000, order: "id asc" },
+            args: [[["available_in_pos", "=", true], ["company_id", "in", companyIds]]],
+            kwargs: { fields: ["pos_categ_ids"], limit: 5000, order: "id asc", context },
           },
           id: Date.now(),
         }),

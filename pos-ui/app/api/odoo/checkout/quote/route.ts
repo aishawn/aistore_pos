@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -86,7 +87,10 @@ export async function POST(request: NextRequest) {
     });
     const sessionInfo = await sessionInfoResponse.json() as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) throw new QuoteError("Odoo session expired", 401);
-    const companyIds = await resolveOdooAllowedCompanyIds(session, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(session, sessionInfo.result);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) throw new QuoteError(forced.error, forced.status);
+    const companyIds = forced.companyIds;
     if (!companyIds.length) throw new QuoteError("This Odoo user has no accessible company.", 403);
 
     const configs = await searchRead<PosConfig>(session, "pos.config", [["id", "=", body.configId], ["company_id", "in", companyIds]], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1);

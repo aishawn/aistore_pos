@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -238,8 +239,11 @@ export async function POST(request: NextRequest) {
     });
     const sessionInfo = (await sessionInfoResponse.json()) as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     const uid = sessionInfo.result?.uid;
-    const companyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result);
     if (!sessionInfoResponse.ok || sessionInfo.error || !uid) throw new OdooSessionExpiredError();
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) throw new OdooCheckoutError(forced.error, forced.status);
+    const companyIds = forced.companyIds;
     if (!companyIds.length) throw new OdooCheckoutError("This Odoo user has no accessible company.", 403);
 
     const configs = await searchRead<OdooConfig>(odooSession, "pos.config", [

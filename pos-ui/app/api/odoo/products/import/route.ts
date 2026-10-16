@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -92,7 +93,10 @@ export async function POST(request: NextRequest) {
     const infoPayload = await infoResponse.json() as { result?: { uid?: number; user_context?: Record<string, unknown> }; error?: unknown };
     const info = infoPayload.result;
     if (infoPayload.error || !info?.uid) throw new OdooImportError("Your Odoo session has expired. Sign in again.", 401);
-    const companyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) throw new OdooImportError(forced.error, forced.status);
+    const companyIds = forced.companyIds;
     if (!companyIds.length) throw new OdooImportError("No Odoo company is available to this account.", 403);
     const companyId = companyIds[0];
     const context = { ...(info.user_context ?? {}), allowed_company_ids: companyIds, force_company: companyId };

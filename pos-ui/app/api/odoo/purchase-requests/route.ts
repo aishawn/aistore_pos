@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -43,7 +44,7 @@ async function callOdoo<T>(sessionId: string, model: string, method: string, arg
   return payload.result as T;
 }
 
-async function getSessionContext(sessionId: string) {
+async function getSessionContext(request: NextRequest, sessionId: string) {
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
@@ -57,7 +58,10 @@ async function getSessionContext(sessionId: string) {
     error?: OdooError;
   };
   if (payload.error || !payload.result?.uid) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const companyId = (await resolveOdooAllowedCompanyIds(sessionId, payload.result))[0];
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+  if (forced.error) throw new OdooRequestError(forced.error, forced.status);
+  const companyId = forced.companyIds[0];
   if (!companyId) throw new OdooRequestError("No Odoo company is available to this account.", 403);
   return { companyId };
 }
@@ -93,12 +97,13 @@ export async function GET(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
 
   try {
+    const { companyId } = await getSessionContext(request, sessionId);
     const suppliers = await callOdoo<Array<{ id: number; name: string; email?: string | false }>>(
       sessionId,
       "res.partner",
       "search_read",
-      [[["supplier_rank", ">", 0]]],
-      { fields: ["id", "name", "email"], limit: 500, order: "name asc, id asc" },
+      [[["supplier_rank", ">", 0], ["company_id", "=", companyId]]],
+      { fields: ["id", "name", "email"], limit: 500, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } },
     );
     return NextResponse.json({ suppliers: suppliers ?? [] }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -152,7 +157,7 @@ export async function POST(request: NextRequest) {
   if (!orderLineMap.size) return NextResponse.json({ message: "Keep at least one product with a quantity above zero" }, { status: 400 });
 
   try {
-    const { companyId } = await getSessionContext(sessionId);
+    const { companyId } = await getSessionContext(request, sessionId);
     const [suppliers, products, orderLineFields] = await Promise.all([
       callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[["id", "=", Number(supplierId)], ["supplier_rank", ">", 0]]], { fields: ["id", "name"], limit: 1 }),
       callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[["id", "in", Array.from(lineMap.keys())]]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId] } }),

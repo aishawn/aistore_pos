@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-13 (production commit `da508ce`; fresh regression: 24/24 routes, 8/8 interactions, 3/3 operations, 6/6 Odoo auto-recovery, 6/6 Sommelier reads; AI launcher style/interaction pass)
+**Last updated:** 2026-10-16 (tenant isolation: signup bootstrap token auto-login; Odoo provision creates per-store `res.company`; BFF forces company — no fail-open to demo catalog)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 

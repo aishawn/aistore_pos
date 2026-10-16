@@ -55,6 +55,14 @@ export async function fetchTenantOdooBinding(request: NextRequest): Promise<Tena
   }
 }
 
+export function odooCompanyContext(companyIds: number[]) {
+  const forceCompany = companyIds[0];
+  return {
+    allowed_company_ids: companyIds,
+    ...(forceCompany ? { force_company: forceCompany } : {}),
+  };
+}
+
 export async function resolveTenantForcedCompanyIds(
   request: NextRequest,
   sessionCompanyIds: number[],
@@ -62,9 +70,15 @@ export async function resolveTenantForcedCompanyIds(
   const uniqueSession = Array.from(new Set(sessionCompanyIds.filter((id) => Number.isSafeInteger(id) && id > 0)));
   const binding = await fetchTenantOdooBinding(request);
 
-  // Legacy / pre-migration: no binding endpoint data → keep session companies.
+  // Never fail-open to the shared service account's full company list — that leaked
+  // demo catalog/registers onto newly signed-up stores (e.g. shawn.*).
   if (!binding) {
-    return { companyIds: uniqueSession, binding: null, status: 200 };
+    return {
+      companyIds: [],
+      binding: null,
+      error: "Could not resolve this store's Odoo binding. Sign in again or contact platform admin.",
+      status: 503,
+    };
   }
 
   if (binding.odooProvisionStatus === "failed") {
@@ -86,8 +100,12 @@ export async function resolveTenantForcedCompanyIds(
   }
 
   if (binding.odooProvisionStatus === "unmapped" || binding.odooCompanyId == null) {
-    // Unmapped vendors keep session scope for the single-store pilot (demo).
-    return { companyIds: uniqueSession, binding, status: 200 };
+    return {
+      companyIds: [],
+      binding,
+      error: "This store is not linked to an Odoo company yet. Ask platform admin to provision Odoo.",
+      status: 503,
+    };
   }
 
   if (!uniqueSession.includes(binding.odooCompanyId)) {

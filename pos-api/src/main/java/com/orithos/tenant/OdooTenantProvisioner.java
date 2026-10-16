@@ -145,6 +145,22 @@ public class OdooTenantProvisioner {
     }
 
     private long createCompany(String sessionId, String name) throws Exception {
+        // Reuse an existing company with the same name so retries after a mid-flight failure
+        // do not leave duplicate empty companies.
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode clause = objectMapper.createArrayNode();
+        clause.add("name");
+        clause.add("=");
+        clause.add(name);
+        domain.add(clause);
+        ObjectNode kwargs = objectMapper.createObjectNode();
+        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "res.company", "search_read", List.of(domain), kwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
         ObjectNode values = objectMapper.createObjectNode();
         values.put("name", name);
         Number id = callKw(sessionId, "res.company", "create", List.of(values), objectMapper.createObjectNode());
@@ -160,7 +176,8 @@ public class OdooTenantProvisioner {
         clause.add(companyId);
         domain.add(clause);
         ObjectNode kwargs = objectMapper.createObjectNode();
-        kwargs.set("domain", domain);
+        // Domain belongs in args only — putting it in kwargs too raises:
+        // "search_read() got multiple values for argument 'domain'" (Odoo 18).
         ArrayNode fields = objectMapper.createArrayNode();
         fields.add("id");
         fields.add("lot_stock_id");
@@ -179,6 +196,20 @@ public class OdooTenantProvisioner {
     }
 
     private long createPosConfig(String sessionId, String name, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode companyClause = objectMapper.createArrayNode();
+        companyClause.add("company_id");
+        companyClause.add("=");
+        companyClause.add(companyId);
+        domain.add(companyClause);
+        ObjectNode findKwargs = objectMapper.createObjectNode();
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("name"));
+        findKwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "pos.config", "search_read", List.of(domain), findKwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
         ObjectNode values = objectMapper.createObjectNode();
         values.put("name", name + " Register");
         values.put("company_id", companyId);

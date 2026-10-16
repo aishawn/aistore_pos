@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { hasOrithosSession, isSameOrigin, REFRESH_COOKIE } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -93,12 +94,12 @@ function getServiceCredentials() {
   return username && password ? { username, password } : null;
 }
 
-async function connectWithServiceAccount() {
+async function connectWithServiceAccount(request: NextRequest) {
   const credentials = getServiceCredentials();
   if (!credentials) return null;
 
   const session = await authenticateOdoo(credentials.username, credentials.password);
-  return { ...session, user: await publicUser(session.info, session.sessionId) };
+  return { ...session, user: await publicUser(session.info, session.sessionId, request) };
 }
 
 function cookieOptions() {
@@ -111,14 +112,22 @@ function cookieOptions() {
   };
 }
 
-async function publicUser(info: OdooSessionInfo, sessionId: string) {
+async function publicUser(info: OdooSessionInfo, sessionId: string, request?: NextRequest) {
   if (!info.uid || !info.username) throw new Error("Odoo session is not authenticated");
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+  let allowedCompanyIds = sessionCompanyIds;
+  if (request) {
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    // Surface binding failures as an empty company list so the UI does not imply
+    // access to every company on the shared service account.
+    allowedCompanyIds = forced.error ? [] : forced.companyIds;
+  }
   return {
     id: String(info.uid),
     name: info.partner_display_name || info.name || info.username,
     username: info.username,
     isAdmin: false,
-    allowedCompanyIds: await resolveOdooAllowedCompanyIds(sessionId, info),
+    allowedCompanyIds,
   };
 }
 
@@ -147,7 +156,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const session = await authenticateOdoo(username, body.password);
-    const nextResponse = NextResponse.json({ user: await publicUser(session.info, session.sessionId) }, { status: 200 });
+    const nextResponse = NextResponse.json({ user: await publicUser(session.info, session.sessionId, request) }, { status: 200 });
     nextResponse.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
     return nextResponse;
   } catch (error) {
@@ -177,7 +186,7 @@ export async function GET(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) {
     try {
-      const session = await connectWithServiceAccount();
+      const session = await connectWithServiceAccount(request);
       if (!session) return NextResponse.json(sessionPayload(null), { status: 200 });
       const response = NextResponse.json(sessionPayload(session.user), { status: 200 });
       response.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
@@ -190,10 +199,10 @@ export async function GET(request: NextRequest) {
   try {
     const info = await callOdoo("/web/session/get_session_info", {}, sessionId);
     if (!info.uid) throw new Error("Odoo session has expired");
-    return NextResponse.json(sessionPayload(await publicUser(info, sessionId)), { status: 200 });
+    return NextResponse.json(sessionPayload(await publicUser(info, sessionId, request)), { status: 200 });
   } catch {
     try {
-      const session = await connectWithServiceAccount();
+      const session = await connectWithServiceAccount(request);
       const response = NextResponse.json(sessionPayload(session?.user ?? null), { status: 200 });
       if (session) response.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
       else response.cookies.delete(SESSION_COOKIE);
