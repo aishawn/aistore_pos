@@ -51,6 +51,15 @@ type CompletedReceipt = {
 
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
+const ACTIVE_CART_KEY = "orithos-odoo-active-cart-v1";
+
+type ActiveCartDraft = {
+  lines: CartLine[];
+  paymentMethodId: number | null;
+  customer: { id: number; name: string } | null;
+  cashTendered: string;
+  savedAt: string;
+};
 
 function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
   if (!value || typeof value !== "object") return false;
@@ -73,6 +82,18 @@ function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
 function readParkedOdooSales(): ParkedOdooSale[] {
   const parsed: unknown = JSON.parse(localStorage.getItem(PARKED_SALES_KEY) ?? "[]");
   return Array.isArray(parsed) ? parsed.filter(isParkedOdooSale) : [];
+}
+
+function isActiveCartDraft(value: unknown): value is ActiveCartDraft {
+  if (!value || typeof value !== "object") return false;
+  const draft = value as Partial<ActiveCartDraft>;
+  return Array.isArray(draft.lines)
+    && draft.lines.length > 0
+    && draft.lines.every((line) => line && Number.isSafeInteger(line.product?.id) && typeof line.product?.name === "string" && Number.isFinite(line.product?.list_price) && Number.isFinite(line.quantity) && line.quantity > 0 && Number.isFinite(line.packFactor) && line.packFactor > 0)
+    && (draft.paymentMethodId === null || Number.isSafeInteger(draft.paymentMethodId))
+    && (draft.customer === null || (typeof draft.customer === "object" && Number.isSafeInteger(draft.customer?.id) && typeof draft.customer?.name === "string"))
+    && typeof draft.cashTendered === "string"
+    && typeof draft.savedAt === "string";
 }
 
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
@@ -125,12 +146,15 @@ export function OdooRegisterPage() {
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
   const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
   const quoteRevision = useRef(0);
   const searchRevision = useRef(0);
   const customerSearchRevision = useRef(0);
   const barcodeLookupBusy = useRef(false);
+  const restoredDraftKey = useRef<string | null>(null);
+  const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
 
   const loadPos = useCallback(async (initial = false) => {
     if (initial) setLoading(true);
@@ -198,6 +222,50 @@ export function OdooRegisterPage() {
       setParkedLoaded(true);
     }
   }, [connected, odooUserId]);
+
+  useEffect(() => {
+    if (!connected || !odooUserId || configId === null) return;
+    const key = `${ACTIVE_CART_KEY}:${odooUserId}:${configId}`;
+    if (restoredDraftKey.current === key) return;
+    restoredDraftKey.current = key;
+    setHydratedDraftKey(key);
+    try {
+      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
+      if (!isActiveCartDraft(parsed)) return;
+      setLines(parsed.lines.map((line) => ({ ...line, packFactor: line.packFactor || 1 })));
+      setCustomer(parsed.customer ? {
+        id: parsed.customer.id,
+        name: parsed.customer.name,
+        phone: false,
+        email: false,
+        customer_rank: 0,
+        ref: false,
+      } : null);
+      setCashTendered(parsed.cashTendered);
+      const config = bootstrap?.configs.find((item) => item.id === configId);
+      if (parsed.paymentMethodId && config?.paymentMethods.some((method) => method.id === parsed.paymentMethodId)) setPaymentMethodId(parsed.paymentMethodId);
+      setSaleView("sell");
+      setDraftNotice("Draft restored from this device. Odoo will recheck stock and tax before finalising.");
+    } catch {
+      setDraftNotice("A saved cart draft could not be read from this device.");
+    }
+  }, [bootstrap, configId, connected, odooUserId]);
+
+  useEffect(() => {
+    if (!connected || !odooUserId || configId === null) return;
+    const key = `${ACTIVE_CART_KEY}:${odooUserId}:${configId}`;
+    if (hydratedDraftKey !== key) return;
+    try {
+      if (!lines.length && !customer && !cashTendered) {
+        localStorage.removeItem(key);
+        return;
+      }
+      const draft: ActiveCartDraft = { lines, paymentMethodId, customer: customer ? { id: customer.id, name: customer.name } : null, cashTendered, savedAt: new Date().toISOString() };
+      localStorage.setItem(key, JSON.stringify(draft));
+    } catch {
+      setDraftNotice("This device could not save the active cart draft.");
+    }
+  }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, odooUserId, paymentMethodId]);
 
   useEffect(() => {
     const revision = ++searchRevision.current;
@@ -609,6 +677,7 @@ export function OdooRegisterPage() {
     setCustomerQuery("");
     setCategoryId(null);
     setError(null);
+    setDraftNotice(null);
     const config = bootstrap?.configs.find((item) => item.id === id);
     setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
     setSaleView("sell");
@@ -670,6 +739,12 @@ export function OdooRegisterPage() {
         <div role="status" aria-live="polite" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
           <span>Offline — this register cannot complete sales until the connection returns. Your current cart stays on this device.</span>
           <span className="shrink-0 font-semibold">Reconnect to continue</span>
+        </div>
+      )}
+      {draftNotice && (
+        <div role="status" aria-live="polite" className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-950">
+          <span>{draftNotice}</span>
+          <button type="button" onClick={() => setDraftNotice(null)} aria-label="Dismiss draft notice" className="grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-blue-100"><X size={16} /></button>
         </div>
       )}
       {busy && (
