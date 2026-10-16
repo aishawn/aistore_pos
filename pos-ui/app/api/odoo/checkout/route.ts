@@ -477,7 +477,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const paymentAmount = isRefund ? -Math.min(roundedTender, amountDue) : roundedTender;
+    // Odoo records the amount applied to the order separately from cash
+    // handed over. For an overpaid cash sale, amount_return carries the
+    // change and amount_paid must remain equal to the order total.
+    const paymentAmount = isRefund
+      ? -Math.min(roundedTender, amountDue)
+      : paymentMethod.is_cash_count
+        ? amountDue
+        : roundedTender;
     const change = isRefund
       ? Math.round(Math.max(0, roundedTender - amountDue) * 100) / 100
       : Math.round(Math.max(0, roundedTender - total) * 100) / 100;
