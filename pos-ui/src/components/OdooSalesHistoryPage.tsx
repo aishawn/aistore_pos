@@ -12,6 +12,7 @@ import {
   type OdooPosBootstrap,
   type OdooSaleDetail,
   type OdooSaleRecord,
+  type OdooSalesPeriodFilter,
   type OdooSalesStatusFilter,
 } from "@/lib/odoo-api";
 
@@ -170,6 +171,7 @@ export function OdooSalesHistoryPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState<OdooSalesStatusFilter>("all");
+  const [period, setPeriod] = useState<OdooSalesPeriodFilter>("all");
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -202,7 +204,7 @@ export function OdooSalesHistoryPage() {
         return;
       }
       const [page, pos] = await Promise.all([
-        searchOdooRecords<OdooSaleRecord>("sales", { query: debouncedQuery, status, limit: PAGE_SIZE + 1, offset }),
+        searchOdooRecords<OdooSaleRecord>("sales", { query: debouncedQuery, status, period, limit: PAGE_SIZE + 1, offset }),
         getOdooPosBootstrap().catch(() => null),
       ]);
       if (revision !== requestRevision.current) return;
@@ -218,7 +220,7 @@ export function OdooSalesHistoryPage() {
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
-  }, [debouncedQuery, offset, status]);
+  }, [debouncedQuery, offset, period, status]);
 
   useEffect(() => { void loadSales(); }, [loadSales]);
 
@@ -237,6 +239,8 @@ export function OdooSalesHistoryPage() {
   function clearSearch() {
     setQuery("");
     setDebouncedQuery("");
+    setStatus("all");
+    setPeriod("all");
     setOffset(0);
   }
 
@@ -266,7 +270,7 @@ export function OdooSalesHistoryPage() {
     URL.revokeObjectURL(url);
   }
 
-  const hasActiveSearch = Boolean(debouncedQuery);
+  const hasActiveSearch = Boolean(debouncedQuery || status !== "all" || period !== "all");
 
   async function openSale(saleId: number) {
     const revision = ++detailRevision.current;
@@ -409,6 +413,15 @@ export function OdooSalesHistoryPage() {
             <label aria-label="Search sales" className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
               <Search size={17} className="text-[var(--oh-muted)]" />
               <input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search receipt or order reference" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            </label>
+            <label className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">
+              <span className="sr-only">Filter sales by time</span>
+              <select value={period} onChange={(event) => { setPeriod(event.target.value as OdooSalesPeriodFilter); setOffset(0); }} className="h-full bg-transparent outline-none">
+                <option value="all">All time</option>
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
             </label>
             <label className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">
               <span className="sr-only">Filter sales by status</span>

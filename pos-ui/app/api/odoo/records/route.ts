@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
 
-  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; status?: string; filters?: Record<string, unknown> };
+  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; status?: string; period?: string; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -186,6 +186,17 @@ export async function POST(request: NextRequest) {
     if (body.status === "refunded") domain.push(["amount_total", "<", 0]);
     if (body.status === "cancelled") domain.push(["state", "=", "cancel"]);
     if (body.status === "draft") domain.push(["state", "=", "draft"]);
+  }
+
+  if (body.period !== undefined) {
+    if (type !== "sales" || !["all", "24h", "7d", "30d"].includes(body.period)) {
+      return NextResponse.json({ message: "Sales period filter is invalid" }, { status: 400 });
+    }
+    const hours = body.period === "24h" ? 24 : body.period === "7d" ? 168 : body.period === "30d" ? 720 : 0;
+    if (hours) {
+      const from = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
+      domain.push(["date_order", ">=", from]);
+    }
   }
 
   // Filters are deliberately not forwarded from the browser. The initial

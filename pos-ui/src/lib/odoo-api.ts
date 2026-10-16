@@ -11,6 +11,7 @@ export type OdooRecordType =
   | "sales";
 
 export type OdooSalesStatusFilter = "all" | "completed" | "refunded" | "cancelled" | "draft";
+export type OdooSalesPeriodFilter = "all" | "24h" | "7d" | "30d";
 
 export interface OdooPage<T> {
   items: T[];
@@ -448,7 +449,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { query?: string; limit?: number; offset?: number; categoryId?: number; status?: OdooSalesStatusFilter } = {},
+  options: { query?: string; limit?: number; offset?: number; categoryId?: number; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -462,6 +463,7 @@ export async function searchOdooRecords<T>(
       offset: options.offset,
       categoryId: options.categoryId,
       status: options.status,
+      period: options.period,
     }),
   }, true);
   const payload = (await response.json().catch(() => null)) as
