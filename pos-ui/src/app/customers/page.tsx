@@ -1,9 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ListTable } from "@/components/admin/ListTable";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { DROPDOWN_PAGE_SIZE } from "@/lib/pagination";
@@ -114,12 +114,14 @@ function CustomersPageInner() {
         </div>
       )}
     >
-      <AsyncState
-        loading={loading}
-        error={error}
-        empty={items.length === 0}
-        emptyText={searchQuery ? "No customers match this search." : "No customers yet. Add a customer to get started."}
-      >
+      {loading ? (
+        <div role="status" aria-label="Loading customers" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white"><div className="hidden grid-cols-4 gap-3 bg-[var(--oh-surface)] px-4 py-3 lg:grid">{Array.from({ length: 4 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-border)]" />)}</div><div className="grid gap-3 p-3 lg:hidden">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg bg-[var(--oh-surface)]" />)}</div><div className="hidden lg:block">{Array.from({ length: 5 }, (_, row) => <div key={row} className="grid grid-cols-4 gap-3 border-t border-[var(--oh-border)] px-4 py-4">{Array.from({ length: 4 }, (_, cell) => <div key={cell} className="h-4 animate-pulse rounded bg-[var(--oh-surface)]" />)}</div>)}</div></div>
+      ) : error ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button></div>
+      ) : items.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center"><h2 className="text-base font-semibold text-[var(--oh-text)]">{searchQuery ? "No customers match this search." : "No customers yet."}</h2><p className="mx-auto mt-1.5 max-w-md text-sm leading-6 text-[var(--oh-muted)]">{searchQuery ? "Try a different name, code or email." : "Add a customer to get started."}</p></div>
+      ) : (
+        <>
         <div className="space-y-3 lg:hidden">
           {items.map((c) => (
             <article key={c.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
@@ -193,7 +195,8 @@ function CustomersPageInner() {
           ])}
         />
         </div>
-      </AsyncState>
+        </>
+      )}
       <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
 
       <ConfirmDialog
