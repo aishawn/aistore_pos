@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-10-16T15:20:00.000Z",
+  "sourceCommit": "e0fd441",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no customer group create, edit, or delete write",
+  "status": "PASS",
+  "checks": [
+    "Customer Groups first-load skeleton remains visible while /api/customers/groups is delayed",
+    "Normal Customer Group page resolves to 2 rows with heading and search",
+    "Simulated /api/customers/groups 503 shows Retry with no page errors",
+    "Final-state screenshot captured at docs/UAT_CUSTOMER_GROUPS_RECOVERY_2026-10-16.png"
+  ],
+  "pageErrors": []
+}
