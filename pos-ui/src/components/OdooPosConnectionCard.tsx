@@ -117,7 +117,11 @@ export function OdooPosConnectionCard() {
       </div>
 
       {state === "loading" ? (
-        <div className="mt-5 flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Checking Odoo connection…</div>
+        <div role="status" aria-label="Checking Odoo connection" className="mt-5 space-y-3">
+          <div className="flex items-center gap-3"><div className="h-11 w-11 animate-pulse rounded-md bg-[var(--oh-border)]" /><div className="flex-1"><div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="mt-2 h-3 w-64 max-w-full animate-pulse rounded bg-[var(--oh-border)]" /></div></div>
+          <div className="h-11 w-full max-w-md animate-pulse rounded-md bg-[var(--oh-border)]" />
+          <p className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Checking Odoo connection…</p>
+        </div>
       ) : state === "connected" ? (
         <div className="mt-5">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--oh-surface)] px-4 py-3">
@@ -154,6 +158,11 @@ export function OdooPosConnectionCard() {
           </div>
         </div>
       ) : (
+        <>
+        {state === "error" && <div className="mt-5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
+          <span>Connection status could not be confirmed.</span>
+          <button type="button" onClick={() => void refreshConnection()} disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 disabled:opacity-60"><RefreshCw size={15} /> Retry status check</button>
+        </div>}
         <form onSubmit={connect} className="mt-5 grid max-w-3xl gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
             Odoo username
@@ -167,6 +176,7 @@ export function OdooPosConnectionCard() {
             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <LogIn size={16} />} Connect Odoo
           </button>
         </form>
+        </>
       )}
 
       {message && <p role={state === "error" ? "alert" : "status"} className={`mt-4 rounded-md border px-3 py-2 text-sm ${state === "error" ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>{message}</p>}
