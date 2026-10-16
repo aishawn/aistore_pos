@@ -143,6 +143,7 @@ export function OrithosOverviewPage() {
   const [rangeHours, setRangeHours] = useState<number>(720);
   const [r2Receipts, setR2Receipts] = useState<R2Receipt[]>([]);
   const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
+  const [r2RetryKey, setR2RetryKey] = useState(0);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
   const load = useCallback(async (refresh = false, hours = rangeHours) => {
@@ -207,7 +208,7 @@ export function OrithosOverviewPage() {
       })
       .catch(() => { if (active) setR2ArchiveUnavailable(true); });
     return () => { active = false; };
-  }, []);
+  }, [r2RetryKey]);
 
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
@@ -367,7 +368,7 @@ export function OrithosOverviewPage() {
             </div>
             <div className="flex items-center gap-3">
               {!r2ArchiveUnavailable && <p className="oh-type-label font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(r2Total, currency)}</p>}
-              <Link href="/history/odoo" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>
+              {r2ArchiveUnavailable ? <button type="button" onClick={() => setR2RetryKey((value) => value + 1)} className="oh-type-meta inline-flex min-h-11 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50"><RefreshCw size={13} /> Retry archive</button> : <Link href="/history/odoo" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-amber-50">View receipts</Link>}
             </div>
           </section>
 
