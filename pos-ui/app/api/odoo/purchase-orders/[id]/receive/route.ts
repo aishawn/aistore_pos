@@ -172,6 +172,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         .filter((id) => Number.isSafeInteger(id) && Number(id) > 0)
         .map((id) => Number(id))
       : [];
+    const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [["quantity", "quantity_done"]], { attributes: ["type"] });
+    const qtyField = moveFields && Object.hasOwn(moveFields, "quantity")
+      ? "quantity"
+      : moveFields && Object.hasOwn(moveFields, "quantity_done")
+        ? "quantity_done"
+        : null;
+    if (!qtyField) throw new ReceiveError("Odoo did not expose a writable received quantity field.", 422);
     const moves = moveIds.length
       ? await rpc<Array<{
           id: number;
@@ -183,7 +190,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           ["id", "in", moveIds],
           ["picking_id", "=", selectedPickingId],
         ]], {
-          fields: ["id", "product_uom_qty", "quantity", "quantity_done", "product_id"],
+          fields: ["id", "product_uom_qty", qtyField, "product_id"],
           limit: 200,
           context: companyContext,
         }) ?? []
@@ -197,14 +204,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         throw new ReceiveError(`Quantity for ${Array.isArray(move.product_id) ? move.product_id[1] : "a line"} exceeds ordered quantity.`, 400);
       }
     }
-
-    const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [["quantity", "quantity_done"]], { attributes: ["type"] });
-    const qtyField = moveFields && Object.hasOwn(moveFields, "quantity")
-      ? "quantity"
-      : moveFields && Object.hasOwn(moveFields, "quantity_done")
-        ? "quantity_done"
-        : null;
-    if (!qtyField) throw new ReceiveError("Odoo did not expose a writable received quantity field.", 422);
 
     for (const line of lines) {
       await rpc<boolean>(sessionId, "stock.move", "write", [[line.moveId], { [qtyField]: line.qtyDone }], { context: companyContext });
