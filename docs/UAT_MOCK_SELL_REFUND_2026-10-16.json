@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-16T01:27:48.033Z",
+  "result": "pass",
+  "base": "https://demo.orithos.com.au",
+  "sessionNote": "Did not close register",
+  "odooUser": "yu18888xiao@gmail.com",
+  "product": {
+    "id": 628,
+    "code": "R2-11f016a7358b1002995a065f46a86a",
+    "name": "R2 TEST | 148 PINOT NOIR 750ML",
+    "price": "$12.99",
+    "beforeQty": 13,
+    "afterQty": 13
+  },
+  "receiptId": "260-1-116283",
+  "refundSnippet": "orithos Overview Register Point of sale Sales History Close Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Sales History Odoo register sales (including imported R2 demo history) plus the read-only source archive for comparison. Refresh Shopfront R2 source archive Read-only crawl snapshot for cross-check"
+}

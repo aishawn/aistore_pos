@@ -103,7 +103,7 @@ export default function PlatformStoresPage() {
         loading={loading}
         error={error}
         empty={items.length === 0}
-        emptyText="No stores found. Use Create store or POST /api/admin/tenants."
+        emptyText="No stores found. Use Create store to add a trial vendor."
       >
         <ListTable
           columns={[

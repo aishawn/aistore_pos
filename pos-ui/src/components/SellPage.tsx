@@ -359,7 +359,7 @@ function MoreActionsPanel() {
         }
         return;
       case "reload-invoice":
-        router.push("/history");
+        router.push("/history/odoo");
         return;
       case "gift-card":
         router.push("/giftcards");

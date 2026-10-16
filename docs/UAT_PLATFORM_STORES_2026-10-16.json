@@ -1,19 +1,27 @@
 {
-  "generatedAt": "2026-10-16T00:00:00+08:00",
-  "scope": "PLATFORM_ADMIN_P0 — store detail and lifecycle",
+  "generatedAt": "2026-10-16T09:25:00+08:00",
+  "target": "https://app.orithos.com.au",
+  "status": "CODE_COMPLETE_UAT_PENDING_NON_DEMO_WRITE",
   "implemented": {
-    "detailUi": "/platform/stores/[id]",
-    "listLinks": true,
-    "patchStatus": "PATCH /api/admin/tenants/{id}/status",
-    "patchTrial": "PATCH /api/admin/tenants/{id}/trial",
-    "ownerReset": "POST /api/admin/tenants/{id}/owner/reset-password",
-    "ownerReinvite": "POST /api/admin/tenants/{id}/owner/reinvite",
-    "refreshGate": "40323 on /api/auth/refresh when suspended/expired/trial ended",
-    "operatorLifecycleBlocked": true
+    "list": "/platform/stores",
+    "detail": "/platform/stores/[id]",
+    "api": [
+      "GET /api/admin/tenants",
+      "GET /api/admin/tenants/{id}",
+      "PATCH /api/admin/tenants/{id}/status",
+      "PATCH /api/admin/tenants/{id}/trial",
+      "POST /api/admin/tenants/{id}/owner/reset-password",
+      "POST /api/admin/tenants/{id}/owner/reinvite"
+    ],
+    "operatorGuard": "Lifecycle PATCH rejected for APP_PLATFORM_OPERATOR_SLUG (demo) with 40910",
+    "unitTests": "pos-api/src/test/java/com/orithos/tenant/AdminTenantLifecycleTest.java"
   },
-  "liveUat": {
-    "result": "PENDING_OPERATOR",
-    "note": "Run lifecycle writes only on a non-demo trial store"
-  },
-  "result": "CODE_READY"
+  "manualUat": [
+    "Login as platform operator on app.orithos.com.au → Stores list",
+    "Open demo row detail → confirm lifecycle actions blocked in UI",
+    "Create or open a non-demo trial store → Extend trial 14d → badge/date updates",
+    "Attempt PATCH status on demo via API → expect 40910",
+    "Reset owner on non-demo → copyable reset URL on tenant host"
+  ],
+  "notes": "Do not suspend/expire the demo operator vendor."
 }

@@ -2,12 +2,18 @@
 
 基于 [交接文档](HANDOFF_2026-10-13.md) 制定。本文用于指导从当前试点状态走向可控门店试用；进度与线上事实以 Dokploy、Odoo 和 POS 实测为准。
 
-## 当前执行状态（2026-10-15）
+## 当前执行状态（2026-10-16）
+
+- **R2 → Odoo 历史销售导入已完成（`aipos` TEST）：** [`UAT_R2_SALES_ODOO_IMPORT_FULL.json`](UAT_R2_SALES_ODOO_IMPORT_FULL.json) `imported=141083`、`rejected=2119`、`errors=0`；[`UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json`](UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json) reconcile **3844** quants。汇总见 [`UAT_R2_SALES_IMPORT_COMPLETE_2026-10-16.json`](UAT_R2_SALES_IMPORT_COMPLETE_2026-10-16.json)。班次仍为 `orithos_store1/00004` opened；**本迭代不关班**。
+- History 正式账为 Odoo `pos.order`（含 `r2-` 导入）；琥珀色 R2 archive 面板仍只读对照。Reporting 可能因历史导入显示大额 TEST 数字，不作生产 KPI。
+- 下一迭代：平台门店 lifecycle（`app.*`）、History 路由对齐、小额 MOCK Sell→退款（不关班）；reject 品名补齐排后。冷历史政策见 [R2_COLD_HISTORY_POLICY.md](R2_COLD_HISTORY_POLICY.md)。
+
+## 历史执行状态（2026-10-15）
 
 - 2026-10-15 追加部署 `04dd61a`：Odoo 公司时区现在按门店州/国家地址派生；South Australia 显示 `Australia/Adelaide`，不再套用服务账户 `Asia/Shanghai` 或固定 Sydney。生产登录后自动恢复 Odoo 会话，并回传开班 `orithos_store1/00004`；销售历史 `260-1-000009` 从 UTC `09:41` 显示为 Adelaide `08:11 pm`。最新部署全站矩阵 42/42、390/1440 双视口布局 84/84 通过。详细证据：[时区与 R2 复核](UAT_R2_TIMEZONE_2026-10-15_04dd61a.json)、[页面矩阵](UAT_PAGE_MATRIX_2026-10-15_04dd61a.json)、[布局](UAT_LAYOUT_2026-10-15_04dd61a.json)。
 - 同一复核再次验证 R2 实际对象 SHA 与用户消息一致、目录同步 dry-run 0 差异，生产 R2 销售 API 返回 16 笔；扫描 4,748 条商品详情未发现图片字段或图片 URL，因此没有可从此 R2 快照上传的商品图片。
 - 新部署的报表 8 小时/24 小时范围均 HTTP 200，金额恒等式 `净销售 = 销售 - 退款` 和税额字段通过；运维只读检查 3/3：班次关闭确认已取消、缺现金数的关闭请求由 API 422 拒绝、draft 采购筛选显示明确空态。没有新建销售/退款/采购，班次仍开。证据：[报表 UAT](UAT_REPORTING_2026-10-15_04dd61a.json)、[运维只读 UAT](UAT_OPS_READONLY_2026-10-15_04dd61a.json)。
-- 当前 Odoo 8/24 小时报表为 $0，因 `aipos` 没有近期真实 POS 交易；R2 16 笔归档收据仍独立只读展示，不进入 Odoo 报表或补货预测。需在后续决定并实现“测试用 R2 分析”与 Odoo 实时经营报表的清晰分区，不能把历史收入混入账务口径。
+- （已过时）当时 Odoo 近期报表曾为 $0；现已由全量历史导入覆盖。R2 16 笔归档收据仍可在 History 琥珀色面板只读对照。
 - 最新 R2 SHA `2fc62e86…6625116` 已与用户提供对象一致，Odoo R2 目录 dry-run 无改价税项；缺来源价税数据商品已禁售。部署 `93339f1` 后 POS 卡片已线上显示 Odoo 计算的含 GST 零售价，R2 收据 API 扣除折扣并计舍入/附加费；16 笔应付 $510.62、21 行、19 条支付，逐笔支付净额差异为 0。证据见 [R2 UAT](UAT_R2_LIVE_UAT_2026-10-15.json)。
 
 - 应用修复部署 `67bd1b6387b88642b23055317736799d277420cf` 已完成；其后的文档提交 `8eeabf47e9aa6279fad0fb2318c469ebd5ad865a` 也已在 Dokploy Done。R2 收据 API 和管理员详情验收通过，自动同步保持关闭。

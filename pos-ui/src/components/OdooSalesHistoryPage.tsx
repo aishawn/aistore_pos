@@ -69,7 +69,7 @@ function R2ArchivePanel({ query }: { query: string }) {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront R2 source archive</h2>
-            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only crawl snapshot for cross-check. Formal history for demo is imported into Odoo POS orders below.</p>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only crawl snapshot. Not the sales ledger — use the Odoo table below for refunds and reporting.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900">R2 · TEST</span>
@@ -353,7 +353,10 @@ export function OdooSalesHistoryPage() {
       <header className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Sales History</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Odoo register sales (including imported R2 demo history) plus the read-only source archive for comparison.</p>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+            Formal ledger is Odoo POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Odoo rows, not the archive.
+          </p>
+          <p className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950">TEST · aipos demo data</p>
         </div>
         <button type="button" onClick={() => void loadSales()} disabled={loading} aria-label={loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh

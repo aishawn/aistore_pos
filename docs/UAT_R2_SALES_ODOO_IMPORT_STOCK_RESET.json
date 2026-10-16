@@ -1,0 +1,12 @@
+{
+  "result": "stock_reset_only",
+  "database": "aipos",
+  "snapshotSha256": "2fc62e86c5f0fd1045a5c8f830c544dcc168b232bc384afd8d6eddcbd6625116",
+  "stockReset": {
+    "stockQuantRowsReconciled": 3844,
+    "negativeStockRowsNormalizedToZero": 1060,
+    "rejectedStockRows": 0,
+    "createdQuants": 0
+  },
+  "finishedAt": "2026-10-16T00:16:45.800570+00:00"
+}

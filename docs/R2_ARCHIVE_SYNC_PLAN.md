@@ -1,17 +1,14 @@
 # R2 Shopfront 归档同步到 Orithos 的实施计划
 
-更新时间：2026-10-15
+更新时间：2026-10-16
 
-## 当前决定（2026-10-15）
+## 当前决定（2026-10-16）
 
-- **冷历史策略（2026-10-16 固化）：** 生产租户不以 R2 全量历史灌入 Odoo；规则见 [R2_COLD_HISTORY_POLICY.md](R2_COLD_HISTORY_POLICY.md)。隔离库写交易 UAT 见 [ISOLATION_ODOO_UAT_RUNBOOK.md](ISOLATION_ODOO_UAT_RUNBOOK.md)。
-- **多店 R2 前缀：** 主前缀仍用 `R2_PREFIX`；额外活跃店用 `R2_PREFIXES`（逗号分隔，如 `shopfront/acme/`），镜像到 `/data/tenants/{slug}/`。容量与备份见 [SCALE_OPS_RUNBOOK.md](SCALE_OPS_RUNBOOK.md)；大图外置见 [ATTACHMENT_STORAGE_POLICY.md](ATTACHMENT_STORAGE_POLICY.md)。
-- **Demo 店正式导入历史销售（覆盖旧“收据不回放”决定，仅 `aipos` TEST）：** Completed 小票经 [`scripts/import-r2-sales-receipts.py`](../scripts/import-r2-sales-receipts.py) 写入 Odoo `pos.order`（`sync_from_ui`），供 [demo.orithos.com.au](https://demo.orithos.com.au/) History / Reporting 使用。客户字段源中不存在 → 一律 walk-in。导入后必须把库存 reconcile 回 R2 当前 `products_detail` 快照（`--stock-reset-only` / 默认 apply 尾步），避免二次扣库存。
-- 行项目无 product id，按商品名映射到 `R2-{source_id}`；无日期小票用 `--fallback-date`（默认 `2019-01-01 00:00:00`）。名不匹配 / 支付无法结清的整单 reject，写入 resume/UAT。
-- R2 文件归档仍只供管理员开发验证；暂不每日同步，正式上线不依赖 R2 自动拉取。管理页保持手动同步。
-- SQLite 快照为 254,558,208 字节，SHA-256 `2fc62e86c5f0fd1045a5c8f830c544dcc168b232bc384afd8d6eddcbd6625116`，含商品详情与 148,997 条历史收据。
-- 去重后 4,716 个商品已在 `aipos` 的 `R2 TEST DATA`。旧 DEMO 已停用。UAT：[`UAT_R2_SALES_ODOO_IMPORT_PILOT.json`](UAT_R2_SALES_ODOO_IMPORT_PILOT.json)、全量进度见 `UAT_R2_SALES_ODOO_IMPORT_FULL.json`。
-- 用户允许 MOCK 测试数据；Odoo 仍只有 `aipos`，未建独立 staging。正式业务启用前需迁到独立测试库或完成生产初始化。
+- **Demo 全量历史导入已完成（`aipos` TEST）：** [`UAT_R2_SALES_ODOO_IMPORT_FULL.json`](UAT_R2_SALES_ODOO_IMPORT_FULL.json) `imported=141083` / `rejected=2119` / `errors=0`；[`UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json`](UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json) reconcile 3844 quants。汇总 [`UAT_R2_SALES_IMPORT_COMPLETE_2026-10-16.json`](UAT_R2_SALES_IMPORT_COMPLETE_2026-10-16.json)。Reject 别名 backlog：[`UAT_R2_SALES_REJECT_ALIAS_BACKLOG_2026-10-16.json`](UAT_R2_SALES_REJECT_ALIAS_BACKLOG_2026-10-16.json)。
+- **冷历史策略：** 生产租户不以 R2 全量历史灌入 Odoo；规则见 [R2_COLD_HISTORY_POLICY.md](R2_COLD_HISTORY_POLICY.md)。隔离库写交易 UAT 见 [ISOLATION_ODOO_UAT_RUNBOOK.md](ISOLATION_ODOO_UAT_RUNBOOK.md)。
+- **多店 R2 前缀：** 主前缀仍用 `R2_PREFIX`；额外活跃店用 `R2_PREFIXES`（逗号分隔），镜像到 `/data/tenants/{slug}/`。见 [SCALE_OPS_RUNBOOK.md](SCALE_OPS_RUNBOOK.md)、[ATTACHMENT_STORAGE_POLICY.md](ATTACHMENT_STORAGE_POLICY.md)。
+- 行项目按商品名映射 `R2-{source_id}`；无日期小票用 `--fallback-date`。班次仍 `orithos_store1/00004`；关班另迭代。
+- R2 文件归档仍只供管理员开发验证；暂不每日同步。SQLite SHA-256 `2fc62e86…6625116`；4,716 商品在 `R2 TEST DATA`。Odoo 仍只有 `aipos`，正式业务前需迁库或生产初始化。
 
 ## 历史决定（2026-10-14，已被上方 demo 销售导入决定部分覆盖）
 
