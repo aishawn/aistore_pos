@@ -114,7 +114,7 @@ export function OdooRegisterPage() {
   const [odooUserId, setOdooUserId] = useState<string | null>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null);
   const [isOnline, setIsOnline] = useState(true);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
@@ -187,6 +187,7 @@ export function OdooRegisterPage() {
       setPaymentMethodId(selected);
       if (data.message) setError(data.message);
     } catch (cause) {
+      if (initial) setConnected(null);
       setError(cause instanceof Error ? cause.message : "Could not load the Odoo register.");
     } finally {
       setLoading(false);
@@ -659,7 +660,17 @@ export function OdooRegisterPage() {
       </div>
     </main>
   );
-  if (!connected) return (
+  if (connected === null) return (
+    <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+      <section role="alert" className="max-w-lg rounded-xl border border-rose-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+        <CircleAlert className="mx-auto text-rose-700" size={30} />
+        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the Odoo register</h1>
+        <p className="mt-2 text-sm leading-6 text-rose-800">{error ?? "The register details could not be read."}</p>
+        <button type="button" onClick={() => void loadPos(true)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
+      </section>
+    </main>
+  );
+  if (connected === false) return (
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
         <CircleAlert className="mx-auto text-amber-600" size={30} />
