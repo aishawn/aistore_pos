@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T13:02:37.000Z",
+  "sourceCommit": "982a2df",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no role, permission, invite, or staff write",
+  "status": "PASS",
+  "checks": [
+    "Roles first-load skeleton remains visible while role, permission, and user reads are delayed",
+    "Roles normal load shows the permission guidance surface with no page errors",
+    "Simulated roles/permissions/users read failures show Retry with no page errors"
+  ]
+}
