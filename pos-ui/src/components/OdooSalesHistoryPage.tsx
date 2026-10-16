@@ -456,9 +456,11 @@ export function OdooSalesHistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {loading && items.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sales…</span></td></tr>
-                ) : items.length === 0 ? (
+                {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`sales-skeleton-${index}`} aria-hidden="true">
+                  <td colSpan={6} className="px-4 py-3"><div className="grid grid-cols-[1fr_1.15fr_1fr_1.1fr_.8fr_.65fr] items-center gap-4">
+                    <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 animate-pulse rounded-full bg-[var(--oh-border)]" /><span className="ml-auto h-4 w-20 animate-pulse rounded bg-[var(--oh-border)]" />
+                  </div></td>
+                </tr>) : items.length === 0 ? (
                   <tr><td colSpan={6} className="p-0"><SalesEmptyState searching={hasActiveSearch} onClear={clearSearch} /></td></tr>
                 ) : items.map((sale) => (
                   <tr key={sale.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
@@ -479,7 +481,14 @@ export function OdooSalesHistoryPage() {
             </table>
             <div className="divide-y divide-[var(--oh-border)] xl:hidden">
               {loading && items.length === 0 ? (
-                <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sales…</span></div>
+                <div role="status" aria-label="Loading sales" className="divide-y divide-[var(--oh-border)]">
+                  {Array.from({ length: 6 }, (_, index) => <div key={`sales-mobile-skeleton-${index}`} aria-hidden="true" className="px-4 py-4">
+                    <div className="flex items-center justify-between gap-3"><span className="h-4 w-36 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-20 animate-pulse rounded bg-[var(--oh-border)]" /></div>
+                    <div className="mt-3 flex justify-between gap-3"><span className="h-3 w-28 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-3 w-32 animate-pulse rounded bg-[var(--oh-border)]" /></div>
+                    <div className="mt-2 flex justify-between gap-3"><span className="h-3 w-24 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 w-20 animate-pulse rounded-full bg-[var(--oh-border)]" /></div>
+                  </div>)}
+                  <p className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading sales…</p>
+                </div>
               ) : items.length === 0 ? (
                 <SalesEmptyState searching={hasActiveSearch} onClear={clearSearch} />
               ) : items.map((sale) => (
