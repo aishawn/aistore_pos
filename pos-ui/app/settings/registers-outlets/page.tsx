@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Info, LoaderCircle } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 
@@ -26,6 +26,7 @@ export default function RegistersOutletsPage() {
   const [registers, setRegisters] = useState<OdooRegister[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -48,7 +49,7 @@ export default function RegistersOutletsPage() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [retryKey]);
 
   return (
     <AdminPageLayout
@@ -65,13 +66,21 @@ export default function RegistersOutletsPage() {
       </section>
 
       {error ? (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <span>{error}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100"><RefreshCw size={15} /> Retry</button>
+            <Link className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]" href="/settings/integrations">Open Integrations</Link>
+          </div>
         </div>
       ) : loading ? (
-        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
-          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
-          Loading Odoo stores and registers…
+        <div role="status" aria-label="Loading Odoo stores and registers" className="grid gap-5">
+          {Array.from({ length: 2 }, (_, section) => <section key={section} className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
+            <div className="h-5 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-16 animate-pulse rounded-lg bg-[var(--oh-surface)]" />)}
+            </div>
+          </section>)}
         </div>
       ) : (
         <div className="grid gap-5">
