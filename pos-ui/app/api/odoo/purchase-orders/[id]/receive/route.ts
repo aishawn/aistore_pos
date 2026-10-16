@@ -225,7 +225,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       } else if (action.res_model === "stock.backorder.confirmation") {
         const wizardId = Number.isSafeInteger(action.res_id)
           ? action.res_id
-          : await rpc<number>(sessionId, "stock.backorder.confirmation", "create", [{}], { context: wizardContext });
+          : await rpc<number>(sessionId, "stock.backorder.confirmation", "create", [{
+            pick_ids: [[6, 0, [selectedPickingId]]],
+            backorder_confirmation_line_ids: [[0, 0, { picking_id: selectedPickingId, to_backorder: true }]],
+          }], { context: wizardContext });
         if (Number.isSafeInteger(wizardId)) {
           await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[wizardId]], { context: wizardContext });
         }
