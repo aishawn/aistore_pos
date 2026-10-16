@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-10-16T16:10:00.000Z",
+  "sourceCommit": "c2af9c6",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no stocktake create, scan, import, complete, or cancel write",
+  "status": "PASS",
+  "checks": [
+    "Stocktakes first-load skeleton remains visible while /api/stocktakes is delayed",
+    "Normal Stocktakes page resolves to 3 rows with heading, status badges, and pagination",
+    "Simulated /api/stocktakes 503 shows Retry with no page errors",
+    "Final-state screenshot captured at docs/UAT_STOCKTAKES_RECOVERY_2026-10-16.png"
+  ],
+  "pageErrors": []
+}
