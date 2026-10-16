@@ -482,9 +482,7 @@ export async function POST(request: NextRequest) {
     // change and amount_paid must remain equal to the order total.
     const paymentAmount = isRefund
       ? -Math.min(roundedTender, amountDue)
-      : paymentMethod.is_cash_count
-        ? amountDue
-        : roundedTender;
+      : roundedTender;
     const change = isRefund
       ? Math.round(Math.max(0, roundedTender - amountDue) * 100) / 100
       : Math.round(Math.max(0, roundedTender - total) * 100) / 100;
@@ -493,7 +491,10 @@ export async function POST(request: NextRequest) {
     const uuid = body.orderUuid;
     const order: Record<string, unknown> = {
       amount_paid: paymentAmount,
-      amount_return: change,
+      // Odoo adds the change as an internal payment line. It expects the
+      // source amount_return to be negative so that amount_paid remains the
+      // order total after that line is applied.
+      amount_return: -change,
       amount_tax: taxTotal,
       amount_total: total,
       date_order: date,
