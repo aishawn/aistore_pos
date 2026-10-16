@@ -172,7 +172,7 @@ export function OdooReplenishmentPage() {
     }
   }
 
-  if (loading && !data) return <main className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></main>;
+  if (loading && !data) return <ReplenishmentSkeleton />;
 
   if (needsConnection && !data) return (
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
@@ -360,6 +360,19 @@ export function OdooReplenishmentPage() {
           </form>
         </section>
       </div>}
+    </main>
+  );
+}
+
+function ReplenishmentSkeleton() {
+  return (
+    <main aria-busy="true" aria-label="Loading replenishment plan" className="flex h-full min-h-0 flex-col gap-5 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
+        <div className="grid gap-2"><span className="h-3 w-40 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-64 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-96 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
+        <div className="h-11 w-64 animate-pulse rounded-md bg-[var(--oh-border)]" />
+      </header>
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />)}</section>
+      <section className="min-h-0 flex-1 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
     </main>
   );
 }
