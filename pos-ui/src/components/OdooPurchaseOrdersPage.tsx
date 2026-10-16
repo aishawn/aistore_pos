@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
-import { confirmOdooPurchaseOrder, getOdooPurchaseOrderDetail, getOdooSession, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
+import { confirmOdooPurchaseOrder, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -116,6 +116,11 @@ export function OdooPurchaseOrdersPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receiving, setReceiving] = useState(false);
+  const [receiveError, setReceiveError] = useState<string | null>(null);
+  const [receiveQty, setReceiveQty] = useState<Record<number, string>>({});
+  const [receiveSuccess, setReceiveSuccess] = useState<string | null>(null);
   const requestRevision = useRef(0);
   const detailRevision = useRef(0);
 
@@ -158,10 +163,20 @@ export function OdooPurchaseOrdersPage() {
     setDetail(null);
     setDetailError(null);
     setConfirmError(null);
+    setReceiveError(null);
+    setReceiveSuccess(null);
+    setReceiveOpen(false);
     setDetailLoading(true);
     try {
       const result = await getOdooPurchaseOrderDetail(purchaseId);
-      if (revision === detailRevision.current) setDetail(result);
+      if (revision === detailRevision.current) {
+        setDetail(result);
+        const qty: Record<number, string> = {};
+        for (const move of result.receivable?.moves ?? []) {
+          qty[move.id] = String(move.remaining);
+        }
+        setReceiveQty(qty);
+      }
     } catch (cause) {
       if (revision === detailRevision.current) setDetailError(cause instanceof Error ? cause.message : "Could not load this purchase order.");
     } finally {
@@ -175,6 +190,34 @@ export function OdooPurchaseOrdersPage() {
     setDetailError(null);
     setConfirmOpen(false);
     setConfirmError(null);
+    setReceiveOpen(false);
+    setReceiveError(null);
+    setReceiveSuccess(null);
+  }
+
+  async function receiveOrder() {
+    if (!detail?.receivable || receiving) return;
+    setReceiving(true);
+    setReceiveError(null);
+    try {
+      const lines = detail.receivable.moves.map((move) => {
+        const qtyDone = Number(receiveQty[move.id] ?? "0");
+        return { moveId: move.id, qtyDone: Number.isFinite(qtyDone) ? qtyDone : 0 };
+      }).filter((line) => line.qtyDone > 0);
+      if (!lines.length) throw new Error("Enter at least one quantity to receive.");
+      const result = await receiveOdooPurchaseOrder(detail.order.id, {
+        pickingId: detail.receivable.pickingId,
+        lines,
+      });
+      setReceiveOpen(false);
+      setReceiveSuccess(`Received on ${result.pickingName} (${result.pickingState || "updated"}).`);
+      setRefreshKey((value) => value + 1);
+      await openDetail(detail.order.id);
+    } catch (cause) {
+      setReceiveError(cause instanceof Error ? cause.message : "Could not receive this purchase order.");
+    } finally {
+      setReceiving(false);
+    }
   }
 
   async function confirmOrder() {
@@ -306,7 +349,7 @@ export function OdooPurchaseOrdersPage() {
               </section>
               <section aria-labelledby="receipt-list-title" className="rounded-lg border border-[var(--oh-border)]">
                 <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3">
-                  <div><h3 id="receipt-list-title" className="text-sm font-semibold text-[var(--oh-text)]">Incoming receipts</h3><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Receipt status and quantities are managed in Odoo Inventory.</p></div>
+                  <div><h3 id="receipt-list-title" className="text-sm font-semibold text-[var(--oh-text)]">Incoming receipts</h3><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Receive stock here when a single open incoming transfer is ready, or open Odoo for exceptions.</p></div>
                   <span className="text-xs text-[var(--oh-muted)]">{detail.receipts.length} {detail.receipts.length === 1 ? "receipt" : "receipts"}</span>
                 </header>
                 {!detail.receiptsAvailable ? <p role="status" className="px-4 py-4 text-sm text-[var(--oh-muted)]">Receipt details are not available for this account. Open the purchase order in Odoo to review its deliveries.</p>
@@ -317,13 +360,37 @@ export function OdooPurchaseOrdersPage() {
               {detail.order.state === "to approve" && <p role="status" className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm leading-5 text-sky-950">This RFQ is waiting for approval in Odoo.</p>}
               {detail.order.state === "draft" && detail.lines.some((line) => line.price_unit <= 0) && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">At least one line has no supplier price yet. Review the quote with the supplier before confirming.</p>}
               {confirmError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{confirmError}</p>}
+              {receiveSuccess && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-5 text-emerald-900">{receiveSuccess}</p>}
+              {receiveError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{receiveError}</p>}
             </div>
-            <footer className="flex flex-col gap-2 border-t border-[var(--oh-border)] p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:px-6"><a href={detail.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:justify-start">Open in Odoo <ExternalLink size={15} /></a><div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end"><button type="button" onClick={closeDetail} disabled={confirming} className="min-h-11 rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Close</button>{(detail.order.state === "draft" || detail.order.state === "sent") && <button type="button" onClick={() => { setConfirmError(null); setConfirmOpen(true); }} disabled={confirming} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"><Check size={15} /> Confirm purchase order</button>}</div></footer>
+            <footer className="flex flex-col gap-2 border-t border-[var(--oh-border)] p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:px-6"><a href={detail.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:justify-start">Open in Odoo <ExternalLink size={15} /></a><div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end"><button type="button" onClick={closeDetail} disabled={confirming || receiving} className="min-h-11 rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Close</button>{detail.receivable && detail.receivable.moves.some((move) => move.remaining > 0) && <button type="button" onClick={() => { setReceiveError(null); setReceiveOpen(true); }} disabled={confirming || receiving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">Receive stock</button>}{(detail.order.state === "draft" || detail.order.state === "sent") && <button type="button" onClick={() => { setConfirmError(null); setConfirmOpen(true); }} disabled={confirming || receiving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"><Check size={15} /> Confirm purchase order</button>}</div></footer>
           </>}
         </section>
       </div>}
 
       {confirmOpen && detail && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !confirming) setConfirmOpen(false); }}><section role="alertdialog" aria-modal="true" aria-labelledby="confirm-purchase-title" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5"><h2 id="confirm-purchase-title" className="text-lg font-semibold text-[var(--oh-text)]">Confirm this purchase order?</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Confirm <strong className="text-[var(--oh-text)]">{detail.order.name}</strong> for <strong className="text-[var(--oh-text)]">{relationName(detail.order.partner_id) || "this supplier"}</strong>. Odoo will move it out of RFQ status and may create an incoming receipt.</p><p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">Check supplier prices and delivery terms before confirming. This action follows your Odoo user permissions.</p>{confirmError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{confirmError}</p>}<footer className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setConfirmOpen(false)} disabled={confirming} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">Go back</button><button type="button" onClick={() => void confirmOrder()} disabled={confirming} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto">{confirming ? <LoaderCircle size={15} className="animate-spin" /> : <ArrowUpRight size={15} />} {confirming ? "Confirming…" : "Confirm order"}</button></footer></section></div>}
+
+      {receiveOpen && detail?.receivable && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/55 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !receiving) setReceiveOpen(false); }}>
+        <section role="alertdialog" aria-modal="true" aria-labelledby="receive-purchase-title" className="w-full max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5">
+          <h2 id="receive-purchase-title" className="text-lg font-semibold text-[var(--oh-text)]">Receive stock?</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Validate receipt <strong className="text-[var(--oh-text)]">{detail.receivable.pickingName}</strong> for <strong className="text-[var(--oh-text)]">{detail.order.name}</strong>. Partial quantities create a backorder when Odoo requires one.</p>
+          <ul className="mt-4 max-h-64 space-y-3 overflow-y-auto">
+            {detail.receivable.moves.map((move) => (
+              <li key={move.id} className="rounded-lg border border-[var(--oh-border)] px-3 py-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0"><p className="text-sm font-medium text-[var(--oh-text)]">{relationName(move.product_id) || `Move #${move.id}`}</p><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Ordered {move.product_uom_qty} · remaining {move.remaining}</p></div>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Qty<input type="number" min={0} max={move.product_uom_qty} step="any" value={receiveQty[move.id] ?? "0"} onChange={(event) => setReceiveQty((current) => ({ ...current, [move.id]: event.target.value }))} className="h-10 w-24 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]" /></label>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {receiveError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{receiveError}</p>}
+          <footer className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => setReceiveOpen(false)} disabled={receiving} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:opacity-50 sm:w-auto">Go back</button>
+            <button type="button" onClick={() => void receiveOrder()} disabled={receiving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60 sm:w-auto">{receiving ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {receiving ? "Receiving…" : "Confirm receive"}</button>
+          </footer>
+        </section>
+      </div>}
     </main>
   );
 }

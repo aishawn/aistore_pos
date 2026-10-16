@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -40,7 +41,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result as T;
 }
 
-async function getCompanyIds(sessionId: string) {
+async function getCompanyIds(request: NextRequest, sessionId: string) {
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
@@ -51,9 +52,11 @@ async function getCompanyIds(sessionId: string) {
   if (!response.ok) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
   if (payload.error || !payload.result?.uid) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const companyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
-  if (!companyIds.length) throw new PurchaseOrderError("No Odoo companies are available to this user.", 403);
-  return companyIds;
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+  if (forced.error) throw new PurchaseOrderError(forced.error, forced.status);
+  if (!forced.companyIds.length) throw new PurchaseOrderError("No Odoo companies are available to this user.", 403);
+  return forced.companyIds;
 }
 
 function errorResponse(error: unknown) {
@@ -73,12 +76,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   if (!Number.isSafeInteger(purchaseId) || purchaseId < 1) return NextResponse.json({ message: "Invalid purchase order" }, { status: 400 });
 
   try {
-    const companyIds = await getCompanyIds(sessionId);
+    const companyIds = await getCompanyIds(request, sessionId);
+    const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
     const orderFields = await rpc<Record<string, { type?: string }>>(sessionId, "purchase.order", "fields_get", [["picking_ids", "receipt_status"]], { attributes: ["type"] });
     const availableOrderFields = ["picking_ids", "receipt_status"].filter((field) => Object.hasOwn(orderFields ?? {}, field));
     const orders = await rpc<Array<Record<string, unknown>>>(sessionId, "purchase.order", "search_read", [[
       ["id", "=", purchaseId], ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "partner_id", "date_order", "date_planned", "state", "amount_untaxed", "amount_tax", "amount_total", "currency_id", "company_id", "user_id", "origin", "message_ids", "order_line", ...availableOrderFields], limit: 1, context: { allowed_company_ids: companyIds } });
+    ]], { fields: ["id", "name", "partner_id", "date_order", "date_planned", "state", "amount_untaxed", "amount_tax", "amount_total", "currency_id", "company_id", "user_id", "origin", "message_ids", "order_line", ...availableOrderFields], limit: 1, context: companyContext });
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Purchase order not found or you do not have access to it." }, { status: 404 });
     const orderLineIds = Array.isArray(order.order_line) ? order.order_line.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
@@ -89,21 +93,71 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       if (!unitField) throw new PurchaseOrderError("Odoo did not expose a purchase unit field for RFQ lines.", 422);
       lines = await rpc<Array<Record<string, unknown>>>(sessionId, "purchase.order.line", "search_read", [[
         ["id", "in", orderLineIds], ["order_id", "=", purchaseId],
-      ]], { fields: ["id", "product_id", "name", "product_qty", unitField, "price_unit", "price_subtotal", "qty_received", "date_planned"], limit: 200, context: { allowed_company_ids: companyIds } }) ?? [];
+      ]], { fields: ["id", "product_id", "name", "product_qty", unitField, "price_unit", "price_subtotal", "qty_received", "date_planned"], limit: 200, context: companyContext }) ?? [];
     }
     const pickingIds = Array.isArray(order.picking_ids) ? order.picking_ids.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
     let receiptsAvailable = availableOrderFields.includes("picking_ids");
     let receipts: Array<Record<string, unknown>> = [];
+    let receivable: {
+      pickingId: number;
+      pickingName: string;
+      pickingState: string;
+      moves: Array<{ id: number; product_id: [number, string] | false; product_uom_qty: number; qty_done: number; remaining: number }>;
+    } | null = null;
     if (receiptsAvailable && pickingIds.length) {
       try {
         receipts = await rpc<Array<Record<string, unknown>>>(sessionId, "stock.picking", "search_read", [[
           ["id", "in", pickingIds], ["company_id", "in", companyIds],
         ]], {
-          fields: ["id", "name", "state", "scheduled_date", "date_done", "picking_type_id", "location_id", "location_dest_id", "origin", "company_id"],
+          fields: ["id", "name", "state", "scheduled_date", "date_done", "picking_type_id", "location_id", "location_dest_id", "origin", "company_id", "picking_type_code", "move_ids_without_package", "move_ids"],
           limit: 100,
           order: "scheduled_date desc, id desc",
-          context: { allowed_company_ids: companyIds },
+          context: companyContext,
         }) ?? [];
+        const openIncoming = receipts.filter((receipt) => {
+          const state = String(receipt.state || "");
+          const code = receipt.picking_type_code;
+          const incoming = !code || code === "incoming";
+          return incoming && ["assigned", "confirmed", "waiting"].includes(state);
+        });
+        if (openIncoming.length === 1) {
+          const picking = openIncoming[0];
+          const moveIds = (Array.isArray(picking.move_ids_without_package) && picking.move_ids_without_package.length
+            ? picking.move_ids_without_package
+            : picking.move_ids) as number[] | undefined;
+          const ids = Array.isArray(moveIds) ? moveIds.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
+          if (ids.length) {
+            const moves = await rpc<Array<{
+              id: number;
+              product_id: [number, string] | false;
+              product_uom_qty: number;
+              quantity?: number;
+              quantity_done?: number;
+            }>>(sessionId, "stock.move", "search_read", [[
+              ["id", "in", ids], ["picking_id", "=", picking.id],
+            ]], {
+              fields: ["id", "product_id", "product_uom_qty", "quantity", "quantity_done"],
+              limit: 200,
+              context: companyContext,
+            }) ?? [];
+            receivable = {
+              pickingId: Number(picking.id),
+              pickingName: String(picking.name || ""),
+              pickingState: String(picking.state || ""),
+              moves: moves.map((move) => {
+                const qtyDone = typeof move.quantity === "number" ? move.quantity : typeof move.quantity_done === "number" ? move.quantity_done : 0;
+                const remaining = Math.max(0, (move.product_uom_qty || 0) - qtyDone);
+                return {
+                  id: move.id,
+                  product_id: move.product_id,
+                  product_uom_qty: move.product_uom_qty || 0,
+                  qty_done: qtyDone,
+                  remaining,
+                };
+              }),
+            };
+          }
+        }
       } catch (error) {
         if (!(error instanceof PurchaseOrderError) || error.status !== 403) throw error;
         receiptsAvailable = false;
@@ -116,7 +170,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       try {
         approvalAudits = await rpc<Array<{ id: number; date: string; body: string; author_id: [number, string] | false }>>(sessionId, "mail.message", "search_read", [[
           ["id", "in", messageIds], ["subtype_id.internal", "=", true], ["body", "ilike", "Orithos replenishment approval audit v1"],
-        ]], { fields: ["id", "date", "body", "author_id"], limit: 10, order: "date desc, id desc", context: { allowed_company_ids: companyIds } }) ?? [];
+        ]], { fields: ["id", "date", "body", "author_id"], limit: 10, order: "date desc, id desc", context: companyContext }) ?? [];
       } catch (error) {
         if (!(error instanceof PurchaseOrderError) || error.status !== 403) throw error;
         approvalAuditAvailable = false;
@@ -131,6 +185,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         url: `${baseUrl}/web#id=${receipt.id}&model=stock.picking&view_type=form`,
       })),
       receiptsAvailable,
+      receivable,
       approvalAudits,
       approvalAuditAvailable,
       url: `${baseUrl}/web#id=${purchaseId}&model=purchase.order&view_type=form`,
@@ -155,14 +210,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 
   try {
-    const companyIds = await getCompanyIds(sessionId);
+    const companyIds = await getCompanyIds(request, sessionId);
+    const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
     const orders = await rpc<Array<{ id: number; name: string; state: string; partner_id: [number, string] | false }>>(sessionId, "purchase.order", "search_read", [[
       ["id", "=", purchaseId], ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "state", "partner_id"], limit: 1, context: { allowed_company_ids: companyIds } });
+    ]], { fields: ["id", "name", "state", "partner_id"], limit: 1, context: companyContext });
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Purchase order not found or you do not have access to it." }, { status: 404 });
     if (order.state !== "draft" && order.state !== "sent") return NextResponse.json({ message: "Only draft or sent RFQs can be confirmed from this page." }, { status: 409 });
-    await rpc<unknown>(sessionId, "purchase.order", "button_confirm", [[purchaseId]], { context: { allowed_company_ids: companyIds } });
+    await rpc<unknown>(sessionId, "purchase.order", "button_confirm", [[purchaseId]], { context: companyContext });
     return NextResponse.json({ ok: true, id: purchaseId, name: order.name }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);

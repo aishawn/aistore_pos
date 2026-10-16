@@ -18,4 +18,11 @@ public class Vendor {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long outletId;
+    private Long odooCompanyId;
+    private Long odooPosConfigId;
+    private Long odooWarehouseId;
+    private Long odooStockLocationId;
+    private String odooProvisionStatus;
+    private String odooProvisionError;
+    private String r2Prefix;
 }

@@ -68,8 +68,8 @@ function R2ArchivePanel({ query }: { query: string }) {
       <section className="shrink-0 overflow-hidden rounded-lg border border-amber-200 bg-amber-50/60">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 px-4 py-3">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--oh-text)]">Imported Shopfront R2 test history</h2>
-            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only source archive · excluded from Odoo accounting and stock.</p>
+            <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront R2 source archive</h2>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only crawl snapshot for cross-check. Formal history for demo is imported into Odoo POS orders below.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900">R2 · TEST</span>
@@ -108,7 +108,7 @@ function R2ArchivePanel({ query }: { query: string }) {
               </table>
             </div>
             <div className="ml-auto mt-4 grid max-w-xs grid-cols-2 gap-y-2 text-sm"><span className="text-[var(--oh-muted)]">GST (receipt total)</span><span className="text-right tabular-nums">{money(selected.tax)}</span><span className="border-t border-[var(--oh-border)] pt-2 font-semibold">Receipt total</span><span className="border-t border-[var(--oh-border)] pt-2 text-right font-bold tabular-nums">{money(selected.total)}</span></div>
-            <p className="mt-3 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The archive provides GST at receipt level; it does not provide a GST amount for each individual product line. These records are not Odoo transactions and cannot be refunded here.</p>
+            <p className="mt-3 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The archive provides GST at receipt level only. Matching Completed receipts are also imported as Odoo POS orders for the demo store; refunds must use the Odoo history rows, not this archive panel.</p>
             <section className="mt-4 border-t border-[var(--oh-border)] pt-4"><h3 className="text-sm font-semibold">Payments</h3>{selected.payments.length ? <ul className="mt-2 space-y-1.5 text-sm">{selected.payments.map((payment) => <li key={payment.id} className="flex justify-between gap-4"><span>{payment.method}{payment.status ? ` · ${payment.status}` : ""}</span><span className="tabular-nums">{money(payment.amount)}</span></li>)}</ul> : <p className="mt-2 text-sm text-[var(--oh-muted)]">No payment details in this receipt.</p>}</section>
           </section>
         </div>
@@ -353,7 +353,7 @@ export function OdooSalesHistoryPage() {
       <header className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Sales History</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Odoo register sales and the separate read-only R2 test archive.</p>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Odoo register sales (including imported R2 demo history) plus the read-only source archive for comparison.</p>
         </div>
         <button type="button" onClick={() => void loadSales()} disabled={loading} aria-label={loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh

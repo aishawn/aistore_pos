@@ -59,4 +59,22 @@ public interface VendorMapper {
     @Update("UPDATE vendor SET status=#{status} WHERE id=#{id}")
     int updateStatus(@org.apache.ibatis.annotations.Param("id") Long id,
                      @org.apache.ibatis.annotations.Param("status") String status);
+
+    @Update("UPDATE vendor SET trial_ends_at=#{trialEndsAt}, status=#{status} WHERE id=#{id}")
+    int updateTrialEndsAt(@Param("id") Long id,
+                          @Param("trialEndsAt") java.time.LocalDateTime trialEndsAt,
+                          @Param("status") String status);
+
+    @Update("""
+            UPDATE vendor SET
+              odoo_company_id=#{odooCompanyId},
+              odoo_pos_config_id=#{odooPosConfigId},
+              odoo_warehouse_id=#{odooWarehouseId},
+              odoo_stock_location_id=#{odooStockLocationId},
+              odoo_provision_status=#{odooProvisionStatus},
+              odoo_provision_error=#{odooProvisionError},
+              r2_prefix=#{r2Prefix}
+            WHERE id=#{id}
+            """)
+    int updateOdooBinding(Vendor vendor);
 }

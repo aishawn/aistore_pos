@@ -3,14 +3,19 @@ package com.orithos.tenant;
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
 import com.orithos.common.PageResult;
+import com.orithos.modules.auth.AccountLifecycleService;
 import com.orithos.modules.user.entity.User;
 import com.orithos.modules.user.mapper.UserMapper;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,31 +23,41 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/admin/tenants")
 public class AdminTenantController {
+
+    private static final Set<String> STATUS_VALUES = Set.of("active", "suspended", "expired", "trial");
 
     private final TenantProvisionService provisionService;
     private final PlatformAccessService platformAccess;
     private final VendorMapper vendorMapper;
     private final UserMapper userMapper;
     private final TenantProperties tenantProperties;
+    private final AccountLifecycleService accountLifecycle;
+    private final OdooTenantProvisioner odooTenantProvisioner;
 
     public AdminTenantController(TenantProvisionService provisionService,
                                  PlatformAccessService platformAccess,
                                  VendorMapper vendorMapper,
                                  UserMapper userMapper,
-                                 TenantProperties tenantProperties) {
+                                 TenantProperties tenantProperties,
+                                 AccountLifecycleService accountLifecycle,
+                                 OdooTenantProvisioner odooTenantProvisioner) {
         this.provisionService = provisionService;
         this.platformAccess = platformAccess;
         this.vendorMapper = vendorMapper;
         this.userMapper = userMapper;
         this.tenantProperties = tenantProperties;
+        this.accountLifecycle = accountLifecycle;
+        this.odooTenantProvisioner = odooTenantProvisioner;
     }
 
     public record AdminProvisionRequest(
@@ -54,6 +69,17 @@ public class AdminTenantController {
             @NotBlank String password,
             String phone,
             Integer trialDays
+    ) {}
+
+    public record StatusBody(@NotBlank String status) {}
+
+    public record TrialBody(@NotNull @Min(1) @Max(90) Integer days) {}
+
+    public record OdooBindingBody(
+            Long odooCompanyId,
+            Long odooPosConfigId,
+            Long odooWarehouseId,
+            Long odooStockLocationId
     ) {}
 
     @GetMapping
@@ -82,11 +108,7 @@ public class AdminTenantController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> get(@PathVariable Long id) {
         platformAccess.requirePlatformAdmin();
-        Vendor vendor = vendorMapper.findById(id);
-        if (vendor == null) {
-            throw new BusinessException(40410, "Store not found");
-        }
-        return ApiResult.ok(toDetail(vendor));
+        return ApiResult.ok(toDetail(requireVendor(id)));
     }
 
     @PostMapping
@@ -103,6 +125,7 @@ public class AdminTenantController {
                         req.password(),
                         req.phone(),
                         req.trialDays()));
+        odooTenantProvisioner.provisionAsyncSafe(result.vendorId());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("vendorId", result.vendorId());
         body.put("subdomain", result.subdomain());
@@ -110,7 +133,100 @@ public class AdminTenantController {
         body.put("bootstrapToken", result.bootstrapToken());
         body.put("outletId", result.outletId());
         body.put("userId", result.userId());
+        Vendor vendor = vendorMapper.findById(result.vendorId());
+        if (vendor != null) {
+            body.put("odooBinding", TenantOdooBindingController.toBinding(vendor));
+        }
         return ApiResult.ok(body);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> patchStatus(@PathVariable Long id, @Valid @RequestBody StatusBody body) {
+        platformAccess.requirePlatformAdmin();
+        Vendor vendor = requireVendor(id);
+        forbidOperatorLifecycle(vendor);
+        String status = body.status().trim().toLowerCase(Locale.ROOT);
+        if (!STATUS_VALUES.contains(status)) {
+            throw new BusinessException(40001, "status must be active, suspended, expired, or trial");
+        }
+        vendorMapper.updateStatus(id, status);
+        return ApiResult.ok(toDetail(requireVendor(id)));
+    }
+
+    @PatchMapping("/{id}/trial")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> patchTrial(@PathVariable Long id, @Valid @RequestBody TrialBody body) {
+        platformAccess.requirePlatformAdmin();
+        Vendor vendor = requireVendor(id);
+        forbidOperatorLifecycle(vendor);
+        LocalDateTime ends = LocalDateTime.now().plusDays(body.days());
+        String status = "expired".equalsIgnoreCase(vendor.getStatus()) ? "trial" : vendor.getStatus();
+        if (status == null || status.isBlank()) status = "trial";
+        if ("suspended".equalsIgnoreCase(status)) {
+            // keep suspended but still extend trial clock for when reactivated
+        } else if (!"active".equalsIgnoreCase(status)) {
+            status = "trial";
+        }
+        vendorMapper.updateTrialEndsAt(id, ends, status);
+        return ApiResult.ok(toDetail(requireVendor(id)));
+    }
+
+    @PostMapping("/{id}/owner/reset-password")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> resetOwner(@PathVariable Long id) {
+        platformAccess.requirePlatformAdmin();
+        requireVendor(id);
+        return ApiResult.ok(accountLifecycle.issueOwnerResetForVendor(id));
+    }
+
+    @PostMapping("/{id}/owner/reinvite")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> reinviteOwner(@PathVariable Long id) {
+        platformAccess.requirePlatformAdmin();
+        requireVendor(id);
+        return ApiResult.ok(accountLifecycle.reinviteOwnerForVendor(id));
+    }
+
+    @PostMapping("/{id}/odoo-provision")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> reprovisionOdoo(@PathVariable Long id) {
+        platformAccess.requirePlatformAdmin();
+        requireVendor(id);
+        try {
+            odooTenantProvisioner.provision(id);
+        } catch (Exception e) {
+            // binding already marked failed; still return detail
+        }
+        return ApiResult.ok(toDetail(requireVendor(id)));
+    }
+
+    @PatchMapping("/{id}/odoo-binding")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> patchOdooBinding(@PathVariable Long id, @RequestBody OdooBindingBody body) {
+        platformAccess.requirePlatformAdmin();
+        requireVendor(id);
+        odooTenantProvisioner.linkManual(
+                id,
+                body.odooCompanyId(),
+                body.odooPosConfigId(),
+                body.odooWarehouseId(),
+                body.odooStockLocationId());
+        return ApiResult.ok(toDetail(requireVendor(id)));
+    }
+
+    private Vendor requireVendor(Long id) {
+        Vendor vendor = vendorMapper.findById(id);
+        if (vendor == null) {
+            throw new BusinessException(40410, "Store not found");
+        }
+        return vendor;
+    }
+
+    private void forbidOperatorLifecycle(Vendor vendor) {
+        if (platformAccess.isPlatformOperatorVendor(vendor)) {
+            throw new BusinessException(40910, "Lifecycle changes are not allowed on the platform operator store");
+        }
     }
 
     private Map<String, Object> toListItem(Vendor vendor) {
@@ -124,6 +240,8 @@ public class AdminTenantController {
         body.put("trialEndsAt", vendor.getTrialEndsAt());
         body.put("createdAt", vendor.getCreatedAt());
         body.put("platformOperator", platformAccess.isPlatformOperatorVendor(vendor));
+        body.put("odooProvisionStatus", vendor.getOdooProvisionStatus());
+        body.put("odooCompanyId", vendor.getOdooCompanyId());
         return body;
     }
 
@@ -131,6 +249,7 @@ public class AdminTenantController {
         Map<String, Object> body = toListItem(vendor);
         body.put("outletId", vendor.getOutletId());
         body.put("url", vendor.getUrl());
+        body.put("odooBinding", TenantOdooBindingController.toBinding(vendor));
         User owner = vendor.getId() == null ? null : userMapper.findPrimaryByVendor(vendor.getId());
         if (owner != null) {
             Map<String, Object> ownerBody = new LinkedHashMap<>();

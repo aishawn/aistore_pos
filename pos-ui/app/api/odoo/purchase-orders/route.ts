@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -43,7 +44,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result as T;
 }
 
-async function getCompanies(sessionId: string) {
+async function getCompanies(request: NextRequest, sessionId: string) {
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
@@ -54,9 +55,11 @@ async function getCompanies(sessionId: string) {
   if (!response.ok) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
   if (payload.error || !payload.result?.uid) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const companyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
-  if (!companyIds.length) throw new PurchaseRequestError("No Odoo companies are available to this user.", 403);
-  return companyIds;
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+  if (forced.error) throw new PurchaseRequestError(forced.error, forced.status);
+  if (!forced.companyIds.length) throw new PurchaseRequestError("No Odoo companies are available to this user.", 403);
+  return forced.companyIds;
 }
 
 function errorResponse(error: unknown) {
@@ -79,7 +82,7 @@ export async function GET(request: NextRequest) {
   const offset = Math.max(0, Math.floor(Number(request.nextUrl.searchParams.get("offset")) || 0));
 
   try {
-    const companyIds = await getCompanies(sessionId);
+    const companyIds = await getCompanies(request, sessionId);
     const domain: unknown[] = [["company_id", "in", companyIds]];
     if (requestedState !== "all") domain.push(["state", "=", requestedState]);
     if (query) domain.push("|", ["name", "ilike", query], ["partner_id", "ilike", query]);

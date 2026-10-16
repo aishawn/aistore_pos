@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-16T00:00:00+08:00",
+  "scope": "PLATFORM_ADMIN_P0 — store detail and lifecycle",
+  "implemented": {
+    "detailUi": "/platform/stores/[id]",
+    "listLinks": true,
+    "patchStatus": "PATCH /api/admin/tenants/{id}/status",
+    "patchTrial": "PATCH /api/admin/tenants/{id}/trial",
+    "ownerReset": "POST /api/admin/tenants/{id}/owner/reset-password",
+    "ownerReinvite": "POST /api/admin/tenants/{id}/owner/reinvite",
+    "refreshGate": "40323 on /api/auth/refresh when suspended/expired/trial ended",
+    "operatorLifecycleBlocked": true
+  },
+  "liveUat": {
+    "result": "PENDING_OPERATOR",
+    "note": "Run lifecycle writes only on a non-demo trial store"
+  },
+  "result": "CODE_READY"
+}

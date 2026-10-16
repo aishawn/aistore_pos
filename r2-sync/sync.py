@@ -30,11 +30,40 @@ REQUEST_FILE = DATA_DIR / "REQUEST_SYNC"
 PREFIX = os.getenv("R2_PREFIX", "shopfront/").strip("/") + "/"
 MANIFEST_KEY = os.getenv("R2_MANIFEST_KEY", "shopfront/manifest.json")
 DATABASE_KEY = os.getenv("R2_DATABASE_KEY", "shopfront/shopfront.sqlite3")
+# Optional comma-separated extra prefixes for multi-store archives, e.g.
+# shopfront/acme/,shopfront/other/. Each syncs under DATA_DIR/tenants/{slug}/.
+# Do not mirror every store by default — only active prefixes.
+_EXTRA_PREFIXES_RAW = os.getenv("R2_PREFIXES", "").strip()
 SYNC_HOUR = int(os.getenv("R2_SYNC_HOUR", "3"))
 SYNC_MINUTE = int(os.getenv("R2_SYNC_MINUTE", "30"))
 RETAIN_SNAPSHOTS = max(2, int(os.getenv("R2_RETAIN_SNAPSHOTS", "2")))
 MAX_TOTAL_BYTES = int(os.getenv("R2_MAX_TOTAL_BYTES", str(2 * 1024 * 1024 * 1024)))
 SCHEDULE_ENABLED = os.getenv("R2_SYNC_SCHEDULE_ENABLED", "false").strip().lower() == "true"
+
+
+def _normalize_prefix(raw: str) -> str:
+    return raw.strip().strip("/") + "/"
+
+
+def extra_prefixes() -> list[str]:
+    if not _EXTRA_PREFIXES_RAW:
+        return []
+    values = []
+    for part in _EXTRA_PREFIXES_RAW.split(","):
+        if not part.strip():
+            continue
+        prefix = _normalize_prefix(part)
+        if prefix != PREFIX and prefix not in values:
+            values.append(prefix)
+    return values
+
+
+def tenant_slug_from_prefix(prefix: str) -> str:
+    # shopfront/acme/ → acme ; acme/ → acme
+    parts = [p for p in prefix.strip("/").split("/") if p]
+    slug = parts[-1] if parts else "tenant"
+    safe = re.sub(r"[^a-zA-Z0-9._-]+", "-", slug).strip(".-") or "tenant"
+    return safe[:63]
 
 TIMEZONE_NAME = os.getenv("R2_SYNC_TIMEZONE", "Australia/Adelaide")
 try:
@@ -111,8 +140,15 @@ def sqlite_integrity(path: Path) -> str:
         connection.close()
 
 
-def validate_manifest(path: Path, objects: list[dict], summaries: list[dict]) -> None:
+def validate_manifest(
+    path: Path,
+    objects: list[dict],
+    summaries: list[dict],
+    *,
+    manifest_key: str | None = None,
+) -> None:
     """Require the manifest to describe every non-manifest object exactly."""
+    skip_key = manifest_key or MANIFEST_KEY
     try:
         manifest = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -121,8 +157,8 @@ def validate_manifest(path: Path, objects: list[dict], summaries: list[dict]) ->
     if not isinstance(entries, list):
         raise ValueError("manifest object list is missing")
 
-    actual_objects = {item["key"]: item for item in objects if item["key"] != MANIFEST_KEY}
-    actual_summaries = {item["key"]: item for item in summaries if item["key"] != MANIFEST_KEY}
+    actual_objects = {item["key"]: item for item in objects if item["key"] != skip_key}
+    actual_summaries = {item["key"]: item for item in summaries if item["key"] != skip_key}
     declared: dict[str, dict] = {}
     for entry in entries:
         if not isinstance(entry, dict):
@@ -168,24 +204,48 @@ def object_etag(s3, bucket: str, key: str) -> str:
     return s3.head_object(Bucket=bucket, Key=key).get("ETag", "").strip('"')
 
 
-def publish_snapshot(s3, bucket: str) -> dict:
-    objects = list_objects(s3, bucket)
+def publish_snapshot_for_prefix(
+    s3,
+    bucket: str,
+    *,
+    prefix: str,
+    manifest_key: str,
+    database_key: str,
+    data_dir: Path,
+) -> dict:
+    """Download one archive prefix into data_dir (atomic CURRENT pointer)."""
+    snapshots_dir = data_dir / "snapshots"
+    current_file = data_dir / "CURRENT"
+    snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+    paginator = s3.get_paginator("list_objects_v2")
+    objects: list[dict] = []
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for item in page.get("Contents", []):
+            key = item["Key"]
+            if key.endswith("/"):
+                continue
+            relative = PurePosixPath(key).relative_to(PurePosixPath(prefix))
+            if ".." in relative.parts:
+                continue
+            objects.append({"key": key, "size": int(item["Size"]), "etag": item.get("ETag", "").strip('"'), "relative": str(relative)})
+
     keys = {item["key"] for item in objects}
-    if MANIFEST_KEY not in keys:
-        raise ValueError("manifest object is missing")
-    if DATABASE_KEY not in keys:
-        raise ValueError("SQLite archive object is missing")
+    if manifest_key not in keys:
+        raise ValueError(f"manifest object is missing for prefix {prefix}")
+    if database_key not in keys:
+        raise ValueError(f"SQLite archive object is missing for prefix {prefix}")
     if sum(item["size"] for item in objects) > MAX_TOTAL_BYTES:
-        raise ValueError("archive exceeds configured size limit")
+        raise ValueError(f"archive exceeds configured size limit for prefix {prefix}")
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    stage = Path(tempfile.mkdtemp(prefix=f".incoming-{timestamp}-", dir=SNAPSHOTS_DIR))
+    stage = Path(tempfile.mkdtemp(prefix=f".incoming-{timestamp}-", dir=snapshots_dir))
     summaries = []
     manifest_hash = ""
     try:
         for item in objects:
             key = item["key"]
-            target = stage / safe_relative_key(key)
+            target = stage / item["relative"]
             target.parent.mkdir(parents=True, exist_ok=True)
             s3.download_file(bucket, key, str(target))
             if target.stat().st_size != item["size"]:
@@ -200,42 +260,89 @@ def publish_snapshot(s3, bucket: str) -> dict:
                 "sha256": sha256,
                 "etag": item["etag"],
             })
-            if key == MANIFEST_KEY:
+            if key == manifest_key:
                 manifest_hash = sha256
 
-        validate_manifest(stage / safe_relative_key(MANIFEST_KEY), objects, summaries)
+        # Manifest validation uses relative names under the prefix.
+        manifest_path = stage / PurePosixPath(manifest_key).relative_to(PurePosixPath(prefix))
+        if not manifest_path.is_file():
+            raise ValueError("manifest file missing after download")
+        validate_manifest(manifest_path, objects, summaries, manifest_key=manifest_key)
 
-        # Confirm every object remained on the same upstream version for the
-        # entire download; never publish a mixed snapshot.
         for item in objects:
             if object_etag(s3, bucket, item["key"]) != item["etag"]:
                 raise ValueError("R2 archive changed during snapshot download; retry the next run")
 
-        database_path = stage / safe_relative_key(DATABASE_KEY)
+        database_path = stage / PurePosixPath(database_key).relative_to(PurePosixPath(prefix))
         integrity = sqlite_integrity(database_path)
         (stage / "snapshot.json").write_text(json.dumps({
             "syncedAt": now_iso(),
-            "manifestKey": MANIFEST_KEY,
+            "prefix": prefix,
+            "manifestKey": manifest_key,
             "manifestSha256": manifest_hash,
-            "databaseKey": DATABASE_KEY,
+            "databaseKey": database_key,
             "databaseIntegrity": integrity,
             "files": summaries,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
-        # mkdtemp creates 0700, which blocks the read-only POS frontend even
-        # when it belongs to the shared archive group.
         os.chmod(stage, 0o750)
 
         snapshot_name = timestamp + "Z"
-        final_path = SNAPSHOTS_DIR / snapshot_name
+        final_path = snapshots_dir / snapshot_name
         os.replace(stage, final_path)
-        pointer_temp = DATA_DIR / "CURRENT.tmp"
+        pointer_temp = data_dir / "CURRENT.tmp"
         pointer_temp.write_text(snapshot_name, encoding="ascii")
-        os.replace(pointer_temp, CURRENT_FILE)
-        prune_snapshots(snapshot_name)
+        os.replace(pointer_temp, current_file)
+
+        snapshots = sorted(
+            (path for path in snapshots_dir.iterdir() if path.is_dir() and not path.name.startswith(".incoming-")),
+            key=lambda path: path.name,
+            reverse=True,
+        )
+        keep = {path.name for path in snapshots[:RETAIN_SNAPSHOTS]}
+        keep.add(snapshot_name)
+        for path in snapshots:
+            if path.name not in keep:
+                shutil.rmtree(path, ignore_errors=True)
+
         return json.loads((final_path / "snapshot.json").read_text(encoding="utf-8"))
     except Exception:
         shutil.rmtree(stage, ignore_errors=True)
         raise
+
+
+def publish_snapshot(s3, bucket: str) -> dict:
+    primary = publish_snapshot_for_prefix(
+        s3,
+        bucket,
+        prefix=PREFIX,
+        manifest_key=MANIFEST_KEY,
+        database_key=DATABASE_KEY,
+        data_dir=DATA_DIR,
+    )
+    tenant_results = []
+    for prefix in extra_prefixes():
+        slug = tenant_slug_from_prefix(prefix)
+        tenant_dir = DATA_DIR / "tenants" / slug
+        tenant_dir.mkdir(parents=True, exist_ok=True)
+        manifest_key = prefix + "manifest.json"
+        database_key = prefix + "shopfront.sqlite3"
+        try:
+            snap = publish_snapshot_for_prefix(
+                s3,
+                bucket,
+                prefix=prefix,
+                manifest_key=manifest_key,
+                database_key=database_key,
+                data_dir=tenant_dir,
+            )
+            tenant_results.append({"slug": slug, "prefix": prefix, "ok": True, "snapshotId": snap.get("syncedAt")})
+            LOG.info("R2 tenant archive synced slug=%s prefix=%s", slug, prefix)
+        except Exception as exc:
+            tenant_results.append({"slug": slug, "prefix": prefix, "ok": False, "error": error_code(exc)})
+            LOG.error("R2 tenant archive failed slug=%s (%s)", slug, error_code(exc))
+    if tenant_results:
+        primary = {**primary, "tenantArchives": tenant_results}
+    return primary
 
 
 def prune_snapshots(current: str) -> None:

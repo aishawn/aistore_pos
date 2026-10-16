@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-16T00:00:00+08:00",
+  "scope": "Phase 1 store ops — purchase receive write + Manage Cash",
+  "implemented": {
+    "receiveApi": "POST /api/odoo/purchase-orders/{id}/receive",
+    "receiveUi": "OdooPurchases detail → Receive stock modal",
+    "manageCashApi": "POST /api/odoo/session/cash",
+    "manageCashUi": "/manage-cash"
+  },
+  "liveWriteUat": {
+    "result": "PENDING_OPERATOR",
+    "isolationRequired": true,
+    "steps": [
+      "On isolation Odoo DB: confirm RFQ → Receive stock full qty → verify qty_received and stock increase",
+      "Partial receive → backorder or documented Odoo wizard handling",
+      "Manage Cash: cash in $50 on open session; cash out blocked when drawer would go negative",
+      "Close Register still requires counted cash (existing 422 guard)"
+    ]
+  },
+  "result": "CODE_READY"
+}

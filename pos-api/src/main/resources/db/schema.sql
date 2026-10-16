@@ -36,6 +36,13 @@ CREATE TABLE vendor (
   created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   outlet_id BIGINT NOT NULL DEFAULT 1 COMMENT 'Legacy default outlet id',
+  odoo_company_id BIGINT NULL COMMENT 'res.company id in shared Odoo DB',
+  odoo_pos_config_id BIGINT NULL COMMENT 'pos.config id',
+  odoo_warehouse_id BIGINT NULL COMMENT 'stock.warehouse id',
+  odoo_stock_location_id BIGINT NULL COMMENT 'stock.location id (stock)',
+  odoo_provision_status VARCHAR(16) NOT NULL DEFAULT 'unmapped' COMMENT 'unmapped|pending|ready|failed',
+  odoo_provision_error VARCHAR(512) NULL,
+  r2_prefix VARCHAR(128) NULL COMMENT 'e.g. shopfront/{subdomain}/',
 
   PRIMARY KEY (id),
   UNIQUE KEY uq_vendor_subdomain (subdomain),

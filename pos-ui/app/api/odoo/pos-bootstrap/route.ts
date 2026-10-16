@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
 
@@ -104,7 +105,12 @@ export async function GET(request: NextRequest) {
     const info = infoPayload.result;
     if (infoPayload.error || !info?.uid) throw new OdooSessionExpiredError();
 
-    const companyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) {
+      return NextResponse.json({ configs: [], activeSessionId: null, message: forced.error }, { status: forced.status });
+    }
+    const companyIds = forced.companyIds;
     if (!companyIds.length) {
       return NextResponse.json({ configs: [], activeSessionId: null, message: "No accessible Odoo companies are assigned to this user." }, { status: 200 });
     }

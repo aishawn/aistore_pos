@@ -4,10 +4,13 @@ import com.orithos.common.BusinessException;
 import com.orithos.modules.user.UserService;
 import com.orithos.modules.user.entity.User;
 import com.orithos.modules.user.mapper.UserMapper;
+import com.orithos.modules.vendor.Vendor;
+import com.orithos.modules.vendor.VendorMapper;
 import com.orithos.security.AccountTokenStore;
 import com.orithos.security.AuthUser;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.TokenStore;
+import com.orithos.tenant.TenantProperties;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +33,8 @@ public class AccountLifecycleService {
     private final AccountTokenStore accountTokens;
     private final TokenStore tokenStore;
     private final MailService mailService;
+    private final VendorMapper vendorMapper;
+    private final TenantProperties tenantProperties;
     private final String publicAppUrl;
 
     public AccountLifecycleService(
@@ -38,12 +43,16 @@ public class AccountLifecycleService {
             AccountTokenStore accountTokens,
             TokenStore tokenStore,
             MailService mailService,
+            VendorMapper vendorMapper,
+            TenantProperties tenantProperties,
             @Value("${app.public-url:http://localhost:3000}") String publicAppUrl) {
         this.userMapper = userMapper;
         this.userService = userService;
         this.accountTokens = accountTokens;
         this.tokenStore = tokenStore;
         this.mailService = mailService;
+        this.vendorMapper = vendorMapper;
+        this.tenantProperties = tenantProperties;
         this.publicAppUrl = publicAppUrl.replaceAll("/+$", "");
     }
 
@@ -153,6 +162,74 @@ public class AccountLifecycleService {
         body.put("emailSent", emailSent);
         body.put("mailConfigured", mailService.isConfigured());
         return body;
+    }
+
+    /**
+     * Platform-scoped owner reset: does not require CurrentUser.vendorId match.
+     * Reset URL uses the tenant store origin so cookies land on {slug}.*
+     */
+    public Map<String, Object> issueOwnerResetForVendor(Long vendorId) {
+        Vendor vendor = vendorMapper.findById(vendorId);
+        if (vendor == null) throw new BusinessException(40410, "Store not found");
+        User owner = userMapper.findPrimaryByVendor(vendorId);
+        if (owner == null) throw new BusinessException(40410, "Store owner not found");
+        String token = accountTokens.issue(owner.getId(), AccountTokenStore.PURPOSE_RESET, RESET_TTL);
+        String url = storeOriginUrl(vendor, "/reset-password?token=" + token + "&purpose=reset");
+        boolean emailSent = false;
+        if (owner.getEmail() != null && !owner.getEmail().isBlank()) {
+            emailSent = mailService.send(
+                    owner.getEmail(),
+                    "Reset your Orithos password",
+                    "Hi " + displayName(owner) + ",\n\n"
+                            + "A platform administrator started a password reset for your store.\n"
+                            + "Choose a new password here (expires in 2 hours):\n"
+                            + url + "\n");
+        }
+        owner.setPendingPasswordReset(true);
+        userService.update(owner.getId(), owner);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("resetUrl", url);
+        body.put("emailSent", emailSent);
+        body.put("mailConfigured", mailService.isConfigured());
+        body.put("owner", publicUser(owner));
+        return body;
+    }
+
+    /** Prefer reset for owners who already set a password; invite token if still pending. */
+    public Map<String, Object> reinviteOwnerForVendor(Long vendorId) {
+        Vendor vendor = vendorMapper.findById(vendorId);
+        if (vendor == null) throw new BusinessException(40410, "Store not found");
+        User owner = userMapper.findPrimaryByVendor(vendorId);
+        if (owner == null) throw new BusinessException(40410, "Store owner not found");
+        if (Boolean.TRUE.equals(owner.getPendingPasswordReset())) {
+            String token = accountTokens.issue(owner.getId(), AccountTokenStore.PURPOSE_INVITE, INVITE_TTL);
+            String url = storeOriginUrl(vendor, "/reset-password?token=" + token + "&purpose=invite");
+            boolean emailSent = false;
+            if (owner.getEmail() != null && !owner.getEmail().isBlank()) {
+                emailSent = mailService.send(
+                        owner.getEmail(),
+                        "You're invited to Orithos",
+                        "Hi " + displayName(owner) + ",\n\n"
+                                + "Set your password using this link (expires in 7 days):\n"
+                                + url + "\n\n"
+                                + "Username: " + owner.getUsername() + "\n");
+            }
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("inviteUrl", url);
+            body.put("emailSent", emailSent);
+            body.put("mailConfigured", mailService.isConfigured());
+            body.put("owner", publicUser(owner));
+            return body;
+        }
+        return issueOwnerResetForVendor(vendorId);
+    }
+
+    private String storeOriginUrl(Vendor vendor, String pathAndQuery) {
+        String base = tenantProperties.storeUrl(vendor.getSubdomain());
+        if (base == null || base.isBlank()) {
+            base = publicAppUrl;
+        }
+        return base.replaceAll("/+$", "") + pathAndQuery;
     }
 
     private Map<String, Object> peekToken(String token, String purpose) {

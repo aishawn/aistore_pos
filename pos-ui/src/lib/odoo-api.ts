@@ -136,6 +136,18 @@ export interface OdooPurchaseOrderDetail {
     url: string;
   }>;
   receiptsAvailable: boolean;
+  receivable?: {
+    pickingId: number;
+    pickingName: string;
+    pickingState: string;
+    moves: Array<{
+      id: number;
+      product_id: [number, string] | false;
+      product_uom_qty: number;
+      qty_done: number;
+      remaining: number;
+    }>;
+  } | null;
   approvalAudits: Array<{ id: number; date: string; body: string; author_id: [number, string] | false }>;
   approvalAuditAvailable: boolean;
   url: string;
@@ -640,4 +652,50 @@ export async function confirmOdooPurchaseOrder(purchaseId: number): Promise<void
   });
   const payload = await response.json().catch(() => null) as { message?: string } | null;
   if (!response.ok) throw new OdooApiError(payload?.message || `Purchase confirmation failed (${response.status})`, response.status || 502);
+}
+
+export async function receiveOdooPurchaseOrder(
+  purchaseId: number,
+  body: { pickingId?: number; lines: Array<{ moveId: number; qtyDone: number }> },
+): Promise<{ pickingName: string; pickingState: string }> {
+  const response = await fetchOdooApi(`/api/odoo/purchase-orders/${purchaseId}/receive`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify({ confirm: true, pickingId: body.pickingId, lines: body.lines }),
+  });
+  const payload = await response.json().catch(() => null) as {
+    message?: string;
+    pickingName?: string;
+    pickingState?: string;
+  } | null;
+  if (!response.ok || !payload?.pickingName) {
+    throw new OdooApiError(payload?.message || `Purchase receive failed (${response.status})`, response.status || 502);
+  }
+  return { pickingName: payload.pickingName, pickingState: payload.pickingState || "" };
+}
+
+export async function postOdooSessionCash(body: {
+  configId: number;
+  direction: "in" | "out";
+  amount: number;
+  reason?: string;
+}): Promise<{ sessionName: string; recordedAt: string }> {
+  const response = await fetchOdooApi("/api/odoo/session/cash", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null) as {
+    message?: string;
+    sessionName?: string;
+    recordedAt?: string;
+  } | null;
+  if (!response.ok || !payload?.sessionName) {
+    throw new OdooApiError(payload?.message || `Cash adjustment failed (${response.status})`, response.status || 502);
+  }
+  return { sessionName: payload.sessionName, recordedAt: payload.recordedAt || new Date().toISOString() };
 }

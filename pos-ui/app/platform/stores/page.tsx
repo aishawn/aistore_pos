@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   AdminPageLayout,
   AdminSearchInput,
@@ -116,7 +117,9 @@ export default function PlatformStoresPage() {
           ]}
           rows={items.map((store) => [
             <div key={`${store.id}-name`} className="min-w-0">
-              <div className="truncate font-medium text-[var(--oh-text)]">{store.name}</div>
+              <Link href={`/platform/stores/${store.id}`} className="truncate font-medium text-[var(--oh-primary)] hover:underline">
+                {store.name}
+              </Link>
               {store.platformOperator ? (
                 <div className="text-xs text-[var(--oh-text-secondary)]">Platform operator</div>
               ) : null}

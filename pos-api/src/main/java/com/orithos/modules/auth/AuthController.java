@@ -140,6 +140,13 @@ public class AuthController {
         if (u.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
         }
+        if (u.getVendorId() != null) {
+            Vendor vendor = vendorMapper.findById(u.getVendorId());
+            if (TenantResolverFilter.isUnavailable(vendor)) {
+                tokenStore.revokeRefresh(userId);
+                throw new BusinessException(40323, "This trial or store is no longer available");
+            }
+        }
         return ApiResult.ok(issueTokens(u, refreshToken));
     }
 
