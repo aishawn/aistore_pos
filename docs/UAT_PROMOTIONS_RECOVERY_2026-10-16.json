@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-10-16T13:12:25.000Z",
+  "sourceCommit": "ff36398",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no promotion or category write",
+  "status": "PASS",
+  "checks": [
+    "Promotions first-load skeleton remains visible while /api/promotions is delayed",
+    "Promotions normal read-only surface loads with no page errors",
+    "Simulated /api/promotions 503 shows Try again with no page errors",
+    "Promotion Categories first-load skeleton remains visible while its read is delayed",
+    "Promotion Categories normal surface loads with no page errors",
+    "Simulated /api/promotion-categories 503 shows Try again with no page errors"
+  ]
+}
