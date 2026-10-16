@@ -126,7 +126,7 @@ export default function LoginPage() {
       </div>
 
       <section className="relative z-10 grid w-full max-w-[760px] overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] md:grid-cols-2">
-        <form onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-6 sm:p-8 lg:p-10" aria-labelledby="login-title">
+        <form method="post" onSubmit={onSubmit} className="flex flex-col justify-center gap-5 p-6 sm:p-8 lg:p-10" aria-labelledby="login-title">
           <div>
             <h1 id="login-title" className="text-xl font-semibold tracking-tight text-[var(--oh-text)]">Sign in</h1>
             <p className="mt-1 text-sm text-[var(--oh-text-secondary)]">
