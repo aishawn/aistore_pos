@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-16T19:15:00.000Z",
+  "sourceCommit": "705410f",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI check at 390px; no transfer or stock write",
+  "status": "PASS",
+  "viewport": {
+    "width": 390,
+    "documentScrollWidth": 390,
+    "bodyScrollWidth": 390
+  },
+  "checks": [
+    "Pilot availability notice is visible",
+    "Stock transfer link is visible",
+    "Placeholder transfer locations are absent",
+    "No horizontal overflow",
+    "No page errors",
+    "Final-state screenshot captured at docs/UAT_TRANSFER_LIST_AVAILABILITY_2026-10-16.png"
+  ],
+  "pageErrors": []
+}
