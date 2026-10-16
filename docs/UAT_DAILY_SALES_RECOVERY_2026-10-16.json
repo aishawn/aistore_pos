@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T13:30:42.000Z",
+  "sourceCommit": "ea3af6b",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no sales, refund, or register write",
+  "status": "PASS",
+  "checks": [
+    "Daily Sales first-load skeleton remains visible while /api/reports/daily-sales is delayed",
+    "Normal Daily Sales page loads with no page errors",
+    "Simulated /api/reports/daily-sales 503 shows Retry with no page errors"
+  ]
+}
