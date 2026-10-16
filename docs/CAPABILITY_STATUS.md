@@ -73,7 +73,7 @@ AI remains disabled in production. The tenant report database account has no sou
 |---|---|---|
 | Odoo session integration | Accepted | Auto-recover on; Orithos logout clears Odoo cookie / protected APIs return 401 |
 | Users / roles | Accepted | `fe9b163`: role CRUD with permission checkboxes; users invite shows role select + SMTP copy-link messaging; production create/delete role exercised (cleanup deleted `Pilot Clerk *`). Users and Roles now preserve their list shapes during first load and expose independent Retry actions for user, role, permission, and staff reads. |
-| Payment / tax / outlet / register setup | Accepted | Odoo read-only views; browser matrix pass. Payment Methods and Tax Rates now keep their list structure visible during first load and expose Retry on transient read failures. |
+| Payment / tax / outlet / register setup | Accepted | Odoo read-only views; browser matrix pass. Payment Methods and Tax Rates now keep their list structure visible during first load and expose Retry on transient read failures. Price Sets also preserves its configuration list shape during first load and exposes Try again on read failure. |
 | Company settings | Accepted | Honest status page (not connected to Odoo); live links to Integrations / Payment / Tax / Registers |
 | Sale keys | Accepted | Honest status page; removed from pilot sidebar |
 | Receipt / hardware setup | Accepted | Honest not-connected status pages; printer/drawer still unimplemented |
