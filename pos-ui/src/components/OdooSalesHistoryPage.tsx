@@ -40,6 +40,7 @@ function R2ArchivePanel({ query }: { query: string }) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [selected, setSelected] = useState<R2Receipt | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -57,7 +58,7 @@ function R2ArchivePanel({ query }: { query: string }) {
       })
       .catch(() => { if (active) setError("R2 test receipts are temporarily unavailable."); });
     return () => { active = false; };
-  }, []);
+  }, [retryKey]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filtered = items.filter((item) => !normalizedQuery
@@ -80,7 +81,7 @@ function R2ArchivePanel({ query }: { query: string }) {
             </button>
           </div>
         </header>
-        {error && <p role="status" className="px-4 py-3 text-sm text-amber-950">{error}</p>}
+        {error && <div role="status" className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={() => setRetryKey((value) => value + 1)} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100"><RefreshCw size={14} /> Retry archive</button></div>}
         {expanded && !error && (
           <div className="max-h-72 divide-y divide-amber-100 overflow-y-auto bg-white/70">
             {filtered.length ? filtered.map((receipt) => (
