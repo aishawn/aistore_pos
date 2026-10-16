@@ -86,8 +86,10 @@ public class OdooTenantProvisioner {
         try {
             String sessionId = authenticate();
             long companyId = createCompany(sessionId, vendor.getName());
-            long[] warehouse = findWarehouse(sessionId, companyId);
-            long posConfigId = createPosConfig(sessionId, vendor.getName(), companyId);
+            prepareCompanyBasics(sessionId, companyId, vendor.getName());
+            long[] warehouse = ensureWarehouse(sessionId, companyId, vendor.getName(), vendor.getSubdomain());
+            ensurePaymentMethods(sessionId, companyId);
+            long posConfigId = createPosConfig(sessionId, vendor.getName(), companyId, warehouse);
             addCompanyToServiceUser(sessionId, companyId);
 
             vendor.setOdooCompanyId(companyId);
@@ -168,6 +170,101 @@ public class OdooTenantProvisioner {
         return id.longValue();
     }
 
+    private ObjectNode companyContext(long companyId) {
+        ObjectNode context = objectMapper.createObjectNode();
+        ArrayNode allowed = context.putArray("allowed_company_ids");
+        allowed.add(companyId);
+        context.put("force_company", companyId);
+        return context;
+    }
+
+    private ObjectNode kwargsWithCompany(long companyId) {
+        ObjectNode kwargs = objectMapper.createObjectNode();
+        kwargs.set("context", companyContext(companyId));
+        return kwargs;
+    }
+
+    private void prepareCompanyBasics(String sessionId, long companyId, String name) throws Exception {
+        // Prefer Australia fiscal country when available (pilot market).
+        ArrayNode countryDomain = objectMapper.createArrayNode();
+        ArrayNode codeClause = objectMapper.createArrayNode();
+        codeClause.add("code");
+        codeClause.add("=");
+        codeClause.add("AU");
+        countryDomain.add(codeClause);
+        ObjectNode countryKwargs = objectMapper.createObjectNode();
+        countryKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        countryKwargs.put("limit", 1);
+        JsonNode countries = callKwNode(sessionId, "res.country", "search_read", List.of(countryDomain), countryKwargs);
+        if (countries != null && countries.isArray() && !countries.isEmpty()) {
+            long countryId = countries.get(0).path("id").asLong(0);
+            if (countryId > 0) {
+                ObjectNode values = objectMapper.createObjectNode();
+                values.put("country_id", countryId);
+                values.put("account_fiscal_country_id", countryId);
+                callKw(sessionId, "res.company", "write", List.of(List.of(companyId), values), kwargsWithCompany(companyId));
+            }
+        }
+
+        // Minimal journals required before POS config / payment methods can be company-scoped.
+        ensureJournal(sessionId, companyId, "Cash", shortCode("CSH", companyId), "cash");
+        ensureJournal(sessionId, companyId, "Bank", shortCode("BNK", companyId), "bank");
+        ensureJournal(sessionId, companyId, "Sales", shortCode("SAL", companyId), "sale");
+        ensureJournal(sessionId, companyId, "Point of Sale", shortCode("POS", companyId), "general");
+    }
+
+    private static String shortCode(String prefix, long companyId) {
+        String suffix = Long.toString(companyId);
+        String code = prefix + suffix;
+        return code.length() <= 5 ? code : prefix.substring(0, Math.max(1, 5 - suffix.length())) + suffix;
+    }
+
+    private long ensureJournal(String sessionId, long companyId, String name, String code, String type) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode companyClause = objectMapper.createArrayNode();
+        companyClause.add("company_id");
+        companyClause.add("=");
+        companyClause.add(companyId);
+        domain.add(companyClause);
+        ArrayNode codeClause = objectMapper.createArrayNode();
+        codeClause.add("code");
+        codeClause.add("=");
+        codeClause.add(code);
+        domain.add(codeClause);
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        findKwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "account.journal", "search_read", List.of(domain), findKwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("name", name);
+        values.put("code", code);
+        values.put("type", type);
+        values.put("company_id", companyId);
+        Number id = callKw(sessionId, "account.journal", "create", List.of(values), kwargsWithCompany(companyId));
+        if (id == null) throw new IllegalStateException("account.journal.create returned no id for " + code);
+        return id.longValue();
+    }
+
+    private long[] ensureWarehouse(String sessionId, long companyId, String companyName, String subdomain) throws Exception {
+        long[] existing = findWarehouse(sessionId, companyId);
+        if (existing[0] > 0) return existing;
+
+        String codeBase = subdomain == null ? "WH" : subdomain.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        if (codeBase.isBlank()) codeBase = "WH";
+        String code = codeBase.length() <= 5 ? codeBase : codeBase.substring(0, 5);
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("name", companyName + " WH");
+        values.put("code", code);
+        values.put("company_id", companyId);
+        Number id = callKw(sessionId, "stock.warehouse", "create", List.of(values), kwargsWithCompany(companyId));
+        if (id == null) throw new IllegalStateException("stock.warehouse.create returned no id");
+        return findWarehouse(sessionId, companyId);
+    }
+
     private long[] findWarehouse(String sessionId, long companyId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
         ArrayNode clause = objectMapper.createArrayNode();
@@ -175,12 +272,13 @@ public class OdooTenantProvisioner {
         clause.add("=");
         clause.add(companyId);
         domain.add(clause);
-        ObjectNode kwargs = objectMapper.createObjectNode();
+        ObjectNode kwargs = kwargsWithCompany(companyId);
         // Domain belongs in args only — putting it in kwargs too raises:
         // "search_read() got multiple values for argument 'domain'" (Odoo 18).
         ArrayNode fields = objectMapper.createArrayNode();
         fields.add("id");
         fields.add("lot_stock_id");
+        fields.add("out_type_id");
         kwargs.set("fields", fields);
         kwargs.put("limit", 1);
         JsonNode rows = callKwNode(sessionId, "stock.warehouse", "search_read", List.of(domain), kwargs);
@@ -195,14 +293,76 @@ public class OdooTenantProvisioner {
         return new long[]{0, 0};
     }
 
-    private long createPosConfig(String sessionId, String name, long companyId) throws Exception {
+    private long findWarehouseOutType(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode clause = objectMapper.createArrayNode();
+        clause.add("company_id");
+        clause.add("=");
+        clause.add(companyId);
+        domain.add(clause);
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("out_type_id"));
+        kwargs.put("limit", 1);
+        JsonNode rows = callKwNode(sessionId, "stock.warehouse", "search_read", List.of(domain), kwargs);
+        if (rows != null && rows.isArray() && !rows.isEmpty()) {
+            JsonNode out = rows.get(0).get("out_type_id");
+            if (out != null && out.isArray() && out.size() > 0) return out.get(0).asLong(0);
+        }
+        return 0;
+    }
+
+    private List<Long> ensurePaymentMethods(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        ArrayNode clause = objectMapper.createArrayNode();
+        clause.add("company_id");
+        clause.add("=");
+        clause.add(companyId);
+        domain.add(clause);
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("name"));
+        findKwargs.put("limit", 20);
+        JsonNode existing = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(domain), findKwargs);
+        List<Long> ids = new ArrayList<>();
+        if (existing != null && existing.isArray()) {
+            for (JsonNode row : existing) {
+                long id = row.path("id").asLong(0);
+                if (id > 0) ids.add(id);
+            }
+        }
+        if (!ids.isEmpty()) return ids;
+
+        long cashJournal = ensureJournal(sessionId, companyId, "Cash", shortCode("CSH", companyId), "cash");
+        long bankJournal = ensureJournal(sessionId, companyId, "Bank", shortCode("BNK", companyId), "bank");
+
+        ObjectNode cash = objectMapper.createObjectNode();
+        cash.put("name", "Cash");
+        cash.put("company_id", companyId);
+        cash.put("journal_id", cashJournal);
+        cash.put("is_cash_count", true);
+        cash.put("payment_method_type", "cash");
+        Number cashId = callKw(sessionId, "pos.payment.method", "create", List.of(cash), kwargsWithCompany(companyId));
+        if (cashId == null) throw new IllegalStateException("pos.payment.method.create Cash failed");
+
+        ObjectNode card = objectMapper.createObjectNode();
+        card.put("name", "Card");
+        card.put("company_id", companyId);
+        card.put("journal_id", bankJournal);
+        card.put("is_cash_count", false);
+        card.put("payment_method_type", "bank");
+        Number cardId = callKw(sessionId, "pos.payment.method", "create", List.of(card), kwargsWithCompany(companyId));
+        if (cardId == null) throw new IllegalStateException("pos.payment.method.create Card failed");
+
+        return List.of(cashId.longValue(), cardId.longValue());
+    }
+
+    private long createPosConfig(String sessionId, String name, long companyId, long[] warehouse) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
         ArrayNode companyClause = objectMapper.createArrayNode();
         companyClause.add("company_id");
         companyClause.add("=");
         companyClause.add(companyId);
         domain.add(companyClause);
-        ObjectNode findKwargs = objectMapper.createObjectNode();
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
         findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("name"));
         findKwargs.put("limit", 1);
         JsonNode existing = callKwNode(sessionId, "pos.config", "search_read", List.of(domain), findKwargs);
@@ -210,10 +370,31 @@ public class OdooTenantProvisioner {
             long id = existing.get(0).path("id").asLong(0);
             if (id > 0) return id;
         }
+
+        List<Long> paymentMethodIds = ensurePaymentMethods(sessionId, companyId);
+        long outTypeId = findWarehouseOutType(sessionId, companyId);
+        if (outTypeId <= 0) {
+            throw new IllegalStateException("No stock picking type available for the new Odoo company warehouse.");
+        }
+        long posJournal = ensureJournal(sessionId, companyId, "Point of Sale", shortCode("POS", companyId), "general");
+        long saleJournal = ensureJournal(sessionId, companyId, "Sales", shortCode("SAL", companyId), "sale");
+
         ObjectNode values = objectMapper.createObjectNode();
         values.put("name", name + " Register");
         values.put("company_id", companyId);
-        Number id = callKw(sessionId, "pos.config", "create", List.of(values), objectMapper.createObjectNode());
+        values.put("picking_type_id", outTypeId);
+        values.put("journal_id", posJournal);
+        values.put("invoice_journal_id", saleJournal);
+        values.put("iface_tax_included", "total");
+        values.put("picking_policy", "direct");
+        ArrayNode paymentCmds = values.putArray("payment_method_ids");
+        ArrayNode replace = paymentCmds.addArray();
+        replace.add(6);
+        replace.add(0);
+        ArrayNode pmList = replace.addArray();
+        for (Long paymentMethodId : paymentMethodIds) pmList.add(paymentMethodId);
+
+        Number id = callKw(sessionId, "pos.config", "create", List.of(values), kwargsWithCompany(companyId));
         if (id == null) throw new IllegalStateException("pos.config.create returned no id");
         return id.longValue();
     }
