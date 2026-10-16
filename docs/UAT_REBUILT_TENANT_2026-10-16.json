@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-10-16T12:46:00Z",
+  "result": "PASS_FOUNDATION",
+  "tenant": {
+    "vendorId": 13,
+    "subdomain": "codex-uat-20261016203934",
+    "odooCompanyId": 12,
+    "odooProvisionStatus": "ready",
+    "odooWarehouseId": 12,
+    "odooStockLocationId": 118,
+    "outlets": [
+      { "name": "Main Store", "registerCount": 1, "odooPosConfigId": 32 },
+      { "name": "Back Bar", "registerCount": 1, "odooPosConfigId": 33 }
+    ],
+    "dummyData": true
+  },
+  "checks": {
+    "signup": { "status": 200, "code": 0, "outletCount": 2 },
+    "bootstrapLogin": { "status": 200, "code": 0 },
+    "odooBinding": { "status": 200, "provisionStatus": "ready", "companyId": 12 },
+    "company": { "id": 12, "country": "Australia", "chartTemplate": "au" },
+    "posBootstrap": {
+      "status": 200,
+      "configs": [32, 33],
+      "paymentMethods": { "card": 41, "mainStoreCash": 42, "backBarCash": 43 }
+    },
+    "dummyCatalog": {
+      "status": 200,
+      "products": [
+        { "defaultCode": "DEMO-SHIRAZ", "productId": 5657, "quantity": 5 },
+        { "defaultCode": "DEMO-SB", "productId": 5658, "quantity": 5 },
+        { "defaultCode": "DEMO-IPA", "productId": 5659, "quantity": 5 }
+      ]
+    }
+  },
+  "notes": [
+    "Initial Odoo provisioning failed before dummy seed because the Australian chart had not been loaded for company 12.",
+    "The chart was loaded with Odoo try_loading('au'), provisioning was retried, and the tenant reached ready.",
+    "Dummy products and stock were then seeded into company 12 only.",
+    "No password, bootstrap token, or service credential is stored in this evidence file."
+  ]
+}
