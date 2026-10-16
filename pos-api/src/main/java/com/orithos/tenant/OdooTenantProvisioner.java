@@ -335,6 +335,15 @@ public class OdooTenantProvisioner {
                 if (profitAccountId <= 0 && "income".equals(type)) profitAccountId = id;
             }
         }
+        // A fresh company can have no chart accounts when localization loading
+        // is unavailable. Create two company-scoped fallback accounts so POS
+        // provisioning remains self-contained and cash sessions can still close.
+        if (lossAccountId <= 0) {
+            lossAccountId = ensureCashDifferenceAccount(sessionId, companyId, "expense", "POS Cash Difference Loss", "9" + companyId + "1");
+        }
+        if (profitAccountId <= 0) {
+            profitAccountId = ensureCashDifferenceAccount(sessionId, companyId, "income", "POS Cash Difference Gain", "9" + companyId + "2");
+        }
         if (lossAccountId <= 0 || profitAccountId <= 0) {
             throw new IllegalStateException("Australian chart did not provide cash difference accounts for company " + companyId);
         }
@@ -363,6 +372,30 @@ public class OdooTenantProvisioner {
                         List.of(List.of(journal.path("id").asLong()), values), kwargsWithCompany(companyId));
             }
         }
+    }
+
+    private long ensureCashDifferenceAccount(String sessionId, long companyId, String accountType,
+                                              String name, String code) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_ids").add("in").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("code").add("=").add(code));
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("account_type"));
+        findKwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "account.account", "search_read", List.of(domain), findKwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0 && accountType.equals(existing.get(0).path("account_type").asText(""))) return id;
+        }
+
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("code", code);
+        values.put("name", name);
+        values.put("account_type", accountType);
+        ArrayNode companyCommand = values.putArray("company_ids").addArray();
+        companyCommand.add(6).add(0).addArray().add(companyId);
+        Number id = callKw(sessionId, "account.account", "create", List.of(values), kwargsWithCompany(companyId));
+        return id == null ? 0 : id.longValue();
     }
 
     private long ensureJournal(String sessionId, long companyId, String name, String code, String type) throws Exception {
