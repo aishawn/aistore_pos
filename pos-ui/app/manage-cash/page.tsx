@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle, Wallet } from "lucide-react";
+import { AlertCircle, LoaderCircle, RefreshCw, Wallet } from "lucide-react";
 import {
   AdminPageLayout,
 } from "@/components/admin/AdminPageLayout";
@@ -18,6 +18,7 @@ export default function ManageCashPage() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +40,7 @@ export default function ManageCashPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryKey]);
 
   const selected = bootstrap?.configs.find((config) => config.id === configId) ?? null;
   const openSession = selected?.session ?? null;
@@ -77,10 +78,21 @@ export default function ManageCashPage() {
       subtitle="Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register."
     >
       {loading ? (
-        <div role="status" className="grid min-h-48 place-items-center text-sm text-[var(--oh-muted)]">
-          <LoaderCircle className="animate-spin" />
-          <span className="mt-2 block">Loading register session…</span>
+        <div role="status" aria-label="Loading cash register" className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+          <div className="flex items-start gap-3"><div className="h-11 w-11 animate-pulse rounded-full bg-[var(--oh-border)]" /><div className="flex-1"><div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-[var(--oh-border)]" /></div></div>
+          <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+          <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+          <div className="grid grid-cols-2 gap-2"><div className="h-11 animate-pulse rounded-lg bg-[var(--oh-border)]" /><div className="h-11 animate-pulse rounded-lg bg-[var(--oh-border)]" /></div>
+          <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+          <p className="flex items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading register session…</p>
         </div>
+      ) : error && !bootstrap ? (
+        <section role="alert" className="mx-auto w-full max-w-xl rounded-xl border border-rose-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+          <AlertCircle className="mx-auto text-rose-700" size={30} />
+          <h2 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load cash register details</h2>
+          <p className="mt-2 text-sm leading-6 text-rose-800">{error}</p>
+          <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
+        </section>
       ) : (
         <div className="mx-auto max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start gap-3">
