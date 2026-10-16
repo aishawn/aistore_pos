@@ -14,7 +14,7 @@ const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 
 export function OdooCloseRegisterPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState<boolean | null>(null);
   const [odooUserId, setOdooUserId] = useState<string | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
   const [countedCash, setCountedCash] = useState("");
@@ -22,6 +22,7 @@ export function OdooCloseRegisterPage() {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [result, setResult] = useState<{ sessionName: string; registerName: string; state: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -37,6 +38,7 @@ export function OdooCloseRegisterPage() {
       }
       const data = await getOdooPosBootstrap();
       setBootstrap(data);
+      setLastLoadedAt(Date.now());
       let rememberedId: number | null = null;
       try {
         const stored = Number(localStorage.getItem(`${REGISTER_SELECTION_KEY}:${user.id}`));
@@ -94,7 +96,20 @@ export function OdooCloseRegisterPage() {
     return <main role="status" aria-live="polite" className="grid h-full place-items-center bg-[var(--oh-surface)]"><span className="text-center text-sm text-[var(--oh-muted)]"><LoaderCircle className="mx-auto animate-spin" /><span className="mt-2 block">Loading register and session details…</span></span></main>;
   }
 
-  if (!connected) {
+  if (error && connected !== true) {
+    return (
+      <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+        <section role="alert" className="w-full max-w-lg rounded-xl border border-rose-200 bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
+          <AlertCircle className="mx-auto text-rose-700" size={30} />
+          <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load register details</h1>
+          <p className="mt-2 text-sm leading-6 text-rose-800">{error}</p>
+          <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
+        </section>
+      </main>
+    );
+  }
+
+  if (connected === false) {
     return (
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
         <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
@@ -112,14 +127,14 @@ export function OdooCloseRegisterPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">Close register</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">End the open Odoo POS session after reconciling cash.</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">End the open Odoo POS session after reconciling cash.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}</p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading || busy} aria-label={loading ? "Refreshing registers" : "Refresh registers"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
         </button>
       </header>
 
-      {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{error}</div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error} Register details may be out of date.</span><button type="button" onClick={() => void load()} disabled={loading || busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
       {result && (
         <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-5 text-emerald-950">
           <p className="font-semibold inline-flex items-center gap-2"><Check size={16} /> {result.registerName} · {result.sessionName}</p>
