@@ -6,6 +6,7 @@ import {
   Copy,
   KeyRound,
   LoaderCircle,
+  RefreshCw,
   UserPlus,
 } from "lucide-react";
 import { UserSettingsScaffold } from "@/components/admin/UserSettingsScaffold";
@@ -209,7 +210,10 @@ export default function UsersSettingsPage() {
                 {roles.map((role) => <option key={String(role.id)} value={String(role.id)}>{role.name}</option>)}
               </select>
               {rolesState.error ? (
-                <span role="alert" className="font-normal text-red-800">Could not load staff roles: {rolesState.error}</span>
+                <span role="alert" className="flex flex-wrap items-center gap-2 font-normal text-red-800">
+                  <span>Could not load staff roles: {rolesState.error}</span>
+                  <button type="button" onClick={rolesState.reload} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold text-red-900 hover:bg-red-50"><RefreshCw size={13} /> Retry</button>
+                </span>
               ) : roles.length === 0 && !rolesState.loading ? (
                 <span className="font-normal text-[var(--oh-muted)]">Create a role first in <a href="/settings/roles" className="font-semibold text-[var(--oh-primary)] underline">Roles &amp; Permissions</a>. Administrators can still be invited below.</span>
               ) : (
@@ -286,9 +290,19 @@ export default function UsersSettingsPage() {
 
           <div className="mt-5 border-t border-[var(--oh-border)]">
             {loading && !data ? (
-              <p className="py-8 text-center text-sm text-[var(--oh-muted)]">Loading users…</p>
+              <div role="status" aria-label="Loading store users" className="py-4">
+                <div className="hidden gap-3 xl:grid xl:grid-cols-6 xl:border-b xl:border-[var(--oh-border)] xl:px-2 xl:py-3">
+                  {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-surface)]" />)}
+                </div>
+                <div className="grid gap-3 xl:hidden">
+                  {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-lg bg-[var(--oh-surface)]" />)}
+                </div>
+              </div>
             ) : error ? (
-              <p className="py-8 text-center text-sm text-red-800">{error}</p>
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-3 py-8 text-sm text-red-800">
+                <span>{error}</span>
+                <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50"><RefreshCw size={15} /> Retry</button>
+              </div>
             ) : users.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No users yet. Invite the first teammate above.</p>
             ) : (
