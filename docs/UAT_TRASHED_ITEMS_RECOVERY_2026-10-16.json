@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T14:02:05.000Z",
+  "sourceCommit": "db4b2c1",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no restore or permanent delete write",
+  "status": "PASS",
+  "checks": [
+    "Trashed Items first-load skeleton remains visible while /api/trashed-items is delayed",
+    "Normal page preserves search and item-type filter with no page errors",
+    "Simulated /api/trashed-items 503 shows Retry with no page errors"
+  ]
+}
