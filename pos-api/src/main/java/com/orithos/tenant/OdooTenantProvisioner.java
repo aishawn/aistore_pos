@@ -290,10 +290,19 @@ public class OdooTenantProvisioner {
             return;
         }
 
-        // l10n_au registers the "au" template. The service account is an Odoo
-        // administrator, which is required by account.chart.template.try_loading.
+        // l10n_au registers the "au" template. Odoo's call_kw reserves the
+        // first argument for record ids, even for model-level methods, so the
+        // template arguments must follow an empty recordset placeholder.
         callKwNode(sessionId, "account.chart.template", "try_loading",
-                List.of("au", companyId, false, true), kwargsWithCompany(companyId));
+                List.of(List.of(), "au", companyId, false, true), kwargsWithCompany(companyId));
+
+        // A malformed RPC can return an empty result without applying a chart.
+        // Never let provisioning report ready until the company confirms it.
+        JsonNode reloaded = callKwNode(sessionId, "res.company", "search_read", List.of(domain), findKwargs);
+        if (reloaded == null || !reloaded.isArray() || reloaded.isEmpty()
+                || reloaded.get(0).path("chart_template").asText("").isBlank()) {
+            throw new IllegalStateException("Australian chart of accounts was not applied to Odoo company " + companyId);
+        }
     }
 
     private static String shortCode(String prefix, long companyId) {
