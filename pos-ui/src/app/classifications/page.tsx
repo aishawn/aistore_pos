@@ -86,7 +86,7 @@ function Actions({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex items-center justify-center gap-14 text-[13px] font-medium">
+    <div className="flex min-h-8 items-center justify-center gap-4 whitespace-nowrap text-[13px] font-medium">
       <button type="button" onClick={onEdit} className="flex items-center gap-1 text-[var(--oh-success)]">
         <EditIcon size={14} /> Edit
       </button>
@@ -421,7 +421,7 @@ function ClassificationsPageInner() {
             { label: "Name" },
             { label: "Type" },
             { label: "Product Count", align: "center" },
-            { label: "Actions", align: "center" },
+            { label: "Actions", align: "center", width: "w-[220px]" },
           ]}
           rows={paged.map((row, i) => [
             <input
