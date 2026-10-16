@@ -78,8 +78,15 @@ export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 120) ?? "";
   const requestedState = request.nextUrl.searchParams.get("state") ?? "all";
   if (requestedState !== "all" && !STATES.has(requestedState)) return NextResponse.json({ message: "Invalid purchase status" }, { status: 400 });
-  const limit = Math.max(1, Math.min(MAX_LIMIT, Math.floor(Number(request.nextUrl.searchParams.get("limit")) || 40)));
-  const offset = Math.max(0, Math.floor(Number(request.nextUrl.searchParams.get("offset")) || 0));
+  const rawLimit = request.nextUrl.searchParams.get("limit");
+  const rawOffset = request.nextUrl.searchParams.get("offset");
+  const requestedLimit = rawLimit === null ? 40 : Number(rawLimit);
+  const requestedOffset = rawOffset === null ? 0 : Number(rawOffset);
+  if (!Number.isFinite(requestedLimit) || !Number.isFinite(requestedOffset)) {
+    return NextResponse.json({ message: "Purchase pagination values must be finite numbers" }, { status: 400 });
+  }
+  const limit = Math.max(1, Math.min(MAX_LIMIT, Math.floor(requestedLimit)));
+  const offset = Math.max(0, Math.floor(requestedOffset));
 
   try {
     const companyIds = await getCompanies(request, sessionId);
