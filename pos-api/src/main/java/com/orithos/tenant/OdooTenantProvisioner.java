@@ -545,6 +545,7 @@ public class OdooTenantProvisioner {
                     values.put("sale_ok", true);
                     values.put("purchase_ok", true);
                     values.put("type", "consu");
+                    values.put("is_storable", true);
                     values.put("company_id", companyId);
                     if (taxId > 0) {
                         ArrayNode taxes = values.putArray("taxes_id");
