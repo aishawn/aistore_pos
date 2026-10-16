@@ -213,11 +213,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
 
     // Odoo may return a wizard action for backorders / immediate transfer.
     if (validateResult && typeof validateResult === "object" && !Array.isArray(validateResult)) {
-      const action = validateResult as { res_model?: string; res_id?: number };
+      const action = validateResult as { res_model?: string; res_id?: number; context?: Record<string, unknown> };
+      const wizardContext = { ...companyContext, ...(action.context ?? {}) };
       if (action.res_model === "stock.immediate.transfer" && Number.isSafeInteger(action.res_id)) {
-        await rpc<unknown>(sessionId, "stock.immediate.transfer", "process", [[action.res_id]], { context: companyContext });
+        await rpc<unknown>(sessionId, "stock.immediate.transfer", "process", [[action.res_id]], { context: wizardContext });
       } else if (action.res_model === "stock.backorder.confirmation" && Number.isSafeInteger(action.res_id)) {
-        await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[action.res_id]], { context: companyContext });
+        await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[action.res_id]], { context: wizardContext });
       }
     }
 
