@@ -66,6 +66,7 @@ export function OdooReportingDashboard() {
   const [rangeHours, setRangeHours] = useState(8);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
 
@@ -89,6 +90,7 @@ export function OdooReportingDashboard() {
       }
       setNeedsConnection(false);
       setData(payload);
+      setLastLoadedAt(Date.now());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load the Odoo dashboard.");
     } finally {
@@ -153,7 +155,7 @@ export function OdooReportingDashboard() {
         </div>
       </header>
 
-      {error && <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The dashboard below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       <section aria-label="Sales summary" className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard title="Net sales" value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")} detail="Completed sales less refunds · incl. tax" icon={<ShoppingBag size={18} />} />
@@ -214,7 +216,7 @@ export function OdooReportingDashboard() {
         </section>
       </div>
 
-      <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
+      <p className="oh-type-meta inline-flex flex-wrap items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Data through {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}{lastLoadedAt !== null && <> · Loaded {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}</>}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
     </main>
   );
 }

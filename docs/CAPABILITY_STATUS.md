@@ -47,7 +47,7 @@ AI remains disabled in production. The tenant report database account has no sou
 
 | Capability | Status | Notes |
 |---|---|---|
-| Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; local UI reliability refinement on 2026-10-16 adds an overview skeleton, retryable no-data failure state, and hides comparisons on low prior-period baselines. Pending deployment/browser regression; does not change pilot acceptance status. |
+| Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; 2026-10-16 refinements add a layout-preserving skeleton, retryable first-load and refresh failure states, explicit data-through vs loaded timestamps, and hide comparisons on low prior-period baselines. Commit `83815f2` is deployed and authenticated read-only smoke passed. |
 | Cashier assistant / NL reports | In progress | Spring Graph; report permissions now resolve from the active DB role on every request (`8721a08`); 113 Java 21 build tests pass. Production AI remains disabled until budget, so no live report call UAT yet |
 | Wine / sommelier assistant | In progress | Odoo remains authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. Recommendation/detail price and free-stock parity passed 6/6 production read-only checks on `da508ce`; see `docs/UAT_SOMMELIER_REGRESSION_2026-10-13.json`. Still not verified against register-specific warehouse context or tax/pricelist customer totals. Image recognition and model-backed behavior remain off/unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
