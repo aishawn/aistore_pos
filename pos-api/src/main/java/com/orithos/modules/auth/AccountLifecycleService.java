@@ -199,6 +199,20 @@ public class AccountLifecycleService {
         return body;
     }
 
+    /** Issue a one-time store-host bootstrap token without changing the owner's password. */
+    public Map<String, Object> issueOwnerBootstrapForVendor(Long vendorId) {
+        Vendor vendor = vendorMapper.findById(vendorId);
+        if (vendor == null) throw new BusinessException(40410, "Store not found");
+        User owner = userMapper.findPrimaryByVendor(vendorId);
+        if (owner == null) throw new BusinessException(40410, "Store owner not found");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("redirectHost", tenantProperties.storeUrl(vendor.getSubdomain()));
+        body.put("bootstrapToken", accountTokens.issue(
+                owner.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, Duration.ofMinutes(5)));
+        body.put("owner", publicUser(owner));
+        return body;
+    }
+
     /** Prefer reset for owners who already set a password; invite token if still pending. */
     public Map<String, Object> reinviteOwnerForVendor(Long vendorId) {
         Vendor vendor = vendorMapper.findById(vendorId);

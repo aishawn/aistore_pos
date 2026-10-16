@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-10-16T02:35:00.000Z",
+  "scope": "Brand signup → store host auto-login + Odoo company isolation",
+  "commits": [
+    "207e6e7 Fix signup store isolation: Odoo provision domain bug and company force.",
+    "423925b Complete Odoo store provision with company journals and POS payment methods.",
+    "6e4a1fd Fix platform owner reset across vendors and return bootstrap token.",
+    "7b7f825 Avoid duplicate Register #1 when seeding outlet defaults."
+  ],
+  "answers": {
+    "credentialHandoff": "Password is never put in the URL. Signup issues a one-time Redis bootstrapToken (5 min); browser opens {slug}.orithos.com.au/auth/bootstrap?token=… which POSTs /api/auth/bootstrap and sets host-scoped JWT cookies.",
+    "odooAutoCreate": "Yes — OdooTenantProvisioner creates a new res.company (+ warehouse, journals, cash/card payment methods, pos.config) on the shared Odoo DB and stores odoo_company_id on the vendor."
+  },
+  "rootCauses": [
+    "Shawn Odoo provision failed on search_read domain duplicated in args+kwargs, then on pos.config create missing company-scoped payment methods/journals — binding stayed failed/null.",
+    "BFF fail-open + /api/odoo/records without company force let the shared Odoo service account return demo catalog on shawn.*"
+  ],
+  "liveEvidence": {
+    "shawnVendorId": 2,
+    "shawnBindingAfterFix": {
+      "odooProvisionStatus": "ready",
+      "odooCompanyId": 2,
+      "odooPosConfigId": 4,
+      "odooWarehouseId": 2
+    },
+    "odooCatalog": {
+      "company1DemoProductsSample": 5,
+      "company2ShawnProducts": 0,
+      "companyFalseSharedProducts": 0
+    },
+    "browserIsolationUat": {
+      "result": "PENDING_API_DEPLOY",
+      "note": "Platform owner/reinvite still returned 40400 until API image with 6e4a1fd lands; binding + Odoo company data already isolated."
+    }
+  },
+  "result": "CODE_AND_BINDING_FIXED_BROWSER_UAT_PENDING_DEPLOY"
+}

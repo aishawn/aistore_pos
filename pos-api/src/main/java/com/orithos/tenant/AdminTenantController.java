@@ -190,6 +190,15 @@ public class AdminTenantController {
         return ApiResult.ok(accountLifecycle.reinviteOwnerForVendor(id));
     }
 
+    /** One-time auto-login token for the store owner (platform ops / UAT). Does not change password. */
+    @PostMapping("/{id}/owner/bootstrap")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<Map<String, Object>> bootstrapOwner(@PathVariable Long id) {
+        platformAccess.requirePlatformAdmin();
+        Vendor vendor = requireVendor(id);
+        return ApiResult.ok(accountLifecycle.issueOwnerBootstrapForVendor(vendor.getId()));
+    }
+
     @PostMapping("/{id}/odoo-provision")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> reprovisionOdoo(@PathVariable Long id) {
