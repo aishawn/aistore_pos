@@ -15,7 +15,7 @@ export default function ExpressStocktakeRoute() {
           <div className="mx-auto w-full max-w-4xl">
             <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Inventory · Express mode</p>
             <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Express stocktake</h1>
-            <p className="mt-2 flex items-center gap-2 text-sm text-[var(--oh-muted)]"><span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--oh-border)] border-t-[var(--oh-primary)]" />Preparing scanner…</p>
+            <div className="mt-4 space-y-3" aria-hidden="true"><div className="h-12 animate-pulse rounded-lg bg-[var(--oh-border)]" /><div className="h-40 animate-pulse rounded-xl bg-[var(--oh-border)]" /></div>
           </div>
         </main>
       }

@@ -286,7 +286,10 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
               )}
             </div>
           ) : loading ? (
-            <div role="status" className="flex min-h-52 flex-col items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" />Loading stocktake…</div>
+            <div role="status" aria-label="Loading stocktake" className="space-y-4 p-4 sm:p-5">
+              <div className="h-5 w-44 animate-pulse rounded bg-[var(--oh-surface)]" />
+              {Array.from({ length: 3 }, (_, index) => <div key={index} className="flex items-center justify-between gap-4 border-t border-[var(--oh-border)] pt-4"><div className="h-4 w-2/3 animate-pulse rounded bg-[var(--oh-surface)]" /><div className="h-9 w-14 animate-pulse rounded-lg bg-[var(--oh-surface)]" /></div>)}
+            </div>
           ) : products.length === 0 ? (
             <div className="flex min-h-56 flex-col items-center justify-center px-5 py-10 text-center">
               <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><PackageOpen size={23} aria-hidden="true" /></span>
