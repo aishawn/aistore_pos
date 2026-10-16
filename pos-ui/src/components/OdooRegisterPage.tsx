@@ -52,6 +52,7 @@ type CompletedReceipt = {
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 const ACTIVE_CART_KEY = "orithos-odoo-active-cart-v1";
+const ACTIVE_CART_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 type ActiveCartDraft = {
   lines: CartLine[];
@@ -232,6 +233,12 @@ export function OdooRegisterPage() {
     try {
       const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
       if (!isActiveCartDraft(parsed)) return;
+      const savedAt = Date.parse(parsed.savedAt);
+      if (!Number.isFinite(savedAt) || Date.now() - savedAt > ACTIVE_CART_MAX_AGE_MS) {
+        localStorage.removeItem(key);
+        setDraftNotice("The saved cart draft was older than 24 hours and was discarded. Start a fresh sale.");
+        return;
+      }
       setLines(parsed.lines.map((line) => ({ ...line, packFactor: line.packFactor || 1 })));
       setCustomer(parsed.customer ? {
         id: parsed.customer.id,
