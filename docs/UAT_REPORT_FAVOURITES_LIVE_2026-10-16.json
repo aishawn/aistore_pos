@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-10-16T18:52:00Z",
+  "sourceCommit": "ee3035b",
+  "target": "https://codex-uat-20261016203934.orithos.com.au",
+  "tenant": { "vendorId": 13, "odooCompanyId": 12 },
+  "viewport": "390x844",
+  "checks": {
+    "status": 200,
+    "pilotAvailabilityMessage": "pass",
+    "reportsDashboardLink": "pass",
+    "noHorizontalOverflow": "pass",
+    "pageErrors": []
+  },
+  "scope": "read-only UI check; no report writes"
+}
