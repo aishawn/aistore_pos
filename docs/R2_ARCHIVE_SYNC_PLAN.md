@@ -4,11 +4,12 @@
 
 ## 当前决定（2026-10-16）
 
-- **Demo 全量历史导入已完成（`aipos` TEST）：** [`UAT_R2_SALES_ODOO_IMPORT_FULL.json`](UAT_R2_SALES_ODOO_IMPORT_FULL.json) `imported=141083` / `rejected=2119` / `errors=0`；[`UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json`](UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json) reconcile 3844 quants。汇总 [`UAT_R2_SALES_IMPORT_COMPLETE_2026-10-16.json`](UAT_R2_SALES_IMPORT_COMPLETE_2026-10-16.json)。Reject 别名 backlog：[`UAT_R2_SALES_REJECT_ALIAS_BACKLOG_2026-10-16.json`](UAT_R2_SALES_REJECT_ALIAS_BACKLOG_2026-10-16.json)。
-- **冷历史策略：** 生产租户不以 R2 全量历史灌入 Odoo；规则见 [R2_COLD_HISTORY_POLICY.md](R2_COLD_HISTORY_POLICY.md)。隔离库写交易 UAT 见 [ISOLATION_ODOO_UAT_RUNBOOK.md](ISOLATION_ODOO_UAT_RUNBOOK.md)。
-- **多店 R2 前缀：** 主前缀仍用 `R2_PREFIX`；额外活跃店用 `R2_PREFIXES`（逗号分隔），镜像到 `/data/tenants/{slug}/`。见 [SCALE_OPS_RUNBOOK.md](SCALE_OPS_RUNBOOK.md)、[ATTACHMENT_STORAGE_POLICY.md](ATTACHMENT_STORAGE_POLICY.md)。
-- 行项目按商品名映射 `R2-{source_id}`；无日期小票用 `--fallback-date`。班次仍 `orithos_store1/00004`；关班另迭代。
-- R2 文件归档仍只供管理员开发验证；暂不每日同步。SQLite SHA-256 `2fc62e86…6625116`；4,716 商品在 `R2 TEST DATA`。Odoo 仍只有 `aipos`，正式业务前需迁库或生产初始化。
+- **最新 SQLite（943,624,192 字节）已刷新 demo 商品+当前库存：** 4,717 商品、`product_inventory` 快照 reconcile；**不回放** `graphql_inventory_log` 128,569 事件。客户 78 / 供应商 158 已导入 `res.partner`（`R2-C-*` / `R2-S-*`）。矩阵见 [UAT_R2_FULL_SYNC_STATUS_2026-10-16.json](UAT_R2_FULL_SYNC_STATUS_2026-10-16.json)。
+- **商品图片无法同步（上游缺口）：** `product_images` 4,717 全部 `source_missing`；`images/manifest.json` 的 `images=[]`；Media Centre 108 文件 **0** 关联 Product。需上游补图 URL/商品关联后再导入。
+- **Demo 全量销售历史导入已完成（`aipos` TEST）：** [`UAT_R2_SALES_ODOO_IMPORT_FULL.json`](UAT_R2_SALES_ODOO_IMPORT_FULL.json)；库存 reset [`UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json`](UAT_R2_SALES_ODOO_IMPORT_STOCK_RESET.json)。
+- **冷历史策略：** 生产租户不以 R2 全量历史灌入 Odoo；规则见 [R2_COLD_HISTORY_POLICY.md](R2_COLD_HISTORY_POLICY.md)。
+- **多店 R2 前缀：** `R2_PREFIX` + 可选 `R2_PREFIXES`。见 [SCALE_OPS_RUNBOOK.md](SCALE_OPS_RUNBOOK.md)。
+- R2 根 manifest 现含 media；默认 `R2_MAX_TOTAL_BYTES=2GiB` 仍够。Odoo 仍只有 `aipos`，正式业务前需迁库或生产初始化。
 
 ## 历史决定（2026-10-14，已被上方 demo 销售导入决定部分覆盖）
 

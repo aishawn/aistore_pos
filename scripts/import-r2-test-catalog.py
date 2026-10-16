@@ -70,7 +70,7 @@ def create_quants_resilient(session, base, vals, rejected):
         middle = len(vals) // 2
         return create_quants_resilient(session, base, vals[:middle], rejected) + create_quants_resilient(session, base, vals[middle:], rejected)
 
-def download_verified(local_path=None):
+def download_verified(local_path=None, allow_stale_sqlite=False):
     s3 = boto3.client(
         "s3", endpoint_url=ENV["R2_ENDPOINT"],
         aws_access_key_id=ENV["R2_ACCESS_KEY_ID"],
@@ -88,8 +88,11 @@ def download_verified(local_path=None):
             for chunk in iter(lambda: source.read(1024 * 1024), b""):
                 digest.update(chunk)
                 count += len(chunk)
-        if count != item["bytes"] or digest.hexdigest() != item["sha256"]:
-            raise RuntimeError("Local SQLite size/SHA-256 does not match current R2 manifest")
+        local_sha = digest.hexdigest()
+        if count != item["bytes"] or local_sha != item["sha256"]:
+            if not allow_stale_sqlite:
+                raise RuntimeError("Local SQLite size/SHA-256 does not match current R2 manifest")
+            item = {"key": item["key"], "bytes": count, "sha256": local_sha}
         return path, item, False
     fd, path = tempfile.mkstemp(prefix="orithos-r2-", suffix=".sqlite3")
     os.close(fd)
@@ -106,15 +109,44 @@ def download_verified(local_path=None):
         raise RuntimeError("R2 SQLite size/SHA-256 does not match manifest")
     return path, item, True
 
+def read_inventory_qty(db):
+    """Prefer the dedicated product_inventory table (full history crawl SoT)."""
+    qty_by_id = {}
+    try:
+        rows = db.execute(
+            "SELECT product_id, inventory_json, status FROM product_inventory"
+        ).fetchall()
+    except sqlite3.Error:
+        return qty_by_id
+    for product_id, inventory_json, status in rows:
+        if status and str(status).lower() not in {"captured", "ok", "success"}:
+            continue
+        try:
+            outlets = json.loads(inventory_json) if isinstance(inventory_json, str) else inventory_json
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if not isinstance(outlets, list) or not outlets:
+            continue
+        try:
+            qty_by_id[str(product_id)] = float(outlets[0].get("quantity") or 0)
+        except (TypeError, ValueError):
+            qty_by_id[str(product_id)] = 0.0
+    return qty_by_id
+
+
 def read_products(path):
     db = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    inventory_qty = read_inventory_qty(db)
     products = []
     seen = set()
     duplicate_rows_skipped = 0
     # Records may contain several crawled revisions. Keep the newest source row.
     for (raw,) in db.execute("SELECT values_json FROM records WHERE dataset='products_detail' ORDER BY last_seen_at DESC, id DESC"):
         row = json.loads(raw)
-        detail = json.loads(row[4])
+        detail_raw = row[4]
+        detail = json.loads(detail_raw) if isinstance(detail_raw, str) else detail_raw
+        if not isinstance(detail, dict):
+            continue
         source_id = str(detail.get("id") or row[0])
         if source_id in seen:
             duplicate_rows_skipped += 1
@@ -133,6 +165,8 @@ def read_products(path):
         barcode = next((b.get("code") for b in detail.get("barcodes", []) if isinstance(b, dict) and b.get("code")), None)
         stock_rows = detail.get("inventory") or []
         quantity = float(stock_rows[0].get("quantity", 0)) if stock_rows else 0.0
+        if source_id in inventory_qty:
+            quantity = inventory_qty[source_id]
         products.append({
             "source_id": source_id,
             "name": str(detail.get("name") or row[1]).strip(),
@@ -146,6 +180,7 @@ def read_products(path):
             "barcode": str(barcode) if barcode else None,
             "quantity": quantity,
             "case_quantity": detail.get("caseQuantity"),
+            "stock_source": "product_inventory" if source_id in inventory_qty else "products_detail",
         })
     db.close()
     return products, duplicate_rows_skipped
@@ -154,8 +189,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true", help="write the R2 TEST catalogue to Odoo aipos")
     parser.add_argument("--sqlite-file", help="use a local SQLite file after verifying it against the current R2 manifest")
+    parser.add_argument("--allow-stale-sqlite", action="store_true", help="allow a local sqlite that no longer matches live R2")
     args = parser.parse_args()
-    path, manifest, temporary = download_verified(args.sqlite_file)
+    path, manifest, temporary = download_verified(args.sqlite_file, allow_stale_sqlite=args.allow_stale_sqlite)
     try:
         products, duplicate_rows_skipped = read_products(path)
     finally:

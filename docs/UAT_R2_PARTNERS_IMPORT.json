@@ -1,0 +1,14 @@
+{
+  "result": "complete",
+  "customers": {
+    "created": 78,
+    "updated": 0,
+    "skipped": 0
+  },
+  "suppliers": {
+    "created": 158,
+    "updated": 0,
+    "skipped": 0
+  },
+  "snapshotSha256": "83ff5eb7b7ccb5f7cb7ed405886b57b13d95beee81fa6b8555f3d32c657e24ef"
+}
