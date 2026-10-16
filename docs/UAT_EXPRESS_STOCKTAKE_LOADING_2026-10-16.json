@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-16T13:40:56.000Z",
+  "sourceCommit": "a081e03",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated production UI check with stocktake create request intercepted; no real stocktake or scan write",
+  "status": "PASS",
+  "checks": [
+    "Express Stocktake loading skeleton is visible while the intercepted start request is delayed",
+    "Express Stocktake renders its search/scan input after the mocked session response",
+    "390px viewport has no horizontal overflow",
+    "Browser page errors are empty and no production stocktake write was sent"
+  ]
+}
