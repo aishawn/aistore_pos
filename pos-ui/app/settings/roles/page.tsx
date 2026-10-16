@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LoaderCircle, Pencil, Plus, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { LoaderCircle, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Modal } from "@/components/admin/Modal";
 import { useApi } from "@/hooks/useApi";
@@ -179,6 +178,11 @@ export default function RolesPage() {
 
   const pageLoading = rolesState.loading || permissionsState.loading || usersState.loading;
   const loadError = rolesState.error || permissionsState.error || usersState.error;
+  function reloadPage() {
+    rolesState.reload();
+    permissionsState.reload();
+    usersState.reload();
+  }
 
   return (
     <AdminPageLayout
@@ -200,12 +204,19 @@ export default function RolesPage() {
 
         {pageError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{pageError}</p>}
 
-        <AsyncState
-          loading={pageLoading}
-          error={loadError}
-          empty={roles.length === 0}
-          emptyText="No staff roles yet. Create a role before inviting staff who need non-administrator permissions."
-        >
+        {pageLoading ? (
+          <div role="status" aria-label="Loading roles and permissions" className="grid gap-3">
+            {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)]" />)}
+          </div>
+        ) : loadError ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <span>{loadError}</span>
+            <button type="button" onClick={reloadPage} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button>
+          </div>
+        ) : roles.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center text-sm text-[var(--oh-muted)]">No staff roles yet. Create a role before inviting staff who need non-administrator permissions.</div>
+        ) : (
+          <>
             <ul className="grid gap-3 xl:hidden">
               {roles.map((role) => {
                 const roleUsers = users.filter((staff) => String(staff.roleId ?? "") === String(role.id));
@@ -314,7 +325,8 @@ export default function RolesPage() {
               </table>
             </div>
           </div>
-        </AsyncState>
+          </>
+        )}
       </div>
 
       {(creating || editing) && (
