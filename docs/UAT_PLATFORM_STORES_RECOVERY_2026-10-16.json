@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-16T13:46:39.000Z",
+  "sourceCommit": "d32cad6",
+  "target": "https://app.orithos.com.au",
+  "scope": "authenticated read-only control-plane UI checks; no tenant, store, or platform write",
+  "status": "PASS",
+  "checks": [
+    "Platform Stores first-load skeleton remains visible while /api/admin/tenants is delayed",
+    "Normal control-plane Stores page loads with no page errors",
+    "Simulated /api/admin/tenants 503 shows Retry with no page errors",
+    "Tenant host correctly remains blocked by the control-plane boundary; smoke ran on app.orithos.com.au"
+  ]
+}
