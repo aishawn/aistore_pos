@@ -93,7 +93,34 @@ export function OdooCloseRegisterPage() {
   }
 
   if (loading) {
-    return <main role="status" aria-live="polite" className="grid h-full place-items-center bg-[var(--oh-surface)]"><span className="text-center text-sm text-[var(--oh-muted)]"><LoaderCircle className="mx-auto animate-spin" /><span className="mt-2 block">Loading register and session details…</span></span></main>;
+    return (
+      <main role="status" aria-live="polite" className="mx-auto flex h-full max-w-2xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <div className="h-8 w-48 animate-pulse rounded-md bg-[var(--oh-border)]" />
+            <div className="mt-2 h-4 w-full max-w-xl animate-pulse rounded bg-[var(--oh-border)]" />
+          </div>
+          <div className="h-11 w-28 animate-pulse rounded-lg bg-[var(--oh-border)]" />
+        </header>
+        <section aria-label="Loading register details" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
+          <div className="border-b border-[var(--oh-border)] pb-3">
+            <div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
+            <div className="mt-2 h-3 w-72 max-w-full animate-pulse rounded bg-[var(--oh-border)]" />
+          </div>
+          <div className="mt-4 h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+          <div className="mt-4 grid gap-2 rounded-lg bg-[var(--oh-surface)] p-3 sm:grid-cols-2">
+            <div className="h-4 w-24 animate-pulse rounded bg-[var(--oh-border)]" />
+            <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-border)] sm:ml-auto" />
+            <div className="h-4 w-16 animate-pulse rounded bg-[var(--oh-border)]" />
+            <div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)] sm:ml-auto" />
+          </div>
+          <div className="mt-4 h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+          <div className="mt-3 h-10 w-full animate-pulse rounded-lg bg-[var(--oh-surface)]" />
+          <div className="mt-5 h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+        </section>
+        <p className="flex items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" />Loading register and session details…</p>
+      </main>
+    );
   }
 
   if (error && connected !== true) {
