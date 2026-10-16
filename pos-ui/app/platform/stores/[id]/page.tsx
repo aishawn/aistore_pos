@@ -45,6 +45,7 @@ type ConfirmAction =
   | { kind: "trial"; days: number; title: string; message: string }
   | { kind: "reset"; title: string; message: string }
   | { kind: "reinvite"; title: string; message: string }
+  | { kind: "delete"; title: string; message: string }
   | { kind: "odoo"; title: string; message: string };
 
 function statusTone(status: string | null | undefined): string {
@@ -52,6 +53,7 @@ function statusTone(status: string | null | undefined): string {
   if (value === "active") return "bg-emerald-50 text-emerald-800 border-emerald-200";
   if (value === "trial") return "bg-sky-50 text-sky-800 border-sky-200";
   if (value === "suspended" || value === "expired") return "bg-red-50 text-red-800 border-red-200";
+  if (value === "deleted") return "bg-slate-100 text-slate-600 border-slate-300";
   return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
@@ -111,6 +113,8 @@ export default function PlatformStoreDetailPage() {
       } else if (confirm.kind === "reinvite") {
         const result = await api.post<{ inviteUrl?: string; resetUrl?: string }>(`/api/admin/tenants/${store.id}/owner/reinvite`);
         setLinkResult(result.inviteUrl || result.resetUrl || "Invite issued.");
+      } else if (confirm.kind === "delete") {
+        setStore(await api.del<StoreDetail>(`/api/admin/tenants/${store.id}`));
       } else if (confirm.kind === "odoo") {
         setStore(await api.post<StoreDetail>(`/api/admin/tenants/${store.id}/odoo-provision`));
       }
@@ -196,6 +200,8 @@ export default function PlatformStoreDetailPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Actions</h2>
             {store.platformOperator ? (
               <p className="mt-3 text-sm text-[var(--oh-muted)]">Lifecycle changes are blocked on the platform operator store.</p>
+            ) : store.status.toLowerCase() === "deleted" ? (
+              <p className="mt-3 text-sm text-[var(--oh-muted)]">Tenant access is deleted. Odoo sales and audit history are retained.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
                 <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>
@@ -209,6 +215,9 @@ export default function PlatformStoreDetailPage() {
                   </>
                 ) : null}
                 <button type="button" className="min-h-10 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white" onClick={() => setConfirm({ kind: "odoo", title: "Retry Odoo provision?", message: "Creates or refreshes the Odoo company / POS config mapping for this store." })}>Retry Odoo provision</button>
+                {store.status.toLowerCase() === "trial" ? (
+                  <button type="button" className="min-h-10 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => setConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Odoo sales and audit history are retained." })}>Delete trial store</button>
+                ) : null}
               </div>
             )}
           </section>
@@ -219,9 +228,9 @@ export default function PlatformStoreDetailPage() {
         open={Boolean(confirm)}
         title={confirm?.title || ""}
         message={confirm?.message || ""}
-        confirmLabel="Confirm"
+        confirmLabel={confirm?.kind === "delete" ? "Delete trial store" : "Confirm"}
         busy={busy}
-        variant={confirm?.kind === "status" && confirm.status === "suspended" ? "danger" : "default"}
+        variant={(confirm?.kind === "status" && confirm.status === "suspended") || confirm?.kind === "delete" ? "danger" : "default"}
         onCancel={() => !busy && setConfirm(null)}
         onConfirm={() => void runConfirm()}
       />

@@ -62,7 +62,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
     public static boolean isUnavailable(Vendor vendor) {
         if (vendor == null) return true;
         String status = vendor.getStatus() == null ? "" : vendor.getStatus().toLowerCase();
-        if ("suspended".equals(status) || "expired".equals(status)) {
+        if ("deleted".equals(status) || "suspended".equals(status) || "expired".equals(status)) {
             return true;
         }
         if ("trial".equals(status) && vendor.getTrialEndsAt() != null

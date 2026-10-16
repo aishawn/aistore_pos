@@ -39,6 +39,10 @@ Legacy slug `default` is renamed to `demo` on deploy (see `migration_vendor_demo
 
 Login on a tenant host (e.g. `demo.orithos.com.au`) uses Host → vendor (no subdomain field). Login on `app.` is **console-only**: username/password against the platform-operator vendor — no subdomain field (stores get their slug at signup). Platform-operator admins stay on the console; other users of that vendor may still hand off via bootstrap to the store host.
 
+## Trial tenant deletion
+
+Platform admins can delete a store only while its status is `trial`, from the store detail page in `/platform/stores`. Deletion is terminal: the tenant host is blocked, owner/staff accounts are soft-deleted, and refresh, bootstrap, reset, and invite tokens are revoked. The subdomain remains reserved. Odoo companies and sales/audit history are retained; this action does not erase accounting records. Deleted stores cannot be reactivated or reprovisioned.
+
 ## DNS / TLS
 
 - Add a wildcard record `*.orithos.com.au` pointing at the same edge as `app.orithos.com.au` (covers `demo` and future tenants)

@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -150,6 +152,7 @@ public class AdminTenantController {
         platformAccess.requirePlatformAdmin();
         Vendor vendor = requireVendor(id);
         forbidOperatorLifecycle(vendor);
+        forbidDeleted(vendor);
         String status = body.status().trim().toLowerCase(Locale.ROOT);
         if (!STATUS_VALUES.contains(status)) {
             throw new BusinessException(40001, "status must be active, suspended, expired, or trial");
@@ -164,6 +167,7 @@ public class AdminTenantController {
         platformAccess.requirePlatformAdmin();
         Vendor vendor = requireVendor(id);
         forbidOperatorLifecycle(vendor);
+        forbidDeleted(vendor);
         LocalDateTime ends = LocalDateTime.now().plusDays(body.days());
         String status = "expired".equalsIgnoreCase(vendor.getStatus()) ? "trial" : vendor.getStatus();
         if (status == null || status.isBlank()) status = "trial";
@@ -180,7 +184,7 @@ public class AdminTenantController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> resetOwner(@PathVariable Long id) {
         platformAccess.requirePlatformAdmin();
-        requireVendor(id);
+        forbidDeleted(requireVendor(id));
         return ApiResult.ok(accountLifecycle.issueOwnerResetForVendor(id));
     }
 
@@ -188,7 +192,7 @@ public class AdminTenantController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> reinviteOwner(@PathVariable Long id) {
         platformAccess.requirePlatformAdmin();
-        requireVendor(id);
+        forbidDeleted(requireVendor(id));
         return ApiResult.ok(accountLifecycle.reinviteOwnerForVendor(id));
     }
 
@@ -198,14 +202,35 @@ public class AdminTenantController {
     public ApiResult<Map<String, Object>> bootstrapOwner(@PathVariable Long id) {
         platformAccess.requirePlatformAdmin();
         Vendor vendor = requireVendor(id);
+        forbidDeleted(vendor);
         return ApiResult.ok(accountLifecycle.issueOwnerBootstrapForVendor(vendor.getId()));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @Transactional
+    public ApiResult<Map<String, Object>> deleteTrialStore(@PathVariable Long id) {
+        platformAccess.requirePlatformAdmin();
+        Vendor vendor = requireVendor(id);
+        forbidOperatorLifecycle(vendor);
+        if ("deleted".equalsIgnoreCase(vendor.getStatus())) {
+            return ApiResult.ok(toDetail(vendor));
+        }
+        if (!"trial".equalsIgnoreCase(vendor.getStatus())) {
+            throw new BusinessException(40910, "Only trial stores can be deleted");
+        }
+        if (vendorMapper.markTrialDeleted(id) != 1) {
+            throw new BusinessException(40910, "Store status changed; refresh and try again");
+        }
+        accountLifecycle.revokeAndDeleteVendorAccounts(id);
+        return ApiResult.ok(toDetail(requireVendor(id)));
     }
 
     @PostMapping("/{id}/odoo-provision")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> reprovisionOdoo(@PathVariable Long id) {
         platformAccess.requirePlatformAdmin();
-        requireVendor(id);
+        forbidDeleted(requireVendor(id));
         try {
             odooTenantProvisioner.provision(id);
         } catch (Exception e) {
@@ -218,7 +243,7 @@ public class AdminTenantController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> patchOdooBinding(@PathVariable Long id, @RequestBody OdooBindingBody body) {
         platformAccess.requirePlatformAdmin();
-        requireVendor(id);
+        forbidDeleted(requireVendor(id));
         odooTenantProvisioner.linkManual(
                 id,
                 body.odooCompanyId(),
@@ -239,6 +264,12 @@ public class AdminTenantController {
     private void forbidOperatorLifecycle(Vendor vendor) {
         if (platformAccess.isPlatformOperatorVendor(vendor)) {
             throw new BusinessException(40910, "Lifecycle changes are not allowed on the platform operator store");
+        }
+    }
+
+    private void forbidDeleted(Vendor vendor) {
+        if ("deleted".equalsIgnoreCase(vendor.getStatus())) {
+            throw new BusinessException(40910, "Deleted stores cannot be changed");
         }
     }
 

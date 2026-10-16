@@ -19,6 +19,7 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -79,6 +80,17 @@ public class AccountLifecycleService {
         body.put("message", "If an account matches those details, password reset instructions have been sent.");
         body.put("mailConfigured", mailService.isConfigured());
         return body;
+    }
+
+    public void revokeAndDeleteVendorAccounts(Long vendorId) {
+        List<User> users = userMapper.findAllByVendor(vendorId);
+        for (User user : users) {
+            tokenStore.revokeRefresh(user.getId());
+            accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP);
+            accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_RESET);
+            accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_INVITE);
+            userMapper.softDelete(user.getId());
+        }
     }
 
     public Map<String, Object> peekResetToken(String token) {

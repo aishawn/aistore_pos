@@ -96,6 +96,59 @@ class AdminTenantLifecycleTest {
     }
 
     @Test
+    void deletesTrialStoreAndRevokesItsAccounts() {
+        Vendor trial = vendor("uat-store", "trial");
+        trial.setId(5L);
+        Vendor deleted = vendor("uat-store", "deleted");
+        deleted.setId(5L);
+        when(vendorMapper.findById(5L)).thenReturn(trial, deleted);
+        when(platformAccess.isPlatformOperatorVendor(trial)).thenReturn(false);
+        when(platformAccess.isPlatformOperatorVendor(deleted)).thenReturn(false);
+        when(vendorMapper.markTrialDeleted(5L)).thenReturn(1);
+        when(userMapper.findPrimaryByVendor(5L)).thenReturn(null);
+
+        var result = controller.deleteTrialStore(5L);
+
+        assertEquals("deleted", result.data().get("status"));
+        verify(vendorMapper).markTrialDeleted(5L);
+        verify(accountLifecycle).revokeAndDeleteVendorAccounts(5L);
+    }
+
+    @Test
+    void refusesToDeleteAnActiveStore() {
+        Vendor active = vendor("customer-store", "active");
+        active.setId(6L);
+        when(vendorMapper.findById(6L)).thenReturn(active);
+        when(platformAccess.isPlatformOperatorVendor(active)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                controller.deleteTrialStore(6L));
+
+        assertEquals(40910, ex.getCode());
+        verify(vendorMapper, never()).markTrialDeleted(any());
+        verify(accountLifecycle, never()).revokeAndDeleteVendorAccounts(any());
+    }
+
+    @Test
+    void deletedStoreCannotBeReactivated() {
+        Vendor deleted = vendor("uat-store", "deleted");
+        deleted.setId(7L);
+        when(vendorMapper.findById(7L)).thenReturn(deleted);
+        when(platformAccess.isPlatformOperatorVendor(deleted)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                controller.patchStatus(7L, new AdminTenantController.StatusBody("active")));
+
+        assertEquals(40910, ex.getCode());
+        verify(vendorMapper, never()).updateStatus(any(), any());
+    }
+
+    @Test
+    void deletedStoreIsUnavailableOnItsSubdomain() {
+        assertTrue(TenantResolverFilter.isUnavailable(vendor("uat-store", "deleted")));
+    }
+
+    @Test
     void resetOwnerDelegatesToLifecycle() {
         Vendor store = vendor("acme", "active");
         store.setId(4L);

@@ -60,6 +60,9 @@ public interface VendorMapper {
     int updateStatus(@org.apache.ibatis.annotations.Param("id") Long id,
                      @org.apache.ibatis.annotations.Param("status") String status);
 
+    @Update("UPDATE vendor SET status='deleted' WHERE id=#{id} AND status='trial'")
+    int markTrialDeleted(@Param("id") Long id);
+
     @Update("UPDATE vendor SET trial_ends_at=#{trialEndsAt}, status=#{status} WHERE id=#{id}")
     int updateTrialEndsAt(@Param("id") Long id,
                           @Param("trialEndsAt") java.time.LocalDateTime trialEndsAt,
