@@ -2,11 +2,11 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { RefreshCw } from "lucide-react";
 import { ListTable } from "@/components/admin/ListTable";
 import { RowActions } from "@/components/admin/RowActions";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
 import { FilterMultiSelect } from "@/components/admin/FilterMultiSelect";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApi, useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAiCreateOpen } from "@/hooks/useAiCreateOpen";
@@ -422,7 +422,27 @@ function ProductsPageInner() {
             Some products on this page are priced at $0.00 and can be sold for free. Set a price greater than zero before selling them.
           </div>
         )}
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
+        {loading ? (
+          <div role="status" aria-label="Loading products" className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+            <div className="grid grid-cols-8 gap-3 bg-neutral-100 px-3 py-3">
+              {Array.from({ length: 8 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-neutral-300" />)}
+            </div>
+            {Array.from({ length: 6 }, (_, row) => (
+              <div key={row} className="grid grid-cols-8 gap-3 border-t border-neutral-200 px-3 py-4">
+                {Array.from({ length: 8 }, (_, cell) => <div key={cell} className="h-4 animate-pulse rounded bg-neutral-100" />)}
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <span>{error}</span>
+            <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100">
+              <RefreshCw size={15} /> Retry
+            </button>
+          </div>
+        ) : items.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-neutral-300 bg-white px-4 py-12 text-center text-sm text-neutral-500">No products match the current filters.</p>
+        ) : (
           <ListTable
             columns={[
               {
@@ -481,7 +501,7 @@ function ProductsPageInner() {
               />,
             ])}
           />
-        </AsyncState>
+        )}
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
       </div>
 
