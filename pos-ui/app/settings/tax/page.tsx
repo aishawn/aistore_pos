@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Info, LoaderCircle } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { getOdooSession, searchOdooRecords, type OdooTaxRecord } from "@/lib/odoo-api";
 
@@ -17,9 +17,12 @@ export default function TaxRatesPage() {
   const [taxes, setTaxes] = useState<OdooTaxRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError(null);
     void (async () => {
       try {
         const session = await getOdooSession();
@@ -33,7 +36,7 @@ export default function TaxRatesPage() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [retryKey]);
 
   return (
     <AdminPageLayout
@@ -48,13 +51,24 @@ export default function TaxRatesPage() {
           <p className="mt-1">Tax rates used in sales are controlled by Odoo. Orithos does not save a second copy.</p></div>
       </section>
       {error ? (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <span>{error}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100"><RefreshCw size={15} /> Retry</button>
+            <Link className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]" href="/settings/integrations">Open Integrations</Link>
+          </div>
         </div>
       ) : loading ? (
-        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
-          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
-          Loading Odoo tax rates…
+        <div role="status" aria-label="Loading Odoo tax rates" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+          <div className="h-12 animate-pulse bg-[var(--oh-surface)]" />
+          <div className="divide-y divide-[var(--oh-border)]">
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 sm:grid-cols-4">
+              <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-20 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-32 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-28 animate-pulse rounded bg-[var(--oh-surface)]" />
+            </div>)}
+          </div>
         </div>
       ) : taxes.length === 0 ? (
         <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">

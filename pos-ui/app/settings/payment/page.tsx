@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Info, LoaderCircle } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { getOdooPosBootstrap, getOdooSession, type OdooPosBootstrap } from "@/lib/odoo-api";
 
@@ -43,9 +43,12 @@ export default function PaymentMethodsPage() {
   const [rows, setRows] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError(null);
     void (async () => {
       try {
         const session = await getOdooSession();
@@ -59,7 +62,7 @@ export default function PaymentMethodsPage() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [retryKey]);
 
   return (
     <AdminPageLayout
@@ -74,13 +77,23 @@ export default function PaymentMethodsPage() {
           <p className="mt-1">Changes to payment methods should be made in Odoo. Orithos does not save a second copy.</p></div>
       </section>
       {error ? (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          {error} <Link className="font-semibold underline" href="/settings/integrations">Open Integrations</Link>
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <span>{error}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 hover:bg-amber-100"><RefreshCw size={15} /> Retry</button>
+            <Link className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]" href="/settings/integrations">Open Integrations</Link>
+          </div>
         </div>
       ) : loading ? (
-        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
-          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
-          Loading Odoo payment methods…
+        <div role="status" aria-label="Loading Odoo payment methods" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+          <div className="h-12 animate-pulse bg-[var(--oh-surface)]" />
+          <div className="divide-y divide-[var(--oh-border)]">
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 sm:grid-cols-3">
+              <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-20 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-32 animate-pulse rounded bg-[var(--oh-surface)]" />
+            </div>)}
+          </div>
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
