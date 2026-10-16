@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T13:57:30.000Z",
+  "sourceCommit": "328dbb2",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no email or utility write",
+  "status": "PASS",
+  "checks": [
+    "Mail Log first-load skeleton remains visible while /api/mail-log is delayed",
+    "Normal Mail Log page preserves recipient search and loads with no page errors",
+    "Simulated /api/mail-log 503 shows Retry with no page errors"
+  ]
+}
