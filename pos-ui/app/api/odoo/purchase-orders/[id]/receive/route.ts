@@ -127,19 +127,20 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       return NextResponse.json({ message: "No incoming receipts are linked to this purchase order yet." }, { status: 409 });
     }
 
-    const pickings = await rpc<Array<{
-      id: number;
-      name: string;
-      state: string;
-      picking_type_code?: string;
-      move_ids_without_package?: number[];
-      move_ids?: number[];
-    }>>(sessionId, "stock.picking", "search_read", [[
+    const pickingFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.picking", "fields_get", [["move_ids_without_package", "move_ids"]], { attributes: ["type"] });
+    const moveRelationField = Object.hasOwn(pickingFields ?? {}, "move_ids_without_package")
+      ? "move_ids_without_package"
+      : Object.hasOwn(pickingFields ?? {}, "move_ids")
+        ? "move_ids"
+        : null;
+    if (!moveRelationField) throw new ReceiveError("Odoo did not expose stock moves for this receipt.", 422);
+
+    const pickings = await rpc<Array<Record<string, unknown>>>(sessionId, "stock.picking", "search_read", [[
       ["id", "in", pickingIds],
       ["company_id", "in", companyIds],
       ["state", "in", ["assigned", "confirmed", "waiting"]],
     ]], {
-      fields: ["id", "name", "state", "picking_type_code", "move_ids_without_package", "move_ids"],
+      fields: ["id", "name", "state", "picking_type_code", moveRelationField],
       limit: 50,
       context: companyContext,
     }) ?? [];
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const picking = pickingIdHint
-      ? incoming.find((row) => row.id === pickingIdHint)
+      ? incoming.find((row) => Number(row.id) === pickingIdHint)
       : incoming.length === 1
         ? incoming[0]
         : null;
@@ -159,11 +160,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         message: pickingIdHint
           ? "The selected receipt is not an open incoming transfer for this purchase order."
           : "Multiple open receipts exist. Pass pickingId to choose one.",
-        openPickingIds: incoming.map((row) => row.id),
+        openPickingIds: incoming.map((row) => Number(row.id)),
       }, { status: 409 });
     }
+    const selectedPickingId = Number(picking.id);
+    const selectedPickingName = String(picking.name || "");
+    const selectedPickingState = String(picking.state || "");
 
-    const moveIds = (picking.move_ids_without_package?.length ? picking.move_ids_without_package : picking.move_ids) || [];
+    const moveIds = Array.isArray(picking[moveRelationField])
+      ? (picking[moveRelationField] as unknown[])
+        .filter((id) => Number.isSafeInteger(id) && Number(id) > 0)
+        .map((id) => Number(id))
+      : [];
     const moves = moveIds.length
       ? await rpc<Array<{
           id: number;
@@ -173,7 +181,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           product_id: [number, string] | false;
         }>>(sessionId, "stock.move", "search_read", [[
           ["id", "in", moveIds],
-          ["picking_id", "=", picking.id],
+          ["picking_id", "=", selectedPickingId],
         ]], {
           fields: ["id", "product_uom_qty", "quantity", "quantity_done", "product_id"],
           limit: 200,
@@ -184,20 +192,25 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     const moveById = new Map(moves.map((move) => [move.id, move]));
     for (const line of lines) {
       const move = moveById.get(line.moveId);
-      if (!move) throw new ReceiveError(`Move ${line.moveId} is not on receipt ${picking.name}.`, 400);
+      if (!move) throw new ReceiveError(`Move ${line.moveId} is not on receipt ${selectedPickingName}.`, 400);
       if (line.qtyDone > move.product_uom_qty + 1e-9) {
         throw new ReceiveError(`Quantity for ${Array.isArray(move.product_id) ? move.product_id[1] : "a line"} exceeds ordered quantity.`, 400);
       }
     }
 
     const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [["quantity", "quantity_done"]], { attributes: ["type"] });
-    const qtyField = moveFields && Object.hasOwn(moveFields, "quantity") ? "quantity" : "quantity_done";
+    const qtyField = moveFields && Object.hasOwn(moveFields, "quantity")
+      ? "quantity"
+      : moveFields && Object.hasOwn(moveFields, "quantity_done")
+        ? "quantity_done"
+        : null;
+    if (!qtyField) throw new ReceiveError("Odoo did not expose a writable received quantity field.", 422);
 
     for (const line of lines) {
       await rpc<boolean>(sessionId, "stock.move", "write", [[line.moveId], { [qtyField]: line.qtyDone }], { context: companyContext });
     }
 
-    const validateResult = await rpc<unknown>(sessionId, "stock.picking", "button_validate", [[picking.id]], { context: companyContext });
+    const validateResult = await rpc<unknown>(sessionId, "stock.picking", "button_validate", [[selectedPickingId]], { context: companyContext });
 
     // Odoo may return a wizard action for backorders / immediate transfer.
     if (validateResult && typeof validateResult === "object" && !Array.isArray(validateResult)) {
@@ -210,16 +223,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const refreshed = await rpc<Array<{ id: number; name: string; state: string }>>(sessionId, "stock.picking", "search_read", [[
-      ["id", "=", picking.id],
+      ["id", "=", selectedPickingId],
     ]], { fields: ["id", "name", "state"], limit: 1, context: companyContext });
 
     return NextResponse.json({
       ok: true,
       purchaseId,
       purchaseName: order.name,
-      pickingId: picking.id,
-      pickingName: refreshed?.[0]?.name || picking.name,
-      pickingState: refreshed?.[0]?.state || picking.state,
+      pickingId: selectedPickingId,
+      pickingName: refreshed?.[0]?.name || selectedPickingName,
+      pickingState: refreshed?.[0]?.state || selectedPickingState,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);
