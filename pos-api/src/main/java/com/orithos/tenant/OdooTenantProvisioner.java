@@ -101,7 +101,8 @@ public class OdooTenantProvisioner {
             long companyId = createCompany(sessionId, vendor.getName());
             prepareCompanyBasics(sessionId, companyId, vendor.getName());
             long[] warehouse = ensureWarehouse(sessionId, companyId, vendor.getName(), vendor.getSubdomain());
-            ensurePaymentMethods(sessionId, companyId);
+            // Payment methods are created per POS config: Odoo forbids sharing one cash PM / cash journal
+            // across multiple pos.config records.
 
             List<Outlet> outlets = outletMapper.findByVendorId(vendorId);
             long primaryPosConfigId = 0;
@@ -348,38 +349,29 @@ public class OdooTenantProvisioner {
         return 0;
     }
 
-    private List<Long> ensurePaymentMethods(String sessionId, long companyId) throws Exception {
+    /**
+     * Odoo requires a dedicated cash payment method (and cash journal) per POS config.
+     * Card / bank methods may be shared across configs on the same company.
+     */
+    private List<Long> ensurePaymentMethodsForPos(String sessionId, long companyId, String configName) throws Exception {
+        long cardId = ensureSharedCardPaymentMethod(sessionId, companyId);
+        long cashId = ensureDedicatedCashPaymentMethod(sessionId, companyId, configName);
+        return List.of(cashId, cardId);
+    }
+
+    private long ensureSharedCardPaymentMethod(String sessionId, long companyId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
-        ArrayNode clause = objectMapper.createArrayNode();
-        clause.add("company_id");
-        clause.add("=");
-        clause.add(companyId);
-        domain.add(clause);
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("name").add("=").add("Card"));
         ObjectNode findKwargs = kwargsWithCompany(companyId);
-        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("name"));
-        findKwargs.put("limit", 20);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        findKwargs.put("limit", 1);
         JsonNode existing = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(domain), findKwargs);
-        List<Long> ids = new ArrayList<>();
-        if (existing != null && existing.isArray()) {
-            for (JsonNode row : existing) {
-                long id = row.path("id").asLong(0);
-                if (id > 0) ids.add(id);
-            }
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
         }
-        if (!ids.isEmpty()) return ids;
-
-        long cashJournal = ensureJournal(sessionId, companyId, "Cash", shortCode("CSH", companyId), "cash");
         long bankJournal = ensureJournal(sessionId, companyId, "Bank", shortCode("BNK", companyId), "bank");
-
-        ObjectNode cash = objectMapper.createObjectNode();
-        cash.put("name", "Cash");
-        cash.put("company_id", companyId);
-        cash.put("journal_id", cashJournal);
-        cash.put("is_cash_count", true);
-        cash.put("payment_method_type", "cash");
-        Number cashId = callKw(sessionId, "pos.payment.method", "create", List.of(cash), kwargsWithCompany(companyId));
-        if (cashId == null) throw new IllegalStateException("pos.payment.method.create Cash failed");
-
         ObjectNode card = objectMapper.createObjectNode();
         card.put("name", "Card");
         card.put("company_id", companyId);
@@ -388,8 +380,78 @@ public class OdooTenantProvisioner {
         card.put("payment_method_type", "bank");
         Number cardId = callKw(sessionId, "pos.payment.method", "create", List.of(card), kwargsWithCompany(companyId));
         if (cardId == null) throw new IllegalStateException("pos.payment.method.create Card failed");
+        return cardId.longValue();
+    }
 
-        return List.of(cashId.longValue(), cardId.longValue());
+    private long ensureDedicatedCashPaymentMethod(String sessionId, long companyId, String configName) throws Exception {
+        String pmName = "Cash (" + truncateLabel(configName, 40) + ")";
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("name").add("=").add(pmName));
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        findKwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(domain), findKwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
+
+        String journalName = "Cash (" + truncateLabel(configName, 40) + ")";
+        String journalCode = uniqueCashJournalCode(sessionId, companyId, configName);
+        long cashJournal = ensureJournal(sessionId, companyId, journalName, journalCode, "cash");
+
+        ObjectNode cash = objectMapper.createObjectNode();
+        cash.put("name", pmName);
+        cash.put("company_id", companyId);
+        cash.put("journal_id", cashJournal);
+        cash.put("is_cash_count", true);
+        cash.put("payment_method_type", "cash");
+        Number cashId = callKw(sessionId, "pos.payment.method", "create", List.of(cash), kwargsWithCompany(companyId));
+        if (cashId == null) throw new IllegalStateException("pos.payment.method.create Cash failed for " + configName);
+        return cashId.longValue();
+    }
+
+    private String uniqueCashJournalCode(String sessionId, long companyId, String configName) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("type").add("=").add("cash"));
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("code"));
+        findKwargs.put("limit", 50);
+        JsonNode existing = callKwNode(sessionId, "account.journal", "search_read", List.of(domain), findKwargs);
+        int used = existing != null && existing.isArray() ? existing.size() : 0;
+        // Prefer CSH{companyId} for the first register; then C{companyId}{n} within 5 chars.
+        if (used == 0) {
+            return shortCode("CSH", companyId);
+        }
+        for (int n = used + 1; n < used + 20; n++) {
+            String candidate = shortCode("C" + n, companyId);
+            if (candidate.length() > 5) {
+                candidate = ("C" + n + companyId);
+                if (candidate.length() > 5) candidate = candidate.substring(0, 5);
+            }
+            boolean taken = false;
+            if (existing != null && existing.isArray()) {
+                for (JsonNode row : existing) {
+                    if (candidate.equalsIgnoreCase(row.path("code").asText(""))) {
+                        taken = true;
+                        break;
+                    }
+                }
+            }
+            if (!taken) return candidate;
+        }
+        int hash = Math.floorMod(configName.hashCode(), 1000);
+        String fallback = "C" + hash;
+        return fallback.length() <= 5 ? fallback : fallback.substring(0, 5);
+    }
+
+    private static String truncateLabel(String value, int max) {
+        if (value == null) return "POS";
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) return "POS";
+        return trimmed.length() <= max ? trimmed : trimmed.substring(0, max);
     }
 
     private long ensurePosConfig(String sessionId, String configName, long companyId) throws Exception {
@@ -413,7 +475,7 @@ public class OdooTenantProvisioner {
             if (id > 0) return id;
         }
 
-        List<Long> paymentMethodIds = ensurePaymentMethods(sessionId, companyId);
+        List<Long> paymentMethodIds = ensurePaymentMethodsForPos(sessionId, companyId, configName);
         long outTypeId = findWarehouseOutType(sessionId, companyId);
         if (outTypeId <= 0) {
             throw new IllegalStateException("No stock picking type available for the new Odoo company warehouse.");
@@ -465,27 +527,36 @@ public class OdooTenantProvisioner {
                 {"DEMO Sauvignon Blanc 750ml", "DEMO-SB", "24.90"},
                 {"DEMO IPA 4-pack", "DEMO-IPA", "22.00"},
         };
+        int created = 0;
         for (String[] sample : samples) {
-            ObjectNode values = objectMapper.createObjectNode();
-            values.put("name", sample[0]);
-            values.put("default_code", sample[1]);
-            values.put("list_price", Double.parseDouble(sample[2]));
-            values.put("available_in_pos", true);
-            values.put("sale_ok", true);
-            values.put("purchase_ok", true);
-            values.put("type", "consu");
-            values.put("company_id", companyId);
-            if (taxId > 0) {
-                ArrayNode taxes = values.putArray("taxes_id");
-                ArrayNode cmd = taxes.addArray();
-                cmd.add(6);
-                cmd.add(0);
-                ArrayNode ids = cmd.addArray();
-                ids.add(taxId);
+            try {
+                ObjectNode values = objectMapper.createObjectNode();
+                values.put("name", sample[0]);
+                values.put("default_code", sample[1]);
+                values.put("list_price", Double.parseDouble(sample[2]));
+                values.put("available_in_pos", true);
+                values.put("sale_ok", true);
+                values.put("purchase_ok", true);
+                values.put("type", "consu");
+                values.put("company_id", companyId);
+                if (taxId > 0) {
+                    ArrayNode taxes = values.putArray("taxes_id");
+                    ArrayNode cmd = taxes.addArray();
+                    cmd.add(6);
+                    cmd.add(0);
+                    ArrayNode ids = cmd.addArray();
+                    ids.add(taxId);
+                }
+                Number id = callKw(sessionId, "product.template", "create", List.of(values), kwargsWithCompany(companyId));
+                if (id != null) created++;
+            } catch (Exception productError) {
+                log.warn("Dummy product {} failed for company {}: {}", sample[1], companyId, productError.getMessage());
             }
-            callKw(sessionId, "product.template", "create", List.of(values), kwargsWithCompany(companyId));
         }
-        log.info("Seeded dummy POS catalog for Odoo company {}", companyId);
+        log.info("Seeded dummy POS catalog for Odoo company {} ({} products)", companyId, created);
+        if (created == 0) {
+            throw new IllegalStateException("Dummy catalog seed created 0 products for company " + companyId);
+        }
     }
 
     private long ensureSaleGstTax(String sessionId, long companyId) throws Exception {

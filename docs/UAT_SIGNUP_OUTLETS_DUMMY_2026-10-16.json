@@ -15,8 +15,19 @@
     "odoo": "One pos.config per Classic outlet; optional DEMO product.template seed on company"
   },
   "odooProbe": {
-    "product.template.create": "PASS (template id created on company 2)",
-    "account.tax.createWithoutTaxGroup": "FAIL expected — provisioner now requires tax_group_id or skips tax"
+    "product.template.create": "PASS (template id created on company 2 / company 4)",
+    "account.tax.createWithoutTaxGroup": "FAIL expected — provisioner now requires tax_group_id or skips tax",
+    "secondPosSharedCashPm": "FAIL — Odoo rejects shared cash PM/journal across pos.config",
+    "secondPosDedicatedCashPm": "PASS — unique cash journal + cash PM per config"
   },
-  "result": "CODE_READY_PENDING_DEPLOY_SIGNUP_E2E"
+  "liveE2E": {
+    "signup": "zzprobe17 vendorId=4 outletCount=2 dummyData=true → company 4",
+    "beforeFix": "Only 1 pos.config (Main Street Register); 0 seeded products — second POS aborted provision before seed",
+    "fix": "Per-POS dedicated cash journal/payment method in OdooTenantProvisioner"
+  },
+  "deploy": {
+    "commitInitial": "348f8e7",
+    "liveUiChunkScan": "PASS — Sample data / outlets copy present in app.orithos.com.au Next chunk"
+  },
+  "result": "MULTI_POS_CASH_PM_FIX_PENDING_REDEPLOY_E2E"
 }
