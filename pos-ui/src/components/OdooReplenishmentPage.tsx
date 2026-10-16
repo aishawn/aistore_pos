@@ -48,6 +48,7 @@ export function OdooReplenishmentPage() {
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [rfqOpen, setRfqOpen] = useState(false);
@@ -80,6 +81,7 @@ export function OdooReplenishmentPage() {
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Odoo returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
+      setLastLoadedAt(Date.now());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load the replenishment plan.");
     } finally {
@@ -183,13 +185,24 @@ export function OdooReplenishmentPage() {
     </main>
   );
 
+  if (error && !data) return (
+    <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+      <section role="alert" className="w-full max-w-lg rounded-xl border border-red-200 bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
+        <AlertCircle className="mx-auto text-red-700" size={30} />
+        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the replenishment plan</h1>
+        <p className="mt-2 text-sm leading-6 text-red-800">{error}</p>
+        <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
+      </section>
+    </main>
+  );
+
   return (
     <main className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment plan</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock. Draft RFQs require human approval — nothing auto-orders.</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock. Draft RFQs require human approval — nothing auto-orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white pl-3 pr-2 text-sm font-medium text-[var(--oh-muted)]">
@@ -203,7 +216,7 @@ export function OdooReplenishmentPage() {
         </div>
       </header>
 
-      {error && <div role="alert" className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The plan below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history/odoo" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2">Review Odoo sales history</Link></div>}
 
