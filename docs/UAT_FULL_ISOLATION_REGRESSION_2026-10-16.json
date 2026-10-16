@@ -111,7 +111,8 @@
     },
     "odooPosOpen": {
       "status": 200,
-      "blockedBy": null
+      "authenticatedBrowserVerification": "not_completed",
+      "note": "Unauthenticated direct request returned HTTP 200; this is not evidence that an authenticated POS session opened. Prior authenticated browser evidence showed No chart of account configured before commit 31babcd."
     }
   }
 }
