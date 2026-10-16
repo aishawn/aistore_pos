@@ -39,6 +39,22 @@ const nextConfig: NextConfig = {
       ],
     };
   },
+  async headers() {
+    return [
+      {
+        source: "/security",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+      {
+        source: "/utilities/future-costs",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+      {
+        source: "/utilities/future-prices",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+    ];
+  },
   turbopack: {
     root: path.dirname(fileURLToPath(import.meta.url)),
   },
