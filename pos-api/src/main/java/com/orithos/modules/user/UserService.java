@@ -59,8 +59,8 @@ public class UserService {
 
     /** Set a new password (invite / reset flows). Clears pendingPasswordReset. */
     public void setPassword(Long userId, String newPassword) {
-        if (newPassword == null || newPassword.length() < 12) {
-            throw new BusinessException(40001, "New password must be at least 12 characters");
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new BusinessException(40001, "New password must be at least 8 characters");
         }
         if (newPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new BusinessException(40001, "New password must be no more than 72 UTF-8 bytes");
