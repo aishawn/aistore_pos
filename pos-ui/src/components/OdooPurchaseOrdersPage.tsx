@@ -279,7 +279,11 @@ export function OdooPurchaseOrdersPage() {
         <table className="hidden w-full min-w-[900px] border-collapse text-left text-sm xl:table">
           <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-4 py-3">Reference</th><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Order date</th><th className="px-4 py-3 text-right">Lines</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
           <tbody className="divide-y divide-[var(--oh-border)]">
-            {loading && !items.length ? <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading purchases…</span></td></tr>
+            {loading && !items.length ? Array.from({ length: 5 }, (_, index) => <tr key={`purchase-skeleton-${index}`} aria-hidden="true">
+                <td colSpan={7} className="px-4 py-3"><div className="grid grid-cols-[1.1fr_1.2fr_1fr_.45fr_.7fr_.8fr_.55fr] items-center gap-4">
+                  <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 animate-pulse rounded-full bg-[var(--oh-border)]" /><span className="ml-auto h-11 w-16 animate-pulse rounded-lg bg-[var(--oh-border)]" />
+                </div></td>
+              </tr>)
               : !items.length ? <tr><td colSpan={7} className="p-0"><PurchaseOrdersEmptyState filtered={hasActiveFilters} onReset={resetFilters} /></td></tr>
                 : items.map((order) => <tr key={order.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                   <td className="px-4 py-3"><button type="button" onClick={() => void openDetail(order.id)} className="rounded font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">{order.name}</button><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{order.id}</span></td>
@@ -294,7 +298,15 @@ export function OdooPurchaseOrdersPage() {
         </table>
         <div className="divide-y divide-[var(--oh-border)] xl:hidden">
           {loading && !items.length ? (
-            <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading purchases…</span></div>
+            <div role="status" aria-label="Loading purchases" className="divide-y divide-[var(--oh-border)]">
+              {Array.from({ length: 5 }, (_, index) => <div key={`purchase-mobile-skeleton-${index}`} aria-hidden="true" className="px-4 py-4">
+                <div className="flex items-center justify-between gap-3"><span className="h-4 w-36 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 w-20 animate-pulse rounded-full bg-[var(--oh-border)]" /></div>
+                <div className="mt-3 h-4 w-48 animate-pulse rounded bg-[var(--oh-border)]" />
+                <div className="mt-2 grid grid-cols-2 gap-3"><span className="h-3 w-20 animate-pulse rounded bg-[var(--oh-border)]" /><span className="ml-auto h-3 w-24 animate-pulse rounded bg-[var(--oh-border)]" /></div>
+                <div className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3"><span className="h-11 w-28 animate-pulse rounded-lg bg-[var(--oh-border)]" /></div>
+              </div>)}
+              <p className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading purchases…</p>
+            </div>
           ) : !items.length ? (
             <PurchaseOrdersEmptyState filtered={hasActiveFilters} onReset={resetFilters} />
           ) : items.map((order) => (
