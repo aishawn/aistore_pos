@@ -1,43 +1,14 @@
 {
-  "generatedAt": "2026-10-15T02:35:28.466Z",
-  "target": "https://app.orithos.com.au",
-  "sourceCommit": "311f396",
-  "staticRoutes": 128,
+  "generatedAt": "2026-10-16T09:53:17.103Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": null,
+  "staticRoutes": 130,
   "viewports": [
     390,
     1440
   ],
-  "checksPassed": 252,
-  "checksTotal": 256,
-  "failures": [
-    {
-      "route": "/auth/bootstrap",
-      "viewport": 390,
-      "status": 404,
-      "overflow": false,
-      "pageErrors": []
-    },
-    {
-      "route": "/signup",
-      "viewport": 390,
-      "status": 404,
-      "overflow": false,
-      "pageErrors": []
-    },
-    {
-      "route": "/auth/bootstrap",
-      "viewport": 1440,
-      "status": 404,
-      "overflow": false,
-      "pageErrors": []
-    },
-    {
-      "route": "/signup",
-      "viewport": 1440,
-      "status": 404,
-      "overflow": false,
-      "pageErrors": []
-    }
-  ],
-  "result": "FAIL"
+  "checksPassed": 260,
+  "checksTotal": 260,
+  "failures": [],
+  "result": "PASS"
 }
