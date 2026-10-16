@@ -1,26 +1,34 @@
+import Link from "next/link";
+import { ArrowUpRight, Bookmark, Info } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
-import { FilterSelect } from "@/components/admin/FilterSelect";
 
 export default function FavouriteReportsPage() {
   return (
     <AdminPageLayout
       title="Favourite Reports"
       subtitle="Quick access to your saved reports"
-      filters={
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <label className="flex flex-col">
-            <span className="mb-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)]">Report Name</span>
-            <input
-              placeholder="Search report name…"
-              className="h-10 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)]"
-            />
-          </label>
-          <FilterSelect label="Report Type" placeholder="Filter report types…" />
-          <FilterSelect label="Email Filter" placeholder="Filter report emailing…" />
-        </div>
-      }
     >
-      <p className="py-16 text-center text-[15px] text-[var(--oh-muted)]">No reports found.</p>
+      <section role="status" className="rounded-xl border border-sky-200 bg-sky-50/70 p-5 text-sky-950 sm:p-6">
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 shrink-0 text-sky-700" size={20} aria-hidden="true" />
+          <div>
+            <h2 className="font-semibold">Saved report favourites are not connected in this pilot</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6">
+              Search and filter controls on this page were visual placeholders. Orithos does not save favourite reports or email schedules here, so no report data is shown as if it were live.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/reports/dashboard" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">
+                Open Reports Dashboard <ArrowUpRight size={15} aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div className="mt-6 rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center">
+        <Bookmark className="mx-auto text-[var(--oh-muted)]" size={24} aria-hidden="true" />
+        <p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">No saved report favourites</p>
+        <p className="mt-1 text-sm text-[var(--oh-muted)]">Use the Reports Dashboard to review the live reporting surfaces.</p>
+      </div>
     </AdminPageLayout>
   );
 }
