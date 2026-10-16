@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T13:26:05.000Z",
+  "sourceCommit": "b303e84",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no register close, cash, or reconciliation write",
+  "status": "PASS",
+  "checks": [
+    "Register Closures first-load skeleton remains visible while /api/register-closures is delayed",
+    "Normal Register Closures page loads with no page errors",
+    "Simulated /api/register-closures 503 shows Retry with no page errors"
+  ]
+}
