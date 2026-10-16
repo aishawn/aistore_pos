@@ -34,7 +34,7 @@ Statuses:
 |---|---|---|
 | Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12. The catalogue shows the last successful refresh time and labels retained rows as potentially stale when a refresh fails; online authenticated smoke confirmed Last refreshed. |
 | Supplier directory (Odoo) | In progress | `/suppliers/odoo` reads Odoo suppliers and now supports user-submitted company contacts with ABN duplicate blocking; Odoo `fields_get` confirmed writable fields and intercepted production browser UAT passed. No live supplier was created; permission and supplier-specific Odoo validation still need a real distributor entry |
-| Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API |
+| Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API; commit `6a8a393` adds layout-preserving first-load skeleton rows and keeps search/status controls visible while reads are pending. Online delayed-read smoke passed without exposing or submitting write actions. |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
 | Replenishment approval audit | In progress | Deployed code writes forecast method, cover target, suggested/ordered quantities and reasons as an internal Odoo chatter note (not supplier-facing terms); zeroed suggestions remain in the audit but are excluded from PO lines. Production schema and UI mock pass; live RFQ/message write is unverified pending an approved vendor/sample |
