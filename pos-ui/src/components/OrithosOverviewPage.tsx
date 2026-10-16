@@ -136,6 +136,7 @@ export function OrithosOverviewPage() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [parkedCount, setParkedCount] = useState(0);
@@ -166,6 +167,7 @@ export function OrithosOverviewPage() {
         throw new Error("Odoo returned an incomplete overview response.");
       }
       setNeedsConnection(false);
+      setLastLoadedAt(Date.now());
       setData({
         ...payload,
         itemsSold: Number(payload.itemsSold ?? 0),
@@ -286,7 +288,7 @@ export function OrithosOverviewPage() {
             <div className="min-w-0">
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
               <h1 className="oh-type-title mt-0.5 text-[var(--oh-text)]">{greeting}</h1>
-              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Odoo POS activity · {rangeLabel}</p>
+              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Odoo POS activity · {rangeLabel}{lastLoadedAt !== null && <span className="ml-2">· Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}</span>}</p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <div role="group" aria-label="Odoo sales reporting range" className="inline-flex h-9 items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
@@ -314,8 +316,9 @@ export function OrithosOverviewPage() {
           </header>
 
           {error && (
-            <div role="alert" className="flex shrink-0 items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-900">
-              <AlertCircle size={15} className="mt-0.5 shrink-0" />{error}
+            <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-900">
+              <span className="flex items-start gap-2"><AlertCircle size={15} className="mt-0.5 shrink-0" />{error} The overview below is the last successful result and may be out of date.</span>
+              <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-red-300 bg-white px-2.5 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} Retry</button>
             </div>
           )}
 
