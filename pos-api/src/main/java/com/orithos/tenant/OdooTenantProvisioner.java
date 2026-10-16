@@ -263,11 +263,37 @@ public class OdooTenantProvisioner {
             }
         }
 
+        ensureChartOfAccounts(sessionId, companyId);
+
         // Minimal journals required before POS config / payment methods can be company-scoped.
         ensureJournal(sessionId, companyId, "Cash", shortCode("CSH", companyId), "cash");
         ensureJournal(sessionId, companyId, "Bank", shortCode("BNK", companyId), "bank");
         ensureJournal(sessionId, companyId, "Sales", shortCode("SAL", companyId), "sale");
         ensureJournal(sessionId, companyId, "Point of Sale", shortCode("POS", companyId), "general");
+    }
+
+    /**
+     * A newly-created Odoo company has no fiscal localization by default. POS can
+     * create configs without one, but Odoo refuses to open the register and returns
+     * "No chart of account configured". Loading the Australian chart is idempotent:
+     * retries skip companies that already have a chart template.
+     */
+    private void ensureChartOfAccounts(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(companyId));
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode().add("chart_template"));
+        findKwargs.put("limit", 1);
+        JsonNode companies = callKwNode(sessionId, "res.company", "search_read", List.of(domain), findKwargs);
+        if (companies != null && companies.isArray() && !companies.isEmpty()
+                && !companies.get(0).path("chart_template").asText("").isBlank()) {
+            return;
+        }
+
+        // l10n_au registers the "au" template. The service account is an Odoo
+        // administrator, which is required by account.chart.template.try_loading.
+        callKwNode(sessionId, "account.chart.template", "try_loading",
+                List.of("au", companyId, false, true), kwargsWithCompany(companyId));
     }
 
     private static String shortCode(String prefix, long companyId) {
