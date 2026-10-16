@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,7 +41,9 @@ public class PublicSignupController {
             @NotBlank String username,
             @NotBlank String email,
             @NotBlank String password,
-            String phone
+            String phone,
+            List<TenantProvisionService.OutletSpec> outlets,
+            Boolean dummyData
     ) {}
 
     @GetMapping("/subdomain-available")
@@ -71,7 +74,9 @@ public class PublicSignupController {
                         req.email(),
                         req.password(),
                         req.phone(),
-                        null));
+                        null,
+                        req.outlets(),
+                        req.dummyData()));
         odooTenantProvisioner.provisionAsyncSafe(result.vendorId());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("vendorId", result.vendorId());

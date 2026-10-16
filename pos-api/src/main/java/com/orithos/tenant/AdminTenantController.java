@@ -124,7 +124,9 @@ public class AdminTenantController {
                         req.email(),
                         req.password(),
                         req.phone(),
-                        req.trialDays()));
+                        req.trialDays(),
+                        null,
+                        false));
         odooTenantProvisioner.provisionAsyncSafe(result.vendorId());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("vendorId", result.vendorId());

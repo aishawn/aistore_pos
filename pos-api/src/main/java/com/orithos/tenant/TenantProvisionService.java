@@ -67,8 +67,12 @@ public class TenantProvisionService {
             String email,
             String password,
             String phone,
-            Integer trialDays
+            Integer trialDays,
+            List<OutletSpec> outlets,
+            Boolean dummyData
     ) {}
+
+    public record OutletSpec(String name, Integer registerCount) {}
 
     public record ProvisionResult(
             Long vendorId,
@@ -135,17 +139,37 @@ public class TenantProvisionService {
             throw new BusinessException(40910, "This subdomain is already taken");
         }
 
-        Outlet outlet = new Outlet();
-        outlet.setVendorId(vendor.getId());
-        outlet.setName(org);
-        outlet.setLoyaltyEnabled(false);
-        outlet.setHasKitchenScreen(false);
-        outletMapper.insert(outlet);
+        List<OutletSpec> requestedOutlets = req.outlets() == null || req.outlets().isEmpty()
+                ? List.of(new OutletSpec(org, 1))
+                : req.outlets();
+        Outlet firstOutlet = null;
+        for (OutletSpec spec : requestedOutlets) {
+            String outletName = trim(spec.name());
+            if (outletName == null) throw new BusinessException(40001, "Outlet name is required");
+            int registerCount = spec.registerCount() == null ? 1 : spec.registerCount();
+            if (registerCount < 1 || registerCount > 20) {
+                throw new BusinessException(40001, "Register count must be between 1 and 20");
+            }
+            Outlet outlet = new Outlet();
+            outlet.setVendorId(vendor.getId());
+            outlet.setName(outletName);
+            outlet.setLoyaltyEnabled(false);
+            outlet.setHasKitchenScreen(false);
+            outletMapper.insert(outlet);
+            if (firstOutlet == null) firstOutlet = outlet;
+            seedDefaults(outlet.getId());
+            for (int registerIndex = 1; registerIndex <= registerCount; registerIndex++) {
+                Register register = new Register();
+                register.setName("Register #" + registerIndex);
+                register.setOutletId(outlet.getId());
+                register.setInvoiceNumber("1000");
+                register.setClosed(true);
+                registerMapper.insert(register);
+            }
+        }
 
-        vendor.setOutletId(outlet.getId());
+        vendor.setOutletId(firstOutlet.getId());
         vendorMapper.updateProvisioning(vendor);
-
-        seedDefaults(outlet.getId());
 
         User owner = new User();
         owner.setVendorId(vendor.getId());
@@ -157,7 +181,7 @@ public class TenantProvisionService {
         owner.setIsApiUser(false);
         owner.setDarkMode("default");
         owner.setPendingPasswordReset(false);
-        owner.setOutletId(outlet.getId());
+        owner.setOutletId(firstOutlet.getId());
         userService.create(owner, req.password());
 
         String bootstrap = accountTokenStore.issue(
@@ -169,7 +193,7 @@ public class TenantProvisionService {
                 tenantProperties.storeUrl(slug),
                 bootstrap,
                 owner.getId(),
-                outlet.getId());
+                firstOutlet.getId());
     }
 
     private void seedDefaults(Long outletId) {
