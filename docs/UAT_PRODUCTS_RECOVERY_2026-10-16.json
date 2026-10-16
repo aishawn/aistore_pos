@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-10-16T15:45:00.000Z",
+  "sourceCommit": "7bf5552",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no product create, import, merge, edit, deactivate, or delete write",
+  "status": "PASS",
+  "checks": [
+    "Products first-load loading status remains visible while /api/products is delayed",
+    "Normal Products page resolves to 3 rows with heading, product search, and complete Actions column",
+    "Simulated /api/products 503 shows Retry with no page errors",
+    "Final-state screenshot captured at docs/UAT_PRODUCTS_RECOVERY_2026-10-16.png"
+  ],
+  "pageErrors": []
+}
