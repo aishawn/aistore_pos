@@ -214,13 +214,7 @@ public class TenantProvisionService {
         cash.setDefaultPayExact(false);
         cash.setOutletId(outletId);
         paymentMethodMapper.insert(cash);
-
-        Register register = new Register();
-        register.setName("Register #1");
-        register.setOutletId(outletId);
-        register.setInvoiceNumber("1000");
-        register.setClosed(true);
-        registerMapper.insert(register);
+        // Registers are created by the outlet loop (count from signup / admin request).
     }
 
     private static void validatePassword(String password) {
