@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-16T13:24:30Z",
+  "probeTenant": {
+    "vendorId": 14,
+    "subdomain": "codex-probe-20261016212140",
+    "odooCompanyId": 13,
+    "odooPosConfigId": 34
+  },
+  "checks": {
+    "initialSignup": { "status": 200, "code": 0 },
+    "initialProvision": {
+      "status": "failed",
+      "error": "Australian chart did not provide cash difference accounts for company 13"
+    },
+    "isolatedAccountFallback": {
+      "companyId": 13,
+      "lossAccountCode": "999901",
+      "profitAccountCode": "999902"
+    },
+    "postFixRetry": {
+      "status": "ready",
+      "companyId": 13,
+      "posConfigId": 34,
+      "error": null
+    },
+    "platformDelete": { "status": 200, "vendorStatus": "deleted" },
+    "deletedTenantLogin": { "status": 402, "code": 40200 }
+  },
+  "fixes": [
+    {
+      "commit": "59fb9f8",
+      "description": "Use company-only kwargs for account.journal.write; search fields are rejected by Odoo write()."
+    }
+  ],
+  "note": "The probe was isolated and deleted after verification. Its Odoo company data remains under the test database per retention policy."
+}
