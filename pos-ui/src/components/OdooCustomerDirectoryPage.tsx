@@ -36,6 +36,7 @@ export function OdooCustomerDirectoryPage() {
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -81,6 +82,7 @@ export function OdooCustomerDirectoryPage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
+      setLastLoadedAt(Date.now());
     } catch (cause) {
       if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo customers.");
     } finally {
@@ -126,7 +128,10 @@ export function OdooCustomerDirectoryPage() {
       <header className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Customer records available to your Odoo staff account.</p>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+            Customer records available to your Odoo staff account.
+            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { setEditingCustomer(null); setCreateOpen(true); setCreateError(null); }} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
@@ -151,7 +156,7 @@ export function OdooCustomerDirectoryPage() {
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input aria-label="Search customers by name, phone, email or customer code" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          {error && <p role="alert" className="shrink-0 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{error}</p>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="hidden w-full min-w-[840px] border-collapse text-left text-sm xl:table">
