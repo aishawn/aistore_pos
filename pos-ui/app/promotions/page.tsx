@@ -60,14 +60,21 @@ export default function PromotionsPage() {
       </div>
 
       {loading ? (
-        <div role="status" className="flex flex-col items-center gap-2 py-14 text-sm text-[var(--oh-muted)]">
-          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
-          Loading promotions…
+        <div role="status" aria-label="Loading promotions" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+          <div className="hidden h-12 animate-pulse bg-[var(--oh-surface)] md:block" />
+          <div className="divide-y divide-[var(--oh-border)]">
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 md:grid-cols-4">
+              <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-20 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-24 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-24 animate-pulse rounded bg-[var(--oh-surface)]" />
+            </div>)}
+          </div>
         </div>
       ) : error ? (
         <div role="alert" className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
-          <button type="button" onClick={reload} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-amber-300 bg-white px-4 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Try again</button>
+          <button type="button" onClick={reload} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-amber-300 bg-white px-4 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800"><RefreshCw size={15} /> Try again</button>
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LoaderCircle, Tag } from "lucide-react";
+import { RefreshCw, Tag } from "lucide-react";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { EntityFormModal, FormValues, FormField } from "@/components/admin/EntityFormModal";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -58,14 +58,19 @@ export default function PromotionCategoriesPage() {
       {actionError && <p role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{actionError}</p>}
 
       {loading ? (
-        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--oh-muted)]">
-          <LoaderCircle size={20} className="animate-spin text-[var(--oh-primary)]" aria-hidden="true" />
-          Loading promotion categories…
+        <div role="status" aria-label="Loading promotion categories" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
+          <div className="hidden h-12 animate-pulse bg-[var(--oh-surface)] md:block" />
+          <div className="divide-y divide-[var(--oh-border)]">
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 md:grid-cols-2">
+              <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-surface)]" />
+              <div className="h-4 w-20 animate-pulse rounded bg-[var(--oh-surface)] md:justify-self-end" />
+            </div>)}
+          </div>
         </div>
       ) : error ? (
         <div role="alert" className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
           <p>{error}</p>
-          <button type="button" onClick={reload} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-amber-300 bg-white px-4 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Try again</button>
+          <button type="button" onClick={reload} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-amber-300 bg-white px-4 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800"><RefreshCw size={15} /> Try again</button>
         </div>
       ) : categories.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center">
