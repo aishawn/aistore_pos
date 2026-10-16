@@ -283,9 +283,11 @@ export function OdooProductCataloguePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {loading && items.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading products…</span></td></tr>
-                ) : items.length === 0 ? (
+                {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`product-skeleton-${index}`} aria-hidden="true">
+                  <td colSpan={7} className="px-4 py-3"><div className="grid grid-cols-[1.3fr_1fr_1fr_.7fr_.7fr_.65fr_.55fr] items-center gap-4">
+                    <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-6 animate-pulse rounded-full bg-[var(--oh-border)]" /><span className="ml-auto h-11 w-16 animate-pulse rounded-lg bg-[var(--oh-border)]" />
+                  </div></td>
+                </tr>) : items.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId ? "No matching products" : "No POS products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId ? "Try clearing search or category filters." : "Connect Odoo and confirm products are available in the POS catalogue."}</p>{debouncedQuery || categoryId ? <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}</div></td></tr>
                 ) : items.map((product) => {
                   const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id)).filter(Boolean);
@@ -305,7 +307,14 @@ export function OdooProductCataloguePage() {
             </table>
             <div className="divide-y divide-[var(--oh-border)] xl:hidden">
               {loading && items.length === 0 ? (
-                <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading products…</span></div>
+                <div role="status" aria-label="Loading products" className="divide-y divide-[var(--oh-border)]">
+                  {Array.from({ length: 6 }, (_, index) => <div key={`product-mobile-skeleton-${index}`} aria-hidden="true" className="px-4 py-4">
+                    <div className="flex items-center justify-between gap-3"><span className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-20 animate-pulse rounded bg-[var(--oh-border)]" /></div>
+                    <div className="mt-3 grid grid-cols-2 gap-3"><span className="h-3 w-28 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-3 w-24 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-3 w-20 animate-pulse rounded bg-[var(--oh-border)]" /></div>
+                    <div className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3"><span className="h-11 w-20 animate-pulse rounded-lg bg-[var(--oh-border)]" /></div>
+                  </div>)}
+                  <p className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading products…</p>
+                </div>
               ) : items.length === 0 ? (
                 <div className="px-4 py-12 text-center">
                   <p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId ? "No matching products" : "No POS products yet"}</p>
