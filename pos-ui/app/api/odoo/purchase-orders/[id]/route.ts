@@ -106,10 +106,17 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     } | null = null;
     if (receiptsAvailable && pickingIds.length) {
       try {
+        const pickingFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.picking", "fields_get", [["move_ids_without_package", "move_ids"]], { attributes: ["type"] });
+        const moveRelationField = Object.hasOwn(pickingFields ?? {}, "move_ids_without_package")
+          ? "move_ids_without_package"
+          : Object.hasOwn(pickingFields ?? {}, "move_ids")
+            ? "move_ids"
+            : null;
+        if (!moveRelationField) throw new PurchaseOrderError("Odoo did not expose stock moves for this receipt.", 422);
         receipts = await rpc<Array<Record<string, unknown>>>(sessionId, "stock.picking", "search_read", [[
           ["id", "in", pickingIds], ["company_id", "in", companyIds],
         ]], {
-          fields: ["id", "name", "state", "scheduled_date", "date_done", "picking_type_id", "location_id", "location_dest_id", "origin", "company_id", "picking_type_code", "move_ids_without_package", "move_ids"],
+          fields: ["id", "name", "state", "scheduled_date", "date_done", "picking_type_id", "location_id", "location_dest_id", "origin", "company_id", "picking_type_code", moveRelationField],
           limit: 100,
           order: "scheduled_date desc, id desc",
           context: companyContext,
@@ -122,21 +129,27 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         });
         if (openIncoming.length === 1) {
           const picking = openIncoming[0];
-          const moveIds = (Array.isArray(picking.move_ids_without_package) && picking.move_ids_without_package.length
-            ? picking.move_ids_without_package
-            : picking.move_ids) as number[] | undefined;
-          const ids = Array.isArray(moveIds) ? moveIds.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
+          const moveIds = picking[moveRelationField];
+          const ids = Array.isArray(moveIds)
+            ? moveIds.filter((id) => Number.isSafeInteger(id) && Number(id) > 0).map((id) => Number(id))
+            : [];
           if (ids.length) {
+            const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [["quantity", "quantity_done"]], { attributes: ["type"] });
+            const qtyField = Object.hasOwn(moveFields ?? {}, "quantity")
+              ? "quantity"
+              : Object.hasOwn(moveFields ?? {}, "quantity_done")
+                ? "quantity_done"
+                : null;
+            if (!qtyField) throw new PurchaseOrderError("Odoo did not expose received quantity for this receipt.", 422);
             const moves = await rpc<Array<{
+              [key: string]: unknown;
               id: number;
               product_id: [number, string] | false;
               product_uom_qty: number;
-              quantity?: number;
-              quantity_done?: number;
             }>>(sessionId, "stock.move", "search_read", [[
               ["id", "in", ids], ["picking_id", "=", picking.id],
             ]], {
-              fields: ["id", "product_id", "product_uom_qty", "quantity", "quantity_done"],
+              fields: ["id", "product_id", "product_uom_qty", qtyField],
               limit: 200,
               context: companyContext,
             }) ?? [];
@@ -145,7 +158,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
               pickingName: String(picking.name || ""),
               pickingState: String(picking.state || ""),
               moves: moves.map((move) => {
-                const qtyDone = typeof move.quantity === "number" ? move.quantity : typeof move.quantity_done === "number" ? move.quantity_done : 0;
+                const qtyDone = typeof move[qtyField] === "number" ? move[qtyField] as number : 0;
                 const remaining = Math.max(0, (move.product_uom_qty || 0) - qtyDone);
                 return {
                   id: move.id,
