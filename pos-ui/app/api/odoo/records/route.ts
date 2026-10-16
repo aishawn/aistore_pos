@@ -155,8 +155,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Unsupported Odoo record type" }, { status: 400 });
   }
   const config = RECORD_TYPES[type];
-  const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(Number(body.limit) || 40)));
-  const offset = Math.max(0, Math.floor(Number(body.offset) || 0));
+  const requestedLimit = body.limit === undefined ? 40 : Number(body.limit);
+  const requestedOffset = body.offset === undefined ? 0 : Number(body.offset);
+  if (!Number.isFinite(requestedLimit) || !Number.isFinite(requestedOffset)) {
+    return NextResponse.json({ message: "Record pagination values must be finite numbers" }, { status: 400 });
+  }
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(requestedLimit)));
+  const offset = Math.max(0, Math.floor(requestedOffset));
   const query = body.query?.trim().slice(0, 120);
   const domain: unknown[] = [...config.baseDomain];
   if (type === "products" && body.categoryId !== undefined) {
