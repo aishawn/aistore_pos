@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-10-16T16:32:00Z",
+  "sourceCommit": "6703e39",
+  "target": "https://codex-uat-20261016203934.orithos.com.au",
+  "tenant": { "vendorId": 13, "odooCompanyId": 12 },
+  "checks": {
+    "status": 200,
+    "pilotAvailabilityBanner": "pass",
+    "uploadDisabled": true,
+    "newFolderDisabled": true,
+    "pageErrors": []
+  },
+  "scope": "read-only UI check; no media writes"
+}
