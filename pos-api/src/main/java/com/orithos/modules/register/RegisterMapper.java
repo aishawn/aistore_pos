@@ -12,6 +12,9 @@ public interface RegisterMapper {
     @Select("SELECT * FROM register WHERE id = #{id}")
     Register findById(Long id);
 
+    @Select("SELECT * FROM register WHERE outlet_id = #{outletId} AND deleted_at IS NULL ORDER BY id ASC")
+    List<Register> findByOutletId(Long outletId);
+
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("INSERT INTO register (name, outlet_id, invoice_number, open_time, closed) "
             + "VALUES (#{name}, #{outletId}, #{invoiceNumber}, #{openTime}, #{closed})")

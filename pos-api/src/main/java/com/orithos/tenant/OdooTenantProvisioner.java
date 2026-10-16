@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.orithos.modules.register.Outlet;
 import com.orithos.modules.register.OutletMapper;
+import com.orithos.modules.register.RegisterMapper;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ public class OdooTenantProvisioner {
 
     private final VendorMapper vendorMapper;
     private final OutletMapper outletMapper;
+    private final RegisterMapper registerMapper;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -44,6 +46,7 @@ public class OdooTenantProvisioner {
     public OdooTenantProvisioner(
             VendorMapper vendorMapper,
             OutletMapper outletMapper,
+            RegisterMapper registerMapper,
             ObjectMapper objectMapper,
             @Value("${ODOO_BASE_URL:}") String baseUrl,
             @Value("${ODOO_DATABASE:aipos}") String database,
@@ -51,6 +54,7 @@ public class OdooTenantProvisioner {
             @Value("${ODOO_SERVICE_PASSWORD:}") String password) {
         this.vendorMapper = vendorMapper;
         this.outletMapper = outletMapper;
+        this.registerMapper = registerMapper;
         this.objectMapper = objectMapper;
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
         this.database = database == null ? "" : database.trim();
@@ -110,11 +114,15 @@ public class OdooTenantProvisioner {
                 primaryPosConfigId = ensurePosConfig(sessionId, vendor.getName() + " Register", companyId);
             } else {
                 for (Outlet outlet : outlets) {
-                    String configName = (outlet.getName() == null || outlet.getName().isBlank()
+                    String outletName = (outlet.getName() == null || outlet.getName().isBlank()
                             ? vendor.getName()
-                            : outlet.getName()) + " Register";
-                    long configId = ensurePosConfig(sessionId, configName, companyId);
-                    if (primaryPosConfigId <= 0) primaryPosConfigId = configId;
+                            : outlet.getName());
+                    var registers = registerMapper.findByOutletId(outlet.getId());
+                    int registerCount = registers == null || registers.isEmpty() ? 1 : registers.size();
+                    for (String configName : registerConfigNames(outletName, registerCount)) {
+                        long configId = ensurePosConfig(sessionId, configName, companyId);
+                        if (primaryPosConfigId <= 0) primaryPosConfigId = configId;
+                    }
                 }
             }
             if (primaryPosConfigId <= 0) {
@@ -161,6 +169,16 @@ public class OdooTenantProvisioner {
         }
         vendorMapper.updateOdooBinding(vendor);
         return vendor;
+    }
+
+    static List<String> registerConfigNames(String outletName, int registerCount) {
+        String baseName = (outletName == null || outletName.isBlank() ? "Store" : outletName.trim()) + " Register";
+        int count = Math.max(1, registerCount);
+        List<String> names = new ArrayList<>(count);
+        for (int index = 1; index <= count; index++) {
+            names.add(count == 1 ? baseName : baseName + " " + index);
+        }
+        return names;
     }
 
     private String authenticate() throws Exception {
