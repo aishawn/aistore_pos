@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Camera, FileImage, LoaderCircle, ReceiptText } from "lucide-react";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { SelectChevronIcon } from "@/components/icons";
 import {
   apiFailureMessage,
-  saveScannedInvoice,
   scanInvoiceImage,
   type InvoiceScanLine,
   type InvoiceScanPayload,
@@ -36,12 +35,10 @@ function toIsoDate(raw?: string | null): string {
 }
 
 export function ScanInvoicePage() {
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scan, setScan] = useState<InvoiceScanPayload | null>(null);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
@@ -99,28 +96,6 @@ export function ScanInvoicePage() {
     });
   }
 
-  async function save() {
-    if (!scan || saving) return;
-    if (!scan.supplierId && !scan.supplierName?.trim()) {
-      setError("Supplier is required.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const saved = await saveScannedInvoice({
-        ...scan,
-        invoiceDate: scan.invoiceDate || null,
-        dueDate: scan.dueDate || null,
-        createSupplier: !scan.supplierId,
-      });
-      router.push(`/orders/${saved.id}/view`);
-    } catch (e) {
-      setError(apiFailureMessage(e, "Failed to save invoice.", "Please sign in again."));
-      setSaving(false);
-    }
-  }
-
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
@@ -128,6 +103,7 @@ export function ScanInvoicePage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Purchasing · Documents</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Review the details extracted from your invoice before saving it as a received order.</p>
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">OCR is preview-only in this pilot. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.</p>
         </div>
       </header>
 
@@ -155,7 +131,7 @@ export function ScanInvoicePage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                disabled={loading || saving}
+                disabled={loading}
                 className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               >
                 {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}
@@ -244,10 +220,11 @@ export function ScanInvoicePage() {
 
       <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Review supplier, quantities and totals before saving." : "Choose an invoice image to begin."}</p>
-          <button type="button" onClick={() => void save()} disabled={!scan || saving || loading} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-            {saving && <LoaderCircle size={16} className="animate-spin" />}{saving ? "Saving…" : "Save as received order"}
-          </button>
+          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Review the OCR preview, then continue in Odoo for purchasing and receiving." : "Choose an invoice image to begin."}</p>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Link href="/purchases/odoo" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Open Odoo Purchases</Link>
+            <Link href="/stock/replenishment" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Replenishment Plan</Link>
+          </div>
         </div>
       </footer>
     </main>
