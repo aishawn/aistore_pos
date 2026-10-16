@@ -56,7 +56,7 @@ AI remains disabled in production. The tenant report database account has no sou
 
 | Capability | Status | Notes |
 |---|---|---|
-| Odoo manual connect | Accepted | Manual Connect remains available |
+| Odoo manual connect | Accepted | Manual Connect remains available; commit `4059f13` adds a layout-preserving connection skeleton and an explicit Retry status check after transient failures. Online delayed-read and simulated-session-failure smoke passed without login/logout writes. |
 | Odoo session auto-recover | Accepted | Production `autoRecoverConfigured:true`; cookie removal recovers Replenishment on first request, and an already-open Products page recovers/retries its read-only records POST after Refresh. Only safe reads replay after recovery; checkout, RFQ, product/customer writes and close are never replayed. POS session `00004` remains open — `docs/UAT_ODOO_AUTORECOVER_2026-10-13.json` (6/6) |
 | Deploy currency (`83bdafb`+) | Accepted | Production shows **Open Odoo POS** on closed-register empty state |
 
