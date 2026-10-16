@@ -186,12 +186,16 @@ public class AccountLifecycleService {
                             + url + "\n");
         }
         owner.setPendingPasswordReset(true);
-        userService.update(owner.getId(), owner);
+        // Platform admin acts across vendors — must not go through UserService.update/require.
+        userService.markPendingPasswordReset(owner.getId(), true);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("resetUrl", url);
         body.put("emailSent", emailSent);
         body.put("mailConfigured", mailService.isConfigured());
         body.put("owner", publicUser(owner));
+        body.put("redirectHost", tenantProperties.storeUrl(vendor.getSubdomain()));
+        body.put("bootstrapToken", accountTokens.issue(
+                owner.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, Duration.ofMinutes(5)));
         return body;
     }
 
@@ -219,6 +223,9 @@ public class AccountLifecycleService {
             body.put("emailSent", emailSent);
             body.put("mailConfigured", mailService.isConfigured());
             body.put("owner", publicUser(owner));
+            body.put("redirectHost", tenantProperties.storeUrl(vendor.getSubdomain()));
+            body.put("bootstrapToken", accountTokens.issue(
+                    owner.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, Duration.ofMinutes(5)));
             return body;
         }
         return issueOwnerResetForVendor(vendorId);

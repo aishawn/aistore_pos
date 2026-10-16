@@ -149,6 +149,17 @@ public class UserService {
         return existing;
     }
 
+    /**
+     * Platform / lifecycle flows may mark reset flags across vendors.
+     * Do not use {@link #require(Long)} here — that asserts the caller's store.
+     */
+    public void markPendingPasswordReset(Long userId, boolean pending) {
+        User existing = userMapper.findById(userId);
+        if (existing == null) throw new BusinessException(40400, "User not found");
+        existing.setPendingPasswordReset(pending);
+        userMapper.update(existing);
+    }
+
     public void delete(Long id) {
         require(id);
         userMapper.softDelete(id);
