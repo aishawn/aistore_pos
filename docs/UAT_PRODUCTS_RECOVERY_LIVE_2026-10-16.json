@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-10-16T14:48:00Z",
+  "deploymentCommit": "7bf5552",
+  "target": "https://codex-uat-20261016203934.orithos.com.au",
+  "tenant": {
+    "vendorId": 13,
+    "odooCompanyId": 12
+  },
+  "checks": {
+    "loadingStatus": "pass",
+    "normalProductsPage": "pass",
+    "simulatedProducts503Retry": "pass",
+    "pageErrors": []
+  },
+  "notes": [
+    "The legacy demo smoke script used an outdated search placeholder and the demo login returned 502; the same assertions passed against the isolated UAT tenant with the current UI text."
+  ],
+  "localChecks": {
+    "typecheck": "pass",
+    "lint": "pass",
+    "build": "not run by instruction"
+  }
+}
