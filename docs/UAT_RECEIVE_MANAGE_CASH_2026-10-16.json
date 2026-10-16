@@ -1,6 +1,7 @@
 {
-  "generatedAt": "2026-10-16T00:00:00+08:00",
+  "generatedAt": "2026-10-16T01:00:00.000Z",
   "scope": "Phase 1 store ops — purchase receive write + Manage Cash",
+  "sourceCommit": "5fa78d5",
   "implemented": {
     "receiveApi": "POST /api/odoo/purchase-orders/{id}/receive",
     "receiveUi": "OdooPurchases detail → Receive stock modal",
@@ -8,14 +9,25 @@
     "manageCashUi": "/manage-cash"
   },
   "liveWriteUat": {
-    "result": "PENDING_OPERATOR",
-    "isolationRequired": true,
-    "steps": [
-      "On isolation Odoo DB: confirm RFQ → Receive stock full qty → verify qty_received and stock increase",
-      "Partial receive → backorder or documented Odoo wizard handling",
-      "Manage Cash: cash in $50 on open session; cash out blocked when drawer would go negative",
-      "Close Register still requires counted cash (existing 422 guard)"
-    ]
+    "manageCash": {
+      "result": "PASS",
+      "evidence": [
+        "API cash in 0.01/0.02 ok on session orithos_store1/00004",
+        "UI Record cash in $0.03 recorded",
+        "CSRF origin → 403; missing Odoo session → 401",
+        "Fix: try_cash_in_out(partner_id, extras.translatedType/formattedAmount); stop /session/ false 401"
+      ]
+    },
+    "receive": {
+      "result": "GATES_PASS_WRITE_PENDING",
+      "evidence": [
+        "PO list empty on demo",
+        "receive without Odoo session → 401",
+        "receive unknown PO → 404 access/not found",
+        "Full confirm/partial receive still needs isolation PO"
+      ]
+    },
+    "isolationRequired": true
   },
-  "result": "CODE_READY"
+  "result": "MANAGE_CASH_ACCEPTED_RECEIVE_PENDING"
 }

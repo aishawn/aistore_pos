@@ -1,0 +1,139 @@
+{
+  "generatedAt": "2026-10-16T01:00:15.976Z",
+  "commit": "5fa78d5",
+  "checks": [
+    {
+      "name": "demo.login",
+      "status": "PASS",
+      "code": 0
+    },
+    {
+      "name": "demo.odooBinding",
+      "status": "ready",
+      "companyId": 1,
+      "posConfigId": null
+    },
+    {
+      "name": "demo.odooSession",
+      "status": "PASS",
+      "user": "yu18888xiao@gmail.com",
+      "companies": [
+        1
+      ]
+    },
+    {
+      "name": "demo.cash.in",
+      "status": "PASS",
+      "httpStatus": 200,
+      "body": {
+        "ok": true,
+        "sessionId": 7,
+        "sessionName": "orithos_store1/00004",
+        "configId": 1,
+        "direction": "in",
+        "amount": 0.02,
+        "reason": "uat-cash-in",
+        "recordedAt": "2026-10-16T01:00:20.748Z"
+      }
+    },
+    {
+      "name": "demo.cash.amountCap",
+      "status": "PASS",
+      "httpStatus": 400,
+      "message": "Enter a cash amount greater than zero."
+    },
+    {
+      "name": "demo.cash.out",
+      "status": "PASS",
+      "httpStatus": 200,
+      "body": {
+        "ok": true,
+        "sessionId": 7,
+        "sessionName": "orithos_store1/00004",
+        "configId": 1,
+        "direction": "out",
+        "amount": 0.01,
+        "reason": "uat-cash-out",
+        "recordedAt": "2026-10-16T01:00:22.363Z"
+      }
+    },
+    {
+      "name": "demo.cash.csrf",
+      "status": "PASS",
+      "httpStatus": 403
+    },
+    {
+      "name": "demo.purchases.list",
+      "status": "PASS",
+      "httpStatus": 200,
+      "count": 0
+    },
+    {
+      "name": "demo.receive.missingPo",
+      "status": "PASS",
+      "httpStatus": 404,
+      "message": "Purchase order not found or you do not have access to it."
+    },
+    {
+      "name": "demo.receive.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401
+    },
+    {
+      "name": "platform.login",
+      "status": "PASS",
+      "platformOperator": true
+    },
+    {
+      "name": "platform.tenant.detail",
+      "status": "PASS",
+      "binding": {
+        "vendorId": 1,
+        "subdomain": "demo",
+        "odooCompanyId": 1,
+        "odooPosConfigId": null,
+        "odooWarehouseId": null,
+        "odooStockLocationId": null,
+        "odooProvisionStatus": "ready",
+        "odooProvisionError": null,
+        "r2Prefix": "shopfront/demo/"
+      }
+    },
+    {
+      "name": "platform.lifecycleBlocked",
+      "status": "PASS",
+      "httpStatus": 200,
+      "code": 40910,
+      "message": "Lifecycle changes are not allowed on the platform operator store"
+    },
+    {
+      "name": "ui.manageCash.notStub",
+      "status": "PASS",
+      "url": "https://demo.orithos.com.au/manage-cash",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Manage Cash Cash in / cash out while a P"
+    },
+    {
+      "name": "ui.manageCash.submit",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out for this workstation. Profile & Security Logout Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Open sess"
+    },
+    {
+      "name": "ui.purchases",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Account settings and sign-out "
+    },
+    {
+      "name": "docs.isolationArtifacts",
+      "status": "PASS",
+      "files": [
+        "docs\\CAPABILITY_STATUS.md",
+        "docs\\STORE_ADMIN_P0_SPEC.md",
+        "docs\\UAT_RECEIVE_MANAGE_CASH_2026-10-16.json"
+      ]
+    }
+  ],
+  "passed": 16,
+  "failed": 0,
+  "warn": 0,
+  "result": "PASS"
+}

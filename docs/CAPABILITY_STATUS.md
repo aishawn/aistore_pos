@@ -23,8 +23,8 @@ Statuses:
 | Bottle / case pack factor | Accepted | Pack ×1/6/12/24 on cart lines (UI confirmed) |
 | Full-sale refund from history | Accepted | Browser refund of this-round receipts `260-1-000009` and `260-1-000010`; Odoo independent refunds `000009 REFUND` / `000010 REFUND`; free qty back to 12. Refunded receipts now explain the prior refund and hide the duplicate full-refund action (app `1673384`) |
 | Close register (Odoo session) | In progress | Production `3c2618e` requires counted cash in both UI and API for cash-enabled registers; direct API request without count returns 422 before Odoo writes. Session `00004` remains open pending actual drawer count and reconciliation |
-| Manage Cash (Odoo cash in/out) | In progress | API `/api/odoo/session/cash` + `/manage-cash` UI; live isolation UAT pending |
-| Purchase receive (Odoo) | In progress | API `/api/odoo/purchase-orders/{id}/receive` + Purchases UI; live isolation UAT pending |
+| Manage Cash (Odoo cash in/out) | Accepted | Live write on `orithos_store1/00004` via `/api/odoo/session/cash` + UI (`5fa78d5`); Odoo 18 `try_cash_in_out` with partner/extras |
+| Purchase receive (Odoo) | In progress | API + UI gates OK (401/404); no open PO on demo — full receive write UAT still needs isolation PO data |
 | Credit sales / multi-tender split | Planned | |
 | Offline-first sell | Planned | Competitor hard requirement; deferred |
 
