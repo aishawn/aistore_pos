@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-10-16T03:02:35.224Z",
+  "result": "PASS",
+  "issuer": "shopfront",
+  "shawn": {
+    "binding": {
+      "vendorId": 2,
+      "subdomain": "shawn",
+      "odooCompanyId": 2,
+      "odooPosConfigId": 4,
+      "odooWarehouseId": 2,
+      "odooStockLocationId": 18,
+      "odooProvisionStatus": "ready",
+      "odooProvisionError": null,
+      "r2Prefix": "shopfront/shawn/"
+    },
+    "companies": [
+      2
+    ],
+    "productCount": 0,
+    "productMessage": null,
+    "configs": [
+      {
+        "id": 4,
+        "name": "orthos Register"
+      }
+    ]
+  },
+  "demo": {
+    "productCount": 5
+  }
+}
