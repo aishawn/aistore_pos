@@ -492,7 +492,7 @@ export async function POST(request: NextRequest) {
     const date = new Date().toISOString().slice(0, 19).replace("T", " ");
     const uuid = body.orderUuid;
     const order: Record<string, unknown> = {
-      amount_paid: isRefund ? paymentAmount : roundedTender,
+      amount_paid: paymentAmount,
       amount_return: change,
       amount_tax: taxTotal,
       amount_total: total,
