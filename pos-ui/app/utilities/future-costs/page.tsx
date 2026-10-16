@@ -1,17 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import {
   AdminPageLayout,
-  AdminPrimaryButton,
   AdminEmptyHero,
 } from "@/components/admin/AdminPageLayout";
 import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
-import { FilterSelect } from "@/components/admin/FilterSelect";
 import { useApiList } from "@/hooks/useApi";
-import { PlusIcon, BanIcon } from "@/components/icons";
+import { BanIcon } from "@/components/icons";
 
 const PAGE_SIZE = 20;
 
@@ -36,21 +34,12 @@ export default function FutureCostsPage() {
       title="Future Costs"
       subtitle="Scheduled cost changes for products"
       count={total}
-      actions={
-        <AdminPrimaryButton>
-          <PlusIcon size={16} /> New
-        </AdminPrimaryButton>
-      }
-      filters={
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <FilterSelect label="Supplier" placeholder="Select Supplier…" />
-          <FilterSelect label="Start Date" placeholder="Select Start Date…" />
-          <FilterSelect label="End Date" placeholder="Select End Date…" />
-        </div>
-      }
     >
-      <div className="mb-4">
-        <AdminPrimaryButton>Filter</AdminPrimaryButton>
+      <div className="mb-4 flex flex-wrap items-start gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+        <Info size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <p className="max-w-3xl">
+          Future cost schedules are currently read-only in this pilot. Create or update supplier costs from the purchasing workflow when that integration is available.
+        </p>
       </div>
 
       {loading ? (
