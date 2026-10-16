@@ -215,10 +215,20 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (validateResult && typeof validateResult === "object" && !Array.isArray(validateResult)) {
       const action = validateResult as { res_model?: string; res_id?: number; context?: Record<string, unknown> };
       const wizardContext = { ...companyContext, ...(action.context ?? {}) };
-      if (action.res_model === "stock.immediate.transfer" && Number.isSafeInteger(action.res_id)) {
-        await rpc<unknown>(sessionId, "stock.immediate.transfer", "process", [[action.res_id]], { context: wizardContext });
-      } else if (action.res_model === "stock.backorder.confirmation" && Number.isSafeInteger(action.res_id)) {
-        await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[action.res_id]], { context: wizardContext });
+      if (action.res_model === "stock.immediate.transfer") {
+        const wizardId = Number.isSafeInteger(action.res_id)
+          ? action.res_id
+          : await rpc<number>(sessionId, "stock.immediate.transfer", "create", [{}], { context: wizardContext });
+        if (Number.isSafeInteger(wizardId)) {
+          await rpc<unknown>(sessionId, "stock.immediate.transfer", "process", [[wizardId]], { context: wizardContext });
+        }
+      } else if (action.res_model === "stock.backorder.confirmation") {
+        const wizardId = Number.isSafeInteger(action.res_id)
+          ? action.res_id
+          : await rpc<number>(sessionId, "stock.backorder.confirmation", "create", [{}], { context: wizardContext });
+        if (Number.isSafeInteger(wizardId)) {
+          await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[wizardId]], { context: wizardContext });
+        }
       }
     }
 
