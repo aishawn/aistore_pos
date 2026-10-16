@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T14:14:11.000Z",
+  "sourceCommit": "01def7c",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no customer create, edit, or delete write",
+  "status": "PASS",
+  "checks": [
+    "Customers first-load skeleton remains visible while /api/customers is delayed",
+    "Normal 390px page preserves customer search with no horizontal overflow or page errors",
+    "Simulated /api/customers 503 shows Retry with no page errors"
+  ]
+}
