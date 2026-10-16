@@ -21,13 +21,25 @@
     "secondPosDedicatedCashPm": "PASS — unique cash journal + cash PM per config"
   },
   "liveE2E": {
-    "signup": "zzprobe17 vendorId=4 outletCount=2 dummyData=true → company 4",
-    "beforeFix": "Only 1 pos.config (Main Street Register); 0 seeded products — second POS aborted provision before seed",
+    "beforeFix": {
+      "signup": "zzprobe17 vendorId=4 company 4",
+      "posConfigs": 1,
+      "products": 0,
+      "cause": "Shared cash PM/journal rejected on second pos.config; seed never ran"
+    },
+    "afterFix": {
+      "commit": "d353e80",
+      "signup": "zzprobe18 vendorId=5 company 5 dummyData=true outletCount=2",
+      "posConfigs": ["Front Counter Register", "Back Bar Register"],
+      "products": ["DEMO-SHIRAZ", "DEMO-SB", "DEMO-IPA"],
+      "result": "PASS"
+    },
     "fix": "Per-POS dedicated cash journal/payment method in OdooTenantProvisioner"
   },
   "deploy": {
     "commitInitial": "348f8e7",
+    "commitFix": "d353e80",
     "liveUiChunkScan": "PASS — Sample data / outlets copy present in app.orithos.com.au Next chunk"
   },
-  "result": "MULTI_POS_CASH_PM_FIX_PENDING_REDEPLOY_E2E"
+  "result": "PASS_SIGNUP_OUTLETS_DUMMY_ODOO_E2E"
 }
