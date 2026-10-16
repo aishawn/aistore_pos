@@ -29,6 +29,7 @@ import java.util.List;
 public class OdooTenantProvisioner {
 
     private static final Logger log = LoggerFactory.getLogger(OdooTenantProvisioner.class);
+    private static final double DUMMY_STOCK_QUANTITY = 5.0;
 
     private final VendorMapper vendorMapper;
     private final OutletMapper outletMapper;
@@ -132,7 +133,7 @@ public class OdooTenantProvisioner {
             addCompanyToServiceUser(sessionId, companyId);
             if (seedDummyData) {
                 try {
-                    seedDummyCatalog(sessionId, companyId);
+                    seedDummyCatalog(sessionId, companyId, warehouse[1]);
                 } catch (Exception seedError) {
                     log.warn("Dummy catalog seed failed for vendor {}: {}", vendorId, seedError.getMessage());
                 }
@@ -521,60 +522,99 @@ public class OdooTenantProvisioner {
         return id.longValue();
     }
 
-    private void seedDummyCatalog(String sessionId, long companyId) throws Exception {
-        ArrayNode domain = objectMapper.createArrayNode();
-        ArrayNode companyClause = objectMapper.createArrayNode();
-        companyClause.add("company_id");
-        companyClause.add("=");
-        companyClause.add(companyId);
-        domain.add(companyClause);
-        ArrayNode posClause = objectMapper.createArrayNode();
-        posClause.add("available_in_pos");
-        posClause.add("=");
-        posClause.add(true);
-        domain.add(posClause);
-        ObjectNode countKwargs = kwargsWithCompany(companyId);
-        JsonNode existing = callKwNode(sessionId, "product.product", "search_count", List.of(domain), countKwargs);
-        if (existing != null && existing.isNumber() && existing.asInt() > 0) {
-            return;
+    private void seedDummyCatalog(String sessionId, long companyId, long stockLocationId) throws Exception {
+        if (stockLocationId <= 0) {
+            throw new IllegalStateException("No internal stock location is available for demo inventory.");
         }
-
         long taxId = ensureSaleGstTax(sessionId, companyId);
         String[][] samples = {
                 {"DEMO Shiraz 750ml", "DEMO-SHIRAZ", "28.50"},
                 {"DEMO Sauvignon Blanc 750ml", "DEMO-SB", "24.90"},
                 {"DEMO IPA 4-pack", "DEMO-IPA", "22.00"},
         };
-        int created = 0;
+        int seeded = 0;
         for (String[] sample : samples) {
             try {
-                ObjectNode values = objectMapper.createObjectNode();
-                values.put("name", sample[0]);
-                values.put("default_code", sample[1]);
-                values.put("list_price", Double.parseDouble(sample[2]));
-                values.put("available_in_pos", true);
-                values.put("sale_ok", true);
-                values.put("purchase_ok", true);
-                values.put("type", "consu");
-                values.put("company_id", companyId);
-                if (taxId > 0) {
-                    ArrayNode taxes = values.putArray("taxes_id");
-                    ArrayNode cmd = taxes.addArray();
-                    cmd.add(6);
-                    cmd.add(0);
-                    ArrayNode ids = cmd.addArray();
-                    ids.add(taxId);
+                long productId = findDummyProductVariant(sessionId, companyId, sample[1]);
+                if (productId <= 0) {
+                    ObjectNode values = objectMapper.createObjectNode();
+                    values.put("name", sample[0]);
+                    values.put("default_code", sample[1]);
+                    values.put("list_price", Double.parseDouble(sample[2]));
+                    values.put("available_in_pos", true);
+                    values.put("sale_ok", true);
+                    values.put("purchase_ok", true);
+                    values.put("type", "consu");
+                    values.put("company_id", companyId);
+                    if (taxId > 0) {
+                        ArrayNode taxes = values.putArray("taxes_id");
+                        ArrayNode cmd = taxes.addArray();
+                        cmd.add(6);
+                        cmd.add(0);
+                        ArrayNode ids = cmd.addArray();
+                        ids.add(taxId);
+                    }
+                    Number templateId = callKw(sessionId, "product.template", "create", List.of(values), kwargsWithCompany(companyId));
+                    if (templateId == null) throw new IllegalStateException("product.template.create returned no id");
+                    productId = findDummyProductVariant(sessionId, companyId, sample[1]);
                 }
-                Number id = callKw(sessionId, "product.template", "create", List.of(values), kwargsWithCompany(companyId));
-                if (id != null) created++;
+                if (productId <= 0) throw new IllegalStateException("No product variant was created for " + sample[1]);
+                ensureDummyStock(sessionId, companyId, productId, stockLocationId);
+                seeded++;
             } catch (Exception productError) {
-                log.warn("Dummy product {} failed for company {}: {}", sample[1], companyId, productError.getMessage());
+                log.warn("Dummy product {} or stock failed for company {}: {}", sample[1], companyId, productError.getMessage());
             }
         }
-        log.info("Seeded dummy POS catalog for Odoo company {} ({} products)", companyId, created);
-        if (created == 0) {
-            throw new IllegalStateException("Dummy catalog seed created 0 products for company " + companyId);
+        log.info("Seeded dummy POS catalog for Odoo company {} ({} products, {} demo units each)",
+                companyId, seeded, DUMMY_STOCK_QUANTITY);
+        if (seeded != samples.length) {
+            throw new IllegalStateException("Dummy catalog could not prepare all products and demo stock for company " + companyId);
         }
+    }
+
+    private long findDummyProductVariant(String sessionId, long companyId, String defaultCode) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("default_code").add("=").add(defaultCode));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.put("limit", 1);
+        JsonNode products = callKwNode(sessionId, "product.product", "search_read", List.of(domain), kwargs);
+        return products != null && products.isArray() && !products.isEmpty()
+                ? products.get(0).path("id").asLong(0)
+                : 0;
+    }
+
+    private void ensureDummyStock(String sessionId, long companyId, long productId, long stockLocationId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("product_id").add("=").add(productId));
+        domain.add(objectMapper.createArrayNode().add("location_id").add("=").add(stockLocationId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("quantity"));
+        kwargs.put("limit", 1);
+        JsonNode quants = callKwNode(sessionId, "stock.quant", "search_read", List.of(domain), kwargs);
+        long quantId = quants != null && quants.isArray() && !quants.isEmpty()
+                ? quants.get(0).path("id").asLong(0)
+                : 0;
+        double currentQuantity = quants != null && quants.isArray() && !quants.isEmpty()
+                ? quants.get(0).path("quantity").asDouble(0)
+                : 0;
+        if (currentQuantity > 0) return;
+
+        if (quantId > 0) {
+            ObjectNode values = objectMapper.createObjectNode();
+            values.put("inventory_quantity", DUMMY_STOCK_QUANTITY);
+            callKwNode(sessionId, "stock.quant", "write", List.of(List.of(quantId), values), kwargsWithCompany(companyId));
+        } else {
+            ObjectNode values = objectMapper.createObjectNode();
+            values.put("product_id", productId);
+            values.put("location_id", stockLocationId);
+            values.put("inventory_quantity", DUMMY_STOCK_QUANTITY);
+            Number createdId = callKw(sessionId, "stock.quant", "create", List.of(values), kwargsWithCompany(companyId));
+            if (createdId == null) throw new IllegalStateException("stock.quant.create returned no id");
+            quantId = createdId.longValue();
+        }
+        callKwNode(sessionId, "stock.quant", "action_apply_inventory", List.of(List.of(quantId)), kwargsWithCompany(companyId));
     }
 
     private long ensureSaleGstTax(String sessionId, long companyId) throws Exception {
