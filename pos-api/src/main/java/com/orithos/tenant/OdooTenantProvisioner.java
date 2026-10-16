@@ -357,7 +357,10 @@ public class OdooTenantProvisioner {
                 values.put("profit_account_id", profitAccountId);
             }
             if (!values.isEmpty()) {
-                callKw(sessionId, "account.journal", "write", List.of(List.of(journal.path("id").asLong()), values), journalKwargs);
+                // `fields` and `limit` are valid for search_read, but Odoo's
+                // write() rejects them as unexpected keyword arguments.
+                callKw(sessionId, "account.journal", "write",
+                        List.of(List.of(journal.path("id").asLong()), values), kwargsWithCompany(companyId));
             }
         }
     }
