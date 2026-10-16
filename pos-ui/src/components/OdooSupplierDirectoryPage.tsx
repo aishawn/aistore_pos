@@ -34,6 +34,7 @@ function SupplierEmptyState({ hasSearch, onClear, onAdd }: { hasSearch: boolean;
 
 export function OdooSupplierDirectoryPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [items, setItems] = useState<OdooSupplierRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -63,12 +64,12 @@ export function OdooSupplierDirectoryPage() {
       if (!cancelled) setConnected(Boolean(user));
     }).catch((cause) => {
       if (!cancelled) {
-        setConnected(false);
+        setConnected(null);
         setError(cause instanceof Error ? cause.message : "Could not check the Odoo connection.");
       }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [connectionRetryKey]);
 
   const loadSuppliers = useCallback(async () => {
     if (connected !== true) return;
@@ -158,7 +159,7 @@ export function OdooSupplierDirectoryPage() {
             <Search size={17} className="text-[var(--oh-muted)]" />
             <input aria-label="Search suppliers by name, phone, email, ABN or reference" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or ABN" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
-          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="hidden w-full min-w-[760px] border-collapse text-left text-sm xl:table">
