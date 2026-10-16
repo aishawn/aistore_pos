@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { RefreshCw } from "lucide-react";
 import {
   AdminPageLayout,
   AdminSearchInput,
   AdminSecondaryButton,
 } from "@/components/admin/AdminPageLayout";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
@@ -99,12 +99,16 @@ export default function PlatformStoresPage() {
         <AdminSecondaryButton onClick={() => reload()}>Refresh</AdminSecondaryButton>
       }
     >
-      <AsyncState
-        loading={loading}
-        error={error}
-        empty={items.length === 0}
-        emptyText="No stores found. Use Create store to add a trial vendor."
-      >
+      {loading ? (
+        <div role="status" aria-label="Loading stores" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+          <div className="grid grid-cols-7 gap-3 bg-[var(--oh-surface)] px-4 py-3">{Array.from({ length: 7 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-border)]" />)}</div>
+          {Array.from({ length: 6 }, (_, row) => <div key={row} className="grid grid-cols-7 gap-3 border-t border-[var(--oh-border)] px-4 py-4">{Array.from({ length: 7 }, (_, cell) => <div key={cell} className="h-4 animate-pulse rounded bg-[var(--oh-surface)]" />)}</div>)}
+        </div>
+      ) : error ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={() => reload()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button></div>
+      ) : items.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No stores found. Use Create store to add a trial vendor.</p>
+      ) : (
         <ListTable
           columns={[
             { label: "Store", width: "w-[220px]" },
@@ -153,8 +157,8 @@ export default function PlatformStoresPage() {
             ),
           ])}
         />
+      )}
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-      </AsyncState>
     </AdminPageLayout>
   );
 }
