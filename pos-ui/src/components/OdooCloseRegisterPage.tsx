@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
 import {
@@ -11,6 +11,19 @@ import {
 } from "@/lib/odoo-api";
 
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
+const CASH_DENOMINATIONS = [
+  { value: 0.05, label: "$0.05" },
+  { value: 0.1, label: "$0.10" },
+  { value: 0.2, label: "$0.20" },
+  { value: 0.5, label: "$0.50" },
+  { value: 1, label: "$1" },
+  { value: 2, label: "$2" },
+  { value: 5, label: "$5" },
+  { value: 10, label: "$10" },
+  { value: 20, label: "$20" },
+  { value: 50, label: "$50" },
+  { value: 100, label: "$100" },
+] as const;
 
 export function OdooCloseRegisterPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
@@ -18,6 +31,7 @@ export function OdooCloseRegisterPage() {
   const [odooUserId, setOdooUserId] = useState<string | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
   const [countedCash, setCountedCash] = useState("");
+  const [cashCounts, setCashCounts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -62,6 +76,18 @@ export function OdooCloseRegisterPage() {
 
   const selected = bootstrap?.configs.find((item) => item.id === configId) ?? null;
   const requiresCashCount = Boolean(selected?.paymentMethods.some((method) => method.is_cash_count));
+  const denominationTotal = useMemo(
+    () => CASH_DENOMINATIONS.reduce((total, denomination) => total + denomination.value * (Number(cashCounts[String(denomination.value)]) || 0), 0),
+    [cashCounts],
+  );
+  const hasDenominationCount = Object.values(cashCounts).some((value) => value.trim() !== "");
+
+  function updateCashDenomination(value: number, count: string) {
+    const next = { ...cashCounts, [String(value)]: count };
+    setCashCounts(next);
+    const total = CASH_DENOMINATIONS.reduce((sum, denomination) => sum + denomination.value * (Number(next[String(denomination.value)]) || 0), 0);
+    setCountedCash(Object.values(next).some((entry) => entry.trim() !== "") ? total.toFixed(2) : "");
+  }
 
   async function handleClose() {
     if (!selected?.session || busy) return;
@@ -182,8 +208,9 @@ export function OdooCloseRegisterPage() {
             disabled={!bootstrap?.configs.length || busy}
             onChange={(event) => {
               const nextId = Number(event.target.value);
-              setConfigId(nextId);
-              setCountedCash("");
+      setConfigId(nextId);
+      setCountedCash("");
+      setCashCounts({});
               if (odooUserId) {
                 try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(nextId)); } catch { /* Keep the current selection for this session. */ }
               }
@@ -234,7 +261,7 @@ export function OdooCloseRegisterPage() {
                 required={requiresCashCount}
                 aria-describedby="counted-cash-help"
                 value={countedCash}
-                onChange={(event) => setCountedCash(event.target.value)}
+                onChange={(event) => { setCountedCash(event.target.value); setCashCounts({}); }}
                 placeholder={requiresCashCount ? "Amount counted in AUD" : "Optional cash count"}
                 className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
               />
@@ -244,6 +271,32 @@ export function OdooCloseRegisterPage() {
                   : "This register has no cash payment method, so a cash count is optional."}
               </span>
             </label>
+
+            <fieldset className="mt-4 border-t border-[var(--oh-border)] pt-4">
+              <legend className="text-sm font-semibold text-[var(--oh-text)]">Count by denomination <span className="font-normal text-[var(--oh-muted)]">(optional)</span></legend>
+              <p className="mt-1 text-xs leading-5 text-[var(--oh-muted)]">Enter the number of each note or coin. The total fills Counted cash automatically.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                {CASH_DENOMINATIONS.map((denomination) => (
+                  <label key={denomination.label} className="grid min-w-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">
+                    <span>{denomination.label}</span>
+                    <input
+                      aria-label={`${denomination.label} count`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      value={cashCounts[String(denomination.value)] ?? ""}
+                      onChange={(event) => updateCashDenomination(denomination.value, event.target.value)}
+                      className="h-10 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-2 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+                    />
+                  </label>
+                ))}
+              </div>
+              <p role="status" className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">
+                <span>{hasDenominationCount ? "Denomination total" : "No denomination count entered"}</span>
+                <strong className="tabular-nums">{new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(denominationTotal)}</strong>
+              </p>
+            </fieldset>
 
             <p className="mt-3 rounded-lg bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]">
               Closing sends Odoo&apos;s session closing control. If cash differences remain, finish reconciliation in Odoo.
