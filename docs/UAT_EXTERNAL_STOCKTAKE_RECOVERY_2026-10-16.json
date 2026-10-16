@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-16T13:21:09.000Z",
+  "sourceCommit": "9f99a49",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no stocktake import/export write",
+  "status": "PASS",
+  "checks": [
+    "External Stocktakes first-load skeleton remains visible while /api/external-stocktakes is delayed",
+    "Normal load preserves Import Stocktake File and Export Stocktake File controls with no page errors",
+    "Simulated /api/external-stocktakes 503 shows Retry with no page errors"
+  ]
+}
