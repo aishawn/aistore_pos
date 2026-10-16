@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-10-16T13:19:20Z",
+  "deploymentFixCommit": "de263c4",
+  "tenant": {
+    "subdomain": "codex-uat-20261016203934",
+    "vendorId": 13,
+    "odooCompanyId": 12,
+    "configId": 32,
+    "register": "Main Store Register"
+  },
+  "checks": {
+    "cardSale": {
+      "status": 201,
+      "saleId": 116693,
+      "receipt": "260-32-000001",
+      "total": 31.35,
+      "gst": 2.85,
+      "session": "Main Store Register/00008"
+    },
+    "cashOverpayment": {
+      "status": 201,
+      "saleId": 116699,
+      "receipt": "260-32-000003",
+      "total": 31.35,
+      "tendered": 33,
+      "change": 1.65,
+      "odooState": "paid"
+    },
+    "refunds": {
+      "card": { "status": 201, "refundSaleId": 116700, "originalSaleId": 116693 },
+      "cash": { "status": 201, "refundSaleId": 116701, "originalSaleId": 116699 }
+    },
+    "duplicateRefund": {
+      "status": 409,
+      "message": "This full-sale refund is unavailable because some items have already been refunded."
+    },
+    "closeRegister": {
+      "status": 200,
+      "sessionId": 12,
+      "sessionName": "Main Store Register/00008",
+      "countedCash": 0,
+      "state": "closed"
+    },
+    "inventory": {
+      "productId": 5657,
+      "defaultCode": "DEMO-SHIRAZ",
+      "initialQuantity": 5,
+      "finalQuantity": 5
+    }
+  },
+  "cleanup": {
+    "directOdooProbeOrder": 116698,
+    "probeRefund": 116702,
+    "cleanupSession": "Main Store Register/00009",
+    "cleanupCloseState": "closed",
+    "finalInventory": 5
+  },
+  "localChecks": {
+    "lint": "pass with existing warnings",
+    "typecheck": "pass",
+    "build": "not run by instruction"
+  }
+}
