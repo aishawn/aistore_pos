@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-16T13:35:00Z",
+  "deploymentCommit": "b9e8800",
+  "probeTenant": {
+    "vendorId": 15,
+    "subdomain": "codex-auto-20261016213353",
+    "odooCompanyId": 14,
+    "odooPosConfigId": 35
+  },
+  "checks": {
+    "signup": { "status": 200, "code": 0, "dummyData": false },
+    "firstBindingRead": {
+      "status": "ready",
+      "odooCompanyId": 14,
+      "odooPosConfigId": 35,
+      "odooProvisionError": null
+    },
+    "platformDelete": { "status": 200, "vendorStatus": "deleted" },
+    "deletedTenantLogin": { "status": 402, "code": 40200 }
+  },
+  "conclusion": "PASS: a brand-new signup reaches Odoo ready without manual chart or account setup."
+}
