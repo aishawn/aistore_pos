@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-10-16T16:35:00.000Z",
+  "sourceCommit": "6703e39",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI check; no upload, folder, rename, or delete write",
+  "status": "PASS",
+  "checks": [
+    "Media Centre clearly states that media storage is not connected in this pilot",
+    "Upload and New Folder controls are disabled instead of presenting dead actions",
+    "Integration status link is visible",
+    "No page errors",
+    "Final-state screenshot captured at docs/UAT_MEDIA_AVAILABILITY_2026-10-16.png"
+  ],
+  "pageErrors": []
+}
