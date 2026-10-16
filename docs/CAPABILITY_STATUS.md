@@ -32,7 +32,7 @@ Statuses:
 
 | Capability | Status | Notes |
 |---|---|---|
-| Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12. The catalogue shows the last successful refresh time and labels retained rows as potentially stale when a refresh fails; online authenticated smoke confirmed Last refreshed. |
+| Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12. The catalogue shows the last successful refresh time and labels retained rows as potentially stale when a refresh fails; online authenticated smoke confirmed Last refreshed. Commit `036580c` adds desktop/mobile first-load skeleton rows while preserving search and refresh controls; delayed-read smoke passed with no page errors or write action. |
 | Supplier directory (Odoo) | In progress | `/suppliers/odoo` reads Odoo suppliers and now supports user-submitted company contacts with ABN duplicate blocking; Odoo `fields_get` confirmed writable fields and intercepted production browser UAT passed. No live supplier was created; permission and supplier-specific Odoo validation still need a real distributor entry |
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API; commit `6a8a393` adds layout-preserving first-load skeleton rows and keeps search/status controls visible while reads are pending. Online delayed-read smoke passed without exposing or submitting write actions. |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
