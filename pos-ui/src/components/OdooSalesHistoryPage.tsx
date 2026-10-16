@@ -125,8 +125,8 @@ function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: 
     <div role="status" className="flex min-h-64 flex-col items-center justify-center px-5 py-12 text-center">
       <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileText size={20} aria-hidden="true" /></span>
       <h2 className="mt-4 text-sm font-semibold text-[var(--oh-text)]">{searching ? "No matching sales" : "No sales yet"}</h2>
-      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{searching ? "Try another receipt or order reference." : "Sales available to this Odoo account will appear here."}</p>
-      {searching && <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear search</button>}
+      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{searching ? "Try another search or filter." : "Sales available to this Odoo account will appear here."}</p>
+      {searching && <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button>}
     </div>
   );
 }
