@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { ExportIcon, ImportIcon } from "@/components/icons";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { ExportExternalStocktakeModal } from "@/components/admin/ExportExternalStocktakeModal";
 import { ImportExternalStocktakeModal } from "@/components/admin/ImportExternalStocktakeModal";
 import { Pagination } from "@/components/admin/Pagination";
@@ -78,18 +78,26 @@ export function ExternalStocktakesPage() {
           <div className="w-[25%] px-4">Status</div>
         </div>
 
-        <AsyncState loading={loading} error={error} empty={false}>
-          {items.map((row) => (
-            <div
-              key={row.id}
-              className="flex border-b border-neutral-200 py-3 text-[14px] text-black"
-            >
+        {loading ? (
+          <div role="status" aria-label="Loading external stocktakes" className="grid gap-2 py-3">
+            {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid grid-cols-[40%_35%_25%] gap-0 border-b border-neutral-200 py-3"><div className="mx-4 h-4 animate-pulse rounded bg-neutral-100" /><div className="mx-4 h-4 animate-pulse rounded bg-neutral-100" /><div className="mx-4 h-4 animate-pulse rounded bg-neutral-100" /></div>)}
+          </div>
+        ) : error ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+            <span>{error}</span>
+            <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button>
+          </div>
+        ) : items.length === 0 ? (
+          <p className="border-b border-neutral-200 px-4 py-10 text-center text-sm text-neutral-500">No external stocktakes have been imported or exported yet.</p>
+        ) : (
+          items.map((row) => (
+            <div key={row.id} className="flex border-b border-neutral-200 py-3 text-[14px] text-black">
               <div className="w-[40%] px-4">{formatDate(row.timestamp)}</div>
               <div className="w-[35%] px-4">{row.outletName ?? "—"}</div>
               <div className="w-[25%] px-4">{formatStatus(row.status)}</div>
             </div>
-          ))}
-        </AsyncState>
+          ))
+        )}
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
       </div>
     </div>
