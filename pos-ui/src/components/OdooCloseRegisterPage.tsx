@@ -10,9 +10,12 @@ import {
   type OdooPosBootstrap,
 } from "@/lib/odoo-api";
 
+const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
+
 export function OdooCloseRegisterPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [connected, setConnected] = useState(false);
+  const [odooUserId, setOdooUserId] = useState<string | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
   const [countedCash, setCountedCash] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,14 +30,25 @@ export function OdooCloseRegisterPage() {
     try {
       const user = await getOdooSession();
       setConnected(Boolean(user));
+      setOdooUserId(user?.id ?? null);
       if (!user) {
         setBootstrap(null);
         return;
       }
       const data = await getOdooPosBootstrap();
       setBootstrap(data);
-      const open = data.configs.find((item) => item.session) ?? data.configs[0];
-      setConfigId((current) => current && data.configs.some((item) => item.id === current) ? current : open?.id ?? null);
+      let rememberedId: number | null = null;
+      try {
+        const stored = Number(localStorage.getItem(`${REGISTER_SELECTION_KEY}:${user.id}`));
+        if (Number.isSafeInteger(stored) && stored > 0) rememberedId = stored;
+      } catch { /* Keep the default register when storage is unavailable. */ }
+      const open = data.configs.find((item) => item.id === rememberedId)
+        ?? data.configs.find((item) => item.session)
+        ?? data.configs[0];
+      setConfigId(open?.id ?? null);
+      if (open) {
+        try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${user.id}`, String(open.id)); } catch { /* Keep the current selection for this session. */ }
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load Odoo registers.");
     } finally {
@@ -125,8 +139,12 @@ export function OdooCloseRegisterPage() {
             value={configId ?? ""}
             disabled={!bootstrap?.configs.length || busy}
             onChange={(event) => {
-              setConfigId(Number(event.target.value));
+              const nextId = Number(event.target.value);
+              setConfigId(nextId);
               setCountedCash("");
+              if (odooUserId) {
+                try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(nextId)); } catch { /* Keep the current selection for this session. */ }
+              }
             }}
             className="h-11 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)]"
           >
