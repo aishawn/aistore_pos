@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-10-16T18:25:00Z",
+  "target": "https://codex-uat-20261016203934.orithos.com.au",
+  "tenant": { "vendorId": 13, "odooCompanyId": 12 },
+  "viewport": "390x844",
+  "pages": {
+    "/utilities/barcodes": { "status": 200, "noOverflow": true },
+    "/utilities/future-costs": { "status": 200, "noOverflow": true },
+    "/utilities/future-prices": { "status": 200, "noOverflow": true },
+    "/utilities/mail-log": { "status": 200, "noOverflow": true },
+    "/utilities/trashed-items": { "status": 200, "noOverflow": true },
+    "/utilities/vendor-connections": { "status": 200, "noOverflow": true }
+  },
+  "pageErrors": [],
+  "failedResponses": []
+}
