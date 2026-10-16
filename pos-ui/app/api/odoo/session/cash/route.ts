@@ -43,9 +43,13 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   if (!response.ok) throw new CashError("Odoo did not accept the cash request.", 502);
   const payload = (await response.json()) as RpcResult<T>;
   if (payload.error) {
-    const detail = payload.error.data?.message || payload.error.message || "";
-    if (/session|log in|authenticate/i.test(detail)) throw new SessionExpiredError();
-    throw new CashError(detail || "Odoo rejected the cash request.", 422);
+    const detail = `${payload.error.message ?? ""} ${payload.error.data?.message ?? ""} ${payload.error.data?.name ?? ""}`;
+    // Do not treat "pos.session" model errors as auth expiry — that hid cash RPC failures as 401.
+    if (/(session expired|invalid session|not authenticated|please log in|\bauthenticate\b)/i.test(detail)
+      && !/pos\.session/i.test(detail)) {
+      throw new SessionExpiredError();
+    }
+    throw new CashError(payload.error.data?.message || payload.error.message || "Odoo rejected the cash request.", 422);
   }
   return payload.result;
 }
@@ -137,22 +141,37 @@ export async function POST(request: NextRequest) {
 
     const note = reason || (direction === "in" ? "Orithos cash in" : "Orithos cash out");
 
-    // Prefer native POS cash in/out when available (Odoo 16+/17).
-    try {
-      await rpc<unknown>(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note], { context: companyContext });
-    } catch (primaryError) {
-      const message = primaryError instanceof Error ? primaryError.message : "";
-      if (/try_cash_in_out|AttributeError|does not exist/i.test(message)) {
-        // Fallback: post a cashbox statement line when the helper is missing.
-        await rpc<unknown>(odooSession, "pos.session", "set_cashbox_pos", [[session.id], amount, note], { context: companyContext }).catch(async () => {
-          throw new CashError(
-            "This Odoo build does not expose cash in/out over RPC. Use Open in Odoo POS for drawer adjustments, then Close Register for end-of-day count.",
-            501,
-          );
-        });
-      } else {
-        throw primaryError;
+    // Live Odoo (18): try_cash_in_out(type, amount, reason, partner_id, extras)
+    // extras must include translatedType + formattedAmount or Odoo raises KeyError.
+    const extras = {
+      translatedType: direction === "in" ? "Cash In" : "Cash Out",
+      formattedAmount: amount.toFixed(2),
+    };
+    const cashAttempts: Array<() => Promise<unknown>> = [
+      () => rpc(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note, false, extras], { context: companyContext }),
+      () => rpc(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note], { context: companyContext }),
+      () => rpc(odooSession, "pos.session", "set_cashbox_pos", [[session.id], amount, note], { context: companyContext }),
+    ];
+    let lastError: unknown = null;
+    let succeeded = false;
+    for (const attempt of cashAttempts) {
+      try {
+        await attempt();
+        succeeded = true;
+        break;
+      } catch (error) {
+        lastError = error;
       }
+    }
+    if (!succeeded) {
+      const message = lastError instanceof Error ? lastError.message : "Cash adjustment failed";
+      if (/try_cash_in_out|set_cashbox_pos|AttributeError|does not exist|TypeError/i.test(message)) {
+        throw new CashError(
+          "This Odoo build does not expose cash in/out over RPC. Use Open in Odoo POS for drawer adjustments, then Close Register for end-of-day count.",
+          501,
+        );
+      }
+      throw lastError instanceof CashError ? lastError : new CashError(message, 422);
     }
 
     return NextResponse.json({
