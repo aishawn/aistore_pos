@@ -19,9 +19,9 @@ export default function MediaCentrePage() {
           Media storage is not connected in this pilot, so uploads and file changes are disabled. Check <Link href="/settings/integrations" className="font-semibold underline">Integrations</Link> for the current connection status.
         </p>
       </div>
-      <div className="flex min-h-[calc(100vh-12rem)] overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+      <div className="flex min-h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white lg:flex-row">
         {/* Left sidebar */}
-        <aside className="flex w-[240px] flex-col border-r border-[var(--oh-border)] bg-[var(--oh-surface)]">
+        <aside className="flex w-full shrink-0 flex-col border-b border-[var(--oh-border)] bg-[var(--oh-surface)] lg:w-[240px] lg:border-b-0 lg:border-r">
           <AdminPrimaryButton disabled className="rounded-none py-3">
             <UploadCloudIcon size={18} /> Upload
           </AdminPrimaryButton>
@@ -39,8 +39,8 @@ export default function MediaCentrePage() {
         </aside>
 
         {/* Center */}
-        <section className="flex flex-1 flex-col">
-          <div className="flex items-center border-b border-[var(--oh-border)] px-5 py-3">
+        <section className="flex min-h-[360px] min-w-0 flex-1 flex-col">
+          <div className="flex flex-wrap items-center gap-3 border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
             <span className="text-[13px] text-[var(--oh-muted)]">/ Home</span>
             <div className="ml-auto flex items-center gap-3">
               <span title="Unavailable until media storage is connected" className="text-[var(--oh-muted)]"><RefreshIcon size={18} /></span>
@@ -50,7 +50,7 @@ export default function MediaCentrePage() {
               </span>
             </div>
           </div>
-          <div className="px-5 py-3">
+          <div className="px-4 py-3 sm:px-5">
             <input
               placeholder="Search for file in current directory"
               className="h-10 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[14px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)]"
@@ -63,7 +63,7 @@ export default function MediaCentrePage() {
         </section>
 
         {/* Right pane */}
-        <aside className="flex w-[280px] flex-col border-l border-[var(--oh-border)] bg-[var(--oh-surface)]">
+        <aside className="flex min-h-[180px] w-full shrink-0 flex-col border-t border-[var(--oh-border)] bg-[var(--oh-surface)] lg:min-h-0 lg:w-[280px] lg:border-t-0 lg:border-l">
           <div className="flex items-center justify-end gap-4 border-b border-[var(--oh-border)] px-5 py-3 text-[13px] text-[var(--oh-muted)]">
             <span title="Unavailable until media storage is connected" className="flex items-center gap-1 text-[var(--oh-muted)]"><EditIcon size={14} /> Rename</span>
             <span title="Unavailable until media storage is connected" className="flex items-center gap-1 text-[var(--oh-muted)]"><DeleteIcon size={14} /> Delete</span>
