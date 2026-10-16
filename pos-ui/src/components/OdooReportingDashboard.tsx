@@ -102,9 +102,7 @@ export function OdooReportingDashboard() {
   const averageOrder = data?.transactions ? data.grossSales / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [])), [data]);
 
-  if (loading && !data) {
-    return <main className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></main>;
-  }
+  if (loading && !data) return <DashboardSkeleton />;
 
   if (needsConnection && !data) {
     return (
@@ -114,6 +112,19 @@ export function OdooReportingDashboard() {
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to view live reports</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">The dashboard reads completed sales and open register sessions from your connected Odoo company.</p>
           <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+        <section role="alert" className="w-full max-w-lg rounded-xl border border-red-200 bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
+          <AlertCircle className="mx-auto text-red-700" size={30} />
+          <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the reporting dashboard</h1>
+          <p className="mt-2 text-sm leading-6 text-red-800">{error}</p>
+          <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
         </section>
       </main>
     );
@@ -204,6 +215,19 @@ export function OdooReportingDashboard() {
       </div>
 
       <p className="oh-type-meta inline-flex items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Updated {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
+    </main>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <main aria-label="Loading reporting dashboard" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
+        <div className="grid gap-2"><span className="h-3 w-32 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-64 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-96 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
+        <div className="h-11 w-44 animate-pulse rounded-md bg-[var(--oh-border)]" />
+      </header>
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />)}</section>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,.9fr)]"><div className="min-h-64 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /><div className="min-h-64 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /></div>
     </main>
   );
 }
