@@ -38,7 +38,7 @@ Statuses:
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
 | Replenishment approval audit | In progress | Deployed code writes forecast method, cover target, suggested/ordered quantities and reasons as an internal Odoo chatter note (not supplier-facing terms); zeroed suggestions remain in the audit but are excluded from PO lines. Production schema and UI mock pass; live RFQ/message write is unverified pending an approved vendor/sample |
-| Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; Classic MySQL save is **blocked** — use Odoo Purchases / Replenishment |
+| Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; commit `459a243` makes the preview-only boundary explicit, removes the Classic MySQL `Save as received order` action, and links staff to Odoo Purchases / Replenishment. Production AI remains disabled and no invoice write is available from this page. |
 | Banner / buyer-group price files | Planned | |
 
 ## Reporting & AI
