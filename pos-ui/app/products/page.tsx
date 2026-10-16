@@ -473,7 +473,7 @@ function ProductsPageInner() {
         </button>
       </div>
 
-      <AsyncState loading={loading} error={error} empty={items.length === 0}>
+      <AsyncState loading={loading} loadingLabel="Loading products" error={error} onRetry={reload} empty={items.length === 0}>
         <ListTable
           columns={[
             {
