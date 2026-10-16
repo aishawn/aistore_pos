@@ -165,9 +165,11 @@ export function OdooCustomerDirectoryPage() {
                 <tr><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Reference</th><th className="px-4 py-3 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {loading && items.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading customers…</span></td></tr>
-                ) : items.length === 0 ? (
+                {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`customer-skeleton-${index}`} aria-hidden="true">
+                  <td colSpan={5} className="px-4 py-3"><div className="grid grid-cols-[1.3fr_1fr_1.25fr_1fr_.55fr] items-center gap-4">
+                    <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="ml-auto h-11 w-16 animate-pulse rounded-lg bg-[var(--oh-border)]" />
+                  </div></td>
+                </tr>) : items.length === 0 ? (
                   <tr><td colSpan={5} className="p-0"><CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} /></td></tr>
                 ) : items.map((customer) => (
                   <tr key={customer.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
@@ -182,7 +184,14 @@ export function OdooCustomerDirectoryPage() {
             </table>
             <div className="divide-y divide-[var(--oh-border)] xl:hidden">
               {loading && items.length === 0 ? (
-                <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading customers…</span></div>
+                <div role="status" aria-label="Loading customers" className="divide-y divide-[var(--oh-border)]">
+                  {Array.from({ length: 6 }, (_, index) => <div key={`customer-mobile-skeleton-${index}`} aria-hidden="true" className="px-4 py-4">
+                    <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-border)]" />
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2"><span className="h-11 animate-pulse rounded-lg bg-[var(--oh-surface)]" /><span className="h-11 animate-pulse rounded-lg bg-[var(--oh-surface)]" /></div>
+                    <div className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3"><span className="h-11 w-16 animate-pulse rounded-lg bg-[var(--oh-border)]" /></div>
+                  </div>)}
+                  <p className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading customers…</p>
+                </div>
               ) : items.length === 0 ? (
                 <CustomerEmptyState searching={Boolean(debouncedQuery)} onClear={clearSearch} />
               ) : items.map((customer) => (

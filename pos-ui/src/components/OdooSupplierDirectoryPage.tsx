@@ -167,9 +167,11 @@ export function OdooSupplierDirectoryPage() {
                 <tr><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Contact</th><th className="px-4 py-3">ABN / Tax ID</th><th className="px-4 py-3">Reference</th></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
-                {loading && items.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading suppliers…</span></td></tr>
-                ) : items.length === 0 ? (
+                {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`supplier-skeleton-${index}`} aria-hidden="true">
+                  <td colSpan={4} className="px-4 py-3"><div className="grid grid-cols-[1.3fr_1.35fr_1fr_1fr] items-center gap-4">
+                    <span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 animate-pulse rounded bg-[var(--oh-border)]" />
+                  </div></td>
+                </tr>) : items.length === 0 ? (
                   <tr><td colSpan={4} className="p-0"><SupplierEmptyState hasSearch={Boolean(debouncedQuery)} onClear={clearSearch} onAdd={openCreateSupplier} /></td></tr>
                 ) : items.map((supplier) => (
                   <tr key={supplier.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
@@ -187,7 +189,14 @@ export function OdooSupplierDirectoryPage() {
             </table>
             <div className="divide-y divide-[var(--oh-border)] xl:hidden">
               {loading && items.length === 0 ? (
-                <div role="status" className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Loading suppliers…</span></div>
+                <div role="status" aria-label="Loading suppliers" className="divide-y divide-[var(--oh-border)]">
+                  {Array.from({ length: 6 }, (_, index) => <div key={`supplier-mobile-skeleton-${index}`} aria-hidden="true" className="px-4 py-4">
+                    <div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2"><span className="h-11 animate-pulse rounded-lg bg-[var(--oh-surface)]" /><span className="h-11 animate-pulse rounded-lg bg-[var(--oh-surface)]" /></div>
+                    <div className="mt-2 grid grid-cols-2 gap-2"><span className="h-10 animate-pulse rounded-lg bg-[var(--oh-surface)]" /><span className="h-10 animate-pulse rounded-lg bg-[var(--oh-surface)]" /></div>
+                  </div>)}
+                  <p className="flex items-center justify-center gap-2 px-4 py-3 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading suppliers…</p>
+                </div>
               ) : items.length === 0 ? (
                 <SupplierEmptyState hasSearch={Boolean(debouncedQuery)} onClear={clearSearch} onAdd={openCreateSupplier} />
               ) : items.map((supplier) => (
