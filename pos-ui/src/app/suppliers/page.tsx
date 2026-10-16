@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { RefreshCw } from "lucide-react";
 import {
   AdminPageLayout,
   AdminPrimaryButton,
   AdminSearchInput,
 } from "@/components/admin/AdminPageLayout";
 import { ListTable } from "@/components/admin/ListTable";
-import { AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -163,7 +163,14 @@ export default function SuppliersPage() {
         />
       }
     >
-      <AsyncState loading={loading} error={error} empty={items.length === 0}>
+      {loading ? (
+        <div role="status" aria-label="Loading suppliers" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white"><div className="grid grid-cols-5 gap-3 bg-[var(--oh-surface)] px-4 py-3">{Array.from({ length: 5 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-border)]" />)}</div>{Array.from({ length: 5 }, (_, row) => <div key={row} className="grid grid-cols-5 gap-3 border-t border-[var(--oh-border)] px-4 py-4">{Array.from({ length: 5 }, (_, cell) => <div key={cell} className="h-4 animate-pulse rounded bg-[var(--oh-surface)]" />)}</div>)}</div>
+      ) : error ? (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button></div>
+      ) : items.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No suppliers match the current search.</p>
+      ) : (
+        <>
         <div className="mb-2.5 flex items-center justify-end">
           <button
             type="button"
@@ -224,7 +231,8 @@ export default function SuppliersPage() {
           ])}
         />
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-      </AsyncState>
+        </>
+      )}
       <ConfirmDialog
         open={!!deleting}
         title="Delete Supplier"
