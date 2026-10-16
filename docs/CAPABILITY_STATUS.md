@@ -16,12 +16,12 @@ Statuses:
 
 | Capability | Status | Notes |
 |---|---|---|
-| Open sell screen (Odoo products / scan / cart) | Accepted | Browser UAT: session `orithos_store1/00004`, two DEMO wines, category filter Red/White only, quote `$28.60`, Finalise disabled until quote ready |
-| Park / resume sale (terminal localStorage) | Accepted | Park + discard confirmed on production terminal; not server-synced |
+| Open sell screen (Odoo products / scan / cart) | Accepted | Browser UAT: session `orithos_store1/00004`, two DEMO wines, category filter Red/White only, quote `$28.60`, Finalise disabled until quote ready. Local 2026-10-16 refinement adds register context persistence, safe register switching, explicit product/customer search loading/error/retry states, delayed status for slow product/quote/checkout requests, cart-bound Retry quote after tax failure, offline protection, and contextual POS recovery help; typecheck, targeted ESLint, and production build pass, pending deployment/authenticated browser regression. |
+| Park / resume sale (terminal localStorage) | Accepted | Park + discard confirmed on production terminal; not server-synced. Local 2026-10-16 refinement remembers the selected register and scopes parked sales to that register; requires deployment and browser regression. |
 | Checkout with GST + cash rounding | Accepted | Browser Card (`260-1-000009` / `$28.60`) and Cash (`260-1-000010` / `$38.39`) Finalise on `00004`; on-screen Sale complete receipt shown; stock moved 12→11 then restored by refunds. No live card terminal or drawer. No POS pricelist configured |
 | Pricelist rules & customer pricelist | Accepted | Checkout calls Odoo `_get_product_price`; FX mismatch still blocked |
 | Bottle / case pack factor | Accepted | Pack ×1/6/12/24 on cart lines (UI confirmed) |
-| Full-sale refund from history | Accepted | Browser refund of this-round receipts `260-1-000009` and `260-1-000010`; Odoo independent refunds `000009 REFUND` / `000010 REFUND`; free qty back to 12. Refunded receipts now explain the prior refund and hide the duplicate full-refund action (app `1673384`) |
+| Full-sale refund from history | Accepted | Browser refund of this-round receipts `260-1-000009` and `260-1-000010`; Odoo independent refunds `000009 REFUND` / `000010 REFUND`; free qty back to 12. Refunded receipts now explain the prior refund and hide the duplicate full-refund action (app `1673384`). Sales history now exports the currently visible Odoo rows as CSV; production/browser regression pending. |
 | Close register (Odoo session) | In progress | Production `3c2618e` requires counted cash in both UI and API for cash-enabled registers; direct API request without count returns 422 before Odoo writes. Session `00004` remains open pending actual drawer count and reconciliation |
 | Manage Cash (Odoo cash in/out) | Accepted | Live write on `orithos_store1/00004` via `/api/odoo/session/cash` + UI (`5fa78d5`); Odoo 18 `try_cash_in_out` with partner/extras |
 | Purchase receive (Odoo) | In progress | API + UI gates OK (401/404); no open PO on demo — full receive write UAT still needs isolation PO data |
@@ -32,7 +32,7 @@ Statuses:
 
 | Capability | Status | Notes |
 |---|---|---|
-| Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12 |
+| Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12. Local refinement now shows the last successful refresh time and labels retained rows as potentially stale when a refresh fails; production/browser regression pending. |
 | Supplier directory (Odoo) | In progress | `/suppliers/odoo` reads Odoo suppliers and now supports user-submitted company contacts with ABN duplicate blocking; Odoo `fields_get` confirmed writable fields and intercepted production browser UAT passed. No live supplier was created; permission and supplier-specific Odoo validation still need a real distributor entry |
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
@@ -47,7 +47,7 @@ AI remains disabled in production. The tenant report database account has no sou
 
 | Capability | Status | Notes |
 |---|---|---|
-| Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass |
+| Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; local UI reliability refinement on 2026-10-16 adds an overview skeleton, retryable no-data failure state, and hides comparisons on low prior-period baselines. Pending deployment/browser regression; does not change pilot acceptance status. |
 | Cashier assistant / NL reports | In progress | Spring Graph; report permissions now resolve from the active DB role on every request (`8721a08`); 113 Java 21 build tests pass. Production AI remains disabled until budget, so no live report call UAT yet |
 | Wine / sommelier assistant | In progress | Odoo remains authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. Recommendation/detail price and free-stock parity passed 6/6 production read-only checks on `da508ce`; see `docs/UAT_SOMMELIER_REGRESSION_2026-10-13.json`. Still not verified against register-specific warehouse context or tax/pricelist customer totals. Image recognition and model-backed behavior remain off/unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |

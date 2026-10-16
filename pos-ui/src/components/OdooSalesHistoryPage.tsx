@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ChevronLeft, ChevronRight, FileText, LoaderCircle, Printer, RefreshCw, RotateCcw, Search, X } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Download, FileText, LoaderCircle, Printer, RefreshCw, RotateCcw, Search, X } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSaleDetail,
@@ -171,6 +171,7 @@ export function OdooSalesHistoryPage() {
   const [offset, setOffset] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saleDetail, setSaleDetail] = useState<OdooSaleDetail | null>(null);
   const [saleDetailLoading, setSaleDetailLoading] = useState(false);
@@ -205,6 +206,7 @@ export function OdooSalesHistoryPage() {
       if (revision !== requestRevision.current) return;
       setItems(page.items.slice(0, PAGE_SIZE));
       setHasNext(page.items.length > PAGE_SIZE);
+      setLastLoadedAt(Date.now());
       if (pos) {
         setBootstrap(pos);
         setStoreTimezone(pos.configs.find((config) => config.session)?.timezone ?? pos.configs[0]?.timezone ?? "UTC");
@@ -234,6 +236,32 @@ export function OdooSalesHistoryPage() {
     setQuery("");
     setDebouncedQuery("");
     setOffset(0);
+  }
+
+  function exportVisibleSales() {
+    if (!items.length) return;
+    const escapeCsv = (value: string | number) => `"${String(value).replace(/"/gu, '""')}"`;
+    const rows = [
+      ["Receipt", "Date", "Customer", "Register session", "Status", "Total", "Tax"],
+      ...items.map((sale) => [
+        sale.pos_reference || sale.name,
+        formatOrderDate(sale.date_order, storeTimezone),
+        sale.partner_id ? sale.partner_id[1] : "Walk-in customer",
+        sale.session_id ? sale.session_id[1] : "",
+        stateLabel(sale.state),
+        sale.amount_total.toFixed(2),
+        sale.amount_tax.toFixed(2),
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n")}\r\n`;
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `orithos-sales-${debouncedQuery ? "search" : "page"}-${offset / PAGE_SIZE + 1}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
   const hasActiveSearch = Boolean(debouncedQuery);
@@ -356,6 +384,7 @@ export function OdooSalesHistoryPage() {
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             Formal ledger is Odoo POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Odoo rows, not the archive.
           </p>
+          {lastLoadedAt !== null && <p className="mt-1 text-xs text-[var(--oh-muted)]">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</p>}
           <p className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950">TEST · aipos demo data</p>
         </div>
         <button type="button" onClick={() => void loadSales()} disabled={loading} aria-label={loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
@@ -374,12 +403,17 @@ export function OdooSalesHistoryPage() {
         </section>
       ) : (
         <>
-          <label aria-label="Search sales" className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
-            <Search size={17} className="text-[var(--oh-muted)]" />
-            <input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search receipt or order reference" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
-          </label>
+          <div className="flex w-full max-w-3xl shrink-0 flex-wrap gap-2">
+            <label aria-label="Search sales" className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+              <Search size={17} className="text-[var(--oh-muted)]" />
+              <input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search receipt or order reference" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            </label>
+            <button type="button" onClick={exportVisibleSales} disabled={!items.length || loading} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50" title="Export the currently visible sales rows as CSV">
+              <Download size={16} /> Export visible
+            </button>
+          </div>
 
-          {error && <div role="alert" className="shrink-0 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadSales()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <R2ArchivePanel query={debouncedQuery} />
 

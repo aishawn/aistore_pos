@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, Clock3, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
+import { Archive, Check, CircleAlert, CircleHelp, Clock3, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
 import {
   getOdooPosBootstrap,
   getOdooSession,
@@ -27,6 +27,7 @@ type ParkedOdooSale = {
   companyId: number;
   companyName: string;
   registerName: string;
+  registerId?: number;
   sessionName: string;
   paymentMethodId: number | null;
   customer: { id: number; name: string } | null;
@@ -49,6 +50,7 @@ type CompletedReceipt = {
 };
 
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
+const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 
 function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
   if (!value || typeof value !== "object") return false;
@@ -58,6 +60,7 @@ function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
     && Number.isSafeInteger(sale.companyId)
     && typeof sale.companyName === "string"
     && typeof sale.registerName === "string"
+    && (sale.registerId === undefined || Number.isSafeInteger(sale.registerId))
     && typeof sale.sessionName === "string"
     && (sale.paymentMethodId === null || Number.isSafeInteger(sale.paymentMethodId))
     && (sale.customer === null || (typeof sale.customer === "object" && Number.isSafeInteger(sale.customer?.id) && typeof sale.customer?.name === "string"))
@@ -88,6 +91,7 @@ export function OdooRegisterPage() {
   const [configId, setConfigId] = useState<number | null>(null);
   const [odooUserId, setOdooUserId] = useState<string | null>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,13 +101,20 @@ export function OdooRegisterPage() {
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [productRetryKey, setProductRetryKey] = useState(0);
   const [customers, setCustomers] = useState<OdooCustomerRecord[]>([]);
   const [customerQuery, setCustomerQuery] = useState("");
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
+  const [customerSearchKey, setCustomerSearchKey] = useState(0);
   const [customer, setCustomer] = useState<OdooCustomerRecord | null>(null);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [quote, setQuote] = useState<OdooCheckoutQuote | null>(null);
   const [quotedFingerprint, setQuotedFingerprint] = useState<string | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteFailure, setQuoteFailure] = useState<{ fingerprint: string; message: string } | null>(null);
+  const [quoteRetryKey, setQuoteRetryKey] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<CompletedReceipt | null>(null);
@@ -112,10 +123,13 @@ export function OdooRegisterPage() {
   const [parkedLoaded, setParkedLoaded] = useState(false);
   const [saleView, setSaleView] = useState<"sell" | "parked">("sell");
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
+  const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
   const quoteRevision = useRef(0);
   const searchRevision = useRef(0);
+  const customerSearchRevision = useRef(0);
   const barcodeLookupBusy = useRef(false);
 
   const loadPos = useCallback(async (initial = false) => {
@@ -132,10 +146,20 @@ export function OdooRegisterPage() {
       }
       const data = await getOdooPosBootstrap();
       setBootstrap(data);
-      const active = data.configs.find((item) => item.session) ?? data.configs[0];
-      setConfigId((current) => current && data.configs.some((item) => item.id === current) ? current : active?.id ?? null);
+      let rememberedId: number | null = null;
+      try {
+        const stored = Number(localStorage.getItem(`${REGISTER_SELECTION_KEY}:${user.id}`));
+        if (Number.isSafeInteger(stored) && stored > 0) rememberedId = stored;
+      } catch { /* Register selection remains available for this session. */ }
+      const active = data.configs.find((item) => item.id === rememberedId)
+        ?? data.configs.find((item) => item.session)
+        ?? data.configs[0];
+      setConfigId(active?.id ?? null);
+      if (active) {
+        try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${user.id}`, String(active.id)); } catch { /* Register selection remains available for this session. */ }
+      }
       const selected = active?.paymentMethods[0]?.id ?? null;
-      setPaymentMethodId((current) => current && active?.paymentMethods.some((item) => item.id === current) ? current : selected);
+      setPaymentMethodId(selected);
       if (data.message) setError(data.message);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load the Odoo register.");
@@ -146,6 +170,17 @@ export function OdooRegisterPage() {
   }, []);
 
   useEffect(() => { void loadPos(true); }, [loadPos]);
+
+  useEffect(() => {
+    const updateConnection = () => setIsOnline(navigator.onLine);
+    updateConnection();
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
+    };
+  }, []);
 
   useEffect(() => {
     setParkedLoaded(false);
@@ -166,20 +201,30 @@ export function OdooRegisterPage() {
 
   useEffect(() => {
     const revision = ++searchRevision.current;
+    if (!connected) {
+      setProducts([]);
+      setProductsError(null);
+      setProductsLoading(false);
+      return;
+    }
+    setProducts([]);
+    setProductsError(null);
+    setProductsLoading(true);
     const timer = window.setTimeout(async () => {
-      if (!connected) return;
-      setProductsLoading(true);
       try {
         const result = await searchOdooRecords<OdooProductRecord>("products", { query, limit: 50, categoryId: categoryId ?? undefined });
         if (revision === searchRevision.current) setProducts(result.items);
       } catch (cause) {
-        if (revision === searchRevision.current) setError(cause instanceof Error ? cause.message : "Product search failed.");
+        if (revision === searchRevision.current) {
+          setProducts([]);
+          setProductsError(cause instanceof Error ? cause.message : "Product search failed.");
+        }
       } finally {
         if (revision === searchRevision.current) setProductsLoading(false);
       }
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [query, categoryId, connected]);
+  }, [query, categoryId, connected, productRetryKey]);
 
   useEffect(() => {
     if (!connected) {
@@ -196,20 +241,32 @@ export function OdooRegisterPage() {
   }, [connected]);
 
   useEffect(() => {
+    const revision = ++customerSearchRevision.current;
+    const term = customerQuery.trim();
+    if (!connected || !term) {
+      setCustomers([]);
+      setCustomerSearchError(null);
+      setCustomerSearchLoading(false);
+      return;
+    }
+    setCustomers([]);
+    setCustomerSearchError(null);
+    setCustomerSearchLoading(true);
     const timer = window.setTimeout(async () => {
-      if (!connected || !customerQuery.trim()) {
-        setCustomers([]);
-        return;
-      }
       try {
-        const result = await searchOdooRecords<OdooCustomerRecord>("customers", { query: customerQuery, limit: 12 });
-        setCustomers(result.items);
+        const result = await searchOdooRecords<OdooCustomerRecord>("customers", { query: term, limit: 12 });
+        if (revision === customerSearchRevision.current) setCustomers(result.items);
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Customer search failed.");
+        if (revision === customerSearchRevision.current) {
+          setCustomers([]);
+          setCustomerSearchError(cause instanceof Error ? cause.message : "Customer search failed.");
+        }
+      } finally {
+        if (revision === customerSearchRevision.current) setCustomerSearchLoading(false);
       }
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [customerQuery, connected]);
+  }, [customerQuery, connected, customerSearchKey]);
 
   const selectedConfig = bootstrap?.configs.find((item) => item.id === configId) ?? null;
   const currentQuoteFingerprint = JSON.stringify({
@@ -220,9 +277,12 @@ export function OdooRegisterPage() {
   });
   const paymentMethods = selectedConfig?.paymentMethods ?? [];
   const selectedCompanyId = Array.isArray(selectedConfig?.company) ? selectedConfig.company[0] : null;
-  const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === odooUserId && sale.companyId === selectedCompanyId);
+  const visibleParkedSales = parkedSales.filter((sale) => sale.ownerUserId === odooUserId
+    && sale.companyId === selectedCompanyId
+    && (sale.registerId === undefined ? sale.registerName === selectedConfig?.name : sale.registerId === configId));
   const parkedActionSale = parkedAction ? parkedSales.find((sale) => sale.id === parkedAction.saleId) : null;
   const quoteIsCurrent = Boolean(quote && quotedFingerprint === currentQuoteFingerprint);
+  const quoteError = !quoteLoading && quoteFailure?.fingerprint === currentQuoteFingerprint ? quoteFailure.message : null;
   const fallbackSubtotal = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0) * 100) / 100, [lines]);
   const subtotal = quoteIsCurrent ? quote!.subtotal : fallbackSubtotal;
   const taxTotal = quoteIsCurrent ? quote!.tax : 0;
@@ -242,7 +302,7 @@ export function OdooRegisterPage() {
       setQuoteLoading(false);
       return;
     }
-    if (!connected || !selectedConfig?.session || !paymentMethodId) {
+    if (!connected || !isOnline || !selectedConfig?.session || !paymentMethodId) {
       setQuote(null);
       setQuotedFingerprint(null);
       setQuoteLoading(false);
@@ -261,6 +321,7 @@ export function OdooRegisterPage() {
         if (revision === quoteRevision.current) {
           setQuote(result);
           setQuotedFingerprint(currentQuoteFingerprint);
+          setQuoteFailure(null);
           setQuoteLoading(false);
           setError(null);
         }
@@ -268,12 +329,15 @@ export function OdooRegisterPage() {
         if (revision === quoteRevision.current) {
           setQuote(null);
           setQuoteLoading(false);
-          setError(cause instanceof Error ? cause.message : "Odoo could not calculate tax for this cart.");
+          setQuoteFailure({
+            fingerprint: currentQuoteFingerprint,
+            message: cause instanceof Error ? cause.message : "Odoo could not calculate tax for this cart.",
+          });
         }
       });
     }, 120);
     return () => window.clearTimeout(timer);
-  }, [connected, currentQuoteFingerprint, customer, lines, paymentMethodId, selectedConfig]);
+  }, [connected, currentQuoteFingerprint, customer, isOnline, lines, paymentMethodId, quoteRetryKey, selectedConfig]);
 
   function formatReceiptDate(value: string) {
     const date = new Date(`${value.replace(" ", "T")}Z`);
@@ -372,10 +436,10 @@ export function OdooRegisterPage() {
   }
 
   function parkCurrentSale() {
-    if (!lines.length || !selectedConfig || selectedCompanyId === null || !odooUserId) return;
+    if (!lines.length || !selectedConfig || selectedCompanyId === null || !odooUserId) return false;
     if (parkedSales.length >= 50) {
       setError("This terminal has reached its 50 parked sale limit. Resume or discard an older sale first.");
-      return;
+      return false;
     }
     const sale: ParkedOdooSale = {
       id: crypto.randomUUID(),
@@ -383,13 +447,14 @@ export function OdooRegisterPage() {
       companyId: selectedCompanyId,
       companyName: Array.isArray(selectedConfig.company) ? selectedConfig.company[1] : "Company",
       registerName: selectedConfig.name,
+      registerId: selectedConfig.id,
       sessionName: selectedConfig.session?.name ?? "No open session",
       paymentMethodId,
       customer: customer ? { id: customer.id, name: customer.name } : null,
       lines: lines.map((line) => ({ ...line, product: { ...line.product } })),
       createdAt: new Date().toISOString(),
     };
-    if (!saveParkedSales([sale, ...parkedSales])) return;
+    if (!saveParkedSales([sale, ...parkedSales])) return false;
     setLines([]);
     setCustomer(null);
     setCustomerQuery("");
@@ -397,6 +462,7 @@ export function OdooRegisterPage() {
     setSaleView("parked");
     orderUuid.current = null;
     checkoutFingerprint.current = null;
+    return true;
   }
 
   function restoreParkedSale(sale: ParkedOdooSale) {
@@ -445,7 +511,7 @@ export function OdooRegisterPage() {
   }
 
   async function checkout() {
-    if (!selectedConfig?.session || !paymentMethodId || !lines.length || busy) return;
+    if (!isOnline || !selectedConfig?.session || !paymentMethodId || !lines.length || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -497,7 +563,27 @@ export function OdooRegisterPage() {
     }
   }
 
-  if (loading) return <div className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></div>;
+  if (loading) return (
+    <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col gap-3 overflow-hidden bg-[var(--oh-surface)] p-3 sm:p-4">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-3">
+        <div className="h-11 w-56 animate-pulse rounded-full border border-[var(--oh-border)] bg-white" />
+        <div className="h-4 w-36 animate-pulse rounded bg-slate-200" />
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
+        <section className="flex min-h-[18rem] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-3">
+          <div className="h-11 shrink-0 animate-pulse rounded-md bg-slate-100" />
+          <div className="mt-3 grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-slate-50" />)}
+          </div>
+        </section>
+        <section className="flex min-h-52 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-3 xl:w-[400px]">
+          <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+          <div className="flex-1" />
+          <div className="h-24 animate-pulse rounded-md bg-slate-100" />
+        </section>
+      </div>
+    </main>
+  );
   if (!connected) return (
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
@@ -510,11 +596,27 @@ export function OdooRegisterPage() {
   );
 
   const { whole: totalWhole, cents: totalCents } = splitMoney(amountToCollect);
-  const canFinalise = Boolean(lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
+  const canFinalise = Boolean(isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
   const sessionOpen = Boolean(selectedConfig?.session);
   const sessionHint = selectedConfig?.session?.name
     ? selectedConfig.session.name
     : "No open session";
+
+  function selectRegister(id: number) {
+    setConfigId(id);
+    setCashTendered("");
+    setCustomer(null);
+    setCustomerQuery("");
+    setCategoryId(null);
+    setError(null);
+    const config = bootstrap?.configs.find((item) => item.id === id);
+    setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
+    setSaleView("sell");
+    setPendingRegisterId(null);
+    if (odooUserId) {
+      try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(id)); } catch { /* Keep the current selection for this session. */ }
+    }
+  }
 
   return (
     <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-3 font-sans sm:p-4">
@@ -528,12 +630,12 @@ export function OdooRegisterPage() {
             <select
               aria-label="Register"
               value={configId ?? ""}
+              disabled={busy || refreshing}
               onChange={(event) => {
                 const id = Number(event.target.value);
-                setConfigId(id);
-                setCashTendered("");
-                const config = bootstrap?.configs.find((item) => item.id === id);
-                setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
+                if (id === configId) return;
+                if (lines.length) setPendingRegisterId(id);
+                else selectRegister(id);
               }}
               className="max-w-[200px] truncate border-0 bg-transparent py-1 text-sm font-semibold text-[var(--oh-text)] outline-none"
             >
@@ -544,6 +646,9 @@ export function OdooRegisterPage() {
             <span className="hidden truncate text-xs text-[var(--oh-text-secondary)] sm:inline">{sessionOpen ? "Open" : "Closed"}</span>
             <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" aria-label="Refresh register data" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            </button>
+            <button type="button" onClick={() => setHelpOpen(true)} title="POS help and recovery" aria-label="POS help and recovery" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
+              <CircleHelp size={17} />
             </button>
           </div>
           {lines.length > 0 && (
@@ -559,6 +664,17 @@ export function OdooRegisterPage() {
         <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
           <span>No open session — open one in Odoo, then refresh.</span>
           <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--sf-cta)] px-3 font-semibold text-white hover:bg-[var(--sf-cta-hover)]">Open Odoo POS</a>
+        </div>
+      )}
+      {!isOnline && (
+        <div role="status" aria-live="polite" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+          <span>Offline — this register cannot complete sales until the connection returns. Your current cart stays on this device.</span>
+          <span className="shrink-0 font-semibold">Reconnect to continue</span>
+        </div>
+      )}
+      {busy && (
+        <div role="status" aria-live="polite" className="slow-status mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+          Odoo is still confirming this sale. Keep this window open and do not submit the sale again.
         </div>
       )}
       {error && (
@@ -601,7 +717,23 @@ export function OdooRegisterPage() {
               </div>
               {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
               <div className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
-                {products.length ? (
+                {productsLoading && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Still waiting for products from Odoo…</p>}
+                {productsLoading && !products.length ? (
+                  <div aria-label="Loading products" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />)}
+                  </div>
+                ) : productsError ? (
+                  <div role="alert" className="grid h-full min-h-48 place-items-center px-5 text-center">
+                    <div className="max-w-sm">
+                      <CircleAlert size={26} className="mx-auto text-red-700" />
+                      <p className="mt-2 font-semibold text-[var(--oh-text)]">Products could not load</p>
+                      <p className="mt-1 text-sm text-[var(--oh-muted)]">{productsError}</p>
+                      <button type="button" onClick={() => setProductRetryKey((value) => value + 1)} disabled={productsLoading} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-60">
+                        <RefreshCw size={15} /> Retry search
+                      </button>
+                    </div>
+                  </div>
+                ) : products.length ? (
                   <div className="flex min-h-full flex-col">
                     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                       {products.map((product) => {
@@ -738,22 +870,25 @@ export function OdooRegisterPage() {
                 <PlusIcon size={18} strokeWidth={1.5} className="ml-3 mr-2 shrink-0 text-[var(--oh-primary)]" />
                 <input
                   value={customerQuery}
-                  onChange={(event) => setCustomerQuery(event.target.value)}
+                  onChange={(event) => { setCustomers([]); setCustomerQuery(event.target.value); }}
                   placeholder="Add customer"
                   className="oh-type-body-strong h-full min-w-0 flex-1 bg-transparent text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
                 />
               </label>
             )}
           </div>
+          {!customer && customerSearchLoading && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
+          {!customer && customerSearchError && <div role="alert" className="flex shrink-0 items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span>{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold"><RefreshCw size={13} /> Retry</button></div>}
           {!customer && customers.length > 0 && (
             <div className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
               {customers.map((item) => (
-                <button key={item.id} type="button" onClick={() => { setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]">
+                <button key={item.id} type="button" onClick={() => { customerSearchRevision.current += 1; setCustomerSearchLoading(false); setCustomerSearchError(null); setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]">
                   {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
                 </button>
               ))}
             </div>
           )}
+          {!customer && customerQuery.trim() && !customerSearchLoading && !customerSearchError && !customers.length && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">No matching customers</p>}
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
@@ -828,6 +963,15 @@ export function OdooRegisterPage() {
                   <p className="oh-type-body font-semibold text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>
                   <p className="mt-0.5">Subtotal {money(subtotal)}</p>
                   <p>GST {quoteLoading ? "…" : money(taxTotal)}</p>
+                  {quoteLoading && <p role="status" className="slow-status mt-1 max-w-48 text-xs text-amber-800">Odoo is taking longer to calculate tax and total.</p>}
+                  {quoteError && connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0 && (
+                    <div role="alert" className="mt-2 grid gap-1.5 text-left text-xs text-red-800">
+                      <span>{quoteError}</span>
+                      <button type="button" onClick={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50">
+                        <RefreshCw size={14} /> Retry quote
+                      </button>
+                    </div>
+                  )}
                   {amountToCollect !== total && <p>Rounding {money(amountToCollect - total)}</p>}
                 </div>
                 <div className={cn("text-right", lines.length ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]")}>
@@ -849,7 +993,7 @@ export function OdooRegisterPage() {
                     : "cursor-not-allowed bg-[var(--oh-border)] text-[var(--oh-text-secondary)]",
                 )}
               >
-                {busy ? "Processing…" : quoteLoading ? "Calculating…" : !selectedConfig?.session ? "No session" : "Finalise"}
+                {busy ? "Processing…" : !isOnline ? "Reconnect to finalise" : quoteLoading ? "Calculating…" : !selectedConfig?.session ? "No session" : "Finalise"}
               </button>
             </div>
           </div>
@@ -873,6 +1017,30 @@ export function OdooRegisterPage() {
           <h2 id="parked-action-title" className="text-lg font-semibold text-[var(--oh-text)]">{parkedAction.type === "resume" ? "Replace the current sale?" : "Discard this parked sale?"}</h2>
           <p id="parked-action-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{parkedAction.type === "resume" ? "Your current cart will be replaced with the parked sale. The parked sale will be removed from this terminal." : "This removes the saved draft from this terminal. It does not cancel or change any completed Odoo sale."}</p>
           <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setParkedAction(null)} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Cancel</button><button type="button" onClick={confirmParkedAction} className={`h-10 rounded-md px-4 text-sm font-semibold text-white ${parkedAction.type === "discard" ? "bg-red-700 hover:bg-red-800" : "bg-[var(--sf-link-blue)] hover:brightness-95"}`}>{parkedAction.type === "resume" ? "Resume sale" : "Discard draft"}</button></div>
+        </section>
+      </div>}
+      {pendingRegisterId !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
+        <section role="alertdialog" aria-modal="true" aria-labelledby="register-change-title" aria-describedby="register-change-description" className="w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
+          <h2 id="register-change-title" className="text-lg font-semibold text-[var(--oh-text)]">Park this sale before switching?</h2>
+          <p id="register-change-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">The current cart belongs to {selectedConfig?.name ?? "this register"}. It will be saved on this terminal and will only appear when you return to that register.</p>
+          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => setPendingRegisterId(null)} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Stay here</button>
+            <button type="button" onClick={() => { const nextId = pendingRegisterId; if (parkCurrentSale() && nextId !== null) selectRegister(nextId); }} className="h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Park &amp; switch</button>
+          </div>
+        </section>
+      </div>}
+      {helpOpen && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setHelpOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="pos-help-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl sm:p-6">
+          <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
+            <div><h2 id="pos-help-title" className="text-lg font-semibold text-[var(--oh-text)]">POS help and recovery</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Steps for the current register screen.</p></div>
+            <button type="button" onClick={() => setHelpOpen(false)} aria-label="Close POS help" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button>
+          </header>
+          <div className="mt-5 grid gap-4 text-sm leading-6 text-[var(--oh-text-secondary)]">
+            <section><h3 className="font-semibold text-[var(--oh-text)]">Payment is still processing</h3><p className="mt-1">Keep this page open and do not submit again. Check Sales History before retrying if the result is unknown.</p></section>
+            <section><h3 className="font-semibold text-[var(--oh-text)]">Tax or total could not be calculated</h3><p className="mt-1">Use Retry quote with the same cart. Finalise stays locked until Odoo returns a fresh total.</p></section>
+            <section><h3 className="font-semibold text-[var(--oh-text)]">Connection is offline</h3><p className="mt-1">The cart remains on this device. Reconnect, wait for the online indicator, then retry the quote before finalising.</p></section>
+            <section><h3 className="font-semibold text-[var(--oh-text)]">Register is closed or products are missing</h3><p className="mt-1">Refresh after opening the matching Odoo POS session. Product availability comes from the selected register&apos;s Odoo inventory context.</p></section>
+          </div>
         </section>
       </div>}
     </main>

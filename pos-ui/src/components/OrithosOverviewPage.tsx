@@ -111,12 +111,14 @@ function friendlyName(name: string) {
   return name.replace(/^\[[^\]]+\]\s*/u, "").replace(/^DEMO\s*[|·\-–—]\s*/iu, "").trim() || name;
 }
 
-function Delta({ value }: { value: number | null | undefined }) {
-  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+function Delta({ value, comparisonMessage }: { value: number | null | undefined; comparisonMessage?: string }) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return comparisonMessage ? <span className="oh-type-meta text-[var(--oh-muted)]">{comparisonMessage}</span> : null;
+  }
   const positive = value >= 0;
   return (
     <span className={cn("oh-type-meta font-semibold", positive ? "text-[var(--oh-success)]" : "text-red-600")}>
-      {positive ? "+" : ""}{value}% vs last week
+      {positive ? "+" : ""}{value.toFixed(1)}% vs last week
     </span>
   );
 }
@@ -230,7 +232,22 @@ export function OrithosOverviewPage() {
   }, [data]);
 
   if (loading && !data) {
-    return <main className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-muted)]" /></main>;
+    return (
+      <main aria-busy="true" aria-label="Loading overview" className="h-full overflow-y-auto bg-[var(--oh-surface)] p-3 lg:p-3.5">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="space-y-2"><div className="h-3 w-44 animate-pulse rounded bg-slate-200" /><div className="h-7 w-52 animate-pulse rounded bg-slate-200" /><div className="h-4 w-40 animate-pulse rounded bg-slate-200" /></div>
+            <div className="h-11 w-52 animate-pulse rounded-lg bg-slate-200" />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-white p-3"><div className="h-3 w-24 rounded bg-slate-200" /><div className="mt-4 h-6 w-32 rounded bg-slate-200" /><div className="mt-3 h-3 w-40 rounded bg-slate-100" /></div>)}
+          </div>
+          <div className="h-16 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
+          <div className="h-52 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
+          <div className="grid gap-2 sm:grid-cols-2"><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /></div>
+        </div>
+      </main>
+    );
   }
 
   if (needsConnection && !data) {
@@ -241,6 +258,21 @@ export function OrithosOverviewPage() {
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to open Overview</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Overview reads completed sales from your connected Odoo company.</p>
           <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+        <section role="alert" className="max-w-lg rounded-lg border border-red-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+          <AlertCircle className="mx-auto text-red-700" size={28} />
+          <h1 className="mt-4 text-lg font-semibold text-[var(--oh-text)]">Overview could not load</h1>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{error}</p>
+          <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">
+            <RefreshCw size={15} /> Try again
+          </button>
         </section>
       </main>
     );
@@ -292,14 +324,16 @@ export function OrithosOverviewPage() {
               title="Odoo net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
               detail="After refunds · incl. tax"
-              delta={data?.compare.revenueDeltaPct}
+              delta={data && data.compare.revenue >= 50 ? data.compare.revenueDeltaPct : null}
+              comparisonMessage={data && data.compare.revenue < 50 ? "Prior activity too small to compare" : undefined}
               icon={<ShoppingBag size={15} />}
             />
             <KpiCard
               title="Sales"
               value={new Intl.NumberFormat("en-AU").format(data?.transactions ?? 0)}
               detail={`Avg ${formatMoney(averageSale, data?.currency ?? "AUD")} per sale`}
-              delta={data?.compare.transactionsDeltaPct}
+              delta={data && data.compare.transactions >= 3 ? data.compare.transactionsDeltaPct : null}
+              comparisonMessage={data && data.compare.transactions < 3 ? "Prior activity too small to compare" : undefined}
               icon={<Package size={15} />}
             />
             <KpiCard
@@ -312,7 +346,8 @@ export function OrithosOverviewPage() {
               title="Items sold"
               value={new Intl.NumberFormat("en-AU", { maximumFractionDigits: 0 }).format(data?.itemsSold ?? 0)}
               detail="From completed sales"
-              delta={data?.compare.itemsSoldDeltaPct}
+              delta={data && data.compare.itemsSold >= 5 ? data.compare.itemsSoldDeltaPct : null}
+              comparisonMessage={data && data.compare.itemsSold < 5 ? "Prior activity too small to compare" : undefined}
               icon={<Archive size={15} />}
             />
           </section>
@@ -505,12 +540,14 @@ function KpiCard({
   value,
   detail,
   delta,
+  comparisonMessage,
   icon,
 }: {
   title: string;
   value: string;
   detail?: string;
   delta?: number | null;
+  comparisonMessage?: string;
   icon: React.ReactNode;
 }) {
   return (
@@ -522,7 +559,7 @@ function KpiCard({
       <p className="mt-1.5 text-[1.25rem] font-bold leading-tight tracking-tight text-[var(--oh-text)]">{value}</p>
       <div className="mt-auto pt-1">
         {detail && <p className="oh-type-meta truncate text-[var(--oh-muted)]" title={detail}>{detail}</p>}
-        <div className="min-h-4"><Delta value={delta} /></div>
+        <div className="min-h-4"><Delta value={delta} comparisonMessage={comparisonMessage} /></div>
       </div>
     </article>
   );
