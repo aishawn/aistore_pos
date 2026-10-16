@@ -10,6 +10,8 @@ export type OdooRecordType =
   | "taxes"
   | "sales";
 
+export type OdooSalesStatusFilter = "all" | "completed" | "refunded" | "cancelled" | "draft";
+
 export interface OdooPage<T> {
   items: T[];
   limit: number;
@@ -446,7 +448,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { query?: string; limit?: number; offset?: number; categoryId?: number } = {},
+  options: { query?: string; limit?: number; offset?: number; categoryId?: number; status?: OdooSalesStatusFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -459,6 +461,7 @@ export async function searchOdooRecords<T>(
       limit: options.limit,
       offset: options.offset,
       categoryId: options.categoryId,
+      status: options.status,
     }),
   }, true);
   const payload = (await response.json().catch(() => null)) as

@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
 
-  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; filters?: Record<string, unknown> };
+  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; status?: string; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -171,6 +171,16 @@ export async function POST(request: NextRequest) {
     else {
       domain.push(...Array(clauses.length - 1).fill("|"), ...clauses);
     }
+  }
+
+  if (body.status !== undefined) {
+    if (type !== "sales" || !["all", "completed", "refunded", "cancelled", "draft"].includes(body.status)) {
+      return NextResponse.json({ message: "Sales status filter is invalid" }, { status: 400 });
+    }
+    if (body.status === "completed") domain.push(["state", "in", ["paid", "done", "invoiced"]]);
+    if (body.status === "refunded") domain.push(["amount_total", "<", 0]);
+    if (body.status === "cancelled") domain.push(["state", "=", "cancel"]);
+    if (body.status === "draft") domain.push(["state", "=", "draft"]);
   }
 
   // Filters are deliberately not forwarded from the browser. The initial
