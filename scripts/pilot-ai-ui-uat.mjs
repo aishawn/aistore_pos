@@ -32,8 +32,7 @@ async function runViewport(viewport) {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto(`${base}/sommelier/find`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.waitForTimeout(3000);
+  await page.goto(`${base}/sommelier/find`, { waitUntil: "networkidle", timeout: 60000 });
   await page.getByRole("heading", { name: "Find a wine" }).waitFor({ timeout: 30000 });
   for (const label of ["Not sure", "No preference", "Not sure", "Full Body", "🍽 No food", "Dinner tonight"]) {
     await page.getByRole("button", { name: label, exact: true }).click();
@@ -47,8 +46,8 @@ async function runViewport(viewport) {
   await page.getByRole("heading", { name: "Orion Recommendation" }).waitFor({ timeout: 60000 });
   const recommendationCards = await page.locator("article").count();
 
-  await page.goto(`${base}/sommelier/identify`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.waitForTimeout(5000);
+  await page.goto(`${base}/sommelier/identify`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.getByPlaceholder("Penfolds Bin 28 or barcode").waitFor({ state: "visible", timeout: 30000 });
   const search = page.getByPlaceholder("Penfolds Bin 28 or barcode");
   await search.fill("DEMO");
   await page.getByRole("button", { name: "Search", exact: true }).click();

@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class SommelierCatalogService {
@@ -60,7 +63,38 @@ public class SommelierCatalogService {
 
     private List<WineCandidate> odooCatalog() {
         if (!odooWineCatalogClient.isConfigured()) return List.of();
-        return odooWineCatalogClient.listWines();
+        return deduplicateDisplayProducts(odooWineCatalogClient.listWines());
+    }
+
+    /**
+     * Odoo can contain repeated demo/product rows after repeated tenant seeds.
+     * The sommelier is a customer-facing catalogue, so show one stable card per
+     * name and price while keeping the real product id of the best stocked row.
+     */
+    private List<WineCandidate> deduplicateDisplayProducts(List<WineCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) return List.of();
+        Map<String, WineCandidate> unique = new LinkedHashMap<>();
+        for (WineCandidate candidate : candidates) {
+            if (candidate == null || candidate.name() == null || candidate.name().isBlank()) continue;
+            String key = candidate.name().trim().toLowerCase(Locale.ROOT)
+                    + "|" + candidate.effectivePrice().stripTrailingZeros().toPlainString();
+            WineCandidate existing = unique.get(key);
+            if (existing == null || isBetterDisplayRow(candidate, existing)) {
+                unique.put(key, candidate);
+            }
+        }
+        return List.copyOf(unique.values());
+    }
+
+    private boolean isBetterDisplayRow(WineCandidate candidate, WineCandidate existing) {
+        if (candidate.inStock() != existing.inStock()) return candidate.inStock();
+        BigDecimal candidateStock = candidate.stockQuantity() == null ? BigDecimal.ZERO : candidate.stockQuantity();
+        BigDecimal existingStock = existing.stockQuantity() == null ? BigDecimal.ZERO : existing.stockQuantity();
+        int stock = candidateStock.compareTo(existingStock);
+        if (stock != 0) return stock > 0;
+        Long candidateId = candidate.productId();
+        Long existingId = existing.productId();
+        return candidateId != null && (existingId == null || candidateId < existingId);
     }
 
     private List<WineCandidate> toCandidates(List<CatalogRow> rows, boolean wineOnly) {
