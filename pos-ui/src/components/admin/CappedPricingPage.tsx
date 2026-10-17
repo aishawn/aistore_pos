@@ -187,7 +187,10 @@ function CappedPricingImportPanel({
 
       <div
         role="button"
-        tabIndex={0}
+        tabIndex={busy ? -1 : 0}
+        aria-label="Choose a capped pricing CSV file, or drop one here"
+        aria-disabled={busy}
+        aria-busy={busy}
         onClick={() => !busy && inputRef.current?.click()}
         onKeyDown={(e) => {
           if ((e.key === "Enter" || e.key === " ") && !busy) {
@@ -206,7 +209,7 @@ function CappedPricingImportPanel({
           onFiles(e.dataTransfer.files);
         }}
         className={cn(
-          "mt-4 flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border border-dashed px-6 py-10 text-center transition-colors",
+          "mt-4 flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border border-dashed px-6 py-10 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
           dragging
             ? "border-[#00a3ee] bg-[#00a3ee]/5"
             : "border-[var(--oh-border-strong)] bg-white hover:border-[#00a3ee]/60 hover:bg-[var(--oh-surface)]",
@@ -219,16 +222,9 @@ function CappedPricingImportPanel({
             "Importing…"
           ) : (
             <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  inputRef.current?.click();
-                }}
-                className="font-medium text-[#00a3ee] underline underline-offset-2 transition-colors hover:text-[#0090d4]"
-              >
+              <span className="font-medium text-[#00a3ee] underline underline-offset-2 transition-colors">
                 Upload a file
-              </button>{" "}
+              </span>{" "}
               or drag and drop.
             </>
           )}
