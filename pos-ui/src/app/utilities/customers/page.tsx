@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { SelectChevronIcon, ViewIcon } from "@/components/icons";
 
 const CUSTOMERS = ["Aliyah Roberts", "Benjamin Kovacek", "Billie Nader", "Brandt Willms", "Calista Cremin"];

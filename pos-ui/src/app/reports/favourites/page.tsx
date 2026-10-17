@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { SelectChevronIcon } from "@/components/icons";
 
 export default function FavouriteReportsPage() {

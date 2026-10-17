@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { CompanySettingsScaffold, SelectRow } from "@/components/admin/CompanySettingsScaffold";
 
 const HREF = "/settings/company/search";

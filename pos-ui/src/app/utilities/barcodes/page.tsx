@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { BarcodeIcon, SelectChevronIcon, PrinterIcon } from "@/components/icons";
 
 export default function BarcodesPage() {

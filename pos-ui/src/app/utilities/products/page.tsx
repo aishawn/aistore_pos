@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { SelectChevronIcon, ViewIcon } from "@/components/icons";
 
 const PRODUCTS = ["Absolut Vodka 1l", "Asahi Soukai 3.5% Btl 330ml", "Bacardi Carta Blanca 700ml", "BADEL PELINKOVAC 1LT", "Baileys Irish Crm 1l"];

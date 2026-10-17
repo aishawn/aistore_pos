@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { SettingsScaffold, ToggleRow, SelectRow } from "@/components/admin/SettingsScaffold";
 
 export default function PushNotificationsPage() {
