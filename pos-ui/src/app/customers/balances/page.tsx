@@ -27,6 +27,7 @@ import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { DROPDOWN_PAGE_SIZE } from "@/lib/pagination";
 import { fetchAndPrintBalances } from "@/lib/printCustomerBalances";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 
 interface Customer {
   id: string;
@@ -68,6 +69,7 @@ export default function BalancesPage() {
   const [applied, setApplied] = useState<AppliedFilters>(emptyFilters);
   const [page, setPage] = useState(1);
   const [printing, setPrinting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [statementModal, setStatementModal] = useState<{
@@ -131,7 +133,7 @@ export default function BalancesPage() {
         asOf: applied.asOf || undefined,
       });
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to print balances");
+      setPrintError(e instanceof Error ? e.message : "Failed to print balances");
     } finally {
       setPrinting(false);
     }
@@ -352,6 +354,13 @@ export default function BalancesPage() {
             }),
           );
         }}
+      />
+      <AlertDialog
+        open={printError !== null}
+        title="Print Balances Failed"
+        message={printError ?? "Unable to prepare the balances printout."}
+        variant="warning"
+        onClose={() => setPrintError(null)}
       />
     </AdminPageLayout>
   );

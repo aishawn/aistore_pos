@@ -12,6 +12,7 @@ import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { PlusIcon, EditIcon, AssignIcon, DeleteIcon } from "@/components/icons";
@@ -72,6 +73,7 @@ export default function SuppliersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -89,7 +91,7 @@ export default function SuppliersPage() {
       setDeleting(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete supplier");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete supplier");
     } finally {
       setDeleteBusy(false);
     }
@@ -136,7 +138,7 @@ export default function SuppliersPage() {
       setSelectedIds(new Set());
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete suppliers");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete suppliers");
     } finally {
       setBatchDeleteBusy(false);
     }
@@ -248,6 +250,13 @@ export default function SuppliersPage() {
         onCancel={() => {
           if (!deleteBusy) setDeleting(null);
         }}
+      />
+      <AlertDialog
+        open={deleteError !== null}
+        title="Delete Supplier Failed"
+        message={deleteError ?? "Unable to delete supplier."}
+        variant="danger"
+        onClose={() => setDeleteError(null)}
       />
       <ConfirmDialog
         open={batchDeleting}

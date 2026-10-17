@@ -10,6 +10,7 @@ import { DROPDOWN_PAGE_SIZE } from "@/lib/pagination";
 import { api } from "@/lib/api";
 import { PlusIcon, EditIcon, DeleteIcon } from "@/components/icons";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { CreateCustomerWizard } from "@/components/admin/CreateCustomerWizard";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 
@@ -51,6 +52,7 @@ function CustomersPageInner() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Customer | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = clampSearch(searchParams.get("q")?.trim() ?? "");
@@ -77,7 +79,7 @@ function CustomersPageInner() {
       setDeleting(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete customer");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete customer");
     } finally {
       setDeleteBusy(false);
     }
@@ -214,6 +216,13 @@ function CustomersPageInner() {
         onCancel={() => {
           if (!deleteBusy) setDeleting(null);
         }}
+      />
+      <AlertDialog
+        open={deleteError !== null}
+        title="Delete Customer Failed"
+        message={deleteError ?? "Unable to delete customer."}
+        variant="danger"
+        onClose={() => setDeleteError(null)}
       />
 
       {creating && (
