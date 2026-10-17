@@ -33,6 +33,31 @@ for (const viewport of viewports) {
     const page = await context.newPage();
     const response = await page.goto(`${route.host}${route.path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForTimeout(1800);
+    const interactiveChecks = [];
+    if (["/platform/stores", "/utilities/mail-log", "/utilities/trashed-items"].includes(route.path)) {
+      const input = page.getByRole("textbox").first();
+      await input.fill("__codex_no_match__");
+      await page.waitForTimeout(300);
+      const emptyCopy = route.path === "/platform/stores"
+        ? "No stores match the current filters."
+        : route.path === "/utilities/mail-log"
+          ? "No mail log entries match the current search."
+          : "No trashed items match the current filters.";
+      const clearLabel = route.path === "/utilities/mail-log" ? "Clear search" : route.path === "/platform/stores" ? "Clear filters" : "Clear filters";
+      let emptyStateVisible = false;
+      for (let attempt = 0; attempt < 16; attempt += 1) {
+        emptyStateVisible = await page.getByText(emptyCopy, { exact: true }).isVisible().catch(() => false);
+        if (emptyStateVisible) break;
+        await page.waitForTimeout(300);
+      }
+      const clearButton = page.getByRole("button", { name: clearLabel, exact: true });
+      const clearVisible = await clearButton.isVisible().catch(() => false);
+      const visibleClearText = await page.getByText(clearLabel, { exact: true }).isVisible().catch(() => false);
+      if (clearVisible) await clearButton.click();
+      await page.waitForTimeout(250);
+      const cleared = (await input.inputValue().catch(() => "")) === "";
+      interactiveChecks.push({ emptyStateVisible, clearVisible, visibleClearText, cleared, passed: emptyStateVisible && clearVisible && cleared });
+    }
     const checks = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
@@ -49,6 +74,7 @@ for (const viewport of viewports) {
       heading: (await page.locator("h1").first().textContent().catch(() => ""))?.trim() || null,
       expectedHeading: route.heading,
       noHorizontalOverflow: checks.scrollWidth <= checks.viewportWidth,
+      interactiveChecks,
       screenshot,
     });
     await page.close();
@@ -57,7 +83,7 @@ for (const viewport of viewports) {
 }
 await browser.close();
 
-const failures = results.filter((result) => result.status !== 200 || result.heading !== result.expectedHeading || !result.noHorizontalOverflow);
+const failures = results.filter((result) => result.status !== 200 || result.heading !== result.expectedHeading || !result.noHorizontalOverflow || result.interactiveChecks.some((check) => !check.passed));
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? null,

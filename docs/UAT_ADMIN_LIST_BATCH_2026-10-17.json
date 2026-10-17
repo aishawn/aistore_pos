@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T12:46:41.161Z",
-  "sourceCommit": "0baf7c6",
+  "generatedAt": "2026-10-17T13:04:52.677Z",
+  "sourceCommit": "9224563",
   "deployment": null,
   "scope": "authenticated read-only admin list visual regression; no business writes",
   "routes": [
@@ -26,6 +26,7 @@
       "heading": "Purchases",
       "expectedHeading": "Purchases",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/purchases-odoo-390.png"
     },
     {
@@ -36,6 +37,15 @@
       "heading": "Mail Log",
       "expectedHeading": "Mail Log",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": true,
+          "clearVisible": true,
+          "visibleClearText": true,
+          "cleared": true,
+          "passed": true
+        }
+      ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-mail-log-390.png"
     },
     {
@@ -46,6 +56,15 @@
       "heading": "Trashed Items",
       "expectedHeading": "Trashed Items",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": true,
+          "clearVisible": true,
+          "visibleClearText": true,
+          "cleared": true,
+          "passed": true
+        }
+      ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-trashed-items-390.png"
     },
     {
@@ -56,6 +75,15 @@
       "heading": "Stores",
       "expectedHeading": "Stores",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": true,
+          "clearVisible": true,
+          "visibleClearText": true,
+          "cleared": true,
+          "passed": true
+        }
+      ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/platform-stores-390.png"
     },
     {
@@ -66,6 +94,7 @@
       "heading": "Purchases",
       "expectedHeading": "Purchases",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/purchases-odoo-1440.png"
     },
     {
@@ -76,6 +105,15 @@
       "heading": "Mail Log",
       "expectedHeading": "Mail Log",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": true,
+          "clearVisible": true,
+          "visibleClearText": true,
+          "cleared": true,
+          "passed": true
+        }
+      ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-mail-log-1440.png"
     },
     {
@@ -86,6 +124,15 @@
       "heading": "Trashed Items",
       "expectedHeading": "Trashed Items",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": true,
+          "clearVisible": true,
+          "visibleClearText": true,
+          "cleared": true,
+          "passed": true
+        }
+      ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-trashed-items-1440.png"
     },
     {
@@ -96,6 +143,15 @@
       "heading": "Stores",
       "expectedHeading": "Stores",
       "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": true,
+          "clearVisible": true,
+          "visibleClearText": true,
+          "cleared": true,
+          "passed": true
+        }
+      ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/platform-stores-1440.png"
     }
   ]
