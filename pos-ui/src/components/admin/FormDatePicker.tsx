@@ -172,6 +172,7 @@ export function FormDatePicker({
   value,
   onChange,
   placeholder = "Birthday",
+  ariaLabel,
   compact = false,
   showTodayWhenToday = false,
   currentMonthOnly = false,
@@ -179,6 +180,7 @@ export function FormDatePicker({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  ariaLabel?: string;
   compact?: boolean;
   showTodayWhenToday?: boolean;
   currentMonthOnly?: boolean;
@@ -246,7 +248,14 @@ export function FormDatePicker({
       if (!wrapRef.current?.contains(e.target as Node)) closePicker();
     }
     document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closePicker();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   return (
@@ -254,10 +263,13 @@ export function FormDatePicker({
       <button
         type="button"
         onClick={openPicker}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={ariaLabel}
         className={cn(
           "flex w-full items-center border border-[var(--oh-border)] bg-white text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
-          compact
-            ? "h-10 justify-between rounded-lg px-3 text-[14px]"
+            compact
+            ? "min-h-11 justify-between rounded-lg px-3 text-[14px]"
             : "h-10 rounded-[var(--oh-radius)] px-3 text-[14px]",
           displayValue ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]",
         )}
@@ -268,6 +280,8 @@ export function FormDatePicker({
 
       {open && (
         <div
+          role="dialog"
+          aria-label={`${ariaLabel ?? placeholder} calendar`}
           className={cn(
             "absolute z-[200] mt-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]",
             currentMonthOnly ? "w-[min(100vw-2rem,320px)]" : "w-[min(100vw-2rem,560px)]",
@@ -332,7 +346,7 @@ export function FormDatePicker({
             <button
               type="button"
               onClick={() => selectDate(today)}
-              className="shrink-0 pt-1 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-info)]"
+              className="min-h-11 shrink-0 px-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-info)]"
             >
               Current Day
             </button>
@@ -343,7 +357,7 @@ export function FormDatePicker({
               type="button"
               aria-label="Previous month"
               onClick={() => setLeftMonth((month) => addMonths(month, -1))}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <ChevronLeft size={18} />
             </button>
@@ -365,7 +379,7 @@ export function FormDatePicker({
               type="button"
               aria-label="Next month"
               onClick={() => setLeftMonth((month) => addMonths(month, 1))}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <ChevronRight size={18} />
             </button>

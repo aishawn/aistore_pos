@@ -258,12 +258,14 @@ export function FormDateRangePicker({
   end,
   onChange,
   placeholder = "DD/MM/YYYY — DD/MM/YYYY",
+  ariaLabel,
   compact = false,
 }: {
   start: string;
   end: string;
   onChange: (range: { start: string; end: string }) => void;
   placeholder?: string;
+  ariaLabel?: string;
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -327,7 +329,14 @@ export function FormDateRangePicker({
       if (!wrapRef.current?.contains(e.target as Node)) closePicker();
     }
     document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closePicker();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [open]);
 
   return (
@@ -335,10 +344,13 @@ export function FormDateRangePicker({
       <button
         type="button"
         onClick={openPicker}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={ariaLabel}
         className={cn(
           "flex w-full items-center text-left outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]",
           compact
-            ? "h-8 rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px]"
+            ? "min-h-11 rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px]"
             : "h-10 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[14px]",
           start || end ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]",
         )}
@@ -347,7 +359,7 @@ export function FormDateRangePicker({
       </button>
 
       {open && (
-        <div className="absolute left-0 z-[200] mt-1 w-[min(100vw-2rem,560px)] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+        <div role="dialog" aria-label={`${ariaLabel ?? placeholder} calendar`} className="absolute left-0 z-[200] mt-1 w-[min(100vw-2rem,560px)] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -370,7 +382,7 @@ export function FormDateRangePicker({
             <button
               type="button"
               onClick={setCurrentDay}
-              className="shrink-0 pt-1 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-info)]"
+              className="min-h-11 shrink-0 px-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-info)]"
             >
               Current Day
             </button>
@@ -381,7 +393,7 @@ export function FormDateRangePicker({
               type="button"
               aria-label="Previous month"
               onClick={() => setLeftMonth((month) => addMonths(month, -1))}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <ChevronLeft size={18} />
             </button>
@@ -411,7 +423,7 @@ export function FormDateRangePicker({
               type="button"
               aria-label="Next month"
               onClick={() => setLeftMonth((month) => addMonths(month, 1))}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <ChevronRight size={18} />
             </button>

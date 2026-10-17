@@ -20,6 +20,7 @@ export function FilterDatePicker({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        ariaLabel={label}
         compact
         showTodayWhenToday
       />

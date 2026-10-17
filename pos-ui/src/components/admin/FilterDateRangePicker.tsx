@@ -25,6 +25,7 @@ export function FilterDateRangePicker({
         end={end}
         onChange={onChange}
         placeholder={placeholder}
+        ariaLabel={label}
         compact
       />
     </label>
