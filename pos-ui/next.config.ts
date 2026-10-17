@@ -22,6 +22,13 @@ const liveStatusPages = [
   "/utilities/future-costs",
   "/utilities/future-prices",
   "/utilities/products",
+  "/products",
+  "/promotion/categories",
+  "/settings/pricesets",
+  "/settings/roles",
+  "/settings/users",
+  "/utilities/vendor-connections",
+  "/platform/stores/:path*",
 ];
 
 /** Allow phones on the LAN to use `http://<lan-ip>:3000` in `next dev`. */

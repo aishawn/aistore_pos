@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { AdminPageLayout, AdminOutlineButton } from "@/components/admin/AdminPageLayout";
