@@ -31,6 +31,7 @@
 - `5912892` 将 Promotions、Register Closures 和五个销售报表的列表/详情路径加入 middleware 与 Next headers 的 no-store 守卫，避免动态页面的未认证重定向或详情子路径落回缓存策略之外。
 - `83413b1` 为 Platform Stores 增加 `Deleted` 状态筛选和对应灰色状态徽章；`f940206` 补充该筛选的回归证据。
 - 当前待部署批次补强了四处高频流程：采购收货数量在前端按剩余数量校验并补充输入语义标签；Platform Stores 无结果时区分筛选空态并提供 Clear filters；Mail Log 与 Trashed Items 在手机端改为摘要卡片并提供清除搜索/筛选；两个工具页同时加入 middleware 与 Next headers 的 no-store 路由守卫。
+- 下一批待部署改动补强共用弹窗交互：ConfirmDialog、AlertDialog 和 Modal 支持 Escape 关闭；ConfirmDialog 的忙碌文案按危险/普通确认区分；AlertDialog 确认按钮统一至少 44px。
 - 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
 
 ### 当前未完成

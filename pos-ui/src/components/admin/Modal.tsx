@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import { XIcon } from "@/components/icons";
 
 /** Centered modal dialog with an overlay. */
@@ -16,6 +16,14 @@ export function Modal({
   footer?: React.ReactNode;
 }) {
   const titleId = useId();
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
     <div

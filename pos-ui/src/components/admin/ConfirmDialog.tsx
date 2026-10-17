@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { DeleteIcon, QuestionIcon } from "@/components/icons";
 
 type ConfirmVariant = "danger" | "default";
@@ -33,6 +34,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   variant = "danger",
   busy = false,
+  busyLabel = variant === "danger" ? "Deleting…" : "Working…",
   onConfirm,
   onCancel,
 }: {
@@ -43,9 +45,19 @@ export function ConfirmDialog({
   cancelLabel?: string;
   variant?: ConfirmVariant;
   busy?: boolean;
+  busyLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  useEffect(() => {
+    if (!open || busy) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onCancel();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [busy, onCancel, open]);
+
   if (!open) return null;
 
   const styles = VARIANT_STYLES[variant];
@@ -92,7 +104,7 @@ export function ConfirmDialog({
             disabled={busy}
             className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors disabled:opacity-60 ${styles.confirmBg} ${styles.confirmHover}`}
           >
-            {busy ? "Deleting…" : confirmLabel}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>
