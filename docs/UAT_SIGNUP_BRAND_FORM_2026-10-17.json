@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-17T01:16:17Z",
+  "target": "https://orithos.com.au/signup",
+  "scope": "read-only browser validation; no signup submitted",
+  "results": {
+    "implementation": "6-step brand signup",
+    "stepOneEmptyNextDisabled": true,
+    "stepOneValidNextEnabled": true,
+    "stepTwoEightCharacterPasswordNextEnabled": true,
+    "stepTwoTwelveCharacterPasswordNextEnabled": true,
+    "pageErrors": [],
+    "screenshot": "UAT_SIGNUP_FORM_brand_2026-10-17.png"
+  },
+  "notes": [
+    "The visible password copy is 'At least 8 characters.'",
+    "The website field is a honeypot and must remain empty; filling it keeps Next disabled.",
+    "https://app.orithos.com.au/signup is a separate 4-step implementation and is not the brand 6-step source."
+  ],
+  "status": "PASS_READ_ONLY_NO_SUBMIT"
+}
