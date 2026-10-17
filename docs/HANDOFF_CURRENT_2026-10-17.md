@@ -224,6 +224,16 @@ Date & Time 页面现在由 server route 承载 `dynamic`/`fetchCache` 段配置
 - 立即认证重试：[`UAT_STORE_REFRESH_TIME_RETRY_2026-10-17.json`](UAT_STORE_REFRESH_TIME_RETRY_2026-10-17.json)，该路由返回 200、无横向溢出、无页面错误
 - 本轮仍未执行 Demo 租户业务写入；公网实例运行 SHA/缓存头仍待 Dokploy 普通 Deploy 确认
 
+### Close/Purchases 刷新时间（`c936284`）
+
+Close Register 和 Purchases 页面现在也使用当前 Odoo POS 门店时区显示 `Last refreshed`，不再混用浏览器本地时区。
+
+- 提交：`c936284`，已推送 `origin/main`
+- 检查：`npm run typecheck`、目标文件 ESLint、`git diff --check` 通过
+- 定向线上回归：[`UAT_REFRESH_TIME_TARGETED_LIVE_2026-10-17.json`](UAT_REFRESH_TIME_TARGETED_LIVE_2026-10-17.json)，5 个核心路由 × 390/1440 = `10/10 PASS`
+- 无横向溢出、无 page error，未执行任何业务写入
+- 公网缓存头仍待 Dokploy 普通 Deploy 后确认
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。

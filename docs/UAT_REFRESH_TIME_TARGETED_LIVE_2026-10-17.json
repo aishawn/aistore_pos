@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-17T08:20:00Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "c936284",
+  "loginStatus": 200,
+  "routes": ["/overview", "/reports/dashboard", "/history/odoo", "/close", "/purchases/odoo"],
+  "viewports": [390, 1440],
+  "checksPassed": 10,
+  "checksTotal": 10,
+  "failures": [],
+  "result": "PASS",
+  "notes": "All targeted routes returned 200, with no horizontal overflow and no page errors."
+}
