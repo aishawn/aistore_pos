@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T14:50:09.355Z",
-  "sourceCommit": "289cd532369246b32c65bc31358cd51f2862cc22",
+  "generatedAt": "2026-10-17T14:57:55.576Z",
+  "sourceCommit": "0813041",
   "deployment": "dokploy-sha-unverified",
   "scope": "authenticated read-only admin list visual regression; no business writes",
   "routes": [
