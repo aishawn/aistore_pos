@@ -80,6 +80,18 @@ async function runViewport(viewport) {
   await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
   const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
   await fab.click();
+  const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
+  await assistant.waitFor({ state: "visible", timeout: 10000 });
+  for (let index = 0; index < 6; index += 1) {
+    await page.keyboard.press("Tab");
+    const trapped = await assistant.evaluate((element) => element.contains(document.activeElement));
+    if (!trapped) throw new Error(`AI_FOCUS_ESCAPED_TAB_${index + 1}_${viewport.width}`);
+  }
+  await page.keyboard.press("Escape");
+  await assistant.waitFor({ state: "hidden", timeout: 10000 });
+  const focusRestored = await fab.evaluate((element) => document.activeElement === element);
+  if (!focusRestored) throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`);
+  await fab.click();
   const composer = page.getByPlaceholder("Ask Orithos AI…");
   await composer.fill("look up product DEMO");
   await composer.press("Enter");
