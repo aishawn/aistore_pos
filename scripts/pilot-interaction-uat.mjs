@@ -119,6 +119,27 @@ try {
     return "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page.";
   });
 
+  await check("Classification modal and selector are keyboard accessible", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${base}/classifications`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const trigger = page.getByRole("button", { name: "Add Classification" });
+    await trigger.waitFor({ timeout: 15000 });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: "Create New Classification" });
+    await dialog.waitFor({ timeout: 10000 });
+    const selector = dialog.locator('button[aria-haspopup="listbox"]').first();
+    await selector.waitFor({ timeout: 10000 });
+    await selector.press("ArrowDown");
+    await page.getByRole("listbox").waitFor({ timeout: 10000 });
+    if (await selector.getAttribute("aria-expanded") !== "true") throw new Error("Classification selector did not expose expanded state");
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden", timeout: 10000 });
+    if (!await trigger.evaluate((element) => document.activeElement === element)) {
+      throw new Error("Classification modal did not restore focus to its launcher");
+    }
+    return "At 390px the classification modal exposes dialog semantics; its MDB selector opens by keyboard, closes with Escape, and restores focus to Add Classification.";
+  });
+
   await check("Product search filters the Odoo catalogue", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
