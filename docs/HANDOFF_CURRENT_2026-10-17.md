@@ -12,11 +12,11 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`e4d690f docs: refresh handoff deployment head`（`origin/main` 同步）
-- 最近功能代码：`526044c fix: refine register and admin list experience`
+- 当前 HEAD：`bd3ab45 test: capture latest admin list read-only evidence`（`origin/main` 同步）
+- 最近功能代码：`2bdeb80 fix: improve dialog focus and async list semantics`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 当前未提交文件包括用户已有的 `pos-ui/tsconfig.json`，以及本批次的 `pos-ui/src/components/admin/AlertDialog.tsx`、`pos-ui/src/components/admin/AsyncState.tsx`、`pos-ui/src/components/admin/ConfirmDialog.tsx`、`pos-ui/src/components/admin/Modal.tsx`、`pos-ui/src/components/admin/Pagination.tsx`；均不得回滚、覆盖或混入无关提交。
+- 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
 ### 已完成并有证据
