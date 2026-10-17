@@ -177,7 +177,7 @@ export function OdooCloseRegisterPage() {
   }
 
   return (
-    <main className="mx-auto flex h-full max-w-2xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="mx-auto flex h-full max-w-3xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">Close register</h1>

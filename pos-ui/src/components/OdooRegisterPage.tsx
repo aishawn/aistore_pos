@@ -213,6 +213,23 @@ export function OdooRegisterPage() {
   }, []);
 
   useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (helpOpen) {
+        setHelpOpen(false);
+      } else if (parkedAction) {
+        setParkedAction(null);
+      } else if (pendingRegisterId !== null) {
+        setPendingRegisterId(null);
+      } else if (receipt) {
+        setReceipt(null);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [helpOpen, parkedAction, pendingRegisterId, receipt]);
+
+  useEffect(() => {
     setParkedLoaded(false);
     if (!connected || !odooUserId) {
       setParkedSales([]);

@@ -85,7 +85,7 @@ export function ListTable({
               key={c}
               role="cell"
               className={cn(
-                "px-1.5 text-[var(--oh-text-secondary)]",
+                "min-w-0 overflow-hidden px-1.5 text-[var(--oh-text-secondary)]",
                 columns[c]?.width ?? "min-w-0",
                 !equalColumns && !columns[c]?.width && "flex-1 basis-0",
                 align(columns[c]?.align),

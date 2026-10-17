@@ -197,7 +197,7 @@ export function AdminPageLayout({
       )}
 
       {filters && (
-        <div className={cn("rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
+        <div className={cn("flex items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
           {filters}
         </div>
       )}

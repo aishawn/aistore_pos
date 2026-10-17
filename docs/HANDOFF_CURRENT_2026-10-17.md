@@ -1,6 +1,6 @@
 # Orithos 当前交接文档
 
-更新时间：2026-10-17（Asia/Shanghai，交接更新）
+更新时间：2026-10-17（Asia/Shanghai，POS 弹窗键盘交接更新）
 适用仓库：`aishawn/aistore_pos`  相关品牌仓库：`aishawn/aistore_orithos`
 
 ## 0. 最新权威摘要（交接必读）
@@ -12,13 +12,16 @@
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：`adafca4 test: verify admin search empty states`
+- 最新提交：`172ea44 docs: update handoff batch head`
 - 本轮功能代码提交：`9224563 fix: tighten admin list and receiving UX`；回归脚本提交：`0baf7c6 test: add authenticated admin list regression batch`
 - 共用弹窗交互提交：`1fb0fe0 fix: improve shared dialog keyboard behavior`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
+- 工作区当前还有未提交修改：本轮新增的 `pos-ui/src/components/OdooRegisterPage.tsx`，以及并行工作区中的 `pos-ui/app/platform/stores/page.tsx`、`pos-ui/src/components/OdooCloseRegisterPage.tsx`、`pos-ui/src/components/OrithosOverviewPage.tsx`、`pos-ui/src/components/admin/AdminPageLayout.tsx`、`pos-ui/src/components/admin/ListTable.tsx` 和用户已有的 `pos-ui/tsconfig.json`。交接时不得覆盖、回滚或混入未明确归属本批次的修改。
 
 ### 本轮已完成
+
+- `OdooRegisterPage` 的 POS help、销售小票、暂存销售确认和切换 Register 确认弹窗统一支持 Escape 关闭；按 Escape 时只关闭当前最上层弹窗，不提交销售、不修改 Odoo 业务数据。代码目前仍待提交和部署。
+- 本轮本地检查已通过：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check`。按当前交接约束未运行 `npm run build`。
 
 - 品牌站注册、自动登录、Outlet/Register 配置、dummy/sample data 选择已有真实线上证据。
 - 多租户 Odoo company、warehouse、stock location、POS config 隔离已有线上回读证据。
@@ -33,9 +36,12 @@
 - `83413b1` 为 Platform Stores 增加 `Deleted` 状态筛选和对应灰色状态徽章；`f940206` 补充该筛选的回归证据。
 - 当前待部署批次补强了四处高频流程：采购收货数量在前端按剩余数量校验并补充输入语义标签；Platform Stores 无结果时区分筛选空态并提供 Clear filters；Mail Log 与 Trashed Items 在手机端改为摘要卡片并提供清除搜索/筛选；两个工具页同时加入 middleware 与 Next headers 的 no-store 路由守卫。
 - 下一批待部署改动补强共用弹窗交互：ConfirmDialog、AlertDialog 和 Modal 支持 Escape 关闭；ConfirmDialog 的忙碌文案按危险/普通确认区分；AlertDialog 确认按钮统一至少 44px。
+- POS 页面弹窗现在也支持 Escape 关闭；该改动与上面的共用弹窗改动分开记录，避免误认为已经部署。
 - 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
 
 ### 当前未完成
+
+- POS Escape 改动尚未提交、尚未取得 Dokploy 运行 SHA，也尚未完成认证浏览器线上回归；需要打开 `/` 的 `POS help and recovery`，按 Escape 并确认 `role=dialog` 消失。该检查全程不得提交销售。
 
 - Dokploy 实际运行 SHA 未取得确认，当前 `main` 的最新代码不能视为线上完整生效。
 - 2026-10-17 19:38（Asia/Shanghai）匿名 HEAD 检查 `/utilities/future-costs` 与 `/platform/stores` 均返回：
@@ -65,7 +71,7 @@
 1. **部署链路阻塞**：当前环境没有 Dokploy 控制台、部署 API 或 webhook token，无法从仓库侧触发普通 Deploy；重复检查仍观察到旧缓存头。
 2. **证据与线上版本脱节**：页面返回 200 或 GitHub push 不能证明 Dokploy 已消费该提交，必须记录 Dokploy 前后端容器 SHA。
 3. **历史文档存在时间差**：下方历史章节记录多个已通过批次，阅读时以本节和对应 JSON 的 `generatedAt`、`sourceCommit`、`deployment` 为准。
-4. **工作区并行修改**：当前仅保留用户已有未提交的 `pos-ui/tsconfig.json`；不要覆盖、回滚或混入业务提交。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
+4. **工作区并行修改**：本轮只允许明确暂存 `OdooRegisterPage.tsx` 与交接文档；其余未提交文件必须原样保留。不要覆盖、回滚或混入业务提交。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
 
 ### 最新 Dokploy Webhook 尝试（2026-10-17）
 

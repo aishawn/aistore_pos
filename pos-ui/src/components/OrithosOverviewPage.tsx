@@ -309,7 +309,7 @@ export function OrithosOverviewPage() {
                 {OVERVIEW_RANGES.map((range) => (
                   <button key={range.hours} type="button" aria-pressed={rangeHours === range.hours}
                     onClick={() => { setRangeHours(range.hours); void load(true, range.hours); }}
-                    className={cn("oh-type-meta min-h-8 rounded-md px-2 font-medium", rangeHours === range.hours ? "bg-[var(--oh-accent)] text-[var(--oh-primary)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
+                    className={cn("oh-type-meta min-h-9 rounded-md px-3 font-medium transition-colors", rangeHours === range.hours ? "bg-[var(--oh-primary)] text-white shadow-sm" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
                     {range.label}
                   </button>
                 ))}

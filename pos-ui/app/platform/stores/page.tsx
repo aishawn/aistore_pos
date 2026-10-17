@@ -124,11 +124,11 @@ export default function PlatformStoresPage() {
         </section>
       ) : (
         <>
-          <div className="hidden md:block"><ListTable columns={[{ label: "Store", width: "w-[220px]" }, { label: "Subdomain", width: "w-[180px]" }, { label: "Status", width: "w-[120px]", align: "center" }, { label: "Contact", width: "w-[160px]" }, { label: "Trial ends", width: "w-[120px]" }, { label: "Created", width: "w-[120px]" }, { label: "Open", width: "w-[100px]", align: "center" }]} rows={items.map((store) => [
+          <div className="hidden md:block"><ListTable columns={[{ label: "Store", width: "w-[240px]" }, { label: "Subdomain", width: "w-[230px]" }, { label: "Status", width: "w-[120px]", align: "center" }, { label: "Contact", width: "w-[170px]" }, { label: "Trial ends", width: "w-[125px]" }, { label: "Created", width: "w-[125px]" }, { label: "Open", width: "w-[100px]", align: "center" }]} rows={items.map((store) => [
             <div key={`${store.id}-name`} className="min-w-0"><Link href={`/platform/stores/${store.id}`} className="truncate font-medium text-[var(--oh-primary)] hover:underline">{store.name}</Link>{store.platformOperator ? <div className="text-xs text-[var(--oh-text-secondary)]">Platform operator</div> : null}</div>,
-            <code key={`${store.id}-slug`} className="text-[12px] text-[var(--oh-text)]">{store.subdomain}</code>,
+            <code key={`${store.id}-slug`} title={store.subdomain} className="block truncate text-[12px] text-[var(--oh-text)]">{store.subdomain}</code>,
             <span key={`${store.id}-status`} className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusTone(store.status)}`}>{store.status || "unknown"}</span>,
-            <span key={`${store.id}-contact`} className="truncate text-[var(--oh-text-secondary)]">{store.contactName || "—"}</span>,
+            <span key={`${store.id}-contact`} title={store.contactName || undefined} className="block truncate text-[var(--oh-text-secondary)]">{store.contactName || "—"}</span>,
             <span key={`${store.id}-trial`}>{formatDate(store.trialEndsAt)}</span>,
             <span key={`${store.id}-created`}>{formatDate(store.createdAt)}</span>,
             store.storeUrl ? <a key={`${store.id}-open`} href={`${store.storeUrl.replace(/\/$/, "")}/login`} target="_blank" rel="noreferrer" className="font-semibold text-[var(--oh-primary)] hover:underline">Login</a> : <span key={`${store.id}-open`}>—</span>,
