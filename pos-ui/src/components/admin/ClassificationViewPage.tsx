@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { AlertDialog } from "@/components/admin/AlertDialog";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { EditClassificationModal } from "@/components/admin/EditClassificationModal";
 import { AssignIcon, DeleteIcon, EditIcon, LineChartIcon, ViewIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
@@ -114,6 +115,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
   const typeLabel = TYPE_LABELS[type] ?? type;
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{ title: string; message: string } | null>(null);
 
   const classification = useApi<Classification>(`/api/classifications/${type}/${id}`);
@@ -126,7 +128,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
 
   const products = useApiList<Product>("/api/products", productQuery);
 
-  async function handleDelete() {
+  function requestDelete() {
     if (products.total > 0) {
       setAlertDialog({
         title: "Cannot Delete",
@@ -134,7 +136,11 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
       });
       return;
     }
-    if (!window.confirm("Delete this classification?")) return;
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDelete() {
+    setDeleteConfirmOpen(false);
     setDeleting(true);
     try {
       await api.del(`/api/classifications/${type}/${id}`);
@@ -196,7 +202,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
           </button>
           <button
             type="button"
-            onClick={handleDelete}
+            onClick={requestDelete}
             disabled={deleting}
             className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-danger)] px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] transition-colors hover:bg-[var(--oh-tile-red-bg)] disabled:opacity-60"
           >
@@ -247,6 +253,15 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
           }}
         />
       )}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={`Delete ${typeLabel.toLowerCase()}`}
+        message={classification.data ? `Delete “${classification.data.name}”?` : "Delete this classification?"}
+        confirmLabel="Delete"
+        busy={deleting}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => { if (!deleting) setDeleteConfirmOpen(false); }}
+      />
       <AlertDialog
         open={!!alertDialog}
         title={alertDialog?.title ?? ""}
