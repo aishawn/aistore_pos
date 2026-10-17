@@ -293,6 +293,12 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 
 - 检查：typecheck 通过；目标 ESLint 通过；`git diff --check` 通过
 
+### 分页越界恢复（待部署）
+
+共用 `Pagination` 现在会把过期页码限制在有效范围，正确显示当前结果区间，并提供 `Go to page N` 恢复入口。筛选条件减少结果后不会再显示错误的 Showing 区间或失效的 Prev/Next 状态。
+
+- 检查：typecheck 通过；`Pagination` 与 Admin 共用组件目标 ESLint 通过；`git diff --check` 通过
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
