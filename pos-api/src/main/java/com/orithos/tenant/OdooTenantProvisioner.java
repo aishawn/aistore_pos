@@ -940,8 +940,11 @@ public class OdooTenantProvisioner {
         if (!hasRelation(methods.get(0).get("receivable_account_id"))) {
             values.put("receivable_account_id", defaultAccountId);
         }
-        if (!hasRelation(methods.get(0).get("outstanding_account_id"))) {
-            values.put("outstanding_account_id", defaultAccountId);
+        if (hasRelation(methods.get(0).get("outstanding_account_id"))) {
+            // POS session closing creates one intermediary line for this payment
+            // method. Keeping a second outstanding account on the same method
+            // makes Odoo reject the statement as having two bank/cash lines.
+            values.putNull("outstanding_account_id");
         }
         if (!values.isEmpty()) {
             callKw(sessionId, "pos.payment.method", "write",
