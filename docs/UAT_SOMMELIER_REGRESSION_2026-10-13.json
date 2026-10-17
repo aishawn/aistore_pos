@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-10-14T13:14:38.347Z",
-  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
+  "generatedAt": "2026-10-17T19:34:44.494Z",
+  "deployment": "2a7220ecc98b27dfd8492af747951a9f6baa25d9",
   "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
   "checks": [
     {
       "name": "Odoo catalog identify",
       "status": "PASS",
-      "evidence": "Found 2 DEMO wines; Shiraz product 62 is present."
+      "evidence": "Found 416 DEMO wines; 402 have free stock."
     },
     {
       "name": "Recommendation price and free-stock parity",
       "status": "PASS",
-      "evidence": "Product 62: AUD 34.9; free stock 12; recommendation agrees with Odoo identify data."
+      "evidence": "Product 5679: AUD 3.5; free stock 45; recommendation agrees with Odoo identify data."
     },
     {
       "name": "Wine detail parity",
       "status": "PASS",
-      "evidence": "Product 62 detail matches the Odoo catalog price and free stock."
+      "evidence": "Product 5679 detail matches the Odoo catalog price and free stock."
     },
     {
       "name": "cheaper alternatives filter unavailable stock",
@@ -26,7 +26,27 @@
     {
       "name": "upgrade alternatives filter unavailable stock",
       "status": "PASS",
-      "evidence": "Returned 0 alternatives; every result has positive free stock."
+      "evidence": "Returned 5 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "card sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5679 returned non-empty pitch text."
+    },
+    {
+      "name": "10s sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5679 returned non-empty pitch text."
+    },
+    {
+      "name": "30s sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5679 returned non-empty pitch text."
+    },
+    {
+      "name": "Sommelier product question",
+      "status": "PASS",
+      "evidence": "Product 5679 returned an answer with 0 alternatives."
     },
     {
       "name": "Anonymous access guard",
