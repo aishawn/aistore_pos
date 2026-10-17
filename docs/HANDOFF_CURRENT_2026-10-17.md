@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`17b5802`（最新只读回归证据）；本批功能提交还包括 `e0b25df`、`cdc969e`、`a8357b2`
+- 当前 HEAD：`7f34c59`（开关控件回归证据）；本批功能提交为 `0813041`，此前还包括 `e0b25df`、`cdc969e`、`a8357b2`
 - 最近功能代码：`a8357b2`，共用筛选控件基础优化为 `56b39da`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
@@ -33,6 +33,7 @@
 - 本批次新增通用可访问性与键盘交互优化：`Pagination` 标注当前页并为 Prev/Next 提供明确的 ARIA 名称；`AsyncState` 的加载、错误、空态增加 live-region 语义，Retry 按钮统一达到 44px 触控高度并保留焦点环；`Modal`、`ConfirmDialog`、`AlertDialog` 打开时把焦点放到可用关闭/确认控件，关闭后恢复到触发控件。筛选控件进一步补齐 `listbox`/`option` 语义、Escape 关闭、独立 Clear 控件和 44px 触控目标。该批次只涉及前端交互和语义，不调用业务写入 API。
 - 最新认证只读管理列表回归为 `8/8 PASS`，覆盖 `/purchases/odoo`、`/utilities/mail-log`、`/utilities/trashed-items`、`/platform/stores` 在 390px/1440px；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和对应截图目录，`sourceCommit=56b39da`、`deployment=dokploy-sha-unverified`。脚本现等待搜索框达到可见状态后再输入，避免冷加载导致的瞬态等待失败；本次最终结果为 8/8，未执行业务写入。
 - 最新筛选控件批次再次完成认证只读回归：管理列表最终 `8/8 PASS`，POS 弹窗 `2/2 PASS`，均覆盖既有 390px/1440px 视口；证据 JSON 的 `sourceCommit=a8357b2`、`deployment=dokploy-sha-unverified`。本次管理列表首次运行的 `/purchases/odoo` 390px 返回 404，立即重试后恢复为 8/8；该瞬态失败不作为最终通过依据，过程已由回归输出保留。
+- 最新开关控件批次完成认证只读回归：管理列表 `8/8 PASS`，POS 弹窗重试后 `2/2 PASS`；证据 JSON 的 `sourceCommit=0813041`、`deployment=dokploy-sha-unverified`。管理列表和 POS 各有一次入口 404 瞬态失败，立即重试均通过；没有执行销售、采购、库存、现金或权限写入。
 - 新增 POS 弹窗只读回归脚本 `scripts/pilot-pos-dialog-uat.mjs`：认证浏览器在 `/` 点击 `POS help and recovery`，390px/1440px 均确认 dialog 打开后按 Escape 消失，结果 `2/2 PASS`；证据见 `docs/UAT_POS_DIALOG_2026-10-17.json` 和截图目录，`sourceCommit=10c328f`、`deployment=dokploy-sha-unverified`，所以仍不能证明 Dokploy 已运行当前代码。脚本增加冷加载等待和无敏感页面诊断输出。
 - POS Register 本批进一步修正小票关闭按钮和暂存/切换确认按钮的触控高度，帮助/小票弹窗打开时聚焦关闭按钮并在关闭后恢复原焦点；只改前端交互，不提交销售或其他 Odoo 写入。typecheck、目标 ESLint、`git diff --check` 已通过。
 - 数量编辑器补齐 Escape 关闭、焦点恢复、`aria-modal`/标题语义、删除键标签和 44px 加减/确认触控目标；Sell 页面共用收款按钮统一 44px 高度和焦点环。未改变报价、收款请求或 Odoo 写入逻辑。
@@ -40,6 +41,7 @@
 - Sell 页面取消销售、恢复暂存、备注、折扣和结果提示弹窗补齐 `role=dialog`/`aria-modal` 语义；这些未写入弹窗支持 Escape 关闭，支付 processing 状态不响应 Escape，避免中断正在提交的支付请求。未改变支付 API 或业务写入逻辑。
 - 共用 `FilterDropdownSelect` 修正嵌套伪按钮，改为独立可聚焦的 Clear 控件，增加 Escape 关闭、`aria-expanded`/`listbox`/`option` 语义；分类单选和多选控件的按钮/选项统一至少 44px。未改变筛选值或后端查询协议。
 - 本批继续修正 `FilterMultiSelect` 的 Clear 控件、Escape 关闭、`listbox` 多选语义和 44px 触控目标；日期筛选增加展开/弹层语义、Escape 关闭、关闭后恢复焦点；订单筛选和通用搜索/单选筛选统一 44px 高度与焦点环。未改变筛选值、日期范围归一化或后端查询协议。
+- 本批将分类分配、批量价格、客户/供应商表单、库存、盘点和外部盘点页面的 switch 控件统一为 44px 触控区域，补充可见焦点环与缺失的 `aria-label`；只改变前端交互尺寸和语义，不改变开关对应状态或提交逻辑。
 - 最新待部署批次的共用组件优化已提交：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。提交为 `01d8759`，本地 typecheck、目标 ESLint 和 `git diff --check` 已通过。POS 弹窗回归脚本和证据已随 `3f7f8b6` 推送。
 
 ### 未完成、未覆盖或证据不足
@@ -69,7 +71,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `a8357b2`，仓库当前 HEAD 为 `17b5802`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `0813041`，仓库当前 HEAD 为 `7f34c59`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
