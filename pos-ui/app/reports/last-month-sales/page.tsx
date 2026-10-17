@@ -33,28 +33,10 @@ export default function LastMonthSalesPage() {
       ) : !data ? (
         <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No last-month sales report is available yet.</p>
       ) : (
-        <ListTable
-          columns={[
-            { label: "Total Sales", align: "right" },
-            { label: "Cost", align: "right" },
-            { label: "Transaction Count", align: "right" },
-            { label: "Gross Profit", align: "right" },
-            { label: "Gross Profit Margin", align: "right" },
-          ]}
-          rows={
-            data
-              ? [
-                  [
-                    money(data.totalSales),
-                    money(data.cost),
-                    String(data.transactionCount ?? 0),
-                    money(data.grossProfit),
-                    percent(data.grossProfitMargin),
-                  ],
-                ]
-              : []
-          }
-        />
+        <>
+          <div className="hidden md:block"><ListTable columns={[{ label: "Total Sales", align: "right" }, { label: "Cost", align: "right" }, { label: "Transaction Count", align: "right" }, { label: "Gross Profit", align: "right" }, { label: "Gross Profit Margin", align: "right" }]} rows={[[money(data.totalSales), money(data.cost), String(data.transactionCount ?? 0), money(data.grossProfit), percent(data.grossProfitMargin)]]} /></div>
+          <dl className="grid grid-cols-2 gap-3 md:hidden">{[["Total sales", money(data.totalSales)], ["Cost", money(data.cost)], ["Transactions", String(data.transactionCount ?? 0)], ["Gross profit", money(data.grossProfit)], ["Margin", percent(data.grossProfitMargin)]].map(([label, value]) => <div key={label} className="rounded-lg border border-[var(--oh-border)] bg-white p-4"><dt className="text-xs text-[var(--oh-muted)]">{label}</dt><dd className="mt-1 text-base font-semibold tabular-nums text-[var(--oh-text)]">{value}</dd></div>)}</dl>
+        </>
       )}
     </AdminPageLayout>
   );

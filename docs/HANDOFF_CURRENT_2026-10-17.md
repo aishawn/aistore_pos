@@ -299,6 +299,13 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 
 - 检查：typecheck 通过；`Pagination` 与 Admin 共用组件目标 ESLint 通过；`git diff --check` 通过
 
+### 销售报表移动端摘要（待部署）
+
+Daily Sales、Weekly Sales、This Month Sales、Last Week Sales 和 Last Month Sales 现在在窄屏使用指标卡片/日摘要，桌面继续使用完整表格。金额、成本、交易数、毛利和毛利率均保留，避免 6 列报表在手机端横向滚动。
+
+- 检查：typecheck 通过；5 个报表目标 ESLint 通过；`git diff --check` 通过
+- 只读报表改动，未改变 API 或任何业务写入
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。

@@ -35,24 +35,10 @@ export default function WeeklySalesPage() {
       ) : rows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No sales days in the current week.</p>
       ) : (
-        <ListTable
-          columns={[
-            { label: "Date" },
-            { label: "Total Sales", align: "right" },
-            { label: "Cost", align: "right" },
-            { label: "Transaction Count", align: "right" },
-            { label: "Gross Profit", align: "right" },
-            { label: "Gross Profit Margin", align: "right" },
-          ]}
-          rows={rows.map((row) => [
-            row.date,
-            money(row.totalSales),
-            money(row.cost),
-            String(row.transactionCount ?? 0),
-            money(row.grossProfit),
-            percent(row.grossProfitMargin),
-          ])}
-        />
+        <>
+          <div className="hidden md:block"><ListTable columns={[{ label: "Date" }, { label: "Total Sales", align: "right" }, { label: "Cost", align: "right" }, { label: "Transaction Count", align: "right" }, { label: "Gross Profit", align: "right" }, { label: "Gross Profit Margin", align: "right" }]} rows={rows.map((row) => [row.date, money(row.totalSales), money(row.cost), String(row.transactionCount ?? 0), money(row.grossProfit), percent(row.grossProfitMargin)])} /></div>
+          <div className="space-y-2 md:hidden" aria-label="Weekly sales list">{rows.map((row) => <article key={row.date} className="rounded-lg border border-[var(--oh-border)] bg-white p-4"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold text-[var(--oh-text)]">{row.date}</h2><strong className="tabular-nums text-[var(--oh-text)]">{money(row.totalSales)}</strong></div><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3 text-sm"><div><dt className="text-xs text-[var(--oh-muted)]">Cost</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{money(row.cost)}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Transactions</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{row.transactionCount ?? 0}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Gross profit</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{money(row.grossProfit)}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Margin</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{percent(row.grossProfitMargin)}</dd></div></dl></article>)}</div>
+        </>
       )}
     </AdminPageLayout>
   );

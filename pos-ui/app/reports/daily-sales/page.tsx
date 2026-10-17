@@ -37,30 +37,10 @@ export default function DailySalesPage() {
       ) : !data ? (
         <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No daily sales report is available yet.</p>
       ) : (
-        <ListTable
-          columns={[
-            { label: "Date" },
-            { label: "Total Sales", align: "right" },
-            { label: "Cost", align: "right" },
-            { label: "Transaction Count", align: "right" },
-            { label: "Gross Profit", align: "right" },
-            { label: "Gross Profit Margin", align: "right" },
-          ]}
-          rows={
-            data
-              ? [
-                  [
-                    data.date,
-                    money(data.totalSales),
-                    money(data.cost),
-                    String(data.transactionCount ?? 0),
-                    money(data.grossProfit),
-                    percent(data.grossProfitMargin),
-                  ],
-                ]
-              : []
-          }
-        />
+        <>
+          <div className="hidden md:block"><ListTable columns={[{ label: "Date" }, { label: "Total Sales", align: "right" }, { label: "Cost", align: "right" }, { label: "Transaction Count", align: "right" }, { label: "Gross Profit", align: "right" }, { label: "Gross Profit Margin", align: "right" }]} rows={[[data.date, money(data.totalSales), money(data.cost), String(data.transactionCount ?? 0), money(data.grossProfit), percent(data.grossProfitMargin)]]} /></div>
+          <article className="rounded-lg border border-[var(--oh-border)] bg-white p-4 md:hidden"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold text-[var(--oh-text)]">{data.date}</h2><strong className="tabular-nums text-[var(--oh-text)]">{money(data.totalSales)}</strong></div><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3 text-sm"><div><dt className="text-xs text-[var(--oh-muted)]">Cost</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{money(data.cost)}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Transactions</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{data.transactionCount ?? 0}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Gross profit</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{money(data.grossProfit)}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Margin</dt><dd className="mt-1 tabular-nums text-[var(--oh-text-secondary)]">{percent(data.grossProfitMargin)}</dd></div></dl></article>
+        </>
       )}
     </AdminPageLayout>
   );
