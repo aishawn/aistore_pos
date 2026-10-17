@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-17T02:20:00Z",
+  "deploymentSourceCommit": "8f8d8c6",
+  "target": "https://orithos.com.au",
+  "routes": [
+    {
+      "path": "/pricing",
+      "status": 200,
+      "title": "Orithos Pilot Pricing",
+      "markers": ["Start with a clear retail pilot", "The essentials, made clear"]
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "markers": ["The essentials, made clear"]
+    },
+    { "path": "/updates", "status": 200, "title": "Update Logs" },
+    { "path": "/signup", "status": 200, "title": "Create your Orithos pilot store" }
+  ],
+  "result": "PASS_ROUTE_AND_CONTENT_SMOKE"
+}
