@@ -18,6 +18,7 @@ import {
 } from "@/lib/ai-entity-actions";
 import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 import { useOptionalSellScreen, type LeftView } from "@/lib/sell-screen";
@@ -149,6 +150,8 @@ export function SellAiPanel({
   const [mounted, setMounted] = useState(false);
   const [anchor, setAnchor] = useState<FloatAnchor>(defaultAnchor);
   const [dragging, setDragging] = useState(false);
+
+  useDialogFocus(expanded, collapsePanel, "assistant", inputRef);
 
   function openWorkspace(href: string, note: string) {
     pushAssistantNote(note);
