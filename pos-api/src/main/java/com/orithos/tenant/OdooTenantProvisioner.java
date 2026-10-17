@@ -1054,6 +1054,7 @@ public class OdooTenantProvisioner {
                     productId = findDummyProductVariant(sessionId, companyId, code);
                 }
                 if (productId <= 0) throw new IllegalStateException("No product variant was created for " + code);
+                ensureDummyProductIncomeAccount(sessionId, companyId, productId, incomeAccountId);
                 ensureDummyStock(sessionId, companyId, productId, stockLocationId, openingStock);
                 seeded.add(new DummyProduct(productId, code, name, listPrice, taxId));
             } catch (Exception productError) {
@@ -1626,12 +1627,30 @@ public class OdooTenantProvisioner {
         domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
         domain.add(objectMapper.createArrayNode().add("default_code").add("=").add(defaultCode));
         ObjectNode kwargs = kwargsWithCompany(companyId);
-        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("product_tmpl_id"));
         kwargs.put("limit", 1);
         JsonNode products = callKwNode(sessionId, "product.product", "search_read", List.of(domain), kwargs);
         return products != null && products.isArray() && !products.isEmpty()
                 ? products.get(0).path("id").asLong(0)
                 : 0;
+    }
+
+    private void ensureDummyProductIncomeAccount(
+            String sessionId, long companyId, long productId, long incomeAccountId) throws Exception {
+        if (productId <= 0 || incomeAccountId <= 0) return;
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(productId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("product_tmpl_id"));
+        kwargs.put("limit", 1);
+        JsonNode products = callKwNode(sessionId, "product.product", "search_read", List.of(domain), kwargs);
+        if (products == null || !products.isArray() || products.isEmpty()) return;
+        long templateId = relationId(products.get(0).get("product_tmpl_id"));
+        if (templateId <= 0) return;
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("property_account_income_id", incomeAccountId);
+        callKw(sessionId, "product.template", "write",
+                List.of(List.of(templateId), values), kwargsWithCompany(companyId));
     }
 
     private void ensureDummyStock(

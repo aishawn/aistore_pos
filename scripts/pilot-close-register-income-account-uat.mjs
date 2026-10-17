@@ -1,0 +1,246 @@
+import fs from "node:fs";
+
+const root = new URL("..", import.meta.url).pathname.replace(/^\/(\w):/, "$1:");
+const env = Object.fromEntries(
+  fs.readFileSync(`${root}/.env`, "utf8")
+    .split(/\r?\n/)
+    .filter((line) => line && !line.startsWith("#") && line.includes("="))
+    .map((line) => {
+      const i = line.indexOf("=");
+      return [line.slice(0, i).trim(), line.slice(i + 1).trim()];
+    }),
+);
+
+const app = "https://app.orithos.com.au";
+const slug = `codex-close-${Date.now().toString().slice(-10)}`;
+const store = `https://${slug}.orithos.com.au`;
+const ownerUsername = `closeuat${Date.now().toString().slice(-7)}`;
+const ownerPassword = `CodexUAT-${Date.now()}-Safe`;
+const evidence = { generatedAt: new Date().toISOString(), slug, checks: [] };
+
+function cookieJar(response) {
+  return (response.headers.getSetCookie?.() || [])
+    .map((value) => value.split(";")[0])
+    .join("; ");
+}
+
+async function readJson(response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { raw: text.slice(0, 300) };
+  }
+}
+
+function check(name, passed, detail = {}) {
+  evidence.checks.push({ name, status: passed ? "PASS" : "FAIL", ...detail });
+  console.log(`[${passed ? "PASS" : "FAIL"}] ${name}`, detail);
+}
+
+let appCookies = "";
+let vendorId = null;
+try {
+  let response = await fetch(`${app}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: app },
+    body: JSON.stringify({ username: "admin", password: env.INITIAL_ADMIN_PASSWORD }),
+  });
+  let body = await readJson(response);
+  appCookies = cookieJar(response);
+  check("platform.login", response.ok && body.code === 0 && Boolean(appCookies), { httpStatus: response.status });
+  if (!appCookies) throw new Error("platform login did not return an auth cookie");
+
+  response = await fetch(`${app}/api/admin/tenants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: app, Cookie: appCookies },
+    body: JSON.stringify({
+      organisationName: "Codex Close Income UAT",
+      subdomain: slug,
+      ownerName: "Close UAT Owner",
+      username: ownerUsername,
+      email: `${ownerUsername}@example.invalid`,
+      password: ownerPassword,
+      phone: "0400000000",
+      trialDays: 1,
+      outlets: [
+        { name: "Main Store", registerCount: 2 },
+        { name: "Back Bar", registerCount: 1 },
+      ],
+      dummyData: true,
+    }),
+  });
+  body = await readJson(response);
+  vendorId = body.data?.vendorId;
+  check("tenant.create", response.ok && body.code === 0 && Boolean(vendorId), {
+    httpStatus: response.status,
+    vendorId,
+  });
+  if (!vendorId) throw new Error(body.message || "tenant create failed");
+
+  let binding;
+  for (let attempt = 1; attempt <= 36; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    response = await fetch(`${app}/api/admin/tenants/${vendorId}`, {
+      headers: { Origin: app, Cookie: appCookies },
+    });
+    body = await readJson(response);
+    binding = body.data?.odooBinding || body.data || {};
+    console.log("provision", attempt, binding.odooProvisionStatus, binding.odooCompanyId, binding.odooPosConfigId);
+    if (binding.odooProvisionStatus === "ready") break;
+  }
+  check("tenant.provision.ready", binding?.odooProvisionStatus === "ready", {
+    companyId: binding?.odooCompanyId,
+    posConfigId: binding?.odooPosConfigId,
+    status: binding?.odooProvisionStatus,
+  });
+  if (binding?.odooProvisionStatus !== "ready") throw new Error("provisioning did not become ready");
+
+  response = await fetch(`${app}/api/admin/tenants/${vendorId}/owner/bootstrap`, {
+    method: "POST",
+    headers: { Origin: app, Cookie: appCookies },
+  });
+  body = await readJson(response);
+  const bootstrapToken = body.data?.bootstrapToken;
+  check("owner.bootstrap", response.ok && body.code === 0 && Boolean(bootstrapToken), { httpStatus: response.status });
+  if (!bootstrapToken) throw new Error("owner bootstrap token unavailable");
+
+  response = await fetch(`${store}/api/auth/bootstrap`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: store },
+    body: JSON.stringify({ token: bootstrapToken }),
+  });
+  body = await readJson(response);
+  let storeCookies = cookieJar(response);
+  check("store.bootstrap", response.ok && body.code === 0 && Boolean(storeCookies), { httpStatus: response.status });
+  if (!storeCookies) throw new Error("store bootstrap did not return an auth cookie");
+
+  const auth = { Origin: store, Cookie: storeCookies };
+  response = await fetch(`${store}/api/odoo/session`, { headers: auth });
+  body = await readJson(response);
+  storeCookies = [storeCookies, cookieJar(response)].filter(Boolean).join("; ");
+  check("odoo.session", response.ok && Boolean(body.user), {
+    httpStatus: response.status,
+    allowedCompanyIds: body.user?.allowedCompanyIds,
+  });
+
+  response = await fetch(`${store}/api/odoo/records`, {
+    method: "POST",
+    headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "products", limit: 50 }),
+  });
+  body = await readJson(response);
+  const products = body.items || [];
+  check("dummy.catalog", response.ok && products.length >= 8, { httpStatus: response.status, productCount: products.length });
+
+  response = await fetch(`${store}/api/odoo/pos-bootstrap`, { headers: { ...auth, Cookie: storeCookies } });
+  body = await readJson(response);
+  const configs = body.configs || [];
+  const config = configs.find((item) => item.session || item.currentSessionId || item.current_session_id) || configs[0];
+  const session = config?.session || {};
+  const configId = config?.id;
+  const sessionId = session.id || config?.currentSessionId || config?.current_session_id;
+  const cashMethod = (config?.paymentMethods || []).find((method) => method.is_cash_count) || (config?.paymentMethods || [])[0];
+  const expectedCash = session.cashRegisterBalanceEnd
+    ?? session.cash_register_balance_end
+    ?? config?.expectedCashEnd
+    ?? config?.expected_cash_end;
+  check("pos.bootstrap", response.ok && Boolean(configId), {
+    httpStatus: response.status,
+    configId,
+    sessionId,
+    expectedCash,
+    registerCount: configs.length,
+  });
+  if (!configId) throw new Error("no POS config returned");
+
+  const product = products[0];
+  let saleTotal = null;
+  if (product?.id && cashMethod?.id) {
+    response = await fetch(`${store}/api/odoo/checkout/quote`, {
+      method: "POST",
+      headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        configId,
+        paymentMethodId: cashMethod.id,
+        lines: [{ productId: product.id, quantity: 1 }],
+      }),
+    });
+    const quote = await readJson(response);
+    saleTotal = typeof quote.total === "number" ? quote.total : null;
+    check("cash.sale.quote", response.ok && saleTotal != null, {
+      httpStatus: response.status,
+      total: saleTotal,
+      productId: product.id,
+      paymentMethodId: cashMethod.id,
+    });
+    if (saleTotal != null) {
+      response = await fetch(`${store}/api/odoo/checkout`, {
+        method: "POST",
+        headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          configId,
+          paymentMethodId: cashMethod.id,
+          orderUuid: `close-uat-${Date.now()}`,
+          tendered: saleTotal,
+          lines: [{ productId: product.id, quantity: 1 }],
+        }),
+      });
+      const sale = await readJson(response);
+      check("cash.sale", response.ok && typeof sale.saleId === "number", {
+        httpStatus: response.status,
+        saleId: sale.saleId,
+        receipt: sale.receipt,
+        total: sale.total,
+      });
+    }
+  } else {
+    check("cash.sale", false, { reason: "cash payment method or product was not returned" });
+  }
+
+  response = await fetch(`${store}/api/odoo/session/close`, {
+    method: "POST",
+    headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
+    body: JSON.stringify({ configId }),
+  });
+  body = await readJson(response);
+  check("close.requiresCountedCash", response.status === 422, { httpStatus: response.status, message: body.message });
+
+  if (expectedCash == null && sessionId) {
+    response = await fetch(`${store}/api/odoo/records`, {
+      method: "POST",
+      headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "sessions", limit: 20 }),
+    });
+    body = await readJson(response);
+    const sessions = body.items || [];
+    const current = sessions.find((item) => item.id === sessionId) || sessions[0];
+    evidence.sessionRecords = sessions.slice(0, 3);
+    evidence.expectedCashFromRecords = current?.cash_register_balance_end ?? current?.cashRegisterBalanceEnd;
+  }
+
+  const countedCash = expectedCash ?? evidence.expectedCashFromRecords ?? saleTotal;
+  if (countedCash == null) {
+    check("close.withExpectedCash", false, { reason: "expected cash was not exposed by the API" });
+  } else {
+    response = await fetch(`${store}/api/odoo/session/close`, {
+      method: "POST",
+      headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
+      body: JSON.stringify({ configId, countedCash: Number(countedCash) }),
+    });
+    body = await readJson(response);
+    check("close.withExpectedCash", response.ok, { httpStatus: response.status, message: body.message, countedCash: Number(countedCash) });
+  }
+} finally {
+  if (vendorId && appCookies) {
+    const response = await fetch(`${app}/api/admin/tenants/${vendorId}`, {
+      method: "DELETE",
+      headers: { Origin: app, Cookie: appCookies },
+    });
+    const body = await readJson(response);
+    check("tenant.delete", response.ok && body.code === 0, { httpStatus: response.status, status: body.data?.status });
+    const deleted = await fetch(`${store}/api/auth/me`, { headers: { Origin: store } });
+    check("deleted.auth", deleted.status === 402 || deleted.status === 401, { httpStatus: deleted.status });
+  }
+  fs.writeFileSync(`${root}/docs/UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(evidence, null, 2));
+}
