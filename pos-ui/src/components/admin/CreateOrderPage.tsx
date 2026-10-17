@@ -101,8 +101,8 @@ export function CreateOrderPage() {
   const router = useRouter();
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
-  const [orderDate, setOrderDate] = useState(formatToday);
-  const [orderNumber, setOrderNumber] = useState(generateOrderNumber);
+  const [orderDate, setOrderDate] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
@@ -110,6 +110,14 @@ export function CreateOrderPage() {
   const [generateStockFrom, setGenerateStockFrom] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setOrderDate((current) => current || formatToday());
+      setOrderNumber((current) => current || generateOrderNumber());
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const outlets = useApi<Named[]>("/api/outlets");
