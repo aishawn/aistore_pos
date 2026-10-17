@@ -564,17 +564,17 @@ function LineRows({
           <div className="mt-1 text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">{line.status.replaceAll("_", " ")}</div>
         </td>
         <td className="px-4 py-3 text-right">
-          <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-10 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+          <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
             {open ? "Hide details" : "Why this quantity?"}
           </button>
           {line.status !== "ORDERED" && line.status !== "REJECTED" && (
             <div className="mt-1 flex justify-end gap-2">
               {line.status === "NEEDS_REVIEW" && (
-                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
+                <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
                   Approve
                 </button>
               )}
-              <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50">
+              <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
                 Skip
               </button>
             </div>
@@ -649,13 +649,13 @@ function LineCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--oh-border)] pt-2">
-        <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
+        <button type="button" aria-expanded={open} onClick={onToggle} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
           {open ? "Hide details" : "Why this quantity?"}
         </button>
         {line.status !== "ORDERED" && line.status !== "REJECTED" && (
           <div className="flex gap-1">
-            {line.status === "NEEDS_REVIEW" && <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">Approve</button>}
-            <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-10 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50">Skip</button>
+            {line.status === "NEEDS_REVIEW" && <button type="button" disabled={busy} onClick={() => onDecision("APPROVED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Approve</button>}
+            <button type="button" disabled={busy} onClick={() => onDecision("REJECTED")} className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-semibold text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Skip</button>
           </div>
         )}
       </div>
