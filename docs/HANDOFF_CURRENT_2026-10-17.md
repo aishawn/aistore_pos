@@ -205,6 +205,15 @@
 - 认证矩阵：[`UAT_CACHE_MIDDLEWARE_LIVE_2026-10-17.json`](UAT_CACHE_MIDDLEWARE_LIVE_2026-10-17.json)，`262/262 PASS`
 - 线上状态页仍返回 `s-maxage=31536000`、`x-nextjs-cache: HIT`；这证明当前公网实例尚未消费该提交，必须在 Dokploy 执行一次普通 Deploy 并确认运行 SHA 后再验收 no-store 头
 
+### Date & Time server/client route 拆分（`e1cd939`）
+
+Date & Time 页面现在由 server route 承载 `dynamic`/`fetchCache` 段配置，客户端只负责读取 Odoo POS 时区和渲染视图，避免在 Client Component 中导出 Next.js route segment 配置，降低 prerender/revalidate 构建错误风险。
+
+- 提交：`e1cd939`，已推送 `origin/main`
+- 检查：`npm run typecheck`、目标文件 ESLint、`git diff --check` 通过
+- 认证矩阵：[`UAT_DATE_SETTINGS_ROUTE_LIVE_2026-10-17.json`](UAT_DATE_SETTINGS_ROUTE_LIVE_2026-10-17.json)，`262/262 PASS`
+- 公网路由返回 200，但仍显示旧 `s-maxage=31536000`；Dokploy 尚未确认运行 `e1cd939`
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
