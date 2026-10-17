@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T03:41:47.451Z",
-  "slug": "codex-close-2208507451",
+  "generatedAt": "2026-10-17T03:47:38.938Z",
+  "slug": "codex-close-2208858938",
   "checks": [
     {
       "name": "platform.login",
@@ -11,13 +11,13 @@
       "name": "tenant.create",
       "status": "PASS",
       "httpStatus": 200,
-      "vendorId": 36
+      "vendorId": 37
     },
     {
       "name": "tenant.provision.ready",
       "status": "ready",
-      "companyId": 29,
-      "posConfigId": 59
+      "companyId": 30,
+      "posConfigId": 62
     },
     {
       "name": "owner.bootstrap",
@@ -34,7 +34,7 @@
       "status": "PASS",
       "httpStatus": 200,
       "allowedCompanyIds": [
-        29
+        30
       ]
     },
     {
@@ -47,8 +47,8 @@
       "name": "pos.bootstrap",
       "status": "PASS",
       "httpStatus": 200,
-      "configId": 59,
-      "sessionId": 24,
+      "configId": 62,
+      "sessionId": 25,
       "registerCount": 3
     },
     {
@@ -56,15 +56,15 @@
       "status": "PASS",
       "httpStatus": 200,
       "total": 32,
-      "productId": 5811,
-      "paymentMethodId": 85
+      "productId": 5825,
+      "paymentMethodId": 89
     },
     {
       "name": "cash.sale",
       "status": "PASS",
       "httpStatus": 201,
-      "saleId": 117078,
-      "receipt": "260-59-000035",
+      "saleId": 117113,
+      "receipt": "260-62-000035",
       "total": 32
     },
     {
@@ -93,18 +93,18 @@
   ],
   "sessionRecords": [
     {
-      "id": 24,
-      "name": "Main Store Register 1/00020",
+      "id": 25,
+      "name": "Main Store Register 1/00021",
       "state": "opened",
       "config_id": [
-        59,
+        62,
         "Main Store Register 1"
       ],
       "user_id": [
         2,
         "Administrator"
       ],
-      "start_at": "2026-10-17 03:42:01",
+      "start_at": "2026-10-17 03:47:55",
       "stop_at": false
     }
   ]

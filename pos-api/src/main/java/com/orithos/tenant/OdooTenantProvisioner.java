@@ -1016,6 +1016,8 @@ public class OdooTenantProvisioner {
             throw new IllegalStateException("No stock picking type available for the new Odoo company warehouse.");
         }
         long posJournal = ensureJournal(sessionId, companyId, "Point of Sale", shortCode("POS", companyId), "general");
+        ensureJournalDefaultAccount(sessionId, companyId, posJournal,
+                "asset_current", "POS Clearing Account", "8" + companyId + "6");
         long saleJournal = ensureJournal(sessionId, companyId, "Sales", shortCode("SAL", companyId), "sale");
 
         ObjectNode values = objectMapper.createObjectNode();
