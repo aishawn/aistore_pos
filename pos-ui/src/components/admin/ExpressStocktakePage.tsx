@@ -53,7 +53,7 @@ function ToggleSwitch({
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className="flex h-11 w-12 shrink-0 items-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+      className="flex h-11 w-12 shrink-0 items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
     >
       <span className={cn("flex h-6 w-11 items-center rounded-full p-0.5 transition-colors", checked ? "justify-end bg-[var(--oh-primary)]" : "bg-[var(--oh-border-strong)]")}>
         <span className="h-5 w-5 rounded-full bg-white shadow-sm" />

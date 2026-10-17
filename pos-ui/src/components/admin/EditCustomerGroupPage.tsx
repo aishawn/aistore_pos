@@ -198,13 +198,14 @@ function ToggleSwitch({
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label="Toggle customer group status"
       disabled={disabled}
       onClick={() => {
         if (disabled) return;
         onChange(!checked);
       }}
       className={cn(
-        "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        "flex h-11 w-12 shrink-0 items-center rounded-full p-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
         checked ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]",
       )}
     >

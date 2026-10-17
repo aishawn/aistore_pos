@@ -577,9 +577,10 @@ function FormToggle({
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         onClick={() => onChange(!checked)}
         className={cn(
-          "flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors",
+          "flex h-11 w-12 shrink-0 items-center rounded-full p-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]",
           checked ? "justify-end bg-[var(--oh-info)]" : "bg-[var(--oh-border-strong)]",
         )}
       >
