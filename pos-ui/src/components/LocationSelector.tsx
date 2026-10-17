@@ -27,7 +27,11 @@ export function LocationSelector({
 }) {
   const [step, setStep] = useState<"outlet" | "register">("outlet");
   const [outlet, setOutlet] = useState("11");
-  useDialogFocus(open, onClose);
+  const close = () => {
+    setStep("outlet");
+    onClose();
+  };
+  useDialogFocus(open, close);
 
   if (!open) return null;
 
@@ -86,12 +90,12 @@ export function LocationSelector({
                   icon={<RegisterIcon size={22} strokeWidth={1.5} />}
                   label="Register #1"
                   sublabel="(Previously Selected)"
-                  onClick={onClose}
+                  onClick={close}
                 />
                 <OptionCard
                   icon={<MapPinIcon size={22} strokeWidth={1.5} />}
                   label="Not using a register"
-                  onClick={onClose}
+                  onClick={close}
                 />
               </>
             )}
