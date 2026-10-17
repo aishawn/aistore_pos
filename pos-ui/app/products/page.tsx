@@ -280,7 +280,12 @@ function ProductsPageInner() {
       }
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        const active = document.activeElement;
+        const openListbox = menuRef.current?.querySelector('[role="listbox"]');
+        if (openListbox?.contains(active)) return;
+        setMenuOpen(false);
+      }
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
