@@ -189,6 +189,7 @@ export function FormDatePicker({
   const [leftMonth, setLeftMonth] = useState(() => startOfMonth(new Date()));
   const [segmentFocus, setSegmentFocus] = useState<"year" | "month" | "day">("year");
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const selected = parseIsoDate(value);
   const today = useMemo(() => {
     const now = new Date();
@@ -215,6 +216,7 @@ export function FormDatePicker({
 
   function closePicker() {
     setOpen(false);
+    triggerRef.current?.focus();
   }
 
   function openPicker() {
@@ -261,6 +263,7 @@ export function FormDatePicker({
   return (
     <div ref={wrapRef} className="relative" data-select-open={open || undefined}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={openPicker}
         aria-expanded={open}

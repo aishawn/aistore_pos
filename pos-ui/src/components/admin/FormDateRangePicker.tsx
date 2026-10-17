@@ -273,6 +273,7 @@ export function FormDateRangePicker({
   const [activeInput, setActiveInput] = useState<"start" | "end">("start");
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const startDate = parseIsoDate(start);
   const endDate = parseIsoDate(end);
@@ -302,6 +303,7 @@ export function FormDateRangePicker({
   function closePicker() {
     setOpen(false);
     setHoverDate(null);
+    triggerRef.current?.focus();
   }
 
   function selectDate(date: Date) {
@@ -342,6 +344,7 @@ export function FormDateRangePicker({
   return (
     <div ref={wrapRef} className="relative w-full min-w-0" data-select-open={open || undefined}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={openPicker}
         aria-expanded={open}

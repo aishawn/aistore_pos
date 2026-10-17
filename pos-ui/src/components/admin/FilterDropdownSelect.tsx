@@ -23,16 +23,22 @@ export function FilterDropdownSelect({
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const closeMenu = () => {
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        closeMenu();
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeMenu();
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKeyDown);
@@ -50,6 +56,7 @@ export function FilterDropdownSelect({
       <span className="mb-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)]">{label}</span>
       <div className="flex items-center gap-1.5">
         <button
+          ref={triggerRef}
           type="button"
           aria-expanded={open}
           aria-haspopup="listbox"
@@ -81,7 +88,7 @@ export function FilterDropdownSelect({
               aria-selected={value === o.value}
               onClick={() => {
                 onChange(o.value);
-                setOpen(false);
+                closeMenu();
               }}
               className={cn(
                 "flex min-h-11 w-full items-center px-3 py-2 text-left text-[14px] text-[var(--oh-text)] hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
