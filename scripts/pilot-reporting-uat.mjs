@@ -77,7 +77,7 @@ try {
   if (initialMetrics.recentRefunds > 0 && !(await page.locator("li").filter({ hasText: /Refund ·/ }).count())) {
     throw new Error("RECENT_REFUNDS_NOT_LABELED");
   }
-  initialDashboard = (await page.locator("main").innerText()).replace(/\s+/g, " ").slice(0, 1200);
+  initialDashboard = (await page.locator("#main-content").innerText()).replace(/\s+/g, " ").slice(0, 1200);
 
   const updated = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -89,7 +89,7 @@ try {
   const rangeData = await rangeResponse.json();
   const rangeMetrics = readMetrics(rangeData, "RANGE_REPORT");
   await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
-  rangeDashboard = (await page.locator("main").innerText()).replace(/\s+/g, " ").slice(0, 1200);
+  rangeDashboard = (await page.locator("#main-content").innerText()).replace(/\s+/g, " ").slice(0, 1200);
   const rangeAlert = (await page.getByRole("alert").allTextContents()).map((text) => text.trim()).filter(Boolean);
   if (rangeAlert.length) throw new Error(`RANGE_REPORT_ERROR: ${rangeAlert.join(" | ")}`);
   reportMetrics = { last8Hours: initialMetrics, last24Hours: rangeMetrics };

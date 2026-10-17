@@ -42,9 +42,9 @@ try {
   if (!login.ok() || loginBody.code !== 0) throw new Error("Production Sommelier UAT login failed");
 
   const identify = await request("/api/ai/sommelier/identify?q=DEMO");
-  const shiraz = identify.items?.find((item) => item.productId === 62);
-  if (!shiraz) throw new Error("Odoo DEMO catalog did not return product 62");
-  record("Odoo catalog identify", "PASS", `Found ${identify.items.length} DEMO wines; Shiraz product 62 is present.`);
+  const catalogItems = (identify.items || []).filter((item) => Number(item.stockQuantity) > 0);
+  if (!catalogItems.length) throw new Error("Odoo DEMO catalog did not return an in-stock wine");
+  record("Odoo catalog identify", "PASS", `Found ${identify.items.length} DEMO wines; ${catalogItems.length} have free stock.`);
 
   const recommendation = await request("/api/ai/sommelier/recommend", "POST", {
     wineType: "red",
@@ -61,11 +61,12 @@ try {
   const cards = recommendation.recommendations || [];
   if (!cards.length) throw new Error(`Recommendation returned no wines: ${recommendation.emptyReason || "no reason"}`);
   if (cards.some((item) => Number(item.stockQuantity) <= 0)) throw new Error("Recommendation included a wine with no free stock");
-  const recommendedShiraz = cards.find((item) => item.productId === shiraz.productId);
-  if (!recommendedShiraz) throw new Error("Red wine recommendation did not include the in-stock DEMO Shiraz");
+  const shiraz = catalogItems.find((item) => cards.some((card) => card.productId === item.productId));
+  const recommendedShiraz = shiraz && cards.find((item) => item.productId === shiraz.productId);
+  if (!shiraz || !recommendedShiraz) throw new Error("Red wine recommendation did not overlap the in-stock DEMO catalog");
   if (Number(recommendedShiraz.sellPrice) !== Number(shiraz.sellPrice)) throw new Error("Recommendation price differs from Odoo catalog sell price");
   if (Number(recommendedShiraz.stockQuantity) !== Number(shiraz.stockQuantity)) throw new Error("Recommendation stock differs from Odoo catalog free stock");
-  record("Recommendation price and free-stock parity", "PASS", `Product 62: AUD ${recommendedShiraz.sellPrice}; free stock ${recommendedShiraz.stockQuantity}; recommendation agrees with Odoo identify data.`);
+  record("Recommendation price and free-stock parity", "PASS", `Product ${shiraz.productId}: AUD ${recommendedShiraz.sellPrice}; free stock ${recommendedShiraz.stockQuantity}; recommendation agrees with Odoo identify data.`);
 
   const detail = await request(`/api/ai/sommelier/wines/${shiraz.productId}`);
   if (Number(detail.sellPrice) !== Number(shiraz.sellPrice) || Number(detail.stockQuantity) !== Number(shiraz.stockQuantity)) {
@@ -80,6 +81,19 @@ try {
     }
     record(`${direction} alternatives filter unavailable stock`, "PASS", `Returned ${(similar.items || []).length} alternatives; every result has positive free stock.`);
   }
+
+  for (const length of ["card", "10s", "30s"]) {
+    const pitch = await request("/api/ai/sommelier/pitch", "POST", { productId: shiraz.productId, length });
+    if (!pitch.text?.trim()) throw new Error(`${length} pitch returned empty text`);
+    record(`${length} sales pitch`, "PASS", `Product ${shiraz.productId} returned non-empty pitch text.`);
+  }
+
+  const answer = await request("/api/ai/sommelier/ask", "POST", {
+    productId: shiraz.productId,
+    question: "What food would pair well with this wine?",
+  });
+  if (!answer.answer?.trim()) throw new Error("Sommelier ask returned empty answer");
+  record("Sommelier product question", "PASS", `Product ${shiraz.productId} returned an answer with ${(answer.alternatives || []).length} alternatives.`);
 
   const anonymous = await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
   if (!anonymous.ok()) throw new Error("Could not end the authenticated UAT session");

@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-17T19:28:52.861Z",
+  "sourceCommit": "16c1748",
+  "deployment": "unverified-after-webhook",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "Loaded 33 trigger keywords."
+    },
+    {
+      "name": "AI surface regression",
+      "status": "FAIL",
+      "evidence": "/api/ai/config/intents_FAILED_500_\n### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: Table 'orithos.ai_intent' doesn't exist\n### The error may exist in com/orithos/modules/ai/configstore/AiIntentMapper.java (best guess)\n### The error may involve defaultParameterMap\n### The error occurred while setting parameters\n### SQL: SELECT * FROM ai_intent ORDER BY sort_order ASC, id ASC\n### Cause: java.sql.SQLSyntaxErrorException: Table 'orithos.ai_intent' doesn't exist\n; bad SQL grammar []"
+    }
+  ],
+  "passed": 1,
+  "failed": 1
+}
