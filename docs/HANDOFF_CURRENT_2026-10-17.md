@@ -196,6 +196,15 @@
 - 本轮未执行销售、退款、采购、库存、现金、关班或权限写入
 - 公网响应仍观察到 `s-maxage=31536000`/`x-nextjs-prerender`；Dokploy 实际运行 SHA 和缓存头切换仍需控制台或下一次部署日志确认
 
+### Middleware 缓存策略补齐（`d9a7208`）
+
+`next.config.ts` 的实时页面清单与 `middleware.ts` 原先不一致，导致部分核心 Odoo 页面仍可能继承旧的预渲染缓存。现在中间件覆盖核心销售、历史、采购、补货、报表、设置、平台门店详情等路径，并对 `/platform/stores/:id` 使用前缀匹配。
+
+- 提交：`d9a7208`，已推送 `origin/main`
+- 检查：`npm run typecheck`、middleware ESLint、`git diff --check` 通过
+- 认证矩阵：[`UAT_CACHE_MIDDLEWARE_LIVE_2026-10-17.json`](UAT_CACHE_MIDDLEWARE_LIVE_2026-10-17.json)，`262/262 PASS`
+- 线上状态页仍返回 `s-maxage=31536000`、`x-nextjs-cache: HIT`；这证明当前公网实例尚未消费该提交，必须在 Dokploy 执行一次普通 Deploy 并确认运行 SHA 后再验收 no-store 头
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
