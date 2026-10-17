@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Info, ArrowRight, ShieldCheck } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
-export const dynamic = "force-dynamic";
 
 const links = [
   { href: "/settings/users", label: "Manage users" },

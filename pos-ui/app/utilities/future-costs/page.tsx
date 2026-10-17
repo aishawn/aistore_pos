@@ -11,7 +11,6 @@ import { Pagination } from "@/components/admin/Pagination";
 import { useApiList } from "@/hooks/useApi";
 import { BanIcon } from "@/components/icons";
 
-export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
