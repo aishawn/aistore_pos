@@ -12,8 +12,8 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`26bf5e5 fix: improve sell dialog keyboard semantics`（`origin/main` 同步）
-- 最近功能代码：`39dec99`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`，认证回归等待和最新 POS/管理列表证据为 `4eae8bd`，前一批通用弹窗焦点修复为 `3bc4aa6`
+- 当前 HEAD：`aac59f9 test: refresh POS dialog regression evidence`（`origin/main` 同步）
+- 最近功能代码：`39dec99`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`，最新 POS 回归证据为 `aac59f9`，前一批通用弹窗焦点修复为 `3bc4aa6`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
 - 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
@@ -31,7 +31,7 @@
 - 本地检查已有 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；本机按既定约束未运行 `npm run build`。
 - 本批次新增通用可访问性与键盘交互优化：`Pagination` 标注当前页并为 Prev/Next 提供明确的 ARIA 名称；`AsyncState` 的加载、错误、空态增加 live-region 语义，Retry 按钮统一达到 44px 触控高度并保留焦点环；`Modal`、`ConfirmDialog`、`AlertDialog` 打开时把焦点放到可用关闭/确认控件，关闭后恢复到触发控件。该批次只涉及前端交互和语义，不调用业务写入 API。
 - 最新认证只读管理列表回归为 `8/8 PASS`，覆盖 `/purchases/odoo`、`/utilities/mail-log`、`/utilities/trashed-items`、`/platform/stores` 在 390px/1440px；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和对应截图目录，`sourceCommit=39dec99`、`deployment=dokploy-sha-unverified`。本次先出现一次回收项 390px 空态等待失败（7/8），立即重试后 8/8，通过脚本等待逻辑确认是瞬态页面加载。
-- 新增 POS 弹窗只读回归脚本 `scripts/pilot-pos-dialog-uat.mjs`：认证浏览器在 `/` 点击 `POS help and recovery`，390px/1440px 均确认 dialog 打开后按 Escape 消失，结果 `2/2 PASS`；证据见 `docs/UAT_POS_DIALOG_2026-10-17.json` 和截图目录，`sourceCommit=39dec99`、`deployment=dokploy-sha-unverified`，所以仍不能证明 Dokploy 已运行当前代码。脚本增加冷加载等待和无敏感页面诊断输出。
+- 新增 POS 弹窗只读回归脚本 `scripts/pilot-pos-dialog-uat.mjs`：认证浏览器在 `/` 点击 `POS help and recovery`，390px/1440px 均确认 dialog 打开后按 Escape 消失，结果 `2/2 PASS`；证据见 `docs/UAT_POS_DIALOG_2026-10-17.json` 和截图目录，`sourceCommit=10c328f`、`deployment=dokploy-sha-unverified`，所以仍不能证明 Dokploy 已运行当前代码。脚本增加冷加载等待和无敏感页面诊断输出。
 - POS Register 本批进一步修正小票关闭按钮和暂存/切换确认按钮的触控高度，帮助/小票弹窗打开时聚焦关闭按钮并在关闭后恢复原焦点；只改前端交互，不提交销售或其他 Odoo 写入。typecheck、目标 ESLint、`git diff --check` 已通过。
 - 数量编辑器补齐 Escape 关闭、焦点恢复、`aria-modal`/标题语义、删除键标签和 44px 加减/确认触控目标；Sell 页面共用收款按钮统一 44px 高度和焦点环。未改变报价、收款请求或 Odoo 写入逻辑。
 - 数量编辑器的 Escape 回调和初始数量读取改用 refs，避免每次回调变化都重新注册键盘监听；提交为 `6055289`，typecheck、目标 ESLint、`git diff --check` 已通过。
