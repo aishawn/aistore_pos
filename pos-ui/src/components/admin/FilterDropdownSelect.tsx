@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { SelectChevronIcon, XIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { uniqueSelectOptions, type SelectOption } from "@/components/admin/FilterSelect";
@@ -24,6 +24,8 @@ export function FilterDropdownSelect({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const listboxId = useId();
 
   const closeMenu = () => {
     setOpen(false);
@@ -32,6 +34,10 @@ export function FilterDropdownSelect({
 
   useEffect(() => {
     if (!open) return;
+    const selectedIndex = uniqueSelectOptions(options).findIndex((option) => option.value === value);
+    const frame = window.requestAnimationFrame(() => {
+      optionRefs.current[selectedIndex >= 0 ? selectedIndex : 0]?.focus();
+    });
     const onDoc = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         closeMenu();
@@ -43,10 +49,11 @@ export function FilterDropdownSelect({
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      window.cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, options, value]);
 
   const uniqueOptions = uniqueSelectOptions(options);
   const display = value ? (uniqueOptions.find((o) => o.value === value)?.label ?? placeholder) : placeholder;
@@ -60,7 +67,14 @@ export function FilterDropdownSelect({
           type="button"
           aria-expanded={open}
           aria-haspopup="listbox"
+          aria-controls={listboxId}
           onClick={() => setOpen((v) => !v)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              setOpen(true);
+            }
+          }}
           className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[14px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         >
           <span className={value ? "truncate text-[var(--oh-text)]" : "truncate text-[var(--oh-placeholder)]"}>{display}</span>
@@ -79,13 +93,29 @@ export function FilterDropdownSelect({
       </div>
 
       {open && (
-        <div role="listbox" aria-label={label} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white py-1 shadow-lg">
-          {uniqueOptions.map((o) => (
+        <div id={listboxId} role="listbox" aria-label={label} className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white py-1 shadow-lg">
+          {uniqueOptions.map((o, index) => (
             <button
               key={o.value}
+              ref={(element) => { optionRefs.current[index] = element; }}
               type="button"
               role="option"
               aria-selected={value === o.value}
+              onKeyDown={(event) => {
+                if (event.key === "Tab") {
+                  closeMenu();
+                  return;
+                }
+                if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+                  event.preventDefault();
+                  const nextIndex = event.key === "Home"
+                    ? 0
+                    : event.key === "End"
+                      ? uniqueOptions.length - 1
+                      : (index + (event.key === "ArrowDown" ? 1 : -1) + uniqueOptions.length) % uniqueOptions.length;
+                  optionRefs.current[nextIndex]?.focus();
+                }
+              }}
               onClick={() => {
                 onChange(o.value);
                 closeMenu();

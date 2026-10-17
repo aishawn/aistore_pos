@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, RefreshCw, ShoppingCart, Store, X } from "lucide-react";
 import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 import { getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 type ReplenishmentProduct = {
   id: number;
@@ -64,6 +65,11 @@ export function OdooReplenishmentPage() {
   const [auditEntries, setAuditEntries] = useState<ReplenishmentAuditEntry[]>([]);
   const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
+  const rfqSupplierRef = useRef<HTMLSelectElement>(null);
+
+  useDialogFocus(rfqOpen, () => {
+    if (!rfqSubmitting) setRfqOpen(false);
+  }, rfqLoadingSuppliers ? "rfq-loading" : "rfq-ready", rfqSupplierRef);
 
   useEffect(() => {
     setAuditEntries(readReplenishmentAudit());
@@ -341,7 +347,7 @@ export function OdooReplenishmentPage() {
           <form onSubmit={(event) => void submitRfq(event)} className="flex min-h-0 flex-1 flex-col">
             <div className="grid min-w-0 gap-4 overflow-y-auto p-5 md:px-6">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Supplier <span className="text-red-700">*</span></span>
-                <select value={rfqSupplierId} onChange={(event) => setRfqSupplierId(event.target.value)} required disabled={rfqLoadingSuppliers || rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] disabled:opacity-60">
+                <select ref={rfqSupplierRef} value={rfqSupplierId} onChange={(event) => setRfqSupplierId(event.target.value)} required disabled={rfqLoadingSuppliers || rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] disabled:opacity-60">
                   <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : "No suppliers available"}</option>
                   {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
                 </select>
