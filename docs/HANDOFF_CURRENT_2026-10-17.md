@@ -12,11 +12,11 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：待提交本批 POS 交互修复（基线 `3f7f8b6`，`origin/main` 已同步）
-- 最近功能代码：`01d8759`，POS 弹窗只读回归脚本为 `3f7f8b6`，本批 POS 焦点/触控修复待提交，前一批通用弹窗焦点修复为 `3bc4aa6`
+- 当前 HEAD：`a0fcba5 fix: improve POS dialog touch and focus behavior`（`origin/main` 同步）
+- 最近功能代码：`a0fcba5`，POS 弹窗只读回归脚本为 `3f7f8b6`，前一批通用弹窗焦点修复为 `3bc4aa6`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 当前未提交文件包括本批 `pos-ui/src/components/OdooRegisterPage.tsx` 和用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
+- 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
 ### 已完成并有证据
@@ -62,7 +62,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `526044c`，仓库当前 HEAD 为 `e4d690f`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `a0fcba5`，仓库当前 HEAD 为 `a0fcba5`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
