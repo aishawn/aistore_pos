@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-10-17T02:59:11Z",
+  "scope": "fresh disposable trial; sample data lifecycle tested online and tenant deleted",
+  "tenant": {
+    "subdomain": "cpr-20261017105911",
+    "vendorId": 24,
+    "dummyData": true
+  },
+  "before": {
+    "status": 200,
+    "code": 0,
+    "state": "active",
+    "demoProductCount": 14,
+    "demoCustomerCount": 4,
+    "demoOrderCount": 32,
+    "canPurge": true
+  },
+  "purge": {
+    "status": 200,
+    "code": 0,
+    "state": "cleared",
+    "productsArchived": 14,
+    "customersArchived": 4,
+    "sessionsClosed": 0
+  },
+  "after": {
+    "status": 200,
+    "code": 0,
+    "state": "cleared",
+    "demoProductCount": 0,
+    "demoOrderCount": 32,
+    "activeProductApiCount": 0,
+    "salesApiCount": 34,
+    "sampleDataClearedAtPresent": true
+  },
+  "idempotency": {
+    "secondPurgeStatus": 200,
+    "secondPurgeCode": 0,
+    "idempotent": true,
+    "state": "cleared"
+  },
+  "cleanup": {
+    "platformDeleteStatus": 200,
+    "finalVendorStatus": "deleted",
+    "deletedTenantAuthStatus": 402
+  },
+  "deploymentVerification": {
+    "fixCommit": "87a6d7c",
+    "method": "live behavioral readback"
+  },
+  "secrets": "passwords, bootstrap tokens, cookies and Odoo credentials intentionally omitted",
+  "result": "PASS_SAMPLE_PURGE_IDEMPOTENCY_AND_DELETE"
+}

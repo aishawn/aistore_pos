@@ -5,7 +5,7 @@
 
 ## 1. 当前结论
 
-当前 richer dummy data 批次已经通过一次全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归也已有线上证据。
+当前 richer dummy data 和 sample data 清理批次都已通过全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归也已有线上证据。
 
 后续不要复用历史租户，也不要写入生产 Demo 公司。每次代码变更仍需推送并确认 Dokploy 的实际部署 SHA，再用新的 disposable tenant 回归并删除租户。
 
@@ -66,6 +66,12 @@
 - 删除租户返回 HTTP 200，删除后认证返回 HTTP 402
 
 证据：[UAT_RICHER_DUMMY_SEED_LIVE_2026-10-17.json](UAT_RICHER_DUMMY_SEED_LIVE_2026-10-17.json)。公网响应没有暴露 Dokploy SHA，因此该项使用线上行为回读证明，部署 SHA 仍需在 Dokploy 控制台补记。
+
+### Sample data 清理线上回归：已通过
+
+新租户 `cpr-20261017105911` 通过 Settings Data API 完成：状态读取、`REMOVE SAMPLE` 确认、DEMO 商品/客户归档、销售保留、二次清理幂等和租户删除。首次清理返回 200/code 0，归档 14 个商品和 4 个客户；清理后 active product API 为 0，销售 API 仍返回 34 笔；第二次清理返回 `idempotent=true`；删除后认证返回 402。
+
+证据：[UAT_SAMPLE_DATA_PURGE_LIVE_2026-10-17.json](UAT_SAMPLE_DATA_PURGE_LIVE_2026-10-17.json)。此前发现的 Odoo 20 domain 错误已由 `87a6d7c` 修复并在线上回归通过。
 
 提交 `7c51683` 中的 `OdooTenantProvisioner.java` 在选择 sample data 时创建：
 
