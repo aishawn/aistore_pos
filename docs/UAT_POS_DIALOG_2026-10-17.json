@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-17T13:43:47.949Z",
+  "sourceCommit": "12194fa9175993300425de0c89822953e2a8efe3",
+  "deployment": null,
+  "scope": "authenticated read-only POS dialog keyboard regression; no business writes",
+  "host": "https://demo.orithos.com.au",
+  "viewports": [
+    390,
+    1440
+  ],
+  "checks": 2,
+  "passed": 2,
+  "failed": 0,
+  "failures": [],
+  "results": [
+    {
+      "viewport": 390,
+      "status": 200,
+      "visibleBefore": true,
+      "visibleAfter": false,
+      "screenshot": "docs/screenshots/2026-10-17-pos-dialog/pos-help-390.png"
+    },
+    {
+      "viewport": 1440,
+      "status": 200,
+      "visibleBefore": true,
+      "visibleAfter": false,
+      "screenshot": "docs/screenshots/2026-10-17-pos-dialog/pos-help-1440.png"
+    }
+  ]
+}
