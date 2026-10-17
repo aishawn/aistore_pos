@@ -162,6 +162,8 @@ git diff --check
 
 ## 9. 最新部署与构建修复（2026-10-17）
 
-本地修复已提交并推送至 `f022c28`：`a4be900` 为 dummy 商品/分类配置收入科目，`dc90682` 为 POS Card/Cash journal 配置默认账户，`b34acb4` 补充 dummy inventory account，`f022c28` 移除 future-costs/future-prices Client Component 布局中的冗余 `revalidate` 导出，修复 Next prerender 的 `Invalid revalidate value` 构建错误。
+本地修复已提交并推送至 `c3320da`：`a4be900` 为 dummy 商品/分类配置收入科目，`dc90682` 为 POS Card/Cash journal 默认账户，`740cb9a`/`1c7e87a`/`d53ccd0` 修复 payment receivable、outstanding 和 intermediary 账户分离，`b34acb4` 补充 dummy inventory account，`f022c28`/`1eba832`/`c3320da` 统一动态页面缓存策略并修复 Next prerender 的 `Invalid revalidate value` 构建错误。
 
-最新线上关班证据保存在 `docs/UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json`。隔离租户已删除，删除后认证返回 HTTP 402；现金销售和 counted cash 必填校验通过，但运行中的旧部署仍返回 `Missing required account on accountable line`，因此不能把关班标记为通过。Dokploy 部署 `f022c28` 后，必须创建新的 disposable tenant 重跑完整关班验收。
+最新线上关班证据保存在 `docs/UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json`：隔离租户现金销售成功，`countedCash=790.80`，Odoo session state 为 `closed`，`cash_register_difference=0`；租户已删除，删除后认证返回 HTTP 402。关班闭环现为 **PASS**。
+
+前端 `/security`、`/utilities/future-costs`、`/utilities/future-prices` 的线上响应仍需在 Dokploy 前端容器切换后复核；在切换完成前，不能把 `no-store` 和旧控件移除验收标记为通过。
