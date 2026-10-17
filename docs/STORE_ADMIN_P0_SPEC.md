@@ -19,7 +19,7 @@ Give a liquor store owner three daily ops surfaces that today are Classic-only o
 |---|---|---|
 | Stocktake | Not in sidebar; no Odoo BFF | [pos-ui/docs/STOCKTAKES.md](../pos-ui/docs/STOCKTAKES.md), `/stocktake*`, Express/External |
 | Purchases | List + detail + confirm RFQ; receipts listed read-only with deep link to Odoo | Classic `/orders/receive/*` |
-| Manage Cash | `/manage-cash` Coming soon stub | Planned in [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) |
+| Manage Cash | `/manage-cash` implemented | Odoo cash in/out on an open POS session; see [CAPABILITY_STATUS.md](CAPABILITY_STATUS.md) and the isolation UAT evidence |
 | Close register | Counted cash required when cash method enabled | `/api/odoo/session/close` |
 
 ---
@@ -131,7 +131,7 @@ Do **not** replace Close Register with Manage Cash. Manage Cash is float adjustm
 
 ### Manage Cash P0
 
-**UI:** replace Coming soon on `/manage-cash`; add under **Register** sidebar: **Manage Cash**.
+**UI:** `/manage-cash` now provides the mid-shift cash in/out flow under **Register → Manage Cash**. Keep the end-of-day counted cash path on **Close Register**.
 
 **Fields:** direction (`in` \| `out`), amount (AUD > 0), optional reason string (stored in Odoo note if supported).
 
@@ -151,7 +151,7 @@ Do **not** replace Close Register with Manage Cash. Manage Cash is float adjustm
 ### Close Register (ops, not new page)
 
 - Already requires counted cash when cash payment method present.
-- P0 ops checklist: document storeowner procedure in pilot readiness; run one close on **isolation** DB after Manage Cash UAT.
+- P0 ops checklist: document storeowner procedure in pilot readiness; the UI/API path is implemented, but repeat the cash in/out plus close sequence on an approved **isolation** DB before pilot acceptance.
 - No UI redesign required beyond ensuring Manage Cash and Close do not double-count.
 
 ### Acceptance
@@ -174,8 +174,7 @@ Do **not** replace Close Register with Manage Cash. Manage Cash is float adjustm
 ## Suggested build order (store)
 
 1. Purchase **receive** write (extends existing detail; highest reuse)
-2. **Manage Cash** spike → implement or honest deep-link interim
-3. **Express stocktake** (largest new surface)
+2. **Express stocktake** (largest remaining new surface)
 4. Nav + capability status updates + UAT JSON on isolation Odoo
 
 ## Explicit non-goals until P1
