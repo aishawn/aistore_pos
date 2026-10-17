@@ -25,6 +25,7 @@ import {
 import { AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { DROPDOWN_PAGE_SIZE } from "@/lib/pagination";
 import { fetchAndPrintBalances } from "@/lib/printCustomerBalances";
 import { AlertDialog } from "@/components/admin/AlertDialog";
@@ -77,6 +78,7 @@ export default function BalancesPage() {
     customerId?: string;
     customerName?: string;
   }>({ open: false });
+  useDialogFocus(menuOpen, () => setMenuOpen(false));
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -100,14 +102,9 @@ export default function BalancesPage() {
         setMenuOpen(false);
       }
     }
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
-    }
     document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, [menuOpen]);
 
