@@ -123,3 +123,9 @@
 - [`HANDOFF_CLOSE_REGISTER_2026-10-17.md`](./HANDOFF_CLOSE_REGISTER_2026-10-17.md)：关班缺陷及修复过程
 - [`ISOLATION_ODOO_UAT_RUNBOOK.md`](./ISOLATION_ODOO_UAT_RUNBOOK.md)：隔离租户验收运行手册
 - [`PILOT_RELEASE_READINESS.md`](./PILOT_RELEASE_READINESS.md)：试点发布门槛
+
+## 10. 最新前端缓存批次（2026-10-17）
+
+提交 `6c685ac` 将 `/security`、`/utilities/future-costs` 和 `/utilities/future-prices` 的最终 page entry 改为服务器端 `force-dynamic` + `force-no-store`，并保留客户端交互组件；静态页面回归为 131 路由 × 2 视口，共 `262/262 PASS`，证据见 `UAT_ALL_STATIC_PAGES_LIVE_2026-10-17_RECHECK.json`。
+
+截至交接时，`demo.orithos.com.au` 仍返回旧的 `Cache-Control: s-maxage=31536000` 和 `x-nextjs-prerender: 1`，所以前端容器尚未被当前 Dokploy 部署切换。必须执行普通 Deploy 后重新检查这三个路由的响应头和页面文案；不能用 GitHub push 或静态矩阵结果代替部署证据。
