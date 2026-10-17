@@ -92,7 +92,8 @@ export function SommelierIdentifyPage() {
           className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
         />
         <button
-          type="submit"
+          type="button"
+          onClick={() => void search(q)}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] sm:px-4"
         >
           <Search size={16} />

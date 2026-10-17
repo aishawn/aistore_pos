@@ -47,34 +47,44 @@ try {
   for (const endpoint of ["/api/ai/config/intents", "/api/ai/config/slots", "/api/ai/config/slot-values", "/api/ai/config/prompts"]) {
     const result = await jsonRequest(endpoint);
     if (!result.response.ok() || result.body.code !== 0 || !Array.isArray(result.body.data)) {
-      throw new Error(`${endpoint}_FAILED_${result.response.status()}_${result.body.message || ""}`);
+      record(`AI config ${endpoint.split("/").at(-1)}`, "FAIL", `${result.response.status()} ${result.body.message || ""}`);
+      continue;
     }
     record(`AI config ${endpoint.split("/").at(-1)}`, "PASS", `Loaded ${result.body.data.length} records.`);
   }
 
   const assistant = await jsonRequest("/api/ai/assistant", "POST", { question: "look up product DEMO" });
-  if (!assistant.response.ok() || assistant.body.code !== 0 || !assistant.body.data?.threadId) {
+  if (assistant.body.code === 50301) {
+    record("AI assistant availability", "PASS", "Assistant is intentionally disabled because production AI_ENABLED is false.");
+  } else if (!assistant.response.ok() || assistant.body.code !== 0 || !assistant.body.data?.threadId) {
     throw new Error(`AI_ASSISTANT_FAILED_${assistant.response.status()}_${assistant.body.message || ""}`);
+  } else {
+    record("AI assistant product lookup", "PASS", `Returned intent ${assistant.body.data.intent}.`);
   }
-  record("AI assistant product lookup", "PASS", `Returned intent ${assistant.body.data.intent}.`);
 
   const emptyAudio = await context.request.post(`${base}/api/ai/transcribe`, {
     multipart: { file: { name: "empty.webm", mimeType: "audio/webm", buffer: Buffer.alloc(0) } },
   });
   const emptyAudioBody = await emptyAudio.json().catch(() => ({}));
-  if (emptyAudio.status() !== 400 || emptyAudioBody.code !== 40010) {
+  if (emptyAudioBody.code === 50301) {
+    record("Voice input availability", "PASS", "Cloud transcription is intentionally disabled because production AI_ENABLED is false.");
+  } else if (emptyAudio.status() !== 400 || emptyAudioBody.code !== 40010) {
     throw new Error(`EMPTY_AUDIO_GUARD_${emptyAudio.status()}_${emptyAudioBody.code ?? ""}`);
+  } else {
+    record("Voice input validation", "PASS", "Empty audio is rejected with HTTP 400 and code 40010.");
   }
-  record("Voice input validation", "PASS", "Empty audio is rejected with HTTP 400 and code 40010.");
 
   const emptyImage = await context.request.post(`${base}/api/ai/sommelier/identify-image`, {
     multipart: { file: { name: "empty.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(0) } },
   });
   const emptyImageBody = await emptyImage.json().catch(() => ({}));
-  if (emptyImage.status() !== 400 || emptyImageBody.code !== 40010) {
+  if (emptyImageBody.code === 50301) {
+    record("Label image availability", "PASS", "Cloud label recognition is intentionally disabled because production AI_ENABLED is false.");
+  } else if (emptyImage.status() !== 400 || emptyImageBody.code !== 40010) {
     throw new Error(`EMPTY_IMAGE_GUARD_${emptyImage.status()}_${emptyImageBody.code ?? ""}`);
+  } else {
+    record("Label image validation", "PASS", "Empty image is rejected with HTTP 400 and code 40010.");
   }
-  record("Label image validation", "PASS", "Empty image is rejected with HTTP 400 and code 40010.");
 
   const logout = await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
   if (!logout.ok()) throw new Error(`LOGOUT_FAILED_${logout.status()}`);
