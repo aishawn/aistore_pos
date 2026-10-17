@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`ca11e7e`（头部浮层回归证据）；本批功能提交为 `c5a688e`、`893e9b3`、`56377cf`、`0813041`
+- 当前 HEAD：`c24e08e`（最新头部浮层截图证据）；本批功能提交为 `c5a688e`、`893e9b3`、`56377cf`、`0813041`
 - 最近功能代码：`a8357b2`，共用筛选控件基础优化为 `56b39da`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
@@ -77,7 +77,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `c5a688e`，仓库当前 HEAD 为 `ca11e7e`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `c5a688e`，仓库当前 HEAD 为 `c24e08e`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
