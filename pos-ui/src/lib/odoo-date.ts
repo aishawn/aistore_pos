@@ -29,6 +29,11 @@ export function formatOdooDateTime(value: string, timezone = DEFAULT_STORE_TIMEZ
   }
 }
 
+/** Format a browser load timestamp in the store timezone used by the page. */
+export function formatStoreEpoch(epochMs: number, timezone = DEFAULT_STORE_TIMEZONE, options: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" }): string {
+  return formatOdooDateTime(new Date(epochMs).toISOString(), timezone, options);
+}
+
 /** Format read_group buckets, which are store-local wall times without a timezone. */
 export function formatOdooGroupedDate(value: string, options: Intl.DateTimeFormatOptions = { dateStyle: "medium" }): string {
   const parsed = parseOdooDate(value, true);

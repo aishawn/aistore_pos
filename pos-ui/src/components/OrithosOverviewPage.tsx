@@ -18,7 +18,7 @@ import {
 import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatOdooGroupedDate } from "@/lib/odoo-date";
+import { formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
 
 type OverviewData = {
   rangeHours: number;
@@ -302,7 +302,7 @@ export function OrithosOverviewPage() {
             <div className="min-w-0">
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
               <h1 className="oh-type-title mt-0.5 text-[var(--oh-text)]">{greeting}</h1>
-              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Odoo POS activity · {rangeLabel}{lastLoadedAt !== null && <span className="ml-2">· Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}</span>}</p>
+              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Odoo POS activity · {rangeLabel}{lastLoadedAt !== null && <span className="ml-2">· Last refreshed {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</span>}</p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <div role="group" aria-label="Odoo sales reporting range" className="inline-flex h-9 items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">

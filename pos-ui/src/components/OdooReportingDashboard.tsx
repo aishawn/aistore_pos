@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, RotateCcw, ShoppingBag, Store } from "lucide-react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
-import { formatOdooDateTime, formatOdooGroupedDate } from "@/lib/odoo-date";
+import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
 
 type DashboardData = {
   rangeHours: number;
@@ -211,7 +211,7 @@ export function OdooReportingDashboard() {
         </section>
       </div>
 
-      <p className="oh-type-meta inline-flex flex-wrap items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Data through {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}{lastLoadedAt !== null && <> · Loaded {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}</>}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
+      <p className="oh-type-meta inline-flex flex-wrap items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Data through {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}{lastLoadedAt !== null && <> · Loaded {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</>}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
     </main>
   );
 }
