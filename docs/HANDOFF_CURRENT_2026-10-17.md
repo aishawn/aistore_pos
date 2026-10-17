@@ -5,7 +5,7 @@
 
 ## 1. 当前结论
 
-当前 richer dummy data 和 sample data 清理批次都已通过全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归也已有线上证据。
+当前 richer dummy data、sample data 清理和现金盘点关班均已通过全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店硬件/现金运营验收仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归也已有线上证据。
 
 后续不要复用历史租户，也不要写入生产 Demo 公司。每次代码变更仍需推送并确认 Dokploy 的实际部署 SHA，再用新的 disposable tenant 回归并删除租户。
 
@@ -40,6 +40,7 @@
 - Card 模拟收款、Cash 收款和找零
 - 销售退款、重复退款拒绝、库存恢复
 - Cash in / Cash out 和基础关班保护
+- Cash sale 后正确 counted cash 关班：session closed、cash difference 0；证据见 `docs/UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json`
 - 采购单确认、部分收货、全部收货、重复收货拒绝
 - 多租户访问隔离、租户删除后的认证拒绝
 - 认证页面矩阵、移动端布局、缓存策略和公开品牌页面回归
@@ -103,7 +104,7 @@
 
 修复后结果：`87a6d7c` 将 Odoo 20 不接受的 unary `!` domain 改为 `not like`。新租户 `cpr-20261017105911` 已完成清理回归：归档 14 个 DEMO 商品、4 个客户，清理后 active product 为 0，销售记录保留，二次清理 `idempotent=true`，删除后认证返回 402。当前 sample-data 清理批次按修复后证据视为通过，详见 `docs/UAT_SAMPLE_DATA_PURGE_FIX_LIVE_2026-10-17.json`。
 
-整体项目仍为 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理尚未覆盖。
+整体项目仍为 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店硬件/现金运营验收尚未覆盖；自动化隔离租户的现金盘点关班已通过。
 
 ### 最新状态守卫回归（`01f1c5a`）
 
