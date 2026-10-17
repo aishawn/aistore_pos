@@ -6,6 +6,7 @@ import { AdminPageLayout, AdminOutlineButton } from "@/components/admin/AdminPag
 import { ListTable } from "@/components/admin/ListTable";
 import { PlusIcon, CableIcon } from "@/components/icons";
 import { RowActions } from "@/components/admin/RowActions";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { EntityFormModal, FormValues, FormField } from "@/components/admin/EntityFormModal";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
@@ -26,11 +27,24 @@ export default function VendorConnectionsPage() {
   const vendors = data ?? [];
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VendorConnection | null>(null);
+  const [deleting, setDeleting] = useState<VendorConnection | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  async function remove(id: string) {
-    if (!window.confirm("Delete this item?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
+  async function remove() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setActionError(null);
+    try {
+      await api.del(`${BASE}/${deleting.id}`);
+      setDeleting(null);
+      reload();
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "Could not delete this vendor connection.");
+      setDeleting(null);
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   return (
@@ -44,6 +58,7 @@ export default function VendorConnectionsPage() {
         </AdminOutlineButton>
       }
     >
+      {actionError && <p role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{actionError}</p>}
       {loading ? (
         <div role="status" aria-label="Loading vendor connections" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white"><div className="grid grid-cols-3 gap-3 bg-[var(--oh-surface)] px-4 py-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-border)]" />)}</div>{Array.from({ length: 4 }, (_, row) => <div key={row} className="grid grid-cols-3 gap-3 border-t border-[var(--oh-border)] px-4 py-4">{Array.from({ length: 3 }, (_, cell) => <div key={cell} className="h-4 animate-pulse rounded bg-[var(--oh-surface)]" />)}</div>)}</div>
       ) : error ? (
@@ -60,7 +75,7 @@ export default function VendorConnectionsPage() {
           rows={vendors.map((v) => [
             <span key="n" className="flex items-center gap-2"><CableIcon size={18} /> {v.name ?? ""}</span>,
             <span key="s" className="text-[var(--oh-success)]">Connected</span>,
-            <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => remove(v.id)} />,
+            <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => setDeleting(v)} />,
           ])}
         />
       )}
@@ -71,6 +86,15 @@ export default function VendorConnectionsPage() {
       {editing && (
         <EntityFormModal title="Edit Connection" fields={FIELDS} initial={editing as unknown as FormValues} onClose={() => setEditing(null)} onSubmit={async (val) => { await api.put(`${BASE}/${editing.id}`, body(val)); reload(); }} />
       )}
+      <ConfirmDialog
+        open={!!deleting}
+        title="Delete vendor connection"
+        message={deleting ? `Delete “${deleting.name}”?` : ""}
+        confirmLabel="Delete connection"
+        busy={deleteBusy}
+        onConfirm={() => void remove()}
+        onCancel={() => { if (!deleteBusy) setDeleting(null); }}
+      />
     </AdminPageLayout>
   );
 }
