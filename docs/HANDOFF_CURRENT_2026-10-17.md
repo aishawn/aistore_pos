@@ -271,6 +271,7 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 - 当前代码尚未部署，待与下一批功能改动合并后统一 Dokploy 普通 Deploy
 - 检查：`npm run typecheck` 通过；目标 ESLint 无 error（保留仓库既有 warnings）；`git diff --check` 通过
 - 本地未运行 build；未执行任何销售、退款、采购、库存、现金或权限写入
+- `3f0068e` 推送后只读检查 `/`、`/overview`、`/products` 仍返回 `Cache-Control: s-maxage=31536000`、`x-nextjs-cache: HIT`、`x-nextjs-prerender: 1`，且无运行 SHA；需 Dokploy 普通 Deploy 后重新验证
 
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
