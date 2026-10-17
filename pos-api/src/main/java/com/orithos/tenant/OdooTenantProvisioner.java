@@ -405,11 +405,10 @@ public class OdooTenantProvisioner {
         domain.add(objectMapper.createArrayNode().add("state").add("in")
                 .add(objectMapper.createArrayNode().add("paid").add("done").add("invoiced")));
         domain.add(objectMapper.createArrayNode().add("amount_total").add(">").add(0));
-        // Exclude demo-seed uuids; keep rows with empty uuid (real UI sales always set uuid here).
-        ArrayNode notDemo = objectMapper.createArrayNode();
-        notDemo.add("!");
-        notDemo.add(objectMapper.createArrayNode().add("uuid").add("=like").add(demoOrderUuidPrefix(companyId) + "%"));
-        domain.add(notDemo);
+        // Odoo 20 rejects the unary `!` wrapper around a leaf in this RPC shape.
+        // Use its native negative string operator so real sales remain protected.
+        domain.add(objectMapper.createArrayNode()
+                .add("uuid").add("not like").add(demoOrderUuidPrefix(companyId) + "%"));
         Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
         return count == null ? 0 : count.intValue();
     }
@@ -514,11 +513,8 @@ public class OdooTenantProvisioner {
         domain.add(objectMapper.createArrayNode().add("session_id").add("=").add(posSessionId));
         domain.add(objectMapper.createArrayNode().add("state").add("in")
                 .add(objectMapper.createArrayNode().add("paid").add("done").add("invoiced")));
-        ArrayNode notDemo = objectMapper.createArrayNode();
-        notDemo.add("!");
-        notDemo.add(objectMapper.createArrayNode().add("uuid").add("=like")
-                .add(demoOrderUuidPrefix(companyId) + "%"));
-        domain.add(notDemo);
+        domain.add(objectMapper.createArrayNode()
+                .add("uuid").add("not like").add(demoOrderUuidPrefix(companyId) + "%"));
         Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
         return count == null ? 0 : count.intValue();
     }
