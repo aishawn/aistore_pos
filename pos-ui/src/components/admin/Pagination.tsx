@@ -21,7 +21,7 @@ export function Pagination({
   if (total === 0) return null;
 
   return (
-    <div className="mt-3 flex items-center justify-between font-sans text-[13px] text-neutral-600">
+    <nav aria-label="Pagination" className="mt-3 flex items-center justify-between font-sans text-[13px] text-neutral-600">
       <span>
         Showing {from}–{to} of {total}
       </span>
@@ -46,6 +46,6 @@ export function Pagination({
           Next <ChevronRightIcon size={14} />
         </button>
       </div>
-    </div>
+    </nav>
   );
 }

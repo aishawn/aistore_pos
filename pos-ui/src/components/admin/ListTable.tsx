@@ -18,6 +18,7 @@ export function ListTable({
   headerClassName,
   headerRight,
   rowClassName,
+  ariaLabel = "Data table",
 }: {
   columns: ListColumn[];
   rows: React.ReactNode[][];
@@ -26,6 +27,7 @@ export function ListTable({
   /** Extra label pinned to the right of the black header (e.g. "Total 96"). */
   headerRight?: React.ReactNode;
   rowClassName?: string;
+  ariaLabel?: string;
 }) {
   const align = (a?: ListColumn["align"]) =>
     a === "right" ? "text-right" : a === "center" ? "text-center" : "text-left";
@@ -38,7 +40,7 @@ export function ListTable({
   const tableMinWidth = Math.max(720, columns.length * 112);
 
   return (
-    <div className="overflow-x-auto rounded-lg">
+    <div className="overflow-x-auto rounded-lg" role="table" aria-label={ariaLabel}>
     <div className="font-sans text-[13px]" style={{ minWidth: `${tableMinWidth}px` }}>
       {/* Header */}
       <div
@@ -50,9 +52,10 @@ export function ListTable({
           headerClassName,
         )}
         style={gridStyle}
+        role="row"
       >
         {columns.map((c, i) => (
-          <div key={i} className={cn("px-1.5", c.width ?? "min-w-0", !equalColumns && !c.width && "flex-1 basis-0", align(c.align))}>
+          <div key={i} role="columnheader" className={cn("px-1.5", c.width ?? "min-w-0", !equalColumns && !c.width && "flex-1 basis-0", align(c.align))}>
             {c.label}
           </div>
         ))}
@@ -75,10 +78,12 @@ export function ListTable({
             rowClassName,
           )}
           style={gridStyle}
+          role="row"
         >
           {row.map((cell, c) => (
             <div
               key={c}
+              role="cell"
               className={cn(
                 "px-1.5 text-[var(--oh-text-secondary)]",
                 columns[c]?.width ?? "min-w-0",

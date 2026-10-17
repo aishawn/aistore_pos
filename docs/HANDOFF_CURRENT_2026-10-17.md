@@ -280,6 +280,13 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 - 检查：typecheck 通过；目标 ESLint 无 error，仅保留 `AppShell` 原有 1 个 warning；`git diff --check` 通过
 - 未改变 API、数据权限或任何业务写入
 
+### 共用列表可访问性（待部署）
+
+`ListTable` 现在输出 `role="table"`、表头、行和单元格语义，并支持自定义 `aria-label`；共用 `Pagination` 使用 `nav[aria-label="Pagination"]`。这批改动覆盖商品、客户、供应商、设置、报表和工具列表，不改变现有桌面或移动布局。
+
+- 检查：`npm run typecheck` 通过；`ListTable` 与 `Pagination` 目标 ESLint 通过；`git diff --check` 通过
+- 未执行任何业务写入；仍需 Dokploy 普通 Deploy 后做认证页面和键盘回归
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
