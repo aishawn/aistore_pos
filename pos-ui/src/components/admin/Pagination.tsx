@@ -23,26 +23,26 @@ export function Pagination({
   if (total === 0) return null;
 
   return (
-    <nav aria-label="Pagination" className="mt-3 flex items-center justify-between font-sans text-[13px] text-neutral-600">
+    <nav aria-label="Pagination" className="mt-3 flex flex-col gap-3 font-sans text-[13px] text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span>Showing {from}–{to} of {total}</span>
+        <span aria-live="polite">Showing {from}–{to} of {total}</span>
         {outOfRange && (
           <button type="button" onClick={() => onPage(currentPage)} className="font-semibold text-[var(--oh-primary)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
             Go to page {currentPage}
           </button>
         )}
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 self-stretch sm:self-auto">
         <button
           type="button"
           disabled={currentPage <= 1}
           aria-label="Go to previous page"
           onClick={() => onPage(currentPage - 1)}
-          className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40 sm:flex-none"
         >
           <ChevronRightIcon size={14} className="rotate-180" /> Prev
         </button>
-        <span aria-current="page" className="px-1.5">
+        <span aria-current="page" className="min-w-24 px-1.5 text-center">
           Page {currentPage} / {pages}
         </span>
         <button
@@ -50,7 +50,7 @@ export function Pagination({
           disabled={currentPage >= pages}
           aria-label="Go to next page"
           onClick={() => onPage(currentPage + 1)}
-          className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40 sm:flex-none"
         >
           Next <ChevronRightIcon size={14} />
         </button>

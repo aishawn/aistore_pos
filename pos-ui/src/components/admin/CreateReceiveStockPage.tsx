@@ -226,6 +226,7 @@ export function CreateReceiveStockPage() {
                 onChange={(e) => setInvoiceDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -233,6 +234,7 @@ export function CreateReceiveStockPage() {
               <input
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -242,6 +244,7 @@ export function CreateReceiveStockPage() {
                 onChange={(e) => setDueDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>

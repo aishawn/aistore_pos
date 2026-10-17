@@ -227,6 +227,7 @@ export function CreateReturnStockPage() {
                 onChange={(e) => setOrderDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -234,6 +235,7 @@ export function CreateReturnStockPage() {
               <input
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -243,6 +245,7 @@ export function CreateReturnStockPage() {
                 onChange={(e) => setDueDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>

@@ -40,7 +40,7 @@ export function ListTable({
   const tableMinWidth = Math.max(720, columns.length * 112);
 
   return (
-    <div className="overflow-x-auto rounded-lg" role="table" aria-label={ariaLabel}>
+    <div className="overflow-x-auto rounded-lg" role="table" aria-label={ariaLabel} aria-colcount={columns.length} aria-rowcount={rows.length + 1}>
     <div className="font-sans text-[13px]" style={{ minWidth: `${tableMinWidth}px` }}>
       {/* Header */}
       <div
@@ -55,7 +55,7 @@ export function ListTable({
         role="row"
       >
         {columns.map((c, i) => (
-          <div key={i} role="columnheader" className={cn("px-1.5", c.width ?? "min-w-0", !equalColumns && !c.width && "flex-1 basis-0", align(c.align))}>
+          <div key={i} role="columnheader" aria-colindex={i + 1} className={cn("px-1.5", c.width ?? "min-w-0", !equalColumns && !c.width && "flex-1 basis-0", align(c.align))}>
             {c.label}
           </div>
         ))}
@@ -66,36 +66,39 @@ export function ListTable({
         )}
       </div>
       {/* Rows */}
-      {rows.map((row, r) => (
-        <div
-          key={r}
-          className={cn(
-            rowLayout,
-            "items-center border-b border-[var(--oh-border)] px-3 transition-colors hover:bg-[var(--oh-paper)]",
-            compact ? "py-1.5" : "py-2.5",
-            r % 2 === 1 ? "bg-[var(--oh-surface)]" : "bg-white",
-            headerRight && "pr-24",
-            rowClassName,
-          )}
-          style={gridStyle}
-          role="row"
-        >
-          {row.map((cell, c) => (
-            <div
-              key={c}
-              role="cell"
-              className={cn(
-                "min-w-0 overflow-hidden px-1.5 text-[var(--oh-text-secondary)]",
-                columns[c]?.width ?? "min-w-0",
-                !equalColumns && !columns[c]?.width && "flex-1 basis-0",
-                align(columns[c]?.align),
-              )}
-            >
-              {cell}
-            </div>
-          ))}
-        </div>
-      ))}
+      <div role="rowgroup">
+        {rows.map((row, r) => (
+          <div
+            key={r}
+            className={cn(
+              rowLayout,
+              "items-center border-b border-[var(--oh-border)] px-3 transition-colors hover:bg-[var(--oh-paper)]",
+              compact ? "py-1.5" : "py-2.5",
+              r % 2 === 1 ? "bg-[var(--oh-surface)]" : "bg-white",
+              headerRight && "pr-24",
+              rowClassName,
+            )}
+            style={gridStyle}
+            role="row"
+          >
+            {row.map((cell, c) => (
+              <div
+                key={c}
+                role="cell"
+                aria-colindex={c + 1}
+                className={cn(
+                  "min-w-0 overflow-hidden px-1.5 text-[var(--oh-text-secondary)]",
+                  columns[c]?.width ?? "min-w-0",
+                  !equalColumns && !columns[c]?.width && "flex-1 basis-0",
+                  align(columns[c]?.align),
+                )}
+              >
+                {cell}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
     </div>
   );

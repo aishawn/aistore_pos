@@ -235,6 +235,9 @@ export function AdminSearchInput({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
+        type="search"
+        autoComplete="off"
+        enterKeyHint="search"
         className="min-h-11 w-full rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
       />
     </label>

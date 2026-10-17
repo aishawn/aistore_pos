@@ -239,6 +239,7 @@ export function CreateTransferPage() {
                 onChange={(e) => setTransferDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -246,6 +247,7 @@ export function CreateTransferPage() {
               <input
                 value={transferNumber}
                 onChange={(e) => setTransferNumber(e.target.value)}
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -255,6 +257,7 @@ export function CreateTransferPage() {
                 onChange={(e) => setDueDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>

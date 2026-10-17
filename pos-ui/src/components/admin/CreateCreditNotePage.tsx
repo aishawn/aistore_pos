@@ -241,6 +241,7 @@ export function CreateCreditNotePage() {
                 onChange={(e) => setCreditNoteDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
@@ -258,6 +259,7 @@ export function CreateCreditNotePage() {
                 onChange={(e) => setDueDate(e.target.value)}
                 placeholder="DD/MM/YYYY"
                 inputMode="numeric"
+                autoComplete="off"
                 className={fieldClass}
               />
             </FormField>
