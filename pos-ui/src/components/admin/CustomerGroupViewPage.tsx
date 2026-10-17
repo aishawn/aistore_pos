@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { AsyncState } from "@/components/admin/AsyncState";
+import { AlertDialog } from "@/components/admin/AlertDialog";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ListTable } from "@/components/admin/ListTable";
 import type { CustomerGroupDetail } from "@/components/admin/EditCustomerGroupPage";
 import {
@@ -200,6 +202,8 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
   const router = useRouter();
   const [nav, setNav] = useState<NavId>("home");
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{ title: string; message: string } | null>(null);
 
   const { data: group, loading, error } = useApi<CustomerGroupDetail>(
     groupId ? `/api/customers/groups/${groupId}` : null,
@@ -215,14 +219,17 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
     { page: 1, size: 50 },
   );
 
-  async function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this customer group?")) return;
+  async function confirmDelete() {
+    setDeleteConfirmOpen(false);
     setDeleting(true);
     try {
       await api.del(`/api/customers/groups/${groupId}`);
       router.push("/customer-groups");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete customer group");
+      setAlertDialog({
+        title: "Delete Failed",
+        message: e instanceof Error ? e.message : "Failed to delete customer group",
+      });
       setDeleting(false);
     }
   }
@@ -286,7 +293,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={() => setDeleteConfirmOpen(true)}
               disabled={deleting}
               className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border-2 border-[var(--oh-danger)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] transition-colors hover:bg-[var(--oh-tile-red-bg)] disabled:opacity-60"
             >
@@ -323,6 +330,21 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
           </AsyncState>
         </main>
       </div>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Delete customer group"
+        message={`Delete “${groupName}”?`}
+        confirmLabel="Delete group"
+        busy={deleting}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => { if (!deleting) setDeleteConfirmOpen(false); }}
+      />
+      <AlertDialog
+        open={!!alertDialog}
+        title={alertDialog?.title ?? ""}
+        message={alertDialog?.message ?? ""}
+        onClose={() => setAlertDialog(null)}
+      />
     </div>
   );
 }
