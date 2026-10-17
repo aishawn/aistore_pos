@@ -159,6 +159,9 @@ export function OdooRegisterPage() {
   const customerSearchRevision = useRef(0);
   const barcodeLookupBusy = useRef(false);
   const restoredDraftKey = useRef<string | null>(null);
+  const receiptCloseRef = useRef<HTMLButtonElement>(null);
+  const helpCloseRef = useRef<HTMLButtonElement>(null);
+  const dialogPreviousFocusRef = useRef<HTMLElement | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
 
   const loadPos = useCallback(async (initial = false) => {
@@ -227,6 +230,20 @@ export function OdooRegisterPage() {
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [helpOpen, parkedAction, pendingRegisterId, receipt]);
+
+  useEffect(() => {
+    const dialogOpen = helpOpen || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
+    if (!dialogOpen) return;
+    dialogPreviousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    requestAnimationFrame(() => {
+      if (helpOpen) helpCloseRef.current?.focus();
+      else if (receipt) receiptCloseRef.current?.focus();
+    });
+    return () => {
+      if (dialogPreviousFocusRef.current?.isConnected) dialogPreviousFocusRef.current.focus();
+      dialogPreviousFocusRef.current = null;
+    };
   }, [helpOpen, parkedAction, pendingRegisterId, receipt]);
 
   useEffect(() => {
@@ -1114,7 +1131,7 @@ export function OdooRegisterPage() {
 
       {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
         <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
-          <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button></header>
+          <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button ref={receiptCloseRef} type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></header>
           <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatStoreDate(receipt.date, receipt.timezone)}</p></div>
           <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 border-y border-dashed border-[var(--oh-border)] py-3 text-xs"><dt className="text-[var(--oh-muted)]">Customer</dt><dd className="text-right font-medium text-[var(--oh-text)]">{receipt.customerName}</dd><dt className="text-[var(--oh-muted)]">Register</dt><dd className="text-right text-[var(--oh-text)]">{receipt.session}</dd></dl>
           <table className="mt-4 w-full text-xs"><thead><tr className="border-b border-[var(--oh-border)] text-[var(--oh-muted)]"><th className="pb-2 text-left font-semibold">Item</th><th className="pb-2 text-right font-semibold">Qty</th><th className="pb-2 text-right font-semibold">Total</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{receipt.lines.map((line, index) => <tr key={`${line.name}-${index}`}><td className="py-2 pr-2 font-medium text-[var(--oh-text)]">{line.name}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.quantity}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text)]">{money(line.total)}</td></tr>)}</tbody></table>
@@ -1128,7 +1145,7 @@ export function OdooRegisterPage() {
         <section role="alertdialog" aria-modal="true" aria-labelledby="parked-action-title" aria-describedby="parked-action-description" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
           <h2 id="parked-action-title" className="text-lg font-semibold text-[var(--oh-text)]">{parkedAction.type === "resume" ? "Replace the current sale?" : "Discard this parked sale?"}</h2>
           <p id="parked-action-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{parkedAction.type === "resume" ? "Your current cart will be replaced with the parked sale. The parked sale will be removed from this terminal." : "This removes the saved draft from this terminal. It does not cancel or change any completed Odoo sale."}</p>
-          <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setParkedAction(null)} className="h-10 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)]">Cancel</button><button type="button" onClick={confirmParkedAction} className={`h-10 rounded-md px-4 text-sm font-semibold text-white ${parkedAction.type === "discard" ? "bg-red-700 hover:bg-red-800" : "bg-[var(--sf-link-blue)] hover:brightness-95"}`}>{parkedAction.type === "resume" ? "Resume sale" : "Discard draft"}</button></div>
+          <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setParkedAction(null)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Cancel</button><button type="button" onClick={confirmParkedAction} className={`min-h-11 rounded-md px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${parkedAction.type === "discard" ? "bg-red-700 hover:bg-red-800" : "bg-[var(--sf-link-blue)] hover:brightness-95"}`}>{parkedAction.type === "resume" ? "Resume sale" : "Discard draft"}</button></div>
         </section>
       </div>}
       {pendingRegisterId !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
@@ -1145,7 +1162,7 @@ export function OdooRegisterPage() {
         <section role="dialog" aria-modal="true" aria-labelledby="pos-help-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl sm:p-6">
           <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
             <div><h2 id="pos-help-title" className="text-lg font-semibold text-[var(--oh-text)]">POS help and recovery</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Steps for the current register screen.</p></div>
-            <button type="button" onClick={() => setHelpOpen(false)} aria-label="Close POS help" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button>
+            <button ref={helpCloseRef} type="button" onClick={() => setHelpOpen(false)} aria-label="Close POS help" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
           </header>
           <div className="mt-5 grid gap-4 text-sm leading-6 text-[var(--oh-text-secondary)]">
             <section><h3 className="font-semibold text-[var(--oh-text)]">Payment is still processing</h3><p className="mt-1">Keep this page open and do not submit again. Check Sales History before retrying if the result is unknown.</p></section>
