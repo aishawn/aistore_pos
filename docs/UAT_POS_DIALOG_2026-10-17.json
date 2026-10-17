@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-17T13:43:47.949Z",
-  "sourceCommit": "12194fa9175993300425de0c89822953e2a8efe3",
-  "deployment": null,
+  "generatedAt": "2026-10-17T13:55:36.885Z",
+  "sourceCommit": "ae3373f3356b909bc4c995aa03975c76a102b165",
+  "deployment": "",
   "scope": "authenticated read-only POS dialog keyboard regression; no business writes",
   "host": "https://demo.orithos.com.au",
   "viewports": [
