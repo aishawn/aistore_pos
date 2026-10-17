@@ -150,8 +150,18 @@ export function SellAiPanel({
   const [mounted, setMounted] = useState(false);
   const [anchor, setAnchor] = useState<FloatAnchor>(defaultAnchor);
   const [dragging, setDragging] = useState(false);
+  const restoreFabOnCloseRef = useRef(false);
 
   useDialogFocus(expanded, collapsePanel, "assistant", inputRef);
+
+  useEffect(() => {
+    if (expanded || !restoreFabOnCloseRef.current) return;
+    restoreFabOnCloseRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('[aria-label="Open Orithos AI"]')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expanded]);
 
   function openWorkspace(href: string, note: string) {
     pushAssistantNote(note);
@@ -338,13 +348,9 @@ export function SellAiPanel({
     const activeElement = document.activeElement;
     const shouldRestoreFab = activeElement instanceof HTMLElement
       && Boolean(activeElement.closest('[role="dialog"][aria-label="Orithos AI assistant"]'));
+    restoreFabOnCloseRef.current = shouldRestoreFab;
     onExpandedChange(false);
     stopVoiceCapture();
-    if (shouldRestoreFab) {
-      window.requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>('[aria-label="Open Orithos AI"]')?.focus();
-      });
-    }
   }
 
   function stopVoiceCapture() {
