@@ -12,11 +12,11 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：待提交数量编辑器稳定性修复（基线 `4eae8bd`，`origin/main` 已同步）
-- 最近功能代码：`39dec99`，本批数量编辑器稳定性修复待提交，认证回归等待和最新 POS/管理列表证据为 `4eae8bd`，前一批通用弹窗焦点修复为 `3bc4aa6`
+- 当前 HEAD：`87a6c2a fix: stabilize quantity dialog keyboard listener`（`origin/main` 同步）
+- 最近功能代码：`39dec99`，数量弹窗稳定性补丁为 `6055289`，认证回归等待和最新 POS/管理列表证据为 `4eae8bd`，前一批通用弹窗焦点修复为 `3bc4aa6`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 当前未提交文件包括本批 `pos-ui/src/components/QuantityKeypadModal.tsx` 和用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
+- 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
 ### 已完成并有证据
@@ -34,7 +34,7 @@
 - 新增 POS 弹窗只读回归脚本 `scripts/pilot-pos-dialog-uat.mjs`：认证浏览器在 `/` 点击 `POS help and recovery`，390px/1440px 均确认 dialog 打开后按 Escape 消失，结果 `2/2 PASS`；证据见 `docs/UAT_POS_DIALOG_2026-10-17.json` 和截图目录，`sourceCommit=39dec99`、`deployment=dokploy-sha-unverified`，所以仍不能证明 Dokploy 已运行当前代码。脚本增加冷加载等待和无敏感页面诊断输出。
 - POS Register 本批进一步修正小票关闭按钮和暂存/切换确认按钮的触控高度，帮助/小票弹窗打开时聚焦关闭按钮并在关闭后恢复原焦点；只改前端交互，不提交销售或其他 Odoo 写入。typecheck、目标 ESLint、`git diff --check` 已通过。
 - 数量编辑器补齐 Escape 关闭、焦点恢复、`aria-modal`/标题语义、删除键标签和 44px 加减/确认触控目标；Sell 页面共用收款按钮统一 44px 高度和焦点环。未改变报价、收款请求或 Odoo 写入逻辑。
-- 数量编辑器的 Escape 回调和初始数量读取改用 refs，避免每次回调变化都重新注册键盘监听；typecheck、目标 ESLint、`git diff --check` 已通过。
+- 数量编辑器的 Escape 回调和初始数量读取改用 refs，避免每次回调变化都重新注册键盘监听；提交为 `6055289`，typecheck、目标 ESLint、`git diff --check` 已通过。
 - 最新待部署批次的共用组件优化已提交：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。提交为 `01d8759`，本地 typecheck、目标 ESLint 和 `git diff --check` 已通过。POS 弹窗回归脚本和证据已随 `3f7f8b6` 推送。
 
 ### 未完成、未覆盖或证据不足
