@@ -65,6 +65,7 @@ export function FilterDropdownSelect({
         <button
           ref={triggerRef}
           type="button"
+          aria-label={label}
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-controls={listboxId}
