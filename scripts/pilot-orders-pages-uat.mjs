@@ -79,7 +79,14 @@ for (const width of [390, 1440]) {
     const title = titleByRoute[route];
     await page.getByRole("heading", { name: title, exact: true }).waitFor({ state: "visible", timeout: 30000 });
     if (route === "/history/odoo") {
-      await page.waitForFunction(() => !document.body.innerText.includes("Loading sales…"), { timeout: 30000 });
+      await page.waitForFunction(() => {
+        const text = document.body.innerText;
+        return !text.includes("Loading sales…")
+          && (/Showing\s+\d+\s*[–-]\s*\d+/u.test(text)
+            || /\d{2,}-\d-\d{6}/u.test(text)
+            || /No sales yet|No matching sales|No Odoo sales are available for this account\./i.test(text)
+            || /Could not load Odoo sales|Sales history could not load/i.test(text));
+      }, { timeout: 30000 });
     }
     await page.waitForTimeout(1200);
     const state = await page.evaluate(() => ({
@@ -96,9 +103,11 @@ for (const width of [390, 1440]) {
     const historyState = route === "/history/odoo"
       ? /No Odoo sales are available for this account\./.test(state.pageText)
         ? "Empty-state: no Odoo sales available for this account"
-        : /260-1-|\d{2,}-\d-\d{6}/.test(state.pageText)
+      : /Showing\s+\d+\s*[–-]\s*\d+/u.test(state.pageText)
           ? "Sales rows present"
-          : /role=alert|Could not load Odoo sales/.test(state.pageText)
+          : /No sales yet|No matching sales|No Odoo sales are available for this account\./i.test(state.pageText)
+            ? "Empty-state: no sales available"
+            : /Could not load Odoo sales|Sales history could not load/i.test(state.pageText)
             ? "Sales history error state"
             : "Sales history state needs review"
       : null;
