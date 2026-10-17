@@ -25,7 +25,10 @@ for (const viewport of viewports) {
   const loggedIn = new Set();
   for (const route of routes) {
     if (!loggedIn.has(route.host)) {
-      const login = await context.request.post(`${route.host}/api/auth/login`, { data: { username: "admin", password }, headers: { Origin: route.host } });
+      const login = await context.request.post(`${route.host}/api/auth/login`, {
+        data: { username: "admin", password, subdomain: "demo" },
+        headers: { Origin: route.host, "X-Orithos-Tenant-Slug": "demo" },
+      });
       const body = await login.json().catch(() => ({}));
       if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${route.host}_${login.status()}`);
       loggedIn.add(route.host);
