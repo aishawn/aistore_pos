@@ -18,6 +18,11 @@ if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const checks = [];
 const record = (name, status, evidence) => checks.push({ name, status, evidence });
+const WINE_TERMS = /wine|shiraz|syrah|cabernet|pinot|chardonnay|merlot|sauvignon|prosecco|champagne|riesling|malbec|grenache|tempranillo|moscato|sparkling|brut|ros[eé]/i;
+
+function looksLikeWine(item) {
+  return WINE_TERMS.test(`${item.name || ""} ${item.categoryName || ""}`);
+}
 const { chromium } = await import("playwright");
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
@@ -44,7 +49,11 @@ try {
   const identify = await request("/api/ai/sommelier/identify?q=DEMO");
   const catalogItems = (identify.items || []).filter((item) => Number(item.stockQuantity) > 0);
   if (!catalogItems.length) throw new Error("Odoo DEMO catalog did not return an in-stock wine");
-  record("Odoo catalog identify", "PASS", `Found ${identify.items.length} DEMO wines; ${catalogItems.length} have free stock.`);
+  const nonWineItems = (identify.items || []).filter((item) => !looksLikeWine(item));
+  if (nonWineItems.length) {
+    throw new Error(`Sommelier catalog included non-wine products: ${nonWineItems.map((item) => item.name).join(", ")}`);
+  }
+  record("Odoo catalog identify", "PASS", `Found ${identify.items.length} wine products; ${catalogItems.length} have free stock and all pass the wine filter.`);
 
   const recommendation = await request("/api/ai/sommelier/recommend", "POST", {
     wineType: "red",

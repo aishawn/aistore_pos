@@ -146,9 +146,9 @@ public class OdooWineCatalogClient {
         JsonNode categ = row.path("categ_id");
         if (categ.isArray() && categ.size() > 1) category = categ.get(1).asText("");
         String description = text(row, "description_sale");
-        if (!WineLexicon.looksLikeWine(name, category, "")
-                && !name.toLowerCase(Locale.ROOT).contains("demo")) {
-            // Keep DEMO wine SKUs even when lexicon is narrow.
+        if (!WineLexicon.looksLikeWine(name, category, "")) {
+            // DEMO seed data also contains snacks and soft drinks. Only keep
+            // explicit wine terms; the SKU prefix itself is not a wine signal.
             if (!name.toUpperCase(Locale.ROOT).contains("SHIRAZ")
                     && !name.toUpperCase(Locale.ROOT).contains("SAUVIGNON")
                     && !name.toUpperCase(Locale.ROOT).contains("WINE")) {
