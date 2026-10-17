@@ -326,6 +326,20 @@ Daily Sales、Weekly Sales、This Month Sales、Last Week Sales 和 Last Month S
 
 - 本地未运行 Java build；部署后需用只读日志数据验证片段邮箱搜索和分页
 
+### Mail Log / Trashed Items 缓存隔离（待部署）
+
+为两个 Client Component API 页面新增 server `layout.tsx`，统一导出 `dynamic = "force-dynamic"` 与 `fetchCache = "force-no-store"`。这使搜索结果和回收站列表不会被 Next 静态页面壳缓存；页面行为和 API 权限不变。
+
+- 检查：typecheck 通过；`git diff --check` 通过
+- 本地未运行 build；部署后需检查响应头为 `no-store` 并做认证只读回归
+
+### 报表、促销与平台列表缓存隔离（待部署）
+
+为 Platform Stores、Promotions、Register Closures、Daily/Weekly/This Month/Last Week/Last Month Sales 新增 server `layout.tsx`，统一设置 `force-dynamic` 与 `force-no-store`。这些页面的 API 读取和移动端布局改动将在同一部署批次验证。
+
+- 检查：typecheck 通过；`git diff --check` 通过
+- 本地未运行 build；部署后需检查上述路由响应头和认证只读页面矩阵
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
