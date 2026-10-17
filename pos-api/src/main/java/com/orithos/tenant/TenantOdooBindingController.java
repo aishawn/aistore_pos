@@ -54,6 +54,10 @@ public class TenantOdooBindingController {
         body.put("odooProvisionStatus", vendor.getOdooProvisionStatus() == null ? "unmapped" : vendor.getOdooProvisionStatus());
         body.put("odooProvisionError", vendor.getOdooProvisionError());
         body.put("r2Prefix", vendor.getR2Prefix());
+        body.put("dummyDataRequested", Boolean.TRUE.equals(vendor.getDummyDataRequested()));
+        body.put("sampleDataClearedAt", vendor.getSampleDataClearedAt() == null
+                ? null
+                : vendor.getSampleDataClearedAt().toString());
         return body;
     }
 }

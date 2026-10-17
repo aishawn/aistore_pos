@@ -25,4 +25,6 @@ public class Vendor {
     private String odooProvisionStatus;
     private String odooProvisionError;
     private String r2Prefix;
+    private Boolean dummyDataRequested;
+    private LocalDateTime sampleDataClearedAt;
 }

@@ -43,6 +43,8 @@ CREATE TABLE vendor (
   odoo_provision_status VARCHAR(16) NOT NULL DEFAULT 'unmapped' COMMENT 'unmapped|pending|ready|failed',
   odoo_provision_error VARCHAR(512) NULL,
   r2_prefix VARCHAR(128) NULL COMMENT 'e.g. shopfront/{subdomain}/',
+  dummy_data_requested TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 if signup requested DEMO sample seed',
+  sample_data_cleared_at DATETIME NULL COMMENT 'When owner removed sample data from this store',
 
   PRIMARY KEY (id),
   UNIQUE KEY uq_vendor_subdomain (subdomain),

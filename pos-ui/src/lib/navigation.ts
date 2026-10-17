@@ -83,6 +83,7 @@ export const NAVIGATION: NavEntry[] = [
       items: [
         { label: "General", href: "/settings" },
         { label: "Account & Billing", href: "/settings/account" },
+        { label: "Data", href: "/settings/data" },
         { label: "Sale Keys", href: "/settings/keys" },
         { label: "Statements", href: "/settings/statements" },
         { label: "Payment Methods", href: "/settings/payment" },

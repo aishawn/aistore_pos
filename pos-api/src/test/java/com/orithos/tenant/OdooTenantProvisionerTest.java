@@ -27,4 +27,9 @@ class OdooTenantProvisionerTest {
         assertEquals(5, OdooTenantProvisioner.dummyCategoryCount());
         assertTrue(OdooTenantProvisioner.dummySalesCount() >= 25);
     }
+
+    @Test
+    void demoOrderUuidPrefixIncludesCompanyId() {
+        assertEquals("demo-seed-16-", OdooTenantProvisioner.demoOrderUuidPrefix(16));
+    }
 }

@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { OdooProductCataloguePage } from "@/components/OdooProductCataloguePage";
 
 export default function OdooProductCatalogueRoute() {
-  return <OdooProductCataloguePage />;
+  return (
+    <Suspense fallback={<div className="grid h-full place-items-center p-8 text-sm text-[var(--oh-muted)]">Loading products…</div>}>
+      <OdooProductCataloguePage />
+    </Suspense>
+  );
 }

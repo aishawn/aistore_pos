@@ -1,0 +1,41 @@
+{
+  "title": "Sample data purge + Settings Data hub + product CSV export",
+  "date": "2026-10-17",
+  "status": "CODE_COMPLETE_DEPLOY_GATED",
+  "summary": "Owners can remove DEMO sample data under Settings → Data, then import/export Odoo product CSV. Overview excludes demo-seed orders after purge. Unit tests cover DEMO uuid prefix helpers.",
+  "implementation": {
+    "vendorFlags": ["dummy_data_requested", "sample_data_cleared_at"],
+    "migration": "pos-api/src/main/resources/db/migration_vendor_sample_data.sql",
+    "api": [
+      "GET /api/tenant/sample-data/status",
+      "POST /api/tenant/sample-data/purge (ROLE_ADMIN, confirmation REMOVE SAMPLE)"
+    ],
+    "purgeBehaviour": {
+      "archive": ["product.template DEMO-%", "res.partner DEMO Customer%"],
+      "close": "opened pos.session for company",
+      "orders": "kept in Odoo; Overview filters uuid demo-seed-{companyId}-% when sample_data_cleared_at set"
+    },
+    "ui": [
+      "pos-ui/app/settings/data/page.tsx",
+      "Overview banner → /settings/data",
+      "Products catalogue Import/Export CSV",
+      "GET /api/odoo/products/export"
+    ]
+  },
+  "caveats": [
+    "Platform trial delete soft-deletes MySQL vendor only; Odoo company and DEMO rows may remain orphaned until ops cleanup.",
+    "Product CSV import does not set on-hand stock; owners must receive or adjust stock after import.",
+    "Paid demo pos.order rows are not hard-deleted."
+  ],
+  "postDeployAcceptance": [
+    "Sign up trial with dummyData=true on a unique slug (isolated; do not use harbour/demo).",
+    "Overview shows sample banner; Settings → Data shows state=active and DEMO counts.",
+    "Admin types REMOVE SAMPLE → products/customers archived; banner gone; Overview KPIs exclude demo-seed orders.",
+    "Export CSV downloads active catalogue; Import via /products/odoo?import=1 still works.",
+    "Second purge is idempotent success.",
+    "Delete the trial tenant after UAT."
+  ],
+  "localChecks": {
+    "note": "Full Maven requires JDK 21. Prefer CI or a Java 21 host for OdooTenantProvisionerTest."
+  }
+}

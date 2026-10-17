@@ -173,11 +173,17 @@ export async function GET(request: NextRequest) {
     ]], { fields: ["state_id", "country_id"], limit: 1 }) : [];
     const timezone = getOdooCompanyTimezone(partners?.[0]?.country_id, partners?.[0]?.state_id);
 
+    const excludeDemoSeed = Boolean(forced.binding?.sampleDataClearedAt);
+    const demoUuidPrefix = `demo-seed-${companyId}-%`;
+    const excludeDemoOrderClause: unknown[] = ["!", ["uuid", "=like", demoUuidPrefix]];
+    const excludeDemoLineClause: unknown[] = ["!", ["order_id.uuid", "=like", demoUuidPrefix]];
+
     const domain = [
       ["company_id", "=", companyId],
       ["date_order", ">=", from],
       ["date_order", "<=", to],
       ["state", "in", ["paid", "done", "invoiced"]],
+      ...(excludeDemoSeed ? [excludeDemoOrderClause] : []),
     ];
     // Same-length window shifted back 7 days for week-over-week deltas.
     const compareStart = new Date(start.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -189,6 +195,7 @@ export async function GET(request: NextRequest) {
       ["date_order", ">=", compareFromAligned],
       ["date_order", "<=", compareToAligned],
       ["state", "in", ["paid", "done", "invoiced"]],
+      ...(excludeDemoSeed ? [excludeDemoOrderClause] : []),
     ];
     const salesDomain = [...domain, ["amount_total", ">", 0]];
     const refundDomain = [...domain, ["amount_total", "<", 0]];
@@ -199,6 +206,7 @@ export async function GET(request: NextRequest) {
       ["order_id.date_order", "<=", to],
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
       ["order_id.amount_total", ">", 0],
+      ...(excludeDemoSeed ? [excludeDemoLineClause] : []),
     ];
 
     const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([
@@ -242,6 +250,8 @@ export async function GET(request: NextRequest) {
       company: companies?.[0]?.name ?? "Current company",
       currency: Array.isArray(companies?.[0]?.currency_id) ? companies[0].currency_id[1] : "AUD",
       timezone,
+      sampleDataCleared: excludeDemoSeed,
+      sampleDataClearedAt: forced.binding?.sampleDataClearedAt ?? null,
       trendGranularity: trendData.granularity,
       revenue,
       grossSales,

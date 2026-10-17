@@ -238,6 +238,291 @@ public class OdooTenantProvisioner {
         return DUMMY_SALES_COUNT;
     }
 
+    static String demoOrderUuidPrefix(long companyId) {
+        return "demo-seed-" + companyId + "-";
+    }
+
+    public record SampleDataStatus(
+            boolean dummyDataRequested,
+            String sampleDataClearedAt,
+            String state,
+            int demoProductCount,
+            int demoCustomerCount,
+            int demoOrderCount,
+            int nonDemoPaidOrderCount,
+            boolean canPurge,
+            boolean archiveOnly
+    ) {}
+
+    public record SampleDataPurgeResult(
+            String state,
+            boolean archiveOnly,
+            int productsArchived,
+            int customersArchived,
+            int sessionsClosed,
+            int demoOrderCount,
+            String sampleDataClearedAt
+    ) {}
+
+    public SampleDataStatus sampleDataStatus(Long vendorId) {
+        Vendor vendor = vendorMapper.findById(vendorId);
+        if (vendor == null) throw new IllegalArgumentException("vendor not found");
+        boolean requested = Boolean.TRUE.equals(vendor.getDummyDataRequested());
+        String clearedAt = vendor.getSampleDataClearedAt() == null
+                ? null
+                : vendor.getSampleDataClearedAt().toString();
+        int demoProducts = 0;
+        int demoCustomers = 0;
+        int demoOrders = 0;
+        int nonDemoPaid = 0;
+        Long companyId = vendor.getOdooCompanyId();
+        if (isConfigured() && companyId != null && companyId > 0) {
+            try {
+                String sessionId = authenticate();
+                long company = companyId;
+                demoProducts = countDemoProducts(sessionId, company);
+                demoCustomers = countDemoCustomers(sessionId, company);
+                demoOrders = countExistingDemoOrders(sessionId, company);
+                nonDemoPaid = countNonDemoPaidOrders(sessionId, company);
+            } catch (Exception e) {
+                log.warn("Sample data status probe failed for vendor {}: {}", vendorId, e.getMessage());
+            }
+        }
+        String state;
+        if (clearedAt != null) {
+            state = "cleared";
+        } else if (demoProducts > 0 || demoOrders > 0 || requested) {
+            state = "active";
+        } else {
+            state = "never_seeded";
+        }
+        boolean canPurge = "active".equals(state) && (demoProducts > 0 || demoCustomers > 0 || demoOrders > 0 || requested);
+        boolean archiveOnly = nonDemoPaid > 0;
+        return new SampleDataStatus(
+                requested,
+                clearedAt,
+                state,
+                demoProducts,
+                demoCustomers,
+                demoOrders,
+                nonDemoPaid,
+                canPurge,
+                archiveOnly);
+    }
+
+    public SampleDataPurgeResult purgeSampleData(Long vendorId) {
+        Vendor vendor = vendorMapper.findById(vendorId);
+        if (vendor == null) throw new IllegalArgumentException("vendor not found");
+        if (!isConfigured()) {
+            throw new IllegalStateException("Odoo service account is not configured (ODOO_SERVICE_*).");
+        }
+        Long companyId = vendor.getOdooCompanyId();
+        if (companyId == null || companyId <= 0) {
+            throw new IllegalStateException("This store has no Odoo company binding yet.");
+        }
+        if (vendor.getSampleDataClearedAt() != null
+                && countDemoProductsSafe(companyId) == 0
+                && countDemoCustomersSafe(companyId) == 0) {
+            return new SampleDataPurgeResult(
+                    "cleared",
+                    false,
+                    0,
+                    0,
+                    0,
+                    0,
+                    vendor.getSampleDataClearedAt().toString());
+        }
+        try {
+            String sessionId = authenticate();
+            long company = companyId;
+            int nonDemoPaid = countNonDemoPaidOrders(sessionId, company);
+            int productsArchived = archiveDemoProducts(sessionId, company);
+            int customersArchived = archiveDemoCustomers(sessionId, company);
+            int sessionsClosed = closeOpenPosSessions(sessionId, company);
+            int demoOrders = countExistingDemoOrders(sessionId, company);
+            LocalDateTime clearedAt = LocalDateTime.now(ZoneOffset.UTC);
+            vendor.setSampleDataClearedAt(clearedAt);
+            if (vendor.getDummyDataRequested() == null) {
+                vendor.setDummyDataRequested(productsArchived > 0 || demoOrders > 0);
+            }
+            vendorMapper.updateSampleDataFlags(vendor);
+            log.info(
+                    "Purged sample data for vendor {} company {} (products={}, customers={}, sessions={}, demoOrders={}, archiveOnly={})",
+                    vendorId, company, productsArchived, customersArchived, sessionsClosed, demoOrders, nonDemoPaid > 0);
+            return new SampleDataPurgeResult(
+                    "cleared",
+                    nonDemoPaid > 0,
+                    productsArchived,
+                    customersArchived,
+                    sessionsClosed,
+                    demoOrders,
+                    clearedAt.toString());
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    e.getMessage() == null ? "Could not remove sample data from Odoo." : e.getMessage(), e);
+        }
+    }
+
+    private int countDemoProductsSafe(long companyId) {
+        try {
+            return countDemoProducts(authenticate(), companyId);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private int countDemoCustomersSafe(long companyId) {
+        try {
+            return countDemoCustomers(authenticate(), companyId);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private int countDemoProducts(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("default_code").add("=like").add("DEMO-%"));
+        domain.add(objectMapper.createArrayNode().add("active").add("=").add(true));
+        Number count = callKw(sessionId, "product.template", "search_count", List.of(domain), kwargsWithCompany(companyId));
+        return count == null ? 0 : count.intValue();
+    }
+
+    private int countDemoCustomers(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("name").add("=like").add("DEMO Customer%"));
+        domain.add(objectMapper.createArrayNode().add("active").add("=").add(true));
+        Number count = callKw(sessionId, "res.partner", "search_count", List.of(domain), kwargsWithCompany(companyId));
+        return count == null ? 0 : count.intValue();
+    }
+
+    private int countNonDemoPaidOrders(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("state").add("in")
+                .add(objectMapper.createArrayNode().add("paid").add("done").add("invoiced")));
+        domain.add(objectMapper.createArrayNode().add("amount_total").add(">").add(0));
+        // Exclude demo-seed uuids; keep rows with empty uuid (real UI sales always set uuid here).
+        ArrayNode notDemo = objectMapper.createArrayNode();
+        notDemo.add("!");
+        notDemo.add(objectMapper.createArrayNode().add("uuid").add("=like").add(demoOrderUuidPrefix(companyId) + "%"));
+        domain.add(notDemo);
+        Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
+        return count == null ? 0 : count.intValue();
+    }
+
+    private int archiveDemoProducts(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("default_code").add("=like").add("DEMO-%"));
+        ObjectNode searchKwargs = kwargsWithCompany(companyId);
+        searchKwargs.set("fields", objectMapper.createArrayNode().add("id").add("active"));
+        searchKwargs.put("limit", 200);
+        searchKwargs.set("context", objectMapper.createObjectNode()
+                .put("active_test", false)
+                .set("allowed_company_ids", objectMapper.createArrayNode().add(companyId)));
+        JsonNode rows = callKwNode(sessionId, "product.template", "search_read", List.of(domain), searchKwargs);
+        if (rows == null || !rows.isArray() || rows.isEmpty()) return 0;
+        List<Long> ids = new ArrayList<>();
+        for (JsonNode row : rows) {
+            long id = row.path("id").asLong(0);
+            if (id > 0) ids.add(id);
+        }
+        if (ids.isEmpty()) return 0;
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("active", false);
+        values.put("available_in_pos", false);
+        values.put("sale_ok", false);
+        callKwNode(sessionId, "product.template", "write", List.of(ids, values), kwargsWithCompany(companyId));
+        return ids.size();
+    }
+
+    private int archiveDemoCustomers(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("name").add("=like").add("DEMO Customer%"));
+        ObjectNode searchKwargs = kwargsWithCompany(companyId);
+        searchKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        searchKwargs.put("limit", 50);
+        searchKwargs.set("context", objectMapper.createObjectNode()
+                .put("active_test", false)
+                .set("allowed_company_ids", objectMapper.createArrayNode().add(companyId)));
+        JsonNode rows = callKwNode(sessionId, "res.partner", "search_read", List.of(domain), searchKwargs);
+        if (rows == null || !rows.isArray() || rows.isEmpty()) return 0;
+        List<Long> ids = new ArrayList<>();
+        for (JsonNode row : rows) {
+            long id = row.path("id").asLong(0);
+            if (id > 0) ids.add(id);
+        }
+        if (ids.isEmpty()) return 0;
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("active", false);
+        callKwNode(sessionId, "res.partner", "write", List.of(ids, values), kwargsWithCompany(companyId));
+        return ids.size();
+    }
+
+    private int closeOpenPosSessions(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("state").add("=").add("opened"));
+        ObjectNode searchKwargs = kwargsWithCompany(companyId);
+        searchKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        searchKwargs.put("limit", 20);
+        JsonNode rows = callKwNode(sessionId, "pos.session", "search_read", List.of(domain), searchKwargs);
+        if (rows == null || !rows.isArray() || rows.isEmpty()) return 0;
+        int closed = 0;
+        for (JsonNode row : rows) {
+            long posSessionId = row.path("id").asLong(0);
+            if (posSessionId <= 0) continue;
+            // Never close a register that already contains a real paid order.
+            // A trial may have been used for live checkout before sample cleanup.
+            if (countNonDemoOrdersForSession(sessionId, companyId, posSessionId) > 0) {
+                log.info("Keeping POS session {} open for company {} because it contains real sales",
+                        posSessionId, companyId);
+                continue;
+            }
+            try {
+                callKwNode(sessionId, "pos.session", "action_pos_session_closing_control",
+                        List.of(List.of(posSessionId)), kwargsWithCompany(companyId));
+            } catch (Exception ignored) {
+                // Some builds skip closing control when cash is already balanced.
+            }
+            try {
+                callKwNode(sessionId, "pos.session", "close_session_from_ui",
+                        List.of(List.of(posSessionId)), kwargsWithCompany(companyId));
+                closed++;
+            } catch (Exception closeError) {
+                try {
+                    callKwNode(sessionId, "pos.session", "action_pos_session_close",
+                            List.of(List.of(posSessionId)), kwargsWithCompany(companyId));
+                    closed++;
+                } catch (Exception e) {
+                    log.warn("Could not close POS session {} for company {}: {}",
+                            posSessionId, companyId, e.getMessage());
+                }
+            }
+        }
+        return closed;
+    }
+
+    private int countNonDemoOrdersForSession(String sessionId, long companyId, long posSessionId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("session_id").add("=").add(posSessionId));
+        domain.add(objectMapper.createArrayNode().add("state").add("in")
+                .add(objectMapper.createArrayNode().add("paid").add("done").add("invoiced")));
+        ArrayNode notDemo = objectMapper.createArrayNode();
+        notDemo.add("!");
+        notDemo.add(objectMapper.createArrayNode().add("uuid").add("=like")
+                .add(demoOrderUuidPrefix(companyId) + "%"));
+        domain.add(notDemo);
+        Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
+        return count == null ? 0 : count.intValue();
+    }
+
     private String authenticate() throws Exception {
         ObjectNode params = objectMapper.createObjectNode();
         params.put("db", database);
@@ -970,7 +1255,7 @@ public class OdooTenantProvisioner {
     private int countExistingDemoOrders(String sessionId, long companyId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
         domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
-        domain.add(objectMapper.createArrayNode().add("uuid").add("=like").add("demo-seed-" + companyId + "-%"));
+        domain.add(objectMapper.createArrayNode().add("uuid").add("=like").add(demoOrderUuidPrefix(companyId) + "%"));
         domain.add(objectMapper.createArrayNode().add("is_refund").add("=").add(false));
         Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
         return count == null ? 0 : count.intValue();

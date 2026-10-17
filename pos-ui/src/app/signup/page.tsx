@@ -394,7 +394,7 @@ export default function SignupPage() {
                 <span>
                   <span className="block text-sm font-semibold text-[var(--oh-text)]">Include sample data</span>
                   <span className="mt-1 block text-sm text-[var(--oh-text-secondary)]">
-                    Adds a DEMO catalogue with categories and stock, a few customers, recent demo sales (and a refund), and leaves one register open so Overview and Sell look lived-in.
+                    Adds a DEMO catalogue with categories and stock, a few customers, recent demo sales (and a refund), and leaves one register open so Overview and Sell look lived-in. You can remove it later under Settings → Data before importing your own products.
                   </span>
                 </span>
               </label>

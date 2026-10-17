@@ -48,8 +48,9 @@ public interface VendorMapper {
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
     @Insert("""
-            INSERT INTO vendor (name, subdomain, status, url, contact_name, trial_ends_at, outlet_id)
-            VALUES (#{name}, #{subdomain}, #{status}, #{url}, #{contactName}, #{trialEndsAt}, #{outletId})
+            INSERT INTO vendor (name, subdomain, status, url, contact_name, trial_ends_at, outlet_id, dummy_data_requested)
+            VALUES (#{name}, #{subdomain}, #{status}, #{url}, #{contactName}, #{trialEndsAt}, #{outletId},
+                    COALESCE(#{dummyDataRequested}, 0))
             """)
     int insert(Vendor vendor);
 
@@ -80,4 +81,12 @@ public interface VendorMapper {
             WHERE id=#{id}
             """)
     int updateOdooBinding(Vendor vendor);
+
+    @Update("""
+            UPDATE vendor SET
+              dummy_data_requested=#{dummyDataRequested},
+              sample_data_cleared_at=#{sampleDataClearedAt}
+            WHERE id=#{id}
+            """)
+    int updateSampleDataFlags(Vendor vendor);
 }

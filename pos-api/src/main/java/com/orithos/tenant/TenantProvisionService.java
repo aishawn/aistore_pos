@@ -134,6 +134,7 @@ public class TenantProvisionService {
         vendor.setUrl(tenantProperties.storeUrl(slug));
         vendor.setTrialEndsAt(LocalDateTime.now().plusDays(days));
         vendor.setOutletId(1L);
+        vendor.setDummyDataRequested(Boolean.TRUE.equals(req.dummyData()));
         try {
             vendorMapper.insert(vendor);
         } catch (DataIntegrityViolationException e) {

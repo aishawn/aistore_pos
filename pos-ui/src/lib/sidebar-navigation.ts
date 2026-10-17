@@ -90,6 +90,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "settings",
     items: [
       { label: "Integrations", href: "/settings/integrations" },
+      { label: "Data", href: "/settings/data" },
       { label: "Company Settings", href: "/settings/company/general" },
       { label: "Users", href: "/settings/users" },
       { label: "Roles & Permissions", href: "/settings/roles" },

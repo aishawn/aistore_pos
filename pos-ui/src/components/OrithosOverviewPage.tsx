@@ -16,6 +16,7 @@ import {
   Store,
 } from "lucide-react";
 import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type OverviewData = {
@@ -25,6 +26,8 @@ type OverviewData = {
   company: string;
   currency: string;
   timezone: string;
+  sampleDataCleared?: boolean;
+  sampleDataClearedAt?: string | null;
   trendGranularity: "hour" | "day";
   revenue: number;
   grossSales?: number;
@@ -144,7 +147,20 @@ export function OrithosOverviewPage() {
   const [r2Receipts, setR2Receipts] = useState<R2Receipt[]>([]);
   const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
   const [r2RetryKey, setR2RetryKey] = useState(0);
+  const [sampleDataActive, setSampleDataActive] = useState(false);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void api.get<{ state?: string; canPurge?: boolean }>("/api/tenant/sample-data/status")
+      .then((status) => {
+        if (!cancelled) setSampleDataActive(status.state === "active" && Boolean(status.canPurge));
+      })
+      .catch(() => {
+        if (!cancelled) setSampleDataActive(false);
+      });
+    return () => { cancelled = true; };
+  }, [data?.sampleDataClearedAt, lastLoadedAt]);
 
   const load = useCallback(async (refresh = false, hours = rangeHours) => {
     if (refresh) setRefreshing(true);
@@ -321,6 +337,20 @@ export function OrithosOverviewPage() {
               <span className="flex items-start gap-2"><AlertCircle size={15} className="mt-0.5 shrink-0" />{error} The overview below is the last successful result and may be out of date.</span>
               <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-red-300 bg-white px-2.5 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} Retry</button>
             </div>
+          )}
+
+          {sampleDataActive && (
+            <section aria-label="Sample data notice" className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2.5">
+              <div className="min-w-0">
+                <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Sample data is still in this store</h2>
+                <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
+                  DEMO products and demo seed sales are included in Sell and Overview. Remove them before go-live, then import your catalogue.
+                </p>
+              </div>
+              <Link href="/settings/data" className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-sky-300 bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-sky-50">
+                Remove sample data
+              </Link>
+            </section>
           )}
 
           <section aria-label={`${rangeLabel} Odoo summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">

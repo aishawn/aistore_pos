@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import {
   createOdooProduct,
@@ -19,7 +20,9 @@ const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "curre
 const quantity = (amount: number) => new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(amount);
 
 export function OdooProductCataloguePage() {
+  const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
   const [items, setItems] = useState<OdooProductRecord[]>([]);
   const [categories, setCategories] = useState<OdooPosCategoryRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -69,6 +72,42 @@ export function OdooProductCataloguePage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("import") === "1" && connected === true) {
+      setImportRows([]);
+      setImportErrors([]);
+      setImportResult(null);
+      setImportFileName("");
+      setImportOpen(true);
+    }
+  }, [searchParams, connected]);
+
+  async function exportProductsCsv() {
+    if (exportBusy || connected !== true) return;
+    setExportBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/odoo/products/export", { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { message?: string } | null;
+        throw new Error(payload?.message || `Export failed (${response.status})`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const match = /filename="([^"]+)"/.exec(disposition);
+      anchor.href = url;
+      anchor.download = match?.[1] || "products.csv";
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not export products.");
+    } finally {
+      setExportBusy(false);
+    }
+  }
 
   const loadProducts = useCallback(async () => {
     if (connected !== true) return;
@@ -229,6 +268,7 @@ export function OdooProductCataloguePage() {
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
+          <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button>
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">

@@ -11,6 +11,8 @@ export type TenantOdooBinding = {
   odooProvisionStatus: "pending" | "ready" | "failed" | "unmapped" | string;
   odooProvisionError: string | null;
   r2Prefix: string | null;
+  dummyDataRequested?: boolean;
+  sampleDataClearedAt?: string | null;
 };
 
 export type ForcedCompanyResult = {
