@@ -33,16 +33,25 @@ export function QuantityKeypadModal({
   const [input, setInput] = useState(formatQty(initialQty));
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const initialQtyRef = useRef(initialQty);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  useEffect(() => {
+    initialQtyRef.current = initialQty;
+  }, [initialQty]);
 
   useEffect(() => {
     if (!open) return;
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = requestAnimationFrame(() => {
-      setInput(formatQty(initialQty));
+      setInput(formatQty(initialQtyRef.current));
       confirmButtonRef.current?.focus();
     });
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -51,7 +60,7 @@ export function QuantityKeypadModal({
       if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
       previousFocusRef.current = null;
     };
-  }, [initialQty, onClose, open]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -90,12 +99,12 @@ export function QuantityKeypadModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="quantity-dialog-title"
+        {...(productName ? { "aria-labelledby": "quantity-dialog-title" } : { "aria-label": "Edit quantity" })}
         className="w-[280px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {productName && (
-            <p id="quantity-dialog-title" className="mb-3 truncate text-center text-[13px] font-medium text-[var(--oh-muted)]">
+          <p id="quantity-dialog-title" className="mb-3 truncate text-center text-[13px] font-medium text-[var(--oh-muted)]">
             {productName}
           </p>
         )}
