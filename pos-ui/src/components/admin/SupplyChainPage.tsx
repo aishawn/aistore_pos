@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/AdminPageLayout";
 import { api, apiFailureMessage, Page } from "@/lib/api";
 import { useDebouncedValue } from "@/hooks/useApi";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface Quote {
   supplier?: string;
@@ -178,6 +179,9 @@ export function SupplyChainPage() {
   const [openLineId, setOpenLineId] = useState<number | null>(null);
   const [draft, setDraft] = useState<EmailDraft | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  useDialogFocus(Boolean(draft), () => {
+    if (!busy) setDraft(null);
+  });
 
   async function load() {
     setLoading(true);
@@ -421,7 +425,7 @@ export function SupplyChainPage() {
       )}
 
       {draft && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDraft(null); }}>
           <div role="dialog" aria-modal="true" aria-labelledby="supply-email-draft-title" className="max-h-[85vh] w-full max-w-xl overflow-auto rounded-[var(--oh-radius)] bg-white p-5 shadow-xl">
             <div className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Email draft</div>
             <h3 id="supply-email-draft-title" className="mt-1 text-[16px] font-semibold">{draft.subject}</h3>
