@@ -146,6 +146,8 @@ public class OdooWineCatalogClient {
         JsonNode categ = row.path("categ_id");
         if (categ.isArray() && categ.size() > 1) category = categ.get(1).asText("");
         String description = text(row, "description_sale");
+        String searchable = (name + " " + category).toLowerCase(Locale.ROOT);
+        if (isClearlyNotWine(searchable)) return null;
         if (!WineLexicon.looksLikeWine(name, category, "")) {
             // DEMO seed data also contains snacks and soft drinks. Only keep
             // explicit wine terms; the SKU prefix itself is not a wine signal.
@@ -180,6 +182,10 @@ public class OdooWineCatalogClient {
                 BigDecimal.ONE,
                 profile
         );
+    }
+
+    private static boolean isClearlyNotWine(String searchable) {
+        return searchable.matches(".*\\b(water|cola|chips|nuts|vodka|whisky|whiskey|gin|beer|lager|ale|cider|juice|soft drink)\\b.*");
     }
 
     private HttpResponse<String> postJson(String url, ObjectNode params, String sessionId) throws Exception {

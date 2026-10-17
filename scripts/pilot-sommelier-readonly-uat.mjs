@@ -19,9 +19,11 @@ if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 const checks = [];
 const record = (name, status, evidence) => checks.push({ name, status, evidence });
 const WINE_TERMS = /wine|shiraz|syrah|cabernet|pinot|chardonnay|merlot|sauvignon|prosecco|champagne|riesling|malbec|grenache|tempranillo|moscato|sparkling|brut|ros[eé]/i;
+const NON_WINE_TERMS = /water|cola|chips|nuts|vodka|whisky|whiskey|gin|beer|lager|ale|cider|juice|soft drink/i;
 
 function looksLikeWine(item) {
-  return WINE_TERMS.test(`${item.name || ""} ${item.categoryName || ""}`);
+  const text = `${item.name || ""} ${item.categoryName || ""}`;
+  return WINE_TERMS.test(text) && !NON_WINE_TERMS.test(text);
 }
 const { chromium } = await import("playwright");
 const browser = await chromium.launch({ headless: true });
