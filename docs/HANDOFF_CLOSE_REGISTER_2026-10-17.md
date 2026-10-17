@@ -6,9 +6,13 @@
 
 ## 1. 当前结论
 
-本轮 richer dummy data、sample data 清理、产品 CSV 导出和 Odoo company context 修复均已有线上证据。当前整体验收仍为 **NO-GO**，因为真实现金盘点关班链路被 DEMO 商品缺少收入科目阻塞。
+关班阻塞已修复并完成真实线上验收。新 disposable tenant 的 Cash sale、正确现金盘点、Odoo session 关闭和租户删除均已通过；缺少 counted cash 仍在 Odoo 写入前返回 HTTP 422。
 
-不要把本轮关班标记为通过，也不要复用历史测试租户。修复后必须新建 disposable tenant，重新完成开班、现金销售、现金盘点关班、状态回读和租户删除。
+整体验收仍为 **NO-GO**，仅因为实体硬件、分单收款、离线 POS、生产 AI 等其他能力不在当前基础 POS 通过范围内。后续关班回归继续使用全新 disposable tenant，不复用历史公司。
+
+最终证据：[UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json](UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json)
+
+最终线上结果：company `35`、config `77`、session `30`、receipt `260-77-000035`、expected/count `790.80`、session `closed`、cash difference `0`、删除后认证 `402`。
 
 ## 2. 仓库与工作区约束
 
@@ -34,6 +38,7 @@
 - 销售退款、重复退款拒绝、库存恢复
 - Cash in / Cash out
 - 采购订单确认、部分收货、全部收货及重复收货保护
+- 现金盘点关班：Cash sale 后使用 Odoo expected cash 成功关闭 session，差异为 0
 - sample data 清理：商品和客户归档、销售保留、二次清理幂等
 - 产品 CSV 导出
 - 多租户访问隔离
@@ -47,9 +52,9 @@
 - `docs/UAT_PROVISION_COMPANY_CONTEXT_FIX_LIVE_2026-10-17.json`
 - `docs/UAT_PURCHASE_RECEIVE_LIVE_2026-10-16.json`
 
-## 4. 当前阻塞缺陷：现金盘点关班
+## 4. 已解决缺陷：现金盘点关班
 
-最近一次使用全新一次性租户验证：
+历史失败曾使用全新一次性租户验证：
 
 - slug：`ccv-20261017111359`
 - vendor：`28`
@@ -62,7 +67,9 @@
 - session 最终仍为 `opened`
 - 测试租户已删除，删除后认证返回 HTTP `402`
 
-判断：现金盘点参数校验正常，但 Odoo 在关班处理销售订单时找不到 DEMO 商品的收入科目。问题位于 dummy catalog 的会计配置，不是 counted cash 的计算问题。
+历史根因依次包括 DEMO 商品收入科目、库存估值/成本科目、POS journal 默认科目，以及 payment method 的 intermediary/outstanding account 未配置。最终修复已覆盖这些 company-scoped 会计关系；最新线上证据显示 Cash sale 与正确 counted cash 关班均成功。
+
+修复提交链：`01f1c5a`、`a4be900`、`dc90682`、`7f0baf9`、`740cb9a`、`1c7e87a`、`d53ccd0`。
 
 ## 5. 推荐修复位置与方向
 
@@ -145,9 +152,9 @@ git diff --check
 
 接手者完成以下事项后，才能更新为新的交接基线：
 
-- income account 修复已提交并推送 GitHub
+- income、库存估值、POS journal 和 payment method 账户修复已提交并推送 GitHub
 - Dokploy 已部署目标 commit
-- 新 disposable tenant 的正确现金盘点可以成功关班
+- 新 disposable tenant 的正确现金盘点可以成功关班，且 session state 为 `closed`
 - 错误盘点会被阻止，失败不会写入 Odoo
 - session、现金差异、销售和库存均有 JSON 回读证据
 - 测试租户已删除，删除后认证拒绝已确认

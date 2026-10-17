@@ -13,7 +13,8 @@ const env = Object.fromEntries(
 );
 
 const app = "https://app.orithos.com.au";
-const slug = `codex-close-${Date.now().toString().slice(-10)}`;
+const requestedVendorId = Number(process.env.PILOT_VENDOR_ID || 0);
+const slug = process.env.PILOT_SLUG || `codex-close-${Date.now().toString().slice(-10)}`;
 const store = `https://${slug}.orithos.com.au`;
 const ownerUsername = `closeuat${Date.now().toString().slice(-7)}`;
 const ownerPassword = `CodexUAT-${Date.now()}-Safe`;
@@ -34,6 +35,44 @@ async function readJson(response) {
   }
 }
 
+async function readOdooSessionSnapshot(companyId, sessionId) {
+  const base = (env.ODOO_BASE_URL || "https://odoo.orithos.com.au").replace(/\/+$/, "");
+  const database = env.ODOO_DATABASE || "aipos";
+  const username = env.ODOO_SERVICE_USERNAME || env.ODOO_USER;
+  const password = env.ODOO_SERVICE_PASSWORD || env.ODOO_PASS;
+  const auth = await fetch(`${base}/web/session/authenticate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { db: database, login: username, password }, id: Date.now() }),
+  });
+  const authBody = await readJson(auth);
+  const sessionIdCookie = (auth.headers.getSetCookie?.() || [])
+    .map((value) => value.split(";")[0])
+    .find((value) => value.startsWith("session_id="));
+  if (!sessionIdCookie || !authBody.result?.uid) return null;
+  const rpc = await fetch(`${base}/web/dataset/call_kw`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: sessionIdCookie },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "call",
+      params: {
+        model: "pos.session",
+        method: "search_read",
+        args: [[['id', '=', sessionId]]],
+        kwargs: {
+          fields: ["id", "state", "cash_register_balance_start", "cash_register_balance_end", "cash_register_balance_end_real", "cash_register_difference"],
+          limit: 1,
+          context: { allowed_company_ids: [companyId], force_company: companyId },
+        },
+      },
+      id: Date.now(),
+    }),
+  });
+  const body = await readJson(rpc);
+  return body.result?.[0] || null;
+}
+
 function check(name, passed, detail = {}) {
   evidence.checks.push({ name, status: passed ? "PASS" : "FAIL", ...detail });
   console.log(`[${passed ? "PASS" : "FAIL"}] ${name}`, detail);
@@ -52,43 +91,53 @@ try {
   check("platform.login", response.ok && body.code === 0 && Boolean(appCookies), { httpStatus: response.status });
   if (!appCookies) throw new Error("platform login did not return an auth cookie");
 
-  response = await fetch(`${app}/api/admin/tenants`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Origin: app, Cookie: appCookies },
-    body: JSON.stringify({
-      organisationName: `Codex Close Income UAT ${slug}`,
-      subdomain: slug,
-      ownerName: "Close UAT Owner",
-      username: ownerUsername,
-      email: `${ownerUsername}@example.invalid`,
-      password: ownerPassword,
-      phone: "0400000000",
-      trialDays: 1,
-      outlets: [
-        { name: "Main Store", registerCount: 2 },
-        { name: "Back Bar", registerCount: 1 },
-      ],
-      dummyData: true,
-    }),
-  });
-  body = await readJson(response);
-  vendorId = body.data?.vendorId;
-  check("tenant.create", response.ok && body.code === 0 && Boolean(vendorId), {
-    httpStatus: response.status,
-    vendorId,
-  });
-  if (!vendorId) throw new Error(body.message || "tenant create failed");
-
   let binding;
-  for (let attempt = 1; attempt <= 36; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+  if (requestedVendorId > 0) {
+    vendorId = requestedVendorId;
     response = await fetch(`${app}/api/admin/tenants/${vendorId}`, {
       headers: { Origin: app, Cookie: appCookies },
     });
     body = await readJson(response);
     binding = body.data?.odooBinding || body.data || {};
-    console.log("provision", attempt, binding.odooProvisionStatus, binding.odooCompanyId, binding.odooPosConfigId);
-    if (binding.odooProvisionStatus === "ready") break;
+    check("tenant.existing", response.ok && body.code === 0, { httpStatus: response.status, vendorId });
+  } else {
+    response = await fetch(`${app}/api/admin/tenants`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: app, Cookie: appCookies },
+      body: JSON.stringify({
+        organisationName: `Codex Close Income UAT ${slug}`,
+        subdomain: slug,
+        ownerName: "Close UAT Owner",
+        username: ownerUsername,
+        email: `${ownerUsername}@example.invalid`,
+        password: ownerPassword,
+        phone: "0400000000",
+        trialDays: 1,
+        outlets: [
+          { name: "Main Store", registerCount: 2 },
+          { name: "Back Bar", registerCount: 1 },
+        ],
+        dummyData: true,
+      }),
+    });
+    body = await readJson(response);
+    vendorId = body.data?.vendorId;
+    check("tenant.create", response.ok && body.code === 0 && Boolean(vendorId), {
+      httpStatus: response.status,
+      vendorId,
+      message: body.message,
+    });
+    if (!vendorId) throw new Error(body.message || "tenant create failed");
+    for (let attempt = 1; attempt <= 36; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      response = await fetch(`${app}/api/admin/tenants/${vendorId}`, {
+        headers: { Origin: app, Cookie: appCookies },
+      });
+      body = await readJson(response);
+      binding = body.data?.odooBinding || body.data || {};
+      console.log("provision", attempt, binding.odooProvisionStatus, binding.odooCompanyId, binding.odooPosConfigId);
+      if (binding.odooProvisionStatus === "ready") break;
+    }
   }
   check("tenant.provision.ready", binding?.odooProvisionStatus === "ready", {
     companyId: binding?.odooCompanyId,
@@ -222,16 +271,34 @@ try {
   }
 
   const countedCash = expectedCash ?? evidence.expectedCashFromRecords ?? saleTotal;
-  if (countedCash == null) {
+  const companyId = binding?.odooCompanyId;
+  const beforeClose = companyId && sessionId ? await readOdooSessionSnapshot(companyId, sessionId) : null;
+  if (beforeClose) {
+    evidence.odooBeforeClose = beforeClose;
+  }
+  const verifiedExpectedCash = beforeClose?.cash_register_balance_end;
+  const finalCountedCash = verifiedExpectedCash ?? countedCash;
+  if (finalCountedCash == null) {
     check("close.withExpectedCash", false, { reason: "expected cash was not exposed by the API" });
   } else {
     response = await fetch(`${store}/api/odoo/session/close`, {
       method: "POST",
       headers: { ...auth, Cookie: storeCookies, "Content-Type": "application/json" },
-      body: JSON.stringify({ configId, countedCash: Number(countedCash) }),
+      body: JSON.stringify({ configId, countedCash: Number(finalCountedCash) }),
     });
     body = await readJson(response);
-    check("close.withExpectedCash", response.ok, { httpStatus: response.status, message: body.message, countedCash: Number(countedCash) });
+    check("close.withExpectedCash", response.ok, { httpStatus: response.status, message: body.message, countedCash: Number(finalCountedCash) });
+    const afterClose = companyId && sessionId ? await readOdooSessionSnapshot(companyId, sessionId) : null;
+    if (afterClose) {
+      evidence.odooAfterClose = afterClose;
+      check("close.stateAndCash", afterClose.state === "closed"
+        && Number(afterClose.cash_register_balance_end_real) === Number(finalCountedCash), {
+        state: afterClose.state,
+        countedCash: afterClose.cash_register_balance_end_real,
+        expectedCash: afterClose.cash_register_balance_end,
+        difference: afterClose.cash_register_difference,
+      });
+    }
   }
 } finally {
   if (vendorId && appCookies) {
