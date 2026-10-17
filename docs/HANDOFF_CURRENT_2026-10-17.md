@@ -186,6 +186,16 @@
 
 工作区保留原有未提交的 `pos-ui/tsconfig.json` 修改，未纳入本提交。
 
+### Odoo 时间解析统一（`4ef8242`）
+
+报表 Dashboard、Overview 和 Sales History 原先各自拼接 `Z` 解析 Odoo 时间；当 Odoo 返回带偏移的 ISO 时间时会产生重复时区后缀，造成无效日期或错误回退。现在统一使用共享 `odoo-date.ts`，同时兼容无时区、`Z`、带偏移 ISO 时间和 read_group 的门店本地时间桶。
+
+- 提交：`4ef8242`，已推送 `origin/main`
+- 检查：`npm run typecheck` 通过；目标文件 ESLint 通过；`git diff --check` 通过
+- 线上矩阵：[`UAT_TIMESTAMP_FORMAT_LIVE_2026-10-17.json`](UAT_TIMESTAMP_FORMAT_LIVE_2026-10-17.json)，131 路由 × 390/1440 = `262/262 PASS`
+- 本轮未执行销售、退款、采购、库存、现金、关班或权限写入
+- 公网响应仍观察到 `s-maxage=31536000`/`x-nextjs-prerender`；Dokploy 实际运行 SHA 和缓存头切换仍需控制台或下一次部署日志确认
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
