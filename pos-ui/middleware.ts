@@ -59,7 +59,10 @@ function withSecurityHeaders(response: NextResponse, tenantSlug: string | null):
 }
 
 function withPageCachePolicy(response: NextResponse, pathname: string): NextResponse {
-  if (NO_STORE_PAGES.has(pathname)) {
+  // Routers and reverse proxies may preserve a trailing slash. Normalize it
+  // before applying the live-data cache policy so both URL forms are safe.
+  const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  if (NO_STORE_PAGES.has(normalizedPath)) {
     response.headers.set("Cache-Control", "no-store, max-age=0");
     response.headers.set("CDN-Cache-Control", "no-store");
     response.headers.set("Vercel-CDN-Cache-Control", "no-store");
