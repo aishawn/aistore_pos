@@ -16,6 +16,7 @@ import {
 } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
@@ -53,6 +54,15 @@ export function OdooProductCataloguePage() {
   const [importResult, setImportResult] = useState<{ created: number; skipped: Array<{ line: number; reason: string }> } | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const requestRevision = useRef(0);
+  useDialogFocus(editingProduct !== null, () => {
+    if (!savingProduct) setEditingProduct(null);
+  });
+  useDialogFocus(importOpen, () => {
+    if (!importBusy) setImportOpen(false);
+  });
+  useDialogFocus(newProductOpen, () => {
+    if (!creatingProduct) setNewProductOpen(false);
+  });
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
 
   useEffect(() => {

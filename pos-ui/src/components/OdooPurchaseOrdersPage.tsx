@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
 import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -201,6 +202,10 @@ export function OdooPurchaseOrdersPage() {
     setReceiveError(null);
     setReceiveSuccess(null);
   }
+
+  useDialogFocus(Boolean((detail || detailLoading || detailError) && !confirmOpen && !receiveOpen), closeDetail, detail ? "detail" : detailError ? "error" : "loading");
+  useDialogFocus(confirmOpen && Boolean(detail), () => setConfirmOpen(false));
+  useDialogFocus(receiveOpen && Boolean(detail?.receivable), () => setReceiveOpen(false));
 
   async function receiveOrder() {
     if (!detail?.receivable || receiving) return;

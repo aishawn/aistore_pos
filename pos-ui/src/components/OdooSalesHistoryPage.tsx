@@ -16,6 +16,7 @@ import {
   type OdooSalesStatusFilter,
 } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
 const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
@@ -42,6 +43,7 @@ function R2ArchivePanel({ query }: { query: string }) {
   const [expanded, setExpanded] = useState(true);
   const [selected, setSelected] = useState<R2Receipt | null>(null);
   const [retryKey, setRetryKey] = useState(0);
+  useDialogFocus(Boolean(selected), () => setSelected(null));
 
   useEffect(() => {
     let active = true;
@@ -359,6 +361,8 @@ export function OdooSalesHistoryPage() {
     && saleDetail.lines.length > 0
     && saleDetail.lines.every((line) => line.qty <= 0 || (Array.isArray(line.product_id) && line.refunded_qty === 0)),
   );
+  useDialogFocus(Boolean((saleDetailLoading || saleDetailError || saleDetail) && !confirmingRefund), closeSale, saleDetail ? "detail" : saleDetailError ? "error" : "loading");
+  useDialogFocus(confirmingRefund && Boolean(saleDetail && canRefund), () => setConfirmingRefund(false));
   const sourceConfigId = saleDetail && Array.isArray(saleDetail.order.config_id) ? saleDetail.order.config_id[0] : null;
   const refundConfig = bootstrap?.configs.find((item) => item.id === sourceConfigId && item.session && item.paymentMethods.length) ?? null;
   const refundAlreadyRecorded = Boolean(refundComplete || saleDetail?.lines.some(

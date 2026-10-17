@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { createOdooCustomer, getOdooPosBootstrap, getOdooSession, searchOdooRecords, updateOdooCustomer, type OdooCustomerRecord } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
 
@@ -47,6 +48,12 @@ export function OdooCustomerDirectoryPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<OdooCustomerRecord | null>(null);
   const requestRevision = useRef(0);
+  useDialogFocus(createOpen, () => {
+    if (!creating) {
+      setCreateOpen(false);
+      setEditingCustomer(null);
+    }
+  });
 
   function clearSearch() {
     setQuery("");
