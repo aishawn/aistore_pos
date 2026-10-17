@@ -273,6 +273,13 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 - 本地未运行 build；未执行任何销售、退款、采购、库存、现金或权限写入
 - `3f0068e` 推送后只读检查 `/`、`/overview`、`/products` 仍返回 `Cache-Control: s-maxage=31536000`、`x-nextjs-cache: HIT`、`x-nextjs-prerender: 1`，且无运行 SHA；需 Dokploy 普通 Deploy 后重新验证
 
+### Future Costs / Prices 移动端列表（待部署）
+
+`/utilities/future-costs` 和 `/utilities/future-prices` 在 `md` 以下不再渲染 720px 最小宽度的 `ListTable`，改为产品、金额和生效时间摘要卡片；桌面仍保留原密集表格和分页。该改动直接处理旧 UI 报告中的窄屏横向滚动问题。
+
+- 检查：typecheck 通过；目标 ESLint 无 error，仅保留 `AppShell` 原有 1 个 warning；`git diff --check` 通过
+- 未改变 API、数据权限或任何业务写入
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
