@@ -43,7 +43,7 @@ export function CartSidebar() {
               type="button"
               aria-label="Remove customer"
               onClick={() => sell.setCustomer(null)}
-              className="mr-4 flex h-8 w-8 cursor-pointer items-center justify-center text-[var(--sf-muted)] hover:text-black"
+              className="mr-4 flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-[var(--sf-muted)] outline-none hover:text-black focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             >
               <XIcon size={20} />
             </button>

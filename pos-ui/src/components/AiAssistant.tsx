@@ -125,7 +125,7 @@ export function AiAssistant() {
         <button
           type="button"
           aria-label="Voice input"
-          className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] text-[var(--oh-muted)] hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] text-[var(--oh-muted)] outline-none hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
         >
           <Mic size={14} />
         </button>
@@ -134,7 +134,7 @@ export function AiAssistant() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask Orithos AI…"
-          className="h-8 min-w-0 flex-1 rounded-full border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)]"
+          className="min-h-11 min-w-0 flex-1 rounded-full border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         />
       </div>
     </div>

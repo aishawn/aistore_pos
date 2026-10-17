@@ -43,7 +43,7 @@ function ProductRow({
         type="button"
         onClick={() => onAction(product)}
         aria-label={isAdd ? "Assign product" : "Unassign product"}
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] ${
           isAdd
             ? "bg-[var(--oh-info)] text-white hover:opacity-90"
             : "bg-[var(--oh-danger)] text-white hover:opacity-90"

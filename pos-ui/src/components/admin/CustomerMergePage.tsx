@@ -809,7 +809,7 @@ export function CustomerMergePage() {
                 <button
                   type="button"
                   onClick={() => removeSource(source.id)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)]"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] outline-none transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                   aria-label="Remove customer"
                 >
                   <XIcon size={16} />

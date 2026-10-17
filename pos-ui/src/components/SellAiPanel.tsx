@@ -805,7 +805,7 @@ export function SellAiPanel({
                   onClick={collapsePanel}
                   title="Close"
                   aria-label="Close assistant"
-                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-white/80 hover:text-[var(--oh-text)]"
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-white/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                 >
                   <X size={16} />
                 </button>
