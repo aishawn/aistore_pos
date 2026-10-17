@@ -1043,6 +1043,9 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState("");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
 
 
@@ -1053,6 +1056,21 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
 
   }, []);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    searchRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    };
+  }, [onClose]);
 
 
 
@@ -1092,6 +1110,10 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
         role="dialog"
 
+        aria-modal="true"
+
+        aria-labelledby="customer-picker-title"
+
         aria-label="Select customer"
 
         className="flex max-h-[80vh] w-[420px] max-w-[90vw] flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-xl"
@@ -1102,7 +1124,7 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
         <div className="flex items-center justify-between border-b border-[var(--oh-border)] px-4 py-3">
 
-          <h3 className="text-[16px] font-semibold text-[var(--oh-text)]">Add customer</h3>
+          <h3 id="customer-picker-title" className="text-[16px] font-semibold text-[var(--oh-text)]">Add customer</h3>
 
           <button
 
@@ -1110,9 +1132,11 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
             aria-label="Close"
 
+            ref={closeButtonRef}
+
             onClick={onClose}
 
-            className="cursor-pointer text-[var(--oh-muted)] hover:text-[var(--oh-text)]"
+            className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-md text-[var(--oh-muted)] outline-none hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
 
           >
 
@@ -1128,13 +1152,15 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
             type="text"
 
+            ref={searchRef}
+
             value={q}
 
             placeholder="Search customers…"
 
             onChange={(e) => onSearch(e.target.value)}
 
-            className="h-9 w-full rounded-lg border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)]"
+            className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
 
             autoFocus
 
@@ -1154,7 +1180,7 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
                 onClick={() => pick(c)}
 
-                className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-[var(--oh-surface)]"
+                className="flex min-h-11 w-full cursor-pointer items-center justify-between px-4 py-3 text-left outline-none hover:bg-[var(--oh-surface)] focus-visible:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--oh-primary)]"
 
               >
 
