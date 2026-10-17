@@ -40,6 +40,12 @@
 - `7c44cb5` 已推送并完成线上认证回归，131 路由 × 390/1440 两个视口为 `262/262 PASS`，证据见 `UAT_PURCHASE_TIMEZONE_LIVE_2026-10-17.json`。
 - 本轮未确认采购、收货、创建 RFQ 或执行其他业务写入。
 
+### 核心 Odoo 页面缓存防护 `cb4cf6e`
+
+- 为 Sell、Sales History、Close、Purchases、Replenishment、Reports、Customers、Suppliers 路由增加 `dynamic = "force-dynamic"`、`fetchCache = "force-no-store"`，并加入 Next `no-store` 响应头清单，降低 Dokploy 切换后旧页面壳残留风险。
+- `cb4cf6e` 已部署验证：核心路由响应为 `Cache-Control: no-store, max-age=0`、Cloudflare `DYNAMIC`；认证页面矩阵为 `262/262 PASS`（131 路由 × 390/1440），证据见 `UAT_CORE_PAGE_CACHE_LIVE_2026-10-17.json`。
+- 本轮未执行任何销售、采购、库存、现金、关班或权限写入。
+
 ## 2. 仓库与工作区
 
 ### POS 仓库
