@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { QuestionIcon } from "@/components/icons";
 import { downloadProductsImportTemplate, importProductsCsv } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /** Import-products dialog with template download and file selection. */
 export function ImportProductsModal({
@@ -21,6 +22,7 @@ export function ImportProductsModal({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -31,12 +33,14 @@ export function ImportProductsModal({
     if (inputRef.current) inputRef.current.value = "";
   }, [open]);
 
-  if (!open) return null;
-
   function close() {
     if (busy) return;
     onClose();
   }
+
+  useDialogFocus(open, close, "import-products");
+
+  if (!open) return null;
 
   async function submit() {
     if (!file) {
@@ -74,12 +78,15 @@ export function ImportProductsModal({
       onClick={close}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 bg-[var(--oh-tile-blue-bg)] px-5 py-3.5">
           <QuestionIcon size={18} className="shrink-0 text-[var(--oh-tile-blue-text)]" strokeWidth={2} />
-          <h2 className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">Import Products</h2>
+          <h2 id={titleId} className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">Import Products</h2>
         </div>
 
         <form

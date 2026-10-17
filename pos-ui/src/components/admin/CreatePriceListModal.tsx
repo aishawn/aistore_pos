@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { api } from "@/lib/api";
 import { QuestionIcon } from "@/components/icons";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /** Create-price-list dialog — name prompt with Cancel / New actions. */
 export function CreatePriceListModal({
@@ -19,6 +20,7 @@ export function CreatePriceListModal({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -26,12 +28,14 @@ export function CreatePriceListModal({
     setError(null);
   }, [open, initialName]);
 
-  if (!open) return null;
-
   function close() {
     if (busy) return;
     onClose();
   }
+
+  useDialogFocus(open, close, "create-price-list");
+
+  if (!open) return null;
 
   async function submit() {
     const trimmed = name.trim();
@@ -59,6 +63,9 @@ export function CreatePriceListModal({
       onClick={close}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="relative w-full max-w-[420px] rounded-lg bg-white px-8 pb-8 pt-14 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -66,7 +73,7 @@ export function CreatePriceListModal({
           <QuestionIcon size={36} className="text-white" strokeWidth={1.5} />
         </div>
 
-        <h2 className="text-center text-[22px] font-bold text-black">Create Price List</h2>
+        <h2 id={titleId} className="text-center text-[22px] font-bold text-black">Create Price List</h2>
 
         <p className="mt-5 text-[15px] text-black">What should the price list be called?</p>
 
