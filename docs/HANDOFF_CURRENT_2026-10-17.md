@@ -173,6 +173,19 @@
 
 ## 6. 接手后的执行顺序
 
+### Date & Time 页面修复（`a9a5162`）
+
+本批次将 `/settings/company/date-time` 的固定 `Australia/Sydney` 文案改为读取当前 Odoo POS 配置的门店时区；Odoo 连接失败时显示 `Odoo POS configuration`，避免把示例值当成实际设置。页面保留动态/不缓存声明，并加入 no-store headers 配置。
+
+- 提交：`a9a5162`，已推送 `origin/main`
+- 检查：`npm run typecheck` 通过；目标页面 ESLint 通过；`git diff --check` 通过
+- 线上矩阵：[`UAT_DATE_TIME_SETTINGS_LIVE_2026-10-17.json`](UAT_DATE_TIME_SETTINGS_LIVE_2026-10-17.json)，131 路由 × 390/1440 = `262/262 PASS`
+- `/settings/company/date-time` 在两个视口均返回 HTTP 200，页面不再包含 `Australia/Sydney`
+- 当前未认证响应仍观察到 `Cache-Control: s-maxage=31536000`、`x-nextjs-cache: HIT`、`x-nextjs-prerender: 1`；因此缓存头切换和 Dokploy 实际运行 SHA 仍需单独确认，不能仅凭矩阵结果宣称部署已完成
+- 本批次未执行 Demo 租户销售、退款、采购、库存、现金、关班或权限写入
+
+工作区保留原有未提交的 `pos-ui/tsconfig.json` 修改，未纳入本提交。
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
