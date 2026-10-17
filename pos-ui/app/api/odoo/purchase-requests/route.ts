@@ -159,8 +159,15 @@ export async function POST(request: NextRequest) {
   try {
     const { companyId } = await getSessionContext(request, sessionId);
     const [suppliers, products, orderLineFields] = await Promise.all([
-      callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[["id", "=", Number(supplierId)], ["supplier_rank", ">", 0]]], { fields: ["id", "name"], limit: 1 }),
-      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[["id", "in", Array.from(lineMap.keys())]]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId] } }),
+      callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[
+        ["id", "=", Number(supplierId)],
+        ["supplier_rank", ">", 0],
+        ["company_id", "=", companyId],
+      ]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId], force_company: companyId } }),
+      callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[
+        ["id", "in", Array.from(lineMap.keys())],
+        ["company_id", "=", companyId],
+      ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }),
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }),
     ]);
     const supplier = suppliers?.[0];
@@ -190,7 +197,6 @@ export async function POST(request: NextRequest) {
     if (!Number.isSafeInteger(orderId) || orderId < 1) throw new OdooRequestError("Odoo did not confirm the draft RFQ", 502);
 
     let auditSaved = false;
-    const warnings: string[] = [];
     try {
       await callOdoo<number>(sessionId, "purchase.order", "message_post", [[orderId]], {
         body: approvalNote,
@@ -200,7 +206,14 @@ export async function POST(request: NextRequest) {
       });
       auditSaved = true;
     } catch {
-      warnings.push("The internal approval audit could not be saved. Do not retry; open this RFQ in Odoo and check its chatter.");
+      // Do not leave an RFQ behind when its required approval audit cannot be saved.
+      // The cleanup is best effort because Odoo may reject unlink after a partial write.
+      try {
+        await callOdoo<boolean>(sessionId, "purchase.order", "unlink", [[orderId]], { context: { allowed_company_ids: [companyId], force_company: companyId } });
+      } catch {
+        throw new OdooRequestError("The approval audit could not be saved and the draft RFQ could not be cleaned up. Do not retry; check Odoo before continuing.", 502);
+      }
+      throw new OdooRequestError("The approval audit could not be saved. No draft RFQ was kept; you can retry after checking Odoo.", 502);
     }
 
     let orderName = `RFQ #${orderId}`;
@@ -208,7 +221,14 @@ export async function POST(request: NextRequest) {
       const orders = await callOdoo<Array<{ id: number; name: string }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId]]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId] } });
       orderName = orders?.[0]?.name ?? orderName;
     } catch {
-      warnings.push("The draft was created. Open it in Odoo to review its reference and internal approval record; do not retry creation.");
+      return NextResponse.json({
+        id: orderId,
+        name: orderName,
+        supplier: supplier.name,
+        url: `${odooBaseUrl()}/web#id=${orderId}&model=purchase.order&view_type=form`,
+        auditSaved,
+        warning: "The draft was created and the approval audit was saved, but its reference could not be read back. Open it in Odoo; do not retry creation.",
+      }, { status: 201, headers: { "Cache-Control": "no-store" } });
     }
     const baseUrl = odooBaseUrl();
     return NextResponse.json({
@@ -217,7 +237,6 @@ export async function POST(request: NextRequest) {
       supplier: supplier.name,
       url: `${baseUrl}/web#id=${orderId}&model=purchase.order&view_type=form`,
       auditSaved,
-      ...(warnings.length ? { warning: warnings.join(" ") } : {}),
     }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return jsonError(error);
