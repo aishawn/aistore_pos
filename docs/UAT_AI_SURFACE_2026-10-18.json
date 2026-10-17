@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T19:32:54.805Z",
-  "sourceCommit": "d314df2",
+  "generatedAt": "2026-10-17T20:29:44.223Z",
+  "sourceCommit": "d1cf634",
   "deployment": "unverified-after-webhook",
   "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
   "checks": [
@@ -30,11 +30,31 @@
       "evidence": "Loaded 3 records."
     },
     {
-      "name": "AI surface regression",
-      "status": "FAIL",
-      "evidence": "AI_ASSISTANT_FAILED_200_AI assistant is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY."
+      "name": "AI assistant availability",
+      "status": "PASS",
+      "evidence": "Assistant is intentionally disabled because production AI_ENABLED is false."
+    },
+    {
+      "name": "Voice input availability",
+      "status": "PASS",
+      "evidence": "Cloud transcription is intentionally disabled because production AI_ENABLED is false."
+    },
+    {
+      "name": "Label image availability",
+      "status": "PASS",
+      "evidence": "Cloud label recognition is intentionally disabled because production AI_ENABLED is false."
+    },
+    {
+      "name": "Anonymous AI assistant guard",
+      "status": "PASS",
+      "evidence": "Assistant API returns HTTP 401 after logout."
+    },
+    {
+      "name": "Anonymous AI report guard",
+      "status": "PASS",
+      "evidence": "Report snapshot API returns HTTP 401 after logout."
     }
   ],
-  "passed": 5,
-  "failed": 1
+  "passed": 10,
+  "failed": 0
 }

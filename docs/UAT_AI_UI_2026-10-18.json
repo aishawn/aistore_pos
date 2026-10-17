@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-17T20:35:49.877Z",
+  "sourceCommit": "59e31b3",
+  "deployment": "unverified-after-webhook",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 2,
+  "passed": 2,
+  "failed": 0,
+  "failures": [],
+  "results": [
+    {
+      "viewport": 390,
+      "recommendationCards": 3,
+      "identifyItems": 14,
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "recommendationCards": 3,
+      "identifyItems": 14,
+      "pageErrors": []
+    }
+  ]
+}
