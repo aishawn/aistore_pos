@@ -30,7 +30,10 @@ for (const viewport of viewports) {
   await page.waitForTimeout(2200);
   const helpButton = page.getByRole("button", { name: "POS help and recovery" });
   const buttonCount = await helpButton.count();
-  if (buttonCount !== 1) throw new Error(`HELP_BUTTON_COUNT_${viewport.width}_${buttonCount}`);
+  if (buttonCount !== 1) {
+    console.error(JSON.stringify({ viewport: viewport.width, url: page.url(), title: await page.title(), body: (await page.locator("body").innerText()).slice(0, 600) }));
+    throw new Error(`HELP_BUTTON_COUNT_${viewport.width}_${buttonCount}`);
+  }
   await helpButton.click();
   const dialog = page.getByRole("dialog", { name: "POS help and recovery" });
   const visibleBefore = await dialog.isVisible();
