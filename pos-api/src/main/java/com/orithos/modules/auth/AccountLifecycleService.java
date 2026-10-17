@@ -206,8 +206,6 @@ public class AccountLifecycleService {
         body.put("mailConfigured", mailService.isConfigured());
         body.put("owner", publicUser(owner));
         body.put("redirectHost", tenantProperties.storeUrl(vendor.getSubdomain()));
-        body.put("bootstrapToken", accountTokens.issue(
-                owner.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, Duration.ofMinutes(5)));
         return body;
     }
 
@@ -250,8 +248,6 @@ public class AccountLifecycleService {
             body.put("mailConfigured", mailService.isConfigured());
             body.put("owner", publicUser(owner));
             body.put("redirectHost", tenantProperties.storeUrl(vendor.getSubdomain()));
-            body.put("bootstrapToken", accountTokens.issue(
-                    owner.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP, Duration.ofMinutes(5)));
             return body;
         }
         return issueOwnerResetForVendor(vendorId);

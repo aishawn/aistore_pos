@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { Check, Copy } from "lucide-react";
 import {
   AdminPageLayout,
   AdminSecondaryButton,
@@ -74,6 +75,7 @@ export default function PlatformStoreDetailPage() {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [linkResult, setLinkResult] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     if (!Number.isSafeInteger(id) || id < 1) {
@@ -102,6 +104,7 @@ export default function PlatformStoreDetailPage() {
     setBusy(true);
     setError(null);
     setLinkResult(null);
+    setCopied(false);
     try {
       if (confirm.kind === "status") {
         setStore(await api.patch<StoreDetail>(`/api/admin/tenants/${store.id}/status`, { status: confirm.status }));
@@ -124,6 +127,17 @@ export default function PlatformStoreDetailPage() {
       setError(cause instanceof ApiError ? cause.message : "Action failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!linkResult || typeof navigator === "undefined" || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(linkResult);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy the link. Select and copy it manually.");
     }
   }
 
@@ -150,8 +164,19 @@ export default function PlatformStoreDetailPage() {
         <div className="mx-auto max-w-3xl space-y-5">
           {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">{error}</p>}
           {linkResult && (
-            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-950">
-              <p className="font-semibold">Copy this link</p>
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm text-sky-950" aria-live="polite">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold">Owner link issued</p>
+                <button
+                  type="button"
+                  onClick={() => void copyLink()}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md border border-sky-300 bg-white px-3 font-semibold text-sky-900 hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label={copied ? "Owner link copied" : "Copy owner link"}
+                >
+                  {copied ? <Check size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+                  {copied ? "Copied" : "Copy link"}
+                </button>
+              </div>
               <p className="mt-1 break-all font-mono text-xs">{linkResult}</p>
             </div>
           )}
