@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
 import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
-import { formatOdooDateTime } from "@/lib/odoo-date";
+import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -266,7 +266,7 @@ export function OdooPurchaseOrdersPage() {
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
       <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Odoo</p><h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Review requests for quotation and purchase orders from your current Odoo companies.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}</p></div>
+        <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Odoo</p><h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Review requests for quotation and purchase orders from your current Odoo companies.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p></div>
         <div className="flex items-center gap-2">
           <Link href="/stock/replenishment" className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><ShoppingCart size={16} /> Replenishment plan</Link>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh purchases" title="Refresh purchases" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>

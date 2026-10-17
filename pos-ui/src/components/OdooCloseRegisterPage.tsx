@@ -9,7 +9,7 @@ import {
   getOdooSession,
   type OdooPosBootstrap,
 } from "@/lib/odoo-api";
-import { formatOdooDateTime } from "@/lib/odoo-date";
+import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 const CASH_DENOMINATIONS = [
@@ -181,7 +181,7 @@ export function OdooCloseRegisterPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">Close register</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">End the open Odoo POS session after reconciling cash.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">End the open Odoo POS session after reconciling cash.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, selected?.timezone ?? bootstrap?.configs[0]?.timezone ?? "Australia/Adelaide")}.</span>}</p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading || busy} aria-label={loading ? "Refreshing registers" : "Refresh registers"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
