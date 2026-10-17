@@ -23,6 +23,7 @@ const NO_STORE_PAGES = new Set([
   "/utilities/products",
   "/products",
   "/promotion/categories",
+  "/promotions",
   "/settings/pricesets",
   "/settings/roles",
   "/settings/users",
@@ -33,13 +34,19 @@ const NO_STORE_PAGES = new Set([
   "/register/odoo",
   "/purchases/odoo",
   "/reports/dashboard",
+  "/reports/closures",
+  "/reports/daily-sales",
+  "/reports/last-month-sales",
+  "/reports/last-week-sales",
+  "/reports/this-month-sales",
+  "/reports/weekly-sales",
   "/stock/replenishment",
   "/customers/odoo",
   "/suppliers/odoo",
   "/settings/company/date-time",
 ]);
 
-const NO_STORE_PAGE_PREFIXES = ["/platform/stores/"];
+const NO_STORE_PAGE_PREFIXES = ["/platform/stores/", "/reports/closures/"];
 
 /** Routes that must stay reachable without a session. */
 const PUBLIC_PREFIXES = [
