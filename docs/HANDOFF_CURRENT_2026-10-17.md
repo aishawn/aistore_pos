@@ -73,6 +73,12 @@
 
 证据：[UAT_SAMPLE_DATA_PURGE_LIVE_2026-10-17.json](UAT_SAMPLE_DATA_PURGE_LIVE_2026-10-17.json)。此前发现的 Odoo 20 domain 错误已由 `87a6d7c` 修复并在线上回归通过。
 
+### 产品 CSV 导出线上回归：已通过
+
+新租户 `cpx-20261017110149` 的认证导出返回 HTTP 200，响应为 `text/csv`，文件名正确，包含标准表头和 14 行 DEMO 商品；删除租户返回 200，删除后认证返回 402。
+
+证据：[UAT_PRODUCT_EXPORT_LIVE_2026-10-17.json](UAT_PRODUCT_EXPORT_LIVE_2026-10-17.json)。
+
 提交 `7c51683` 中的 `OdooTenantProvisioner.java` 在选择 sample data 时创建：
 
 - 14 个 `DEMO-` 商品

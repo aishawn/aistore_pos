@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-17T03:01:49Z",
+  "scope": "fresh disposable trial; authenticated product CSV export and tenant deletion",
+  "tenant": {
+    "subdomain": "cpx-20261017110149",
+    "vendorId": 26,
+    "dummyData": true
+  },
+  "checks": {
+    "signupStatus": 200,
+    "bootstrapStatus": 200,
+    "exportStatus": 200,
+    "contentType": "text/csv; charset=utf-8",
+    "contentDispositionFilename": "cpx-20261017110149-products.csv",
+    "csvHeader": "Product Name,Sale Price,SKU,Barcode,Cost,POS Category",
+    "csvRowCountIncludingHeader": 15,
+    "demoProductRows": 14
+  },
+  "cleanup": {
+    "platformDeleteStatus": 200,
+    "finalVendorStatus": "deleted",
+    "deletedTenantAuthStatus": 402
+  },
+  "result": "PASS_AUTHENTICATED_PRODUCT_EXPORT_AND_DELETE",
+  "secrets": "passwords, bootstrap tokens, cookies and Odoo credentials intentionally omitted"
+}
