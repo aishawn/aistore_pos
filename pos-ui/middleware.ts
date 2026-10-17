@@ -10,6 +10,7 @@ const NO_STORE_PAGES = new Set([
   "/settings/company/general",
   "/settings/company/login-after-sale",
   "/settings/company/search",
+  "/settings/data",
   "/settings/loyalty",
   "/settings/push",
   "/settings/receipts",
