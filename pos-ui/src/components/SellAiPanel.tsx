@@ -150,15 +150,21 @@ export function SellAiPanel({
   const [mounted, setMounted] = useState(false);
   const [anchor, setAnchor] = useState<FloatAnchor>(defaultAnchor);
   const [dragging, setDragging] = useState(false);
-  const restoreFabOnCloseRef = useRef(false);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   useDialogFocus(expanded, collapsePanel, "assistant", inputRef);
 
   useEffect(() => {
-    if (expanded || !restoreFabOnCloseRef.current) return;
-    restoreFabOnCloseRef.current = false;
+    if (expanded) {
+      const activeElement = document.activeElement;
+      restoreFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+      return;
+    }
+    const trigger = restoreFocusRef.current;
+    restoreFocusRef.current = null;
+    if (!trigger) return;
     const frame = window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>('[aria-label="Open Orithos AI"]')?.focus();
+      if (trigger.isConnected) trigger.focus();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [expanded]);
@@ -345,9 +351,11 @@ export function SellAiPanel({
   }
 
   function collapsePanel() {
-    // The panel can lose activeElement during Escape dispatch or portal teardown;
-    // every user initiated close should restore focus to the visible launcher.
-    restoreFabOnCloseRef.current = true;
+    // The panel can lose activeElement during Escape dispatch or portal teardown.
+    // Restore the actual launcher that opened it, including the desktop header entry.
+    if (!document.activeElement?.closest('[role="dialog"][aria-label="Orithos AI assistant"]')) {
+      restoreFocusRef.current = null;
+    }
     onExpandedChange(false);
     stopVoiceCapture();
   }
