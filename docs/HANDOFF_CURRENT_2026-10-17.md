@@ -287,6 +287,12 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 - 检查：`npm run typecheck` 通过；`ListTable` 与 `Pagination` 目标 ESLint 通过；`git diff --check` 通过
 - 未执行任何业务写入；仍需 Dokploy 普通 Deploy 后做认证页面和键盘回归
 
+### 行操作入口一致性（待部署）
+
+`AdminRowActions` 现在只渲染实际提供回调的 View/Edit/Delete 操作，不再显示点击后无动作的假入口；已有产品列表的真实操作保持不变。
+
+- 检查：typecheck 通过；目标 ESLint 通过；`git diff --check` 通过
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。

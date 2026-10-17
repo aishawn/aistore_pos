@@ -271,23 +271,27 @@ export function AdminRowActions({
 } = {}) {
   return (
     <div className="flex items-center justify-center gap-3 text-[13px] font-medium">
-      {view && (
+      {view && onView && (
         <AdminRowActionItem
           label="View"
           onClick={onView}
           className="inline-flex min-h-11 items-center cursor-pointer text-[var(--oh-orange)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         />
       )}
-      <AdminRowActionItem
-        label="Edit"
-        onClick={onEdit}
-        className="inline-flex min-h-11 items-center cursor-pointer text-[var(--oh-success)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-      />
-      <AdminRowActionItem
-        label="Delete"
-        onClick={onDelete}
-        className="inline-flex min-h-11 items-center cursor-pointer text-[var(--oh-danger)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-      />
+      {onEdit && (
+        <AdminRowActionItem
+          label="Edit"
+          onClick={onEdit}
+          className="inline-flex min-h-11 items-center cursor-pointer text-[var(--oh-success)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        />
+      )}
+      {onDelete && (
+        <AdminRowActionItem
+          label="Delete"
+          onClick={onDelete}
+          className="inline-flex min-h-11 items-center cursor-pointer text-[var(--oh-danger)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        />
+      )}
     </div>
   );
 }
