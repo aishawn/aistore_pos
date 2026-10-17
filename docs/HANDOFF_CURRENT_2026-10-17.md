@@ -1,77 +1,49 @@
 # Orithos 当前交接文档
 
-更新时间：2026-10-17（Asia/Shanghai，POS 弹窗键盘交接更新）
+更新时间：2026-10-17（Asia/Shanghai，线上 UAT 与部署状态交接）
 适用仓库：`aishawn/aistore_pos`  相关品牌仓库：`aishawn/aistore_orithos`
 
 ## 0. 最新权威摘要（交接必读）
 
 ### 当前结论
 
-项目代码和只读线上回归仍在持续推进，但整体状态保持 **NO-GO / 未完成**。当前公网匿名 HEAD 检查已经返回动态 `no-store` 响应头，但 Dokploy 控制台仍未提供实际运行 SHA；因此不能仅凭 GitHub 已推送确认全部认证页面和业务代码已上线。
+整体状态：**NO-GO / 尚未完成最终生产验收**。核心租户、Odoo、POS 销售、退款、采购和现金流程已有隔离租户证据，但部署版本、认证页面最新批次回归和若干产品/硬件能力仍未闭环。
 
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：`526044c fix: refine register and admin list experience`
-- 本轮功能代码提交：`9224563 fix: tighten admin list and receiving UX`；回归脚本提交：`0baf7c6 test: add authenticated admin list regression batch`
-- 共用弹窗交互提交：`1fb0fe0 fix: improve shared dialog keyboard behavior`
+- 当前 HEAD：`e4d690f docs: refresh handoff deployment head`（`origin/main` 同步）
+- 最近功能代码：`526044c fix: refine register and admin list experience`
+- 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 工作区当前还有未提交修改：本轮新增的 `pos-ui/src/components/OdooRegisterPage.tsx`，以及并行工作区中的 `pos-ui/app/platform/stores/page.tsx`、`pos-ui/src/components/OdooCloseRegisterPage.tsx`、`pos-ui/src/components/OrithosOverviewPage.tsx`、`pos-ui/src/components/admin/AdminPageLayout.tsx`、`pos-ui/src/components/admin/ListTable.tsx` 和用户已有的 `pos-ui/tsconfig.json`。交接时不得覆盖、回滚或混入未明确归属本批次的修改。
+- 当前未提交文件包括用户已有的 `pos-ui/tsconfig.json`，以及并行工作区中的 `pos-ui/src/components/admin/AsyncState.tsx`、`pos-ui/src/components/admin/Modal.tsx`、`pos-ui/src/components/admin/Pagination.tsx`；均不得回滚、覆盖或混入本次文档提交。
+- 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
-### 本轮已完成
+### 已完成并有证据
 
-- `OdooRegisterPage` 的 POS help、销售小票、暂存销售确认和切换 Register 确认弹窗统一支持 Escape 关闭；按 Escape 时只关闭当前最上层弹窗，不提交销售、不修改 Odoo 业务数据。代码目前仍待提交和部署。
-- 本轮本地检查已通过：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check`。按当前交接约束未运行 `npm run build`。
+- 品牌站注册、自动登录、Outlet/Register 配置、dummy/sample data 选择。
+- 每个租户独立 Odoo `res.company`、warehouse、stock location、POS config；跨租户读取隔离和删除后的认证拒绝。
+- Card 模拟收款、Cash 收款/找零、GST/现金四舍五入、销售退款、库存恢复、Cash in/Cash out、现金盘点关班。
+- 供应商创建与 ABN/邮箱校验；采购订单确认、部分收货、全部收货、重复收货拒绝；补货 draft RFQ 和审批审计。
+- richer dummy data、sample data 清理与幂等重试、产品 CSV 导出。
+- 多 Outlet/Register、角色和用户 CRUD、Odoo session 自动恢复/登出保护、移动端布局、分页和列表无障碍改进。
+- 认证页面矩阵曾达到 131 路由 × 390/1440 = `262/262 PASS`；重点页面截图和大量 JSON UAT 证据已保存到 `docs/`。
+- 本地检查已有 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；本机按既定约束未运行 `npm run build`。
 
-- 品牌站注册、自动登录、Outlet/Register 配置、dummy/sample data 选择已有真实线上证据。
-- 多租户 Odoo company、warehouse、stock location、POS config 隔离已有线上回读证据。
-- Card 模拟收款、Cash 收款/找零、销售退款、库存恢复、Cash in/Cash out、基础关班已有线上证据。
-- 供应商创建、采购确认、部分/全部收货、补货 draft RFQ 和审计消息已有隔离租户证据。
-- richer dummy data、sample data 清理、产品 CSV 导出和删除租户后的认证拒绝已有 JSON 证据。
-- 131 个认证页面在 390px 与 1440px 的矩阵曾达到 `262/262 PASS`；关键功能页面、角色 CRUD、移动端布局和无横向溢出已有回归记录。
-- 最近的只读体验修复已提交到 GitHub：销售报表移动端摘要、分页越界恢复、不可用行操作隐藏、列表语义可访问性、未来价格移动端布局、回收项搜索、Mail Log 部分匹配、列表页 server layout 缓存隔离。
-- 最近批次 `d835857` 修复 Future Costs/Prices 的 Next route config 回归；`1679f0b` 收窄平台 owner recovery 响应，不再返回页面不使用的 bootstrap token，并为 owner link 增加真实复制按钮；`0b98984` 将管理按钮和确认弹窗统一到至少 44px 触控高度。
-- `3e992f0` 将 Register Closures 的假 View 入口改为真实详情链接，新增只读详情页（含 tender breakdown），移除静态日期范围占位，并补齐移动端卡片布局。
-- `5912892` 将 Promotions、Register Closures 和五个销售报表的列表/详情路径加入 middleware 与 Next headers 的 no-store 守卫，避免动态页面的未认证重定向或详情子路径落回缓存策略之外。
-- `83413b1` 为 Platform Stores 增加 `Deleted` 状态筛选和对应灰色状态徽章；`f940206` 补充该筛选的回归证据。
-- 当前待部署批次补强了四处高频流程：采购收货数量在前端按剩余数量校验并补充输入语义标签；Platform Stores 无结果时区分筛选空态并提供 Clear filters；Mail Log 与 Trashed Items 在手机端改为摘要卡片并提供清除搜索/筛选；两个工具页同时加入 middleware 与 Next headers 的 no-store 路由守卫。
-- 下一批待部署改动补强共用弹窗交互：ConfirmDialog、AlertDialog 和 Modal 支持 Escape 关闭；ConfirmDialog 的忙碌文案按危险/普通确认区分；AlertDialog 确认按钮统一至少 44px。
-- POS 页面弹窗现在也支持 Escape 关闭；该改动与上面的共用弹窗改动分开记录，避免误认为已经部署。
-- 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
+### 未完成、未覆盖或证据不足
 
-### 当前未完成
-
-- POS Escape 改动尚未提交、尚未取得 Dokploy 运行 SHA，也尚未完成认证浏览器线上回归；需要打开 `/` 的 `POS help and recovery`，按 Escape 并确认 `role=dialog` 消失。该检查全程不得提交销售。
-
-- Dokploy 实际运行 SHA 未取得确认，当前 `main` 的最新代码不能视为线上完整生效。
-- 2026-10-17 19:38（Asia/Shanghai）匿名 HEAD 检查 `/utilities/future-costs` 与 `/platform/stores` 均返回：
-
-  ```text
-  Cache-Control: no-store, max-age=0
-  cdn-cache-control: no-store
-  cf-cache-status: DYNAMIC
-  location: /login?next=...
-  ```
-
-- 这证明当前匿名请求路径没有旧静态缓存特征；仍需认证浏览器和 Dokploy 运行 SHA 证据确认页面代码批次。
-- 推送 `5ca76d1` 后约 30 秒再次检查 `/reports/closures/1` 和 `/reports/daily-sales`：两者均返回 `Cache-Control: no-store, max-age=0`、`cdn-cache-control: no-store`、`cf-cache-status: DYNAMIC`，且无 `x-nextjs-prerender`；这是匿名重定向层证据，尚不能替代认证页面回归或 Dokploy SHA。
-- 认证只读页面矩阵已在公网运行环境完成：`docs/UAT_ALL_STATIC_PAGES_2026-10-17_REPORT_BATCH.json`，131 路由 × 390/1440 共 `262/262 PASS`，无横向溢出和页面错误；脚本源提交记录为 `cabdbf4`，Dokploy 控制台运行 SHA 仍待补记。
-- 重点页面截图已在本批次重新采集并保存于 `docs/screenshots/2026-10-17-report-batch/`，覆盖 `/reports/closures`、`/platform/stores`、`/utilities/future-costs`、`/utilities/future-prices` 的 390px/1440px 视口；索引见 `docs/UAT_FOCUS_SCREENSHOTS_2026-10-17.json`，其中 `sourceCommit=9224563`、`deployment=null`。平台截图使用 `app.orithos.com.au`，租户页面使用 `demo.orithos.com.au`，均为认证只读访问。
-- `83413b1` 后的平台门店截图在 390px/1440px 均返回 HTTP 200；列表状态徽章和分页正常，新增 Deleted 状态筛选已随页面部署回归。
-- 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
-- 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
-- 本轮待部署改动尚未用实际运行 SHA 完成线上回归；需重点验证采购收货弹窗、Platform Stores 筛选空态、Mail Log/Trashed Items 的 390px 布局和 no-store 响应头。
-- 认证只读管理列表回归脚本 `scripts/pilot-admin-list-batch-uat.mjs` 已在推送后再次运行：采购、Platform Stores、Mail Log、Trashed Items 在 390px/1440px 共 `8/8 PASS`，无横向溢出，并在三个搜索页验证无结果文案、Clear 操作和清除后的输入状态；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和 `docs/screenshots/2026-10-17-admin-list-batch/`。该证据的 `sourceCommit=9224563`，`deployment=null`，所以仍需 Dokploy SHA 绑定。
-- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页和 Register Closures 详情已完成认证只读矩阵和重点截图回归；仍未取得 Dokploy 实际运行 SHA，因此不能把证据绑定到具体线上容器版本。
-- 收银小票时区、采购/补货显示时区虽有页面回归，仍需在获准的 disposable tenant 业务链路中做一次真实小票/订单回读确认。
-- 实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理仍未覆盖或未实现。
+1. **部署版本未闭环**：用户报告 `7544d03` 已部署，但没有 Dokploy 实际运行 SHA、构建日志和容器状态；GitHub push 或 webhook 200 不能替代部署成功证据。
+2. **最新 UI/只读批次未绑定线上版本**：认证矩阵和截图有 `sourceCommit`，但多份证据的 `deployment` 为空；回收项/Mail Log 搜索、采购收货校验、移动端管理列表和缓存隔离需要在已确认 SHA 上重跑。
+3. **POS 弹窗 Escape 需要线上确认**：本地代码和检查已完成，但仍需认证浏览器打开 POS help、销售小票、暂存销售、切换 Register 弹窗，确认 Escape 只关闭当前弹窗且不提交业务。
+4. **业务边界未实现或未验证**：实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理。
+5. **测试环境清理风险**：后续只允许新建 disposable tenant，禁止写 Demo 公司；每次测试结束删除租户并验证登录/受保护 API 返回 402 或未授权。
 
 ### 当前问题与风险
 
 1. **部署链路阻塞**：当前环境没有 Dokploy 控制台、部署 API 或 webhook token，无法从仓库侧触发普通 Deploy；重复检查仍观察到旧缓存头。
 2. **证据与线上版本脱节**：页面返回 200 或 GitHub push 不能证明 Dokploy 已消费该提交，必须记录 Dokploy 前后端容器 SHA。
 3. **历史文档存在时间差**：下方历史章节记录多个已通过批次，阅读时以本节和对应 JSON 的 `generatedAt`、`sourceCommit`、`deployment` 为准。
-4. **工作区并行修改**：本轮只允许明确暂存 `OdooRegisterPage.tsx` 与交接文档；其余未提交文件必须原样保留。不要覆盖、回滚或混入业务提交。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
+4. **工作区并行修改**：本次只暂存交接文档；其余未提交文件必须原样保留。不要覆盖、回滚或混入业务提交。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
 
 ### 最新 Dokploy Webhook 尝试（2026-10-17）
 
@@ -83,7 +55,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `9224563`，仓库当前 HEAD 为 `dcdd620`（功能代码包含于 `526044c`）。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `526044c`，仓库当前 HEAD 为 `e4d690f`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
