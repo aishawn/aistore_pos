@@ -18,7 +18,7 @@ export function AdminPrimaryButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >
@@ -45,7 +45,7 @@ export function AdminNavyButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-primary)] px-4 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >
@@ -72,7 +72,7 @@ export function AdminSecondaryButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-border-strong)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-border-strong)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >

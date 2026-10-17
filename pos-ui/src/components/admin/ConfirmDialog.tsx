@@ -82,7 +82,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="rounded-[var(--oh-radius)] bg-[#e8e8e8] px-5 py-2 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[#dcdcdc] disabled:opacity-60"
+            className="min-h-11 rounded-[var(--oh-radius)] bg-[#e8e8e8] px-5 py-2 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[#dcdcdc] disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -90,7 +90,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={`rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors disabled:opacity-60 ${styles.confirmBg} ${styles.confirmHover}`}
+            className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors disabled:opacity-60 ${styles.confirmBg} ${styles.confirmHover}`}
           >
             {busy ? "Deleting…" : confirmLabel}
           </button>

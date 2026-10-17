@@ -149,7 +149,7 @@ export default function PlatformStoreDetailPage() {
       subtitle="Platform lifecycle, owner recovery, and Odoo binding"
       actions={
         <div className="flex flex-wrap gap-2">
-          <Link href="/platform/stores" className="inline-flex h-10 items-center rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+          <Link href="/platform/stores" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
             All stores
           </Link>
           <AdminSecondaryButton onClick={() => void load()}>Refresh</AdminSecondaryButton>
@@ -229,19 +229,19 @@ export default function PlatformStoreDetailPage() {
               <p className="mt-3 text-sm text-[var(--oh-muted)]">Tenant access is deleted. Odoo sales and audit history are retained.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>
-                <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "active", title: "Activate store?", message: "Restores access for this store URL." })}>Activate</button>
-                <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "expired", title: "Mark expired?", message: "Marks the store as expired; login should be blocked." })}>Mark expired</button>
-                <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "trial", days: 14, title: "Extend trial by 14 days?", message: "Extends trial by 14 days from now." })}>Extend trial 14d</button>
+                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>
+                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "active", title: "Activate store?", message: "Restores access for this store URL." })}>Activate</button>
+                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "expired", title: "Mark expired?", message: "Marks the store as expired; login should be blocked." })}>Mark expired</button>
+                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "trial", days: 14, title: "Extend trial by 14 days?", message: "Extends trial by 14 days from now." })}>Extend trial 14d</button>
                 {store.owner ? (
                   <>
-                    <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "reset", title: "Reset owner password?", message: "Issues a reset link for the store origin host." })}>Reset owner password</button>
-                    <button type="button" className="min-h-10 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "reinvite", title: "Re-invite owner?", message: "Re-issues invite or reset link without creating a second user." })}>Re-invite owner</button>
+                    <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "reset", title: "Reset owner password?", message: "Issues a reset link for the store origin host." })}>Reset owner password</button>
+                    <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "reinvite", title: "Re-invite owner?", message: "Re-issues invite or reset link without creating a second user." })}>Re-invite owner</button>
                   </>
                 ) : null}
-                <button type="button" className="min-h-10 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white" onClick={() => setConfirm({ kind: "odoo", title: "Retry Odoo provision?", message: "Creates or refreshes the Odoo company / POS config mapping for this store." })}>Retry Odoo provision</button>
+                <button type="button" className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white" onClick={() => setConfirm({ kind: "odoo", title: "Retry Odoo provision?", message: "Creates or refreshes the Odoo company / POS config mapping for this store." })}>Retry Odoo provision</button>
                 {store.status.toLowerCase() === "trial" ? (
-                  <button type="button" className="min-h-10 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => setConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Odoo sales and audit history are retained." })}>Delete trial store</button>
+                  <button type="button" className="min-h-11 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => setConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Odoo sales and audit history are retained." })}>Delete trial store</button>
                 ) : null}
               </div>
             )}
