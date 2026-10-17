@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
-import { confirmOdooPurchaseOrder, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
+import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
+import { formatOdooDateTime } from "@/lib/odoo-date";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -51,11 +52,9 @@ function purchaseReceiptLabel(status?: string | false) {
   return null;
 }
 
-function formatDate(value?: string | false) {
+function formatDate(value: string | false | undefined, timezone = "Australia/Adelaide") {
   if (!value) return "—";
-  const date = new Date(`${value.replace(" ", "T")}Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+  return formatOdooDateTime(value, timezone, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatMoney(value: number, currency?: [number, string] | false) {
@@ -122,6 +121,7 @@ export function OdooPurchaseOrdersPage() {
   const [receiveError, setReceiveError] = useState<string | null>(null);
   const [receiveQty, setReceiveQty] = useState<Record<number, string>>({});
   const [receiveSuccess, setReceiveSuccess] = useState<string | null>(null);
+  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
   const detailRevision = useRef(0);
 
@@ -146,8 +146,13 @@ export function OdooPurchaseOrdersPage() {
         setHasNext(false);
         return;
       }
-      const page = await searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset });
+      const [page, bootstrap] = await Promise.all([
+        searchOdooPurchaseOrders({ query: debouncedQuery, state, limit: PAGE_SIZE, offset }),
+        getOdooPosBootstrap().catch(() => null),
+      ]);
       if (revision !== requestRevision.current) return;
+      const activeConfig = bootstrap?.configs.find((config) => config.session) ?? bootstrap?.configs[0];
+      if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
       setItems(page.items);
       setHasNext(page.hasNext);
       setLastLoadedAt(Date.now());
@@ -288,7 +293,7 @@ export function OdooPurchaseOrdersPage() {
                 : items.map((order) => <tr key={order.id} className="transition-colors hover:bg-[var(--oh-surface)]/70">
                   <td className="px-4 py-3"><button type="button" onClick={() => void openDetail(order.id)} className="rounded font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">{order.name}</button><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{order.id}</span></td>
                   <td className="px-4 py-3 font-medium text-[var(--oh-text)]">{order.partner_id ? order.partner_id[1] : "No supplier"}</td>
-                  <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatDate(order.date_order)}</td>
+                  <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{formatDate(order.date_order, storeTimezone)}</td>
                   <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{order.order_line.length}</td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums text-[var(--oh-text)]">{formatMoney(order.amount_total, order.currency_id)}</td>
                   <td className="px-4 py-3"><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(order.state)}`}>{statusLabel(order.state)}</span></td>
@@ -312,7 +317,7 @@ export function OdooPurchaseOrdersPage() {
           ) : items.map((order) => (
             <article key={order.id} className="px-4 py-3.5">
               <header className="flex items-start justify-between gap-3">
-                <div className="min-w-0"><button type="button" onClick={() => void openDetail(order.id)} className="font-semibold text-[var(--oh-primary)] hover:underline">{order.name}</button><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{order.id} · {formatDate(order.date_order)}</p></div>
+                <div className="min-w-0"><button type="button" onClick={() => void openDetail(order.id)} className="font-semibold text-[var(--oh-primary)] hover:underline">{order.name}</button><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{order.id} · {formatDate(order.date_order, storeTimezone)}</p></div>
                 <span className={`inline-flex min-h-6 shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(order.state)}`}>{statusLabel(order.state)}</span>
               </header>
               <p className="mt-2 break-words text-sm font-medium text-[var(--oh-text)]">{order.partner_id ? order.partner_id[1] : "No supplier"}</p>
