@@ -2,6 +2,11 @@
 
 import { useEffect, useRef } from "react";
 
+type DialogHandler = (event: KeyboardEvent) => void;
+
+// Keep one Escape owner when a page temporarily renders a nested dialog.
+const activeDialogHandlers: DialogHandler[] = [];
+
 /** Adds Escape handling and restores focus to the control that opened a dialog. */
 export function useDialogFocus(
   open: boolean,
@@ -26,15 +31,18 @@ export function useDialogFocus(
     };
     const frame = window.requestAnimationFrame(focusInitialControl);
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && activeDialogHandlers.at(-1) === handleKeyDown) {
         event.preventDefault();
         onCloseRef.current();
       }
     }
+    activeDialogHandlers.push(handleKeyDown);
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("keydown", handleKeyDown);
+      const handlerIndex = activeDialogHandlers.lastIndexOf(handleKeyDown);
+      if (handlerIndex >= 0) activeDialogHandlers.splice(handlerIndex, 1);
       if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
       previousFocusRef.current = null;
     };
