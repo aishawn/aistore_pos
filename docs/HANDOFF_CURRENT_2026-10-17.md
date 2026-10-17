@@ -22,6 +22,12 @@
 - `9217dca` 已推送 `main`。认证只读页面矩阵在该提交上线后为 `262/262 PASS`（131 路由 × 390/1440 两个视口），证据见 `UAT_REGISTER_TIMEZONE_LIVE_2026-10-17.json`。
 - 本轮只读验证没有提交销售或其他业务写入；收银小票时区需在下一次获准的 disposable tenant 销售验收中用真实小票进一步确认。
 
+### 关班页时区统一 `22060a6`
+
+- 新增共享 `formatOdooDateTime`，正确处理 Odoo 无时区/ISO 时间，并使用当前 POS 配置的门店时区；Close Register 的开班时间不再固定显示 Sydney。
+- `22060a6` 已推送并完成线上认证回归，131 路由 × 390/1440 两个视口为 `262/262 PASS`，证据见 `UAT_REGISTER_CLOSE_TIMEZONE_LIVE_2026-10-17.json`。
+- 本轮未执行关班、销售或任何其他业务写入。
+
 ## 2. 仓库与工作区
 
 ### POS 仓库
