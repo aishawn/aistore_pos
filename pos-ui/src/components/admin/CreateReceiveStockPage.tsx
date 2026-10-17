@@ -32,7 +32,14 @@ function parseDisplayDate(raw: string): string | null {
   const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
   const [, d, m, y] = match;
-  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (
+    date.getUTCFullYear() !== Number(y)
+    || date.getUTCMonth() + 1 !== Number(m)
+    || date.getUTCDate() !== Number(d)
+  ) return null;
+  return iso;
 }
 
 function FormField({
@@ -95,8 +102,7 @@ function FormSelect({
 export function CreateReceiveStockPage() {
   const router = useRouter();
   const [fromId, setFromId] = useState("");
-  const [toId, setToId] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(formatToday);
+  const [invoiceDate, setInvoiceDate] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [reference, setReference] = useState("");
@@ -104,6 +110,13 @@ export function CreateReceiveStockPage() {
   const [internalNotes, setInternalNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setInvoiceDate((current) => current || formatToday());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const outlets = useApi<Named[]>("/api/outlets");
@@ -118,16 +131,11 @@ export function CreateReceiveStockPage() {
     [outlets.data],
   );
 
+  const selectedToId = outletOptions[0]?.value || "";
   const outletName = useMemo(
-    () => outletOptions.find((o) => o.value === toId)?.label ?? "",
-    [outletOptions, toId],
+    () => outletOptions.find((o) => o.value === selectedToId)?.label ?? "",
+    [outletOptions, selectedToId],
   );
-
-  useEffect(() => {
-    if (!toId && outletOptions.length > 0) {
-      setToId(outletOptions[0].value);
-    }
-  }, [outletOptions, toId]);
 
   async function submit() {
     if (busy) return;
@@ -136,7 +144,7 @@ export function CreateReceiveStockPage() {
       setError("Supplier is required.");
       return;
     }
-    if (!toId) {
+    if (!selectedToId) {
       setError("Destination outlet is required.");
       return;
     }
@@ -162,7 +170,7 @@ export function CreateReceiveStockPage() {
     try {
       await api.post("/api/orders/receives", {
         fromId: Number(fromId),
-        toId: Number(toId),
+        toId: Number(selectedToId),
         invoiceDate: parsedInvoiceDate,
         dueDate: parsedDueDate,
         invoiceNumber: invoiceNumber.trim() || null,
@@ -275,7 +283,7 @@ export function CreateReceiveStockPage() {
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={busy || suppliers.loading || Boolean(suppliers.error) || !fromId || outlets.loading || Boolean(outlets.error) || !toId}
+          disabled={busy || suppliers.loading || Boolean(suppliers.error) || !fromId || outlets.loading || Boolean(outlets.error) || !selectedToId}
           className="inline-flex min-h-11 min-w-28 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create"}
