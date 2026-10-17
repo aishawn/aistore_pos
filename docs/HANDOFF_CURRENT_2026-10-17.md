@@ -254,6 +254,16 @@ Products 和 Replenishment 页面现在用 Odoo POS 门店时区显示 `Last ref
 - 首次登录探测出现瞬时 502，立即重试登录返回 200；重试后的所有页面无横向溢出、无 page error
 - 本轮未执行销售、采购、库存、现金或其他业务写入；公网缓存头仍待 Dokploy 普通 Deploy 确认
 
+### Next route config 构建风险清理（`11973ea`）
+
+Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connections 和 Platform Store Detail 的 `dynamic`/`fetchCache` 已从 Client Component 页面移到各自的 server `layout.tsx`。页面行为不变，降低 Next prerender/revalidate 构建错误风险。
+
+- 提交：`11973ea`，已推送 `origin/main`
+- 检查：typecheck、目标 ESLint、`git diff --check` 通过
+- 定向认证回归：[`UAT_ROUTE_CONFIG_LAYOUT_LIVE_2026-10-17.json`](UAT_ROUTE_CONFIG_LAYOUT_LIVE_2026-10-17.json)，7 个路由 × 390/1440 = `14/14 PASS`
+- 首次 `/products` 390px 请求为瞬时 504，立即认证重试为 200、无溢出、无 page error
+- 本地未运行 build；公网实例仍需 Dokploy 普通 Deploy 后确认最新运行 SHA 和 no-store 头
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
