@@ -93,8 +93,11 @@ async function runViewport(viewport) {
   await page.keyboard.press("Escape");
   await assistant.waitFor({ state: "hidden", timeout: 10000 });
   const restoredFab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
-  const focusRestored = await restoredFab.evaluate((element) => document.activeElement === element);
-  if (!focusRestored) throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`);
+  await page.waitForFunction(
+    (element) => document.activeElement === element,
+    await restoredFab.elementHandle(),
+    { timeout: 1500 },
+  ).catch(() => { throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`); });
   await restoredFab.click();
   const composer = page.getByPlaceholder("Ask Orithos AI…");
   await composer.fill("look up product DEMO");
