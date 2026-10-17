@@ -26,7 +26,7 @@ async function json(response) {
   try { return JSON.parse(text); } catch { return { raw: text.slice(0, 500) }; }
 }
 function check(name, passed, detail = {}) {
-  evidence.checks.push({ name, status: passed ? "PASS" : "FAIL", ...detail });
+  evidence.checks.push({ ...detail, name, status: passed ? "PASS" : "FAIL" });
   console.log(`[${passed ? "PASS" : "FAIL"}] ${name}`, detail);
   if (!passed) throw new Error(name);
 }
@@ -73,7 +73,7 @@ try {
     if (binding.odooProvisionStatus === "ready") break;
   }
   const binding = detail.data?.odooBinding || detail.data || {};
-  check("tenant.provision.ready", binding.odooProvisionStatus === "ready", { companyId: binding.odooCompanyId, status: binding.odooProvisionStatus });
+  check("tenant.provision.ready", binding.odooProvisionStatus === "ready", { companyId: binding.odooCompanyId, provisionStatus: binding.odooProvisionStatus });
   evidence.companyId = binding.odooCompanyId;
 
   response = await fetch(`${app}/api/admin/tenants/${vendorId}/owner/bootstrap`, { method: "POST", headers: { Origin: app, Cookie: appCookies } });
@@ -119,7 +119,7 @@ try {
   });
   body = await json(response);
   const purchaseId = body.id;
-  check("draft.rfq.create", response.status === 201 && Number.isSafeInteger(purchaseId) && body.auditSaved === true, { httpStatus: response.status, purchaseId, name: body.name, auditSaved: body.auditSaved });
+  check("draft.rfq.create", response.status === 201 && Number.isSafeInteger(purchaseId) && body.auditSaved === true, { httpStatus: response.status, purchaseId, rfqName: body.name, auditSaved: body.auditSaved });
   evidence.purchaseId = purchaseId;
 
   response = await fetch(`${store}/api/odoo/purchase-orders/${purchaseId}`, { headers: auth });
@@ -131,6 +131,13 @@ try {
   check("draft.rfq.line.readback", line?.product_id?.[0] === product.id && Number(line.product_qty) === quantity, { productId: line?.product_id?.[0], quantity: line?.product_qty });
   check("replenishment.audit.readback", audit, { approvalAuditCount: body.approvalAudits?.length || 0, auditSaved: body.approvalAuditAvailable });
   evidence.order = { id: purchaseId, name: body.order?.name, state: body.order?.state, companyId: orderCompanyId, lineProductId: line?.product_id?.[0], lineQuantity: line?.product_qty, auditCount: body.approvalAudits?.length || 0 };
+
+  response = await fetch(`${store}/api/odoo/purchase-requests`, {
+    method: "POST", headers: { ...auth, "Content-Type": "application/json" },
+    body: JSON.stringify({ supplierId: 1, coverageDays: 21, method: product.method, lines: [{ productId: product.id, quantity: 1, suggestedQuantity: product.suggestedQuantity, reason: product.reason }] }),
+  });
+  body = await json(response);
+  check("tenant-scoped.unknown-supplier.rejected", response.status === 404, { httpStatus: response.status, message: body.message });
 
   // A supplier from another company must not be accepted by this tenant's RFQ endpoint.
   const demo = await fetch("https://demo.orithos.com.au/api/auth/login", {
@@ -160,7 +167,7 @@ try {
   if (vendorId && appCookies) {
     const response = await fetch(`${app}/api/admin/tenants/${vendorId}`, { method: "DELETE", headers: { Origin: app, Cookie: appCookies } });
     const body = await json(response);
-    check("tenant.delete", response.ok && body.code === 0, { httpStatus: response.status, status: body.data?.status });
+    check("tenant.delete", response.ok && body.code === 0, { httpStatus: response.status, disposition: body.data?.status });
     const deleted = await fetch(`${store}/api/auth/me`, { headers: { Origin: store } });
     check("deleted.auth", deleted.status === 402 || deleted.status === 401, { httpStatus: deleted.status });
   }

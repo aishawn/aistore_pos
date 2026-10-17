@@ -37,7 +37,7 @@ Statuses:
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API; commit `6a8a393` adds layout-preserving first-load skeleton rows and keeps search/status controls visible while reads are pending. Online delayed-read smoke passed without exposing or submitting write actions. |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
-| Replenishment approval audit | In progress | Deployed code writes forecast method, cover target, suggested/ordered quantities and reasons as an internal Odoo chatter note (not supplier-facing terms); zeroed suggestions remain in the audit but are excluded from PO lines. Production schema and UI mock pass; live RFQ/message write is unverified pending an approved vendor/sample |
+| Replenishment approval audit | Accepted | Live isolated-company UAT created a draft RFQ and read back one internal Odoo chatter audit containing the forecast method, target coverage, suggested/ordered quantities and reason; zeroed suggestions remain audit-only and are excluded from PO lines. Evidence: `docs/UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`. RFQ remains draft and is never auto-confirmed. |
 | Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; commit `459a243` makes the preview-only boundary explicit, removes the Classic MySQL `Save as received order` action, and links staff to Odoo Purchases / Replenishment. Production AI remains disabled and no invoice write is available from this page. |
 | Banner / buyer-group price files | Planned | |
 

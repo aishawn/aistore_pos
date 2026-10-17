@@ -117,7 +117,24 @@
 
 证据：[UAT_PROVISION_COMPANY_CONTEXT_FIX_LIVE_2026-10-17.json](UAT_PROVISION_COMPANY_CONTEXT_FIX_LIVE_2026-10-17.json)。
 
-## 5. 接手后的执行顺序
+## 5. 最新补货审计线上验收
+
+2026-10-17 使用全新租户完成补货计划、供应商创建、draft RFQ 和内部审批审计回读：
+
+- tenant slug：`codex-replenishment-2212548828`（已删除）
+- Odoo company：`46`
+- draft RFQ：`P00012` / purchase order `10`
+- supplier：tenant-scoped supplier `410`
+- RFQ 状态：`draft`，未确认采购
+- approval audit：1 条 Odoo chatter message，包含 forecast method、coverage、suggested/ordered quantity 和 reason
+- 未知供应商 ID `1` 返回 HTTP `404`，没有产生采购写入
+- 删除租户后认证返回 HTTP `402`
+
+证据：[`UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`](UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json)。
+
+这次线上回归证明了当前租户范围内的 RFQ 和审计写入。Demo 租户没有可读供应商，因此未执行跨公司真实供应商 ID 的对照请求。
+
+## 6. 接手后的执行顺序
 
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
@@ -141,7 +158,7 @@
 9. 在该租户完成受授权的销售、退款、现金和采购收货回归，保存 JSON 证据。
 10. 通过平台 Web UI 删除一次性租户，确认登录与受保护 API 返回 402/未授权。
 
-## 6. 验收边界
+## 7. 验收边界
 
 ### 不得宣称已验证
 
@@ -159,7 +176,7 @@
 
 每个场景至少记录时间、租户 slug、vendor、Odoo company、session、receipt/order、库存前后值和 HTTP 状态。不得写入密码、JWT、bootstrap token、Odoo 凭据或 `.env` 内容。
 
-## 7. 常见陷阱
+## 8. 常见陷阱
 
 - 品牌域 `/signup` 是 6 步实现；`app.orithos.com.au` 上可能存在旧的 4 步实现，不能混为同一源码。
 - “At least 12 characters” 曾与真实 API 的 8 位规则不一致；以当前线上 API 和前端实际响应为准，修改后必须重新做负向请求和真实注册验证。
@@ -167,7 +184,7 @@
 - Dokploy 部署完成必须以实际构建日志和线上响应确认，不能只看 GitHub 已 push。
 - 不要在真实 Demo 公司执行销售、退款、采购、库存、现金、关班或账户权限写入。
 
-## 8. 交付完成定义
+## 9. 交付完成定义
 
 只有满足以下条件，才能把本批次标记为完成：
 

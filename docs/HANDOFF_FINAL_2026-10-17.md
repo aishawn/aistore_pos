@@ -68,8 +68,8 @@
 
 ## 5. 尚未通过或不计入基础门槛
 
-- `Replenishment approval audit`：代码已写入 Odoo chatter 的审计信息，但真实线上 draft RFQ/message 写入仍需一次新租户验证。
-- 供应商发起 draft RFQ：供应商创建已通过，采购草稿由补货审批发起的真实写入证据不足。
+- `Replenishment approval audit`：Accepted。新租户已真实创建 draft RFQ，并回读 Odoo chatter audit；证据见 `UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`。
+- 供应商发起 draft RFQ：Accepted（仅创建草稿，不确认采购）；未知供应商会被当前租户公司范围拒绝。跨公司真实供应商 ID 用例因 Demo 租户没有供应商而未执行。
 - 实体刷卡终端、打印机、钱箱：未接现场设备。
 - 分单收款：Planned，不能用 Card 模拟收款替代。
 - 离线 POS：Planned。

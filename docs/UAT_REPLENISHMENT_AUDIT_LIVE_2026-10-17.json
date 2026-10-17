@@ -1,0 +1,122 @@
+{
+  "generatedAt": "2026-10-17T04:49:08.828Z",
+  "slug": "codex-replenishment-2212548828",
+  "checks": [
+    {
+      "httpStatus": 200,
+      "name": "platform.login",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
+      "vendorId": 53,
+      "name": "tenant.create",
+      "status": "PASS"
+    },
+    {
+      "companyId": 46,
+      "provisionStatus": "ready",
+      "name": "tenant.provision.ready",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
+      "name": "owner.bootstrap",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
+      "name": "store.bootstrap",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
+      "allowedCompanyIds": [
+        46
+      ],
+      "name": "odoo.session",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 201,
+      "supplierId": 410,
+      "name": "supplier.create",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
+      "productId": 6050,
+      "suggestedQuantity": 0,
+      "method": "rules_v1_weighted_velocity",
+      "name": "replenishment.plan",
+      "status": "PASS"
+    },
+    {
+      "method": "rules_v1_weighted_velocity",
+      "coverageDays": 21,
+      "name": "replenishment.method",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 201,
+      "purchaseId": 10,
+      "rfqName": "P00012",
+      "auditSaved": true,
+      "name": "draft.rfq.create",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
+      "orderCompanyId": 46,
+      "state": "draft",
+      "name": "draft.rfq.readback",
+      "status": "PASS"
+    },
+    {
+      "productId": 6050,
+      "quantity": 1,
+      "name": "draft.rfq.line.readback",
+      "status": "PASS"
+    },
+    {
+      "approvalAuditCount": 1,
+      "auditSaved": true,
+      "name": "replenishment.audit.readback",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 404,
+      "message": "This supplier is unavailable to your Odoo account",
+      "name": "tenant-scoped.unknown-supplier.rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "cross-company.supplier.rejected",
+      "status": "SKIPPED",
+      "reason": "Demo tenant has no readable supplier"
+    },
+    {
+      "httpStatus": 200,
+      "disposition": "deleted",
+      "name": "tenant.delete",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 402,
+      "name": "deleted.auth",
+      "status": "PASS"
+    }
+  ],
+  "companyId": 46,
+  "supplierId": 410,
+  "purchaseId": 10,
+  "order": {
+    "id": 10,
+    "name": "P00012",
+    "state": "draft",
+    "companyId": 46,
+    "lineProductId": 6050,
+    "lineQuantity": 1,
+    "auditCount": 1
+  }
+}
