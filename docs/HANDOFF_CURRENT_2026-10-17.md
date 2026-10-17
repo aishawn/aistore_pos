@@ -12,12 +12,13 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`a8357b2`（管理筛选弹层焦点恢复）；本批功能提交还包括 `e0b25df`、`cdc969e`
+- 当前 HEAD：`cbdf3ac`（完整管理列表回归截图）；本批功能提交还包括 `e0b25df`、`cdc969e`、`a8357b2`
 - 最近功能代码：`a8357b2`，共用筛选控件基础优化为 `56b39da`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
 - 当前未提交文件包括本批线上回归 JSON/截图和用户已有的 `pos-ui/tsconfig.json`；提交时只暂存明确归属本批次的证据，不暂存 `pos-ui/tsconfig.json`。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
+- `cbdf3ac` 推送后直接 HEAD 检查 `/security`、`/reports/dashboard`、`/utilities/future-costs`、`/utilities/trashed-items` 均返回 `200`，但仍为 `Cache-Control: s-maxage=31536000`、`x-nextjs-cache: HIT`、`x-nextjs-prerender: 1`；因此不能视为新版本已部署。
 
 ### 已完成并有证据
 
@@ -68,7 +69,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `a8357b2`，仓库当前 HEAD 为 `a8357b2`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `a8357b2`，仓库当前 HEAD 为 `cbdf3ac`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
