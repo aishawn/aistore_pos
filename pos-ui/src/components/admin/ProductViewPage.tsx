@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ListTable } from "@/components/admin/ListTable";
 import type { ProductDetail } from "@/components/admin/EditProductPage";
 import {
@@ -453,6 +454,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
   const [nav, setNav] = useState<NavId>("home");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: product, loading, error } = useApi<ProductDetail>(
     productId ? `/api/products/${productId}` : null,
@@ -494,11 +496,13 @@ export function ProductViewPage({ productId }: { productId: string }) {
 
   async function confirmDelete() {
     setDeleteBusy(true);
+    setActionError(null);
     try {
       await api.del(`/api/products/${productId}`);
       router.push("/products");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete product");
+      setShowDeleteConfirm(false);
+      setActionError(e instanceof Error ? e.message : "Failed to delete product");
       setDeleteBusy(false);
     }
   }
@@ -730,6 +734,13 @@ export function ProductViewPage({ productId }: { productId: string }) {
         onCancel={() => {
           if (!deleteBusy) setShowDeleteConfirm(false);
         }}
+      />
+      <AlertDialog
+        open={actionError !== null}
+        title="Delete failed"
+        message={actionError ?? ""}
+        variant="danger"
+        onClose={() => setActionError(null)}
       />
     </div>
   );

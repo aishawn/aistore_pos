@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AsyncState } from "@/components/admin/AsyncState";
+import { AlertDialog } from "@/components/admin/AlertDialog";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { api, searchProducts, type SellProductHit } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import {
@@ -40,6 +42,8 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
   const [dirty, setDirty] = useState(false);
   const [productQuery, setProductQuery] = useState("");
   const [productHits, setProductHits] = useState<SellProductHit[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<"cancel" | string | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -62,7 +66,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
   function addKey() {
     const blank = createBlankKey(keys);
     if (!blank) {
-      window.alert("No empty space left on the grid.");
+      setActionError("No empty space left on the grid.");
       return;
     }
     setKeys((prev) => [...prev, blank]);
@@ -87,19 +91,25 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
       setDirty(false);
       router.push("/settings/keys");
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "Save failed");
+      setActionError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
   }
 
   function cancel() {
-    if (dirty && !window.confirm("Discard unsaved changes?")) return;
+    if (dirty) {
+      setDiscardTarget("cancel");
+      return;
+    }
     router.push("/settings/keys");
   }
 
   function switchSet(nextId: string) {
-    if (dirty && !window.confirm("Discard unsaved changes?")) return;
+    if (dirty) {
+      setDiscardTarget(nextId);
+      return;
+    }
     router.push(`/settings/keys/${nextId}/edit`);
   }
 
@@ -286,6 +296,26 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
           </aside>
         </div>
       </AsyncState>
+      <ConfirmDialog
+        open={discardTarget !== null}
+        title="Discard unsaved changes?"
+        message="Your changes will be lost if you leave this editor."
+        confirmLabel="Discard changes"
+        onCancel={() => setDiscardTarget(null)}
+        onConfirm={() => {
+          const target = discardTarget;
+          setDiscardTarget(null);
+          if (target === "cancel") router.push("/settings/keys");
+          else if (target) router.push(`/settings/keys/${target}/edit`);
+        }}
+      />
+      <AlertDialog
+        open={actionError !== null}
+        title="Sale key action failed"
+        message={actionError ?? ""}
+        variant="danger"
+        onClose={() => setActionError(null)}
+      />
     </div>
   );
 }

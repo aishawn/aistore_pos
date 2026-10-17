@@ -17,6 +17,7 @@ import { Pagination } from "@/components/admin/Pagination";
 import { useApi, useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { CreateProductWizard } from "@/components/admin/CreateProductWizard";
 import { ImportProductsModal } from "@/components/admin/ImportProductsModal";
 import { PlusIcon, ImportIcon, MergeIcon, ActiveIcon, MenuIcon, XIcon } from "@/components/icons";
@@ -220,6 +221,7 @@ function ProductsPageInner() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -329,12 +331,14 @@ function ProductsPageInner() {
   async function confirmDelete() {
     if (!deleting) return;
     setDeleteBusy(true);
+    setActionError(null);
     try {
       await api.del(`/api/products/${deleting.id}`);
       setDeleting(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete product");
+      setDeleting(null);
+      setActionError(e instanceof Error ? e.message : "Failed to delete product");
     } finally {
       setDeleteBusy(false);
     }
@@ -343,6 +347,7 @@ function ProductsPageInner() {
   async function confirmBatchDelete() {
     if (selectedIds.size === 0) return;
     setBatchDeleteBusy(true);
+    setActionError(null);
     try {
       await api.post(
         "/api/products/bulk-delete",
@@ -352,7 +357,8 @@ function ProductsPageInner() {
       setSelectedIds(new Set());
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete products");
+      setBatchDeleting(false);
+      setActionError(e instanceof Error ? e.message : "Failed to delete products");
     } finally {
       setBatchDeleteBusy(false);
     }
@@ -558,6 +564,13 @@ function ProductsPageInner() {
         onCancel={() => {
           if (!deleteBusy) setDeleting(null);
         }}
+      />
+      <AlertDialog
+        open={actionError !== null}
+        title="Product action failed"
+        message={actionError ?? ""}
+        variant="danger"
+        onClose={() => setActionError(null)}
       />
 
       <ConfirmDialog
