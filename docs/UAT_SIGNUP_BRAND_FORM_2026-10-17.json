@@ -20,7 +20,7 @@
   },
   "notes": [
     "The visible password copy is 'At least 8 characters.'",
-    "The website field is a honeypot and must remain empty; filling it keeps Next disabled.",
+    "The website field is a honeypot and must remain empty for submission; it is not part of the visible step validity check.",
     "The live bundle calls /api/trial-signup; negative validation responses consistently state an 8-character minimum.",
     "https://app.orithos.com.au/signup is a separate 4-step implementation and is not the brand 6-step source."
   ],

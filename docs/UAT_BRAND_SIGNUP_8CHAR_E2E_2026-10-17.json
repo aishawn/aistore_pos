@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-17T01:33:28Z",
+  "scope": "isolated disposable trial tenant; no production Demo writes",
+  "brandHost": "https://orithos.com.au/signup",
+  "submitEndpoint": "/api/trial-signup",
+  "tenant": {
+    "subdomain": "codex-brand-20261017092812",
+    "vendorId": 16,
+    "odooCompanyId": 15,
+    "outletId": 25,
+    "outlets": [
+      { "name": "Main Store", "registerCount": 2 },
+      { "name": "Back Bar", "registerCount": 1 }
+    ],
+    "dummyData": true,
+    "passwordPolicyTest": "8 characters accepted"
+  },
+  "creation": {
+    "signupHttpStatus": 200,
+    "bootstrapBrowserLogin": 200,
+    "authMeVendorId": 16,
+    "authMeSubdomain": "codex-brand-20261017092812",
+    "overviewLoaded": true,
+    "pageErrors": []
+  },
+  "cleanup": {
+    "platformDeleteHttpStatus": 200,
+    "finalVendorStatus": "deleted",
+    "deletedTenantAuthMeStatus": 402,
+    "deletedTenantLoginStatus": 402
+  },
+  "secrets": "passwords and bootstrap tokens intentionally omitted",
+  "result": "PASS_CREATE_BOOTSTRAP_DELETE_AUTH_REJECTED"
+}
