@@ -35,7 +35,8 @@ for (const viewport of viewports) {
     await page.waitForTimeout(1800);
     const interactiveChecks = [];
     if (["/platform/stores", "/utilities/mail-log", "/utilities/trashed-items"].includes(route.path)) {
-      const input = page.getByRole("textbox").first();
+      // Search inputs expose the ARIA searchbox role; keep textbox as a fallback for legacy pages.
+      const input = page.locator('input[type="search"], input[type="text"]').first();
       await input.waitFor({ state: "visible", timeout: 30000 });
       await input.fill("__codex_no_match__");
       await page.waitForTimeout(300);
