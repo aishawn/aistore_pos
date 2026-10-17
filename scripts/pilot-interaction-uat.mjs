@@ -121,9 +121,10 @@ try {
 
   await check("Classification creation restores mobile menu focus", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${base}/classifications`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(`${base}/classifications`, { waitUntil: "networkidle", timeout: 60000 });
     const menu = page.getByRole("button", { name: "Menu", exact: true });
     await menu.waitFor({ timeout: 15000 });
+    await page.waitForFunction(() => document.querySelector('button[aria-label="Menu"]')?.getAttribute("aria-expanded") === "false", null, { timeout: 10000 });
     await menu.click();
     const trigger = page.getByRole("button", { name: "Add Classification", exact: true });
     await trigger.waitFor({ timeout: 10000 });
