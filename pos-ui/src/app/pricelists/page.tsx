@@ -7,6 +7,7 @@ import { ListTable } from "@/components/admin/ListTable";
 import { CreatePriceListModal } from "@/components/admin/CreatePriceListModal";
 import { EntityFormModal, FormField } from "@/components/admin/EntityFormModal";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { RowActions } from "@/components/admin/RowActions";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
@@ -42,6 +43,7 @@ function PriceListsPageInner() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const { items, total, loading, error, reload } = useApiList<PriceList>("/api/price-lists", {
@@ -90,7 +92,7 @@ function PriceListsPageInner() {
       setDeleting(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete price list");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete price list");
     } finally {
       setDeleteBusy(false);
     }
@@ -105,7 +107,7 @@ function PriceListsPageInner() {
       setSelectedIds(new Set());
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete price lists");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete price lists");
     } finally {
       setBatchDeleteBusy(false);
     }
@@ -278,6 +280,13 @@ function PriceListsPageInner() {
         onCancel={() => {
           if (!batchDeleteBusy) setBatchDeleting(false);
         }}
+      />
+      <AlertDialog
+        open={deleteError !== null}
+        title="Delete Price List Failed"
+        message={deleteError ?? "Unable to delete price list."}
+        variant="danger"
+        onClose={() => setDeleteError(null)}
       />
       </AdminPageLayout>
   );

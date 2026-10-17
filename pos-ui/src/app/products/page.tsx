@@ -13,6 +13,7 @@ import { useAiCreateOpen } from "@/hooks/useAiCreateOpen";
 import { api } from "@/lib/api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { CreateProductWizard } from "@/components/admin/CreateProductWizard";
 import {
   PlusIcon,
@@ -214,6 +215,7 @@ function ProductsPageInner() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
   const [batchDeleteBusy, setBatchDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim() ?? "";
@@ -300,7 +302,7 @@ function ProductsPageInner() {
       setDeleting(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete product");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete product");
     } finally {
       setDeleteBusy(false);
     }
@@ -318,7 +320,7 @@ function ProductsPageInner() {
       setSelectedIds(new Set());
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete products");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete products");
     } finally {
       setBatchDeleteBusy(false);
     }
@@ -547,6 +549,13 @@ function ProductsPageInner() {
         onCancel={() => {
           if (!batchDeleteBusy) setBatchDeleting(false);
         }}
+      />
+      <AlertDialog
+        open={deleteError !== null}
+        title="Product Delete Failed"
+        message={deleteError ?? "Unable to delete products."}
+        variant="danger"
+        onClose={() => setDeleteError(null)}
       />
     </div>
   );

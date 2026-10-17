@@ -13,6 +13,7 @@ import { RefreshCw } from "lucide-react";
 import { Pagination } from "@/components/admin/Pagination";
 import { EntityFormModal, FormValues, FormField } from "@/components/admin/EntityFormModal";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { AlertDialog } from "@/components/admin/AlertDialog";
 import { api } from "@/lib/api";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useAiCreateOpen } from "@/hooks/useAiCreateOpen";
@@ -39,6 +40,7 @@ function CustomerGroupsPageInner() {
   );
   const [deleting, setDeleting] = useState<CustomerGroup | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
   const searchQuery = debouncedSearch.trim();
 
@@ -56,7 +58,7 @@ function CustomerGroupsPageInner() {
       setDeleting(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete customer group");
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete customer group");
     } finally {
       setDeleteBusy(false);
     }
@@ -162,6 +164,13 @@ function CustomerGroupsPageInner() {
         onCancel={() => {
           if (!deleteBusy) setDeleting(null);
         }}
+      />
+      <AlertDialog
+        open={deleteError !== null}
+        title="Delete Customer Group Failed"
+        message={deleteError ?? "Unable to delete customer group."}
+        variant="danger"
+        onClose={() => setDeleteError(null)}
       />
     </AdminPageLayout>
   );
