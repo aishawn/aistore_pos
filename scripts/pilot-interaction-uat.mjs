@@ -119,6 +119,32 @@ try {
     return "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page.";
   });
 
+  await check("Classification creation restores mobile menu focus", async () => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${base}/classifications`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const menu = page.getByRole("button", { name: "Menu", exact: true });
+    await menu.waitFor({ timeout: 15000 });
+    await menu.click();
+    const trigger = page.getByRole("button", { name: "Add Classification", exact: true });
+    await trigger.waitFor({ timeout: 10000 });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: "Create New Classification" });
+    await dialog.waitFor({ state: "visible", timeout: 10000 });
+    const selector = dialog.locator('button[aria-haspopup="listbox"]').first();
+    await selector.waitFor({ timeout: 10000 });
+    await selector.press("ArrowDown");
+    await page.getByRole("listbox").waitFor({ state: "visible", timeout: 10000 });
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden", timeout: 10000 });
+    await page.waitForFunction(
+      (element) => document.activeElement === element,
+      await menu.elementHandle(),
+      { timeout: 1500 },
+    ).catch(() => { throw new Error("Classification modal did not restore focus to the mobile Menu trigger"); });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    return "At 390px the Menu opens the classification dialog, the MDB selector supports ArrowDown/Escape, and closing restores focus to Menu.";
+  });
+
   await check("Product search filters the Odoo catalogue", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });

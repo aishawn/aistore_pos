@@ -131,6 +131,7 @@ function ClassificationsPageInner() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{ title: string; message: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   function showAlert(message: string, title = "Cannot Delete") {
     setAlertDialog({ title, message });
@@ -322,6 +323,7 @@ function ClassificationsPageInner() {
           </div>
           <div className="relative" ref={menuRef}>
             <button
+              ref={menuTriggerRef}
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
               aria-expanded={menuOpen}
@@ -458,6 +460,7 @@ function ClassificationsPageInner() {
           onClose={() => {
             clearClassificationPrefill();
             setCreating(false);
+            requestAnimationFrame(() => menuTriggerRef.current?.focus());
           }}
           onCreated={load}
         />
