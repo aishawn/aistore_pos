@@ -52,6 +52,7 @@
 - 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
 - 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
 - 本轮待部署改动尚未用实际运行 SHA 完成线上回归；需重点验证采购收货弹窗、Platform Stores 筛选空态、Mail Log/Trashed Items 的 390px 布局和 no-store 响应头。
+- 认证只读管理列表回归脚本 `scripts/pilot-admin-list-batch-uat.mjs` 已运行：采购、Platform Stores、Mail Log、Trashed Items 在 390px/1440px 共 `8/8 PASS`，无横向溢出；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和 `docs/screenshots/2026-10-17-admin-list-batch/`。该证据的 `sourceCommit=9224563`，`deployment=null`，所以仍需 Dokploy SHA 绑定。
 - 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页和 Register Closures 详情已完成认证只读矩阵和重点截图回归；仍未取得 Dokploy 实际运行 SHA，因此不能把证据绑定到具体线上容器版本。
 - 收银小票时区、采购/补货显示时区虽有页面回归，仍需在获准的 disposable tenant 业务链路中做一次真实小票/订单回读确认。
 - 实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理仍未覆盖或未实现。
