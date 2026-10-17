@@ -3,6 +3,74 @@
 更新时间：2026-10-17（Asia/Shanghai）  
 适用仓库：`aishawn/aistore_pos`  相关品牌仓库：`aishawn/aistore_orithos`
 
+## 0. 最新权威摘要（交接必读）
+
+### 当前结论
+
+项目代码和只读线上回归仍在持续推进，但整体状态保持 **NO-GO / 未完成**。主要原因是 Dokploy 尚未确认已部署当前 `main`，线上仍返回旧 Next.js 静态缓存响应头；因此不能把 GitHub 已推送等同于线上已生效。
+
+当前仓库基线：
+
+- 分支：`main`
+- 最新提交：以 `git log -1 --oneline` 为准；本次文档更新前为 `55a9639`
+- GitHub：`https://github.com/aishawn/aistore_pos.git`
+- 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
+
+### 本轮已完成
+
+- 品牌站注册、自动登录、Outlet/Register 配置、dummy/sample data 选择已有真实线上证据。
+- 多租户 Odoo company、warehouse、stock location、POS config 隔离已有线上回读证据。
+- Card 模拟收款、Cash 收款/找零、销售退款、库存恢复、Cash in/Cash out、基础关班已有线上证据。
+- 供应商创建、采购确认、部分/全部收货、补货 draft RFQ 和审计消息已有隔离租户证据。
+- richer dummy data、sample data 清理、产品 CSV 导出和删除租户后的认证拒绝已有 JSON 证据。
+- 131 个认证页面在 390px 与 1440px 的矩阵曾达到 `262/262 PASS`；关键功能页面、角色 CRUD、移动端布局和无横向溢出已有回归记录。
+- 最近的只读体验修复已提交到 GitHub：销售报表移动端摘要、分页越界恢复、不可用行操作隐藏、列表语义可访问性、未来价格移动端布局、回收项搜索、Mail Log 部分匹配、列表页 server layout 缓存隔离。
+- 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
+
+### 当前未完成
+
+- Dokploy 实际运行 SHA 未取得确认，当前 `main` 的最新代码不能视为线上生效。
+- 线上 `/security`、`/reports/dashboard`、`/utilities/future-prices` 等页面仍返回：
+
+  ```text
+  Cache-Control: s-maxage=31536000
+  x-nextjs-cache: HIT
+  x-nextjs-prerender: 1
+  ```
+
+  目标应为 `Cache-Control: no-store, max-age=0` 和 `CDN-Cache-Control: no-store`，且不应有 `x-nextjs-prerender`。
+- 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
+- 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
+- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页只读改动尚未用实际运行 SHA 做线上验收。
+- 收银小票时区、采购/补货显示时区虽有页面回归，仍需在获准的 disposable tenant 业务链路中做一次真实小票/订单回读确认。
+- 实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理仍未覆盖或未实现。
+
+### 当前问题与风险
+
+1. **部署链路阻塞**：当前环境没有 Dokploy 控制台、部署 API 或 webhook token，无法从仓库侧触发普通 Deploy；重复检查仍观察到旧缓存头。
+2. **证据与线上版本脱节**：页面返回 200 或 GitHub push 不能证明 Dokploy 已消费该提交，必须记录 Dokploy 前后端容器 SHA。
+3. **历史文档存在时间差**：下方历史章节记录多个已通过批次，阅读时以本节和对应 JSON 的 `generatedAt`、`sourceCommit`、`deployment` 为准。
+4. **工作区并行修改**：`pos-ui/tsconfig.json` 为用户已有未提交修改；任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
+
+### 接手后的最短执行路径
+
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA。
+2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
+3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
+4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
+5. 只在授权测试租户执行销售/退款/现金/采购等写入；保存订单、库存、session、receipt 和 HTTP 状态前后值。
+6. 通过平台 Web UI 删除测试租户，并确认登录与受保护 API 返回 402/未授权。
+7. 若发现问题，按“修改代码 → 推送 `main` → Dokploy 普通 Deploy → 只回归受影响场景 → 完整冒烟”的顺序执行。
+
+### 通过标准
+
+- Dokploy 运行 SHA 与目标 GitHub commit 一致。
+- 动态页面返回 no-store，不再返回旧静态预渲染头。
+- 新租户核心业务写入和回读全部落在正确 Odoo company，跨租户读取被拒绝。
+- 失败请求不产生部分业务写入，删除租户后认证和受保护 API 被拒绝。
+- 每个场景有不含密码、token、cookie、API key 的 JSON 证据。
+- 未验证硬件、分单、离线和生产 AI 能力继续单独标记，不计入核心 POS 通过。
+
 ## 1. 当前结论
 
 当前 richer dummy data、sample data 清理和现金盘点关班均已通过全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店硬件/现金运营验收仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、供应商创建、采购收货和页面回归也已有线上证据。
