@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`ae741f1`（客户选择回归证据）；本批功能提交为 `3895d23`、`c5a688e`、`893e9b3`、`56377cf`、`0813041`
+- 当前 HEAD：`8a0ce7a`（客户选择批次交接记录）；本批功能提交为 `3895d23`、`c5a688e`、`893e9b3`、`56377cf`、`0813041`
 - 最近功能代码：`a8357b2`，共用筛选控件基础优化为 `56b39da`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
@@ -49,6 +49,7 @@
 - 头部浮层批次认证只读回归为管理列表 `8/8 PASS`、POS 弹窗 `2/2 PASS`，证据 `sourceCommit=c5a688e`、`deployment=dokploy-sha-unverified`。
 - `FinaliseSalePage` 客户选择弹层增加 Escape 关闭、`aria-modal`/标题语义、关闭后恢复焦点，关闭按钮、搜索框和客户行统一至少 44px；不改变客户搜索、选择或收银提交逻辑。该批管理列表首轮 Mail Log 1440px 空态等待失败，重试后 `8/8 PASS`，POS `2/2 PASS`，证据 `sourceCommit=3895d23`、`deployment=dokploy-sha-unverified`。
 - 完整认证静态路由矩阵首轮为 `261/262`（根路由 1440px 瞬态 504），独立重试为 `262/262 PASS`；证据见 `docs/UAT_STATIC_MATRIX_SWITCH_UPLOAD_2026-10-17.json` 与 `docs/UAT_STATIC_MATRIX_SWITCH_UPLOAD_2026-10-17_RETRY.json`，覆盖 131 路由 × 390/1440，无横向溢出和页面错误。
+- **Next 16 构建报错已修复**：旧版本在 `app/utilities/future-costs/page.tsx` 和 `future-prices/page.tsx` 导出了 `fetchCache = "force-no-store"`，Docker 构建预渲染 `/utilities/future-costs` 时将客户端 `revalidate` 函数误读为路由配置，报 `Invalid revalidate value`。提交 `d835857` 已移除页面级配置并保留在服务端 `layout.tsx`；当前 `main`（`8a0ce7a`）已包含修复。按当前交接约束未在本机运行 `npm run build`，需由 Dokploy 构建日志完成最终确认。
 - 最新待部署批次的共用组件优化已提交：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。提交为 `01d8759`，本地 typecheck、目标 ESLint 和 `git diff --check` 已通过。POS 弹窗回归脚本和证据已随 `3f7f8b6` 推送。
 
 ### 未完成、未覆盖或证据不足
@@ -78,7 +79,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `3895d23`，仓库当前 HEAD 为 `ae741f1`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `3895d23`，仓库当前 HEAD 为 `8a0ce7a`。同时确认构建日志不再出现 `/utilities/future-costs` 的 `Invalid revalidate value`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
