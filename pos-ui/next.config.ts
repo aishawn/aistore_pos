@@ -5,6 +5,25 @@ import { fileURLToPath } from "node:url";
 
 const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
 
+const liveStatusPages = [
+  "/security",
+  "/reports/favourites",
+  "/settings/company/general",
+  "/settings/company/login-after-sale",
+  "/settings/company/search",
+  "/settings/data",
+  "/settings/loyalty",
+  "/settings/push",
+  "/settings/receipts",
+  "/settings/surcharging",
+  "/settings/transferees",
+  "/utilities/barcodes",
+  "/utilities/customers",
+  "/utilities/future-costs",
+  "/utilities/future-prices",
+  "/utilities/products",
+];
+
 /** Allow phones on the LAN to use `http://<lan-ip>:3000` in `next dev`. */
 function lanDevOrigins(): string[] {
   const hosts = new Set<string>(["192.168.1.10"]);
@@ -40,20 +59,14 @@ const nextConfig: NextConfig = {
     };
   },
   async headers() {
-    return [
-      {
-        source: "/security",
-        headers: [{ key: "Cache-Control", value: "no-store" }],
-      },
-      {
-        source: "/utilities/future-costs",
-        headers: [{ key: "Cache-Control", value: "no-store" }],
-      },
-      {
-        source: "/utilities/future-prices",
-        headers: [{ key: "Cache-Control", value: "no-store" }],
-      },
-    ];
+    return liveStatusPages.map((source) => ({
+      source,
+      headers: [
+        { key: "Cache-Control", value: "no-store, max-age=0" },
+        { key: "CDN-Cache-Control", value: "no-store" },
+        { key: "Vercel-CDN-Cache-Control", value: "no-store" },
+      ],
+    }));
   },
   turbopack: {
     root: path.dirname(fileURLToPath(import.meta.url)),
