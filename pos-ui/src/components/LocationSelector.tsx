@@ -7,6 +7,7 @@ import {
   RegisterIcon,
   ArrowLeftIcon,
 } from "@/components/icons";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /**
  * Orithos location selector — the full-screen modal opened by the header
@@ -26,13 +27,14 @@ export function LocationSelector({
 }) {
   const [step, setStep] = useState<"outlet" | "register">("outlet");
   const [outlet, setOutlet] = useState("11");
+  useDialogFocus(open, onClose);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-linear-to-br from-stone-500 to-zinc-800">
-      <div className="max-h-screen w-full overflow-auto p-8">
-        <div className="relative mx-auto w-fit rounded-lg bg-white p-8 pt-12 shadow-2xl">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-linear-to-br from-stone-500 to-zinc-800 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="location-selector-title">
+      <div className="max-h-full w-full overflow-auto">
+        <div className="relative mx-auto w-full max-w-[520px] rounded-lg bg-white p-5 pt-12 shadow-2xl sm:p-8 sm:pt-12">
           {step === "register" && (
             <button
               type="button"
@@ -44,7 +46,7 @@ export function LocationSelector({
             </button>
           )}
 
-          <h2 className="text-xl font-bold text-neutral-900">Location Selector</h2>
+          <h2 id="location-selector-title" className="text-xl font-bold text-neutral-900">Location Selector</h2>
           <p className="mt-1 max-w-md text-neutral-800">
             Please select which location best describes where your device is
             located.
@@ -115,7 +117,7 @@ function OptionCard({
     <button
       type="button"
       onClick={onClick}
-      className="mb-4 flex w-full min-w-[360px] cursor-pointer items-center rounded-lg border-2 border-gray-200 p-4 text-left shadow transition-all hover:border-gray-300 hover:shadow-md"
+      className="mb-4 flex w-full min-w-0 cursor-pointer items-center rounded-lg border-2 border-gray-200 p-4 text-left shadow transition-all hover:border-gray-300 hover:shadow-md"
     >
       <span className="mr-2 text-xl text-neutral-700">{icon}</span>
       <span className="text-neutral-900">

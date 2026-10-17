@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { VolumeIcon, VolumeLowIcon, XIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /**
  * Orithos header audio menu — the dropdown opened by clicking the volume icon in
@@ -14,17 +15,7 @@ import { cn } from "@/lib/utils";
  * Audio is not wired in the clone — sliders/mute are visual-only local state.
  */
 export function AudioMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    closeButtonRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose, open]);
+  useDialogFocus(open, onClose);
 
   if (!open) return null;
   return (
@@ -47,7 +38,6 @@ export function AudioMenu({ open, onClose }: { open: boolean; onClose: () => voi
         <header className="mb-4 flex items-center justify-between gap-3">
           <h2 id="audio-settings-title" className="text-[16px] font-semibold">Audio settings</h2>
           <button
-            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label="Close audio settings"
@@ -91,7 +81,7 @@ function VolumeChannel({
           onChange={(e) => setValue(Number(e.target.value))}
           aria-label={`${label} volume`}
           className={cn(
-            "h-1 w-[264px] cursor-pointer appearance-none rounded",
+            "h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded",
             "[&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4",
             "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full",
             "[&::-webkit-slider-thumb]:bg-[var(--sf-link-blue)]",
