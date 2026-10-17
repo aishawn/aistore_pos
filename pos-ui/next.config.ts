@@ -29,6 +29,14 @@ const liveStatusPages = [
   "/settings/users",
   "/utilities/vendor-connections",
   "/platform/stores/:path*",
+  "/close",
+  "/history/odoo",
+  "/register/odoo",
+  "/purchases/odoo",
+  "/reports/dashboard",
+  "/stock/replenishment",
+  "/customers/odoo",
+  "/suppliers/odoo",
 ];
 
 /** Allow phones on the LAN to use `http://<lan-ip>:3000` in `next dev`. */
