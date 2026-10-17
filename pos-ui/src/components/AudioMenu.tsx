@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { VolumeIcon, VolumeLowIcon } from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
+import { VolumeIcon, VolumeLowIcon, XIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,6 +14,18 @@ import { cn } from "@/lib/utils";
  * Audio is not wired in the clone — sliders/mute are visual-only local state.
  */
 export function AudioMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
+
   if (!open) return null;
   return (
     <>
@@ -27,9 +39,23 @@ export function AudioMenu({ open, onClose }: { open: boolean; onClose: () => voi
       {/* Dropdown — anchored under the volume icon (its .header-item is relative) */}
       <div
         role="dialog"
+        aria-modal="true"
+        aria-labelledby="audio-settings-title"
         aria-label="Audio settings"
-        className="absolute right-0 top-[50px] z-[3] w-[400px] bg-[var(--sf-pad-bg)] p-4 text-neutral-900 shadow-lg"
+        className="absolute right-0 top-[50px] z-[3] w-[min(400px,calc(100vw-1.5rem))] bg-[var(--sf-pad-bg)] p-4 text-neutral-900 shadow-lg"
       >
+        <header className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="audio-settings-title" className="text-[16px] font-semibold">Audio settings</h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Close audio settings"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-neutral-600 outline-none hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"
+          >
+            <XIcon size={18} />
+          </button>
+        </header>
         <VolumeChannel label="Master Volume" defaultValue={100} />
         <div className="h-6" />
         <VolumeChannel label="Orithopos" defaultValue={100} />

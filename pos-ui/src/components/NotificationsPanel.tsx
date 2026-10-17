@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { RefreshIcon, DatabaseIcon, DeleteIcon } from "@/components/icons";
+import { useEffect, useRef, useState } from "react";
+import { RefreshIcon, DatabaseIcon, DeleteIcon, XIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface NotificationItem {
@@ -39,6 +39,17 @@ export function NotificationsPanel({
   onClose: () => void;
 }) {
   const [items, setItems] = useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
 
   return (
     <>
@@ -55,33 +66,46 @@ export function NotificationsPanel({
       {/* Panel */}
       <aside
         role="dialog"
+        aria-modal="true"
+        aria-labelledby="notifications-title"
         aria-label="Notifications"
         aria-hidden={!open}
         className={cn(
           "fixed bottom-0 right-0 top-[50px] z-50 flex w-[500px] max-w-[90%] flex-col bg-white shadow-md",
           "transition-transform duration-150 ease-[cubic-bezier(0.4,0,0.2,1)]",
-          open ? "translate-x-0" : "translate-x-full",
+          open ? "translate-x-0" : "pointer-events-none translate-x-full",
         )}
       >
         {/* Header row */}
         <div className="flex items-center justify-between px-4 py-5">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl text-black">Notifications</h2>
+            <h2 id="notifications-title" className="text-xl text-black">Notifications</h2>
             <button
               type="button"
               aria-label="Refresh notifications"
-              className="cursor-pointer text-neutral-500 transition-colors hover:text-neutral-700"
+              className="grid h-11 w-11 cursor-pointer place-items-center rounded-md text-neutral-500 outline-none transition-colors hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"
             >
               <RefreshIcon size={18} strokeWidth={1.5} />
             </button>
           </div>
+          <div className="flex items-center gap-1">
+          <button
+            type="button"
+            ref={closeButtonRef}
+            onClick={onClose}
+            aria-label="Close notifications"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-md text-neutral-500 outline-none transition-colors hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"
+          >
+            <XIcon size={18} />
+          </button>
           <button
             type="button"
             onClick={() => setItems([])}
-            className="cursor-pointer pr-2 text-[16px] font-bold text-neutral-600 transition-colors hover:text-neutral-800"
+            className="min-h-11 cursor-pointer rounded-md px-3 text-[16px] font-bold text-neutral-600 transition-colors hover:text-neutral-800 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"
           >
             Delete All
           </button>
+          </div>
         </div>
 
         {/* List */}
@@ -117,7 +141,7 @@ export function NotificationsPanel({
                   type="button"
                   aria-label="Delete notification"
                   onClick={() => setItems((prev) => prev.filter((x) => x.id !== n.id))}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer text-neutral-400 transition-colors hover:text-neutral-600"
+                  className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-neutral-400 outline-none transition-colors hover:text-neutral-600 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"
                 >
                   <DeleteIcon size={18} strokeWidth={1.5} />
                 </button>
