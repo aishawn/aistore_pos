@@ -29,6 +29,7 @@ type ParkedOdooSale = {
   registerName: string;
   registerId?: number;
   sessionName: string;
+  timezone?: string;
   paymentMethodId: number | null;
   customer: { id: number; name: string } | null;
   lines: CartLine[];
@@ -47,6 +48,7 @@ type CompletedReceipt = {
   paymentMethod: string;
   session: string;
   date: string;
+  timezone: string;
 };
 
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
@@ -72,6 +74,7 @@ function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
     && typeof sale.registerName === "string"
     && (sale.registerId === undefined || Number.isSafeInteger(sale.registerId))
     && typeof sale.sessionName === "string"
+    && (sale.timezone === undefined || typeof sale.timezone === "string")
     && (sale.paymentMethodId === null || Number.isSafeInteger(sale.paymentMethodId))
     && (sale.customer === null || (typeof sale.customer === "object" && Number.isSafeInteger(sale.customer?.id) && typeof sale.customer?.name === "string"))
     && typeof sale.createdAt === "string"
@@ -415,10 +418,12 @@ export function OdooRegisterPage() {
     return () => window.clearTimeout(timer);
   }, [connected, currentQuoteFingerprint, customer, isOnline, lines, paymentMethodId, quoteRetryKey, selectedConfig]);
 
-  function formatReceiptDate(value: string) {
-    const date = new Date(`${value.replace(" ", "T")}Z`);
+  function formatStoreDate(value: string, timezone: string) {
+    const normalized = value.includes("T") ? value : value.replace(" ", "T");
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/u.test(normalized);
+    const date = new Date(hasTimezone ? normalized : `${normalized}Z`);
     if (Number.isNaN(date.getTime())) return value;
-    return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(date);
+    return new Intl.DateTimeFormat("en-AU", { timeZone: timezone || "Australia/Adelaide", dateStyle: "medium", timeStyle: "short" }).format(date);
   }
 
   function addProduct(product: OdooProductRecord, packFactor = 1) {
@@ -525,6 +530,7 @@ export function OdooRegisterPage() {
       registerName: selectedConfig.name,
       registerId: selectedConfig.id,
       sessionName: selectedConfig.session?.name ?? "No open session",
+      timezone: selectedConfig.timezone,
       paymentMethodId,
       customer: customer ? { id: customer.id, name: customer.name } : null,
       lines: lines.map((line) => ({ ...line, product: { ...line.product } })),
@@ -580,10 +586,8 @@ export function OdooRegisterPage() {
     else restoreParkedSale(sale);
   }
 
-  function formatParkedDate(value: string) {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(date);
+  function formatParkedDate(value: string, timezone?: string) {
+    return formatStoreDate(value, timezone || selectedConfig?.timezone || "Australia/Adelaide");
   }
 
   async function checkout() {
@@ -625,6 +629,7 @@ export function OdooRegisterPage() {
         paymentMethod: selectedPayment?.name ?? "Payment",
         session: selectedConfig.session.name,
         date: result.date,
+        timezone: selectedConfig.timezone,
       });
       setLines([]);
       setCustomer(null);
@@ -892,7 +897,7 @@ export function OdooRegisterPage() {
                   {visibleParkedSales.map((sale) => (
                     <article key={sale.id} className="rounded-xl border border-[var(--oh-border)] bg-white p-3 shadow-sm">
                       <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3>
-                      <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">{formatParkedDate(sale.createdAt)} · {sale.registerName}</p>
+                      <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">{formatParkedDate(sale.createdAt, sale.timezone)} · {sale.registerName}</p>
                       <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">
                         {sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}
                       </p>
@@ -1096,7 +1101,7 @@ export function OdooRegisterPage() {
       {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
         <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
           <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]"><X size={18} /></button></header>
-          <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatReceiptDate(receipt.date)}</p></div>
+          <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatStoreDate(receipt.date, receipt.timezone)}</p></div>
           <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 border-y border-dashed border-[var(--oh-border)] py-3 text-xs"><dt className="text-[var(--oh-muted)]">Customer</dt><dd className="text-right font-medium text-[var(--oh-text)]">{receipt.customerName}</dd><dt className="text-[var(--oh-muted)]">Register</dt><dd className="text-right text-[var(--oh-text)]">{receipt.session}</dd></dl>
           <table className="mt-4 w-full text-xs"><thead><tr className="border-b border-[var(--oh-border)] text-[var(--oh-muted)]"><th className="pb-2 text-left font-semibold">Item</th><th className="pb-2 text-right font-semibold">Qty</th><th className="pb-2 text-right font-semibold">Total</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{receipt.lines.map((line, index) => <tr key={`${line.name}-${index}`}><td className="py-2 pr-2 font-medium text-[var(--oh-text)]">{line.name}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.quantity}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text)]">{money(line.total)}</td></tr>)}</tbody></table>
           <dl className="mt-4 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Subtotal</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.subtotal)}</dd><dt className="text-[var(--oh-muted)]">Tax</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.gst)}</dd><dt className="border-t border-[var(--oh-border)] pt-2 text-sm font-bold text-[var(--oh-text)]">Total</dt><dd className="border-t border-[var(--oh-border)] pt-2 text-right text-sm font-bold tabular-nums text-[var(--oh-text)]">{money(receipt.total)}</dd></dl>
