@@ -132,16 +132,12 @@ export function CreateOrderPage() {
     [outlets.data],
   );
 
-  useEffect(() => {
-    if (!toId && outletOptions.length > 0) {
-      setToId(outletOptions[0].value);
-    }
-  }, [outletOptions, toId]);
+  const selectedToId = toId || outletOptions[0]?.value || "";
 
   async function submit() {
     if (busy) return;
 
-    if (!toId) {
+    if (!selectedToId) {
       setError("Destination outlet is required.");
       return;
     }
@@ -162,7 +158,7 @@ export function CreateOrderPage() {
     try {
       await api.post("/api/orders", {
         fromId: fromId ? Number(fromId) : null,
-        toId: Number(toId),
+        toId: Number(selectedToId),
         orderDate: parsedOrderDate,
         dueDate: parsedDueDate,
         invoiceNumber: orderNumber.trim(),
@@ -204,7 +200,7 @@ export function CreateOrderPage() {
             />
             <FormSelect
               label="To"
-              value={toId}
+              value={selectedToId}
               onChange={setToId}
               placeholder={outlets.loading ? "Loading outlets…" : outlets.error ? "Outlets unavailable" : "Select an outlet"}
               disabled={outlets.loading || Boolean(outlets.error)}
