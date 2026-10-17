@@ -36,7 +36,14 @@ function parseDisplayDate(raw: string): string | null {
   const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
   const [, d, m, y] = match;
-  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (
+    date.getUTCFullYear() !== Number(y)
+    || date.getUTCMonth() + 1 !== Number(m)
+    || date.getUTCDate() !== Number(d)
+  ) return null;
+  return iso;
 }
 
 function FormField({
@@ -100,14 +107,22 @@ export function CreateTransferPage() {
   const router = useRouter();
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
-  const [transferDate, setTransferDate] = useState(formatToday);
-  const [transferNumber, setTransferNumber] = useState(generateTransferNumber);
+  const [transferDate, setTransferDate] = useState("");
+  const [transferNumber, setTransferNumber] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setTransferDate((current) => current || formatToday());
+      setTransferNumber((current) => current || generateTransferNumber());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const outlets = useApi<Named[]>("/api/outlets");
 
@@ -116,29 +131,21 @@ export function CreateTransferPage() {
     [outlets.data],
   );
 
-  useEffect(() => {
-    if (outletOptions.length === 0) return;
-    if (!fromId) {
-      setFromId(outletOptions[0].value);
-    }
-    if (!toId && outletOptions.length > 1) {
-      const second = outletOptions.find((o) => o.value !== outletOptions[0].value);
-      if (second) setToId(second.value);
-    }
-  }, [outletOptions, fromId, toId]);
+  const selectedFromId = fromId || outletOptions[0]?.value || "";
+  const selectedToId = toId || outletOptions.find((o) => o.value !== selectedFromId)?.value || "";
 
   async function submit() {
     if (busy) return;
 
-    if (!fromId) {
+    if (!selectedFromId) {
       setError("Source outlet is required.");
       return;
     }
-    if (!toId) {
+    if (!selectedToId) {
       setError("Destination outlet is required.");
       return;
     }
-    if (fromId === toId) {
+    if (selectedFromId === selectedToId) {
       setError("Source and destination outlets must be different.");
       return;
     }
@@ -167,8 +174,8 @@ export function CreateTransferPage() {
     setError(null);
     try {
       await api.post("/api/orders/transfers", {
-        fromId: Number(fromId),
-        toId: Number(toId),
+        fromId: Number(selectedFromId),
+        toId: Number(selectedToId),
         transferDate: parsedTransferDate,
         dueDate: parsedDueDate,
         transferNumber: transferNumber.trim(),
@@ -201,7 +208,7 @@ export function CreateTransferPage() {
           <section aria-label="Transfer outlets" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormSelect
               label="From outlet"
-              value={fromId}
+              value={selectedFromId}
               onChange={setFromId}
               placeholder={outlets.loading ? "Loading outlets…" : outlets.error ? "Outlets unavailable" : "Select source outlet"}
               disabled={outlets.loading || Boolean(outlets.error)}
@@ -209,7 +216,7 @@ export function CreateTransferPage() {
             />
             <FormSelect
               label="To outlet"
-              value={toId}
+              value={selectedToId}
               onChange={setToId}
               placeholder={outlets.loading ? "Loading outlets…" : outlets.error ? "Outlets unavailable" : "Select destination outlet"}
               disabled={outlets.loading || Boolean(outlets.error)}
@@ -289,7 +296,7 @@ export function CreateTransferPage() {
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={busy || outlets.loading || Boolean(outlets.error) || outletOptions.length < 2 || !fromId || !toId || fromId === toId}
+          disabled={busy || outlets.loading || Boolean(outlets.error) || outletOptions.length < 2 || !selectedFromId || !selectedToId || selectedFromId === selectedToId}
           className="inline-flex min-h-11 min-w-28 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create"}

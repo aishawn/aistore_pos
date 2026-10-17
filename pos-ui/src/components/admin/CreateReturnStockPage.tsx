@@ -32,7 +32,14 @@ function parseDisplayDate(raw: string): string | null {
   const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;
   const [, d, m, y] = match;
-  return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const iso = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (
+    date.getUTCFullYear() !== Number(y)
+    || date.getUTCMonth() + 1 !== Number(m)
+    || date.getUTCDate() !== Number(d)
+  ) return null;
+  return iso;
 }
 
 function FormField({
@@ -94,9 +101,8 @@ function FormSelect({
 
 export function CreateReturnStockPage() {
   const router = useRouter();
-  const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
-  const [orderDate, setOrderDate] = useState(formatToday);
+  const [orderDate, setOrderDate] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [reference, setReference] = useState("");
@@ -104,6 +110,13 @@ export function CreateReturnStockPage() {
   const [internalNotes, setInternalNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setOrderDate((current) => current || formatToday());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const outlets = useApi<Named[]>("/api/outlets");
@@ -118,21 +131,16 @@ export function CreateReturnStockPage() {
     [outlets.data],
   );
 
+  const selectedFromId = outletOptions[0]?.value || "";
   const outletName = useMemo(
-    () => outletOptions.find((o) => o.value === fromId)?.label ?? "",
-    [outletOptions, fromId],
+    () => outletOptions.find((o) => o.value === selectedFromId)?.label ?? "",
+    [outletOptions, selectedFromId],
   );
-
-  useEffect(() => {
-    if (!fromId && outletOptions.length > 0) {
-      setFromId(outletOptions[0].value);
-    }
-  }, [outletOptions, fromId]);
 
   async function submit() {
     if (busy) return;
 
-    if (!fromId) {
+    if (!selectedFromId) {
       setError("Source outlet is required.");
       return;
     }
@@ -161,7 +169,7 @@ export function CreateReturnStockPage() {
     setError(null);
     try {
       await api.post("/api/orders/returns", {
-        fromId: Number(fromId),
+        fromId: Number(selectedFromId),
         toId: Number(toId),
         orderDate: parsedOrderDate,
         dueDate: parsedDueDate,
@@ -276,7 +284,7 @@ export function CreateReturnStockPage() {
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={busy || outlets.loading || Boolean(outlets.error) || !fromId || suppliers.loading || Boolean(suppliers.error) || !toId}
+          disabled={busy || outlets.loading || Boolean(outlets.error) || !selectedFromId || suppliers.loading || Boolean(suppliers.error) || !toId}
           className="inline-flex min-h-11 min-w-28 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create"}

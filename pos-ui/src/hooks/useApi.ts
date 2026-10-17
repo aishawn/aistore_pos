@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, Page } from "@/lib/api";
 
 /** Debounce a fast-changing value (e.g. a search box) before using it as a query. */
@@ -25,10 +25,12 @@ export function useApi<T>(path: string | null, query?: Record<string, unknown>):
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestSequence = useRef(0);
 
   const key = JSON.stringify({ path, query });
 
   const run = useCallback(() => {
+    const sequence = ++requestSequence.current;
     if (!path) {
       setLoading(false);
       return;
@@ -37,9 +39,17 @@ export function useApi<T>(path: string | null, query?: Record<string, unknown>):
     setError(null);
     api
       .get<T>(path, query as Record<string, string | number | boolean | null | undefined>)
-      .then((d) => setData(d))
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : "Failed to load data"))
-      .finally(() => setLoading(false));
+      .then((d) => {
+        if (sequence === requestSequence.current) setData(d);
+      })
+      .catch((e: unknown) => {
+        if (sequence === requestSequence.current) {
+          setError(e instanceof ApiError ? e.message : "Failed to load data");
+        }
+      })
+      .finally(() => {
+        if (sequence === requestSequence.current) setLoading(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
