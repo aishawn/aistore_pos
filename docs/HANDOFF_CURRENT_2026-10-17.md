@@ -16,6 +16,12 @@
 - 认证只读页面矩阵第一次结果为 `261/262`；`/settings/surcharging` 的 1440px 首次请求出现瞬时 504，立即重试在 390px/1440px 均为 200 且无横向溢出。原始结果保留在 `UAT_ALL_STATIC_PAGES_LIVE_2026-10-17_CACHE_BATCH.json`，重试证据为 `UAT_CACHE_BATCH_RETRY_2026-10-17.json`。
 - 这批次没有销售、退款、采购、库存、现金、关班或权限写入；仍需在 Dokploy 控制台补记实际运行部署 SHA。
 
+### 收银台门店时区修复 `9217dca`
+
+- 收银完成小票和本机暂存销售日期改用当前 Odoo POS 配置的 `timezone`，不再固定为 Sydney；同时兼容 Odoo 返回的 ISO 时间、带偏移时间和无时区时间，避免重复追加 `Z` 导致日期错误。
+- `9217dca` 已推送 `main`。认证只读页面矩阵在该提交上线后为 `262/262 PASS`（131 路由 × 390/1440 两个视口），证据见 `UAT_REGISTER_TIMEZONE_LIVE_2026-10-17.json`。
+- 本轮只读验证没有提交销售或其他业务写入；收银小票时区需在下一次获准的 disposable tenant 销售验收中用真实小票进一步确认。
+
 ## 2. 仓库与工作区
 
 ### POS 仓库
