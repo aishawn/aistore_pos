@@ -345,10 +345,9 @@ export function SellAiPanel({
   }
 
   function collapsePanel() {
-    const activeElement = document.activeElement;
-    const shouldRestoreFab = activeElement instanceof HTMLElement
-      && Boolean(activeElement.closest('[role="dialog"][aria-label="Orithos AI assistant"]'));
-    restoreFabOnCloseRef.current = shouldRestoreFab;
+    // The panel can lose activeElement during Escape dispatch or portal teardown;
+    // every user initiated close should restore focus to the visible launcher.
+    restoreFabOnCloseRef.current = true;
     onExpandedChange(false);
     stopVoiceCapture();
   }
