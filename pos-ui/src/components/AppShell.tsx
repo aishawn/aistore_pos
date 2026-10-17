@@ -177,7 +177,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AiAssistantProvider defaultExpanded={false}>
         <div className="flex h-dvh flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
           <MobileTopBar backHref={onAiHome ? undefined : "/m"} />
-          <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-[var(--oh-primary)] focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+          >
+            Skip to main content
+          </a>
+          <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 overflow-hidden outline-none">
+            {children}
+          </main>
           <AiFloatHost />
         </div>
       </AiAssistantProvider>
@@ -216,9 +224,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClose={() => setUserMenuOpen(false)}
           onLogout={onLogout}
         />
-        <div className="relative min-h-0 flex-1">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-[var(--oh-primary)] focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          Skip to main content
+        </a>
+        <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 outline-none">
           {ODOO_REGISTER_PATHS.has(pathname) ? children : <SellScreenProvider>{children}</SellScreenProvider>}
-        </div>
+        </main>
       </div>
       <AiFloatHost />
     </div>

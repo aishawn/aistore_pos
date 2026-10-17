@@ -264,6 +264,14 @@ Products、Promotion Categories、Price Sets、Roles、Users、Vendor Connection
 - 首次 `/products` 390px 请求为瞬时 504，立即认证重试为 200、无溢出、无 page error
 - 本地未运行 build；公网实例仍需 Dokploy 普通 Deploy 后确认最新运行 SHA 和 no-store 头
 
+### 全局键盘与移动端触控改进（待部署）
+
+`AppShell` 现在为桌面和移动模式提供 Skip to main content，并把页面内容包在可聚焦的 `<main id="main-content">` landmark 中。Admin 共用按钮和列表行 View/Edit/Delete 操作补齐 `focus-visible` 焦点环；行操作最小触控高度提升到 44px，降低窄屏误触风险。
+
+- 当前代码尚未部署，待与下一批功能改动合并后统一 Dokploy 普通 Deploy
+- 检查：`npm run typecheck` 通过；目标 ESLint 无 error（保留仓库既有 warnings）；`git diff --check` 通过
+- 本地未运行 build；未执行任何销售、退款、采购、库存、现金或权限写入
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
