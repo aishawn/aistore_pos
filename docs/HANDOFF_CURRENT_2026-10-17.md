@@ -12,11 +12,11 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`aac59f9 test: refresh POS dialog regression evidence`（`origin/main` 同步）
-- 最近功能代码：`39dec99`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`，最新 POS 回归证据为 `aac59f9`，前一批通用弹窗焦点修复为 `3bc4aa6`
+- 当前 HEAD：待提交共用筛选控件优化（基线 `32827f2`，`origin/main` 已同步）
+- 最近功能代码：`39dec99`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`，本批筛选控件优化待提交，前一批通用弹窗焦点修复为 `3bc4aa6`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
+- 当前未提交文件包括本批三个筛选控件、并行生成的回归证据和用户已有的 `pos-ui/tsconfig.json`；提交时只暂存明确归属本批次的控件和文档。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
 ### 已完成并有证据
@@ -36,6 +36,7 @@
 - 数量编辑器补齐 Escape 关闭、焦点恢复、`aria-modal`/标题语义、删除键标签和 44px 加减/确认触控目标；Sell 页面共用收款按钮统一 44px 高度和焦点环。未改变报价、收款请求或 Odoo 写入逻辑。
 - 数量编辑器的 Escape 回调和初始数量读取改用 refs，避免每次回调变化都重新注册键盘监听；提交为 `6055289`，typecheck、目标 ESLint、`git diff --check` 已通过。
 - Sell 页面取消销售、恢复暂存、备注、折扣和结果提示弹窗补齐 `role=dialog`/`aria-modal` 语义；这些未写入弹窗支持 Escape 关闭，支付 processing 状态不响应 Escape，避免中断正在提交的支付请求。未改变支付 API 或业务写入逻辑。
+- 共用 `FilterDropdownSelect` 修正嵌套伪按钮，改为独立可聚焦的 Clear 控件，增加 Escape 关闭、`aria-expanded`/`listbox`/`option` 语义；分类单选和多选控件的按钮/选项统一至少 44px。未改变筛选值或后端查询协议。
 - 最新待部署批次的共用组件优化已提交：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。提交为 `01d8759`，本地 typecheck、目标 ESLint 和 `git diff --check` 已通过。POS 弹窗回归脚本和证据已随 `3f7f8b6` 推送。
 
 ### 未完成、未覆盖或证据不足

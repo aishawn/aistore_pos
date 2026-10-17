@@ -68,7 +68,7 @@ export function ClassificationTypeMultiSelect({
       {CLASSIFICATION_TYPE_OPTIONS.map((option) => (
         <label
           key={option.value}
-          className={`flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-[13px] text-[var(--oh-text)] hover:bg-[var(--oh-surface)] ${
+          className={`flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-1.5 text-[13px] text-[var(--oh-text)] hover:bg-[var(--oh-surface)] ${
             values.includes(option.value) && !embedded ? "bg-[var(--oh-tile-blue-bg)]" : ""
           }`}
         >
@@ -94,7 +94,9 @@ export function ClassificationTypeMultiSelect({
         onClick={() => {
           if (!embedded) setOpen((v) => !v);
         }}
-        className="flex min-h-9 w-full items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-1.5 text-left outline-none focus:border-[var(--oh-info)] focus:ring-1 focus:ring-[var(--oh-info)]"
+        aria-expanded={listOpen}
+        aria-haspopup="listbox"
+        className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-1.5 text-left outline-none focus:border-[var(--oh-info)] focus:ring-1 focus:ring-[var(--oh-info)]"
       >
         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           {values.length === 0 ? (
