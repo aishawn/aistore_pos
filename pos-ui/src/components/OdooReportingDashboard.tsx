@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, RotateCcw, ShoppingBag, Store } from "lucide-react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
+import { formatOdooDateTime, formatOdooGroupedDate } from "@/lib/odoo-date";
 
 type DashboardData = {
   rangeHours: number;
@@ -48,17 +49,11 @@ function formatMoney(value: number, currency: string) {
 }
 
 function formatDate(value: string, options: Intl.DateTimeFormatOptions, timezone: string) {
-  const date = new Date(`${value.replace(" ", "T")}Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", { timeZone: timezone, ...options }).format(date);
+  return formatOdooDateTime(value, timezone, options);
 }
 
 function formatGroupedDate(value: string, options: Intl.DateTimeFormatOptions) {
-  // Odoo groups dates in the supplied store timezone. Preserve that local wall time while formatting.
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const date = new Date(`${normalized}${normalized.length === 10 ? "T12:00:00Z" : "Z"}`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", { timeZone: "UTC", ...options }).format(date);
+  return formatOdooGroupedDate(value, options);
 }
 
 export function OdooReportingDashboard() {

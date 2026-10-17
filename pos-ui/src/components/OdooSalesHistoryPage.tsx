@@ -15,6 +15,7 @@ import {
   type OdooSalesPeriodFilter,
   type OdooSalesStatusFilter,
 } from "@/lib/odoo-api";
+import { formatOdooDateTime } from "@/lib/odoo-date";
 
 const PAGE_SIZE = 40;
 const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
@@ -132,16 +133,13 @@ function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: 
 }
 
 function formatOrderDate(value: string, timezone: string) {
-  const date = new Date(`${value.replace(" ", "T")}Z`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", {
-    timeZone: timezone,
+  return formatOdooDateTime(value, timezone, {
     day: "2-digit",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
+  });
 }
 
 function stateLabel(state: string) {

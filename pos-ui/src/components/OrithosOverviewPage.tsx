@@ -18,6 +18,7 @@ import {
 import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { formatOdooGroupedDate } from "@/lib/odoo-date";
 
 type OverviewData = {
   rangeHours: number;
@@ -88,11 +89,7 @@ function formatMoney(value: number, currency: string) {
 }
 
 function formatGroupedStoreTime(value: string, options: Intl.DateTimeFormatOptions) {
-  // Odoo returns date buckets in the store timezone supplied to read_group.
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const date = new Date(`${normalized}${normalized.length === 10 ? "T12:00:00Z" : "Z"}`);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-AU", { timeZone: "UTC", ...options }).format(date);
+  return formatOdooGroupedDate(value, options);
 }
 
 function greetingForTimezone(timezone: string) {
