@@ -927,6 +927,9 @@ public class OdooTenantProvisioner {
         if (journals == null || !journals.isArray() || journals.isEmpty()) return;
         long defaultAccountId = relationId(journals.get(0).get("default_account_id"));
         if (defaultAccountId <= 0) return;
+        long intermediaryAccountId = ensureAccountByType(sessionId, companyId,
+                "asset_current", "POS Payment Intermediary", "8" + companyId + "7");
+        if (intermediaryAccountId <= 0) return;
 
         ArrayNode methodDomain = objectMapper.createArrayNode();
         methodDomain.add(objectMapper.createArrayNode().add("id").add("=").add(paymentMethodId));
@@ -937,14 +940,16 @@ public class OdooTenantProvisioner {
         JsonNode methods = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(methodDomain), methodKwargs);
         if (methods == null || !methods.isArray() || methods.isEmpty()) return;
         ObjectNode values = objectMapper.createObjectNode();
-        if (!hasRelation(methods.get(0).get("receivable_account_id"))) {
-            values.put("receivable_account_id", defaultAccountId);
+        long currentReceivableId = relationId(methods.get(0).get("receivable_account_id"));
+        long currentOutstandingId = relationId(methods.get(0).get("outstanding_account_id"));
+        if (currentReceivableId != intermediaryAccountId) {
+            values.put("receivable_account_id", intermediaryAccountId);
         }
-        if (hasRelation(methods.get(0).get("outstanding_account_id"))) {
-            // POS session closing creates one intermediary line for this payment
-            // method. Keeping a second outstanding account on the same method
-            // makes Odoo reject the statement as having two bank/cash lines.
-            values.putNull("outstanding_account_id");
+        if (currentOutstandingId != defaultAccountId) {
+            // Odoo needs two distinct accounts here: one intermediary line and
+            // one cash/bank line. Reusing the intermediary account makes the
+            // statement fail its exactly-one-bank-account constraint.
+            values.put("outstanding_account_id", defaultAccountId);
         }
         if (!values.isEmpty()) {
             callKw(sessionId, "pos.payment.method", "write",
