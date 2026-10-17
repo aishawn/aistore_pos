@@ -12,7 +12,6 @@ import { useApiList } from "@/hooks/useApi";
 import { BanIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 const PAGE_SIZE = 20;
 
