@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：`0b98984 fix: improve admin touch target sizing`
+- 最新提交：`3e992f0 feat: make register closure details usable`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
 - 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
 
@@ -26,6 +26,7 @@
 - 131 个认证页面在 390px 与 1440px 的矩阵曾达到 `262/262 PASS`；关键功能页面、角色 CRUD、移动端布局和无横向溢出已有回归记录。
 - 最近的只读体验修复已提交到 GitHub：销售报表移动端摘要、分页越界恢复、不可用行操作隐藏、列表语义可访问性、未来价格移动端布局、回收项搜索、Mail Log 部分匹配、列表页 server layout 缓存隔离。
 - 最近批次 `d835857` 修复 Future Costs/Prices 的 Next route config 回归；`1679f0b` 收窄平台 owner recovery 响应，不再返回页面不使用的 bootstrap token，并为 owner link 增加真实复制按钮；`0b98984` 将管理按钮和确认弹窗统一到至少 44px 触控高度。
+- `3e992f0` 将 Register Closures 的假 View 入口改为真实详情链接，新增只读详情页（含 tender breakdown），移除静态日期范围占位，并补齐移动端卡片布局。
 - 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
 
 ### 当前未完成
@@ -43,7 +44,7 @@
 - 这证明当前匿名请求路径没有旧静态缓存特征；仍需认证浏览器和 Dokploy 运行 SHA 证据确认页面代码批次。
 - 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
 - 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
-- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页只读改动尚未用实际运行 SHA 做线上验收；本轮平台 owner link 与触控尺寸也待认证浏览器验证。
+- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页和 Register Closures 详情尚未用实际运行 SHA 做线上验收；本轮平台 owner link、触控尺寸和详情页也待认证浏览器验证。
 - 收银小票时区、采购/补货显示时区虽有页面回归，仍需在获准的 disposable tenant 业务链路中做一次真实小票/订单回读确认。
 - 实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理仍未覆盖或未实现。
 
