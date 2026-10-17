@@ -6,6 +6,7 @@ import { GstSummary } from "@/components/GstSummary";
 import { roundCashToFiveCents } from "@/lib/au";
 import { checkoutSale, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /**
  * Centre-screen dialogs for the Sell pad: cancel sale, payment flow, and
@@ -33,22 +34,31 @@ export function SellModals() {
     pendingResumeId,
     confirmResumeParked,
     cancelResumeParked,
+    cancelPayment,
   } = useSellScreen();
 
-  useEffect(() => {
-    const dismissible = confirmClearOpen || pendingResumeId || noteDialogOpen || discountDialogOpen || pendingAction;
-    if (!dismissible) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      if (confirmClearOpen) cancelClear();
-      else if (pendingResumeId) cancelResumeParked();
-      else if (noteDialogOpen) closeNoteDialog();
-      else if (discountDialogOpen) closeDiscountDialog();
-      else if (pendingAction) dismissAction();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [cancelClear, cancelResumeParked, closeDiscountDialog, closeNoteDialog, confirmClearOpen, dismissAction, discountDialogOpen, noteDialogOpen, pendingAction, pendingResumeId]);
+  const dismissible = Boolean(confirmClearOpen || pendingResumeId || noteDialogOpen || discountDialogOpen || pendingAction || payment);
+  const dialogKey = confirmClearOpen
+    ? "clear"
+    : pendingResumeId
+      ? "resume"
+      : noteDialogOpen
+        ? "note"
+        : discountDialogOpen
+          ? "discount"
+          : payment
+            ? "payment"
+            : pendingAction
+              ? "action"
+              : "closed";
+  useDialogFocus(dismissible, () => {
+    if (confirmClearOpen) cancelClear();
+    else if (pendingResumeId) cancelResumeParked();
+    else if (noteDialogOpen) closeNoteDialog();
+    else if (discountDialogOpen) closeDiscountDialog();
+    else if (payment && payment.phase !== "processing") cancelPayment();
+    else if (pendingAction) dismissAction();
+  }, dialogKey);
 
   if (
     !confirmClearOpen &&

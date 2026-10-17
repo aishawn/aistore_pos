@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MinusIcon, PlusIcon, DeleteIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 function formatQty(qty: number): string {
   if (Number.isInteger(qty)) return String(qty);
@@ -31,36 +32,22 @@ export function QuantityKeypadModal({
   onClose,
 }: QuantityKeypadModalProps) {
   const [input, setInput] = useState(formatQty(initialQty));
-  const confirmButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
   const initialQtyRef = useRef(initialQty);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
   useEffect(() => {
     initialQtyRef.current = initialQty;
   }, [initialQty]);
 
   useEffect(() => {
     if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const frame = requestAnimationFrame(() => {
       setInput(formatQty(initialQtyRef.current));
-      confirmButtonRef.current?.focus();
     });
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCloseRef.current();
-    }
-    window.addEventListener("keydown", handleKeyDown);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("keydown", handleKeyDown);
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
-      previousFocusRef.current = null;
     };
   }, [open]);
+
+  useDialogFocus(open, onClose, productName ?? "quantity");
 
   if (!open) return null;
 
@@ -162,7 +149,6 @@ export function QuantityKeypadModal({
         </div>
 
         <button
-          ref={confirmButtonRef}
           type="button"
           onClick={confirm}
           className="mt-3 min-h-11 w-full cursor-pointer rounded-full bg-[var(--oh-primary)] py-3 text-[16px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
