@@ -35,6 +35,21 @@ export function SellModals() {
     cancelResumeParked,
   } = useSellScreen();
 
+  useEffect(() => {
+    const dismissible = confirmClearOpen || pendingResumeId || noteDialogOpen || discountDialogOpen || pendingAction;
+    if (!dismissible) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (confirmClearOpen) cancelClear();
+      else if (pendingResumeId) cancelResumeParked();
+      else if (noteDialogOpen) closeNoteDialog();
+      else if (discountDialogOpen) closeDiscountDialog();
+      else if (pendingAction) dismissAction();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [cancelClear, cancelResumeParked, closeDiscountDialog, closeNoteDialog, confirmClearOpen, dismissAction, discountDialogOpen, noteDialogOpen, pendingAction, pendingResumeId]);
+
   if (
     !confirmClearOpen &&
     !pendingAction &&
@@ -53,8 +68,8 @@ export function SellModals() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 font-sans">
       {confirmClearOpen && (
-        <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
-          <h3 className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">Cancel Sale</h3>
+        <div role="dialog" aria-modal="true" aria-labelledby="cancel-sale-title" className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+          <h3 id="cancel-sale-title" className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">Cancel Sale</h3>
           <p className="mb-6 text-[14px] text-[var(--oh-text-secondary)]">
             Are you sure you would like to cancel this sale?
           </p>
@@ -70,8 +85,8 @@ export function SellModals() {
       )}
 
       {!confirmClearOpen && pendingResumeId && (
-        <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
-          <h3 className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">Resume Parked Sale</h3>
+        <div role="dialog" aria-modal="true" aria-labelledby="resume-parked-sale-title" className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+          <h3 id="resume-parked-sale-title" className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">Resume Parked Sale</h3>
           <p className="mb-6 text-[14px] text-[var(--oh-text-secondary)]">
             The current cart has items. Resuming will replace them with the parked sale.
           </p>
@@ -111,8 +126,8 @@ export function SellModals() {
         !discountDialogOpen &&
         !payment &&
         pendingAction && (
-          <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
-            <h3 className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">{pendingAction}</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby="sell-action-title" className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+            <h3 id="sell-action-title" className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">{pendingAction}</h3>
             <p className="mb-6 whitespace-pre-line text-[14px] text-[var(--oh-text-secondary)]">
               {actionMessage ?? `"${pendingAction}" completed.`}
             </p>
@@ -138,7 +153,7 @@ function NoteDialog({
 }) {
   const [value, setValue] = useState(initial);
   return (
-    <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+    <div role="dialog" aria-modal="true" aria-label="Add sale note" className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
       <h3 className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">Add Note</h3>
       <textarea
         value={value}
@@ -222,7 +237,7 @@ function DiscountDialog({
   }
 
   return (
-    <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+    <div role="dialog" aria-modal="true" aria-label="Apply discount" className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
       <h3 className="mb-1 text-[18px] font-semibold text-[var(--oh-text)]">Discount</h3>
       <p className="mb-4 truncate text-[13px] text-[var(--oh-muted)]">
         {line.name} · ${lineSubtotal.toFixed(2)} line total
@@ -360,7 +375,7 @@ function CashOutEntryDialog({
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "backspace"] as const;
 
   return (
-    <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+    <div role="dialog" aria-modal="true" aria-label="Eftpos cash out" className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
       <h3 className="mb-1 text-[18px] font-semibold text-[var(--oh-text)]">Eftpos Cash Out</h3>
       <p className="mb-5 text-[13px] text-[var(--oh-muted)]">
         Enter the cash amount to give the customer from the till.
@@ -529,7 +544,7 @@ function PaymentDialog() {
       : payment.tendered;
 
   return (
-    <div className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
+    <div role="dialog" aria-modal="true" aria-label={`${payment.method} payment`} className="w-[420px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-6 shadow-xl">
       <h3 className="mb-1 text-[18px] font-semibold text-[var(--oh-text)]">{payment.method}</h3>
       <p className="mb-5 text-[13px] text-[var(--oh-muted)]">
         {exactCash
