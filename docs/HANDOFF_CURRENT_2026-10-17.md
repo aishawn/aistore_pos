@@ -9,6 +9,13 @@
 
 后续不要复用历史租户，也不要写入生产 Demo 公司。每次代码变更仍需推送并确认 Dokploy 的实际部署 SHA，再用新的 disposable tenant 回归并删除租户。
 
+### 缓存批次提交 `1f1027f`
+
+- 为商品、价格组、角色、用户、促销分类、供应商连接和平台门店详情页增加服务器端 `dynamic = "force-dynamic"` 与 `fetchCache = "force-no-store"`，并在 `next.config.ts` 为对应路径加入 `no-store` 响应头。
+- GitHub `main` 已推送 `1f1027f`。公网匿名响应已回读为 `Cache-Control: no-store, max-age=0`、Cloudflare `DYNAMIC`；不再出现旧的 `s-maxage=31536000`。
+- 认证只读页面矩阵第一次结果为 `261/262`；`/settings/surcharging` 的 1440px 首次请求出现瞬时 504，立即重试在 390px/1440px 均为 200 且无横向溢出。原始结果保留在 `UAT_ALL_STATIC_PAGES_LIVE_2026-10-17_CACHE_BATCH.json`，重试证据为 `UAT_CACHE_BATCH_RETRY_2026-10-17.json`。
+- 这批次没有销售、退款、采购、库存、现金、关班或权限写入；仍需在 Dokploy 控制台补记实际运行部署 SHA。
+
 ## 2. 仓库与工作区
 
 ### POS 仓库
