@@ -71,25 +71,33 @@ export function SellPad() {
           />
         </div>
         <ul className="flex h-[50px] items-center justify-between bg-white">
-          <li
-            onClick={() => sell.setView("keys")}
+          <li className="flex flex-1">
+            <button
+              type="button"
+              onClick={() => sell.setView("keys")}
+              aria-current={sell.view === "keys" ? "page" : undefined}
             className={cn(
-              "flex flex-1 cursor-pointer items-center justify-center text-[19.2px]",
+              "flex min-h-11 w-full cursor-pointer items-center justify-center text-[19.2px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
               sell.view === "keys" ? "text-[var(--sf-tab-blue)]" : "text-black",
             )}
-          >
-            <KeyboardIcon size={19} strokeWidth={1.5} className="mr-2" />
-            Sales Keys
+            >
+              <KeyboardIcon size={19} strokeWidth={1.5} className="mr-2" />
+              Sales Keys
+            </button>
           </li>
-          <li
-            onClick={() => sell.setView("parked")}
+          <li className="flex flex-1">
+            <button
+              type="button"
+              onClick={() => sell.setView("parked")}
+              aria-current={sell.view === "parked" ? "page" : undefined}
             className={cn(
-              "flex flex-1 cursor-pointer items-center justify-center text-[19.2px]",
+              "flex min-h-11 w-full cursor-pointer items-center justify-center text-[19.2px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
               sell.view === "parked" ? "text-[var(--sf-tab-blue)]" : "text-black",
             )}
-          >
-            <ParkingIcon size={19} strokeWidth={1.5} className="mr-2" />
-            Parked Sales
+            >
+              <ParkingIcon size={19} strokeWidth={1.5} className="mr-2" />
+              Parked Sales
+            </button>
           </li>
         </ul>
       </div>
@@ -288,12 +296,12 @@ function MainGrid() {
       {MAIN_KEYS.map((key) => {
         const disabled = isDisabled(key.id);
         return (
-          <div
+          <button
             key={key.id}
-            role="button"
-            tabIndex={disabled ? -1 : 0}
-            aria-disabled={disabled}
-            onClick={() => !disabled && activate(key.id)}
+            type="button"
+            disabled={disabled}
+            aria-label={key.label ?? key.id}
+            onClick={() => activate(key.id)}
             style={{
               backgroundColor: key.bg,
               gridColumn: `${key.colStart} / span ${key.colSpan}`,
@@ -312,7 +320,7 @@ function MainGrid() {
                 {key.label}
               </span>
             )}
-          </div>
+          </button>
         );
       })}
     </div>
@@ -356,17 +364,17 @@ function FunctionGrid() {
   return (
     <div className="absolute inset-0 hidden grid-cols-5 grid-rows-3 lg:grid">
       {FUNCTION_KEYS.map((key) => (
-        <div
+        <button
           key={key.id}
-          role="button"
-          tabIndex={0}
+          type="button"
+          aria-label={key.label}
           onClick={() => activate(key)}
           style={{ backgroundColor: key.bg }}
-          className="flex cursor-pointer items-center justify-center border-[0.667px] border-white p-4 transition-colors duration-200 ease-in-out hover:brightness-95"
+          className="flex cursor-pointer items-center justify-center border-[0.667px] border-white p-4 transition-colors duration-200 ease-in-out hover:brightness-95 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={key.image} alt={key.label} className="max-h-full max-w-full object-contain" />
-        </div>
+        </button>
       ))}
     </div>
   );
