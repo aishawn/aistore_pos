@@ -214,6 +214,16 @@ Date & Time 页面现在由 server route 承载 `dynamic`/`fetchCache` 段配置
 - 认证矩阵：[`UAT_DATE_SETTINGS_ROUTE_LIVE_2026-10-17.json`](UAT_DATE_SETTINGS_ROUTE_LIVE_2026-10-17.json)，`262/262 PASS`
 - 公网路由返回 200，但仍显示旧 `s-maxage=31536000`；Dokploy 尚未确认运行 `e1cd939`
 
+### 门店时区刷新时间（`740e042`）
+
+报表 Dashboard、Overview 和 Sales History 的 `Loaded`/`Last refreshed` 现在使用当前 Odoo 门店时区，而不是浏览器本地时区；共享日期工具新增 epoch 时间格式化入口。
+
+- 提交：`740e042`，已推送 `origin/main`
+- 检查：`npm run typecheck`、目标文件 ESLint、`git diff --check` 通过
+- 首次矩阵：[`UAT_STORE_REFRESH_TIME_LIVE_2026-10-17.json`](UAT_STORE_REFRESH_TIME_LIVE_2026-10-17.json)，261/262；唯一异常为 390px `/customers/balances/statements` 瞬时 504，无页面错误
+- 立即认证重试：[`UAT_STORE_REFRESH_TIME_RETRY_2026-10-17.json`](UAT_STORE_REFRESH_TIME_RETRY_2026-10-17.json)，该路由返回 200、无横向溢出、无页面错误
+- 本轮仍未执行 Demo 租户业务写入；公网实例运行 SHA/缓存头仍待 Dokploy 普通 Deploy 确认
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
