@@ -68,9 +68,17 @@ export function CartSidebar() {
           return (
             <div
               key={line.id}
+              tabIndex={0}
+              aria-label={`Select ${line.name}`}
               onClick={() => sell.selectLine(line.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  sell.selectLine(line.id);
+                }
+              }}
               className={cn(
-                "flex cursor-pointer items-center gap-3 border-b border-[#eee] px-4 py-3",
+                "flex cursor-pointer items-center gap-3 border-b border-[#eee] px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
                 selected ? "bg-[rgb(206,229,252)]" : "bg-white hover:bg-black/5",
               )}
             >

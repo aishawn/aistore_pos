@@ -93,6 +93,7 @@ export function PosTransactionPanel() {
         <input
           type="text"
           defaultValue={sell.searchQuery}
+          aria-label="Scan barcode or search product"
           placeholder="Scan barcode or search product…"
           onChange={(e) => onSearch(e.target.value)}
           onFocus={() => sell.setSearchOpen(true)}
@@ -122,9 +123,17 @@ export function PosTransactionPanel() {
               return (
                 <tr
                   key={line.id}
+                  tabIndex={0}
+                  aria-selected={selected}
                   onClick={() => sell.selectLine(line.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      sell.selectLine(line.id);
+                    }
+                  }}
                   className={cn(
-                    "cursor-pointer border-b border-[var(--oh-border)] transition-colors",
+                    "cursor-pointer border-b border-[var(--oh-border)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
                     selected ? "bg-[var(--oh-orange-light)]/40" : "hover:bg-[var(--oh-surface)]/80",
                   )}
                 >
@@ -221,7 +230,7 @@ function BottomBtn({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "cursor-pointer rounded-[var(--oh-radius)] py-3.5 text-[14px] font-semibold transition-colors",
+        "cursor-pointer rounded-[var(--oh-radius)] py-3.5 text-[14px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
         variant === "primary" && "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]",
         variant === "danger" && "border border-[var(--oh-border)] bg-white text-[var(--oh-danger-text)] hover:bg-[var(--oh-tile-red-bg)]",
         variant === "default" && "border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
@@ -287,6 +296,7 @@ function CustomerOverlay() {
         </button>
         <input
           type="text"
+          aria-label="Search customers"
           placeholder="Search for Customers…"
           onChange={(e) => onSearch(e.target.value)}
           className="h-9 flex-1 rounded-lg border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)]"
