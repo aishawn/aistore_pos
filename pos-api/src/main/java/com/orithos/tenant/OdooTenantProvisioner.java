@@ -923,6 +923,16 @@ public class OdooTenantProvisioner {
         if (journals != null && journals.isArray() && !journals.isEmpty()
                 && relationId(journals.get(0).get("default_account_id")) > 0) return;
 
+        long accountId = ensureAccountByType(sessionId, companyId, accountType, name, code);
+        if (accountId <= 0) throw new IllegalStateException("No default account available for journal " + journalId);
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("default_account_id", accountId);
+        callKw(sessionId, "account.journal", "write",
+                List.of(List.of(journalId), values), kwargsWithCompany(companyId));
+    }
+
+    private long ensureAccountByType(
+            String sessionId, long companyId, String accountType, String name, String code) throws Exception {
         ArrayNode accountDomain = objectMapper.createArrayNode();
         accountDomain.add(objectMapper.createArrayNode().add("company_ids").add("in").add(companyId));
         accountDomain.add(objectMapper.createArrayNode().add("account_type").add("=").add(accountType));
@@ -930,16 +940,11 @@ public class OdooTenantProvisioner {
         accountKwargs.set("fields", objectMapper.createArrayNode().add("id"));
         accountKwargs.put("limit", 1);
         JsonNode accounts = callKwNode(sessionId, "account.account", "search_read", List.of(accountDomain), accountKwargs);
-        long accountId = accounts != null && accounts.isArray() && !accounts.isEmpty()
-                ? accounts.get(0).path("id").asLong(0) : 0;
-        if (accountId <= 0) {
-            accountId = ensureCashDifferenceAccount(sessionId, companyId, accountType, name, code);
+        if (accounts != null && accounts.isArray() && !accounts.isEmpty()) {
+            long id = accounts.get(0).path("id").asLong(0);
+            if (id > 0) return id;
         }
-        if (accountId <= 0) throw new IllegalStateException("No default account available for journal " + journalId);
-        ObjectNode values = objectMapper.createObjectNode();
-        values.put("default_account_id", accountId);
-        callKw(sessionId, "account.journal", "write",
-                List.of(List.of(journalId), values), kwargsWithCompany(companyId));
+        return ensureCashDifferenceAccount(sessionId, companyId, accountType, name, code);
     }
 
     private String uniqueCashJournalCode(String sessionId, long companyId, String configName) throws Exception {
@@ -1132,22 +1137,38 @@ public class OdooTenantProvisioner {
     }
 
     private Map<String, long[]> ensureDummyCategories(String sessionId, long companyId, long incomeAccountId) throws Exception {
+        long valuationAccountId = ensureAccountByType(sessionId, companyId,
+                "asset_current", "POS Stock Valuation", "8" + companyId + "5");
+        long expenseAccountId = ensureAccountByType(sessionId, companyId,
+                "expense", "POS Cost of Sales", "5" + companyId + "1");
         Map<String, long[]> byKey = new LinkedHashMap<>();
         for (int i = 0; i < CATEGORY_KEYS.length; i++) {
             String key = CATEGORY_KEYS[i];
             String label = CATEGORY_LABELS[i];
-            long productCategId = ensureProductCategory(sessionId, companyId, label, incomeAccountId);
+            long productCategId = ensureProductCategory(
+                    sessionId, companyId, label, incomeAccountId, valuationAccountId, expenseAccountId);
             long posCategId = ensurePosCategory(sessionId, companyId, label);
             byKey.put(key, new long[]{productCategId, posCategId});
         }
         return byKey;
     }
 
-    private long ensureProductCategory(String sessionId, long companyId, String name, long incomeAccountId) throws Exception {
+    private long ensureProductCategory(
+            String sessionId,
+            long companyId,
+            String name,
+            long incomeAccountId,
+            long valuationAccountId,
+            long expenseAccountId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
         domain.add(objectMapper.createArrayNode().add("name").add("=").add(name));
         ObjectNode kwargs = kwargsWithCompany(companyId);
-        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("property_account_income_categ_id"));
+        kwargs.set("fields", objectMapper.createArrayNode()
+                .add("id")
+                .add("property_account_income_categ_id")
+                .add("property_stock_valuation_account_id")
+                .add("property_account_expense_categ_id")
+                .add("account_stock_variation_id"));
         kwargs.put("limit", 1);
         JsonNode existing = callKwNode(sessionId, "product.category", "search_read", List.of(domain), kwargs);
         if (existing != null && existing.isArray() && !existing.isEmpty()) {
@@ -1156,9 +1177,23 @@ public class OdooTenantProvisioner {
                 JsonNode incomeAccount = existing.get(0).get("property_account_income_categ_id");
                 boolean hasIncomeAccount = incomeAccount != null && incomeAccount.isArray()
                         && incomeAccount.size() > 0 && incomeAccount.get(0).asLong(0) > 0;
+                ObjectNode values = objectMapper.createObjectNode();
                 if (!hasIncomeAccount && incomeAccountId > 0) {
-                    ObjectNode values = objectMapper.createObjectNode();
                     values.put("property_account_income_categ_id", incomeAccountId);
+                }
+                if (!hasRelation(existing.get(0).get("property_stock_valuation_account_id"))
+                        && valuationAccountId > 0) {
+                    values.put("property_stock_valuation_account_id", valuationAccountId);
+                }
+                if (!hasRelation(existing.get(0).get("property_account_expense_categ_id"))
+                        && expenseAccountId > 0) {
+                    values.put("property_account_expense_categ_id", expenseAccountId);
+                }
+                if (!hasRelation(existing.get(0).get("account_stock_variation_id"))
+                        && expenseAccountId > 0) {
+                    values.put("account_stock_variation_id", expenseAccountId);
+                }
+                if (!values.isEmpty()) {
                     callKw(sessionId, "product.category", "write",
                             List.of(List.of(id), values), kwargsWithCompany(companyId));
                 }
@@ -1168,8 +1203,17 @@ public class OdooTenantProvisioner {
         ObjectNode values = objectMapper.createObjectNode();
         values.put("name", name);
         if (incomeAccountId > 0) values.put("property_account_income_categ_id", incomeAccountId);
+        if (valuationAccountId > 0) values.put("property_stock_valuation_account_id", valuationAccountId);
+        if (expenseAccountId > 0) {
+            values.put("property_account_expense_categ_id", expenseAccountId);
+            values.put("account_stock_variation_id", expenseAccountId);
+        }
         Number id = callKw(sessionId, "product.category", "create", List.of(values), kwargsWithCompany(companyId));
         return id == null ? 0 : id.longValue();
+    }
+
+    private static boolean hasRelation(JsonNode relation) {
+        return relationId(relation) > 0;
     }
 
     private long ensurePosCategory(String sessionId, long companyId, String name) throws Exception {

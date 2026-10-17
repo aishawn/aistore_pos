@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 
 const root = new URL("..", import.meta.url).pathname.replace(/^\/(\w):/, "$1:");
 const env = Object.fromEntries(
@@ -55,7 +56,7 @@ try {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: app, Cookie: appCookies },
     body: JSON.stringify({
-      organisationName: "Codex Close Income UAT",
+      organisationName: `Codex Close Income UAT ${slug}`,
       subdomain: slug,
       ownerName: "Close UAT Owner",
       username: ownerUsername,
@@ -181,7 +182,7 @@ try {
         body: JSON.stringify({
           configId,
           paymentMethodId: cashMethod.id,
-          orderUuid: `close-uat-${Date.now()}`,
+          orderUuid: randomUUID(),
           tendered: saleTotal,
           lines: [{ productId: product.id, quantity: 1 }],
         }),
@@ -192,6 +193,7 @@ try {
         saleId: sale.saleId,
         receipt: sale.receipt,
         total: sale.total,
+        message: sale.message,
       });
     }
   } else {
