@@ -31,7 +31,7 @@ try {
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error("Orithos admin login failed");
 
-  await page.route(`${base}/api/orders/receives/scan`, async (route) => {
+  await page.route("**/api/orders/receives/scan", async (route) => {
     if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Unexpected method" });
     scanCalls += 1;
     await route.fulfill({
@@ -51,8 +51,10 @@ try {
 
   await page.goto(`${base}/invoices/scan`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Scan supplier invoice" }).waitFor({ timeout: 20000 });
+  await page.getByRole("button", { name: "Photograph or upload" }).waitFor({ timeout: 20000 });
+  await page.waitForTimeout(1000);
   const save = page.getByRole("button", { name: "Save as received order" });
-  if (await save.isEnabled()) throw new Error("Save is enabled before an invoice is scanned");
+  if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button");
   const upload = page.locator('input[type="file"][aria-label="Choose or photograph a supplier invoice"]');
   await upload.setInputFiles({
     name: "mock-invoice.jpg",
@@ -74,10 +76,12 @@ try {
   const productDescription = page.locator('input[aria-label="Product description 1"]:visible');
   if (!(await productDescription.inputValue()).includes("MOCK Shiraz")) throw new Error("Mock line item was not shown for review");
   if (!(await page.getByRole("img", { name: "Invoice preview" }).count())) throw new Error("Uploaded image preview was not shown");
-  if (!(await save.isEnabled())) throw new Error("Save is not available after the mock scan result is reviewed");
+  if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button after scanning");
+  await page.getByRole("link", { name: "Open Odoo Purchases" }).waitFor({ timeout: 10000 });
+  await page.getByRole("link", { name: "Open Replenishment Plan" }).waitFor({ timeout: 10000 });
   const cases = page.locator('input[aria-label="Cases for line 1"]:visible');
   await cases.fill("3");
-  if (await cases.inputValue() !== "3") throw new Error("Line quantity was not editable before save");
+  if (await cases.inputValue() !== "3") throw new Error("Line quantity was not editable before leaving preview");
   if (businessWrites.some((entry) => entry.includes("from-scan") || entry.includes("supplier") || entry.includes("purchase"))) {
     throw new Error(`Unexpected business write request: ${businessWrites.join(", ")}`);
   }
@@ -91,7 +95,7 @@ try {
     status: "PASS",
     fixture: "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
     viewport: 390,
-    checks: ["unsaved invoice cannot be saved before scanning", "mock scan image preview and details render", "invoice line is editable before saving", "save was not clicked and no business write was sent"],
+    checks: ["invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
     scanCalls,
     businessWrites,
   };
