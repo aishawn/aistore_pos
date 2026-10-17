@@ -203,15 +203,30 @@ function SidebarNavGroup({
   tabIndex?: number;
 }) {
   const [expanded, setExpanded] = useState(groupActive(group, pathname));
+  const [collapsedAt, setCollapsedAt] = useState<string | null>(null);
   const Icon = ICONS[group.icon];
   const active = groupActive(group, pathname);
+  // Keep the active destination reachable after route changes, while allowing
+  // an intentional collapse on the current path.
+  const visiblyExpanded = active && collapsedAt !== pathname ? true : expanded;
+  const submenuId = `sidebar-group-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
     <li>
       <button
         type="button"
         tabIndex={tabIndex}
-        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={visiblyExpanded}
+        aria-controls={submenuId}
+        onClick={() => {
+          if (visiblyExpanded) {
+            setExpanded(false);
+            setCollapsedAt(pathname);
+          } else {
+            setExpanded(true);
+            setCollapsedAt(null);
+          }
+        }}
         className={cn(
           "oh-type-label flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 font-medium transition-colors",
           active
@@ -227,10 +242,10 @@ function SidebarNavGroup({
           />
           {group.label}
         </span>
-        {expanded ? <ChevronDown size={16} className="opacity-50" /> : <ChevronRight size={16} className="opacity-50" />}
+        {visiblyExpanded ? <ChevronDown size={16} className="opacity-50" /> : <ChevronRight size={16} className="opacity-50" />}
       </button>
-      {expanded && (
-        <ul className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
+      {visiblyExpanded && (
+        <ul id={submenuId} className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
           {group.items.map((item) => {
             const active = subItemActive(item.href, pathname, group.items);
             const SubIcon = SETTINGS_SUB_ICONS[item.href];
