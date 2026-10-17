@@ -143,6 +143,10 @@ public class OdooTenantProvisioner {
         try {
             String sessionId = authenticate();
             long companyId = createCompany(sessionId, vendor.getName());
+            // Odoo validates allowed_company_ids on every company-scoped RPC.
+            // Add the newly-created company before any forced-company setup call;
+            // otherwise a fresh service user can fail with "unauthorized company".
+            addCompanyToServiceUser(sessionId, companyId);
             prepareCompanyBasics(sessionId, companyId, vendor.getName());
             long[] warehouse = ensureWarehouse(sessionId, companyId, vendor.getName(), vendor.getSubdomain());
             // Payment methods are created per POS config: Odoo forbids sharing one cash PM / cash journal
@@ -173,7 +177,6 @@ public class OdooTenantProvisioner {
             // have explicit profit/loss accounts before a session can open.
             ensureCashDifferenceAccounts(sessionId, companyId);
 
-            addCompanyToServiceUser(sessionId, companyId);
             if (seedDummyData) {
                 try {
                     seedDummyExperience(sessionId, companyId, warehouse[1], primaryPosConfigId);
