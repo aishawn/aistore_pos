@@ -308,7 +308,7 @@ function MainGrid() {
               gridRow: `${key.rowStart} / span ${key.rowSpan}`,
             }}
             className={cn(
-              "flex items-center justify-center border-[0.667px] border-white transition-colors duration-200 ease-in-out",
+              "flex items-center justify-center border-[0.667px] border-white p-0 transition-colors duration-200 ease-in-out focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
               disabled ? "cursor-not-allowed brightness-50" : "cursor-pointer hover:brightness-95",
             )}
           >
