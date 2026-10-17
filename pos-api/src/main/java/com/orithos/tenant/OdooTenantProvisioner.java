@@ -867,8 +867,8 @@ public class OdooTenantProvisioner {
         if (posConfigId <= 0 || products.isEmpty()) {
             throw new IllegalStateException("POS config and products are required to seed demo sales.");
         }
-        if (countExistingDemoOrders(sessionId, companyId) > 0) {
-            log.info("Demo sales already present for company {}; skipping sales seed", companyId);
+        if (countExistingDemoOrders(sessionId, companyId) >= DUMMY_SALES_COUNT) {
+            log.info("Demo sales already complete for company {}; skipping sales seed", companyId);
             ensureOpenPosSession(sessionId, companyId, posConfigId);
             return;
         }
@@ -914,19 +914,27 @@ public class OdooTenantProvisioner {
                 basket.add(new int[]{indexOfProduct(products, secondary.id), qty2});
             }
 
-            ObjectNode order = buildPaidDemoOrder(
-                    products, basket, dateOrder, uuid, uid, posSessionId, paymentMethodId, partnerId);
-            JsonNode synced = callKwNode(sessionId, "pos.order", "sync_from_ui",
-                    List.of(List.of(order)), kwargsWithCompany(companyId));
-            JsonNode saved = findSyncedOrder(synced, uuid);
-            if (saved == null) {
-                saved = findOrderByUuid(sessionId, companyId, uuid);
-            }
-            if (saved != null) {
-                created++;
-                if (saved.path("amount_total").asDouble(0) > 0 && refundSourceOrderIds.size() < 2) {
-                    refundSourceOrderIds.add(saved.path("id").asLong(0));
+            try {
+                // Check the deterministic UUID first so a retry can fill only missing orders.
+                JsonNode saved = findOrderByUuid(sessionId, companyId, uuid);
+                if (saved == null) {
+                    ObjectNode order = buildPaidDemoOrder(
+                            products, basket, dateOrder, uuid, uid, posSessionId, paymentMethodId, partnerId);
+                    JsonNode synced = callKwNode(sessionId, "pos.order", "sync_from_ui",
+                            List.of(List.of(order)), kwargsWithCompany(companyId));
+                    saved = findSyncedOrder(synced, uuid);
+                    if (saved == null) {
+                        saved = findOrderByUuid(sessionId, companyId, uuid);
+                    }
                 }
+                if (saved != null) {
+                    created++;
+                    if (saved.path("amount_total").asDouble(0) > 0 && refundSourceOrderIds.size() < 2) {
+                        refundSourceOrderIds.add(saved.path("id").asLong(0));
+                    }
+                }
+            } catch (Exception orderError) {
+                log.warn("Dummy order {} failed for company {}: {}", i + 1, companyId, orderError.getMessage());
             }
         }
 
@@ -963,6 +971,7 @@ public class OdooTenantProvisioner {
         ArrayNode domain = objectMapper.createArrayNode();
         domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
         domain.add(objectMapper.createArrayNode().add("uuid").add("=like").add("demo-seed-" + companyId + "-%"));
+        domain.add(objectMapper.createArrayNode().add("is_refund").add("=").add(false));
         Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
         return count == null ? 0 : count.intValue();
     }
