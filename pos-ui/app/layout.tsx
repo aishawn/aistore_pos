@@ -3,6 +3,10 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { AuthProvider } from "@/lib/auth";
 
+// Authenticated tenant pages must not be emitted as reusable static HTML.
+// Client data is scoped by the HttpOnly session cookie and tenant host.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Orithos | Smart Point of Sale",
   description: "Orithos — AI-powered retail point of sale for bottle shops and specialty retail",
