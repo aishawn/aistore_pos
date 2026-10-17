@@ -105,6 +105,10 @@
 
 整体项目仍为 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理尚未覆盖。
 
+### 最新状态守卫回归（`01f1c5a`）
+
+新租户 `codex-probe-20261017112219` 首次 provisioning 返回 `ready`，sample status 返回 14 个 DEMO 商品、4 个客户、32 笔 demo orders，CSV 导出返回 15 行；删除后认证返回 402。证据见 `docs/UAT_SAMPLE_STATUS_GUARD_LIVE_2026-10-17.json`。现有 demo 租户只读状态仍为 `never_seeded/canPurge=false`，页面保持 `no-store`。
+
 ### Provisioning company context 修复：已通过
 
 `78f8385` 将新 Odoo company 加入 service user 的步骤移到所有 company-scoped setup RPC 之前。新租户 `cprv-20261017110927` 首次 binding 轮询即返回 `ready`，无 provision error，Odoo session 返回 200，14 个 DEMO 商品可读；删除租户后认证返回 402。
