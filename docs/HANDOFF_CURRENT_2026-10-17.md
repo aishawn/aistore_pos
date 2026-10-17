@@ -47,7 +47,7 @@
 - 这证明当前匿名请求路径没有旧静态缓存特征；仍需认证浏览器和 Dokploy 运行 SHA 证据确认页面代码批次。
 - 推送 `5ca76d1` 后约 30 秒再次检查 `/reports/closures/1` 和 `/reports/daily-sales`：两者均返回 `Cache-Control: no-store, max-age=0`、`cdn-cache-control: no-store`、`cf-cache-status: DYNAMIC`，且无 `x-nextjs-prerender`；这是匿名重定向层证据，尚不能替代认证页面回归或 Dokploy SHA。
 - 认证只读页面矩阵已在公网运行环境完成：`docs/UAT_ALL_STATIC_PAGES_2026-10-17_REPORT_BATCH.json`，131 路由 × 390/1440 共 `262/262 PASS`，无横向溢出和页面错误；脚本源提交记录为 `cabdbf4`，Dokploy 控制台运行 SHA 仍待补记。
-- 重点页面截图已保存于 `docs/screenshots/2026-10-17-report-batch/`，覆盖 `/reports/closures`、`/platform/stores`、`/utilities/future-costs`、`/utilities/future-prices` 的 390px/1440px 视口；索引见 `docs/UAT_FOCUS_SCREENSHOTS_2026-10-17.json`。平台截图使用 `app.orithos.com.au`，租户页面使用 `demo.orithos.com.au`，均为认证只读访问。
+- 重点页面截图已在本批次重新采集并保存于 `docs/screenshots/2026-10-17-report-batch/`，覆盖 `/reports/closures`、`/platform/stores`、`/utilities/future-costs`、`/utilities/future-prices` 的 390px/1440px 视口；索引见 `docs/UAT_FOCUS_SCREENSHOTS_2026-10-17.json`，其中 `sourceCommit=9224563`、`deployment=null`。平台截图使用 `app.orithos.com.au`，租户页面使用 `demo.orithos.com.au`，均为认证只读访问。
 - `83413b1` 后的平台门店截图在 390px/1440px 均返回 HTTP 200；列表状态徽章和分页正常，新增 Deleted 状态筛选已随页面部署回归。
 - 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
 - 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
