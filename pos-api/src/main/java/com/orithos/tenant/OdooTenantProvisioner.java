@@ -289,6 +289,7 @@ public class OdooTenantProvisioner {
         Long companyId = vendor.getOdooCompanyId();
         boolean odooReady = "ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())
                 && companyId != null && companyId > 0;
+        boolean odooProbeSucceeded = false;
         if (isConfigured() && companyId != null && companyId > 0) {
             try {
                 String sessionId = authenticate();
@@ -297,13 +298,15 @@ public class OdooTenantProvisioner {
                 demoCustomers = countDemoCustomers(sessionId, company);
                 demoOrders = countExistingDemoOrders(sessionId, company);
                 nonDemoPaid = countNonDemoPaidOrders(sessionId, company);
+                odooProbeSucceeded = true;
             } catch (Exception e) {
                 log.warn("Sample data status probe failed for vendor {}: {}", vendorId, e.getMessage());
             }
         }
         // Do not present a purge action while provisioning is pending or failed.
         // There is no safely addressable Odoo company in that state.
-        String state = sampleDataState(requested, clearedAt != null, odooReady, demoProducts, demoOrders);
+        String state = sampleDataState(requested, clearedAt != null,
+                odooReady && odooProbeSucceeded, demoProducts, demoOrders);
         boolean canPurge = "active".equals(state) && (demoProducts > 0 || demoCustomers > 0 || demoOrders > 0 || requested);
         boolean archiveOnly = nonDemoPaid > 0;
         return new SampleDataStatus(
@@ -1001,7 +1004,11 @@ public class OdooTenantProvisioner {
             throw new IllegalStateException("No internal stock location is available for demo inventory.");
         }
         long taxId = ensureSaleGstTax(sessionId, companyId);
-        Map<String, long[]> categories = ensureDummyCategories(sessionId, companyId);
+        long incomeAccountId = findIncomeAccount(sessionId, companyId);
+        if (incomeAccountId <= 0) {
+            throw new IllegalStateException("No income account is available for dummy POS catalog in company " + companyId);
+        }
+        Map<String, long[]> categories = ensureDummyCategories(sessionId, companyId, incomeAccountId);
         List<DummyProduct> seeded = new ArrayList<>(DUMMY_PRODUCTS.length);
         for (String[] sample : DUMMY_PRODUCTS) {
             String name = sample[0];
@@ -1063,31 +1070,58 @@ public class OdooTenantProvisioner {
     /**
      * @return map of category key → [product.category id, pos.category id]
      */
-    private Map<String, long[]> ensureDummyCategories(String sessionId, long companyId) throws Exception {
+    private long findIncomeAccount(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_ids").add("in").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("account_type").add("=").add("income"));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("account_type"));
+        kwargs.put("limit", 1);
+        JsonNode accounts = callKwNode(sessionId, "account.account", "search_read", List.of(domain), kwargs);
+        if (accounts != null && accounts.isArray() && !accounts.isEmpty()) {
+            long id = accounts.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
+        return 0;
+    }
+
+    private Map<String, long[]> ensureDummyCategories(String sessionId, long companyId, long incomeAccountId) throws Exception {
         Map<String, long[]> byKey = new LinkedHashMap<>();
         for (int i = 0; i < CATEGORY_KEYS.length; i++) {
             String key = CATEGORY_KEYS[i];
             String label = CATEGORY_LABELS[i];
-            long productCategId = ensureProductCategory(sessionId, companyId, label);
+            long productCategId = ensureProductCategory(sessionId, companyId, label, incomeAccountId);
             long posCategId = ensurePosCategory(sessionId, companyId, label);
             byKey.put(key, new long[]{productCategId, posCategId});
         }
         return byKey;
     }
 
-    private long ensureProductCategory(String sessionId, long companyId, String name) throws Exception {
+    private long ensureProductCategory(String sessionId, long companyId, String name, long incomeAccountId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
         domain.add(objectMapper.createArrayNode().add("name").add("=").add(name));
         ObjectNode kwargs = kwargsWithCompany(companyId);
-        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("property_account_income_categ_id"));
         kwargs.put("limit", 1);
         JsonNode existing = callKwNode(sessionId, "product.category", "search_read", List.of(domain), kwargs);
         if (existing != null && existing.isArray() && !existing.isEmpty()) {
             long id = existing.get(0).path("id").asLong(0);
-            if (id > 0) return id;
+            if (id > 0) {
+                JsonNode incomeAccount = existing.get(0).get("property_account_income_categ_id");
+                boolean hasIncomeAccount = incomeAccount != null && incomeAccount.isArray()
+                        && incomeAccount.size() > 0 && incomeAccount.get(0).asLong(0) > 0;
+                if (!hasIncomeAccount && incomeAccountId > 0) {
+                    ObjectNode values = objectMapper.createObjectNode();
+                    values.put("property_account_income_categ_id", incomeAccountId);
+                    callKw(sessionId, "product.category", "write",
+                            List.of(List.of(id), values), kwargsWithCompany(companyId));
+                }
+                return id;
+            }
         }
         ObjectNode values = objectMapper.createObjectNode();
         values.put("name", name);
+        if (incomeAccountId > 0) values.put("property_account_income_categ_id", incomeAccountId);
         Number id = callKw(sessionId, "product.category", "create", List.of(values), kwargsWithCompany(companyId));
         return id == null ? 0 : id.longValue();
     }
