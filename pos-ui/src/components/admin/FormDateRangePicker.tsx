@@ -87,11 +87,13 @@ function normalizeRange(startIso: string, endIso: string): { start: string; end:
 }
 
 function DateSegmentInput({
+  part,
   value,
   onChange,
   active,
   onFocus,
 }: {
+  part: "start" | "end";
   value: string;
   onChange: (value: string) => void;
   active: boolean;
@@ -126,6 +128,7 @@ function DateSegmentInput({
       <input
         type="text"
         inputMode="numeric"
+        aria-label={`${part === "start" ? "Start" : "End"} year`}
         maxLength={4}
         value={segments.year}
         placeholder="YYYY"
@@ -140,6 +143,7 @@ function DateSegmentInput({
       <input
         type="text"
         inputMode="numeric"
+        aria-label={`${part === "start" ? "Start" : "End"} month`}
         maxLength={2}
         value={segments.month}
         placeholder="MM"
@@ -154,6 +158,7 @@ function DateSegmentInput({
       <input
         type="text"
         inputMode="numeric"
+        aria-label={`${part === "start" ? "Start" : "End"} day`}
         maxLength={2}
         value={segments.day}
         placeholder="DD"
@@ -226,11 +231,13 @@ function RangeMonthPanel({
             <button
               key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
               type="button"
+              aria-label={`${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`}
+              aria-pressed={Boolean(isSelected)}
               onClick={() => onSelect(date)}
               onMouseEnter={() => onHover(date)}
               onMouseLeave={() => onHover(null)}
               className={cn(
-                "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
                 inMonth ? "text-[var(--oh-info)] hover:bg-[#e8f2fb]" : "text-[var(--oh-placeholder)]",
                 inRange && inMonth && "bg-[#e8f2fb]",
                 isSelected && "ring-2 ring-[var(--oh-info)] ring-offset-1",
@@ -365,6 +372,7 @@ export function FormDateRangePicker({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <DateSegmentInput
+                  part="start"
                   value={start}
                   active={activeInput === "start"}
                   onFocus={() => setActiveInput("start")}
@@ -372,6 +380,7 @@ export function FormDateRangePicker({
                 />
                 <span className="shrink-0 text-[var(--oh-muted)]">—</span>
                 <DateSegmentInput
+                  part="end"
                   value={end}
                   active={activeInput === "end"}
                   onFocus={() => setActiveInput("end")}

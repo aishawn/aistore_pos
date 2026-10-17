@@ -50,7 +50,10 @@ export function FilterMultiSelect({
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeMenu();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu();
+      }
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKeyDown);
@@ -119,7 +122,12 @@ export function FilterMultiSelect({
                 onChange={() => toggle(o.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Tab") {
-                    setOpen(false);
+                    closeMenu();
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    closeMenu();
                     return;
                   }
                   if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {

@@ -117,9 +117,11 @@ function MonthPanel({
               <button
                 key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
                 type="button"
+                aria-label={`${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`}
+                aria-pressed={isSelected}
                 onClick={() => onSelect(date)}
                 className={cn(
-                  "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                  "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
                   "text-[var(--oh-info)] hover:bg-[#e8f2fb]",
                   isSelected && "ring-2 ring-[var(--oh-info)] ring-offset-1",
                   !isSelected && isToday && "bg-[#e8f2fb]",
@@ -152,9 +154,11 @@ function MonthPanel({
             <button
               key={`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`}
               type="button"
+              aria-label={`${MONTH_NAMES[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`}
+              aria-pressed={isSelected}
               onClick={() => onSelect(date)}
               className={cn(
-                "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
                 inMonth ? "text-[var(--oh-info)] hover:bg-[#e8f2fb]" : "text-[var(--oh-placeholder)]",
                 isSelected && "ring-2 ring-[var(--oh-info)] ring-offset-1",
                 !isSelected && isToday && inMonth && "bg-[#e8f2fb]",
@@ -294,6 +298,7 @@ export function FormDatePicker({
                 <input
                   type="text"
                   inputMode="numeric"
+                  aria-label="Year"
                   maxLength={4}
                   value={segments.year}
                   placeholder="YYYY"
@@ -311,6 +316,7 @@ export function FormDatePicker({
                 <input
                   type="text"
                   inputMode="numeric"
+                  aria-label="Month"
                   maxLength={2}
                   value={segments.month}
                   placeholder="MM"
@@ -328,6 +334,7 @@ export function FormDatePicker({
                 <input
                   type="text"
                   inputMode="numeric"
+                  aria-label="Day"
                   maxLength={2}
                   value={segments.day}
                   placeholder="DD"

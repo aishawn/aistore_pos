@@ -44,7 +44,10 @@ export function FilterDropdownSelect({
       }
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeMenu();
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu();
+      }
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKeyDown);
@@ -103,6 +106,11 @@ export function FilterDropdownSelect({
               role="option"
               aria-selected={value === o.value}
               onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  closeMenu();
+                  return;
+                }
                 if (event.key === "Tab") {
                   closeMenu();
                   return;
