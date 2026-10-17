@@ -14,7 +14,7 @@
 - 分支：`main`
 - 最新提交：以 `git log -1 --oneline` 为准；本次文档更新前为 `55a9639`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
+- 工作区保留用户未提交的 `pos-ui/tsconfig.json`，以及 `pos-ui/app/utilities/future-costs/page.tsx`、`pos-ui/app/utilities/future-prices/page.tsx` 的并行修改，不得覆盖、回滚或混入业务提交
 
 ### 本轮已完成
 
@@ -50,7 +50,7 @@
 1. **部署链路阻塞**：当前环境没有 Dokploy 控制台、部署 API 或 webhook token，无法从仓库侧触发普通 Deploy；重复检查仍观察到旧缓存头。
 2. **证据与线上版本脱节**：页面返回 200 或 GitHub push 不能证明 Dokploy 已消费该提交，必须记录 Dokploy 前后端容器 SHA。
 3. **历史文档存在时间差**：下方历史章节记录多个已通过批次，阅读时以本节和对应 JSON 的 `generatedAt`、`sourceCommit`、`deployment` 为准。
-4. **工作区并行修改**：`pos-ui/tsconfig.json` 为用户已有未提交修改；任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
+4. **工作区并行修改**：`pos-ui/tsconfig.json` 和两个 Future Costs/Prices 页面为用户已有未提交修改；其中两个页面移除了页面级 `dynamic`/`fetchCache` 声明，部署前必须确认是否由上级 layout 或 `next.config.ts` 完整覆盖。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
 
 ### 接手后的最短执行路径
 
