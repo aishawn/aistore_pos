@@ -6,7 +6,7 @@ import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, 
 import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 import { getOdooPosBootstrap } from "@/lib/odoo-api";
-import { formatOdooDateTime } from "@/lib/odoo-date";
+import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 
 type ReplenishmentProduct = {
   id: number;
@@ -212,7 +212,7 @@ export function OdooReplenishmentPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment plan</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock. Draft RFQs require human approval — nothing auto-orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock. Draft RFQs require human approval — nothing auto-orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white pl-3 pr-2 text-sm font-medium text-[var(--oh-muted)]">

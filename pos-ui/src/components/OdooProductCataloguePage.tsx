@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import {
   createOdooProduct,
+  getOdooPosBootstrap,
   getOdooSession,
   importOdooProducts,
   searchOdooRecords,
@@ -13,6 +14,7 @@ import {
   type OdooPosCategoryRecord,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
+import { formatStoreEpoch } from "@/lib/odoo-date";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 
 const PAGE_SIZE = 40;
@@ -32,6 +34,7 @@ export function OdooProductCataloguePage() {
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -82,6 +85,19 @@ export function OdooProductCataloguePage() {
       setImportOpen(true);
     }
   }, [searchParams, connected]);
+
+  useEffect(() => {
+    if (connected !== true) return;
+    let cancelled = false;
+    void getOdooPosBootstrap().then((bootstrap) => {
+      if (cancelled) return;
+      const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
+      if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
+    }).catch(() => {
+      // Keep Adelaide as the display fallback when bootstrap is unavailable.
+    });
+    return () => { cancelled = true; };
+  }, [connected]);
 
   async function exportProductsCsv() {
     if (exportBusy || connected !== true) return;
@@ -304,7 +320,7 @@ export function OdooProductCataloguePage() {
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
             Stock quantities reflect the active Odoo inventory context. Use Odoo reports for location-specific counts.
-            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}
+            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
           {categoryError && <p role="status" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{categoryError}</p>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
