@@ -103,24 +103,20 @@ try {
   await check("Sidebar keeps the active settings destination reachable", async () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${base}/settings/payment`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const settingsGroup = page.locator('#main-navigation > div nav button[aria-controls^="sidebar-group-settings"]');
+    const settingsGroup = page.locator('#main-navigation > div nav button[aria-controls^="sidebar-group-setup"]');
     await settingsGroup.waitFor({ timeout: 15000 });
     if (await settingsGroup.getAttribute("aria-expanded") !== "true") {
       throw new Error("Settings group did not auto-expand for the active payment page");
     }
     const paymentLink = page.locator('#main-navigation a[href="/settings/payment"]');
     await paymentLink.waitFor({ timeout: 10000 });
-    await settingsGroup.click();
-    if (await settingsGroup.getAttribute("aria-expanded") !== "false" || await paymentLink.isVisible()) {
-      throw new Error("Active settings group could not be intentionally collapsed");
-    }
     await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.goto(`${base}/settings/payment`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForFunction(() => {
-      const group = document.querySelector('#main-navigation button[aria-controls^="sidebar-group-settings"]');
+      const group = document.querySelector('#main-navigation button[aria-controls^="sidebar-group-setup"]');
       return group?.getAttribute("aria-expanded") === "true";
     }, null, { timeout: 15000 });
-    return "The active Settings group expands on direct navigation, remains manually collapsible, and reopens when the route changes back to a settings child page.";
+    return "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page.";
   });
 
   await check("Product search filters the Odoo catalogue", async () => {

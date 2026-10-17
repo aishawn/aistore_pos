@@ -205,12 +205,11 @@ function SidebarNavGroup({
   tabIndex?: number;
 }) {
   const [expanded, setExpanded] = useState(groupActive(group, pathname));
-  const [collapsedAt, setCollapsedAt] = useState<string | null>(null);
   const Icon = ICONS[group.icon];
   const active = groupActive(group, pathname);
-  // Keep the active destination reachable after route changes, while allowing
-  // an intentional collapse on the current path.
-  const visiblyExpanded = active && collapsedAt !== pathname ? true : expanded;
+  // Keep the active destination reachable after route changes. Inactive groups
+  // remain manually collapsible to keep the navigation compact.
+  const visiblyExpanded = expanded || active;
   const submenuId = `sidebar-group-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
@@ -220,15 +219,7 @@ function SidebarNavGroup({
         tabIndex={tabIndex}
         aria-expanded={visiblyExpanded}
         aria-controls={submenuId}
-        onClick={() => {
-          if (visiblyExpanded) {
-            setExpanded(false);
-            setCollapsedAt(pathname);
-          } else {
-            setExpanded(true);
-            setCollapsedAt(null);
-          }
-        }}
+        onClick={() => setExpanded((value) => !value)}
         className={cn(
           "oh-type-label flex w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-[var(--oh-radius)] px-3 py-2.5 font-medium transition-colors",
           active
