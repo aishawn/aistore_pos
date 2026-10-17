@@ -7,14 +7,14 @@
 
 ### 当前结论
 
-项目代码和只读线上回归仍在持续推进，但整体状态保持 **NO-GO / 未完成**。主要原因是 Dokploy 尚未确认已部署当前 `main`，线上仍返回旧 Next.js 静态缓存响应头；因此不能把 GitHub 已推送等同于线上已生效。
+项目代码和只读线上回归仍在持续推进，但整体状态保持 **NO-GO / 未完成**。当前公网匿名 HEAD 检查已经返回动态 `no-store` 响应头，但 Dokploy 控制台仍未提供实际运行 SHA；因此不能仅凭 GitHub 已推送确认全部认证页面和业务代码已上线。
 
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：以 `git log -1 --oneline` 为准；本次文档更新前为 `55a9639`
+- 最新提交：`0b98984 fix: improve admin touch target sizing`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 工作区保留用户未提交的 `pos-ui/tsconfig.json`，以及 `pos-ui/app/utilities/future-costs/page.tsx`、`pos-ui/app/utilities/future-prices/page.tsx` 的并行修改，不得覆盖、回滚或混入业务提交
+- 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
 
 ### 本轮已完成
 
@@ -25,23 +25,25 @@
 - richer dummy data、sample data 清理、产品 CSV 导出和删除租户后的认证拒绝已有 JSON 证据。
 - 131 个认证页面在 390px 与 1440px 的矩阵曾达到 `262/262 PASS`；关键功能页面、角色 CRUD、移动端布局和无横向溢出已有回归记录。
 - 最近的只读体验修复已提交到 GitHub：销售报表移动端摘要、分页越界恢复、不可用行操作隐藏、列表语义可访问性、未来价格移动端布局、回收项搜索、Mail Log 部分匹配、列表页 server layout 缓存隔离。
+- 最近批次 `d835857` 修复 Future Costs/Prices 的 Next route config 回归；`1679f0b` 收窄平台 owner recovery 响应，不再返回页面不使用的 bootstrap token，并为 owner link 增加真实复制按钮；`0b98984` 将管理按钮和确认弹窗统一到至少 44px 触控高度。
 - 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
 
 ### 当前未完成
 
-- Dokploy 实际运行 SHA 未取得确认，当前 `main` 的最新代码不能视为线上生效。
-- 线上 `/security`、`/reports/dashboard`、`/utilities/future-prices` 等页面仍返回：
+- Dokploy 实际运行 SHA 未取得确认，当前 `main` 的最新代码不能视为线上完整生效。
+- 2026-10-17 19:38（Asia/Shanghai）匿名 HEAD 检查 `/utilities/future-costs` 与 `/platform/stores` 均返回：
 
   ```text
-  Cache-Control: s-maxage=31536000
-  x-nextjs-cache: HIT
-  x-nextjs-prerender: 1
+  Cache-Control: no-store, max-age=0
+  cdn-cache-control: no-store
+  cf-cache-status: DYNAMIC
+  location: /login?next=...
   ```
 
-  目标应为 `Cache-Control: no-store, max-age=0` 和 `CDN-Cache-Control: no-store`，且不应有 `x-nextjs-prerender`。
+- 这证明当前匿名请求路径没有旧静态缓存特征；仍需认证浏览器和 Dokploy 运行 SHA 证据确认页面代码批次。
 - 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
 - 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
-- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页只读改动尚未用实际运行 SHA 做线上验收。
+- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页只读改动尚未用实际运行 SHA 做线上验收；本轮平台 owner link 与触控尺寸也待认证浏览器验证。
 - 收银小票时区、采购/补货显示时区虽有页面回归，仍需在获准的 disposable tenant 业务链路中做一次真实小票/订单回读确认。
 - 实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理仍未覆盖或未实现。
 
