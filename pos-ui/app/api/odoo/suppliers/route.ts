@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
+import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
+
+type RpcEnvelope<T> = { result?: T; error?: { message?: string; data?: { message?: string; name?: string } } };
+
+class SupplierRequestError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); }
+}
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
@@ -40,10 +48,28 @@ export async function POST(request: NextRequest) {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ message: "Enter a valid email address" }, { status: 400 });
 
   try {
+    const sessionInfoResponse = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!sessionInfoResponse.ok) throw new SupplierRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+    const sessionInfo = await sessionInfoResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
+    if (sessionInfo.error || !sessionInfo.result?.uid) throw new SupplierRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result);
+    const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
+    if (forced.error) throw new SupplierRequestError(forced.error, forced.status);
+    if (!forced.companyIds.length) throw new SupplierRequestError("No Odoo companies are available to this user.", 403);
+    const companyIds = forced.companyIds;
+    const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
     const headers = { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` };
     const duplicateCheck = vat ? await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
       method: "POST", headers,
-      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model: "res.partner", method: "search_read", args: [[ ["vat", "=", vat] ]], kwargs: { fields: ["id", "name", "supplier_rank"], limit: 1 } }, id: Date.now() }),
+      body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model: "res.partner", method: "search_read", args: [[
+        ["vat", "=", vat], ["company_id", "in", companyIds],
+      ]], kwargs: { fields: ["id", "name", "supplier_rank", "company_id"], limit: 1, context: companyContext } }, id: Date.now() }),
       cache: "no-store", signal: AbortSignal.timeout(12_000),
     }) : null;
     if (duplicateCheck) {
@@ -63,7 +89,7 @@ export async function POST(request: NextRequest) {
       method: "POST", headers,
       body: JSON.stringify({
         jsonrpc: "2.0", method: "call",
-        params: { model: "res.partner", method: "create", args: [{ name, type: "contact", company_type: "company", is_company: true, supplier_rank: 1, phone: phone || false, email: email || false, vat: vat || false, ref: ref || false }], kwargs: {} },
+        params: { model: "res.partner", method: "create", args: [{ name, type: "contact", company_type: "company", is_company: true, supplier_rank: 1, company_id: companyIds[0], phone: phone || false, email: email || false, vat: vat || false, ref: ref || false }], kwargs: { context: companyContext } },
         id: Date.now(),
       }),
       cache: "no-store", signal: AbortSignal.timeout(12_000),
@@ -80,7 +106,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: payload.result, name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
-    const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    const status = error instanceof SupplierRequestError
+      ? error.status
+      : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }
 }
