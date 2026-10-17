@@ -33,6 +33,7 @@ function statusTone(status: string | null | undefined): string {
   if (value === "active") return "bg-emerald-50 text-emerald-800 border-emerald-200";
   if (value === "trial") return "bg-sky-50 text-sky-800 border-sky-200";
   if (value === "suspended" || value === "expired") return "bg-red-50 text-red-800 border-red-200";
+  if (value === "deleted") return "bg-slate-100 text-slate-600 border-slate-300";
   return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
@@ -85,7 +86,7 @@ export default function PlatformStoresPage() {
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
-          className="h-10 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
+          className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
           aria-label="Filter by status"
         >
           <option value="">All statuses</option>
@@ -93,6 +94,7 @@ export default function PlatformStoresPage() {
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
           <option value="expired">Expired</option>
+          <option value="deleted">Deleted</option>
         </select>
       }
       actions={
