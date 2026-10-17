@@ -12,11 +12,11 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`a2d0ada test: refresh POS dialog evidence`（`origin/main` 同步）
-- 最近功能代码：`a0fcba5`，POS 弹窗只读回归脚本和最新证据为 `a2d0ada`，前一批通用弹窗焦点修复为 `3bc4aa6`
+- 当前 HEAD：`a4c75cd test: stabilize authenticated UI regression evidence`（`origin/main` 同步）
+- 最近功能代码：`a0fcba5`，认证回归等待和最新 POS/管理列表证据为 `a4c75cd`，前一批通用弹窗焦点修复为 `3bc4aa6`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 当前未提交文件包括并行生成的管理列表证据和用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
+- 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
 ### 已完成并有证据
@@ -31,7 +31,7 @@
 - 本地检查已有 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；本机按既定约束未运行 `npm run build`。
 - 本批次新增通用可访问性与键盘交互优化：`Pagination` 标注当前页并为 Prev/Next 提供明确的 ARIA 名称；`AsyncState` 的加载、错误、空态增加 live-region 语义，Retry 按钮统一达到 44px 触控高度并保留焦点环；`Modal`、`ConfirmDialog`、`AlertDialog` 打开时把焦点放到可用关闭/确认控件，关闭后恢复到触发控件。该批次只涉及前端交互和语义，不调用业务写入 API。
 - 最新认证只读管理列表回归为 `8/8 PASS`，覆盖 `/purchases/odoo`、`/utilities/mail-log`、`/utilities/trashed-items`、`/platform/stores` 在 390px/1440px；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和对应截图目录，`sourceCommit=2bdeb80`、`deployment` 为空。
-- 新增 POS 弹窗只读回归脚本 `scripts/pilot-pos-dialog-uat.mjs`：认证浏览器在 `/` 点击 `POS help and recovery`，390px/1440px 均确认 dialog 打开后按 Escape 消失，结果 `2/2 PASS`；证据见 `docs/UAT_POS_DIALOG_2026-10-17.json` 和截图目录，`sourceCommit=ae3373f`、`deployment=null`，所以仍不能证明 Dokploy 已运行当前代码。脚本在首次冷加载遇到一次按钮未出现后重试通过，并保留了无敏感页面诊断输出。
+- 新增 POS 弹窗只读回归脚本 `scripts/pilot-pos-dialog-uat.mjs`：认证浏览器在 `/` 点击 `POS help and recovery`，390px/1440px 均确认 dialog 打开后按 Escape 消失，结果 `2/2 PASS`；证据见 `docs/UAT_POS_DIALOG_2026-10-17.json` 和截图目录，`sourceCommit=a2d0ada`、`deployment=dokploy-sha-unverified`，所以仍不能证明 Dokploy 已运行当前代码。脚本增加冷加载等待和无敏感页面诊断输出。
 - POS Register 本批进一步修正小票关闭按钮和暂存/切换确认按钮的触控高度，帮助/小票弹窗打开时聚焦关闭按钮并在关闭后恢复原焦点；只改前端交互，不提交销售或其他 Odoo 写入。typecheck、目标 ESLint、`git diff --check` 已通过。
 - 最新待部署批次的共用组件优化已提交：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。提交为 `01d8759`，本地 typecheck、目标 ESLint 和 `git diff --check` 已通过。POS 弹窗回归脚本和证据已随 `3f7f8b6` 推送。
 
@@ -62,7 +62,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `a0fcba5`，仓库当前 HEAD 为 `a2d0ada`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `a0fcba5`，仓库当前 HEAD 为 `a4c75cd`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
