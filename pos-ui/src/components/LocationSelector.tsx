@@ -39,7 +39,7 @@ export function LocationSelector({
             <button
               type="button"
               onClick={() => setStep("outlet")}
-              className="absolute left-8 top-4 flex cursor-pointer items-center gap-2 text-gray-500 transition-colors hover:text-gray-400"
+              className="absolute left-4 top-3 flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:left-6 sm:top-4"
             >
               <ArrowLeftIcon size={18} strokeWidth={1.5} />
               Back to outlet select
@@ -117,7 +117,7 @@ function OptionCard({
     <button
       type="button"
       onClick={onClick}
-      className="mb-4 flex w-full min-w-0 cursor-pointer items-center rounded-lg border-2 border-gray-200 p-4 text-left shadow transition-all hover:border-gray-300 hover:shadow-md"
+      className="mb-4 flex min-h-16 w-full min-w-0 cursor-pointer items-center rounded-lg border-2 border-gray-200 p-4 text-left shadow transition-all hover:border-gray-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
     >
       <span className="mr-2 text-xl text-neutral-700">{icon}</span>
       <span className="text-neutral-900">

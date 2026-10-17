@@ -40,6 +40,7 @@ export function NotificationsPanel({
   onClose: () => void;
 }) {
   const [items, setItems] = useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
+  const [status, setStatus] = useState("");
   useDialogFocus(open, onClose);
 
   if (!open) return null;
@@ -76,6 +77,10 @@ export function NotificationsPanel({
             <button
               type="button"
               aria-label="Refresh notifications"
+              onClick={() => {
+                setItems(DEFAULT_NOTIFICATIONS);
+                setStatus("Notifications refreshed.");
+              }}
               className="grid h-11 w-11 cursor-pointer place-items-center rounded-md text-neutral-500 outline-none transition-colors hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"
             >
               <RefreshIcon size={18} strokeWidth={1.5} />
@@ -99,6 +104,7 @@ export function NotificationsPanel({
           </button>
           </div>
         </div>
+        <p role="status" aria-live="polite" className="sr-only">{status}</p>
 
         {/* List */}
         <div className="flex-1 overflow-auto px-2 pb-4">
