@@ -18,6 +18,7 @@ import {
 import { PlusIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { splitMoney } from "@/lib/sell-screen";
+import { formatOdooDateTime } from "@/lib/odoo-date";
 
 type CartLine = { product: OdooProductRecord; quantity: number; /** Units per pack (1 = bottle/each, 12 = case). */ packFactor: number };
 const CASE_PACK_OPTIONS = [1, 6, 12, 24] as const;
@@ -419,11 +420,7 @@ export function OdooRegisterPage() {
   }, [connected, currentQuoteFingerprint, customer, isOnline, lines, paymentMethodId, quoteRetryKey, selectedConfig]);
 
   function formatStoreDate(value: string, timezone: string) {
-    const normalized = value.includes("T") ? value : value.replace(" ", "T");
-    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/u.test(normalized);
-    const date = new Date(hasTimezone ? normalized : `${normalized}Z`);
-    if (Number.isNaN(date.getTime())) return value;
-    return new Intl.DateTimeFormat("en-AU", { timeZone: timezone || "Australia/Adelaide", dateStyle: "medium", timeStyle: "short" }).format(date);
+    return formatOdooDateTime(value, timezone);
   }
 
   function addProduct(product: OdooProductRecord, packFactor = 1) {

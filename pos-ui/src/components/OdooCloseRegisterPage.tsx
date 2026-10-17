@@ -9,6 +9,7 @@ import {
   getOdooSession,
   type OdooPosBootstrap,
 } from "@/lib/odoo-api";
+import { formatOdooDateTime } from "@/lib/odoo-date";
 
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 const CASH_DENOMINATIONS = [
@@ -238,7 +239,7 @@ export function OdooCloseRegisterPage() {
             <dt className="text-[var(--oh-muted)]">Started</dt>
             <dd className="min-w-0 text-[var(--oh-text-secondary)] sm:text-right">
               {selected.session.start_at
-                ? new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(`${String(selected.session.start_at).replace(" ", "T")}Z`))
+                ? formatOdooDateTime(String(selected.session.start_at), selected.timezone)
                 : "—"}
             </dd>
           </dl>
