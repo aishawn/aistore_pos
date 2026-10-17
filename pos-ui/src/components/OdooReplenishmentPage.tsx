@@ -5,6 +5,8 @@ import Link from "next/link";
 import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, RefreshCw, ShoppingCart, Store, X } from "lucide-react";
 import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
+import { getOdooPosBootstrap } from "@/lib/odoo-api";
+import { formatOdooDateTime } from "@/lib/odoo-date";
 
 type ReplenishmentProduct = {
   id: number;
@@ -61,6 +63,7 @@ export function OdooReplenishmentPage() {
   const [createdRfq, setCreatedRfq] = useState<OdooDraftRfq | null>(null);
   const [auditEntries, setAuditEntries] = useState<ReplenishmentAuditEntry[]>([]);
   const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
+  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
 
   useEffect(() => {
     setAuditEntries(readReplenishmentAudit());
@@ -81,6 +84,13 @@ export function OdooReplenishmentPage() {
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Odoo returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
+      try {
+        const bootstrap = await getOdooPosBootstrap();
+        const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
+        if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
+      } catch {
+        // The replenishment response remains useful when register metadata is unavailable.
+      }
       setLastLoadedAt(Date.now());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load the replenishment plan.");
@@ -303,7 +313,7 @@ export function OdooReplenishmentPage() {
                   <div>
                     <p className="font-medium text-[var(--oh-text)]">{entry.rfqName} · {entry.supplierName}</p>
                     <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
-                      {new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.createdAt))}
+                      {formatOdooDateTime(entry.createdAt, storeTimezone)}
                       {" · "}{entry.lines.length} lines · {adopted} kept as suggested · {edited} edited · cover {entry.coverageDays}d
                     </p>
                   </div>
@@ -320,7 +330,7 @@ export function OdooReplenishmentPage() {
         <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {coverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.</p>
       </section>
 
-      <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? new Intl.DateTimeFormat("en-AU", { timeZone: "Australia/Sydney", dateStyle: "medium", timeStyle: "short" }).format(new Date(data.generatedAt)) : "—"}.</p>
+      <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? formatOdooDateTime(data.generatedAt, storeTimezone) : "—"}.</p>
 
       {rfqOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !rfqSubmitting) setRfqOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="rfq-title" className="my-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
