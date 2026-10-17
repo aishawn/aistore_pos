@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import Link from "next/link";
 import { ArrowRight, Clock3, KeyRound, ShieldAlert, UserRound } from "lucide-react";
 import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaffold";

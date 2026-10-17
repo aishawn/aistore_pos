@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { Bell, CalendarDays, Mail, Package, RotateCcw, TriangleAlert, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 

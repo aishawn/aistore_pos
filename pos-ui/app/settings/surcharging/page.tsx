@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { AlertTriangle, CalendarDays, CreditCard, Percent, ReceiptText, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 

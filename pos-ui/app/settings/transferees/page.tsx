@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import Link from "next/link";
 import { AlertCircle, ArrowUpRight, MapPin } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";

@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 import { PackageSearch, Printer, Ruler, ScanLine, TriangleAlert, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
