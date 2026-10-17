@@ -36,6 +36,7 @@ for (const viewport of viewports) {
     const interactiveChecks = [];
     if (["/platform/stores", "/utilities/mail-log", "/utilities/trashed-items"].includes(route.path)) {
       const input = page.getByRole("textbox").first();
+      await input.waitFor({ state: "visible", timeout: 30000 });
       await input.fill("__codex_no_match__");
       await page.waitForTimeout(300);
       const emptyCopy = route.path === "/platform/stores"
