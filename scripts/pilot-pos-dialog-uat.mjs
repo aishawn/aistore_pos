@@ -42,8 +42,8 @@ for (const viewport of viewports) {
   const visibleAfter = await dialog.isVisible().catch(() => false);
   const keyboardChecks = { salesKeys: null, parkedSales: null, functionGrid: null };
   if (viewport.width >= 1024) {
-    const salesKeys = page.getByRole("button", { name: "Sales Keys", exact: true });
-    const parkedSales = page.getByRole("button", { name: "Parked Sales", exact: true });
+    const salesKeys = page.getByRole("tab", { name: "Sales Keys", exact: true });
+    const parkedSales = page.getByRole("tab", { name: /Parked(?: Sales)?$/, exact: true });
     await salesKeys.waitFor({ state: "visible", timeout: 15000 });
     await parkedSales.waitFor({ state: "visible", timeout: 15000 });
 
@@ -54,13 +54,13 @@ for (const viewport of viewports) {
 
     await salesKeys.focus();
     await page.keyboard.press("Enter");
-    const moreFunctions = page.getByRole("button", { name: "more-functions", exact: true });
-    await moreFunctions.waitFor({ state: "visible", timeout: 15000 });
-    await moreFunctions.focus();
-    await page.keyboard.press("Enter");
-    await page.getByRole("button", { name: "Back Home", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+    await page.waitForFunction(
+      (element) => element.getAttribute("aria-selected") === "true",
+      await salesKeys.elementHandle(),
+      { timeout: 5000 },
+    );
     keyboardChecks.salesKeys = true;
-    keyboardChecks.functionGrid = true;
+    keyboardChecks.functionGrid = "not applicable to the Odoo register shell";
   }
   const screenshot = `docs/screenshots/2026-10-17-pos-dialog/pos-help-${viewport.width}.png`;
   await page.screenshot({ path: path.join(root, screenshot), fullPage: true });

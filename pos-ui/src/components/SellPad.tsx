@@ -70,12 +70,14 @@ export function SellPad() {
             style={{ width: sell.view === "parked" ? "100%" : sell.keypadPage === 1 ? "80%" : "40%" }}
           />
         </div>
-        <ul className="flex h-[50px] items-center justify-between bg-white">
+        <ul role="tablist" aria-label="Sell views" className="flex h-[50px] items-center justify-between bg-white">
           <li className="flex flex-1">
             <button
               type="button"
+              role="tab"
               onClick={() => sell.setView("keys")}
-              aria-current={sell.view === "keys" ? "page" : undefined}
+              aria-selected={sell.view === "keys"}
+              aria-controls="sell-keys-panel"
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-center text-[19.2px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
               sell.view === "keys" ? "text-[var(--sf-tab-blue)]" : "text-black",
@@ -88,8 +90,10 @@ export function SellPad() {
           <li className="flex flex-1">
             <button
               type="button"
+              role="tab"
               onClick={() => sell.setView("parked")}
-              aria-current={sell.view === "parked" ? "page" : undefined}
+              aria-selected={sell.view === "parked"}
+              aria-controls="parked-sales-panel"
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-center text-[19.2px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
               sell.view === "parked" ? "text-[var(--sf-tab-blue)]" : "text-black",
@@ -193,7 +197,7 @@ function ParkedSalesPanel() {
   const sell = useSellScreen();
 
   return (
-    <div className="absolute inset-0 flex flex-col overflow-hidden">
+    <div id="parked-sales-panel" className="absolute inset-0 flex flex-col overflow-hidden">
       {sell.lines.length > 0 && (
         <div className="flex shrink-0 items-center justify-between border-b border-[#eee] bg-[rgb(206,229,252)] px-4 py-3">
           <span className="text-[15px] text-black">
@@ -293,7 +297,7 @@ function MainGrid() {
   }
 
   return (
-    <div className="absolute inset-0 hidden grid-cols-10 grid-rows-10 lg:grid">
+    <div id="sell-keys-panel" className="absolute inset-0 hidden grid-cols-10 grid-rows-10 lg:grid">
       {MAIN_KEYS.map((key) => {
         const disabled = isDisabled(key.id);
         return (
@@ -363,7 +367,7 @@ function FunctionGrid() {
   }
 
   return (
-    <div className="absolute inset-0 hidden grid-cols-5 grid-rows-3 lg:grid">
+    <div id="sell-keys-panel" className="absolute inset-0 hidden grid-cols-5 grid-rows-3 lg:grid">
       {FUNCTION_KEYS.map((key) => (
         <button
           key={key.id}
