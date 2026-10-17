@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /** Compact account popover anchored to the application header. */
 export function UserMenu({
@@ -16,6 +17,7 @@ export function UserMenu({
   onLogout?: () => void;
 }) {
   const menuRef = useRef<HTMLElement>(null);
+  useDialogFocus(open, onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -26,23 +28,20 @@ export function UserMenu({
       if (event.target instanceof Element && event.target.closest("[data-user-menu-trigger]")) return;
       onClose();
     };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-
     document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);
+
+  if (!open) return null;
 
   return (
     <aside
       ref={menuRef}
       id="user-menu"
       role="dialog"
+      aria-modal="true"
       aria-label="User menu"
       aria-hidden={!open}
       className={cn(

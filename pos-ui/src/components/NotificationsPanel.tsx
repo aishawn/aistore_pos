@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { RefreshIcon, DatabaseIcon, DeleteIcon, XIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 export interface NotificationItem {
   id: string;
@@ -39,17 +40,9 @@ export function NotificationsPanel({
   onClose: () => void;
 }) {
   const [items, setItems] = useState<NotificationItem[]>(DEFAULT_NOTIFICATIONS);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  useDialogFocus(open, onClose);
 
-  useEffect(() => {
-    if (!open) return;
-    closeButtonRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose, open]);
+  if (!open) return null;
 
   return (
     <>
@@ -91,7 +84,6 @@ export function NotificationsPanel({
           <div className="flex items-center gap-1">
           <button
             type="button"
-            ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close notifications"
             className="grid h-11 w-11 cursor-pointer place-items-center rounded-md text-neutral-500 outline-none transition-colors hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-[var(--sf-link-blue)]"

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { SelectChevronIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
 const MONTH_NAMES = [
@@ -225,6 +226,8 @@ export function FormDatePicker({
     setSegmentFocus("year");
   }
 
+  useDialogFocus(open, closePicker);
+
   function selectDate(date: Date) {
     onChange(toIsoDate(date));
     setLeftMonth(startOfMonth(date));
@@ -250,13 +253,8 @@ export function FormDatePicker({
       if (!wrapRef.current?.contains(e.target as Node)) closePicker();
     }
     document.addEventListener("mousedown", onPointerDown);
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closePicker();
-    };
-    document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
 
