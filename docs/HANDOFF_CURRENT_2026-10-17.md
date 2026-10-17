@@ -61,6 +61,7 @@
 - 直接空 POST 返回 `{"message":"Branch Not Match"}`；按 GitHub push 格式发送 `ref=refs/heads/main`、仓库 `aishawn/aistore_pos` 和提交 `d835857` 后返回 `HTTP 200 {"message":"Compose deployed successfully"}`。
 - 按用户要求等待约 7 分钟后，`/security`、`/reports/dashboard`、`/utilities/future-costs`、`/utilities/trashed-items` 仍返回 `Cache-Control: s-maxage=31536000`、`x-nextjs-cache: HIT`、`x-nextjs-prerender: 1`。
 - 该结果证明 webhook 接收了请求，但不能证明 Compose 构建成功或 frontend 已切换；需要在 Dokploy Deployments 页面查看该任务的状态、构建日志、实际 commit SHA 和服务容器状态。
+- 随后以最新提交 `94b2d4d` 发送完整 GitHub push payload，webhook 再次返回 `HTTP 200 {"message":"Compose deployed successfully"}`；等待约 5 分钟后五个关键页面仍返回相同旧缓存头。当前最需要核对的是该部署任务是否失败/取消、Compose 是否绑定了不同的分支或仓库、以及 frontend domain 是否仍指向旧服务。
 
 ### 接手后的最短执行路径
 
