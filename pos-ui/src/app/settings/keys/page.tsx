@@ -8,6 +8,7 @@ import { EntityFormModal, FormValues, FormField } from "@/components/admin/Entit
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { PlusIcon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 interface SaleKeysSet {
   id: number;
@@ -24,11 +25,19 @@ export default function SaleKeysPage() {
   const { data, loading, error, reload } = useApi<SaleKeysSet[]>(BASE);
   const sets = data ?? [];
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  async function remove(id: number) {
-    if (!window.confirm("Delete this sale keys set?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
+  async function confirmRemove() {
+    if (deletingId === null) return;
+    setDeleteBusy(true);
+    try {
+      await api.del(`${BASE}/${deletingId}`);
+      setDeletingId(null);
+      reload();
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   async function clone(id: number) {
@@ -69,7 +78,7 @@ export default function SaleKeysPage() {
                     clone
                     onEdit={() => router.push(`/settings/keys/${set.id}/edit`)}
                     onClone={() => clone(set.id)}
-                    onDelete={() => remove(set.id)}
+                    onDelete={() => setDeletingId(set.id)}
                   />
                 </div>
               </div>
@@ -92,6 +101,15 @@ export default function SaleKeysPage() {
           }}
         />
       )}
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete Sales Keys"
+        message="Are you sure you want to delete this sales keys set? This action cannot be undone."
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => { if (!deleteBusy) setDeletingId(null); }}
+      />
     </div>
   );
 }

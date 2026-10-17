@@ -8,6 +8,7 @@ import { AsyncState } from "@/components/admin/AsyncState";
 import { EntityFormModal, FormValues, FormField } from "@/components/admin/EntityFormModal";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 interface VendorConnection {
   id: string;
@@ -25,11 +26,19 @@ export default function VendorConnectionsPage() {
   const vendors = data ?? [];
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<VendorConnection | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  async function remove(id: string) {
-    if (!window.confirm("Delete this item?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
+  async function confirmRemove() {
+    if (!deletingId) return;
+    setDeleteBusy(true);
+    try {
+      await api.del(`${BASE}/${deletingId}`);
+      setDeletingId(null);
+      reload();
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   return (
@@ -43,7 +52,7 @@ export default function VendorConnectionsPage() {
         <AsyncState loading={loading} error={error} empty={vendors.length === 0}>
           <ListTable
             columns={[{ label: "Vendor" }, { label: "Status", width: "w-[200px]" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
-            rows={vendors.map((v) => [v.name ?? "", <span key="s" style={{ color: "#3cb44b" }}>Connected</span>, <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => remove(v.id)} />])}
+            rows={vendors.map((v) => [v.name ?? "", <span key="s" style={{ color: "#3cb44b" }}>Connected</span>, <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => setDeletingId(v.id)} />])}
           />
         </AsyncState>
       </div>
@@ -54,6 +63,15 @@ export default function VendorConnectionsPage() {
       {editing && (
         <EntityFormModal title="Edit Connection" fields={FIELDS} initial={editing as unknown as FormValues} onClose={() => setEditing(null)} onSubmit={async (val) => { await api.put(`${BASE}/${editing.id}`, body(val)); reload(); }} />
       )}
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete Vendor Connection"
+        message="Are you sure you want to delete this vendor connection? This action cannot be undone."
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => { if (!deleteBusy) setDeletingId(null); }}
+      />
     </div>
   );
 }

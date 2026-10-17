@@ -8,6 +8,7 @@ import { EntityFormModal, FormValues, FormField } from "@/components/admin/Entit
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { PlusIcon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 interface Role {
   id: string;
@@ -23,11 +24,19 @@ export default function RolesPage() {
   const roles = data ?? [];
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  async function remove(id: string) {
-    if (!window.confirm("Delete this item?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
+  async function confirmRemove() {
+    if (!deletingId) return;
+    setDeleteBusy(true);
+    try {
+      await api.del(`${BASE}/${deletingId}`);
+      setDeletingId(null);
+      reload();
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   return (
@@ -41,7 +50,7 @@ export default function RolesPage() {
         <AsyncState loading={loading} error={error} empty={roles.length === 0}>
           <ListTable
             columns={[{ label: "Role" }, { label: "Description" }, { label: "Users", width: "w-[120px]" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
-            rows={roles.map((r) => [r.name, <span key="d" className="text-neutral-600">—</span>, "—", <RowActions key="a" onEdit={() => setEditing(r)} onDelete={() => remove(r.id)} />])}
+            rows={roles.map((r) => [r.name, <span key="d" className="text-neutral-600">—</span>, "—", <RowActions key="a" onEdit={() => setEditing(r)} onDelete={() => setDeletingId(r.id)} />])}
           />
         </AsyncState>
       </div>
@@ -52,6 +61,15 @@ export default function RolesPage() {
       {editing && (
         <EntityFormModal title="Edit Role" fields={FIELDS} initial={editing as unknown as FormValues} onClose={() => setEditing(null)} onSubmit={async (v) => { await api.put(`${BASE}/${editing.id}`, body(v)); reload(); }} />
       )}
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete Role"
+        message="Are you sure you want to delete this role? This action cannot be undone."
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => { if (!deleteBusy) setDeletingId(null); }}
+      />
     </div>
   );
 }

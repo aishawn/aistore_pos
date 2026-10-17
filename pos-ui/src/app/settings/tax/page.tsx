@@ -8,6 +8,7 @@ import { EntityFormModal, FormValues, FormField } from "@/components/admin/Entit
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { PlusIcon } from "@/components/icons";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 
 interface TaxRate {
   id: string;
@@ -27,11 +28,19 @@ export default function TaxRatesPage() {
   const rates = data ?? [];
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TaxRate | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
-  async function remove(id: string) {
-    if (!window.confirm("Delete this item?")) return;
-    await api.del(`${BASE}/${id}`);
-    reload();
+  async function confirmRemove() {
+    if (!deletingId) return;
+    setDeleteBusy(true);
+    try {
+      await api.del(`${BASE}/${deletingId}`);
+      setDeletingId(null);
+      reload();
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   return (
@@ -45,7 +54,7 @@ export default function TaxRatesPage() {
         <AsyncState loading={loading} error={error} empty={rates.length === 0}>
           <ListTable
             columns={[{ label: "Name" }, { label: "Rate" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
-            rows={rates.map((r) => [r.name, `${Number(r.amount)}%`, <RowActions key="a" onEdit={() => setEditing(r)} onDelete={() => remove(r.id)} />])}
+            rows={rates.map((r) => [r.name, `${Number(r.amount)}%`, <RowActions key="a" onEdit={() => setEditing(r)} onDelete={() => setDeletingId(r.id)} />])}
           />
         </AsyncState>
       </div>
@@ -56,6 +65,15 @@ export default function TaxRatesPage() {
       {editing && (
         <EntityFormModal title="Edit Tax Rate" fields={FIELDS} initial={editing as unknown as FormValues} onClose={() => setEditing(null)} onSubmit={async (v) => { await api.put(`${BASE}/${editing.id}`, body(v)); reload(); }} />
       )}
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete Tax Rate"
+        message="Are you sure you want to delete this tax rate? This action cannot be undone."
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={() => void confirmRemove()}
+        onCancel={() => { if (!deleteBusy) setDeletingId(null); }}
+      />
     </div>
   );
 }
