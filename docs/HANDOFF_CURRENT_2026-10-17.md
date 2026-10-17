@@ -16,7 +16,7 @@
 - 最近功能代码：`2bdeb80 fix: improve dialog focus and async list semantics`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
-- 当前未提交文件仅包括用户已有的 `pos-ui/tsconfig.json`；不得回滚、覆盖或混入后续业务提交。
+- 当前未提交文件包括用户已有的 `pos-ui/tsconfig.json`，以及本批次待提交的 `EmptyState.tsx`、`SadEmptyState.tsx`、`DataTable.tsx`、`RowActions.tsx` 和 `Modal.tsx`；不得回滚、覆盖或混入无关业务提交。
 - 用户报告部署过 `7544d03`；当前没有 Dokploy 部署页、容器日志或运行 SHA 证据，不能将该 SHA 视为已验证线上版本。
 
 ### 已完成并有证据
@@ -31,6 +31,7 @@
 - 本地检查已有 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；本机按既定约束未运行 `npm run build`。
 - 本批次新增通用可访问性与键盘交互优化：`Pagination` 标注当前页并为 Prev/Next 提供明确的 ARIA 名称；`AsyncState` 的加载、错误、空态增加 live-region 语义，Retry 按钮统一达到 44px 触控高度并保留焦点环；`Modal`、`ConfirmDialog`、`AlertDialog` 打开时把焦点放到可用关闭/确认控件，关闭后恢复到触发控件。该批次只涉及前端交互和语义，不调用业务写入 API。
 - 最新认证只读管理列表回归为 `8/8 PASS`，覆盖 `/purchases/odoo`、`/utilities/mail-log`、`/utilities/trashed-items`、`/platform/stores` 在 390px/1440px；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和对应截图目录，`sourceCommit=2bdeb80`、`deployment` 为空。
+- 下一批待部署的共用组件优化：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。
 
 ### 未完成、未覆盖或证据不足
 
@@ -38,8 +39,9 @@
 2. **最新 UI/只读批次未绑定线上版本**：认证矩阵和截图有 `sourceCommit`，但多份证据的 `deployment` 为空；回收项/Mail Log 搜索、采购收货校验、移动端管理列表和缓存隔离需要在已确认 SHA 上重跑。
 3. **POS 弹窗 Escape 需要线上确认**：本地代码和检查已完成，但仍需认证浏览器打开 POS help、销售小票、暂存销售、切换 Register 弹窗，确认 Escape 只关闭当前弹窗且不提交业务。
 4. **本批次通用弹窗和列表语义尚未线上确认**：部署后需在 390px/1440px 认证只读矩阵中确认分页、加载失败 Retry、空态以及弹窗焦点恢复，不执行任何业务写入。
-5. **业务边界未实现或未验证**：实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理。
-6. **测试环境清理风险**：后续只允许新建 disposable tenant，禁止写 Demo 公司；每次测试结束删除租户并验证登录/受保护 API 返回 402 或未授权。
+5. **下一批共用空态与行操作尚未线上确认**：部署后需重点检查窄屏空态没有横向溢出、真实操作入口没有假按钮、表格列头可被读屏器识别；仍保持只读验证。
+6. **业务边界未实现或未验证**：实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理。
+7. **测试环境清理风险**：后续只允许新建 disposable tenant，禁止写 Demo 公司；每次测试结束删除租户并验证登录/受保护 API 返回 402 或未授权。
 
 ### 当前问题与风险
 

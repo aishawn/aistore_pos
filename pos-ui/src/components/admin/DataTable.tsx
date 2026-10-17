@@ -32,6 +32,7 @@ export function DataTable({
           {columns.map((c, i) => (
             <th
               key={i}
+              scope="col"
               className={cn(
                 "bg-[var(--sf-link-blue)] p-2 font-bold uppercase text-[var(--sf-on-dark)]",
                 alignCls(c.align),
