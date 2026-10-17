@@ -1,20 +1,28 @@
+"use client";
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Clock3, Globe2, ShieldAlert } from "lucide-react";
 import { CompanySettingsScaffold } from "@/components/admin/CompanySettingsScaffold";
+import { getOdooPosBootstrap } from "@/lib/odoo-api";
 
 const HREF = "/settings/company/date-time";
 
-const timeBehaviors = [
+function timeBehaviors(timezone: string) {
+  return [
   {
     title: "Store business timezone",
-    value: "Australia/Sydney",
-    description: "Sales business dates use Sydney civil time, including its AEST/AEDT daylight-saving rules. The earlier Melbourne value was not the active setting.",
+    value: timezone,
+    description: "Sales, receipts and operational dates use the active Odoo POS register timezone.",
     icon: Globe2,
   },
   {
     title: "Date and time display",
     value: "Australian locale",
-    description: "Receipts and reporting format timestamps with the en-AU locale and Australia/Sydney timezone. This page does not override each screen’s display format.",
+    description: "Receipts and reporting use the en-AU locale with the active Odoo store timezone. This page does not override each screen’s display format.",
     icon: Clock3,
   },
   {
@@ -23,9 +31,24 @@ const timeBehaviors = [
     description: "The previous Monday selection was an example, not a saved company preference. Weekly reports use their defined date ranges.",
     icon: CalendarDays,
   },
-];
+  ];
+}
 
 export default function DateTimeSettingsPage() {
+  const [timezone, setTimezone] = useState("Odoo POS configuration");
+
+  useEffect(() => {
+    let active = true;
+    void getOdooPosBootstrap().then((bootstrap) => {
+      if (!active) return;
+      const config = bootstrap.configs.find((item) => item.session) ?? bootstrap.configs[0];
+      if (config?.timezone) setTimezone(config.timezone);
+    }).catch(() => {
+      // Keep the honest source label when Odoo is disconnected.
+    });
+    return () => { active = false; };
+  }, []);
+
   return (
     <CompanySettingsScaffold
       subSectionTitle="Date & Time"
@@ -52,7 +75,7 @@ export default function DateTimeSettingsPage() {
             <p className="mt-1 text-sm text-[var(--oh-muted)]">Operational timekeeping is consistent across sales and reporting</p>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
-            {timeBehaviors.map(({ title, value, description, icon: Icon }) => (
+            {timeBehaviors(timezone).map(({ title, value, description, icon: Icon }) => (
               <li key={title} className="flex min-w-0 items-start gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]">
                   <Icon size={19} strokeWidth={1.8} aria-hidden="true" />

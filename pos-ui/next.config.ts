@@ -11,6 +11,7 @@ const liveStatusPages = [
   "/settings/company/general",
   "/settings/company/login-after-sale",
   "/settings/company/search",
+  "/settings/company/date-time",
   "/settings/data",
   "/settings/loyalty",
   "/settings/push",
