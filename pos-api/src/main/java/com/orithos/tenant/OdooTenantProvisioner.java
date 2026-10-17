@@ -849,14 +849,21 @@ public class OdooTenantProvisioner {
         domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
         domain.add(objectMapper.createArrayNode().add("name").add("=").add("Card"));
         ObjectNode findKwargs = kwargsWithCompany(companyId);
-        findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("journal_id"));
         findKwargs.put("limit", 1);
         JsonNode existing = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(domain), findKwargs);
         if (existing != null && existing.isArray() && !existing.isEmpty()) {
             long id = existing.get(0).path("id").asLong(0);
-            if (id > 0) return id;
+            long journalId = relationId(existing.get(0).get("journal_id"));
+            if (id > 0) {
+                ensureJournalDefaultAccount(sessionId, companyId, journalId,
+                        "asset_current", "POS Bank Account", "8" + companyId + "3");
+                return id;
+            }
         }
         long bankJournal = ensureJournal(sessionId, companyId, "Bank", shortCode("BNK", companyId), "bank");
+        ensureJournalDefaultAccount(sessionId, companyId, bankJournal,
+                "asset_current", "POS Bank Account", "8" + companyId + "3");
         ObjectNode card = objectMapper.createObjectNode();
         card.put("name", "Card");
         card.put("company_id", companyId);
@@ -874,17 +881,24 @@ public class OdooTenantProvisioner {
         domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
         domain.add(objectMapper.createArrayNode().add("name").add("=").add(pmName));
         ObjectNode findKwargs = kwargsWithCompany(companyId);
-        findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        findKwargs.set("fields", objectMapper.createArrayNode().add("id").add("journal_id"));
         findKwargs.put("limit", 1);
         JsonNode existing = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(domain), findKwargs);
         if (existing != null && existing.isArray() && !existing.isEmpty()) {
             long id = existing.get(0).path("id").asLong(0);
-            if (id > 0) return id;
+            long journalId = relationId(existing.get(0).get("journal_id"));
+            if (id > 0) {
+                ensureJournalDefaultAccount(sessionId, companyId, journalId,
+                        "asset_cash", "POS Cash Account", "8" + companyId + "4");
+                return id;
+            }
         }
 
         String journalName = "Cash (" + truncateLabel(configName, 40) + ")";
         String journalCode = uniqueCashJournalCode(sessionId, companyId, configName);
         long cashJournal = ensureJournal(sessionId, companyId, journalName, journalCode, "cash");
+        ensureJournalDefaultAccount(sessionId, companyId, cashJournal,
+                "asset_cash", "POS Cash Account", "8" + companyId + "4");
 
         ObjectNode cash = objectMapper.createObjectNode();
         cash.put("name", pmName);
@@ -895,6 +909,37 @@ public class OdooTenantProvisioner {
         Number cashId = callKw(sessionId, "pos.payment.method", "create", List.of(cash), kwargsWithCompany(companyId));
         if (cashId == null) throw new IllegalStateException("pos.payment.method.create Cash failed for " + configName);
         return cashId.longValue();
+    }
+
+    private void ensureJournalDefaultAccount(
+            String sessionId, long companyId, long journalId, String accountType, String name, String code) throws Exception {
+        if (journalId <= 0) return;
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(journalId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("default_account_id"));
+        kwargs.put("limit", 1);
+        JsonNode journals = callKwNode(sessionId, "account.journal", "search_read", List.of(domain), kwargs);
+        if (journals != null && journals.isArray() && !journals.isEmpty()
+                && relationId(journals.get(0).get("default_account_id")) > 0) return;
+
+        ArrayNode accountDomain = objectMapper.createArrayNode();
+        accountDomain.add(objectMapper.createArrayNode().add("company_ids").add("in").add(companyId));
+        accountDomain.add(objectMapper.createArrayNode().add("account_type").add("=").add(accountType));
+        ObjectNode accountKwargs = kwargsWithCompany(companyId);
+        accountKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        accountKwargs.put("limit", 1);
+        JsonNode accounts = callKwNode(sessionId, "account.account", "search_read", List.of(accountDomain), accountKwargs);
+        long accountId = accounts != null && accounts.isArray() && !accounts.isEmpty()
+                ? accounts.get(0).path("id").asLong(0) : 0;
+        if (accountId <= 0) {
+            accountId = ensureCashDifferenceAccount(sessionId, companyId, accountType, name, code);
+        }
+        if (accountId <= 0) throw new IllegalStateException("No default account available for journal " + journalId);
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("default_account_id", accountId);
+        callKw(sessionId, "account.journal", "write",
+                List.of(List.of(journalId), values), kwargsWithCompany(companyId));
     }
 
     private String uniqueCashJournalCode(String sessionId, long companyId, String configName) throws Exception {
