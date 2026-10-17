@@ -12,7 +12,8 @@
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：`f940206 test: verify platform store status filter`
+- 最新提交：`08fb1ab docs: refresh post-push admin list evidence`
+- 本轮功能代码提交：`9224563 fix: tighten admin list and receiving UX`；回归脚本提交：`0baf7c6 test: add authenticated admin list regression batch`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
 - 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
 
@@ -74,7 +75,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；目标至少为 `f940206`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `9224563`，仓库当前 HEAD 为 `08fb1ab`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
