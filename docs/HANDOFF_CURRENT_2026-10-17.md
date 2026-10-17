@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`87a6c2a fix: stabilize quantity dialog keyboard listener`（`origin/main` 同步）
+- 当前 HEAD：`9b3640d docs: record quantity dialog stabilization`（`origin/main` 同步）
 - 最近功能代码：`39dec99`，数量弹窗稳定性补丁为 `6055289`，认证回归等待和最新 POS/管理列表证据为 `4eae8bd`，前一批通用弹窗焦点修复为 `3bc4aa6`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
@@ -64,7 +64,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `a0fcba5`，仓库当前 HEAD 为 `a4c75cd`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标至少为 `39dec99`，仓库当前 HEAD 为 `9b3640d`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
