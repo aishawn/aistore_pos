@@ -129,7 +129,8 @@ function SearchBar() {
     <div className="relative flex h-[50px] shrink-0">
       <input
         type="text"
-        defaultValue={sell.searchQuery}
+        value={sell.searchQuery}
+        aria-label={isParked ? "Park sale" : "Search products and customers"}
         placeholder={
           isParked ? "Park Sale" : "Search for Products and Customers..."
         }
@@ -437,6 +438,7 @@ function PromotionsPanel() {
       <div className="shrink-0 px-4 py-3">
         <input
           type="text"
+          aria-label="Filter promotions"
           defaultValue={sell.promotionFilter}
           placeholder="Filter by product, classification or promotional category..."
           onChange={(e) => onFilter(e.target.value)}
@@ -546,6 +548,7 @@ function CustomerPicker() {
       <div className="flex h-[50px] shrink-0">
         <input
           type="text"
+          aria-label="Search customers"
           placeholder="Search for Customers..."
           onChange={(e) => onSearch(e.target.value)}
           className="h-[50px] w-full border border-[var(--sf-muted)] bg-white px-4 text-[16px] text-black outline-none placeholder:text-[var(--sf-placeholder)]"

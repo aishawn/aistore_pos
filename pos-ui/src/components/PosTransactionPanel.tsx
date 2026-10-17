@@ -92,7 +92,7 @@ export function PosTransactionPanel() {
       <div className="relative shrink-0 border-b border-[var(--oh-border)] px-5 py-2">
         <input
           type="text"
-          defaultValue={sell.searchQuery}
+          value={sell.searchQuery}
           aria-label="Scan barcode or search product"
           placeholder="Scan barcode or search product…"
           onChange={(e) => onSearch(e.target.value)}

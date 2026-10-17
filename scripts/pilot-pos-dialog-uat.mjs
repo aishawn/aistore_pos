@@ -40,9 +40,31 @@ for (const viewport of viewports) {
   await page.keyboard.press("Escape");
   await page.waitForTimeout(150);
   const visibleAfter = await dialog.isVisible().catch(() => false);
+  const keyboardChecks = { salesKeys: null, parkedSales: null, functionGrid: null };
+  if (viewport.width >= 1024) {
+    const salesKeys = page.getByRole("button", { name: "Sales Keys", exact: true });
+    const parkedSales = page.getByRole("button", { name: "Parked Sales", exact: true });
+    await salesKeys.waitFor({ state: "visible", timeout: 15000 });
+    await parkedSales.waitFor({ state: "visible", timeout: 15000 });
+
+    await parkedSales.focus();
+    await page.keyboard.press("Enter");
+    await page.getByText("No parked sales", { exact: true }).waitFor({ timeout: 15000 });
+    keyboardChecks.parkedSales = true;
+
+    await salesKeys.focus();
+    await page.keyboard.press("Enter");
+    const moreFunctions = page.getByRole("button", { name: "more-functions", exact: true });
+    await moreFunctions.waitFor({ state: "visible", timeout: 15000 });
+    await moreFunctions.focus();
+    await page.keyboard.press("Enter");
+    await page.getByRole("button", { name: "Back Home", exact: true }).waitFor({ state: "visible", timeout: 15000 });
+    keyboardChecks.salesKeys = true;
+    keyboardChecks.functionGrid = true;
+  }
   const screenshot = `docs/screenshots/2026-10-17-pos-dialog/pos-help-${viewport.width}.png`;
   await page.screenshot({ path: path.join(root, screenshot), fullPage: true });
-  results.push({ viewport: viewport.width, status: response?.status() ?? null, visibleBefore, visibleAfter, screenshot });
+  results.push({ viewport: viewport.width, status: response?.status() ?? null, visibleBefore, visibleAfter, keyboardChecks, screenshot });
   await context.close();
 }
 await browser.close();
