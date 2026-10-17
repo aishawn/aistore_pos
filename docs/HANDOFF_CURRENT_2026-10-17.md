@@ -244,6 +244,16 @@ Customers 和 Suppliers 目录页现在读取当前 Odoo POS 配置的门店时�
 - 无横向溢出、无 page error，未执行任何业务写入
 - 公网实例仍需 Dokploy 普通 Deploy 后确认最新运行 SHA 和 no-store 响应头
 
+### Products/Replenishment 刷新时间（`9d45a52`）
+
+Products 和 Replenishment 页面现在用 Odoo POS 门店时区显示 `Last refreshed`；Products 在连接后读取当前 POS 配置，Replenishment 继续复用已有 bootstrap 时区。
+
+- 提交：`9d45a52`，已推送 `origin/main`
+- 检查：`npm run typecheck`、目标文件 ESLint、`git diff --check` 通过
+- 定向认证回归：[`UAT_STOCK_TIMEZONE_TARGETED_LIVE_2026-10-17.json`](UAT_STOCK_TIMEZONE_TARGETED_LIVE_2026-10-17.json)，4 个路由 × 390/1440 = `8/8 PASS`
+- 首次登录探测出现瞬时 502，立即重试登录返回 200；重试后的所有页面无横向溢出、无 page error
+- 本轮未执行销售、采购、库存、现金或其他业务写入；公网缓存头仍待 Dokploy 普通 Deploy 确认
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。

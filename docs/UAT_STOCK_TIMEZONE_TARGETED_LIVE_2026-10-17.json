@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-17T08:36:00Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "9d45a52",
+  "loginStatus": 200,
+  "routes": ["/products/odoo", "/stock/replenishment", "/customers/odoo", "/suppliers/odoo"],
+  "viewports": [390, 1440],
+  "checksPassed": 8,
+  "checksTotal": 8,
+  "failures": [],
+  "result": "PASS",
+  "notes": "The first login probe returned a transient 502; the immediate authenticated retry returned 200 and all routes passed."
+}
