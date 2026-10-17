@@ -18,16 +18,11 @@
 - 分支：`main`
 - 当前远端基线：见 `git log --oneline -1`，不要假设本地 HEAD 已在线上部署
 
-当前未提交改动：
+当前工作树状态：
 
-- `pos-api/src/main/java/com/orithos/tenant/OdooTenantProvisioner.java`
-- `pos-api/src/test/java/com/orithos/tenant/OdooTenantProvisionerTest.java`
-- `pos-ui/app/signup/page.tsx`
-- `pos-ui/src/app/signup/page.tsx`
-- `pos-ui/tsconfig.json`（并行/既有修改，必须保留）
-- `docs/UAT_RICHER_DUMMY_SEED_2026-10-17.json`
-
-提交时只添加已经审查过的文件，禁止 `git add -A`、`git reset --hard` 和 `git checkout --`。
+- richer dummy data 批次已审查并提交为 `7c51683`，远端 `origin/main` 已包含该提交。
+- 只剩 `pos-ui/tsconfig.json` 的并行/既有未提交修改，必须保留。
+- 交接文档的后续更新必须只添加明确的文档文件，禁止 `git add -A`、`git reset --hard` 和 `git checkout --`。
 
 ### 品牌站仓库
 
@@ -60,9 +55,9 @@
 
 历史租户（例如 `codex-uat-20261016203934`）仅供证据回溯，禁止复用。
 
-## 4. 当前未完成批次：richer dummy data
+## 4. 当前批次：richer dummy data（已提交，待线上部署验收）
 
-`OdooTenantProvisioner.java` 的未提交改动计划在选择 sample data 时创建：
+提交 `7c51683` 中的 `OdooTenantProvisioner.java` 在选择 sample data 时创建：
 
 - 14 个 `DEMO-` 商品
 - 5 个分类
@@ -70,7 +65,7 @@
 - 最近 14 天约 32 笔已支付订单，最多 2 笔退款
 - 一个保持打开的 POS register
 
-这批代码风险较高，必须先检查：
+这批代码已完成代码级检查，但仍必须在隔离新租户上检查：
 
 1. `pos.order.sync_from_ui` 的订单 payload 是否兼容 Odoo 20。
 2. payment method、税、退款和 session API 是否使用正确字段及状态。
@@ -78,13 +73,13 @@
 4. 种子失败时是否会留下部分写入，是否可安全重试。
 5. 每次创建租户是否只执行一次，避免重复订单和重复商品。
 
-`docs/UAT_RICHER_DUMMY_SEED_2026-10-17.json` 在真实线上回读前只能视为计划/待验收记录，不能标记为 PASS。
+`docs/UAT_RICHER_DUMMY_SEED_2026-10-17.json` 在真实线上回读前仍只能视为计划/待验收记录，不能标记为 PASS。
 
 ## 5. 接手后的执行顺序
 
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
-3. 审查 richer dummy data Java 改动及对应测试；不要先提交。
+3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
 4. 在 `pos-ui` 目录运行允许的检查：
 
    ```text
@@ -94,7 +89,7 @@
    ```
 
    当前环境不运行 `build`；本机 Java 8 不能代替后端要求的 Java 21 构建。
-5. 只提交审查通过的 POS 文件，推送 `main`。
+5. 确认 Dokploy 已消费 `7c51683`；若 webhook 未触发，再在 Dokploy 执行一次普通 Deploy。
 6. 在 Dokploy 执行普通 Deploy，禁止 Fresh Volumes；记录前后端容器实际运行的 commit SHA。
 7. 用新的 slug，例如 `codex-full-uat-<timestamp>`，密码使用至少 12 位，创建：
    - `Main Store`：2 个 Register
