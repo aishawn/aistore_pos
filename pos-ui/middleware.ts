@@ -21,7 +21,25 @@ const NO_STORE_PAGES = new Set([
   "/utilities/future-costs",
   "/utilities/future-prices",
   "/utilities/products",
+  "/products",
+  "/promotion/categories",
+  "/settings/pricesets",
+  "/settings/roles",
+  "/settings/users",
+  "/utilities/vendor-connections",
+  "/platform/stores",
+  "/close",
+  "/history/odoo",
+  "/register/odoo",
+  "/purchases/odoo",
+  "/reports/dashboard",
+  "/stock/replenishment",
+  "/customers/odoo",
+  "/suppliers/odoo",
+  "/settings/company/date-time",
 ]);
+
+const NO_STORE_PAGE_PREFIXES = ["/platform/stores/"];
 
 /** Routes that must stay reachable without a session. */
 const PUBLIC_PREFIXES = [
@@ -62,7 +80,7 @@ function withPageCachePolicy(response: NextResponse, pathname: string): NextResp
   // Routers and reverse proxies may preserve a trailing slash. Normalize it
   // before applying the live-data cache policy so both URL forms are safe.
   const normalizedPath = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  if (NO_STORE_PAGES.has(normalizedPath)) {
+  if (NO_STORE_PAGES.has(normalizedPath) || NO_STORE_PAGE_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))) {
     response.headers.set("Cache-Control", "no-store, max-age=0");
     response.headers.set("CDN-Cache-Control", "no-store");
     response.headers.set("Vercel-CDN-Cache-Control", "no-store");
