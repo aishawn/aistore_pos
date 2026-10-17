@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId } from "react";
 import { XIcon } from "@/components/icons";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /** Centered modal dialog with an overlay. */
 export function Modal({
@@ -16,22 +17,7 @@ export function Modal({
   footer?: React.ReactNode;
 }) {
   const titleId = useId();
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeButtonRef.current?.focus();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
-      previousFocusRef.current = null;
-    };
-  }, [onClose]);
+  useDialogFocus(true, onClose);
 
   return (
     <div
@@ -47,7 +33,7 @@ export function Modal({
       >
         <div className="flex items-start justify-between gap-3 border-b border-neutral-200 px-4 py-3 sm:items-center sm:px-6 sm:py-4">
           <h2 id={titleId} className="min-w-0 break-words pt-2 text-lg font-bold text-black sm:pt-0 sm:text-[22px]">{title}</h2>
-          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Close dialog" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+          <button type="button" onClick={onClose} aria-label="Close dialog" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-neutral-500 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
             <XIcon size={22} />
           </button>
         </div>

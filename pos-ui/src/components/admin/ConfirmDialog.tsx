@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useId } from "react";
 import { DeleteIcon, QuestionIcon } from "@/components/icons";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 type ConfirmVariant = "danger" | "default";
 
@@ -49,27 +50,10 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    requestAnimationFrame(() => cancelButtonRef.current?.focus());
-    return () => {
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
-      previousFocusRef.current = null;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || busy) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [busy, onCancel, open]);
+  const dialogId = useId();
+  useDialogFocus(open, () => {
+    if (!busy) onCancel();
+  });
 
   if (!open) return null;
 
@@ -86,25 +70,24 @@ export function ConfirmDialog({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="confirm-dialog-title"
-        aria-describedby="confirm-dialog-message"
+        aria-labelledby={`${dialogId}-title`}
+        aria-describedby={`${dialogId}-message`}
         className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex items-center gap-2.5 px-5 py-4 ${styles.headerBg}`}>
           <HeaderIcon size={20} className={`shrink-0 ${styles.headerText}`} strokeWidth={2} />
-          <h2 id="confirm-dialog-title" className={`text-[16px] font-semibold ${styles.headerText}`}>
+          <h2 id={`${dialogId}-title`} className={`text-[16px] font-semibold ${styles.headerText}`}>
             {title}
           </h2>
         </div>
 
-        <p id="confirm-dialog-message" className="px-5 py-5 text-[14px] leading-relaxed text-[var(--oh-text-secondary)]">
+        <p id={`${dialogId}-message`} className="px-5 py-5 text-[14px] leading-relaxed text-[var(--oh-text-secondary)]">
           {message}
         </p>
 
         <div className="flex justify-end gap-2.5 border-t border-[var(--oh-border)] px-5 py-4">
           <button
-            ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
             disabled={busy}

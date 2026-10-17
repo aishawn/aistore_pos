@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useId } from "react";
 import { InfoIcon } from "@/components/icons";
 import { TriangleAlert } from "lucide-react";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 type AlertVariant = "warning" | "danger" | "info";
 
@@ -55,27 +56,8 @@ export function AlertDialog({
   variant?: AlertVariant;
   onClose: () => void;
 }) {
-  const okButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    requestAnimationFrame(() => okButtonRef.current?.focus());
-    return () => {
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
-      previousFocusRef.current = null;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, open]);
+  const dialogId = useId();
+  useDialogFocus(open, onClose);
 
   if (!open) return null;
 
@@ -90,25 +72,24 @@ export function AlertDialog({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-message"
+        aria-labelledby={`${dialogId}-title`}
+        aria-describedby={`${dialogId}-message`}
         className="flex w-full max-w-[420px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex items-center gap-2.5 px-5 py-4 ${styles.headerBg}`}>
           <HeaderIcon size={20} className={`shrink-0 ${styles.headerText}`} strokeWidth={2} />
-          <h2 id="alert-dialog-title" className={`text-[16px] font-semibold ${styles.headerText}`}>
+          <h2 id={`${dialogId}-title`} className={`text-[16px] font-semibold ${styles.headerText}`}>
             {title}
           </h2>
         </div>
 
-        <p id="alert-dialog-message" className="px-5 py-5 text-[14px] leading-relaxed text-[var(--oh-text-secondary)]">
+        <p id={`${dialogId}-message`} className="px-5 py-5 text-[14px] leading-relaxed text-[var(--oh-text-secondary)]">
           {message}
         </p>
 
         <div className="flex justify-end border-t border-[var(--oh-border)] px-5 py-4">
           <button
-            ref={okButtonRef}
             type="button"
             onClick={onClose}
             className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${styles.buttonBg} ${styles.buttonHover}`}
