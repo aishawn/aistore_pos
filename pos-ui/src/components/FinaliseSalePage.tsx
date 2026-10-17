@@ -19,6 +19,7 @@ import { roundCashToFiveCents } from "@/lib/au";
 import { splitMoney, useSellScreen, type Customer, lineNetTotal, toCheckoutItem } from "@/lib/sell-screen";
 
 import { checkoutSale, ApiError } from "@/lib/api";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 
 
@@ -1039,38 +1040,26 @@ function FinaliseSidebar({
 function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
   const sell = useSellScreen();
+  const { loadCustomers } = sell;
 
   const [q, setQ] = useState("");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const previousFocusRef = useRef<HTMLElement | null>(null);
+  useDialogFocus(true, onClose, undefined, searchRef);
 
 
 
   useEffect(() => {
 
-    sell.loadCustomers();
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-
-  }, []);
+    loadCustomers();
+  }, [loadCustomers]);
 
   useEffect(() => {
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    searchRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
-      previousFocusRef.current = null;
     };
-  }, [onClose]);
+  }, []);
 
 
 
@@ -1131,8 +1120,6 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
             type="button"
 
             aria-label="Close"
-
-            ref={closeButtonRef}
 
             onClick={onClose}
 

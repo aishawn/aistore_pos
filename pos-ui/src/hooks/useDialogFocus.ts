@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 type DialogHandler = (event: KeyboardEvent) => void;
 
@@ -18,6 +18,7 @@ export function useDialogFocus(
   open: boolean,
   onClose: () => void,
   focusKey?: string | number | boolean | null,
+  initialFocusRef?: RefObject<HTMLElement | null>,
 ) {
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -30,6 +31,10 @@ export function useDialogFocus(
     if (!open) return;
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusInitialControl = () => {
+      if (initialFocusRef?.current?.isConnected && initialFocusRef.current.getClientRects().length > 0) {
+        initialFocusRef.current.focus();
+        return;
+      }
       const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')]
         .filter((dialog) => dialog.getClientRects().length > 0);
       const dialog = dialogs.at(-1);
@@ -76,5 +81,5 @@ export function useDialogFocus(
       if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
       previousFocusRef.current = null;
     };
-  }, [focusKey, open]);
+  }, [focusKey, initialFocusRef, open]);
 }
