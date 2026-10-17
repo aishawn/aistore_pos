@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-17T13:04:52.677Z",
-  "sourceCommit": "9224563",
-  "deployment": null,
+  "generatedAt": "2026-10-17T13:34:02.824Z",
+  "sourceCommit": "2bdeb80",
+  "deployment": "",
   "scope": "authenticated read-only admin list visual regression; no business writes",
   "routes": [
     "https://demo.orithos.com.au/purchases/odoo",
@@ -109,7 +109,7 @@
         {
           "emptyStateVisible": true,
           "clearVisible": true,
-          "visibleClearText": true,
+          "visibleClearText": false,
           "cleared": true,
           "passed": true
         }

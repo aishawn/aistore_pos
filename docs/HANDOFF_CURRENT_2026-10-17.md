@@ -30,6 +30,7 @@
 - 认证页面矩阵曾达到 131 路由 × 390/1440 = `262/262 PASS`；重点页面截图和大量 JSON UAT 证据已保存到 `docs/`。
 - 本地检查已有 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；本机按既定约束未运行 `npm run build`。
 - 本批次新增通用可访问性与键盘交互优化：`Pagination` 标注当前页并为 Prev/Next 提供明确的 ARIA 名称；`AsyncState` 的加载、错误、空态增加 live-region 语义，Retry 按钮统一达到 44px 触控高度并保留焦点环；`Modal`、`ConfirmDialog`、`AlertDialog` 打开时把焦点放到可用关闭/确认控件，关闭后恢复到触发控件。该批次只涉及前端交互和语义，不调用业务写入 API。
+- 最新认证只读管理列表回归为 `8/8 PASS`，覆盖 `/purchases/odoo`、`/utilities/mail-log`、`/utilities/trashed-items`、`/platform/stores` 在 390px/1440px；证据见 `docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 和对应截图目录，`sourceCommit=2bdeb80`、`deployment` 为空。
 
 ### 未完成、未覆盖或证据不足
 
