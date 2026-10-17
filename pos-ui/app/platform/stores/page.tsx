@@ -109,54 +109,18 @@ export default function PlatformStoresPage() {
       ) : items.length === 0 ? (
         <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No stores found. Use Create store to add a trial vendor.</p>
       ) : (
-        <ListTable
-          columns={[
-            { label: "Store", width: "w-[220px]" },
-            { label: "Subdomain", width: "w-[180px]" },
-            { label: "Status", width: "w-[120px]", align: "center" },
-            { label: "Contact", width: "w-[160px]" },
-            { label: "Trial ends", width: "w-[120px]" },
-            { label: "Created", width: "w-[120px]" },
-            { label: "Open", width: "w-[100px]", align: "center" },
-          ]}
-          rows={items.map((store) => [
-            <div key={`${store.id}-name`} className="min-w-0">
-              <Link href={`/platform/stores/${store.id}`} className="truncate font-medium text-[var(--oh-primary)] hover:underline">
-                {store.name}
-              </Link>
-              {store.platformOperator ? (
-                <div className="text-xs text-[var(--oh-text-secondary)]">Platform operator</div>
-              ) : null}
-            </div>,
-            <code key={`${store.id}-slug`} className="text-[12px] text-[var(--oh-text)]">
-              {store.subdomain}
-            </code>,
-            <span
-              key={`${store.id}-status`}
-              className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusTone(store.status)}`}
-            >
-              {store.status || "unknown"}
-            </span>,
-            <span key={`${store.id}-contact`} className="truncate text-[var(--oh-text-secondary)]">
-              {store.contactName || "—"}
-            </span>,
+        <>
+          <div className="hidden md:block"><ListTable columns={[{ label: "Store", width: "w-[220px]" }, { label: "Subdomain", width: "w-[180px]" }, { label: "Status", width: "w-[120px]", align: "center" }, { label: "Contact", width: "w-[160px]" }, { label: "Trial ends", width: "w-[120px]" }, { label: "Created", width: "w-[120px]" }, { label: "Open", width: "w-[100px]", align: "center" }]} rows={items.map((store) => [
+            <div key={`${store.id}-name`} className="min-w-0"><Link href={`/platform/stores/${store.id}`} className="truncate font-medium text-[var(--oh-primary)] hover:underline">{store.name}</Link>{store.platformOperator ? <div className="text-xs text-[var(--oh-text-secondary)]">Platform operator</div> : null}</div>,
+            <code key={`${store.id}-slug`} className="text-[12px] text-[var(--oh-text)]">{store.subdomain}</code>,
+            <span key={`${store.id}-status`} className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium capitalize ${statusTone(store.status)}`}>{store.status || "unknown"}</span>,
+            <span key={`${store.id}-contact`} className="truncate text-[var(--oh-text-secondary)]">{store.contactName || "—"}</span>,
             <span key={`${store.id}-trial`}>{formatDate(store.trialEndsAt)}</span>,
             <span key={`${store.id}-created`}>{formatDate(store.createdAt)}</span>,
-            store.storeUrl ? (
-              <a
-                key={`${store.id}-open`}
-                href={`${store.storeUrl.replace(/\/$/, "")}/login`}
-                target="_blank"
-                rel="noreferrer"
-                className="font-semibold text-[var(--oh-primary)] hover:underline"
-              >
-                Login
-              </a>
-            ) : (
-              <span key={`${store.id}-open`}>—</span>
-            ),
-          ])}
-        />
+            store.storeUrl ? <a key={`${store.id}-open`} href={`${store.storeUrl.replace(/\/$/, "")}/login`} target="_blank" rel="noreferrer" className="font-semibold text-[var(--oh-primary)] hover:underline">Login</a> : <span key={`${store.id}-open`}>—</span>,
+          ])} /></div>
+          <div className="space-y-2 md:hidden" aria-label="Stores list">{items.map((store) => <article key={store.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><Link href={`/platform/stores/${store.id}`} className="break-words font-semibold text-[var(--oh-primary)] hover:underline">{store.name}</Link>{store.platformOperator ? <p className="mt-1 text-xs text-[var(--oh-muted)]">Platform operator</p> : null}</div><span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium capitalize ${statusTone(store.status)}`}>{store.status || "unknown"}</span></div><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3 text-sm"><div><dt className="text-xs text-[var(--oh-muted)]">Subdomain</dt><dd className="mt-1 break-all font-mono text-xs text-[var(--oh-text-secondary)]">{store.subdomain}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Contact</dt><dd className="mt-1 break-words text-[var(--oh-text-secondary)]">{store.contactName || "—"}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Trial ends</dt><dd className="mt-1 text-[var(--oh-text-secondary)]">{formatDate(store.trialEndsAt)}</dd></div><div><dt className="text-xs text-[var(--oh-muted)]">Created</dt><dd className="mt-1 text-[var(--oh-text-secondary)]">{formatDate(store.createdAt)}</dd></div></dl>{store.storeUrl ? <a href={`${store.storeUrl.replace(/\/$/, "")}/login`} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open store</a> : null}</article>)}</div>
+        </>
       )}
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
     </AdminPageLayout>

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { AdminPageLayout, AdminSearchInput } from "@/components/admin/AdminPageLayout";
 import { ListTable } from "@/components/admin/ListTable";
-import { ViewIcon } from "@/components/icons";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 
@@ -58,7 +57,6 @@ export default function MailLogPage() {
             { label: "Recipient" },
             { label: "Subject" },
             { label: "Status", width: "w-[160px]" },
-            { label: "Actions", align: "right", width: "w-[140px]" },
           ]}
           rows={items.map((m) => [
             m.sentAt ?? "",
@@ -73,9 +71,6 @@ export default function MailLogPage() {
               }
             >
               {m.status ?? ""}
-            </span>,
-            <span key="a" className="flex items-center justify-end gap-1.5 font-medium text-[var(--oh-orange)]">
-              <ViewIcon size={16} /> View
             </span>,
           ])}
         />

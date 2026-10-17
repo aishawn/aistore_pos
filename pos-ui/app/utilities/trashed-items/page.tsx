@@ -4,7 +4,6 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { AdminPageLayout, AdminSearchInput } from "@/components/admin/AdminPageLayout";
 import { ListTable } from "@/components/admin/ListTable";
-import { RestoreIcon, DeleteIcon } from "@/components/icons";
 import { Pagination } from "@/components/admin/Pagination";
 import { FilterSelect } from "@/components/admin/FilterSelect";
 import { useApiList } from "@/hooks/useApi";
@@ -17,15 +16,6 @@ interface TrashedItem {
   itemId: string;
   name: string;
   deletedAt: string;
-}
-
-function Actions() {
-  return (
-    <div className="flex items-center justify-end gap-4 text-[13px] font-medium">
-      <span className="flex items-center gap-1.5 text-[var(--oh-success)]"><RestoreIcon size={16} /> Restore</span>
-      <span className="flex items-center gap-1.5 text-[var(--oh-danger)]"><DeleteIcon size={16} /> Delete</span>
-    </div>
-  );
 }
 
 export default function TrashedItemsPage() {
@@ -79,13 +69,11 @@ export default function TrashedItemsPage() {
             { label: "Item" },
             { label: "Type", width: "w-[160px]" },
             { label: "Deleted", width: "w-[180px]" },
-            { label: "Actions", align: "right", width: "w-[280px]" },
           ]}
           rows={items.map((it) => [
             it.name ?? "",
             it.itemType ?? "",
             it.deletedAt ?? "",
-            <Actions key="a" />,
           ])}
         />
       )}

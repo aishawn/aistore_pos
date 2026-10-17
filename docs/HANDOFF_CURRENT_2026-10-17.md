@@ -306,6 +306,13 @@ Daily Sales、Weekly Sales、This Month Sales、Last Week Sales 和 Last Month S
 - 检查：typecheck 通过；5 个报表目标 ESLint 通过；`git diff --check` 通过
 - 只读报表改动，未改变 API 或任何业务写入
 
+### 平台门店与工具页只读一致性（待部署）
+
+`/platform/stores` 在窄屏使用门店摘要卡片，桌面保留完整 7 列表格。`/utilities/mail-log` 和 `/utilities/trashed-items` 不再显示没有实现回调的 View/Restore/Delete 假操作入口，改为准确的只读列表。
+
+- 检查：typecheck 通过；三个页面目标 ESLint 通过；`git diff --check` 通过
+- 未改变租户、邮件或回收站 API；未执行任何业务写入
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
