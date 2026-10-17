@@ -5,7 +5,7 @@
 
 ## 1. 当前结论
 
-当前 richer dummy data、sample data 清理和现金盘点关班均已通过全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店硬件/现金运营验收仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归也已有线上证据。
+当前 richer dummy data、sample data 清理和现金盘点关班均已通过全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店硬件/现金运营验收仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、供应商创建、采购收货和页面回归也已有线上证据。
 
 后续不要复用历史租户，也不要写入生产 Demo 公司。每次代码变更仍需推送并确认 Dokploy 的实际部署 SHA，再用新的 disposable tenant 回归并删除租户。
 
@@ -42,6 +42,7 @@
 - Cash in / Cash out 和基础关班保护
 - Cash sale 后正确 counted cash 关班：session closed、cash difference 0；证据见 `docs/UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json`
 - 采购单确认、部分收货、全部收货、重复收货拒绝
+- 供应商 tenant-scoped 创建、ABN 重复拒绝、Odoo company 回读；证据见 `docs/UAT_SUPPLIER_ISOLATION_LIVE_2026-10-17.json`
 - 多租户访问隔离、租户删除后的认证拒绝
 - 认证页面矩阵、移动端布局、缓存策略和公开品牌页面回归
 

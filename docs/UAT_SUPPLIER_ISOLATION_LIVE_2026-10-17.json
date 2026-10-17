@@ -1,76 +1,76 @@
 {
-  "generatedAt": "2026-10-17T04:28:30.772Z",
-  "slug": "codex-supplier-2211310772",
+  "generatedAt": "2026-10-17T04:33:10.285Z",
+  "slug": "codex-supplier-2211590285",
   "checks": [
     {
-      "name": "platform.login",
-      "status": "PASS",
-      "httpStatus": 200
-    },
-    {
-      "name": "tenant.create",
-      "status": "PASS",
       "httpStatus": 200,
-      "vendorId": 46,
-      "message": "ok"
+      "name": "platform.login",
+      "status": "PASS"
     },
     {
-      "name": "tenant.provision.ready",
-      "status": "ready",
-      "companyId": 39
+      "httpStatus": 200,
+      "vendorId": 47,
+      "message": "ok",
+      "name": "tenant.create",
+      "status": "PASS"
     },
     {
+      "companyId": 40,
+      "status": "PASS",
+      "name": "tenant.provision.ready"
+    },
+    {
+      "httpStatus": 200,
       "name": "owner.bootstrap",
-      "status": "PASS",
-      "httpStatus": 200
+      "status": "PASS"
     },
     {
+      "httpStatus": 200,
       "name": "store.bootstrap",
-      "status": "PASS",
-      "httpStatus": 200
+      "status": "PASS"
     },
     {
+      "httpStatus": 200,
       "name": "odoo.session",
-      "status": "PASS",
-      "httpStatus": 200
+      "status": "PASS"
     },
     {
-      "name": "supplier.invalidEmail",
-      "status": "PASS",
       "httpStatus": 400,
-      "message": "Enter a valid email address"
+      "message": "Enter a valid email address",
+      "name": "supplier.invalidEmail",
+      "status": "PASS"
     },
     {
-      "name": "Codex UAT Distributor",
-      "status": "PASS",
       "httpStatus": 201,
-      "supplierId": 370
+      "supplierId": 376,
+      "name": "supplier.create",
+      "status": "PASS"
     },
     {
-      "name": "supplier.duplicateVat",
-      "status": "PASS",
       "httpStatus": 409,
-      "message": "ABN / Tax ID already belongs to Codex UAT Distributor (existing supplier). Review that record before continuing."
+      "message": "ABN / Tax ID already belongs to Codex UAT Distributor (existing supplier). Review that record before continuing.",
+      "name": "supplier.duplicateVat",
+      "status": "PASS"
     },
     {
+      "companyId": 40,
+      "supplierId": 376,
+      "vat": "AU-UAT-1792211624087",
       "name": "supplier.companyReadback",
+      "status": "PASS"
+    },
+    {
+      "httpStatus": 200,
       "status": "PASS",
-      "companyId": 39,
-      "supplierId": 370,
-      "vat": "AU-UAT-1792211348014"
+      "name": "tenant.delete"
     },
     {
-      "name": "tenant.delete",
-      "status": "deleted",
-      "httpStatus": 200
-    },
-    {
+      "httpStatus": 402,
       "name": "deleted.auth",
-      "status": "PASS",
-      "httpStatus": 402
+      "status": "PASS"
     }
   ],
-  "companyId": 39,
-  "supplierId": 370,
-  "vat": "AU-UAT-1792211348014"
+  "companyId": 40,
+  "supplierId": 376,
+  "vat": "AU-UAT-1792211624087"
 }
