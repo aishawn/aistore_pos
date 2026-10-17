@@ -4,6 +4,11 @@ import { isControlPlanePageAllowed, parseTenantSlugFromHost } from "@/lib/tenant
 
 const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_COOKIE = "orithos_refresh_token";
+const NO_STORE_PAGES = new Set([
+  "/security",
+  "/utilities/future-costs",
+  "/utilities/future-prices",
+]);
 
 /** Routes that must stay reachable without a session. */
 const PUBLIC_PREFIXES = [
@@ -40,6 +45,19 @@ function withSecurityHeaders(response: NextResponse, tenantSlug: string | null):
   return response;
 }
 
+function withPageCachePolicy(response: NextResponse, pathname: string): NextResponse {
+  if (NO_STORE_PAGES.has(pathname)) {
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    response.headers.set("CDN-Cache-Control", "no-store");
+    response.headers.set("Vercel-CDN-Cache-Control", "no-store");
+  }
+  return response;
+}
+
+function withHeaders(response: NextResponse, tenantSlug: string | null, pathname: string): NextResponse {
+  return withPageCachePolicy(withSecurityHeaders(response, tenantSlug), pathname);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
@@ -54,25 +72,28 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublic(pathname)) {
-    return withSecurityHeaders(
+    return withHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),
       tenantSlug,
+      pathname,
     );
   }
 
   if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !(await hasOrithosSession(request))) {
-    return withSecurityHeaders(
+    return withHeaders(
       NextResponse.json({ message: "Orithos session expired" }, { status: 401 }),
       tenantSlug,
+      pathname,
     );
   }
 
   // API routes other than public auth still need a token, but the BFF returns 401;
   // only page navigations are redirected here.
   if (pathname.startsWith("/api/")) {
-    return withSecurityHeaders(
+    return withHeaders(
       NextResponse.next({ request: { headers: requestHeaders } }),
       tenantSlug,
+      pathname,
     );
   }
 
@@ -81,7 +102,7 @@ export async function middleware(request: NextRequest) {
     const consoleHome = request.nextUrl.clone();
     consoleHome.pathname = "/platform/stores";
     consoleHome.search = "";
-    return withSecurityHeaders(NextResponse.redirect(consoleHome), tenantSlug);
+    return withHeaders(NextResponse.redirect(consoleHome), tenantSlug, pathname);
   }
 
   const hasSession =
@@ -95,12 +116,13 @@ export async function middleware(request: NextRequest) {
       ? "/platform/stores"
       : `${pathname}${request.nextUrl.search}`;
     login.search = `?next=${encodeURIComponent(nextPath)}`;
-    return withSecurityHeaders(NextResponse.redirect(login), tenantSlug);
+    return withHeaders(NextResponse.redirect(login), tenantSlug, pathname);
   }
 
-  return withSecurityHeaders(
+  return withHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
     tenantSlug,
+    pathname,
   );
 }
 
