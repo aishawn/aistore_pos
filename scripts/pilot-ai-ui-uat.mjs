@@ -79,6 +79,9 @@ async function runViewport(viewport) {
   // hides the duplicate FAB because its in-page entry owns that surface.
   await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
   const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
+  await fab.waitFor({ state: "visible", timeout: 30000 }).catch(async () => {
+    throw new Error(`AI_FAB_MISSING_${viewport.width}_${(await page.locator("body").innerText()).replace(/\\s+/g, " ").slice(0, 600)}`);
+  });
   await fab.click();
   const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await assistant.waitFor({ state: "visible", timeout: 10000 });
