@@ -36,17 +36,19 @@ export function Pagination({
         <button
           type="button"
           disabled={currentPage <= 1}
+          aria-label="Go to previous page"
           onClick={() => onPage(currentPage - 1)}
           className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40"
         >
           <ChevronRightIcon size={14} className="rotate-180" /> Prev
         </button>
-        <span className="px-1.5">
+        <span aria-current="page" className="px-1.5">
           Page {currentPage} / {pages}
         </span>
         <button
           type="button"
           disabled={currentPage >= pages}
+          aria-label="Go to next page"
           onClick={() => onPage(currentPage + 1)}
           className="flex min-h-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-40"
         >

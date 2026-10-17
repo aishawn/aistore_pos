@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { DeleteIcon, QuestionIcon } from "@/components/icons";
 
 type ConfirmVariant = "danger" | "default";
@@ -49,6 +49,19 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    requestAnimationFrame(() => cancelButtonRef.current?.focus());
+    return () => {
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open || busy) return;
     function handleKeyDown(event: KeyboardEvent) {
@@ -91,10 +104,11 @@ export function ConfirmDialog({
 
         <div className="flex justify-end gap-2.5 border-t border-[var(--oh-border)] px-5 py-4">
           <button
+            ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="min-h-11 rounded-[var(--oh-radius)] bg-[#e8e8e8] px-5 py-2 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[#dcdcdc] disabled:opacity-60"
+            className="min-h-11 rounded-[var(--oh-radius)] bg-[#e8e8e8] px-5 py-2 text-[14px] font-medium text-[var(--oh-text)] transition-colors hover:bg-[#dcdcdc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
           >
             {cancelLabel}
           </button>
@@ -102,7 +116,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors disabled:opacity-60 ${styles.confirmBg} ${styles.confirmHover}`}
+            className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 ${styles.confirmBg} ${styles.confirmHover}`}
           >
             {busy ? busyLabel : confirmLabel}
           </button>

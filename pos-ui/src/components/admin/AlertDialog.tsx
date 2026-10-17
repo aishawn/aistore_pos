@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { InfoIcon } from "@/components/icons";
 import { TriangleAlert } from "lucide-react";
 
@@ -55,6 +55,19 @@ export function AlertDialog({
   variant?: AlertVariant;
   onClose: () => void;
 }) {
+  const okButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    requestAnimationFrame(() => okButtonRef.current?.focus());
+    return () => {
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(event: KeyboardEvent) {
@@ -95,9 +108,10 @@ export function AlertDialog({
 
         <div className="flex justify-end border-t border-[var(--oh-border)] px-5 py-4">
           <button
+            ref={okButtonRef}
             type="button"
             onClick={onClose}
-            className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors ${styles.buttonBg} ${styles.buttonHover}`}
+            className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${styles.buttonBg} ${styles.buttonHover}`}
           >
             {okLabel}
           </button>
