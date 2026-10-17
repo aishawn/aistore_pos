@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-10-17T11:09:27+08:00",
+  "scope": "fresh disposable trial; provisioning company-context fix verified online",
+  "sourceCommit": "78f8385",
+  "tenant": {
+    "subdomain": "cprv-20261017110927",
+    "vendorId": 27,
+    "odooCompanyId": 24,
+    "dummyDataRequested": true
+  },
+  "checks": {
+    "signupStatus": 200,
+    "bootstrapStatus": 200,
+    "firstBindingStatus": 200,
+    "firstBindingProvisionStatus": "ready",
+    "firstBindingProvisionError": null,
+    "odooSessionStatus": 200,
+    "demoProductCount": 14
+  },
+  "cleanup": {
+    "platformDeleteStatus": 200,
+    "finalVendorStatus": "deleted",
+    "deletedTenantAuthStatus": 402
+  },
+  "result": "PASS_PROVISION_COMPANY_CONTEXT_AND_DELETE",
+  "secrets": "passwords, bootstrap tokens, cookies and Odoo credentials intentionally omitted"
+}
