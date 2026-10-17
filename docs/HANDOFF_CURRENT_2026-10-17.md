@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：`50095f4 docs: align cash P0 status with implementation`
+- 最新提交：`adafca4 test: verify admin search empty states`
 - 本轮功能代码提交：`9224563 fix: tighten admin list and receiving UX`；回归脚本提交：`0baf7c6 test: add authenticated admin list regression batch`
 - 共用弹窗交互提交：`1fb0fe0 fix: improve shared dialog keyboard behavior`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
