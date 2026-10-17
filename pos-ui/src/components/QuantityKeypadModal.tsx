@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MinusIcon, PlusIcon, DeleteIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
@@ -31,10 +31,27 @@ export function QuantityKeypadModal({
   onClose,
 }: QuantityKeypadModalProps) {
   const [input, setInput] = useState(formatQty(initialQty));
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (open) setInput(formatQty(initialQty));
-  }, [open, initialQty]);
+    if (!open) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const frame = requestAnimationFrame(() => {
+      setInput(formatQty(initialQty));
+      confirmButtonRef.current?.focus();
+    });
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("keydown", handleKeyDown);
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    };
+  }, [initialQty, onClose, open]);
 
   if (!open) return null;
 
@@ -72,12 +89,13 @@ export function QuantityKeypadModal({
     >
       <div
         role="dialog"
-        aria-label="Edit quantity"
+        aria-modal="true"
+        aria-labelledby="quantity-dialog-title"
         className="w-[280px] max-w-[90vw] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {productName && (
-          <p className="mb-3 truncate text-center text-[13px] font-medium text-[var(--oh-muted)]">
+            <p id="quantity-dialog-title" className="mb-3 truncate text-center text-[13px] font-medium text-[var(--oh-muted)]">
             {productName}
           </p>
         )}
@@ -88,7 +106,7 @@ export function QuantityKeypadModal({
             type="button"
             aria-label="Decrease quantity"
             onClick={() => step(-1)}
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
             <MinusIcon size={16} strokeWidth={2} />
           </button>
@@ -101,7 +119,7 @@ export function QuantityKeypadModal({
             type="button"
             aria-label="Increase quantity"
             onClick={() => step(1)}
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)]"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
             <PlusIcon size={16} strokeWidth={2} />
           </button>
@@ -115,6 +133,7 @@ export function QuantityKeypadModal({
               <button
                 key={key}
                 type="button"
+                aria-label={key === "backspace" ? "Delete last digit" : `Enter ${key}`}
                 onClick={() => (key === "backspace" ? backspace() : appendDigit(key))}
                 className={cn(
                   "flex h-12 cursor-pointer items-center justify-center rounded-[var(--oh-radius)] text-[20px] font-bold transition-colors",
@@ -134,9 +153,10 @@ export function QuantityKeypadModal({
         </div>
 
         <button
+          ref={confirmButtonRef}
           type="button"
           onClick={confirm}
-          className="mt-3 w-full cursor-pointer rounded-full bg-[var(--oh-primary)] py-3 text-[16px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+          className="mt-3 min-h-11 w-full cursor-pointer rounded-full bg-[var(--oh-primary)] py-3 text-[16px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
           OK
         </button>
