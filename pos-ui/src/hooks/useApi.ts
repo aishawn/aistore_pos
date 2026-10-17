@@ -121,10 +121,12 @@ export function useRecentCustomerSales(customerId: string | null, enabled = true
   const [data, setData] = useState<CustomerRecentSaleLine[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestSequence = useRef(0);
 
   const key = `${customerId ?? ""}-${enabled}`;
 
   const run = useCallback(() => {
+    const sequence = ++requestSequence.current;
     if (!customerId || !enabled) {
       setLoading(false);
       return;
@@ -132,9 +134,17 @@ export function useRecentCustomerSales(customerId: string | null, enabled = true
     setLoading(true);
     setError(null);
     loadRecentSaleLines(customerId)
-      .then(setData)
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : "Failed to load sales"))
-      .finally(() => setLoading(false));
+      .then((items) => {
+        if (sequence === requestSequence.current) setData(items);
+      })
+      .catch((e: unknown) => {
+        if (sequence === requestSequence.current) {
+          setError(e instanceof ApiError ? e.message : "Failed to load sales");
+        }
+      })
+      .finally(() => {
+        if (sequence === requestSequence.current) setLoading(false);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
