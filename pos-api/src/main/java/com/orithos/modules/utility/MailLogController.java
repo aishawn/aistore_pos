@@ -19,8 +19,9 @@ public class MailLogController {
                                                @RequestParam(defaultValue = "1") int page,
                                                @RequestParam(defaultValue = "20") int size) {
         int offset = Math.max(0, (page - 1) * size);
-        var items = mapper.page(recipient, size, offset);
-        return ApiResult.ok(PageResult.of(items, mapper.count(recipient), page, size));
+        String normalizedRecipient = recipient == null || recipient.isBlank() ? null : recipient.trim();
+        var items = mapper.page(normalizedRecipient, size, offset);
+        return ApiResult.ok(PageResult.of(items, mapper.count(normalizedRecipient), page, size));
     }
 
     @GetMapping("/{id}")

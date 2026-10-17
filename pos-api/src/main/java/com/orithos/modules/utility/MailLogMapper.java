@@ -8,14 +8,14 @@ import java.util.List;
 public interface MailLogMapper {
 
     @Select("SELECT * FROM mail_log WHERE 1=1 "
-            + "AND (#{recipient} IS NULL OR recipient = #{recipient}) "
+            + "AND (#{recipient} IS NULL OR LOWER(recipient) LIKE LOWER(CONCAT('%', #{recipient}, '%'))) "
             + "ORDER BY sent_at DESC LIMIT #{size} OFFSET #{offset}")
     List<MailLog> page(@Param("recipient") String recipient,
                        @Param("size") int size,
                        @Param("offset") int offset);
 
     @Select("SELECT COUNT(*) FROM mail_log WHERE 1=1 "
-            + "AND (#{recipient} IS NULL OR recipient = #{recipient})")
+            + "AND (#{recipient} IS NULL OR LOWER(recipient) LIKE LOWER(CONCAT('%', #{recipient}, '%')))")
     long count(@Param("recipient") String recipient);
 
     @Select("SELECT * FROM mail_log WHERE id = #{id}")

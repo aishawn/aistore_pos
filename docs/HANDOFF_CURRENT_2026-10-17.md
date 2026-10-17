@@ -320,6 +320,12 @@ Daily Sales、Weekly Sales、This Month Sales、Last Week Sales 和 Last Month S
 - 前端 typecheck 与目标 ESLint 通过；`git diff --check` 通过
 - 本地未运行 Java build；部署后需用只读租户验证搜索结果和分页总数
 
+### Mail Log 搜索匹配修复（待部署）
+
+`/api/mail-log` 的 recipient 查询现在按不区分大小写的包含匹配处理，并对空白输入统一视为无筛选；列表与总数保持同一过滤条件，符合前端 Search 文案。
+
+- 本地未运行 Java build；部署后需用只读日志数据验证片段邮箱搜索和分页
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
