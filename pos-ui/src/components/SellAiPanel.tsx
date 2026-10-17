@@ -335,8 +335,16 @@ export function SellAiPanel({
   }
 
   function collapsePanel() {
+    const activeElement = document.activeElement;
+    const shouldRestoreFab = activeElement instanceof HTMLElement
+      && Boolean(activeElement.closest('[role="dialog"][aria-label="Orithos AI assistant"]'));
     onExpandedChange(false);
     stopVoiceCapture();
+    if (shouldRestoreFab) {
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('[aria-label="Open Orithos AI"]')?.focus();
+      });
+    }
   }
 
   function stopVoiceCapture() {
