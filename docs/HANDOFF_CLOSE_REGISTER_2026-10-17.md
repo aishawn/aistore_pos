@@ -152,3 +152,9 @@ git diff --check
 - session、现金差异、销售和库存均有 JSON 回读证据
 - 测试租户已删除，删除后认证拒绝已确认
 - 文档记录 commit、部署信息、缺陷状态和未覆盖能力
+
+## 9. 最新部署与构建修复（2026-10-17）
+
+本地修复已提交并推送至 `f022c28`：`a4be900` 为 dummy 商品/分类配置收入科目，`dc90682` 为 POS Card/Cash journal 配置默认账户，`b34acb4` 补充 dummy inventory account，`f022c28` 移除 future-costs/future-prices Client Component 布局中的冗余 `revalidate` 导出，修复 Next prerender 的 `Invalid revalidate value` 构建错误。
+
+最新线上关班证据保存在 `docs/UAT_CLOSE_REGISTER_INCOME_ACCOUNT_FIX_LIVE_2026-10-17.json`。隔离租户已删除，删除后认证返回 HTTP 402；现金销售和 counted cash 必填校验通过，但运行中的旧部署仍返回 `Missing required account on accountable line`，因此不能把关班标记为通过。Dokploy 部署 `f022c28` 后，必须创建新的 disposable tenant 重跑完整关班验收。
