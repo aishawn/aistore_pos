@@ -245,6 +245,14 @@ public class OdooTenantProvisioner {
         return "demo-seed-" + companyId + "-";
     }
 
+    static String sampleDataState(boolean requested, boolean cleared, boolean odooReady,
+                                  int demoProducts, int demoOrders) {
+        if (cleared) return "cleared";
+        if (requested && !odooReady) return "unavailable";
+        if (demoProducts > 0 || demoOrders > 0 || requested) return "active";
+        return "never_seeded";
+    }
+
     public record SampleDataStatus(
             boolean dummyDataRequested,
             String sampleDataClearedAt,
@@ -279,6 +287,8 @@ public class OdooTenantProvisioner {
         int demoOrders = 0;
         int nonDemoPaid = 0;
         Long companyId = vendor.getOdooCompanyId();
+        boolean odooReady = "ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())
+                && companyId != null && companyId > 0;
         if (isConfigured() && companyId != null && companyId > 0) {
             try {
                 String sessionId = authenticate();
@@ -291,14 +301,9 @@ public class OdooTenantProvisioner {
                 log.warn("Sample data status probe failed for vendor {}: {}", vendorId, e.getMessage());
             }
         }
-        String state;
-        if (clearedAt != null) {
-            state = "cleared";
-        } else if (demoProducts > 0 || demoOrders > 0 || requested) {
-            state = "active";
-        } else {
-            state = "never_seeded";
-        }
+        // Do not present a purge action while provisioning is pending or failed.
+        // There is no safely addressable Odoo company in that state.
+        String state = sampleDataState(requested, clearedAt != null, odooReady, demoProducts, demoOrders);
         boolean canPurge = "active".equals(state) && (demoProducts > 0 || demoCustomers > 0 || demoOrders > 0 || requested);
         boolean archiveOnly = nonDemoPaid > 0;
         return new SampleDataStatus(

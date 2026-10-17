@@ -32,4 +32,11 @@ class OdooTenantProvisionerTest {
     void demoOrderUuidPrefixIncludesCompanyId() {
         assertEquals("demo-seed-16-", OdooTenantProvisioner.demoOrderUuidPrefix(16));
     }
+
+    @Test
+    void sampleDataStateDoesNotOfferPurgeBeforeOdooIsReady() {
+        assertEquals("unavailable", OdooTenantProvisioner.sampleDataState(true, false, false, 0, 0));
+        assertEquals("active", OdooTenantProvisioner.sampleDataState(true, false, true, 0, 0));
+        assertEquals("cleared", OdooTenantProvisioner.sampleDataState(true, true, true, 0, 32));
+    }
 }

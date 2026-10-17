@@ -35,6 +35,7 @@ type PurgeResult = {
 function stateLabel(state: string) {
   if (state === "active") return "Sample data is active";
   if (state === "cleared") return "Sample data removed";
+  if (state === "unavailable") return "Sample data is unavailable until Odoo is ready";
   return "No sample data";
 }
 
@@ -143,6 +144,11 @@ export default function SettingsDataPage() {
           ) : status ? (
             <div className="mt-4 space-y-3">
               <p className="text-sm font-semibold text-[var(--oh-text)]">{stateLabel(status.state)}</p>
+              {status.state === "unavailable" && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                  Odoo is still provisioning this store, or provisioning failed. Sample data cleanup becomes available after the store is connected.
+                </p>
+              )}
               <ul className="grid gap-1 text-sm text-[var(--oh-text-secondary)] sm:grid-cols-2">
                 <li>DEMO products: {status.demoProductCount}</li>
                 <li>DEMO customers: {status.demoCustomerCount}</li>
