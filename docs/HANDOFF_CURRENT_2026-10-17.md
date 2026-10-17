@@ -54,6 +54,13 @@
 3. **历史文档存在时间差**：下方历史章节记录多个已通过批次，阅读时以本节和对应 JSON 的 `generatedAt`、`sourceCommit`、`deployment` 为准。
 4. **工作区并行修改**：`pos-ui/tsconfig.json` 和两个 Future Costs/Prices 页面为用户已有未提交修改；其中两个页面移除了页面级 `dynamic`/`fetchCache` 声明，部署前必须确认是否由上级 layout 或 `next.config.ts` 完整覆盖。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
 
+### 最新 Dokploy Webhook 尝试（2026-10-17）
+
+- 用户提供的 Compose webhook 已实际调用。
+- 直接空 POST 返回 `{"message":"Branch Not Match"}`；按 GitHub push 格式发送 `ref=refs/heads/main`、仓库 `aishawn/aistore_pos` 和提交 `d835857` 后返回 `HTTP 200 {"message":"Compose deployed successfully"}`。
+- 按用户要求等待约 7 分钟后，`/security`、`/reports/dashboard`、`/utilities/future-costs`、`/utilities/trashed-items` 仍返回 `Cache-Control: s-maxage=31536000`、`x-nextjs-cache: HIT`、`x-nextjs-prerender: 1`。
+- 该结果证明 webhook 接收了请求，但不能证明 Compose 构建成功或 frontend 已切换；需要在 Dokploy Deployments 页面查看该任务的状态、构建日志、实际 commit SHA 和服务容器状态。
+
 ### 接手后的最短执行路径
 
 1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA。
