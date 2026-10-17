@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { SelectChevronIcon, XIcon } from "@/components/icons";
 import { uniqueSelectOptions, type SelectOption } from "@/components/admin/FilterSelect";
 
@@ -24,6 +24,14 @@ export function FilterMultiSelect({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const listboxId = useId();
+  const optionsRef = useRef(options);
+  const valuesRef = useRef(values);
+  useEffect(() => {
+    optionsRef.current = options;
+    valuesRef.current = values;
+  }, [options, values]);
 
   const closeMenu = () => {
     setOpen(false);
@@ -32,6 +40,10 @@ export function FilterMultiSelect({
 
   useEffect(() => {
     if (!open) return;
+    const firstSelected = uniqueSelectOptions(optionsRef.current).findIndex((option) => valuesRef.current.includes(option.value));
+    const frame = window.requestAnimationFrame(() => {
+      optionRefs.current[firstSelected >= 0 ? firstSelected : 0]?.focus();
+    });
     const onDoc = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         closeMenu();
@@ -43,6 +55,7 @@ export function FilterMultiSelect({
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKeyDown);
     return () => {
+      window.cancelAnimationFrame(frame);
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKeyDown);
     };
@@ -70,6 +83,7 @@ export function FilterMultiSelect({
           type="button"
           aria-expanded={open}
           aria-haspopup="listbox"
+          aria-controls={listboxId}
           onClick={() => setOpen((v) => !v)}
           className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         >
@@ -89,8 +103,8 @@ export function FilterMultiSelect({
       </div>
 
       {open && (
-        <div role="listbox" aria-label={label} aria-multiselectable="true" className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-md border border-[var(--oh-border)] bg-white py-1 shadow-lg">
-          {uniqueOptions.map((o) => (
+        <div id={listboxId} role="listbox" aria-label={label} aria-multiselectable="true" className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-md border border-[var(--oh-border)] bg-white py-1 shadow-lg">
+          {uniqueOptions.map((o, index) => (
             <label
               key={o.value}
               role="option"
@@ -99,8 +113,24 @@ export function FilterMultiSelect({
             >
               <input
                 type="checkbox"
+                ref={(element) => { optionRefs.current[index] = element; }}
                 checked={values.includes(o.value)}
                 onChange={() => toggle(o.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Tab") {
+                    setOpen(false);
+                    return;
+                  }
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End") {
+                    event.preventDefault();
+                    const nextIndex = event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? uniqueOptions.length - 1
+                        : (index + (event.key === "ArrowDown" ? 1 : -1) + uniqueOptions.length) % uniqueOptions.length;
+                    optionRefs.current[nextIndex]?.focus();
+                  }
+                }}
                 className="h-4 w-4 accent-[#5cb3e0]"
               />
               {o.label}
