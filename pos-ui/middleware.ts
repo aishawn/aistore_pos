@@ -6,8 +6,16 @@ const ACCESS_COOKIE = "orithos_access_token";
 const REFRESH_COOKIE = "orithos_refresh_token";
 const NO_STORE_PAGES = new Set([
   "/security",
+  "/reports/favourites",
+  "/settings/company/general",
+  "/settings/loyalty",
+  "/settings/surcharging",
+  "/settings/transferees",
+  "/utilities/barcodes",
+  "/utilities/customers",
   "/utilities/future-costs",
   "/utilities/future-prices",
+  "/utilities/products",
 ]);
 
 /** Routes that must stay reachable without a session. */
