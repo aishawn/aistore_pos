@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-17",
+  "baseUrl": "https://demo.orithos.com.au",
+  "authentication": "admin session established through /api/auth/login; password was read from local environment and not recorded",
+  "routes": [
+    "/security",
+    "/utilities/future-costs",
+    "/utilities/future-prices"
+  ],
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 1000 },
+    { "name": "mobile", "width": 390, "height": 844 }
+  ],
+  "checks": {
+    "headings": ["Security Centre", "Future Costs", "Future Prices"],
+    "availabilityCopyVisible": true,
+    "oldSecurityStatisticsAbsent": true,
+    "deadNewAndFilterControlsAbsent": true,
+    "horizontalOverflow": false,
+    "pageErrors": [],
+    "businessWrites": 0
+  },
+  "screenshots": [
+    "UAT_security_desktop_2026-10-17.png",
+    "UAT_security_mobile_2026-10-17.png",
+    "UAT_utilities-future-costs_desktop_2026-10-17.png",
+    "UAT_utilities-future-costs_mobile_2026-10-17.png",
+    "UAT_utilities-future-prices_desktop_2026-10-17.png",
+    "UAT_utilities-future-prices_mobile_2026-10-17.png"
+  ],
+  "cacheFollowUp": {
+    "latestCodeCommit": "61f3c6e",
+    "expectedHeader": "no-store",
+    "observedHeader": "s-maxage=31536000",
+    "status": "pending-deployment"
+  },
+  "result": "content-pass-cache-pending"
+}
