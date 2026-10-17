@@ -16,11 +16,13 @@ public class TrashedItemController {
 
     @GetMapping
     public ApiResult<PageResult<TrashedItem>> list(@RequestParam(required = false) String type,
+                                                   @RequestParam(name = "q", required = false) String query,
                                                    @RequestParam(defaultValue = "1") int page,
                                                    @RequestParam(defaultValue = "20") int size) {
         int offset = Math.max(0, (page - 1) * size);
-        var items = mapper.page(type, size, offset);
-        return ApiResult.ok(PageResult.of(items, mapper.count(type), page, size));
+        String normalizedQuery = query == null || query.isBlank() ? null : query.trim();
+        var items = mapper.page(type, normalizedQuery, size, offset);
+        return ApiResult.ok(PageResult.of(items, mapper.count(type, normalizedQuery), page, size));
     }
 
     @PostMapping("/{id}/recover")

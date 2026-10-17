@@ -313,6 +313,13 @@ Daily Sales、Weekly Sales、This Month Sales、Last Week Sales 和 Last Month S
 - 检查：typecheck 通过；三个页面目标 ESLint 通过；`git diff --check` 通过
 - 未改变租户、邮件或回收站 API；未执行任何业务写入
 
+### Trashed Items 搜索修复（待部署）
+
+修复 `/utilities/trashed-items` 搜索框只改变本地状态但不请求后端的问题：后端 `/api/trashed-items` 新增 `q` 参数，按名称不区分大小写模糊匹配，列表和总数使用同一过滤条件；前端输入或切换类型时重置到第 1 页。
+
+- 前端 typecheck 与目标 ESLint 通过；`git diff --check` 通过
+- 本地未运行 Java build；部署后需用只读租户验证搜索结果和分页总数
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。

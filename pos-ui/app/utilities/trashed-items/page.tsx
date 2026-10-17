@@ -24,6 +24,7 @@ export default function TrashedItemsPage() {
   const [page, setPage] = useState(1);
   const { items, total, loading, error, reload } = useApiList<TrashedItem>("/api/trashed-items", {
     type: type || undefined,
+    q: search.trim() || undefined,
     page,
     size: PAGE_SIZE,
   });
@@ -35,7 +36,10 @@ export default function TrashedItemsPage() {
       search={
         <AdminSearchInput
           value={search}
-          onChange={setSearch}
+          onChange={(value) => {
+            setSearch(value);
+            setPage(1);
+          }}
           placeholder="Search trashed items…"
         />
       }
