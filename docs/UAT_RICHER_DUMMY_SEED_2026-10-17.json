@@ -1,0 +1,48 @@
+{
+  "title": "Richer trial dummyData seed",
+  "date": "2026-10-17",
+  "status": "CODE_COMPLETE_DEPLOY_GATED",
+  "summary": "OdooTenantProvisioner now seeds categories, 14 DEMO SKUs, customers, ~32 paid orders over 14 days, 1–2 refunds, and leaves one POS session open. Unit tests pass on JDK 21. Live E2E against a fresh trial requires this pos-api build to be deployed (Dokploy) first.",
+  "implementation": {
+    "primaryFile": "pos-api/src/main/java/com/orithos/tenant/OdooTenantProvisioner.java",
+    "entry": "seedDummyExperience → seedDummyCatalog + seedDummyCustomers + seedDummySales",
+    "catalog": {
+      "skus": 14,
+      "categories": ["DEMO Wine", "DEMO Beer", "DEMO Spirits", "DEMO Soft drinks", "DEMO Grocery"],
+      "openingStockRange": "24–45",
+      "prefix": "DEMO-"
+    },
+    "sales": {
+      "paidOrders": 32,
+      "daySpread": 14,
+      "refunds": "up to 2",
+      "uuidPrefix": "demo-seed-{companyId}-",
+      "leaveSessionOpen": true
+    },
+    "customers": 4,
+    "copyUpdated": [
+      "pos-ui/app/signup/page.tsx",
+      "pos-ui/src/app/signup/page.tsx",
+      "shipany-template-dev/src/shared/components/orithos/trial-signup-wizard.tsx"
+    ]
+  },
+  "localChecks": {
+    "brandSignupReachable": true,
+    "posPublicApiReachable": true,
+    "unitTestAdded": "OdooTenantProvisionerTest.dummyCatalogDefinesEnoughSkusAcrossCategories",
+    "mavenCompile": "PASS_JDK21",
+    "unitTests": "PASS OdooTenantProvisionerTest"
+  },
+  "postDeployAcceptance": [
+    "Create a fresh trial with dummyData=true (unique slug).",
+    "Overview: non-zero Odoo net sales, sales count, items sold; trend bars; top products; category donut; refunds ≥ 1; open registers ≥ 1.",
+    "Stock: ≥ 12 DEMO products with varied remaining qty.",
+    "Customers: ≥ 3 DEMO partners.",
+    "Register: open session ready; can sell remaining DEMO stock.",
+    "Delete the trial tenant after UAT; do not reuse harbour or demo production company."
+  ],
+  "notes": [
+    "Existing tenants (e.g. harbour) are not backfilled; seed runs only at provision time.",
+    "Do not treat pre-deploy trial Overview zeros as a regression of this change."
+  ]
+}

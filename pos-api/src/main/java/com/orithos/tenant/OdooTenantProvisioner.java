@@ -19,8 +19,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Creates (or links) an Odoo company + POS config for a vendor and persists the binding.
@@ -29,7 +35,40 @@ import java.util.List;
 public class OdooTenantProvisioner {
 
     private static final Logger log = LoggerFactory.getLogger(OdooTenantProvisioner.class);
-    private static final double DUMMY_STOCK_QUANTITY = 5.0;
+    private static final double DUMMY_STOCK_QUANTITY = 35.0;
+    private static final double GST_FACTOR = 1.10;
+    private static final int DUMMY_SALES_COUNT = 32;
+    private static final int DUMMY_SALES_DAYS = 14;
+    private static final DateTimeFormatter ODOO_DATETIME =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /** name, default_code, barcode, list_price (GST-incl), category key, opening stock */
+    private static final String[][] DUMMY_PRODUCTS = {
+            {"DEMO Shiraz 750ml", "DEMO-SHIRAZ", "9300001000001", "28.50", "wine", "40"},
+            {"DEMO Sauvignon Blanc 750ml", "DEMO-SB", "9300001000002", "24.90", "wine", "36"},
+            {"DEMO Cabernet 750ml", "DEMO-CAB", "9300001000003", "32.00", "wine", "30"},
+            {"DEMO Prosecco 750ml", "DEMO-PROS", "9300001000004", "19.90", "wine", "34"},
+            {"DEMO IPA 4-pack", "DEMO-IPA", "9300001000005", "22.00", "beer", "40"},
+            {"DEMO Lager 6-pack", "DEMO-LAGER", "9300001000006", "18.50", "beer", "38"},
+            {"DEMO Pale Ale 4-pack", "DEMO-PALE", "9300001000007", "21.00", "beer", "32"},
+            {"DEMO Gin 700ml", "DEMO-GIN", "9300001000008", "48.00", "spirits", "28"},
+            {"DEMO Vodka 700ml", "DEMO-VODKA", "9300001000009", "42.00", "spirits", "26"},
+            {"DEMO Whisky 700ml", "DEMO-WHISKY", "9300001000010", "55.00", "spirits", "24"},
+            {"DEMO Cola 1.25L", "DEMO-COLA", "9300001000011", "3.50", "soft", "45"},
+            {"DEMO Sparkling Water 1L", "DEMO-WATER", "9300001000012", "2.80", "soft", "42"},
+            {"DEMO Potato Chips 175g", "DEMO-CHIPS", "9300001000013", "4.20", "grocery", "40"},
+            {"DEMO Nuts Mix 200g", "DEMO-NUTS", "9300001000014", "6.50", "grocery", "30"},
+    };
+
+    private static final String[][] DUMMY_CUSTOMERS = {
+            {"DEMO Customer Alex", "alex.demo@example.com", "0400000001"},
+            {"DEMO Customer Bailey", "bailey.demo@example.com", "0400000002"},
+            {"DEMO Customer Casey", "casey.demo@example.com", "0400000003"},
+            {"DEMO Customer Devon", "devon.demo@example.com", "0400000004"},
+    };
+
+    private static final String[] CATEGORY_KEYS = {"wine", "beer", "spirits", "soft", "grocery"};
+    private static final String[] CATEGORY_LABELS = {"DEMO Wine", "DEMO Beer", "DEMO Spirits", "DEMO Soft drinks", "DEMO Grocery"};
 
     private final VendorMapper vendorMapper;
     private final OutletMapper outletMapper;
@@ -137,9 +176,9 @@ public class OdooTenantProvisioner {
             addCompanyToServiceUser(sessionId, companyId);
             if (seedDummyData) {
                 try {
-                    seedDummyCatalog(sessionId, companyId, warehouse[1]);
+                    seedDummyExperience(sessionId, companyId, warehouse[1], primaryPosConfigId);
                 } catch (Exception seedError) {
-                    log.warn("Dummy catalog seed failed for vendor {}: {}", vendorId, seedError.getMessage());
+                    log.warn("Dummy data seed failed for vendor {}: {}", vendorId, seedError.getMessage());
                 }
             }
 
@@ -184,6 +223,19 @@ public class OdooTenantProvisioner {
             names.add(count == 1 ? baseName : baseName + " " + index);
         }
         return names;
+    }
+
+    /** Exposed for unit tests — keeps the richer dummy catalog sized as planned. */
+    static int dummyCatalogSize() {
+        return DUMMY_PRODUCTS.length;
+    }
+
+    static int dummyCategoryCount() {
+        return CATEGORY_KEYS.length;
+    }
+
+    static int dummySalesCount() {
+        return DUMMY_SALES_COUNT;
     }
 
     private String authenticate() throws Exception {
@@ -644,55 +696,597 @@ public class OdooTenantProvisioner {
         return id.longValue();
     }
 
-    private void seedDummyCatalog(String sessionId, long companyId, long stockLocationId) throws Exception {
+    private void seedDummyExperience(String sessionId, long companyId, long stockLocationId, long posConfigId) throws Exception {
+        List<DummyProduct> products = seedDummyCatalog(sessionId, companyId, stockLocationId);
+        List<Long> customerIds = seedDummyCustomers(sessionId, companyId);
+        try {
+            seedDummySales(sessionId, companyId, posConfigId, products, customerIds);
+        } catch (Exception salesError) {
+            // Catalog/customers remain useful for Sell-pad smoke tests even if sales seed fails.
+            log.warn("Dummy sales seed failed for company {}: {}", companyId, salesError.getMessage());
+        }
+    }
+
+    private List<DummyProduct> seedDummyCatalog(String sessionId, long companyId, long stockLocationId) throws Exception {
         if (stockLocationId <= 0) {
             throw new IllegalStateException("No internal stock location is available for demo inventory.");
         }
         long taxId = ensureSaleGstTax(sessionId, companyId);
-        String[][] samples = {
-                {"DEMO Shiraz 750ml", "DEMO-SHIRAZ", "28.50"},
-                {"DEMO Sauvignon Blanc 750ml", "DEMO-SB", "24.90"},
-                {"DEMO IPA 4-pack", "DEMO-IPA", "22.00"},
-        };
-        int seeded = 0;
-        for (String[] sample : samples) {
+        Map<String, long[]> categories = ensureDummyCategories(sessionId, companyId);
+        List<DummyProduct> seeded = new ArrayList<>(DUMMY_PRODUCTS.length);
+        for (String[] sample : DUMMY_PRODUCTS) {
+            String name = sample[0];
+            String code = sample[1];
+            String barcode = sample[2];
+            double listPrice = Double.parseDouble(sample[3]);
+            String categoryKey = sample[4];
+            double openingStock = Double.parseDouble(sample[5]);
             try {
-                long productId = findDummyProductVariant(sessionId, companyId, sample[1]);
+                long[] categoryIds = categories.get(categoryKey);
+                long productCategId = categoryIds != null ? categoryIds[0] : 0;
+                long posCategId = categoryIds != null ? categoryIds[1] : 0;
+                long productId = findDummyProductVariant(sessionId, companyId, code);
                 if (productId <= 0) {
                     ObjectNode values = objectMapper.createObjectNode();
-                    values.put("name", sample[0]);
-                    values.put("default_code", sample[1]);
-                    values.put("list_price", Double.parseDouble(sample[2]));
+                    values.put("name", name);
+                    values.put("default_code", code);
+                    values.put("barcode", barcode);
+                    values.put("list_price", listPrice);
                     values.put("available_in_pos", true);
                     values.put("sale_ok", true);
                     values.put("purchase_ok", true);
                     values.put("type", "consu");
                     values.put("is_storable", true);
                     values.put("company_id", companyId);
+                    if (productCategId > 0) values.put("categ_id", productCategId);
+                    if (posCategId > 0) {
+                        ArrayNode posCats = values.putArray("pos_categ_ids");
+                        ArrayNode cmd = posCats.addArray();
+                        cmd.add(6);
+                        cmd.add(0);
+                        cmd.addArray().add(posCategId);
+                    }
                     if (taxId > 0) {
                         ArrayNode taxes = values.putArray("taxes_id");
                         ArrayNode cmd = taxes.addArray();
                         cmd.add(6);
                         cmd.add(0);
-                        ArrayNode ids = cmd.addArray();
-                        ids.add(taxId);
+                        cmd.addArray().add(taxId);
                     }
                     Number templateId = callKw(sessionId, "product.template", "create", List.of(values), kwargsWithCompany(companyId));
                     if (templateId == null) throw new IllegalStateException("product.template.create returned no id");
-                    productId = findDummyProductVariant(sessionId, companyId, sample[1]);
+                    productId = findDummyProductVariant(sessionId, companyId, code);
                 }
-                if (productId <= 0) throw new IllegalStateException("No product variant was created for " + sample[1]);
-                ensureDummyStock(sessionId, companyId, productId, stockLocationId);
-                seeded++;
+                if (productId <= 0) throw new IllegalStateException("No product variant was created for " + code);
+                ensureDummyStock(sessionId, companyId, productId, stockLocationId, openingStock);
+                seeded.add(new DummyProduct(productId, code, name, listPrice, taxId));
             } catch (Exception productError) {
-                log.warn("Dummy product {} or stock failed for company {}: {}", sample[1], companyId, productError.getMessage());
+                log.warn("Dummy product {} or stock failed for company {}: {}", code, companyId, productError.getMessage());
             }
         }
-        log.info("Seeded dummy POS catalog for Odoo company {} ({} products, {} demo units each)",
-                companyId, seeded, DUMMY_STOCK_QUANTITY);
-        if (seeded != samples.length) {
-            throw new IllegalStateException("Dummy catalog could not prepare all products and demo stock for company " + companyId);
+        log.info("Seeded dummy POS catalog for Odoo company {} ({} products)", companyId, seeded.size());
+        if (seeded.size() < 8) {
+            throw new IllegalStateException("Dummy catalog could not prepare enough products for company " + companyId);
         }
+        return seeded;
+    }
+
+    /**
+     * @return map of category key → [product.category id, pos.category id]
+     */
+    private Map<String, long[]> ensureDummyCategories(String sessionId, long companyId) throws Exception {
+        Map<String, long[]> byKey = new LinkedHashMap<>();
+        for (int i = 0; i < CATEGORY_KEYS.length; i++) {
+            String key = CATEGORY_KEYS[i];
+            String label = CATEGORY_LABELS[i];
+            long productCategId = ensureProductCategory(sessionId, companyId, label);
+            long posCategId = ensurePosCategory(sessionId, companyId, label);
+            byKey.put(key, new long[]{productCategId, posCategId});
+        }
+        return byKey;
+    }
+
+    private long ensureProductCategory(String sessionId, long companyId, String name) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("name").add("=").add(name));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "product.category", "search_read", List.of(domain), kwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("name", name);
+        Number id = callKw(sessionId, "product.category", "create", List.of(values), kwargsWithCompany(companyId));
+        return id == null ? 0 : id.longValue();
+    }
+
+    private long ensurePosCategory(String sessionId, long companyId, String name) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("name").add("=").add(name));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.put("limit", 1);
+        JsonNode existing = callKwNode(sessionId, "pos.category", "search_read", List.of(domain), kwargs);
+        if (existing != null && existing.isArray() && !existing.isEmpty()) {
+            long id = existing.get(0).path("id").asLong(0);
+            if (id > 0) return id;
+        }
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("name", name);
+        Number id = callKw(sessionId, "pos.category", "create", List.of(values), kwargsWithCompany(companyId));
+        return id == null ? 0 : id.longValue();
+    }
+
+    private List<Long> seedDummyCustomers(String sessionId, long companyId) throws Exception {
+        List<Long> ids = new ArrayList<>(DUMMY_CUSTOMERS.length);
+        for (String[] row : DUMMY_CUSTOMERS) {
+            String name = row[0];
+            String email = row[1];
+            String phone = row[2];
+            try {
+                ArrayNode domain = objectMapper.createArrayNode();
+                domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+                domain.add(objectMapper.createArrayNode().add("name").add("=").add(name));
+                ObjectNode findKwargs = kwargsWithCompany(companyId);
+                findKwargs.set("fields", objectMapper.createArrayNode().add("id"));
+                findKwargs.put("limit", 1);
+                JsonNode existing = callKwNode(sessionId, "res.partner", "search_read", List.of(domain), findKwargs);
+                if (existing != null && existing.isArray() && !existing.isEmpty()) {
+                    long id = existing.get(0).path("id").asLong(0);
+                    if (id > 0) {
+                        ids.add(id);
+                        continue;
+                    }
+                }
+                ObjectNode values = objectMapper.createObjectNode();
+                values.put("name", name);
+                values.put("email", email);
+                values.put("phone", phone);
+                values.put("customer_rank", 1);
+                values.put("company_id", companyId);
+                values.put("company_type", "person");
+                Number id = callKw(sessionId, "res.partner", "create", List.of(values), kwargsWithCompany(companyId));
+                if (id != null && id.longValue() > 0) ids.add(id.longValue());
+            } catch (Exception customerError) {
+                log.warn("Dummy customer {} failed for company {}: {}", name, companyId, customerError.getMessage());
+            }
+        }
+        log.info("Seeded {} DEMO customers for Odoo company {}", ids.size(), companyId);
+        return ids;
+    }
+
+    private void seedDummySales(
+            String sessionId,
+            long companyId,
+            long posConfigId,
+            List<DummyProduct> products,
+            List<Long> customerIds) throws Exception {
+        if (posConfigId <= 0 || products.isEmpty()) {
+            throw new IllegalStateException("POS config and products are required to seed demo sales.");
+        }
+        if (countExistingDemoOrders(sessionId, companyId) > 0) {
+            log.info("Demo sales already present for company {}; skipping sales seed", companyId);
+            ensureOpenPosSession(sessionId, companyId, posConfigId);
+            return;
+        }
+
+        long uid = currentUid(sessionId);
+        if (uid <= 0) throw new IllegalStateException("Odoo service user uid unavailable for demo sales.");
+
+        long posSessionId = ensureOpenPosSession(sessionId, companyId, posConfigId);
+        long[] paymentMethods = resolvePosPaymentMethods(sessionId, companyId, posConfigId);
+        long cashPm = paymentMethods[0];
+        long cardPm = paymentMethods[1];
+        if (cashPm <= 0 && cardPm <= 0) {
+            throw new IllegalStateException("No payment methods available on the demo POS config.");
+        }
+
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        int created = 0;
+        List<Long> refundSourceOrderIds = new ArrayList<>();
+
+        for (int i = 0; i < DUMMY_SALES_COUNT; i++) {
+            DummyProduct primary = products.get(i % products.size());
+            DummyProduct secondary = products.get((i * 3 + 1) % products.size());
+            int qty1 = 1 + (i % 3);
+            int qty2 = (i % 4 == 0) ? 1 : 0;
+            long partnerId = 0;
+            if (!customerIds.isEmpty() && i % 3 == 0) {
+                partnerId = customerIds.get(i % customerIds.size());
+            }
+            long paymentMethodId = (i % 2 == 0)
+                    ? (cardPm > 0 ? cardPm : cashPm)
+                    : (cashPm > 0 ? cashPm : cardPm);
+            // Spread across the last 14 days with daytime hours for a believable trend.
+            int dayOffset = i % DUMMY_SALES_DAYS;
+            int hour = 9 + (i % 10);
+            int minute = (i * 7) % 60;
+            LocalDateTime when = now.minusDays(dayOffset).withHour(hour).withMinute(minute).withSecond(0).withNano(0);
+            String dateOrder = ODOO_DATETIME.format(when);
+            String uuid = "demo-seed-" + companyId + "-" + String.format(Locale.ROOT, "%03d", i);
+
+            List<int[]> basket = new ArrayList<>();
+            basket.add(new int[]{indexOfProduct(products, primary.id), qty1});
+            if (qty2 > 0 && secondary.id != primary.id) {
+                basket.add(new int[]{indexOfProduct(products, secondary.id), qty2});
+            }
+
+            ObjectNode order = buildPaidDemoOrder(
+                    products, basket, dateOrder, uuid, uid, posSessionId, paymentMethodId, partnerId);
+            JsonNode synced = callKwNode(sessionId, "pos.order", "sync_from_ui",
+                    List.of(List.of(order)), kwargsWithCompany(companyId));
+            JsonNode saved = findSyncedOrder(synced, uuid);
+            if (saved == null) {
+                saved = findOrderByUuid(sessionId, companyId, uuid);
+            }
+            if (saved != null) {
+                created++;
+                if (saved.path("amount_total").asDouble(0) > 0 && refundSourceOrderIds.size() < 2) {
+                    refundSourceOrderIds.add(saved.path("id").asLong(0));
+                }
+            }
+        }
+
+        int refunds = 0;
+        long paymentMethodId = cardPm > 0 ? cardPm : cashPm;
+        for (int r = 0; r < refundSourceOrderIds.size(); r++) {
+            long sourceOrderId = refundSourceOrderIds.get(r);
+            try {
+                List<JsonNode> sourceLines = readOrderLines(sessionId, companyId, sourceOrderId);
+                if (sourceLines.isEmpty()) continue;
+                String refundUuid = "demo-seed-" + companyId + "-refund-" + String.format(Locale.ROOT, "%03d", r + 1);
+                String refundDate = ODOO_DATETIME.format(now.minusDays(1).withHour(14 + r).withMinute(20).withSecond(0));
+                ObjectNode refund = buildRefundDemoOrder(
+                        sourceLines, refundDate, refundUuid, uid, posSessionId, paymentMethodId);
+                JsonNode synced = callKwNode(sessionId, "pos.order", "sync_from_ui",
+                        List.of(List.of(refund)), kwargsWithCompany(companyId));
+                if (findSyncedOrder(synced, refundUuid) != null || findOrderByUuid(sessionId, companyId, refundUuid) != null) {
+                    refunds++;
+                }
+            } catch (Exception refundError) {
+                log.warn("Dummy refund {} failed for company {}: {}", r + 1, companyId, refundError.getMessage());
+            }
+        }
+
+        // Leave the session open so Overview "Open registers" is non-zero and Sell is ready.
+        log.info("Seeded dummy sales for Odoo company {} ({} paid orders, {} refunds, session left open)",
+                companyId, created, refunds);
+        if (created < 10) {
+            throw new IllegalStateException("Dummy sales seed created too few orders for company " + companyId);
+        }
+    }
+
+    private int countExistingDemoOrders(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("uuid").add("=like").add("demo-seed-" + companyId + "-%"));
+        Number count = callKw(sessionId, "pos.order", "search_count", List.of(domain), kwargsWithCompany(companyId));
+        return count == null ? 0 : count.intValue();
+    }
+
+    private long ensureOpenPosSession(String sessionId, long companyId, long posConfigId) throws Exception {
+        ArrayNode configDomain = objectMapper.createArrayNode();
+        configDomain.add(objectMapper.createArrayNode().add("id").add("=").add(posConfigId));
+        ObjectNode configKwargs = kwargsWithCompany(companyId);
+        configKwargs.set("fields", objectMapper.createArrayNode().add("id").add("current_session_id"));
+        configKwargs.put("limit", 1);
+        JsonNode configs = callKwNode(sessionId, "pos.config", "search_read", List.of(configDomain), configKwargs);
+        if (configs != null && configs.isArray() && !configs.isEmpty()) {
+            JsonNode current = configs.get(0).get("current_session_id");
+            if (current != null && current.isArray() && current.size() > 0) {
+                long existingId = current.get(0).asLong(0);
+                if (existingId > 0 && isPosSessionOpened(sessionId, companyId, existingId)) {
+                    return existingId;
+                }
+            }
+        }
+
+        long uid = currentUid(sessionId);
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("config_id", posConfigId);
+        values.put("user_id", uid);
+        Number created = callKw(sessionId, "pos.session", "create", List.of(values), kwargsWithCompany(companyId));
+        if (created == null) throw new IllegalStateException("pos.session.create returned no id");
+        long posSessionId = created.longValue();
+        try {
+            callKwNode(sessionId, "pos.session", "set_opening_control",
+                    List.of(List.of(posSessionId), 0.0, "DEMO seed open"), kwargsWithCompany(companyId));
+        } catch (Exception ignored) {
+            // Some Odoo builds open directly without cash control.
+        }
+        try {
+            callKwNode(sessionId, "pos.session", "action_pos_session_open",
+                    List.of(List.of(posSessionId)), kwargsWithCompany(companyId));
+        } catch (Exception ignored) {
+            // Session may already be opened after create / set_opening_control.
+        }
+        if (!isPosSessionOpened(sessionId, companyId, posSessionId)) {
+            throw new IllegalStateException("Could not open POS session " + posSessionId + " for demo sales");
+        }
+        return posSessionId;
+    }
+
+    private boolean isPosSessionOpened(String sessionId, long companyId, long posSessionId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(posSessionId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id").add("state"));
+        kwargs.put("limit", 1);
+        JsonNode rows = callKwNode(sessionId, "pos.session", "search_read", List.of(domain), kwargs);
+        return rows != null && rows.isArray() && !rows.isEmpty()
+                && "opened".equals(rows.get(0).path("state").asText(""));
+    }
+
+    private long[] resolvePosPaymentMethods(String sessionId, long companyId, long posConfigId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(posConfigId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("payment_method_ids"));
+        kwargs.put("limit", 1);
+        JsonNode configs = callKwNode(sessionId, "pos.config", "search_read", List.of(domain), kwargs);
+        List<Long> methodIds = new ArrayList<>();
+        if (configs != null && configs.isArray() && !configs.isEmpty()) {
+            JsonNode ids = configs.get(0).get("payment_method_ids");
+            if (ids != null && ids.isArray()) {
+                for (JsonNode id : ids) methodIds.add(id.asLong());
+            }
+        }
+        long cashId = 0;
+        long cardId = 0;
+        if (!methodIds.isEmpty()) {
+            ArrayNode pmDomain = objectMapper.createArrayNode();
+            ArrayNode inClause = objectMapper.createArrayNode();
+            inClause.add("id");
+            inClause.add("in");
+            ArrayNode idList = inClause.addArray();
+            for (Long id : methodIds) idList.add(id);
+            pmDomain.add(inClause);
+            ObjectNode pmKwargs = kwargsWithCompany(companyId);
+            pmKwargs.set("fields", objectMapper.createArrayNode()
+                    .add("id").add("name").add("is_cash_count").add("payment_method_type").add("type"));
+            pmKwargs.put("limit", 20);
+            JsonNode methods = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(pmDomain), pmKwargs);
+            if (methods != null && methods.isArray()) {
+                for (JsonNode method : methods) {
+                    long id = method.path("id").asLong(0);
+                    String name = method.path("name").asText("").toUpperCase(Locale.ROOT);
+                    boolean cash = method.path("is_cash_count").asBoolean(false)
+                            || "cash".equalsIgnoreCase(method.path("payment_method_type").asText(""))
+                            || "cash".equalsIgnoreCase(method.path("type").asText(""))
+                            || name.contains("CASH");
+                    if (cash && cashId <= 0) cashId = id;
+                    else if (!cash && cardId <= 0) cardId = id;
+                }
+            }
+        }
+        if (cashId <= 0 && !methodIds.isEmpty()) cashId = methodIds.get(0);
+        if (cardId <= 0 && methodIds.size() > 1) cardId = methodIds.get(1);
+        if (cardId <= 0) cardId = cashId;
+        return new long[]{cashId, cardId};
+    }
+
+    private ObjectNode buildPaidDemoOrder(
+            List<DummyProduct> products,
+            List<int[]> basket,
+            String dateOrder,
+            String uuid,
+            long uid,
+            long posSessionId,
+            long paymentMethodId,
+            long partnerId) {
+        ArrayNode lines = objectMapper.createArrayNode();
+        double amountTotal = 0;
+        double amountTax = 0;
+        for (int[] item : basket) {
+            DummyProduct product = products.get(item[0]);
+            int qty = item[1];
+            double incl = roundMoney(product.listPrice * qty);
+            double excl;
+            if (product.taxId > 0) {
+                excl = roundMoney(incl / GST_FACTOR);
+            } else {
+                excl = incl;
+            }
+            double unit = product.taxId > 0 ? roundMoney4(product.listPrice / GST_FACTOR) : product.listPrice;
+            amountTotal += incl;
+            amountTax += roundMoney(incl - excl);
+            ObjectNode line = objectMapper.createObjectNode();
+            line.put("product_id", product.id);
+            line.put("qty", qty);
+            line.put("price_unit", unit);
+            line.put("discount", 0);
+            line.put("price_subtotal", excl);
+            line.put("price_subtotal_incl", incl);
+            ArrayNode taxCmd = line.putArray("tax_ids");
+            ArrayNode replace = taxCmd.addArray();
+            replace.add(6);
+            replace.add(0);
+            ArrayNode taxIds = replace.addArray();
+            if (product.taxId > 0) taxIds.add(product.taxId);
+            line.putArray("pack_lot_ids");
+            ArrayNode cmd = objectMapper.createArrayNode();
+            cmd.add(0);
+            cmd.add(0);
+            cmd.add(line);
+            lines.add(cmd);
+        }
+        amountTotal = roundMoney(amountTotal);
+        amountTax = roundMoney(amountTax);
+
+        ObjectNode order = objectMapper.createObjectNode();
+        order.put("amount_paid", amountTotal);
+        order.put("amount_return", 0);
+        order.put("amount_tax", amountTax);
+        order.put("amount_total", amountTotal);
+        order.put("date_order", dateOrder);
+        order.put("fiscal_position_id", false);
+        order.put("pricelist_id", false);
+        order.put("name", "Order " + uuid);
+        order.put("is_refund", false);
+        order.put("last_order_preparation_change", "{}");
+        order.set("lines", lines);
+        if (partnerId > 0) order.put("partner_id", partnerId);
+        else order.put("partner_id", false);
+        order.put("session_id", posSessionId);
+        ArrayNode payments = order.putArray("payment_ids");
+        ArrayNode payCmd = payments.addArray();
+        payCmd.add(0);
+        payCmd.add(0);
+        ObjectNode payment = objectMapper.createObjectNode();
+        payment.put("amount", amountTotal);
+        payment.put("name", dateOrder);
+        payment.put("payment_method_id", paymentMethodId);
+        payCmd.add(payment);
+        order.put("uuid", uuid);
+        order.put("user_id", uid);
+        order.put("to_invoice", false);
+        return order;
+    }
+
+    private ObjectNode buildRefundDemoOrder(
+            List<JsonNode> sourceLines,
+            String dateOrder,
+            String uuid,
+            long uid,
+            long posSessionId,
+            long paymentMethodId) {
+        ArrayNode lines = objectMapper.createArrayNode();
+        double amountTotal = 0;
+        double amountTax = 0;
+        // Refund the first source line only (full qty) for a simple negative Overview refund.
+        JsonNode source = sourceLines.get(0);
+        long productId = relationId(source.get("product_id"));
+        double qty = source.path("qty").asDouble(0);
+        double priceUnit = source.path("price_unit").asDouble(0);
+        double subtotal = source.path("price_subtotal").asDouble(0);
+        double subtotalIncl = source.path("price_subtotal_incl").asDouble(0);
+        long sourceLineId = source.path("id").asLong(0);
+        List<Long> taxIds = new ArrayList<>();
+        JsonNode taxes = source.get("tax_ids");
+        if (taxes != null && taxes.isArray()) {
+            for (JsonNode tax : taxes) taxIds.add(tax.asLong());
+        }
+
+        ObjectNode line = objectMapper.createObjectNode();
+        line.put("product_id", productId);
+        line.put("qty", -Math.abs(qty));
+        line.put("price_unit", priceUnit);
+        line.put("discount", 0);
+        line.put("price_subtotal", -Math.abs(subtotal));
+        line.put("price_subtotal_incl", -Math.abs(subtotalIncl));
+        if (sourceLineId > 0) line.put("refunded_orderline_id", sourceLineId);
+        ArrayNode taxCmd = line.putArray("tax_ids");
+        ArrayNode replace = taxCmd.addArray();
+        replace.add(6);
+        replace.add(0);
+        ArrayNode taxIdNode = replace.addArray();
+        for (Long taxId : taxIds) taxIdNode.add(taxId);
+        line.putArray("pack_lot_ids");
+        ArrayNode cmd = objectMapper.createArrayNode();
+        cmd.add(0);
+        cmd.add(0);
+        cmd.add(line);
+        lines.add(cmd);
+
+        amountTotal = -Math.abs(subtotalIncl);
+        amountTax = -Math.abs(subtotalIncl - subtotal);
+
+        ObjectNode order = objectMapper.createObjectNode();
+        order.put("amount_paid", amountTotal);
+        order.put("amount_return", 0);
+        order.put("amount_tax", roundMoney(amountTax));
+        order.put("amount_total", roundMoney(amountTotal));
+        order.put("date_order", dateOrder);
+        order.put("fiscal_position_id", false);
+        order.put("pricelist_id", false);
+        order.put("name", "Refund " + uuid);
+        order.put("is_refund", true);
+        order.put("last_order_preparation_change", "{}");
+        order.set("lines", lines);
+        order.put("partner_id", false);
+        order.put("session_id", posSessionId);
+        ArrayNode payments = order.putArray("payment_ids");
+        ArrayNode payCmd = payments.addArray();
+        payCmd.add(0);
+        payCmd.add(0);
+        ObjectNode payment = objectMapper.createObjectNode();
+        payment.put("amount", roundMoney(amountTotal));
+        payment.put("name", dateOrder);
+        payment.put("payment_method_id", paymentMethodId);
+        payCmd.add(payment);
+        order.put("uuid", uuid);
+        order.put("user_id", uid);
+        order.put("to_invoice", false);
+        return order;
+    }
+
+    private List<JsonNode> readOrderLines(String sessionId, long companyId, long orderId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("order_id").add("=").add(orderId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode()
+                .add("id").add("product_id").add("qty").add("price_unit")
+                .add("price_subtotal").add("price_subtotal_incl").add("tax_ids"));
+        kwargs.put("limit", 20);
+        JsonNode rows = callKwNode(sessionId, "pos.order.line", "search_read", List.of(domain), kwargs);
+        List<JsonNode> lines = new ArrayList<>();
+        if (rows != null && rows.isArray()) {
+            for (JsonNode row : rows) lines.add(row);
+        }
+        return lines;
+    }
+
+    private JsonNode findSyncedOrder(JsonNode synced, String uuid) {
+        if (synced == null || !synced.isObject()) return null;
+        JsonNode orders = synced.get("pos.order");
+        if (orders == null || !orders.isArray()) return null;
+        for (JsonNode order : orders) {
+            if (uuid.equals(order.path("uuid").asText())) return order;
+        }
+        return null;
+    }
+
+    private JsonNode findOrderByUuid(String sessionId, long companyId, String uuid) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("uuid").add("=").add(uuid));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode()
+                .add("id").add("uuid").add("amount_total").add("name"));
+        kwargs.put("limit", 1);
+        JsonNode rows = callKwNode(sessionId, "pos.order", "search_read", List.of(domain), kwargs);
+        return rows != null && rows.isArray() && !rows.isEmpty() ? rows.get(0) : null;
+    }
+
+    private long currentUid(String sessionId) throws Exception {
+        HttpResponse<String> info = postJson(baseUrl + "/web/session/get_session_info", objectMapper.createObjectNode(), sessionId);
+        JsonNode root = objectMapper.readTree(info.body());
+        return root.path("result").path("uid").asLong(0);
+    }
+
+    private static long relationId(JsonNode relation) {
+        if (relation == null || relation.isNull() || relation.isBoolean()) return 0;
+        if (relation.isArray() && !relation.isEmpty()) return relation.get(0).asLong(0);
+        if (relation.isNumber()) return relation.asLong(0);
+        return 0;
+    }
+
+    private static int indexOfProduct(List<DummyProduct> products, long productId) {
+        for (int i = 0; i < products.size(); i++) {
+            if (products.get(i).id == productId) return i;
+        }
+        return 0;
+    }
+
+    private static double roundMoney(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private static double roundMoney4(double value) {
+        return Math.round(value * 10000.0) / 10000.0;
     }
 
     private long findDummyProductVariant(String sessionId, long companyId, String defaultCode) throws Exception {
@@ -708,7 +1302,13 @@ public class OdooTenantProvisioner {
                 : 0;
     }
 
-    private void ensureDummyStock(String sessionId, long companyId, long productId, long stockLocationId) throws Exception {
+    private void ensureDummyStock(
+            String sessionId,
+            long companyId,
+            long productId,
+            long stockLocationId,
+            double targetQuantity) throws Exception {
+        double quantity = targetQuantity > 0 ? targetQuantity : DUMMY_STOCK_QUANTITY;
         ArrayNode domain = objectMapper.createArrayNode();
         domain.add(objectMapper.createArrayNode().add("product_id").add("=").add(productId));
         domain.add(objectMapper.createArrayNode().add("location_id").add("=").add(stockLocationId));
@@ -722,23 +1322,25 @@ public class OdooTenantProvisioner {
         double currentQuantity = quants != null && quants.isArray() && !quants.isEmpty()
                 ? quants.get(0).path("quantity").asDouble(0)
                 : 0;
-        if (currentQuantity > 0) return;
+        if (currentQuantity >= quantity) return;
 
         if (quantId > 0) {
             ObjectNode values = objectMapper.createObjectNode();
-            values.put("inventory_quantity", DUMMY_STOCK_QUANTITY);
+            values.put("inventory_quantity", quantity);
             callKwNode(sessionId, "stock.quant", "write", List.of(List.of(quantId), values), kwargsWithCompany(companyId));
         } else {
             ObjectNode values = objectMapper.createObjectNode();
             values.put("product_id", productId);
             values.put("location_id", stockLocationId);
-            values.put("inventory_quantity", DUMMY_STOCK_QUANTITY);
+            values.put("inventory_quantity", quantity);
             Number createdId = callKw(sessionId, "stock.quant", "create", List.of(values), kwargsWithCompany(companyId));
             if (createdId == null) throw new IllegalStateException("stock.quant.create returned no id");
             quantId = createdId.longValue();
         }
         callKwNode(sessionId, "stock.quant", "action_apply_inventory", List.of(List.of(quantId)), kwargsWithCompany(companyId));
     }
+
+    private record DummyProduct(long id, String code, String name, double listPrice, long taxId) {}
 
     private long ensureSaleGstTax(String sessionId, long companyId) throws Exception {
         ArrayNode domain = objectMapper.createArrayNode();
@@ -858,7 +1460,7 @@ public class OdooTenantProvisioner {
         body.set("params", params);
         body.put("id", System.currentTimeMillis());
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(45))
+                .timeout(Duration.ofSeconds(90))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
         if (sessionId != null && !sessionId.isBlank()) {

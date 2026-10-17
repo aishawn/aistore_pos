@@ -392,9 +392,9 @@ export default function SignupPage() {
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm font-semibold text-[var(--oh-text)]">Include sample products</span>
+                  <span className="block text-sm font-semibold text-[var(--oh-text)]">Include sample data</span>
                   <span className="mt-1 block text-sm text-[var(--oh-text-secondary)]">
-                    Seeds a few DEMO wines/beer on your new Odoo company so Sell is not empty. You can delete them later.
+                    Adds a DEMO catalogue with categories and stock, a few customers, recent demo sales (and a refund), and leaves one register open so Overview and Sell look lived-in.
                   </span>
                 </span>
               </label>
