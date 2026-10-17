@@ -340,6 +340,10 @@ Daily Sales、Weekly Sales、This Month Sales、Last Week Sales 和 Last Month S
 - 检查：typecheck 通过；`git diff --check` 通过
 - 本地未运行 build；部署后需检查上述路由响应头和认证只读页面矩阵
 
+### 当前线上证据边界
+
+`docs/UAT_PAGE_MATRIX_2026-10-13.json` 最近记录的矩阵为全 PASS，但其 `sourceCommit` 仍是 `3b75e05`，`deployment` 为空，早于当前 `e2c8641`。该文件只能证明旧提交的页面回归，不能证明本批次的 server layout、搜索修复或移动端报表已经上线；部署后必须生成新的带实际运行 SHA 的矩阵。
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
