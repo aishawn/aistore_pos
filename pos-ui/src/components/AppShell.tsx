@@ -11,6 +11,7 @@ import { AiFloatHost } from "@/components/AiFloatHost";
 import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
 import { MobileTopBar } from "@/components/MobileAiApp";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { clearUiMode, getUiMode, isMobileAllowedPath, type UiMode } from "@/lib/ui-mode";
 import {
   controlPlaneLandingPath,
@@ -91,14 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => breakpoint.removeEventListener("change", syncViewport);
   }, [isSellPath]);
 
-  useEffect(() => {
-    if (!mobileSidebarOpen || !isMobileViewport) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileSidebarOpen(false);
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [mobileSidebarOpen, isMobileViewport]);
+  useDialogFocus(mobileSidebarOpen && isMobileViewport, () => setMobileSidebarOpen(false), "mobile-navigation");
 
   useLayoutEffect(() => {
     const mode = getUiMode();

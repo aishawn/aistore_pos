@@ -117,6 +117,8 @@ export function Sidebar({
   return (
     <aside
       id="main-navigation"
+      role={mobileOpen ? "dialog" : undefined}
+      aria-modal={mobileOpen ? true : undefined}
       className={cn(
         "fixed inset-y-0 left-0 z-50 flex h-full w-[var(--oh-sidebar-width)] shrink-0 flex-col overflow-hidden bg-[var(--oh-sidebar-bg)] font-sans shadow-xl transition-transform duration-200 ease-in-out print:hidden md:static md:z-auto md:shadow-none md:transition-[width]",
         mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none md:pointer-events-auto md:translate-x-0",

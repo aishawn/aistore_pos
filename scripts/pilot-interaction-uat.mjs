@@ -57,6 +57,14 @@ try {
     if (await trigger.getAttribute("aria-expanded") !== "true" || await navigation.getAttribute("aria-hidden") !== "false") {
       throw new Error("Mobile navigation did not expose its expanded state");
     }
+    await page.waitForFunction(() => {
+      const navigation = document.querySelector("#main-navigation");
+      return navigation?.getAttribute("role") === "dialog" && navigation.contains(document.activeElement);
+    }, null, { timeout: 1500 }).catch(() => { throw new Error("Mobile navigation did not receive initial focus"); });
+    await page.keyboard.press("Shift+Tab");
+    if (!await navigation.evaluate((element) => element.contains(document.activeElement))) {
+      throw new Error("Mobile navigation focus escaped on Shift+Tab");
+    }
     // Let the open-state effect register its Escape handler before dispatching the key.
     await page.waitForTimeout(50);
     await page.keyboard.press("Escape");
