@@ -234,6 +234,16 @@ Close Register 和 Purchases 页面现在也使用当前 Odoo POS 门店时区�
 - 无横向溢出、无 page error，未执行任何业务写入
 - 公网缓存头仍待 Dokploy 普通 Deploy 后确认
 
+### Customers/Suppliers 刷新时间（`66bcb37`）
+
+Customers 和 Suppliers 目录页现在读取当前 Odoo POS 配置的门店时区，并用该时区显示 `Last refreshed`；bootstrap 失败时保留 Adelaide 回退，不阻断目录读取。
+
+- 提交：`66bcb37`，已推送 `origin/main`
+- 检查：`npm run typecheck`、目标文件 ESLint、`git diff --check` 通过
+- 定向线上回归：[`UAT_DIRECTORY_TIMEZONE_TARGETED_LIVE_2026-10-17.json`](UAT_DIRECTORY_TIMEZONE_TARGETED_LIVE_2026-10-17.json)，7 个路由 × 390/1440 = `14/14 PASS`
+- 无横向溢出、无 page error，未执行任何业务写入
+- 公网实例仍需 Dokploy 普通 Deploy 后确认最新运行 SHA 和 no-store 响应头
+
 1. 阅读 `AGENTS.md`、本文件和 `docs/CAPABILITY_STATUS.md`。
 2. 检查 `git status`，保留 `pos-ui/tsconfig.json` 等并行修改。
 3. 复核 `7c51683` 的 richer dummy data Java 改动及对应测试；不要重复提交相同代码。
