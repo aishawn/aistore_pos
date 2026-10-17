@@ -5,9 +5,9 @@
 
 ## 1. 当前结论
 
-当前项目保持 **NO-GO**，原因是本工作树有一批尚未审查、提交和线上验收的 richer dummy data 改动。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归已有线上证据，但不能把这些历史证据当作新代码已经部署。
+当前 richer dummy data 批次已经通过一次全新的线上 disposable tenant 回读，但整体项目仍保持 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理仍未覆盖。此前的品牌注册、租户隔离、POS 销售、退款、现金管理、采购收货和页面回归也已有线上证据。
 
-下一步不要复用历史租户，也不要写入生产 Demo 公司。先审查并验证代码，再推送并确认 Dokploy 的实际部署 SHA，最后用新的 disposable tenant 完成一次线上回归并删除租户。
+后续不要复用历史租户，也不要写入生产 Demo 公司。每次代码变更仍需推送并确认 Dokploy 的实际部署 SHA，再用新的 disposable tenant 回归并删除租户。
 
 ## 2. 仓库与工作区
 
@@ -55,7 +55,17 @@
 
 历史租户（例如 `codex-uat-20261016203934`）仅供证据回溯，禁止复用。
 
-## 4. 当前批次：richer dummy data（已提交，待线上部署验收）
+## 4. 当前批次：richer dummy data（线上验收通过）
+
+2026-10-17 使用新 slug `codex-rich-20261017104027` 完成真实注册、bootstrap、Odoo session 恢复、数据回读和平台删除：
+
+- Odoo company `18`，provision `ready`，允许公司数 `1`
+- `14` 个 DEMO 商品、`4` 个 DEMO 客户、`34` 笔销售（含 `2` 笔退款）
+- `3` 个 Register，对应 Main Store 2 个、Back Bar 1 个
+- 注册、bootstrap、Odoo session、products、customers、sales、registers 均返回 HTTP 200
+- 删除租户返回 HTTP 200，删除后认证返回 HTTP 402
+
+证据：[UAT_RICHER_DUMMY_SEED_LIVE_2026-10-17.json](UAT_RICHER_DUMMY_SEED_LIVE_2026-10-17.json)。公网响应没有暴露 Dokploy SHA，因此该项使用线上行为回读证明，部署 SHA 仍需在 Dokploy 控制台补记。
 
 提交 `7c51683` 中的 `OdooTenantProvisioner.java` 在选择 sample data 时创建：
 
@@ -65,7 +75,7 @@
 - 最近 14 天约 32 笔已支付订单，最多 2 笔退款
 - 一个保持打开的 POS register
 
-这批代码已完成代码级检查，但仍必须在隔离新租户上检查：
+这批代码已完成代码级检查和一次隔离新租户回读；后续若修改 seed 逻辑，必须重新检查：
 
 1. `pos.order.sync_from_ui` 的订单 payload 是否兼容 Odoo 20。
 2. payment method、税、退款和 session API 是否使用正确字段及状态。
@@ -73,7 +83,7 @@
 4. 种子失败时是否会留下部分写入，是否可安全重试。
 5. 每次创建租户是否只执行一次，避免重复订单和重复商品。
 
-`docs/UAT_RICHER_DUMMY_SEED_2026-10-17.json` 在真实线上回读前仍只能视为计划/待验收记录，不能标记为 PASS。
+`docs/UAT_RICHER_DUMMY_SEED_2026-10-17.json` 是实现说明；真实线上结果以 `UAT_RICHER_DUMMY_SEED_LIVE_2026-10-17.json` 为准。
 
 ## 5. 接手后的执行顺序
 
