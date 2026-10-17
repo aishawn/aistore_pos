@@ -1,8 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, Layers3, Plus, RefreshCw, Tag } from "lucide-react";

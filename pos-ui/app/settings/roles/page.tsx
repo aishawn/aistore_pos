@@ -1,8 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
