@@ -51,6 +51,7 @@ for (const viewport of viewports) {
         await page.waitForTimeout(300);
       }
       const clearButton = page.getByRole("button", { name: clearLabel, exact: true });
+      await clearButton.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
       const clearVisible = await clearButton.isVisible().catch(() => false);
       const visibleClearText = await page.getByText(clearLabel, { exact: true }).isVisible().catch(() => false);
       if (clearVisible) await clearButton.click();

@@ -27,8 +27,8 @@ for (const viewport of viewports) {
   if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
   const page = await context.newPage();
   const response = await page.goto(`${host}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.waitForTimeout(2200);
   const helpButton = page.getByRole("button", { name: "POS help and recovery" });
+  await helpButton.waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
   const buttonCount = await helpButton.count();
   if (buttonCount !== 1) {
     console.error(JSON.stringify({ viewport: viewport.width, url: page.url(), title: await page.title(), body: (await page.locator("body").innerText()).slice(0, 600) }));

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-17T13:55:36.885Z",
-  "sourceCommit": "ae3373f3356b909bc4c995aa03975c76a102b165",
-  "deployment": "",
+  "generatedAt": "2026-10-17T13:56:50.842Z",
+  "sourceCommit": "a2d0adaca7f1750bfe6b46293e080612ffbbaaf6",
+  "deployment": "dokploy-sha-unverified",
   "scope": "authenticated read-only POS dialog keyboard regression; no business writes",
   "host": "https://demo.orithos.com.au",
   "viewports": [
