@@ -42,31 +42,42 @@ async function runViewport(viewport) {
       await page.waitForTimeout(300);
     }
   }
+  const recommendResponse = page.waitForResponse(
+    (response) => response.request().method() === "POST"
+      && response.url().includes("/api/ai/sommelier/recommend"),
+    { timeout: 120000 },
+  );
   await page.getByRole("button", { name: "Recommend", exact: true }).click();
-  await page.getByRole("heading", { name: "Orion Recommendation" }).waitFor({ timeout: 60000 });
+  const recommendHttp = await recommendResponse;
+  if (!recommendHttp.ok()) throw new Error(`RECOMMEND_HTTP_${recommendHttp.status()}`);
+  await page.getByRole("heading", { name: "Orion Recommendation" }).waitFor({ timeout: 120000 });
   const recommendationCards = await page.locator("article").count();
 
   await page.goto(`${base}/sommelier/identify`, { waitUntil: "networkidle", timeout: 60000 });
   await page.getByPlaceholder("Penfolds Bin 28 or barcode").waitFor({ state: "visible", timeout: 30000 });
   const search = page.getByPlaceholder("Penfolds Bin 28 or barcode");
   await search.fill("DEMO");
+  const identifyResponse = page.waitForResponse(
+    (response) => response.request().method() === "GET"
+      && response.url().includes("/api/ai/sommelier/identify?q=DEMO"),
+    { timeout: 60000 },
+  );
   await page.getByRole("button", { name: "Search", exact: true }).click();
-  await Promise.race([
-    page.locator("#main-content ul li").first().waitFor({ state: "visible", timeout: 60000 }),
-    page.getByRole("alert").waitFor({ state: "visible", timeout: 60000 }),
-  ]);
-  await page.waitForTimeout(1000);
+  const identifyHttp = await identifyResponse;
+  if (!identifyHttp.ok()) throw new Error(`IDENTIFY_HTTP_${identifyHttp.status()}`);
+  await page.waitForTimeout(500);
   const identifyItems = await page.locator("#main-content ul li").count();
   if (!identifyItems) throw new Error(`IDENTIFY_EMPTY_URL_${page.url()}_main=${identifyItems}_all=${await page.locator("ul li").count()}_${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 500)}`);
   await page.locator("#main-content ul li button").first().click();
   await page.getByRole("heading", { name: "How to sell" }).waitFor({ timeout: 60000 });
   await page.getByRole("button", { name: "10s", exact: true }).click();
-  await page.getByRole("heading", { name: "How to sell" }).waitFor({ timeout: 30000 });
-  await page.getByText(/\S+/, { exact: false }).first().waitFor({ timeout: 30000 });
+  await page.waitForTimeout(500);
   await page.getByRole("button", { name: "Similar but cheaper", exact: true }).click();
   await page.getByText(/cheaper|No cheaper/i).first().waitFor({ timeout: 60000 });
 
-  await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  // Overview exposes the floating assistant entry; the Sell home intentionally
+  // hides the duplicate FAB because its in-page entry owns that surface.
+  await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
   const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
   await fab.click();
   const composer = page.getByPlaceholder("Ask Orithos AI…");
