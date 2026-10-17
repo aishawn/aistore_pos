@@ -87,7 +87,7 @@
 - 最近 14 天约 32 笔已支付订单，最多 2 笔退款
 - 一个保持打开的 POS register
 
-这批代码已完成代码级检查和一次隔离新租户回读；后续若修改 seed 逻辑，必须重新检查：
+这批代码已完成代码级检查，并在 `7c51683` 上完成一次隔离新租户回读；后续若修改 seed 逻辑，必须重新检查：
 
 1. `pos.order.sync_from_ui` 的订单 payload 是否兼容 Odoo 20。
 2. payment method、税、退款和 session API 是否使用正确字段及状态。
@@ -96,6 +96,14 @@
 5. 每次创建租户是否只执行一次，避免重复订单和重复商品。
 
 `docs/UAT_RICHER_DUMMY_SEED_2026-10-17.json` 是实现说明；真实线上结果以 `UAT_RICHER_DUMMY_SEED_LIVE_2026-10-17.json` 为准。
+
+### Sample Data 清理批次的最新结果
+
+历史部署竞态记录：`db2140e` 上一次性租户 `codex-sample-20261017105923` 的异步 Odoo provisioning 返回 `Access to unauthorized or invalid companies.`，未执行清理或业务写入，租户已删除且删除后认证返回 402；证据见 `docs/UAT_SAMPLE_DATA_PURGE_LIVE_2026-10-17_RETRY.json`。
+
+修复后结果：`87a6d7c` 将 Odoo 20 不接受的 unary `!` domain 改为 `not like`。新租户 `cpr-20261017105911` 已完成清理回归：归档 14 个 DEMO 商品、4 个客户，清理后 active product 为 0，销售记录保留，二次清理 `idempotent=true`，删除后认证返回 402。当前 sample-data 清理批次按修复后证据视为通过，详见 `docs/UAT_SAMPLE_DATA_PURGE_FIX_LIVE_2026-10-17.json`。
+
+整体项目仍为 **NO-GO**，因为实体硬件、分单收款、离线 POS、生产 AI 和正式门店现金差异处理尚未覆盖。
 
 ## 5. 接手后的执行顺序
 
