@@ -49,31 +49,26 @@ export default function MailLogPage() {
       ) : error ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button></div>
       ) : items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No mail log entries match the current search.</p>
+        <section role="status" className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
+          <p>{recipient.trim() ? "No mail log entries match the current search." : "No mail log entries yet."}</p>
+          {recipient.trim() && <button type="button" onClick={() => { setRecipient(""); setPage(1); }} className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear search</button>}
+        </section>
       ) : (
-        <ListTable
-          columns={[
-            { label: "Date" },
-            { label: "Recipient" },
-            { label: "Subject" },
-            { label: "Status", width: "w-[160px]" },
-          ]}
-          rows={items.map((m) => [
-            m.sentAt ?? "",
-            m.recipient ?? "",
-            m.subject ?? "",
-            <span
-              key="st"
-              className={
-                m.status === "Bounced" || m.status === "BOUNCED"
-                  ? "text-[var(--oh-danger)]"
-                  : "text-[var(--oh-success)]"
-              }
-            >
-              {m.status ?? ""}
-            </span>,
-          ])}
-        />
+        <>
+          <div className="hidden md:block">
+            <ListTable
+              columns={[{ label: "Date" }, { label: "Recipient" }, { label: "Subject" }, { label: "Status", width: "w-[160px]" }]}
+              rows={items.map((m) => [m.sentAt ?? "", m.recipient ?? "", m.subject ?? "", <span key="st" className={m.status === "Bounced" || m.status === "BOUNCED" ? "text-[var(--oh-danger)]" : "text-[var(--oh-success)]"}>{m.status ?? ""}</span>])}
+            />
+          </div>
+          <div className="divide-y divide-[var(--oh-border)] overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white md:hidden">
+            {items.map((mail) => <article key={mail.id} className="space-y-2 px-4 py-3.5">
+              <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words text-sm font-semibold text-[var(--oh-text)]">{mail.subject || "(No subject)"}</p><span className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${mail.status === "Bounced" || mail.status === "BOUNCED" ? "bg-rose-50 text-[var(--oh-danger)]" : "bg-emerald-50 text-[var(--oh-success)]"}`}>{mail.status || "Unknown"}</span></div>
+              <p className="break-all text-sm text-[var(--oh-text-secondary)]">{mail.recipient || "No recipient"}</p>
+              <p className="text-xs text-[var(--oh-muted)]">{mail.sentAt || "—"}</p>
+            </article>)}
+          </div>
+        </>
       )}
       <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
     </AdminPageLayout>

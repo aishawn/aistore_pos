@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import {
@@ -50,10 +50,13 @@ export default function PlatformStoresPage() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
+  const hasFilters = Boolean(search.trim() || status);
 
-  useEffect(() => {
+  function clearFilters() {
+    setSearch("");
+    setStatus("");
     setPage(1);
-  }, [debouncedSearch, status]);
+  }
 
   const { items, total, loading, error, reload } = useApiList<StoreRow>(
     ready && user ? "/api/admin/tenants" : null,
@@ -76,16 +79,22 @@ export default function PlatformStoresPage() {
       count={total}
       countLabel="Stores"
       search={
-        <AdminSearchInput
+          <AdminSearchInput
           value={search}
-          onChange={setSearch}
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
           placeholder="Search name, subdomain, contact…"
         />
       }
       filters={
         <select
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) => {
+            setStatus(event.target.value);
+            setPage(1);
+          }}
           className="min-h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
           aria-label="Filter by status"
         >
@@ -109,7 +118,10 @@ export default function PlatformStoresPage() {
       ) : error ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={() => reload()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button></div>
       ) : items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No stores found. Use Create store to add a trial vendor.</p>
+        <section role="status" className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
+          <p>{hasFilters ? "No stores match the current filters." : "No stores found."}</p>
+          {hasFilters ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <p className="mt-1">Use Create store to add a trial vendor.</p>}
+        </section>
       ) : (
         <>
           <div className="hidden md:block"><ListTable columns={[{ label: "Store", width: "w-[220px]" }, { label: "Subdomain", width: "w-[180px]" }, { label: "Status", width: "w-[120px]", align: "center" }, { label: "Contact", width: "w-[160px]" }, { label: "Trial ends", width: "w-[120px]" }, { label: "Created", width: "w-[120px]" }, { label: "Open", width: "w-[100px]", align: "center" }]} rows={items.map((store) => [

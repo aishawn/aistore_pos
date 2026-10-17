@@ -1,6 +1,6 @@
 # Orithos 当前交接文档
 
-更新时间：2026-10-17（Asia/Shanghai）  
+更新时间：2026-10-17（Asia/Shanghai，交接更新）
 适用仓库：`aishawn/aistore_pos`  相关品牌仓库：`aishawn/aistore_orithos`
 
 ## 0. 最新权威摘要（交接必读）
@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 最新提交：`83413b1 fix: expose deleted store status filter`
+- 最新提交：`f940206 test: verify platform store status filter`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
 - 工作区保留用户未提交的 `pos-ui/tsconfig.json`，不得覆盖、回滚或混入业务提交
 
@@ -28,6 +28,8 @@
 - 最近批次 `d835857` 修复 Future Costs/Prices 的 Next route config 回归；`1679f0b` 收窄平台 owner recovery 响应，不再返回页面不使用的 bootstrap token，并为 owner link 增加真实复制按钮；`0b98984` 将管理按钮和确认弹窗统一到至少 44px 触控高度。
 - `3e992f0` 将 Register Closures 的假 View 入口改为真实详情链接，新增只读详情页（含 tender breakdown），移除静态日期范围占位，并补齐移动端卡片布局。
 - `5912892` 将 Promotions、Register Closures 和五个销售报表的列表/详情路径加入 middleware 与 Next headers 的 no-store 守卫，避免动态页面的未认证重定向或详情子路径落回缓存策略之外。
+- `83413b1` 为 Platform Stores 增加 `Deleted` 状态筛选和对应灰色状态徽章；`f940206` 补充该筛选的回归证据。
+- 当前待部署批次补强了四处高频流程：采购收货数量在前端按剩余数量校验并补充输入语义标签；Platform Stores 无结果时区分筛选空态并提供 Clear filters；Mail Log 与 Trashed Items 在手机端改为摘要卡片并提供清除搜索/筛选；两个工具页同时加入 middleware 与 Next headers 的 no-store 路由守卫。
 - 本地检查已多次通过：`npm run typecheck`、目标 ESLint、`git diff --check`。本机按约束未运行 build。
 
 ### 当前未完成
@@ -49,7 +51,8 @@
 - `83413b1` 后的平台门店截图在 390px/1440px 均返回 HTTP 200；列表状态徽章和分页正常，新增 Deleted 状态筛选已随页面部署回归。
 - 最新 `docs/UAT_PAGE_MATRIX_2026-10-13.json` 的 `deployment` 为空，`sourceCommit` 为旧提交；它证明历史回归通过，不能证明当前最新批次已部署。
 - 回收项搜索和 Mail Log 搜索的后端修改尚未用部署后的只读数据完成线上验证。
-- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页和 Register Closures 详情尚未用实际运行 SHA 做线上验收；本轮平台 owner link、触控尺寸和详情页也待认证浏览器验证。
+- 本轮待部署改动尚未用实际运行 SHA 完成线上回归；需重点验证采购收货弹窗、Platform Stores 筛选空态、Mail Log/Trashed Items 的 390px 布局和 no-store 响应头。
+- 最新 server `layout.tsx` 缓存隔离、移动端报表、平台门店/工具页和 Register Closures 详情已完成认证只读矩阵和重点截图回归；仍未取得 Dokploy 实际运行 SHA，因此不能把证据绑定到具体线上容器版本。
 - 收银小票时区、采购/补货显示时区虽有页面回归，仍需在获准的 disposable tenant 业务链路中做一次真实小票/订单回读确认。
 - 实体刷卡终端、打印机、钱箱、分单收款、离线 POS、生产 AI、SMTP 实际发信、正式门店现金实点差异处理仍未覆盖或未实现。
 
@@ -58,7 +61,7 @@
 1. **部署链路阻塞**：当前环境没有 Dokploy 控制台、部署 API 或 webhook token，无法从仓库侧触发普通 Deploy；重复检查仍观察到旧缓存头。
 2. **证据与线上版本脱节**：页面返回 200 或 GitHub push 不能证明 Dokploy 已消费该提交，必须记录 Dokploy 前后端容器 SHA。
 3. **历史文档存在时间差**：下方历史章节记录多个已通过批次，阅读时以本节和对应 JSON 的 `generatedAt`、`sourceCommit`、`deployment` 为准。
-4. **工作区并行修改**：`pos-ui/tsconfig.json` 和两个 Future Costs/Prices 页面为用户已有未提交修改；其中两个页面移除了页面级 `dynamic`/`fetchCache` 声明，部署前必须确认是否由上级 layout 或 `next.config.ts` 完整覆盖。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
+4. **工作区并行修改**：当前仅保留用户已有未提交的 `pos-ui/tsconfig.json`；不要覆盖、回滚或混入业务提交。任何交接操作不得使用 `git reset --hard`、`git checkout --` 或 `git add -A`。
 
 ### 最新 Dokploy Webhook 尝试（2026-10-17）
 
@@ -70,7 +73,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；目标至少为 `f940206`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。

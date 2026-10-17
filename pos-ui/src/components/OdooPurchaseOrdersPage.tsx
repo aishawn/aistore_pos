@@ -207,10 +207,18 @@ export function OdooPurchaseOrdersPage() {
     setReceiving(true);
     setReceiveError(null);
     try {
-      const lines = detail.receivable.moves.map((move) => {
-        const qtyDone = Number(receiveQty[move.id] ?? "0");
-        return { moveId: move.id, qtyDone: Number.isFinite(qtyDone) ? qtyDone : 0 };
-      }).filter((line) => line.qtyDone > 0);
+      const invalidMove = detail.receivable.moves.find((move) => {
+        const raw = receiveQty[move.id] ?? "0";
+        const qtyDone = Number(raw);
+        return !Number.isFinite(qtyDone) || qtyDone < 0 || qtyDone > move.remaining;
+      });
+      if (invalidMove) {
+        throw new Error(`Enter a quantity between 0 and ${invalidMove.remaining} for ${relationName(invalidMove.product_id) || "this product"}.`);
+      }
+      const lines = detail.receivable.moves.map((move) => ({
+        moveId: move.id,
+        qtyDone: Number(receiveQty[move.id] ?? "0"),
+      })).filter((line) => line.qtyDone > 0);
       if (!lines.length) throw new Error("Enter at least one quantity to receive.");
       const result = await receiveOdooPurchaseOrder(detail.order.id, {
         pickingId: detail.receivable.pickingId,
@@ -398,7 +406,7 @@ export function OdooPurchaseOrdersPage() {
               <li key={move.id} className="rounded-lg border border-[var(--oh-border)] px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0"><p className="text-sm font-medium text-[var(--oh-text)]">{relationName(move.product_id) || `Move #${move.id}`}</p><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Ordered {move.product_uom_qty} · remaining {move.remaining}</p></div>
-                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Qty<input type="number" min={0} max={move.product_uom_qty} step="any" value={receiveQty[move.id] ?? "0"} onChange={(event) => setReceiveQty((current) => ({ ...current, [move.id]: event.target.value }))} className="h-10 w-24 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]" /></label>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Qty<input type="number" min={0} max={move.remaining} step="any" inputMode="decimal" aria-label={`Quantity received for ${relationName(move.product_id) || `move ${move.id}`}`} value={receiveQty[move.id] ?? "0"} onChange={(event) => { setReceiveError(null); setReceiveQty((current) => ({ ...current, [move.id]: event.target.value })); }} className="h-10 w-24 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]" /></label>
                 </div>
               </li>
             ))}
