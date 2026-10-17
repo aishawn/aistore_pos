@@ -12,7 +12,7 @@
 当前仓库基线：
 
 - 分支：`main`
-- 当前 HEAD：`7f34c59`（开关控件回归证据）；本批功能提交为 `0813041`，此前还包括 `e0b25df`、`cdc969e`、`a8357b2`
+- 当前 HEAD：`a0acb21`（完整静态路由矩阵证据）；本批功能提交为 `56377cf`、`0813041`，此前还包括 `e0b25df`、`cdc969e`、`a8357b2`
 - 最近功能代码：`a8357b2`，共用筛选控件基础优化为 `56b39da`，数量弹窗稳定性补丁为 `6055289`，Sell 弹窗语义/键盘修复为 `26bf5e5`
 - 相关回归/交互提交：`9224563`、`0baf7c6`、`1fb0fe0`
 - GitHub：`https://github.com/aishawn/aistore_pos.git`
@@ -42,6 +42,8 @@
 - 共用 `FilterDropdownSelect` 修正嵌套伪按钮，改为独立可聚焦的 Clear 控件，增加 Escape 关闭、`aria-expanded`/`listbox`/`option` 语义；分类单选和多选控件的按钮/选项统一至少 44px。未改变筛选值或后端查询协议。
 - 本批继续修正 `FilterMultiSelect` 的 Clear 控件、Escape 关闭、`listbox` 多选语义和 44px 触控目标；日期筛选增加展开/弹层语义、Escape 关闭、关闭后恢复焦点；订单筛选和通用搜索/单选筛选统一 44px 高度与焦点环。未改变筛选值、日期范围归一化或后端查询协议。
 - 本批将分类分配、批量价格、客户/供应商表单、库存、盘点和外部盘点页面的 switch 控件统一为 44px 触控区域，补充可见焦点环与缺失的 `aria-label`；只改变前端交互尺寸和语义，不改变开关对应状态或提交逻辑。
+- `CappedPricingPage` 上传拖拽区移除嵌套按钮，统一由可键盘触发的拖拽区打开文件选择器，并补充 `aria-label`、忙碌/禁用状态和焦点样式；不改变 CSV 解析或上传 API。
+- 完整认证静态路由矩阵首轮为 `261/262`（根路由 1440px 瞬态 504），独立重试为 `262/262 PASS`；证据见 `docs/UAT_STATIC_MATRIX_SWITCH_UPLOAD_2026-10-17.json` 与 `docs/UAT_STATIC_MATRIX_SWITCH_UPLOAD_2026-10-17_RETRY.json`，覆盖 131 路由 × 390/1440，无横向溢出和页面错误。
 - 最新待部署批次的共用组件优化已提交：`EmptyState`/`SadEmptyState` 改为手机优先布局并加入 live-region；`DataTable` 为列头补充 `scope=col`；`RowActions` 只渲染有真实回调的操作，并统一 44px 触控高度和焦点环；`Modal` 关闭后恢复触发控件焦点。提交为 `01d8759`，本地 typecheck、目标 ESLint 和 `git diff --check` 已通过。POS 弹窗回归脚本和证据已随 `3f7f8b6` 推送。
 
 ### 未完成、未覆盖或证据不足
@@ -71,7 +73,7 @@
 
 ### 接手后的最短执行路径
 
-1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `0813041`，仓库当前 HEAD 为 `7f34c59`。
+1. 在 Dokploy 对 `main` 执行普通 **Deploy**，禁止 Fresh Volumes，并记录 frontend/backend 实际运行 commit SHA；功能代码目标为 `56377cf`，仓库当前 HEAD 为 `a0acb21`。
 2. 先用 HEAD 请求验证 `/security`、`/reports/dashboard`、`/utilities/future-prices`、`/utilities/trashed-items` 的缓存头。
 3. 用新的 disposable tenant（例如 `codex-handoff-<timestamp>`）做注册、bootstrap、Odoo binding 和只读数据回读；不要复用历史租户或写入 Demo 公司。
 4. 用认证浏览器执行完整页面矩阵，重点覆盖新改动页面和 390/1440 两个视口；将证据写入带当前运行 SHA 的新 JSON 文件。
