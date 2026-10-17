@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
-import { createOdooCustomer, getOdooSession, searchOdooRecords, updateOdooCustomer, type OdooCustomerRecord } from "@/lib/odoo-api";
+import { createOdooCustomer, getOdooPosBootstrap, getOdooSession, searchOdooRecords, updateOdooCustomer, type OdooCustomerRecord } from "@/lib/odoo-api";
+import { formatStoreEpoch } from "@/lib/odoo-date";
 
 const PAGE_SIZE = 40;
 
@@ -38,6 +39,7 @@ export function OdooCustomerDirectoryPage() {
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -72,6 +74,19 @@ export function OdooCustomerDirectoryPage() {
     });
     return () => { cancelled = true; };
   }, [connectionRetryKey]);
+
+  useEffect(() => {
+    if (connected !== true) return;
+    let cancelled = false;
+    void getOdooPosBootstrap().then((bootstrap) => {
+      if (cancelled) return;
+      const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
+      if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
+    }).catch(() => {
+      // Keep Adelaide as the display fallback when bootstrap is unavailable.
+    });
+    return () => { cancelled = true; };
+  }, [connected]);
 
   const loadCustomers = useCallback(async () => {
     if (connected !== true) return;
@@ -131,7 +146,7 @@ export function OdooCustomerDirectoryPage() {
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
             Customer records available to your Odoo staff account.
-            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}
+            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">

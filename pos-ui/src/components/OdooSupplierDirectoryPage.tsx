@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
-import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
+import { getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
+import { formatStoreEpoch } from "@/lib/odoo-date";
 
 const PAGE_SIZE = 40;
 
@@ -42,6 +43,7 @@ export function OdooSupplierDirectoryPage() {
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -70,6 +72,19 @@ export function OdooSupplierDirectoryPage() {
     });
     return () => { cancelled = true; };
   }, [connectionRetryKey]);
+
+  useEffect(() => {
+    if (connected !== true) return;
+    let cancelled = false;
+    void getOdooPosBootstrap().then((bootstrap) => {
+      if (cancelled) return;
+      const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
+      if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
+    }).catch(() => {
+      // Keep Adelaide as the display fallback when bootstrap is unavailable.
+    });
+    return () => { cancelled = true; };
+  }, [connected]);
 
   const loadSuppliers = useCallback(async () => {
     if (connected !== true) return;
@@ -133,7 +148,7 @@ export function OdooSupplierDirectoryPage() {
       <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Suppliers</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Supplier contacts available to your Odoo staff account.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {new Intl.DateTimeFormat("en-AU", { dateStyle: "medium", timeStyle: "short" }).format(lastLoadedAt)}.</span>}</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Supplier contacts available to your Odoo staff account.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p>
         </div>
         <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
           <Link href="/stock/replenishment" className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:px-3"><span className="sm:hidden">Replenish</span><span className="hidden sm:inline">Open replenishment</span></Link>
