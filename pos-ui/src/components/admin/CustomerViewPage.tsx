@@ -7,6 +7,8 @@ import { useApi, useApiList, useRecentCustomerSales, type CustomerRecentSaleLine
 import { AsyncState } from "@/components/admin/AsyncState";
 import { ListTable } from "@/components/admin/ListTable";
 import { Modal } from "@/components/admin/Modal";
+import { AlertDialog } from "@/components/admin/AlertDialog";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { CustomerMakePaymentModal } from "@/components/admin/CustomerMakePaymentModal";
 import type { CustomerDetail } from "@/components/admin/CreateCustomerPage";
 import {
@@ -422,6 +424,10 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
   const [deleting, setDeleting] = useState(false);
   const [paying, setPaying] = useState(false);
   const [statementOpen, setStatementOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [voidPaymentId, setVoidPaymentId] = useState<string | null>(null);
+  const [voidingPayment, setVoidingPayment] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: customer, loading, error, reload: reloadCustomer } = useApi<CustomerDetail>(
     customerId ? `/api/customers/${customerId}` : null,
@@ -447,27 +453,32 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
   const outstandingSales = sales.items.filter((s) => Number(s.outstanding ?? 0) > 0);
 
   async function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this customer?")) return;
     setDeleting(true);
+    setActionError(null);
     try {
       await api.del(`/api/customers/${customerId}`);
       router.push("/customers");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to delete customer");
+      setDeleteConfirmOpen(false);
+      setActionError(e instanceof Error ? e.message : "Failed to delete customer");
       setDeleting(false);
     }
   }
 
   async function handleVoidPayment(paymentId: string) {
-    if (!window.confirm("Void this payment and restore the customer balance?")) return;
+    setVoidingPayment(true);
+    setActionError(null);
     try {
       await api.put(`/api/customer-payments/${paymentId}/void`);
       reloadCustomer();
       payments.reload();
       sales.reload();
       revisions.reload();
+      setVoidPaymentId(null);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to void payment");
+      setActionError(e instanceof Error ? e.message : "Failed to void payment");
+    } finally {
+      setVoidingPayment(false);
     }
   }
 
@@ -514,7 +525,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                   salesError={sales.error}
                   onMakePayment={() => setPaying(true)}
                   onViewStatement={() => setStatementOpen(true)}
-                  onVoidPayment={handleVoidPayment}
+                  onVoidPayment={(paymentId) => setVoidPaymentId(paymentId)}
                 />
               )}
               {nav === "sales-history" && (
@@ -565,7 +576,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                 </button>
                 <button
                   type="button"
-                  onClick={handleDelete}
+                  onClick={() => setDeleteConfirmOpen(true)}
                   disabled={deleting}
                   className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-danger)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] outline-none transition-colors hover:bg-[var(--oh-tile-red-bg)] focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)] focus-visible:ring-offset-2 disabled:opacity-60"
                 >
@@ -634,6 +645,38 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
           onClose={() => setStatementOpen(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Delete customer"
+        message="Are you sure you want to delete this customer?"
+        confirmLabel="Delete"
+        busy={deleting}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={() => void handleDelete()}
+      />
+
+      <ConfirmDialog
+        open={voidPaymentId !== null}
+        title="Void payment"
+        message="Void this payment and restore the customer balance?"
+        confirmLabel="Void payment"
+        busy={voidingPayment}
+        onCancel={() => {
+          if (!voidingPayment) setVoidPaymentId(null);
+        }}
+        onConfirm={() => {
+          if (voidPaymentId) void handleVoidPayment(voidPaymentId);
+        }}
+      />
+
+      <AlertDialog
+        open={actionError !== null}
+        title="Action failed"
+        message={actionError ?? ""}
+        variant="danger"
+        onClose={() => setActionError(null)}
+      />
     </div>
   );
 }
