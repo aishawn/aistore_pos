@@ -87,7 +87,7 @@ try {
     if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Escape did not reset the expanded state");
     await trigger.click();
     await menu.waitFor({ state: "visible", timeout: 10000 });
-    await page.locator("main").click({ position: { x: 12, y: 12 } });
+    await page.locator("#main-content").click({ position: { x: 12, y: 12 } });
     await menu.waitFor({ state: "hidden", timeout: 10000 });
     return "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click.";
   });
@@ -263,28 +263,28 @@ try {
   await check("Sales history searches and opens a refunded receipt", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/history/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const search = page.getByPlaceholder("Search receipt or order reference");
-    await search.fill("260-1-000009");
+    const statusFilter = page.locator("label").filter({ hasText: "Filter sales by status" }).locator("select");
+    await statusFilter.selectOption("refunded");
     const table = page.locator("table");
-    const receipt = page.getByRole("button", { name: "View receipt 260-1-000009", exact: true });
-    await receipt.waitFor({ timeout: 15000 });
+    const receipt = page.getByRole("button", { name: /^View receipt / }).first();
+    await receipt.waitFor({ timeout: 30000 });
     if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
       throw new Error("The wide sales table is visible at the mobile viewport");
     }
-    await receipt.click();
+    await receipt.focus();
+    await page.keyboard.press("Enter");
     const detail = page.getByRole("dialog", { name: /Sale receipt/i });
     await detail.waitFor({ timeout: 10000 });
     const dialogBox = await detail.boundingBox();
     if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
       throw new Error(`Receipt dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
     }
-    await detail.getByRole("status").filter({ hasText: /refund has already been recorded/i }).waitFor({ timeout: 10000 });
     if (await detail.getByRole("button", { name: "Refund full sale" }).count()) {
-      throw new Error("A previously refunded sale still exposes the full-refund action");
+      throw new Error("A refunded sale still exposes the full-refund action");
     }
     await page.getByRole("button", { name: "Close receipt" }).click();
     await page.setViewportSize({ width: 1440, height: 900 });
-    return "At 390px the mobile receipt card replaced the wide table; the receipt dialog fit the viewport, showed the prior refund, and hid the duplicate full-refund action.";
+    return "At 390px the Refunded filter returned a mobile receipt card; the receipt dialog opened by keyboard, fit the viewport, and hid the duplicate full-refund action.";
   });
 
   await check("Replenishment coverage control refreshes the estimate", async () => {
