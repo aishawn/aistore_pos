@@ -858,6 +858,7 @@ public class OdooTenantProvisioner {
             if (id > 0) {
                 ensureJournalDefaultAccount(sessionId, companyId, journalId,
                         "asset_current", "POS Bank Account", "8" + companyId + "3");
+                ensurePaymentMethodAccounts(sessionId, companyId, id, journalId);
                 return id;
             }
         }
@@ -872,6 +873,7 @@ public class OdooTenantProvisioner {
         card.put("payment_method_type", "bank");
         Number cardId = callKw(sessionId, "pos.payment.method", "create", List.of(card), kwargsWithCompany(companyId));
         if (cardId == null) throw new IllegalStateException("pos.payment.method.create Card failed");
+        ensurePaymentMethodAccounts(sessionId, companyId, cardId.longValue(), bankJournal);
         return cardId.longValue();
     }
 
@@ -890,6 +892,7 @@ public class OdooTenantProvisioner {
             if (id > 0) {
                 ensureJournalDefaultAccount(sessionId, companyId, journalId,
                         "asset_cash", "POS Cash Account", "8" + companyId + "4");
+                ensurePaymentMethodAccounts(sessionId, companyId, id, journalId);
                 return id;
             }
         }
@@ -908,7 +911,42 @@ public class OdooTenantProvisioner {
         cash.put("payment_method_type", "cash");
         Number cashId = callKw(sessionId, "pos.payment.method", "create", List.of(cash), kwargsWithCompany(companyId));
         if (cashId == null) throw new IllegalStateException("pos.payment.method.create Cash failed for " + configName);
+        ensurePaymentMethodAccounts(sessionId, companyId, cashId.longValue(), cashJournal);
         return cashId.longValue();
+    }
+
+    private void ensurePaymentMethodAccounts(
+            String sessionId, long companyId, long paymentMethodId, long journalId) throws Exception {
+        if (paymentMethodId <= 0 || journalId <= 0) return;
+        ArrayNode journalDomain = objectMapper.createArrayNode();
+        journalDomain.add(objectMapper.createArrayNode().add("id").add("=").add(journalId));
+        ObjectNode journalKwargs = kwargsWithCompany(companyId);
+        journalKwargs.set("fields", objectMapper.createArrayNode().add("default_account_id"));
+        journalKwargs.put("limit", 1);
+        JsonNode journals = callKwNode(sessionId, "account.journal", "search_read", List.of(journalDomain), journalKwargs);
+        if (journals == null || !journals.isArray() || journals.isEmpty()) return;
+        long defaultAccountId = relationId(journals.get(0).get("default_account_id"));
+        if (defaultAccountId <= 0) return;
+
+        ArrayNode methodDomain = objectMapper.createArrayNode();
+        methodDomain.add(objectMapper.createArrayNode().add("id").add("=").add(paymentMethodId));
+        ObjectNode methodKwargs = kwargsWithCompany(companyId);
+        methodKwargs.set("fields", objectMapper.createArrayNode()
+                .add("receivable_account_id").add("outstanding_account_id"));
+        methodKwargs.put("limit", 1);
+        JsonNode methods = callKwNode(sessionId, "pos.payment.method", "search_read", List.of(methodDomain), methodKwargs);
+        if (methods == null || !methods.isArray() || methods.isEmpty()) return;
+        ObjectNode values = objectMapper.createObjectNode();
+        if (!hasRelation(methods.get(0).get("receivable_account_id"))) {
+            values.put("receivable_account_id", defaultAccountId);
+        }
+        if (!hasRelation(methods.get(0).get("outstanding_account_id"))) {
+            values.put("outstanding_account_id", defaultAccountId);
+        }
+        if (!values.isEmpty()) {
+            callKw(sessionId, "pos.payment.method", "write",
+                    List.of(List.of(paymentMethodId), values), kwargsWithCompany(companyId));
+        }
     }
 
     private void ensureJournalDefaultAccount(
