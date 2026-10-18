@@ -48,12 +48,13 @@ export function OdooCustomerDirectoryPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editingCustomer, setEditingCustomer] = useState<OdooCustomerRecord | null>(null);
   const requestRevision = useRef(0);
+  const customerNameInputRef = useRef<HTMLInputElement>(null);
   useDialogFocus(createOpen, () => {
     if (!creating) {
       setCreateOpen(false);
       setEditingCustomer(null);
     }
-  });
+  }, undefined, customerNameInputRef);
 
   function clearSearch() {
     setQuery("");
@@ -254,7 +255,7 @@ export function OdooCustomerDirectoryPage() {
           </header>
           <form key={editingCustomer?.id ?? "new-customer"} onSubmit={(event) => void submitCustomer(event)} className="mt-5 grid gap-4">
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Customer name <span className="text-red-700">*</span></span>
-              <input name="name" autoFocus defaultValue={editingCustomer?.name ?? ""} maxLength={120} required className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+              <input ref={customerNameInputRef} name="name" defaultValue={editingCustomer?.name ?? ""} maxLength={120} required className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Phone

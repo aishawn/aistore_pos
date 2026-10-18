@@ -54,6 +54,7 @@ export function OdooProductCataloguePage() {
   const [importResult, setImportResult] = useState<{ created: number; skipped: Array<{ line: number; reason: string }> } | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const requestRevision = useRef(0);
+  const newProductNameInputRef = useRef<HTMLInputElement>(null);
   useDialogFocus(editingProduct !== null, () => {
     if (!savingProduct) setEditingProduct(null);
   });
@@ -62,7 +63,7 @@ export function OdooProductCataloguePage() {
   });
   useDialogFocus(newProductOpen, () => {
     if (!creatingProduct) setNewProductOpen(false);
-  });
+  }, undefined, newProductNameInputRef);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
 
   useEffect(() => {
@@ -506,7 +507,7 @@ export function OdooProductCataloguePage() {
           </header>
           <form key="new-product" onSubmit={(event) => void createProduct(event)} className="mt-4 grid gap-3 sm:mt-5 sm:gap-4">
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Product name <span className="text-red-700">*</span></span>
-              <input name="name" autoFocus maxLength={120} required className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+              <input ref={newProductNameInputRef} name="name" maxLength={120} required className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Sale price (AUD)
