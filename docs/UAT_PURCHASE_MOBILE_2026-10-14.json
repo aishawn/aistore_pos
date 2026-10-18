@@ -1,12 +1,14 @@
 {
-  "generatedAt": "2026-10-14T13:16:06.899Z",
-  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
+  "generatedAt": "2026-10-18T02:55:06.846Z",
+  "deployment": "ca11348732a51b214438b6e2413850637311cbd9",
   "status": "PASS",
   "viewport": 390,
   "fixture": "mock RFQ only; no Odoo write",
   "checks": [
     "mobile purchase list has no horizontal overflow",
     "RFQ is displayed as a supplier card, not a wide table",
+    "detail error exposes a retry action",
+    "retry reloads the same purchase detail",
     "mobile detail dialog fits viewport",
     "purchase line uses mobile card instead of table",
     "RFQ detail and line rendered",
