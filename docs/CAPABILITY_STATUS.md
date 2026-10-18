@@ -19,6 +19,7 @@ Statuses:
 - `OdooCloseRegisterPage` 的 register/session bootstrap 读取增加请求序号保护；快速 Refresh 或关班后重读时，旧响应不会覆盖当前 register 状态，旧请求也不会提前关闭 loading。
 - 线上关班恢复专项 `2/2 PASS`、Ops 只读专项 `3/3 PASS`；没有执行关班、现金或其它业务写入。
 - 证据：`docs/UAT_CLOSURE_RECOVERY_2026-10-18.json`、`docs/UAT_OPS_READONLY_2026-10-13.json`。
+- 部署后扩展回归：订单页 `16/16 PASS`（`pageErrors: []`、`mutatingApiRequests: []`）、综合交互 `14/14 PASS`、管理列表 `8/8 PASS`。
 
 ### `4852850` 补货计划请求竞态批次
 
