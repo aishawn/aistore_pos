@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
@@ -69,7 +69,7 @@ export function OdooProductCataloguePage() {
   useDialogFocus(newProductOpen, () => {
     if (!creatingProduct) setNewProductOpen(false);
   }, undefined, newProductNameInputRef);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!importOpen || categoryLoading || importBusy) return;
     let attempts = 0;
     let frame = 0;
@@ -84,7 +84,7 @@ export function OdooProductCataloguePage() {
         frame = window.requestAnimationFrame(focusWhenReady);
       }
     };
-    frame = window.requestAnimationFrame(focusWhenReady);
+    focusWhenReady();
     return () => window.cancelAnimationFrame(frame);
   }, [categoryLoading, importBusy, importOpen]);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
