@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { QuestionIcon } from "@/components/icons";
 import { ClassificationFormSelect } from "@/components/admin/ClassificationFormSelect";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface Outlet {
   id: string;
@@ -54,6 +55,8 @@ export function NewStocktakeModal({
   const [displayExpected, setDisplayExpected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
 
   const outletOptions = (outlets.data ?? []).map((o) => ({ label: o.name, value: o.id }));
 
@@ -70,12 +73,14 @@ export function NewStocktakeModal({
     setOutletId(outlets.data[0].id);
   }, [open, outletId, outlets.data]);
 
-  if (!open) return null;
-
   function close() {
     if (busy) return;
     onClose();
   }
+
+  useDialogFocus(open, close, "new-stocktake", nameInputRef);
+
+  if (!open) return null;
 
   async function submit() {
     const trimmed = name.trim();
@@ -112,12 +117,15 @@ export function NewStocktakeModal({
       onClick={close}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex w-full max-w-[560px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 bg-[var(--oh-tile-blue-bg)] px-5 py-3.5">
           <QuestionIcon size={18} className="shrink-0 text-[var(--oh-tile-blue-text)]" strokeWidth={2} />
-          <h2 className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">New Stocktake</h2>
+          <h2 id={titleId} className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">New Stocktake</h2>
         </div>
 
         <div className="px-5 py-5">
@@ -125,7 +133,7 @@ export function NewStocktakeModal({
             <label className="block text-[14px] font-medium text-[var(--oh-text)]">
               Name
               <input
-                autoFocus
+                ref={nameInputRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Stocktake Name"
