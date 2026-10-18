@@ -70,7 +70,20 @@ export function OdooProductCataloguePage() {
   }, undefined, newProductNameInputRef);
   useEffect(() => {
     if (!importOpen || categoryLoading || importBusy) return;
-    const frame = window.requestAnimationFrame(() => importFileInputRef.current?.focus());
+    let attempts = 0;
+    let frame = 0;
+    const focusWhenReady = () => {
+      const input = importFileInputRef.current;
+      if (input && !input.disabled) {
+        input.focus();
+        return;
+      }
+      if (attempts < 8) {
+        attempts += 1;
+        frame = window.requestAnimationFrame(focusWhenReady);
+      }
+    };
+    frame = window.requestAnimationFrame(focusWhenReady);
     return () => window.cancelAnimationFrame(frame);
   }, [categoryLoading, importBusy, importOpen]);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
