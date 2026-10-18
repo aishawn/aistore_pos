@@ -32,7 +32,7 @@ Statuses:
 | 收银焦点 | 销售备注、折扣和 Finalise Sale 客户选择弹窗使用显式 `initialFocusRef`；移除原生 `autoFocus`，避免关闭后无法恢复触发按钮焦点 | POS 弹窗 `2/2`、串行综合交互 `14/14`；订单 `16/16`、无写请求 |
 | 收银弹窗恢复 | `useDialogFocus` 排除 `aria-hidden`/`inert` 后代；原触发控件 disabled 时恢复到 Register 选择器 | 部署后 POS 弹窗 `2/2`、综合交互 `14/14`；未产生业务写入 |
 | 采购/销售详情恢复 | Odoo 详情读取失败时保留当前记录并提供原地 Retry，避免返回列表重新定位 | `ca11348` 后采购详情 mock `PASS`；订单 `16/16`，无页面错误、无写请求 |
-| 商品目录分类恢复（待部署） | 分类 API 临时失败时提供独立 Retry，恢复筛选和 CSV 导入所需的分类数据 | 本地 typecheck、目标 ESLint 通过；待部署后管理列表与交互回归复验 |
+| 商品目录分类恢复 | 分类 API 临时失败时提供独立 Retry，恢复筛选和 CSV 导入所需的分类数据 | `97b99ee` 后管理列表 `8/8`、综合交互 `14/14`、订单 `16/16`；无写请求 |
 | 页面稳定性 | utility 动态页面由根布局统一使用 `dynamic = "force-dynamic"`；future costs/prices 局部 layout 移除可能触发 Next.js 16 构建误判的缓存导出 | `/utilities/future-costs`、`/utilities/future-prices` 等动态路由需在修复部署后复验 HTTP 200、`no-store` |
 
 ### 最新只读回归结果
