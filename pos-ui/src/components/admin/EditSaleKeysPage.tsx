@@ -32,7 +32,7 @@ const BASE = "/api/sale-keys";
 export function EditSaleKeysPage({ setId }: { setId: string }) {
   const router = useRouter();
   const id = Number(setId);
-  const { data, loading, error } = useApi<SaleKeysSet>(`${BASE}/${id}`);
+  const { data, loading, error, reload } = useApi<SaleKeysSet>(`${BASE}/${id}`);
   const { data: allSets } = useApi<SaleKeysSet[]>(BASE);
 
   const [name, setName] = useState("");
@@ -138,7 +138,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
         </div>
       </div>
 
-      <AsyncState loading={loading} error={error} empty={false}>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         <div className="flex min-h-0 flex-1">
           <div
             className="relative min-w-0 flex-1 bg-[var(--sf-pad-bg)] p-4"

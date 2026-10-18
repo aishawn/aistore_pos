@@ -5,6 +5,7 @@ import {
   ColumnsIcon,
   ExportIcon,
   PrinterIcon,
+  RefreshIcon,
   SaveIcon,
   SelectChevronIcon,
   SortArrowsIcon,
@@ -110,7 +111,7 @@ function downloadCsv(filename: string, columns: string[], rows: Record<string, u
 }
 
 export function AiReportResultPage({ reportId }: { reportId: string }) {
-  const { data, loading, error } = useApi<AiReportSnapshot>(
+  const { data, loading, error, reload } = useApi<AiReportSnapshot>(
     reportId ? `/api/ai/reports/${reportId}` : null,
   );
   const [search, setSearch] = useState("");
@@ -141,8 +142,13 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
 
   if (error || !data) {
     return (
-      <div className="flex h-full items-center justify-center bg-white text-[16px] text-neutral-500">
-        {error || "Report not found."}
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-white px-6 text-center text-[16px] text-neutral-500">
+        <p role="alert">{error || "Report not found."}</p>
+        {error && (
+          <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 px-4 py-2 font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+            <RefreshIcon size={16} /> Retry report
+          </button>
+        )}
       </div>
     );
   }

@@ -128,11 +128,13 @@ function CustomerListPanel({
   customers,
   loading,
   error,
+  onRetry,
   onView,
 }: {
   customers: CustomerRow[];
   loading: boolean;
   error: string | null;
+  onRetry: () => void;
   onView: (id: string) => void;
 }) {
   return (
@@ -141,6 +143,7 @@ function CustomerListPanel({
       error={error}
       empty={customers.length === 0}
       emptyText="No customers belong to this group yet."
+      onRetry={onRetry}
     >
       <ListTable
         columns={[
@@ -167,10 +170,12 @@ function CustomerRevisionPanel({
   revisions,
   loading,
   error,
+  onRetry,
 }: {
   revisions: CustomerGroupRevision[];
   loading: boolean;
   error: string | null;
+  onRetry: () => void;
 }) {
   return (
     <AsyncState
@@ -178,6 +183,7 @@ function CustomerRevisionPanel({
       error={error}
       empty={revisions.length === 0}
       emptyText="No revision history recorded for this customer group yet."
+      onRetry={onRetry}
     >
       <ListTable
         columns={[
@@ -205,7 +211,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [alertDialog, setAlertDialog] = useState<{ title: string; message: string } | null>(null);
 
-  const { data: group, loading, error } = useApi<CustomerGroupDetail>(
+  const { data: group, loading, error, reload: reloadGroup } = useApi<CustomerGroupDetail>(
     groupId ? `/api/customers/groups/${groupId}` : null,
   );
 
@@ -304,7 +310,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
         </aside>
 
         <main className="min-w-0 flex-1 overflow-auto bg-[var(--oh-surface)] p-6">
-          <AsyncState loading={loading} error={error} empty={false}>
+          <AsyncState loading={loading} error={error} empty={false} onRetry={reloadGroup}>
             {group && (
               <>
                 {nav === "home" && (
@@ -314,6 +320,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
                       customers={customers.items}
                       loading={customers.loading}
                       error={customers.error}
+                      onRetry={customers.reload}
                       onView={(id) => router.push(`/customers/${id}/view`)}
                     />
                   </>
@@ -323,6 +330,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
                     revisions={revisions.items}
                     loading={revisions.loading}
                     error={revisions.error}
+                    onRetry={revisions.reload}
                   />
                 )}
               </>

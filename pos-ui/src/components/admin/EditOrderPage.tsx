@@ -99,7 +99,7 @@ function FormSelect({
 
 export function EditOrderPage({ orderId }: { orderId: string }) {
   const router = useRouter();
-  const { data: order, loading, error } = useApi<OrderDetail>(
+  const { data: order, loading, error, reload } = useApi<OrderDetail>(
     orderId ? `/api/orders/${orderId}` : null,
   );
 
@@ -205,7 +205,7 @@ export function EditOrderPage({ orderId }: { orderId: string }) {
       </header>
 
       <main aria-busy={loading || busy} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-        <AsyncState loading={loading} error={error} empty={!order}>
+        <AsyncState loading={loading} error={error} empty={!order} onRetry={reload}>
           {order && (
             <div className="mx-auto w-full max-w-4xl rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
               <div className="space-y-6">

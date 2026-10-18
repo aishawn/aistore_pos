@@ -495,7 +495,7 @@ function CustomerPickerModal({
   const titleId = useId();
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const { items, total, loading, error } = useApiList<CustomerListItem>("/api/customers", {
+  const { items, total, loading, error, reload } = useApiList<CustomerListItem>("/api/customers", {
     name: debouncedSearch.trim() || undefined,
     page,
     size: DEFAULT_PAGE_SIZE,
@@ -551,7 +551,7 @@ function CustomerPickerModal({
         </div>
 
         <div className="min-h-[280px] flex-1 overflow-auto px-3 py-2">
-          <AsyncState loading={loading} error={error} empty={available.length === 0}>
+          <AsyncState loading={loading} error={error} empty={available.length === 0} onRetry={reload}>
             <ul className="space-y-1">
               {available.map((c) => (
                 <li key={c.id}>

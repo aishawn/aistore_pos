@@ -80,7 +80,7 @@ export function CustomerStatementsViewPage() {
     [start, end, templateId, customerId, name, groupIds],
   );
 
-  const { data, loading, error } = useApi<StatementsPreview>(
+  const { data, loading, error, reload } = useApi<StatementsPreview>(
     query ? "/api/customers/statements/preview" : null,
     query ?? undefined,
   );
@@ -114,7 +114,7 @@ export function CustomerStatementsViewPage() {
         </p>
       )}
 
-      <AsyncState loading={loading} error={error} empty={!!query && statements.length === 0}>
+      <AsyncState loading={loading} error={error} empty={!!query && statements.length === 0} onRetry={reload}>
         <div className="space-y-5 sm:space-y-8">
           <div className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 sm:px-5 sm:py-4 print:hidden">
             <p className="text-[14px] text-[var(--oh-text-secondary)]">

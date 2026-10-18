@@ -65,7 +65,7 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
 
 export function OrderViewPage({ orderId }: { orderId: string }) {
   const router = useRouter();
-  const { data: order, loading, error } = useApi<OrderDetail>(
+  const { data: order, loading, error, reload } = useApi<OrderDetail>(
     orderId ? `/api/orders/${orderId}` : null,
   );
 
@@ -112,7 +112,7 @@ export function OrderViewPage({ orderId }: { orderId: string }) {
 
       <main aria-busy={loading} className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-5xl space-y-4 sm:space-y-5">
-          <AsyncState loading={loading} error={error} empty={!order}>
+          <AsyncState loading={loading} error={error} empty={!order} onRetry={reload}>
             {order && (
               <>
                 <section aria-labelledby="order-summary-heading" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">

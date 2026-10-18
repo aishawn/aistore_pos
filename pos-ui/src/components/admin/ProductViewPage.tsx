@@ -456,7 +456,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { data: product, loading, error } = useApi<ProductDetail>(
+  const { data: product, loading, error, reload: reloadProduct } = useApi<ProductDetail>(
     productId ? `/api/products/${productId}` : null,
   );
   const taxRates = useApi<{ id: string; name: string }[]>("/api/tax-rates");
@@ -526,7 +526,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
         </h1>
       </div>
 
-      <AsyncState loading={loading} error={error} empty={false}>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reloadProduct}>
         {product && (
           <div className="mx-5 mb-6 mt-4 flex flex-col gap-4 lg:mx-6 lg:flex-row">
             <div className="min-w-0 flex-1">
