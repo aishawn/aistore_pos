@@ -5,7 +5,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
-const ALLOWED_FIELDS = new Set(["name", "list_price", "default_code", "barcode", "pos_categ_ids", "available_in_pos"]);
+const ALLOWED_FIELDS = new Set(["name", "list_price", "default_code", "barcode", "pos_categ_ids", "available_in_pos", "image_1920"]);
+
+function productImage(value: unknown): string | null {
+  if (value === undefined) return null;
+  if (typeof value !== "string" || value.length > 2_000_000) throw new OdooRequestError("Product image must be smaller than 1.5 MB.", 400);
+  const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match) throw new OdooRequestError("Choose a valid JPEG, PNG or WebP image.", 400);
+  const bytes = Buffer.from(match[2], "base64");
+  const valid = match[1] === "jpeg" ? bytes[0] === 0xff && bytes[1] === 0xd8
+    : match[1] === "png" ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    : bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP";
+  if (!valid || bytes.length > 1_500_000) throw new OdooRequestError("Choose a valid image smaller than 1.5 MB.", 400);
+  return bytes.toString("base64");
+}
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
@@ -72,6 +85,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Choose valid POS categories" }, { status: 400 });
   }
 
+  let image: string | null;
+  try { image = productImage(body.image_1920); } catch (error) {
+    return NextResponse.json({ message: error instanceof Error ? error.message : "Invalid product image" }, { status: error instanceof OdooRequestError ? error.status : 400 });
+  }
+
   const values: Record<string, unknown> = {
     name,
     sale_ok: true,
@@ -82,6 +100,7 @@ export async function POST(request: NextRequest) {
     available_in_pos: availableInPos !== false,
     pos_categ_ids: [[6, 0, (categoryIds as number[] | undefined) ?? []]],
   };
+  if (image !== null) values.image_1920 = image;
 
   try {
     const availableFields = await callOdoo<Record<string, { type?: string }>>(sessionId, "fields_get", [["is_storable", "detailed_type", "type"]], { attributes: ["type"] });

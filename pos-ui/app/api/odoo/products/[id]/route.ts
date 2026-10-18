@@ -5,7 +5,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
-const EDITABLE_FIELDS = new Set(["barcode", "default_code", "list_price", "pos_categ_ids", "available_in_pos"]);
+const EDITABLE_FIELDS = new Set(["barcode", "default_code", "list_price", "pos_categ_ids", "available_in_pos", "image_1920"]);
+
+function productImage(value: unknown): string {
+  if (typeof value !== "string" || value.length > 2_000_000) throw new OdooRequestError("Product image must be smaller than 1.5 MB.", 400);
+  const match = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+  if (!match) throw new OdooRequestError("Choose a valid JPEG, PNG or WebP image.", 400);
+  const bytes = Buffer.from(match[2], "base64");
+  const valid = match[1] === "jpeg" ? bytes[0] === 0xff && bytes[1] === 0xd8
+    : match[1] === "png" ? bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    : bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP";
+  if (!valid || bytes.length > 1_500_000) throw new OdooRequestError("Choose a valid image smaller than 1.5 MB.", 400);
+  return bytes.toString("base64");
+}
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
@@ -78,6 +90,11 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   if ("available_in_pos" in body) {
     if (typeof body.available_in_pos !== "boolean") return NextResponse.json({ message: "POS availability must be true or false" }, { status: 400 });
     values.available_in_pos = body.available_in_pos;
+  }
+  if ("image_1920" in body) {
+    try { values.image_1920 = productImage(body.image_1920); } catch (error) {
+      return NextResponse.json({ message: error instanceof Error ? error.message : "Invalid product image" }, { status: error instanceof OdooRequestError ? error.status : 400 });
+    }
   }
   if ("pos_categ_ids" in body) {
     const categoryIds = body.pos_categ_ids;

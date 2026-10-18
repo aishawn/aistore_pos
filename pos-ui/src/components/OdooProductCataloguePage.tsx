@@ -17,6 +17,8 @@ import {
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { ProductImage } from "@/components/ProductImage";
+import { prepareProductImage } from "@/lib/product-image";
 
 const PAGE_SIZE = 40;
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
@@ -199,12 +201,14 @@ export function OdooProductCataloguePage() {
     setSavingProduct(true);
     setEditError(null);
     try {
+      const imageFile = form.get("product_image");
       const values = {
         barcode: String(form.get("barcode") ?? ""),
         default_code: String(form.get("default_code") ?? ""),
         list_price: price,
         available_in_pos: form.get("available_in_pos") === "on",
         ...(categoriesTouched ? { pos_categ_ids: categoryIds } : {}),
+        ...(imageFile instanceof File && imageFile.size ? { image_1920: await prepareProductImage(imageFile) } : {}),
       };
       await updateOdooProduct(editingProduct.id, values);
       setEditingProduct(null);
@@ -229,6 +233,7 @@ export function OdooProductCataloguePage() {
     setCreatingProduct(true);
     setCreateError(null);
     try {
+      const imageFile = form.get("product_image");
       await createOdooProduct({
         name,
         list_price: price,
@@ -236,6 +241,7 @@ export function OdooProductCataloguePage() {
         barcode: String(form.get("barcode") ?? "").trim(),
         pos_categ_ids: form.getAll("pos_categ_ids").map(Number),
         available_in_pos: form.get("available_in_pos") === "on",
+        ...(imageFile instanceof File && imageFile.size ? { image_1920: await prepareProductImage(imageFile) } : {}),
       });
       setNewProductOpen(false);
       setQuery(name);
@@ -367,7 +373,7 @@ export function OdooProductCataloguePage() {
                   const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id)).filter(Boolean);
                   return (
                     <tr key={product.id} className="hover:bg-[var(--oh-tile-blue-bg)]/60">
-                      <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{product.id}</span></td>
+                      <td className="px-4 py-3"><span className="flex items-center gap-2.5"><ProductImage productId={product.id} name={product.name} refreshToken={refreshKey} className="h-10 w-10 border border-[var(--oh-border)] bg-white" /><span className="min-w-0"><span className="block font-medium text-[var(--oh-text)]">{product.display_name || product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{product.id}</span></span></span></td>
                       <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</td>
                       <td className="px-4 py-3 text-[var(--oh-text-secondary)]"><span className="block">{product.barcode || "—"}</span>{product.default_code && <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">SKU {product.default_code}</span>}</td>
                       <td className={`px-4 py-3 text-right tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-xs text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</td>
@@ -400,10 +406,7 @@ export function OdooProductCataloguePage() {
                 return (
                   <article key={product.id} className="px-4 py-3.5">
                     <header className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="break-words text-sm font-semibold text-[var(--oh-text)]">{product.display_name || product.name}</p>
-                        <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{product.id}{product.default_code ? ` · SKU ${product.default_code}` : ""}</p>
-                      </div>
+                      <div className="flex min-w-0 items-center gap-3"><ProductImage productId={product.id} name={product.name} refreshToken={refreshKey} className="h-14 w-14 border border-[var(--oh-border)] bg-white" /><div className="min-w-0"><p className="break-words text-sm font-semibold text-[var(--oh-text)]">{product.display_name || product.name}</p><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{product.id}{product.default_code ? ` · SKU ${product.default_code}` : ""}</p></div></div>
                       <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</p>
                     </header>
                     <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
@@ -448,6 +451,9 @@ export function OdooProductCataloguePage() {
             </div>
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Barcode
               <input name="barcode" maxLength={64} defaultValue={editingProduct.barcode || ""} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Product image <span className="text-xs font-normal text-[var(--oh-muted)]">Optional · saved to Odoo and compressed before upload</span>
+              <div className="flex items-center gap-3"><ProductImage productId={editingProduct.id} name={editingProduct.name} refreshToken={refreshKey} className="h-16 w-16 border border-[var(--oh-border)] bg-white" /><input name="product_image" type="file" accept="image/jpeg,image/png,image/webp" disabled={savingProduct} className="min-w-0 flex-1 text-xs file:mr-2 file:min-h-10 file:rounded-md file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:font-semibold file:text-[var(--oh-text)]" /></div>
             </label>
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium text-[var(--oh-text)]">POS categories</legend>
@@ -526,6 +532,9 @@ export function OdooProductCataloguePage() {
             </div>
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Barcode
               <input name="barcode" maxLength={64} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Product image <span className="text-xs font-normal text-[var(--oh-muted)]">Optional · use a real product or package photo</span>
+              <input name="product_image" type="file" accept="image/jpeg,image/png,image/webp" className="min-w-0 text-xs file:mr-2 file:min-h-10 file:rounded-md file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:font-semibold file:text-[var(--oh-text)]" />
             </label>
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium text-[var(--oh-text)]">POS categories <span className="font-normal text-[var(--oh-muted)]">(optional)</span></legend>

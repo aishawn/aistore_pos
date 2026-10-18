@@ -480,7 +480,7 @@ export async function searchOdooRecords<T>(
   return payload as OdooPage<T>;
 }
 
-export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate>): Promise<void> {
+export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate> & { image_1920?: string }): Promise<void> {
   const response = await fetchOdooApi(`/api/odoo/products/${productId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -499,6 +499,7 @@ export async function createOdooProduct(values: {
   barcode: string;
   pos_categ_ids: number[];
   available_in_pos: boolean;
+  image_1920?: string;
 }): Promise<{ id: number; name: string }> {
   const response = await fetchOdooApi("/api/odoo/products", {
     method: "POST",

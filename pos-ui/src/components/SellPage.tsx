@@ -23,6 +23,7 @@ import { splitMoney, useSellScreen, type LeftView, lineNetTotal } from "@/lib/se
 import { QuantityKeypadModal } from "@/components/QuantityKeypadModal";
 import { SaleKeysPanel } from "@/components/SaleKeysPanel";
 import { useDefaultSaleKeys } from "@/hooks/useDefaultSaleKeys";
+import { ProductImage } from "@/components/ProductImage";
 
 type WorkspaceTab = "keys" | "parked" | "more";
 
@@ -980,9 +981,10 @@ function ProductsPanel() {
               key={item.id}
               type="button"
               onClick={() => sell.pickBrowseProduct(item)}
-              className="flex min-h-[88px] cursor-pointer items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-3 text-center text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)] active:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
+              className="flex min-h-[116px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-3 text-center text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)] active:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
             >
-              <span className="line-clamp-3 text-[13px] font-medium leading-snug">
+              <ProductImage productId={item.id} name={item.name} className="h-12 w-12" />
+              <span className="line-clamp-2 text-[13px] font-medium leading-snug">
                 {item.name}
               </span>
             </button>

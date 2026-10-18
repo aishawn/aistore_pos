@@ -4,36 +4,7 @@ import { useRef } from "react";
 import { ChevronDown, Trash2, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { splitMoney, useSellScreen } from "@/lib/sell-screen";
-
-const THUMB_STYLES: Record<string, string> = {
-  bananas: "bg-[#fef3c7] text-2xl",
-  bread: "bg-[#fde68a] text-xl",
-  detergent: "bg-[#dbeafe] text-xl",
-  shiraz: "bg-[#fce7f3] text-xl",
-  peroni: "bg-[#fef9c3] text-xl",
-  vodka: "bg-[#e0e7ff] text-xl",
-  cheese: "bg-[#ffedd5] text-xl",
-  "craft-beer": "bg-[#fef3c7] text-xl",
-};
-
-function productThumb(id: string, name: string) {
-  const key = id || name.toLowerCase();
-  const emoji =
-    key.includes("banana") ? "🍌"
-    : key.includes("bread") ? "🍞"
-    : key.includes("detergent") ? "🧴"
-    : key.includes("shiraz") || key.includes("wine") ? "🍷"
-    : key.includes("peroni") || key.includes("beer") || key.includes("lager") ? "🍺"
-    : key.includes("vodka") ? "🥃"
-    : key.includes("cheese") ? "🧀"
-    : "🛒";
-  const bg = THUMB_STYLES[id] ?? "bg-[var(--oh-surface)] text-xl";
-  return (
-    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", bg)}>
-      {emoji}
-    </span>
-  );
-}
+import { ProductImage } from "@/components/ProductImage";
 
 /**
  * Live POS Transaction — strict match to Orithos reference mockup.
@@ -138,7 +109,7 @@ export function PosTransactionPanel() {
                 >
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      {productThumb(line.id, line.name)}
+                      <ProductImage productId={line.id} name={line.name} className="h-10 w-10" />
                       <span className="font-medium text-[var(--oh-text)]">{line.name}</span>
                     </div>
                   </td>
@@ -252,9 +223,9 @@ function SearchDropdown() {
           onClick={() => sell.pickSearchProduct(p)}
           role="option"
           aria-selected={false}
-          className="flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left text-[13px] hover:bg-[var(--oh-surface)]"
+          className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-left text-[13px] hover:bg-[var(--oh-surface)]"
         >
-          <span className="text-[var(--oh-text)]">{p.name}</span>
+          <span className="flex min-w-0 items-center gap-2"><ProductImage productId={p.id} name={p.name} className="h-9 w-9" /><span className="truncate text-[var(--oh-text)]">{p.name}</span></span>
           <span className="text-[var(--oh-muted)]">${p.price.toFixed(2)}</span>
         </button>
       ))}
