@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { BARCODE_FORMAT_HINT, generateInStoreEan13, validateBarcode } from "@/lib/barcode";
 import { validatePositiveMoney, validatePositiveQuantity } from "@/lib/quantity";
 import { uniqueSelectOptions } from "@/components/admin/FilterSelect";
@@ -243,6 +244,8 @@ export function CreateProductPage() {
   const [activeSection, setActiveSection] = useState<SectionId>("general");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
   const createBaselineRef = useRef<string | null>(null);
   if (createBaselineRef.current === null) {
     createBaselineRef.current = productFormSnapshot(form);
@@ -307,6 +310,8 @@ export function CreateProductPage() {
   function leavePage() {
     confirmNavigation(() => router.push("/products"), checkDirty());
   }
+
+  useDialogFocus(true, leavePage, "create-product-page", nameInputRef);
 
   function set<K extends keyof ProductForm>(key: K, value: ProductForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -410,9 +415,14 @@ export function CreateProductPage() {
 
   return (
     <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-[#555e65]/95 p-4 font-sans md:p-6">
-      <div className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
+      >
         <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4">
-          <h1 className="text-center text-[18px] font-semibold text-[var(--oh-muted)] md:text-[20px]">
+          <h1 id={titleId} className="text-center text-[18px] font-semibold text-[var(--oh-muted)] md:text-[20px]">
             {displayName}
           </h1>
           <button
@@ -461,7 +471,7 @@ export function CreateProductPage() {
                 <label className="block">
                   <FormLabel required>Name</FormLabel>
                   <input
-                    autoFocus
+                    ref={nameInputRef}
                     value={form.name}
                     onChange={(e) => set("name", e.target.value)}
                     placeholder="Product name"

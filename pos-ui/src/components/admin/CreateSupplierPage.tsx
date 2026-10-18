@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { useUnsavedChanges } from "@/lib/unsaved-changes";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ClassificationFormSelect } from "@/components/admin/ClassificationFormSelect";
 import { AdminActionFooter } from "@/components/admin/AdminPageLayout";
 import {
@@ -562,6 +563,8 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
   const [activeSection, setActiveSection] = useState<SectionId>("general");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
   const [hydrated, setHydrated] = useState(!isEdit);
   const createBaselineRef = useRef<string | null>(null);
   const editBaselineRef = useRef<string | null>(null);
@@ -616,6 +619,8 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
   function leavePage() {
     confirmNavigation(() => router.push("/suppliers"), checkDirty());
   }
+
+  useDialogFocus(true, leavePage, `supplier-page-${supplierId ?? "new"}`, nameInputRef);
 
   useEffect(() => {
     void loadMdbReferences();
@@ -695,9 +700,14 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
 
   return (
     <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-slate-950/35 p-4 font-sans md:p-6">
-      <div className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
+      >
         <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4">
-          <h1 className="text-center text-[18px] font-semibold text-[var(--oh-text)] md:text-[20px]">
+          <h1 id={titleId} className="text-center text-[18px] font-semibold text-[var(--oh-text)] md:text-[20px]">
             {displayName}
           </h1>
           <button
@@ -762,7 +772,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                   <label className="block">
                     <span className="mb-1 block text-[13px] font-medium text-[var(--oh-text-secondary)]">Name</span>
                     <input
-                      autoFocus
+                      ref={nameInputRef}
                       value={form.name}
                       onChange={(e) => set("name", e.target.value)}
                       className={inputClass}
