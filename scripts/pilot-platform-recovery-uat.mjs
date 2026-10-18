@@ -67,6 +67,7 @@ try {
   let deleteRequests = 0;
   let categoryDeleteRequests = 0;
   let vendorDeleteRequests = 0;
+  let productDeleteRequests = 0;
   await login(demoContext, "https://demo.orithos.com.au", "demo");
   await demoContext.route("**/api/price-sets", async (route) => {
     if (route.request().method() === "GET") {
@@ -119,6 +120,32 @@ try {
       body: JSON.stringify(vendorDeleteRequests === 1 ? { message: "Injected vendor dependency failure" } : { code: 0, data: null }),
     });
   });
+  await demoContext.route("**/api/products**", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.pathname === "/api/products/filter-options" && route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ code: 0, data: { brands: [], categories: [], families: [], tags: [], suppliers: [], types: [], taxRates: [], costTaxRates: [] } }),
+      });
+      return;
+    }
+    if (requestUrl.pathname === "/api/products" && route.request().method() === "GET") {
+      const items = productDeleteRequests >= 2 ? [] : [{ id: "101", name: "Mock Product", status: "ACTIVE", price: 10, stockQuantity: 1, caseQuantity: 1 }];
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: { items, total: items.length, page: 1, size: 10 } }) });
+      return;
+    }
+    if (requestUrl.pathname === "/api/products/101" && route.request().method() === "DELETE") {
+      productDeleteRequests += 1;
+      await route.fulfill({
+        status: productDeleteRequests === 1 ? 409 : 200,
+        contentType: "application/json",
+        body: JSON.stringify(productDeleteRequests === 1 ? { message: "Injected linked product failure" } : { code: 0, data: null }),
+      });
+      return;
+    }
+    await route.continue();
+  });
   const demoPage = await demoContext.newPage();
   await demoPage.goto("https://demo.orithos.com.au/settings/pricesets", { waitUntil: "domcontentloaded", timeout: 60000 });
   await demoPage.getByRole("heading", { name: "Price Sets", exact: true }).waitFor({ timeout: 30000 });
@@ -149,6 +176,16 @@ try {
   await vendorDialog.getByRole("button", { name: "Delete connection", exact: true }).click();
   await demoPage.getByText("No vendor connections have been configured yet.", { exact: true }).waitFor({ timeout: 30000 });
   checks.push({ name: "vendor connection delete failure stays in dialog and retries", passed: vendorDeleteRequests === 2 });
+
+  await demoPage.goto("https://demo.orithos.com.au/products", { waitUntil: "domcontentloaded", timeout: 60000 });
+  await demoPage.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 30000 });
+  await demoPage.locator("button:visible").filter({ hasText: "Delete" }).first().click();
+  const productDialog = demoPage.getByRole("alertdialog");
+  await productDialog.getByRole("button", { name: "Deactivate", exact: true }).click();
+  await productDialog.getByRole("alert").getByText("Injected linked product failure", { exact: true }).waitFor({ timeout: 10000 });
+  await productDialog.getByRole("button", { name: "Deactivate", exact: true }).click();
+  await demoPage.getByText("No results found.", { exact: true }).waitFor({ timeout: 30000 });
+  checks.push({ name: "product delete failure stays in dialog and retries", passed: productDeleteRequests === 2 });
   await demoContext.close();
 } finally {
   await browser.close();

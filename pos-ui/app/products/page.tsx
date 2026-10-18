@@ -17,7 +17,6 @@ import { Pagination } from "@/components/admin/Pagination";
 import { useApi, useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { AlertDialog } from "@/components/admin/AlertDialog";
 import { CreateProductWizard } from "@/components/admin/CreateProductWizard";
 import { ImportProductsModal } from "@/components/admin/ImportProductsModal";
 import { PlusIcon, ImportIcon, MergeIcon, ActiveIcon, MenuIcon, XIcon } from "@/components/icons";
@@ -342,7 +341,6 @@ function ProductsPageInner() {
       setDeleting(null);
       reload();
     } catch (e) {
-      setDeleting(null);
       setActionError(e instanceof Error ? e.message : "Failed to delete product");
     } finally {
       setDeleteBusy(false);
@@ -362,7 +360,6 @@ function ProductsPageInner() {
       setSelectedIds(new Set());
       reload();
     } catch (e) {
-      setBatchDeleting(false);
       setActionError(e instanceof Error ? e.message : "Failed to delete products");
     } finally {
       setBatchDeleteBusy(false);
@@ -476,7 +473,7 @@ function ProductsPageInner() {
       <div className="mb-2.5 flex items-center justify-end">
         <button
           type="button"
-          onClick={() => setBatchDeleting(true)}
+          onClick={() => { setActionError(null); setBatchDeleting(true); }}
           disabled={!hasSelection}
           className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#c62828] disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -527,7 +524,7 @@ function ProductsPageInner() {
               <AdminRowActions
                 onView={() => router.push(`/products/${p.id}/view`)}
                 onEdit={() => router.push(`/products/${p.id}/edit`)}
-                onDelete={() => setDeleting(p)}
+                onDelete={() => { setActionError(null); setDeleting(p); }}
               />
             </div>,
           ])}
@@ -565,19 +562,12 @@ function ProductsPageInner() {
         confirmLabel={deleting && isInactive(deleting.status) ? "Delete" : "Deactivate"}
         cancelLabel="Cancel"
         busy={deleteBusy}
+        error={actionError}
         onConfirm={() => void confirmDelete()}
         onCancel={() => {
           if (!deleteBusy) setDeleting(null);
         }}
       />
-      <AlertDialog
-        open={actionError !== null}
-        title="Product action failed"
-        message={actionError ?? ""}
-        variant="danger"
-        onClose={() => setActionError(null)}
-      />
-
       <ConfirmDialog
         open={batchDeleting}
         title="Batch Delete"
@@ -585,6 +575,7 @@ function ProductsPageInner() {
         confirmLabel="Confirm"
         cancelLabel="Cancel"
         busy={batchDeleteBusy}
+        error={actionError}
         onConfirm={() => void confirmBatchDelete()}
         onCancel={() => {
           if (!batchDeleteBusy) setBatchDeleting(false);
