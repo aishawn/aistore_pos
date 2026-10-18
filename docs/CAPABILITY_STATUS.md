@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`a2324c2`：角色权限 Retry；下一批共享数据恢复与平台管理优化待 Dokploy 部署复验)
+**Last updated:** 2026-10-18（仓库基线 `1a08baf`；平台数据恢复代码基线 `6c33147`；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
