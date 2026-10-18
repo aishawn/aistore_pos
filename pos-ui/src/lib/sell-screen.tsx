@@ -328,6 +328,8 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   const [productItems, setProductItems] = useState<ProductBrowseItem[]>([]);
   const [productLoading, setProductLoading] = useState(false);
   const customerSearchRequestRef = useRef(0);
+  const promotionRequestRef = useRef(0);
+  const productBrowseRequestRef = useRef(0);
 
   const addProduct = useCallback(
     (p: { id: string; name: string; unitPrice: number; caseQuantity?: number }) => {
@@ -947,23 +949,36 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const loadPromotionBrowse = useCallback((period: PromotionPeriod, q: string) => {
+    const requestId = ++promotionRequestRef.current;
     setPromotionLoading(true);
     browsePromotions(period, q || undefined)
-      .then((res) => setPromotionItems(res.items))
-      .catch(() => setPromotionItems([]))
-      .finally(() => setPromotionLoading(false));
+      .then((res) => {
+        if (requestId === promotionRequestRef.current) setPromotionItems(res.items);
+      })
+      .catch(() => {
+        if (requestId === promotionRequestRef.current) setPromotionItems([]);
+      })
+      .finally(() => {
+        if (requestId === promotionRequestRef.current) setPromotionLoading(false);
+      });
   }, []);
 
   const loadProductBrowse = useCallback((folder: string, q?: string) => {
+    const requestId = ++productBrowseRequestRef.current;
     setProductLoading(true);
     const category = folder === "Products" ? undefined : folder;
     browseProducts(category, q)
       .then((res) => {
+        if (requestId !== productBrowseRequestRef.current) return;
         setProductItems(res.items);
         setProductFolder(res.folderName);
       })
-      .catch(() => setProductItems([]))
-      .finally(() => setProductLoading(false));
+      .catch(() => {
+        if (requestId === productBrowseRequestRef.current) setProductItems([]);
+      })
+      .finally(() => {
+        if (requestId === productBrowseRequestRef.current) setProductLoading(false);
+      });
   }, []);
 
   const backToKeys = useCallback(() => {
