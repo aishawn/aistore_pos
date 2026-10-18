@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-10-18T19:47:30+08:00",
+  "sourceCommit": "e3b7ac4",
+  "repository": "https://github.com/aishawn/aistore_pos",
+  "branch": "main",
+  "deployment": "dokploy-runtime-sha-unverified",
+  "webhook": {
+    "status": 200,
+    "message": "Compose deployed successfully"
+  },
+  "waitedMinutes": 5,
+  "localChecks": {
+    "typecheck": "PASS",
+    "targetEslint": "PASS",
+    "diffCheck": "PASS",
+    "build": "NOT RUN by project instruction"
+  },
+  "change": [
+    "Classification and supplier product assignment ignore stale asynchronous product-search responses.",
+    "Classification lookup failures are exposed with an in-place Retry notice.",
+    "Buying Period creation validates dates, quantity, and cost, and provides dialog focus and error semantics."
+  ],
+  "onlineReadOnlyRegression": {
+    "adminLists": { "checks": 8, "passed": 8, "failed": 0 },
+    "interaction": { "checks": 14, "passed": 14, "failed": 0 },
+    "aiAvailability": { "checks": 3, "passed": 3, "failed": 0 },
+    "aiSurface": { "checks": 10, "passed": 10, "failed": 0 },
+    "aiUi": { "checks": 2, "passed": 2, "failed": 0 },
+    "sommelier": { "checks": 10, "passed": 10, "failed": 0, "firstAttempt": "Login probe failed once; serial retry passed." },
+    "orderPages": { "checks": 16, "passed": 16, "failed": 0, "pageErrors": [], "mutatingApiRequests": [] },
+    "assignmentAndBuyingPeriod": {
+      "routes": [
+        "/classifications/category/1/assign",
+        "/suppliers/1/assign",
+        "/stock/buying-periods"
+      ],
+      "viewports": [390, 1440],
+      "http200": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "buyingPeriodEmptyForm": "Rejected with visible Start and end dates are required validation."
+    },
+    "assignmentSearchRace": {
+      "requestOrder": ["slow", "fast"],
+      "latestResultVisible": true,
+      "staleResultVisible": false,
+      "businessWrites": 0
+    }
+  },
+  "businessWrites": 0,
+  "interpretation": "Public runtime behavior and targeted read-only/mock regression passed after the five-minute wait. The Dokploy console runtime SHA, build logs, and container state were not independently captured. Production AI remains intentionally disabled."
+}
