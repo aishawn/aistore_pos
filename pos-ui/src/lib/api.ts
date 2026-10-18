@@ -200,6 +200,39 @@ export const api = {
   del: <T>(path: string, body?: unknown) => request<T>("DELETE", path, { body }),
 };
 
+/** Download a protected file, refreshing the access token once after a 401. */
+async function downloadFile(path: string, filename: string, query?: Record<string, QueryValue>): Promise<void> {
+  const requestFile = () => fetch(buildUrl(path, query), {
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  let res = await requestFile();
+  if ((res.status === 401) && await refreshAccessToken()) res = await requestFile();
+
+  if (!res.ok) {
+    let message = `Download failed (${res.status})`;
+    let code = -1;
+    try {
+      const json = (await res.json()) as { message?: string; code?: number };
+      message = json.message ?? message;
+      code = json.code ?? code;
+    } catch {
+      // Keep the HTTP fallback for non-JSON proxy errors.
+    }
+    handleAuthFailure(path, res.status, code);
+    throw new ApiError(message, code, res.status);
+  }
+
+  const url = URL.createObjectURL(await res.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export type CustomerExportLevel = "simple" | "full";
 
 export interface CustomerExportQuery {
@@ -210,35 +243,11 @@ export interface CustomerExportQuery {
 
 /** Download customers as CSV (respects current list filters when provided). */
 export async function exportCustomersCsv(query: CustomerExportQuery): Promise<void> {
-  const token = getToken();
-  const res = await fetch(buildUrl("/api/customers/export", { ...query }), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Export failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/customers/export", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/customers/export", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const filename =
-    query.level === "full" ? "customers-full.csv" : "customers-simple.csv";
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile(
+    "/api/customers/export",
+    query.level === "full" ? "customers-full.csv" : "customers-simple.csv",
+    { ...query },
+  );
 }
 
 export interface CustomerImportResult {
@@ -272,33 +281,7 @@ export async function importSupplierProducts(body: {
 
 /** Download the customer Excel import template. */
 export async function downloadCustomersImportTemplate(): Promise<void> {
-  const token = getToken();
-  const res = await fetch(buildUrl("/api/customers/import-template"), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Download failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/customers/import-template", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/customers/import-template", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "customers-import-template.xlsx";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/customers/import-template", "customers-import-template.xlsx");
 }
 
 /** Upload a CSV or Excel file and import customers in batch. */
@@ -334,33 +317,7 @@ export async function importCustomersCsv(file: File): Promise<CustomerImportResu
 
 /** Download the product Excel import template. */
 export async function downloadProductsImportTemplate(): Promise<void> {
-  const token = getToken();
-  const res = await fetch(buildUrl("/api/products/import-template"), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Download failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/products/import-template", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/products/import-template", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "products-import-template.xlsx";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/products/import-template", "products-import-template.xlsx");
 }
 
 /** Upload a CSV or Excel file and import products in batch. */
@@ -408,38 +365,12 @@ export interface StockListExportQuery {
 
 /** Download stock list as CSV (respects current filters when provided). */
 export async function exportStockListCsv(query: StockListExportQuery = {}): Promise<void> {
-  const token = getToken();
   const params: Record<string, string> = {};
   if (query.search) params.search = query.search;
   if (query.categoryId) params.categoryId = query.categoryId;
   if (query.inStockOnly !== undefined) params.inStockOnly = String(query.inStockOnly);
 
-  const res = await fetch(buildUrl("/api/stock-list/export", params), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Export failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/stock-list/export", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/stock-list/export", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "stock-list.csv";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/stock-list/export", "stock-list.csv", params);
 }
 
 /** Download external stocktakes as xlsx for an outlet. */
@@ -447,69 +378,17 @@ export async function exportExternalStocktakesXlsx(query: {
   outletId: string;
   includeNoBarcode?: boolean;
 }): Promise<void> {
-  const token = getToken();
   const params: Record<string, string> = {
     outletId: query.outletId,
     includeNoBarcode: String(query.includeNoBarcode ?? false),
   };
 
-  const res = await fetch(buildUrl("/api/external-stocktakes/export", params), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Export failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/external-stocktakes/export", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/external-stocktakes/export", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "external-stocktake.xlsx";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/external-stocktakes/export", "external-stocktake.xlsx", params);
 }
 
 /** Download external stocktake import template (xlsx). */
 export async function downloadExternalStocktakeImportTemplate(): Promise<void> {
-  const token = getToken();
-  const res = await fetch(buildUrl("/api/external-stocktakes/import-template"), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Download failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/external-stocktakes/import-template", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/external-stocktakes/import-template", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "external-stocktake-import-template.xlsx";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/external-stocktakes/import-template", "external-stocktake-import-template.xlsx");
 }
 
 /** Upload an external stocktake file. */
@@ -544,7 +423,6 @@ export async function importExternalStocktakeFile(file: File): Promise<void> {
 
 /** Download gift cards as xlsx (respects current list filters when provided). */
 export async function exportGiftCardsXlsx(query: GiftCardExportQuery = {}): Promise<void> {
-  const token = getToken();
   const params: Record<string, string> = {};
   if (query.code) params.code = query.code;
   if (query.redeemedExpiredOnly !== undefined) {
@@ -552,32 +430,7 @@ export async function exportGiftCardsXlsx(query: GiftCardExportQuery = {}): Prom
   }
   if (query.outletId) params.outletId = query.outletId;
 
-  const res = await fetch(buildUrl("/api/gift-cards/export", params), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Export failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/gift-cards/export", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/gift-cards/export", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "gift-cards.xlsx";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/gift-cards/export", "gift-cards.xlsx", params);
 }
 
 export interface GiftCardImportResult {
@@ -619,33 +472,7 @@ export async function importGiftCardsCsv(file: File): Promise<GiftCardImportResu
 
 /** Download the gift card Excel import template. */
 export async function downloadGiftCardsTemplate(): Promise<void> {
-  const token = getToken();
-  const res = await fetch(buildUrl("/api/gift-cards/import-template"), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    let message = `Download failed (${res.status})`;
-    try {
-      const json = (await res.json()) as { message?: string; code?: number };
-      message = json.message ?? message;
-      handleAuthFailure("/api/gift-cards/import-template", res.status, json.code ?? -1);
-      throw new ApiError(message, json.code ?? -1, res.status);
-    } catch (e) {
-      if (e instanceof ApiError) throw e;
-      handleAuthFailure("/api/gift-cards/import-template", res.status, -1);
-      throw new ApiError(message, -1, res.status);
-    }
-  }
-
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = "gift-cards-import-template.xlsx";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  await downloadFile("/api/gift-cards/import-template", "gift-cards-import-template.xlsx");
 }
 
 export interface CappedPriceImportResult {
