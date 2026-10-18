@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `825f7ec`；报表、Overview、补货与关班竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `02f0103`；报表、Overview、补货、关班与角色编辑竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,12 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `02f0103` 角色权限编辑竞态批次
+
+- Roles 编辑器为每次角色权限读取分配 revision；连续打开不同角色、切换到新建角色或关闭编辑器时，旧权限响应不会覆盖当前编辑状态。
+- 线上角色权限 Retry 专项：`PASS`，权限读取 2 次，写请求 `0`；设置页 390/1440 视口 `27/27 PASS`。
+- 证据：`docs/UAT_ROLE_PERMISSION_RETRY_2026-10-18.json`、`docs/UAT_SETTINGS_MOBILE_2026-10-14.json`。
 
 ### `ae374ba` 关班读取竞态批次
 
