@@ -76,13 +76,26 @@ try {
     if (!initialResponse.ok()) throw new Error("Initial purchase list request returned HTTP " + initialResponse.status());
     await page.waitForFunction(() => {
       const table = document.querySelector("tbody");
-      return Boolean(table && !table.innerText.includes("Loading purchases"));
+      if (!table || table.querySelector("tr[aria-hidden='true']")) return false;
+      return table.innerText.includes("No purchase orders yet") || table.innerText.includes("No matching purchases") || table.querySelectorAll("button").length > 0;
     }, null, { timeout: 20000 });
     const status = page.getByLabel("Status");
+    const draftPurchaseResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === "GET"
+        && url.pathname === "/api/odoo/purchase-orders"
+        && url.searchParams.get("state") === "draft";
+    }, { timeout: 20000 });
     await status.selectOption("draft");
     if (await status.inputValue() !== "draft") throw new Error("Draft filter did not remain selected");
-    await page.waitForTimeout(1500);
+    const filteredResponse = await draftPurchaseResponse;
+    if (!filteredResponse.ok()) throw new Error("Draft purchase-list request returned HTTP " + filteredResponse.status());
     if (!purchaseStatesRequested.includes("draft")) throw new Error("Draft status selection did not issue an Odoo purchase-list request");
+    await page.waitForFunction(() => {
+      const table = document.querySelector("tbody");
+      if (!table || table.querySelector("tr[aria-hidden='true']")) return false;
+      return table.innerText.includes("No purchase orders yet") || table.querySelectorAll("button").length > 0;
+    }, null, { timeout: 20000 });
     const bodyText = await page.locator("tbody").innerText();
     const viewButtons = page.getByRole("button", { name: "View" });
     const dataRows = await viewButtons.count();
