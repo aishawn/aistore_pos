@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`d17b268`：CSV 文件控件焦点修复、POS 浏览错误 Retry、向导依赖 Retry；线上只读回归通过)
+**Last updated:** 2026-10-18 (`c4ef5a4`：Sommelier Find/Wine 详情 Retry；线上只读回归通过)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -47,6 +47,7 @@ Statuses:
 | POS 商品/促销错误恢复 | 商品/促销浏览失败时区分错误态与空结果，显示可操作的 `Retry`，并复用当前目录/周期/筛选条件 | `66ddc46` 后 POS 弹窗 `2/2`、综合交互 `14/14`、订单页 `16/16 PASS`；无页面错误或变更请求 |
 | CSV 导入焦点时序 | 分类加载刚结束时，使用布局阶段立即聚焦可用文件控件，并保留动画帧重试，避免焦点短暂停在关闭按钮 | `9b1031c` 后综合交互串行 `14/14 PASS`；CSV 预览取消，无产品写入 |
 | 创建向导依赖错误恢复 | 客户分组、商品 family/tag 读取失败时提供原地 `Retry`，保留当前向导表单，不要求关闭重开 | `0e89492` 后综合交互 `14/14`、管理列表 `8/8`、订单页 `16/16 PASS`；无创建写入 |
+| Sommelier 读取错误恢复 | 推荐失败提供 `Retry recommendation`；酒款详情加载失败提供 Retry 并重新读取当前商品 | `c4ef5a4` 后 AI UI `2/2 PASS`、Sommelier 只读 `10/10 PASS`、综合交互 `14/14 PASS`；匿名保护和 Odoo 价格/库存一致性通过 |
 
 ### 最新只读回归结果
 
@@ -72,6 +73,7 @@ Statuses:
 | `66ddc46` POS 错误恢复批次 | POS `2/2`、综合交互 `14/14`、订单 `16/16 PASS` | 商品/促销请求失败显示 Retry；订单 `pageErrors: []`、`mutatingApiRequests: []` |
 | `9b1031c` CSV 焦点批次 | 综合交互 `14/14`、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、POS `2/2`、订单 `16/16 PASS` | 首轮综合交互 `13/14` 的 CSV 焦点时序失败已修复；AI UI 首轮 networkidle 超时后串行重跑通过；无业务写入 |
 | `0e89492` 向导依赖恢复批次 | 综合交互 `14/14`、管理列表 `8/8`、订单 `16/16 PASS` | 首轮登录瞬态失败，串行重跑通过；客户/商品创建仅验证错误恢复和表单保护，无业务写入 |
+| `c4ef5a4` Sommelier Retry 批次 | AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14 PASS` | AI UI 首轮导航超时，重跑通过；无模型写入、反馈写入或业务数据写入 |
 
 ### 仍未放行
 
