@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -145,6 +145,7 @@ export function OrithosOverviewPage() {
   const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
   const [r2RetryKey, setR2RetryKey] = useState(0);
   const [sampleDataActive, setSampleDataActive] = useState(false);
+  const requestRevision = useRef(0);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
   useEffect(() => {
@@ -160,6 +161,7 @@ export function OrithosOverviewPage() {
   }, [data?.sampleDataClearedAt, lastLoadedAt]);
 
   const load = useCallback(async (refresh = false, hours = rangeHours) => {
+    const revision = ++requestRevision.current;
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -167,11 +169,13 @@ export function OrithosOverviewPage() {
       // Establish or restore the browser's Odoo cookie before loading the
       // dashboard, so the first report request does not need a 401 retry.
       await getOdooSessionStatus();
+      if (revision !== requestRevision.current) return;
       const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${hours}`, {
         credentials: "same-origin",
         cache: "no-store",
       });
       const payload = await response.json().catch(() => null) as OverviewData | { message?: string } | null;
+      if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
         setNeedsConnection(response.status === 401 || response.status === 503);
@@ -198,10 +202,14 @@ export function OrithosOverviewPage() {
         },
       });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load overview.");
+      if (revision === requestRevision.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load overview.");
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (revision === requestRevision.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [rangeHours]);
 
