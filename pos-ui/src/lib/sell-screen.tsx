@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { DEFAULT_GST_PERCENT, includedGst } from "@/lib/au";
@@ -326,6 +327,7 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   const [productFolder, setProductFolder] = useState("Products");
   const [productItems, setProductItems] = useState<ProductBrowseItem[]>([]);
   const [productLoading, setProductLoading] = useState(false);
+  const customerSearchRequestRef = useRef(0);
 
   const addProduct = useCallback(
     (p: { id: string; name: string; unitPrice: number; caseQuantity?: number }) => {
@@ -906,8 +908,10 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
 
   const loadCustomers = useCallback((q?: string) => {
     const term = q?.trim() ?? "";
+    const requestId = ++customerSearchRequestRef.current;
     searchCustomers(term)
       .then((hits) => {
+        if (requestId !== customerSearchRequestRef.current) return;
         if (hits.length > 0) {
           setCustomers(hits.map(toCustomer));
         } else if (!term) {
@@ -917,6 +921,7 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
         }
       })
       .catch(() => {
+        if (requestId !== customerSearchRequestRef.current) return;
         if (!term) setCustomers(CUSTOMERS);
         else setCustomers([]);
       });
@@ -925,14 +930,17 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   /** Open sell customer list overlay, optionally pre-filtered (AI search_customer). */
   const openCustomerSearch = useCallback((q?: string) => {
     const term = q?.trim() ?? "";
+    const requestId = ++customerSearchRequestRef.current;
     setSearchQueryState(term);
     setView("customers");
     searchCustomers(term)
       .then((hits) => {
+        if (requestId !== customerSearchRequestRef.current) return;
         setCustomers(hits.map(toCustomer));
         setSearchResults({ products: [], customers: hits });
       })
       .catch(() => {
+        if (requestId !== customerSearchRequestRef.current) return;
         setCustomers(term ? [] : CUSTOMERS);
         setSearchResults({ products: [], customers: [] });
       });

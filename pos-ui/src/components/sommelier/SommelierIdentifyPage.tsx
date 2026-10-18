@@ -22,10 +22,12 @@ export function SommelierIdentifyPage() {
   const [error, setError] = useState<string | null>(null);
   const [scanHint, setScanHint] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<string | null>(null);
+  const lastQueryRef = useRef("");
 
   async function search(term: string) {
     const query = term.trim();
     if (!query) return;
+    lastQueryRef.current = query;
     setLoading(true);
     setBusyLabel("Searching this store…");
     setError(null);
@@ -89,12 +91,14 @@ export function SommelierIdentifyPage() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Penfolds Bin 28 or barcode"
           autoFocus
+          aria-busy={loading}
           className="min-h-11 min-w-0 flex-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-blue-100"
         />
         <button
           type="button"
           onClick={() => void search(q)}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] sm:px-4"
+          disabled={loading || !q.trim()}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 text-[14px] font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 sm:px-4"
         >
           <Search size={16} />
           Search
@@ -117,7 +121,8 @@ export function SommelierIdentifyPage() {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50"
+          disabled={loading}
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Camera size={16} />
           Photograph label
@@ -130,7 +135,21 @@ export function SommelierIdentifyPage() {
         </p>
       ) : null}
       {scanHint ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800">{scanHint}</p> : null}
-      {error ? <p role="alert" className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p> : null}
+      {error ? (
+        <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+          <span className="min-w-0 flex-1">{error}</span>
+          {lastQueryRef.current ? (
+            <button
+              type="button"
+              onClick={() => void search(lastQueryRef.current)}
+              disabled={loading}
+              className="shrink-0 font-semibold underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Retry search
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {loading ? <p role="status" className="mt-4 text-[14px] text-[var(--oh-muted)]">{busyLabel ?? "Working…"}</p> : null}
 
       <ul className="mt-5 space-y-2">
