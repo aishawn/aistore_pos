@@ -127,15 +127,22 @@ export function useRecentCustomerSales(customerId: string | null, enabled = true
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestSequence = useRef(0);
+  const previousCustomerId = useRef<string | null>(customerId);
 
   const key = `${customerId ?? ""}-${enabled}`;
 
   const run = useCallback(() => {
     const sequence = ++requestSequence.current;
     if (!customerId || !enabled) {
+      // Do not leave the previous customer's sales visible while the detail
+      // view is changing tabs, switching records, or being disabled.
+      setData([]);
+      setError(null);
       setLoading(false);
       return;
     }
+    if (previousCustomerId.current !== customerId) setData([]);
+    previousCustomerId.current = customerId;
     setLoading(true);
     setError(null);
     loadRecentSaleLines(customerId)
