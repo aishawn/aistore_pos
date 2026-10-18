@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Download, FileUp, LoaderCircle, Pencil, Plus, RefreshCw, Search, X } from "lucide-react";
 import {
   createOdooProduct,
+  fetchOdooRoute,
   getOdooPosBootstrap,
   getOdooSession,
   importOdooProducts,
@@ -138,7 +139,8 @@ export function OdooProductCataloguePage() {
     setExportBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/odoo/products/export", { credentials: "same-origin", cache: "no-store" });
+      // Keep exports on the same Odoo session recovery path as list reads.
+      const response = await fetchOdooRoute("/api/odoo/products/export", { credentials: "same-origin", cache: "no-store" });
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { message?: string } | null;
         throw new Error(payload?.message || `Export failed (${response.status})`);

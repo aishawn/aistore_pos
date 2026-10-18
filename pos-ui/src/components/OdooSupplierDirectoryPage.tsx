@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
-import { getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
+import { fetchOdooRoute, getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
@@ -116,7 +116,7 @@ export function OdooSupplierDirectoryPage() {
     setCreating(true);
     setCreateError(null);
     try {
-      const response = await fetch("/api/odoo/suppliers", {
+      const response = await fetchOdooRoute("/api/odoo/suppliers", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

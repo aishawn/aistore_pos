@@ -6,6 +6,7 @@ import { AlertCircle, Download, FileUp, LoaderCircle, Trash2 } from "lucide-reac
 import { SettingsScaffold } from "@/components/admin/SettingsScaffold";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { fetchOdooRoute } from "@/lib/odoo-api";
 
 type SampleDataStatus = {
   dummyDataRequested: boolean;
@@ -92,7 +93,7 @@ export default function SettingsDataPage() {
     setExportBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/odoo/products/export", {
+      const response = await fetchOdooRoute("/api/odoo/products/export", {
         credentials: "same-origin",
         cache: "no-store",
       });
@@ -122,7 +123,10 @@ export default function SettingsDataPage() {
         {error && (
           <div role="alert" className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
             <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</span>
-            <button type="button" onClick={() => void load()} className="rounded-md border border-red-300 bg-white px-3 py-1.5 font-semibold">Retry</button>
+            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60">
+              {loading ? <LoaderCircle size={14} className="animate-spin" /> : null}
+              {loading ? "Retrying…" : "Retry"}
+            </button>
           </div>
         )}
         {notice && (
