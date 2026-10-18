@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`f92dc1c`：Sommelier 请求防重复、文本搜索 Retry、POS 客户搜索丢弃过期响应；线上只读回归通过)
+**Last updated:** 2026-10-18 (`d8c99f1`：POS 客户/商品/促销浏览丢弃过期响应；线上只读回归通过)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -43,6 +43,7 @@ Statuses:
 | 全屏创建表单焦点 | 商品创建、供应商创建全屏表单接入统一 dialog 语义和显式名称字段初始焦点；保留未保存离开确认 | 本轮线上综合交互 `14/14`、管理列表 `8/8`；未执行商品/供应商写入 |
 | Sommelier Identify 请求状态 | 搜索/拍照请求期间禁用重复提交，输入框暴露 `aria-busy`，文本搜索失败提供原地 `Retry search` | AI UI `2/2 PASS`；Sommelier 只读回归 `10/10 PASS`，AI 关闭/匿名保护不变 |
 | POS 客户搜索竞态 | 为客户搜索请求增加序列号，过期响应不再覆盖最新输入结果 | POS 弹窗 `2/2 PASS`、综合交互 `14/14 PASS`；未产生销售或客户写入 |
+| POS 商品/促销浏览竞态 | 为商品目录和促销筛选增加请求序列保护，旧响应不再覆盖最新文件夹、周期或筛选词；加载状态仅由最新请求结束时解除 | `d8c99f1` 后 POS 弹窗 `2/2 PASS`、综合交互 `14/14 PASS`；未产生销售或库存写入 |
 
 ### 最新只读回归结果
 
@@ -64,6 +65,7 @@ Statuses:
 | 全站静态矩阵 | `262/262 PASS` | 131 路由 × 390/1440，无横向溢出和页面错误 |
 | `5272b88` 批次串行回归 | `14/14`、`2/2`、`8/8`、`16/16`、采购 mock `PASS` | 综合交互、POS 弹窗、管理列表、订单页和采购详情恢复；订单无页面错误/变更请求 |
 | `f92dc1c` 搜索稳定性批次 | AI UI `2/2`、Sommelier `10/10`、POS `2/2`、综合交互 `14/14 PASS` | 首轮 AI UI 遇 504，串行重跑通过；Sommelier 价格/库存一致性和匿名 401 通过；无业务写入 |
+| `d8c99f1` POS 浏览竞态批次 | POS `2/2`、综合交互 `14/14 PASS` | 客户/商品/促销浏览旧响应保护；无业务写入 |
 
 ### 仍未放行
 
