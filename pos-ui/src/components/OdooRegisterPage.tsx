@@ -126,6 +126,7 @@ export function OdooRegisterPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [posCategories, setPosCategories] = useState<OdooPosCategoryRecord[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryRetryKey, setCategoryRetryKey] = useState(0);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
   const [productActiveIndex, setProductActiveIndex] = useState(-1);
@@ -324,13 +325,16 @@ export function OdooRegisterPage() {
     if (!connected) {
       setPosCategories([]);
       setCategoriesError(null);
+      setCategoriesLoading(false);
       return;
     }
     let cancelled = false;
+    setCategoriesLoading(true);
     setCategoriesError(null);
     void searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100 })
       .then((result) => { if (!cancelled) { setPosCategories(result.items); setCategoriesError(null); } })
-      .catch((cause) => { if (!cancelled) setCategoriesError(cause instanceof Error ? cause.message : "Product categories could not be loaded."); });
+      .catch((cause) => { if (!cancelled) setCategoriesError(cause instanceof Error ? cause.message : "Product categories could not be loaded."); })
+      .finally(() => { if (!cancelled) setCategoriesLoading(false); });
     return () => { cancelled = true; };
   }, [categoryRetryKey, connected]);
 
@@ -896,7 +900,7 @@ export function OdooRegisterPage() {
                   ))}
                 </select>
               </div>
-              {categoriesError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span className="min-w-0 break-words">{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"><RefreshCw size={13} /> Retry categories</button></div>}
+              {categoriesError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span className="min-w-0 break-words">{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoriesLoading} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">{categoriesLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} {categoriesLoading ? "Retrying…" : "Retry categories"}</button></div>}
               <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
                 {productsLoading && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Still waiting for products from Odoo…</p>}
                 {productsLoading && !products.length ? (
@@ -1071,7 +1075,7 @@ export function OdooRegisterPage() {
             )}
           </div>
           {!customer && customerSearchLoading && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
-          {!customer && customerSearchError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span className="min-w-0 break-words">{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold"><RefreshCw size={13} /> Retry</button></div>}
+          {!customer && customerSearchError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span className="min-w-0 break-words">{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} disabled={customerSearchLoading} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold disabled:cursor-wait disabled:opacity-60">{customerSearchLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} {customerSearchLoading ? "Retrying…" : "Retry"}</button></div>}
           {!customer && customers.length > 0 && (
             <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
               {customers.map((item, index) => (
