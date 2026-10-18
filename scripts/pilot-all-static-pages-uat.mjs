@@ -67,7 +67,7 @@ const failures = checks.filter((check) => check.status < 200 || check.status >= 
 const output = {
   generatedAt: new Date().toISOString(),
   target: base,
-  sourceCommit: process.env.GIT_COMMIT ?? null,
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? process.env.GIT_COMMIT ?? null,
   staticRoutes: routes.length,
   viewports: viewports.map((viewport) => viewport.width),
   checksPassed: checks.length - failures.length,

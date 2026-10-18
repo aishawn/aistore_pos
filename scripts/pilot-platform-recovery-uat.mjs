@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -209,8 +210,8 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: "556923d",
-  deployment: "unverified-after-deploy",
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
   scope: "mocked authenticated UI recovery checks; all business writes intercepted",
   status: checks.every((check) => check.passed) ? "PASS" : "FAIL",
   checks,
