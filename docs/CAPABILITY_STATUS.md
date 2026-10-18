@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `f92dc1c`；`5272b88` 的部署身份曾由采购详情 mock UAT 绑定，`f92dc1c` 的完整 Dokploy SHA 仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `f92dc1c`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -52,7 +52,7 @@ Statuses:
 | 综合交互 | `14/14 PASS` | 移动导航、筛选、弹窗、表单保护、补货和报表 |
 | 管理列表 | `8/8 PASS` | 商品、客户、供应商、采购及 utility 列表 |
 | 订单页面 | `16/16 PASS` | 订单/采购/销售历史，0 页面错误、0 写请求 |
-| 动态路由部署后复验 | `3/3 PASS` | `/`、`/utilities/future-costs`、`/utilities/future-prices` HTTP 200；`no-store` 响应头；部署记录 `5272b882…` |
+| 动态路由部署后复验 | `3/3 PASS` | `/`、`/utilities/future-costs`、`/utilities/future-prices` HTTP 200；`no-store` 响应头；运行身份未独立回读 |
 | 设置页面 | `27/27 PASS` | 390/1440，设置只读视图与无溢出 |
 | AI surface/UI | `10/10`、`2/2 PASS` | 2026-10-18 线上只读复验；AI 保持关闭时的配置、权限和匿名保护 |
 | 本轮定向回归 | `14/14`、`16/16`、`2/2 PASS` | `36bcfdf` 部署等待后；订单 `pageErrors: []`、`mutatingApiRequests: []` |
