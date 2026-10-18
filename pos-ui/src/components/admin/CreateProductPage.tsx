@@ -532,6 +532,23 @@ export function CreateProductPage() {
                 />
               </FormSection>
 
+              {(categoriesQuery.error || familiesQuery.error || tagsQuery.error) && (
+                <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
+                  <span>Some classifications could not be loaded. Your form is preserved.</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      categoriesQuery.reload();
+                      familiesQuery.reload();
+                      tagsQuery.reload();
+                    }}
+                    className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
               <FormSection
                 id="pricing"
                 title="Sell & Cost"

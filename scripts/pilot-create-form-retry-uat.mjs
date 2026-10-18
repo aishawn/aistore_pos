@@ -23,6 +23,8 @@ const cases = [
   { path: "/orders/return/new", endpoint: "/api/suppliers", label: "Return stock supplier" },
   { path: "/orders/credit/new", endpoint: "/api/suppliers", label: "Credit note supplier" },
   { path: "/orders/transfer/new", endpoint: "/api/outlets", label: "Stock transfer outlet" },
+  { path: "/products/new", endpoint: "/api/classifications/category", label: "Create product category" },
+  { path: "/customers/new", endpoint: "/api/customers/groups", label: "Create customer group" },
 ];
 
 const browser = await chromium.launch({ headless: true });
