@@ -19,6 +19,7 @@ import {
   ArrowLeftIcon,
   ChevronRightIcon,
   CircleCheckIcon,
+  RefreshIcon,
   SelectChevronIcon,
 } from "@/components/icons";
 
@@ -456,7 +457,17 @@ export function CreateCustomerWizard({
                 placeholder={groupsQuery.loading ? "Loading groups…" : "Select…"}
               />
               {groupsQuery.error && (
-                <p className="mt-3 text-[14px] text-[var(--oh-danger)]">Failed to load groups: {groupsQuery.error}</p>
+                <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-rose-50 px-3 py-2 text-[14px] text-[var(--oh-danger)]">
+                  <span className="min-w-0">Failed to load groups: {groupsQuery.error}</span>
+                  <button
+                    type="button"
+                    onClick={groupsQuery.reload}
+                    disabled={groupsQuery.loading}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <RefreshIcon size={14} /> Retry
+                  </button>
+                </div>
               )}
               {!groupsQuery.loading && !groupsQuery.error && groupOptions.length === 0 && (
                 <p className="mt-3 text-[14px] text-[var(--oh-muted)]">

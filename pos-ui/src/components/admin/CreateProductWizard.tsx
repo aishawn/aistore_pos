@@ -14,6 +14,7 @@ import {
   ArrowLeftIcon,
   ChevronRightIcon,
   CircleCheckIcon,
+  RefreshIcon,
   SelectChevronIcon,
 } from "@/components/icons";
 
@@ -542,9 +543,17 @@ export function CreateProductWizard({
                 placeholder={familiesLoading ? "Loading families…" : "Select..."}
               />
               {familiesError && (
-                <p className="mt-3 text-[14px] text-[var(--oh-danger)]">
-                  Failed to load families: {familiesError}
-                </p>
+                <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-rose-50 px-3 py-2 text-[14px] text-[var(--oh-danger)]">
+                  <span className="min-w-0">Failed to load families: {familiesError}</span>
+                  <button
+                    type="button"
+                    onClick={reloadFamilies}
+                    disabled={familiesLoading}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <RefreshIcon size={14} /> Retry
+                  </button>
+                </div>
               )}
               {!familiesLoading && !familiesError && familyOptions.length === 0 && (
                 <p className="mt-3 text-[14px] text-[var(--oh-muted)]">
@@ -569,7 +578,17 @@ export function CreateProductWizard({
                 invalid={!!error && step === 4}
               />
               {tagsError && (
-                <p className="mt-3 text-[14px] text-[var(--oh-danger)]">Failed to load tags: {tagsError}</p>
+                <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-rose-50 px-3 py-2 text-[14px] text-[var(--oh-danger)]">
+                  <span className="min-w-0">Failed to load tags: {tagsError}</span>
+                  <button
+                    type="button"
+                    onClick={reloadTags}
+                    disabled={tagsLoading}
+                    className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <RefreshIcon size={14} /> Retry
+                  </button>
+                </div>
               )}
               {!tagsLoading && !tagsError && tagOptions.length === 0 && (
                 <p className="mt-3 text-[14px] text-[var(--oh-muted)]">
