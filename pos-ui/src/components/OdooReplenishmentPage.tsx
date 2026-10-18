@@ -65,6 +65,7 @@ export function OdooReplenishmentPage() {
   const [auditEntries, setAuditEntries] = useState<ReplenishmentAuditEntry[]>([]);
   const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
+  const requestRevision = useRef(0);
   const rfqSupplierRef = useRef<HTMLSelectElement>(null);
 
   useDialogFocus(rfqOpen, () => {
@@ -76,12 +77,14 @@ export function OdooReplenishmentPage() {
   }, []);
 
   const load = useCallback(async (refresh = false) => {
+    const revision = ++requestRevision.current;
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
     try {
       const response = await fetchOdooRoute(`/api/odoo/replenishment?coverageDays=${coverageDays}`, { credentials: "same-origin", cache: "no-store" });
       const payload = await response.json().catch(() => null) as ReplenishmentData | { message?: string } | null;
+      if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
         setNeedsConnection(response.status === 401 || response.status === 503);
@@ -92,6 +95,7 @@ export function OdooReplenishmentPage() {
       setData(payload);
       try {
         const bootstrap = await getOdooPosBootstrap();
+        if (revision !== requestRevision.current) return;
         const activeConfig = bootstrap.configs.find((config) => config.session) ?? bootstrap.configs[0];
         if (activeConfig?.timezone) setStoreTimezone(activeConfig.timezone);
       } catch {
@@ -99,10 +103,14 @@ export function OdooReplenishmentPage() {
       }
       setLastLoadedAt(Date.now());
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load the replenishment plan.");
+      if (revision === requestRevision.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load the replenishment plan.");
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (revision === requestRevision.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [coverageDays]);
 
