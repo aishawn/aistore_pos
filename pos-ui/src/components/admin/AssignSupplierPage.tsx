@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi, useDebouncedValue } from "@/hooks/useApi";
 import { AdminSearchInput } from "@/components/admin/AdminPageLayout";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { ArrowLeftIcon, MinusIcon, PlusIcon } from "@/components/icons";
 
 interface Product {
@@ -97,6 +97,7 @@ export function AssignSupplierPage({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const availableRequestRef = useRef(0);
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -117,6 +118,7 @@ export function AssignSupplierPage({ id }: { id: string }) {
 
   const loadAvailable = useCallback(
     async (assignedItems: Product[]) => {
+      const requestId = ++availableRequestRef.current;
       const availableQuery: Record<string, string | number> = {
         page: 1,
         size: PAGE_SIZE,
@@ -127,7 +129,9 @@ export function AssignSupplierPage({ id }: { id: string }) {
 
       const availablePage = await api.get<Page<Product>>("/api/products", availableQuery);
       const assignedIds = new Set(assignedItems.map((p) => p.id));
-      setAvailable(availablePage.items.filter((p) => !assignedIds.has(p.id)));
+      if (requestId === availableRequestRef.current) {
+        setAvailable(availablePage.items.filter((p) => !assignedIds.has(p.id)));
+      }
     },
     [id, debouncedSearch, categoryId],
   );
@@ -212,6 +216,10 @@ export function AssignSupplierPage({ id }: { id: string }) {
           value={categoryId}
           onChange={setCategoryId}
         />
+      </div>
+
+      <div className="px-5 md:px-6">
+        <AsyncDependencyNotice dependencies={[{ label: "Classifications", error: categories.error, onRetry: categories.reload }]} />
       </div>
 
       <div className="min-h-0 flex-1 px-5 pb-4 md:px-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { FrownIcon } from "@/components/icons";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { FormDatePicker } from "@/components/admin/FormDatePicker";
@@ -10,6 +10,7 @@ import { useApiList } from "@/hooks/useApi";
 import { useAiCreateOpen } from "@/hooks/useAiCreateOpen";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { api } from "@/lib/api";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface BuyingPeriod {
   id: string;
@@ -53,6 +54,8 @@ function CreateBuyingPeriodModal({
   const [cost, setCost] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -63,9 +66,34 @@ function CreateBuyingPeriodModal({
     setError(null);
   }, [open, initial]);
 
+  function close() {
+    if (busy) return;
+    onClose();
+  }
+
+  useDialogFocus(open, close, "create-buying-period", cancelRef);
+
   if (!open) return null;
 
   async function submit() {
+    if (!start || !end) {
+      setError("Start and end dates are required.");
+      return;
+    }
+    if (end < start) {
+      setError("End date must be on or after the start date.");
+      return;
+    }
+    const quantityValue = Number(quantity);
+    if (!Number.isFinite(quantityValue) || quantityValue <= 0) {
+      setError("Quantity must be greater than zero.");
+      return;
+    }
+    const costValue = cost.trim() === "" ? null : Number(cost);
+    if (costValue !== null && (!Number.isFinite(costValue) || costValue < 0)) {
+      setError("Cost must be zero or greater.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -73,8 +101,8 @@ function CreateBuyingPeriodModal({
         itemType: "PRODUCT",
         start: start ? `${start}T00:00:00` : null,
         end: end ? `${end}T23:59:59` : null,
-        quantity: quantity ? Number(quantity) : null,
-        cost: cost ? Number(cost) : null,
+        quantity: quantityValue,
+        cost: costValue,
       });
       onCreated();
       onClose();
@@ -95,10 +123,13 @@ function CreateBuyingPeriodModal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="w-full max-w-md rounded bg-white p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-[20px] font-bold text-black">Create Buying Period</h2>
+        <h2 id={titleId} className="text-[20px] font-bold text-black">Create Buying Period</h2>
         <div className="mt-4 space-y-3">
           <label className="block text-[13px] font-medium text-neutral-700">
             Start Date
@@ -136,12 +167,14 @@ function CreateBuyingPeriodModal({
               className="mt-1 h-[38px] w-full rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
             />
           </label>
-          {error && <p className="text-[13px] text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-[13px] text-red-600">{error}</p>}
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button
+            ref={cancelRef}
             type="button"
-            onClick={onClose}
+            onClick={close}
+            disabled={busy}
             className="rounded border border-neutral-300 px-4 py-2 text-[14px]"
           >
             Cancel
