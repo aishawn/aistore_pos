@@ -7,6 +7,7 @@ import { Eraser, ExternalLink, MessageCircle, Mic, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
+  fetchAiClientConfig,
   transcribeAudio,
   ApiError,
   type AssistantResponse,
@@ -128,6 +129,7 @@ export function SellAiPanel({
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingEntityDelete, setPendingEntityDelete] = useState<PendingEntityDelete | null>(null);
   const [entityDeleteBusy, setEntityDeleteBusy] = useState(false);
@@ -342,6 +344,18 @@ export function SellAiPanel({
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [expanded]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAiClientConfig()
+      .then((config) => {
+        if (!cancelled) setAiEnabled(config.enabled);
+      })
+      .catch(() => {
+        // The assistant request still provides the authoritative error state.
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!expanded || !ai?.launchMode) return;
@@ -831,7 +845,9 @@ export function SellAiPanel({
                   Orithos AI
                 </p>
                 <p className="truncate text-[13px] text-[var(--oh-muted)]">
-                  Ask anything about sales
+                  {aiEnabled === false
+                    ? "AI is disabled for this store"
+                    : "Ask anything about sales"}
                 </p>
               </div>
               <div className="flex items-center gap-0.5" onPointerDown={(e) => e.stopPropagation()}>

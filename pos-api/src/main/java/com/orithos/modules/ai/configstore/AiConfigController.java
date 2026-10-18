@@ -2,6 +2,7 @@ package com.orithos.modules.ai.configstore;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,17 +20,20 @@ public class AiConfigController {
     private final AiSlotValueMapper slotValueMapper;
     private final AiPromptMapper promptMapper;
     private final IntentConfigService configService;
+    private final boolean aiEnabled;
 
     public AiConfigController(AiIntentMapper intentMapper,
                               AiSlotMapper slotMapper,
                               AiSlotValueMapper slotValueMapper,
                               AiPromptMapper promptMapper,
-                              IntentConfigService configService) {
+                              IntentConfigService configService,
+                              @Value("${app.ai.enabled:false}") boolean aiEnabled) {
         this.intentMapper = intentMapper;
         this.slotMapper = slotMapper;
         this.slotValueMapper = slotValueMapper;
         this.promptMapper = promptMapper;
         this.configService = configService;
+        this.aiEnabled = aiEnabled;
     }
 
     @PostMapping("/reload")
@@ -48,6 +52,7 @@ public class AiConfigController {
     public ApiResult<Map<String, Object>> clientConfig() {
         IntentConfigService.Snapshot snap = configService.getSnapshot();
         return ApiResult.ok(Map.of(
+                "enabled", aiEnabled,
                 "aiTriggerKeywords", snap.aiTriggerKeywords()
         ));
     }

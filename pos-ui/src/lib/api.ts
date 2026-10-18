@@ -925,6 +925,7 @@ export function askAssistant(
 }
 
 export interface AiClientConfig {
+  enabled: boolean;
   aiTriggerKeywords: string[];
 }
 
