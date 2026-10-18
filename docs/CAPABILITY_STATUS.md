@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。代码功能批次基线为 `adc9fe0`；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push 或页面 HTTP 200 认定部署身份。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。代码功能批次基线为 `e46e134`；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push 或页面 HTTP 200 认定部署身份。
 
 ### 已完成能力
 
@@ -26,6 +26,7 @@ Statuses:
 | 搜索控件 | 商品目录、采购订单、销售历史搜索框补齐稳定 `aria-label` | 管理列表、订单和交互专项通过；订单探针 `pageErrors: []`、`mutatingApiRequests: []` |
 | 报表趋势图 | 趋势图容器增加基于当前数据的非视觉摘要，并通过 `aria-describedby` 关联；保留逐柱 `role="img"` 与键盘聚焦 | 本次提交 `36bcfdf` 后综合交互 `14/14`、订单页 `16/16`、AI UI `2/2` 通过 |
 | 供应商新增弹窗 | 接入统一焦点初始聚焦、Tab 约束、Escape 取消和关闭后恢复触发按钮焦点；移除会与焦点恢复竞争的原生 `autoFocus` | `pilot-supplier-create-mock` PASS；管理列表 `8/8`、综合交互 `14/14`、订单页 `16/16` |
+| 新建客户/商品弹窗 | 名称字段通过 `useDialogFocus` 的 `initialFocusRef` 获得初始焦点；移除原生 `autoFocus`，确保取消后焦点恢复稳定 | 综合交互 `14/14`；客户和商品创建专项均通过且无业务写入 |
 | 页面稳定性 | utility 动态页面缓存策略修复为 `fetchCache = "force-no-store"` | `/utilities/future-costs`、`/utilities/future-prices` 等动态路由 HTTP 200、`no-store` |
 
 ### 最新只读回归结果
@@ -40,6 +41,7 @@ Statuses:
 | AI surface/UI | `10/10`、`2/2 PASS` | AI 保持关闭时的配置、权限和匿名保护 |
 | 本轮定向回归 | `14/14`、`16/16`、`2/2 PASS` | `36bcfdf` 部署等待后；订单 `pageErrors: []`、`mutatingApiRequests: []` |
 | 供应商焦点批次 | `PASS`、`8/8`、`14/14`、`16/16` | `adc9fe0` 部署等待后；mock API 拦截，无 Odoo 写入 |
+| 客户/商品焦点批次 | `14/14 PASS`、供应商 `PASS` | `e46e134` 部署等待后；新增名称字段初始焦点和触发按钮恢复断言 |
 | 全站静态矩阵 | `262/262 PASS` | 131 路由 × 390/1440，无横向溢出和页面错误 |
 
 ### 仍未放行
