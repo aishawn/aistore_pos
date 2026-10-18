@@ -2,7 +2,7 @@
 
 
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useRouter } from "next/navigation";
 
@@ -83,6 +83,7 @@ function formatDisplay(input: string): string {
 export function FinaliseSalePage() {
 
   const sell = useSellScreen();
+  const { completeSale } = sell;
 
   const router = useRouter();
 
@@ -346,17 +347,17 @@ export function FinaliseSalePage() {
 
 
 
-  function completeAndReturn() {
+  const completeAndReturn = useCallback(() => {
 
     if (completing.current) return;
 
     completing.current = true;
 
-    sell.completeSale();
+    completeSale();
 
     router.push("/");
 
-  }
+  }, [completeSale, router]);
 
 
 
@@ -396,11 +397,7 @@ export function FinaliseSalePage() {
 
     return () => window.clearInterval(id);
 
-    // completeAndReturn is stable for this screen; the timer must only restart when approval begins.
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-
-  }, [phase]);
+  }, [completeAndReturn, phase]);
 
 
 
