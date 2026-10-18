@@ -27,12 +27,26 @@ try {
   if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
 
   const page = await context.newPage();
+  const requests = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/")) requests.push(`${request.method()} ${url.pathname}`);
+  });
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.pathname.startsWith("/api/") && request.method() !== "GET" && !url.pathname.startsWith("/api/auth/")) {
       writes.push(`${request.method()} ${url.pathname}`);
     }
   });
+  await page.route("**/api/roles", (route) => route.request().method() === "GET"
+    ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [{ id: 101, name: "Mock Clerk" }] }) })
+    : route.continue());
+  await page.route("**/api/permissions", (route) => route.request().method() === "GET"
+    ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [{ id: 1, name: "View catalog", safeName: "catalog.view", section: "Catalog" }] }) })
+    : route.continue());
+  await page.route("**/api/users", (route) => route.request().method() === "GET"
+    ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [] }) })
+    : route.continue());
   await page.route("**/api/roles/*/permissions", async (route) => {
     if (!injected && route.request().method() === "GET") {
       injected = true;
@@ -40,14 +54,20 @@ try {
       await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected role permission failure" }) });
       return;
     }
-    if (route.request().method() === "GET") permissionRequests += 1;
+    if (route.request().method() === "GET") {
+      permissionRequests += 1;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: [{ id: 1, name: "View catalog", safeName: "catalog.view", section: "Catalog" }] }) });
+      return;
+    }
     await route.continue();
   });
 
   await page.goto(`${base}/settings/roles`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Roles & Permissions", exact: true }).waitFor({ timeout: 30000 });
   const failedCopy = page.getByText("Could not load permissions", { exact: true }).first();
-  await failedCopy.waitFor({ state: "visible", timeout: 30000 });
+  await failedCopy.waitFor({ state: "visible", timeout: 30000 }).catch(async (error) => {
+    throw new Error(`${error.message}; url=${page.url()}; requests=${JSON.stringify(requests)}; body=${JSON.stringify((await page.locator("body").innerText().catch(() => "")).slice(0, 600))}`);
+  });
   const retry = page.getByRole("button", { name: "Retry permissions", exact: true }).first();
   await retry.waitFor({ state: "visible", timeout: 10000 });
   await retry.click();
