@@ -54,8 +54,8 @@ try {
   await page.getByText(/REPLENISHMENT-28D/).waitFor({ timeout: 30000 });
   await page.waitForTimeout(1100);
   const text = (await page.locator("#main-content").innerText()).replace(/\s+/g, " ");
-  if (!text.includes("REPLENISHMENT-28D")) throw new Error("LATEST_COVERAGE_WAS_OVERWRITTEN");
-  if (text.includes("REPLENISHMENT-7D")) throw new Error("STALE_COVERAGE_VISIBLE");
+  if (!text.includes("REPLENISHMENT-28D")) throw new Error(`LATEST_COVERAGE_WAS_OVERWRITTEN:${text.slice(0, 900)}`);
+  if (text.includes("REPLENISHMENT-7D")) throw new Error(`STALE_COVERAGE_VISIBLE:${text.slice(0, 900)}`);
   if (writes.length) throw new Error(`UNEXPECTED_WRITE_REQUESTS_${writes.length}`);
 } catch (error) { failure = error instanceof Error ? error.message : "UNEXPECTED_FAILURE"; }
 finally { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {}); await browser.close(); }

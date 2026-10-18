@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `872469c`；报表与 Overview 竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `cacf8c5`；报表、Overview 与补货竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,12 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `4852850` 补货计划请求竞态批次
+
+- 补货页在 coverage 目标切换时为读取分配请求序号；旧计划的迟到响应、错误和 loading 结束状态不会覆盖当前目标。
+- 新增 `scripts/pilot-replenishment-race-uat.mjs`；线上 mock 验证请求顺序 `21 → 7 → 28`，延迟的 7 天计划不会覆盖最终 28 天计划，业务写请求 `0`。
+- 证据：`docs/UAT_REPLENISHMENT_RACE_2026-10-18.json`。首次部署冷启动期间曾出现一次探针时序失败，等待后串行重跑通过。
 
 ### `d9b3647` Overview 请求竞态批次
 
