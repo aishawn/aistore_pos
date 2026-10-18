@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { api } from "@/lib/api";
@@ -97,49 +97,71 @@ function FormSelect({
   );
 }
 
+interface EditOrderFormProps {
+  orderId: string;
+  order: OrderDetail | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => void;
+  suppliers: ReturnType<typeof useApiList<Named>>;
+  outlets: ReturnType<typeof useApi<Named[]>>;
+  supplierOptions: Array<{ label: string; value: string }>;
+  outletOptions: Array<{ label: string; value: string }>;
+}
+
 export function EditOrderPage({ orderId }: { orderId: string }) {
-  const router = useRouter();
   const { data: order, loading, error, reload } = useApi<OrderDetail>(
     orderId ? `/api/orders/${orderId}` : null,
   );
-
-  const [fromId, setFromId] = useState("");
-  const [toId, setToId] = useState("");
-  const [orderDate, setOrderDate] = useState("");
-  const [orderNumber, setOrderNumber] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
-  const [internalNotes, setInternalNotes] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
-
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const outlets = useApi<Named[]>("/api/outlets");
-
   const supplierOptions = useMemo(
     () => (suppliers.items ?? []).map((s) => ({ label: s.name, value: String(s.id) })),
     [suppliers.items],
   );
-
   const outletOptions = useMemo(
     () => (outlets.data ?? []).map((o) => ({ label: o.name, value: String(o.id) })),
     [outlets.data],
   );
 
-  useEffect(() => {
-    if (!order || initialized) return;
-    setFromId(order.fromId != null ? String(order.fromId) : "");
-    setToId(order.toId != null ? String(order.toId) : "");
-    setOrderDate(order.orderDate ?? "");
-    setOrderNumber(order.invoiceNumber ?? "");
-    setDueDate(order.dueDate ?? "");
-    setReference(order.reference ?? "");
-    setNotes(order.notes ?? "");
-    setInternalNotes(order.internalNotes ?? "");
-    setInitialized(true);
-  }, [order, initialized]);
+  return (
+    <EditOrderForm
+      key={order?.id ?? "loading"}
+      orderId={orderId}
+      order={order}
+      loading={loading}
+      error={error}
+      reload={reload}
+      suppliers={suppliers}
+      outlets={outlets}
+      supplierOptions={supplierOptions}
+      outletOptions={outletOptions}
+    />
+  );
+}
+
+function EditOrderForm({
+  orderId,
+  order,
+  loading,
+  error,
+  reload,
+  suppliers,
+  outlets,
+  supplierOptions,
+  outletOptions,
+}: EditOrderFormProps) {
+  const router = useRouter();
+  const [fromId, setFromId] = useState(() => (order?.fromId != null ? String(order.fromId) : ""));
+  const [toId, setToId] = useState(() => (order?.toId != null ? String(order.toId) : ""));
+  const [orderDate, setOrderDate] = useState(() => order?.orderDate ?? "");
+  const [orderNumber, setOrderNumber] = useState(() => order?.invoiceNumber ?? "");
+  const [dueDate, setDueDate] = useState(() => order?.dueDate ?? "");
+  const [reference, setReference] = useState(() => order?.reference ?? "");
+  const [notes, setNotes] = useState(() => order?.notes ?? "");
+  const [internalNotes, setInternalNotes] = useState(() => order?.internalNotes ?? "");
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   async function submit() {
     if (busy || !order) return;
