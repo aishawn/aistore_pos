@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`de8d540`：客户余额/Gift Cards filter Retry；综合交互 `14/14`，Dokploy 运行 SHA 待独立回读)
+**Last updated:** 2026-10-18 (`de8d540`：Gift Cards filter Retry；线上故障注入 `1/1`，Dokploy 运行 SHA 待独立回读)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -16,7 +16,7 @@ Statuses:
 
 ### 2026-10-18 线上复验快照
 
-功能代码基线为 `de8d540`；`main` 已推送。创建/采购表单 Retry `7/7`、供应商移动端 mock、发票扫描 mock、客户余额/Gift Cards filter Retry、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、全站静态矩阵 `262/262` 均通过，所有探针写请求为 `0`。UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份；Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+功能代码基线为 `de8d540`；`main` 已推送。创建/采购表单 Retry `7/7`、供应商移动端 mock、发票扫描 mock、Gift Cards filter Retry `1/1`、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、全站静态矩阵 `262/262` 均通过，所有探针写请求为 `0`。Customer Balances 当前线上路径仍是明确的“未接入 Odoo”状态页，不计入 filter Retry 能力。UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份；Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -51,6 +51,7 @@ Statuses:
 | 创建向导依赖错误恢复 | 客户分组、商品 family/tag 读取失败时提供原地 `Retry`，保留当前向导表单，不要求关闭重开 | `0e89492` 后综合交互 `14/14`、管理列表 `8/8`、订单页 `16/16 PASS`；无创建写入 |
 | Sommelier 读取错误恢复 | 推荐失败提供 `Retry recommendation`；酒款详情加载失败提供 Retry 并重新读取当前商品 | `c4ef5a4` 后 AI UI `2/2 PASS`、Sommelier 只读 `10/10 PASS`、综合交互 `14/14 PASS`；匿名保护和 Odoo 价格/库存一致性通过 |
 | Legacy 读取页面 Retry | Promotion categories/promotions、客户余额、关班与销售报表、支付方式/角色/税率/用户、邮件日志、回收站、供应商连接，以及 Future Costs/Future Prices 在读取失败时提供原地 Retry；客户余额桌面/移动视图共用同一 reload | `4d7b4c4` 部署后管理列表 `8/8`、综合交互 `14/14`；故障注入探针 `UAT_LEGACY_RETRY_2026-10-18.json` 为 `5/5 PASS`、写请求 `0` |
+| Gift Cards 过滤依赖恢复 | Outlet 读取失败时保留 Gift Cards 页面和其它筛选，显示依赖错误与原地 Retry；恢复后继续使用当前页面 | `docs/UAT_FILTER_DEPENDENCY_RETRY_2026-10-18.json`：首次 Outlet GET 注入 `503` 后 Retry 恢复，`1/1 PASS`，写请求 `0` |
 
 ### 最新只读回归结果
 
