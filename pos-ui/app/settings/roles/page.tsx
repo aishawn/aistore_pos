@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LoaderCircle, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -60,6 +60,7 @@ export default function RolesPage() {
   const [confirmingDelete, setConfirmingDelete] = useState<Role | null>(null);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
+  const editorRevision = useRef(0);
 
   const permissionGroups = useMemo(() => {
     const groups = new Map<string, Permission[]>();
@@ -109,6 +110,7 @@ export default function RolesPage() {
   }, [roles, roleKey]);
 
   function openCreate() {
+    editorRevision.current += 1;
     setEditing(null);
     setName("");
     setSelectedPermissionIds([]);
@@ -117,6 +119,7 @@ export default function RolesPage() {
   }
 
   async function openEdit(role: Role) {
+    const revision = ++editorRevision.current;
     setEditing(role);
     setCreating(false);
     setName(role.name);
@@ -125,16 +128,17 @@ export default function RolesPage() {
     setLoadingRolePermissions(true);
     try {
       const assigned = await api.get<Permission[]>(`${BASE}/${role.id}/permissions`);
-      setSelectedPermissionIds(assigned.map((permission) => permission.id));
+      if (revision === editorRevision.current) setSelectedPermissionIds(assigned.map((permission) => permission.id));
     } catch (error) {
-      setEditorError(errorMessage(error, "Could not load this role's permissions."));
+      if (revision === editorRevision.current) setEditorError(errorMessage(error, "Could not load this role's permissions."));
     } finally {
-      setLoadingRolePermissions(false);
+      if (revision === editorRevision.current) setLoadingRolePermissions(false);
     }
   }
 
   function closeEditor() {
     if (saving) return;
+    editorRevision.current += 1;
     setCreating(false);
     setEditing(null);
     setEditorError(null);
