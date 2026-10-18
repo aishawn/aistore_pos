@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T20:56:49.779Z",
-  "sourceCommit": "528e0cb",
+  "generatedAt": "2026-10-18T02:39:37.771Z",
+  "sourceCommit": "0d60bee",
   "deployment": "unverified-after-webhook",
   "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
   "checks": 2,

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T20:56:09.331Z",
-  "sourceCommit": "528e0cb",
+  "generatedAt": "2026-10-18T02:38:33.938Z",
+  "sourceCommit": "0d60bee",
   "deployment": "unverified-after-webhook",
   "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
   "checks": [

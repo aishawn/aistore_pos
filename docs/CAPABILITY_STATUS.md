@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。代码功能批次基线为 `c65b186`；另有一个待部署的 Next.js Docker 构建修复；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push 或页面 HTTP 200 认定部署身份。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `20367c0`；`useDialogFocus` 焦点恢复加固已提交，待 Dokploy 部署后复验；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
 
 ### 已完成能力
 
@@ -42,7 +42,7 @@ Statuses:
 | 管理列表 | `8/8 PASS` | 商品、客户、供应商、采购及 utility 列表 |
 | 订单页面 | `16/16 PASS` | 订单/采购/销售历史，0 页面错误、0 写请求 |
 | 设置页面 | `27/27 PASS` | 390/1440，设置只读视图与无溢出 |
-| AI surface/UI | `10/10`、`2/2 PASS` | AI 保持关闭时的配置、权限和匿名保护 |
+| AI surface/UI | `10/10`、`2/2 PASS` | 2026-10-18 线上只读复验；AI 保持关闭时的配置、权限和匿名保护 |
 | 本轮定向回归 | `14/14`、`16/16`、`2/2 PASS` | `36bcfdf` 部署等待后；订单 `pageErrors: []`、`mutatingApiRequests: []` |
 | 供应商焦点批次 | `PASS`、`8/8`、`14/14`、`16/16` | `adc9fe0` 部署等待后；mock API 拦截，无 Odoo 写入 |
 | 客户/商品焦点批次 | `14/14 PASS`、供应商 `PASS` | `e46e134` 部署等待后；新增名称字段初始焦点和触发按钮恢复断言 |
@@ -53,7 +53,7 @@ Statuses:
 
 ### 仍未放行
 
-- Dokploy frontend/backend 实际运行 SHA、构建日志和容器状态尚未从控制台独立确认。
+- Dokploy frontend/backend 实际运行 SHA、构建日志和容器状态尚未从控制台独立确认；本次手动 webhook 返回 `Branch Not Match`，不能作为部署成功证据。
 - 生产 AI、实体支付终端、打印机/钱箱、SMTP、分单支付和离线 POS 仍未完成验收或未实现。
 - 正式门店现金差异审批、财务对账和正式运营流程仍需店主/财务验收。
 - 以上回归均为只读或 UI 语义验证；业务写入必须继续使用隔离 Odoo 测试公司/数据库。
