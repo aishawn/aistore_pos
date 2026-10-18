@@ -14,8 +14,9 @@
     { "path": "/api/ai/sommelier/similar", "method": "POST", "status": 401 },
     { "path": "/api/ai/sommelier/ask", "method": "POST", "status": 401 },
     { "path": "/api/ai/transcribe", "method": "POST", "status": 401 },
-    { "path": "/api/ai/sommelier/identify-image", "method": "POST", "status": 401 }
+    { "path": "/api/ai/sommelier/identify-image", "method": "POST", "status": 401 },
+    { "path": "/api/ai/sommelier/feedback", "method": "POST", "status": 401 }
   ],
-  "passed": 11,
+  "passed": 12,
   "failed": 0
 }
