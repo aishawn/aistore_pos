@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SommelierShell } from "@/components/sommelier/SommelierShell";
 import { WineCard, formatMoney } from "@/components/sommelier/WineCard";
 import { useOptionalSellScreen } from "@/lib/sell-screen";
+import { RefreshIcon } from "@/components/icons";
 import {
   apiFailureMessage,
   sommelierAsk,
@@ -31,10 +32,12 @@ export function SommelierWinePage({ productId }: { productId: string }) {
   const [busy, setBusy] = useState<"ask" | "cheaper" | "upgrade" | "pitch" | null>(null);
   const [reaction, setReaction] = useState<"liked" | "rejected" | null>(null);
   const [reactionNote, setReactionNote] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const altsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
+    setError(null);
     setLivePitch(null);
     setPitch(null);
     setAnswer(null);
@@ -53,7 +56,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
     return () => {
       alive = false;
     };
-  }, [productId]);
+  }, [productId, retryKey]);
 
   async function refreshPitch(length: "10s" | "30s") {
     setPitch(length);
@@ -150,7 +153,16 @@ export function SommelierWinePage({ productId }: { productId: string }) {
   if (error && !wine) {
     return (
       <SommelierShell title="Product assistant">
-        <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-[14px] text-rose-700">{error}</p>
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-rose-50 px-3 py-2 text-[14px] text-rose-700">
+          <span className="min-w-0">{error}</span>
+          <button
+            type="button"
+            onClick={() => setRetryKey((value) => value + 1)}
+            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 font-semibold"
+          >
+            <RefreshIcon size={14} /> Retry
+          </button>
+        </div>
       </SommelierShell>
     );
   }

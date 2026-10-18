@@ -265,7 +265,19 @@ export function SommelierFindPage() {
         </div>
       )}
 
-      {error ? <p role="alert" className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p> : null}
+      {error ? (
+        <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">
+          <span className="min-w-0">{error}</span>
+          <button
+            type="button"
+            onClick={() => void runRecommend()}
+            disabled={loading}
+            className="shrink-0 font-semibold underline underline-offset-2 disabled:cursor-wait disabled:opacity-60"
+          >
+            Retry recommendation
+          </button>
+        </div>
+      ) : null}
     </SommelierShell>
   );
 }
