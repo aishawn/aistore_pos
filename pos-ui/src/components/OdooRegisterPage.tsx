@@ -913,8 +913,8 @@ export function OdooRegisterPage() {
                       <CircleAlert size={26} className="mx-auto text-red-700" />
                       <p className="mt-2 font-semibold text-[var(--oh-text)]">Products could not load</p>
                       <p className="mt-1 text-sm text-[var(--oh-muted)]">{productsError}</p>
-                      <button type="button" onClick={() => setProductRetryKey((value) => value + 1)} disabled={productsLoading} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-60">
-                        <RefreshCw size={15} /> Retry search
+                      <button type="button" onClick={() => setProductRetryKey((value) => value + 1)} disabled={productsLoading} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] disabled:cursor-wait disabled:opacity-60">
+                        {productsLoading ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {productsLoading ? "Retrying…" : "Retry search"}
                       </button>
                     </div>
                   </div>
