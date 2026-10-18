@@ -535,7 +535,8 @@ function PrefixedInput({
 
 function supplierPageSnapshot(form: SupplierForm, additionalContacts: AdditionalContact[]): string {
   // Password is never loaded from API; exclude it so browser autofill cannot mark the form dirty.
-  const { password: _password, ...formForCompare } = form;
+  const { password, ...formForCompare } = form;
+  void password;
   return JSON.stringify({
     form: formForCompare,
     additionalContacts: additionalContacts.map(({ name, email, phone }) => ({ name, email, phone })),
