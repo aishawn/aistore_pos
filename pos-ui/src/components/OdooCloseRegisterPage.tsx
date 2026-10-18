@@ -10,6 +10,7 @@ import {
   type OdooPosBootstrap,
 } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 const CASH_DENOMINATIONS = [
@@ -38,6 +39,10 @@ export function OdooCloseRegisterPage() {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+
+  useDialogFocus(confirming, () => {
+    if (!busy) setConfirming(false);
+  });
   const [result, setResult] = useState<{ sessionName: string; registerName: string; state: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
