@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `5569fbd`；包含供应链搜索竞态、`d277698` 管理表单依赖恢复、AI 可用状态提示、外部盘点弹窗恢复与库存/盘点恢复；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（当前仓库基线 `3b408d4`；Dokploy 运行 SHA、完整构建日志和容器状态仍待控制台独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -11,6 +11,38 @@ Statuses:
 | **Accepted** | Implemented against Odoo and suitable for pilot acceptance testing |
 | **In progress** | Code present; needs field validation or incomplete edge cases |
 | **Planned** | Documented product intent; not a pilot commitment |
+
+## 当前迭代快照：`3b408d4` / `2012146`
+
+### 本轮已完成
+
+- 商品详情页的 Tax rates、Families、Suppliers lookup 失败时显示逐项错误和 Retry；活动图失败时显示独立错误和 `Retry chart`，不再把读取失败静默显示为空值或零图。
+- 客户合并、商品合并的最终错误条补齐 `role="alert"` 和 `aria-live="assertive"`，提交失败会被辅助技术主动播报。
+- 商品/客户分配页增加商品搜索请求序号保护，旧响应不会覆盖快速输入后的新结果；分类依赖失败提供 Retry。
+- Buying Period 创建弹窗增加日期、数量、成本校验，补齐 dialog/ARIA/焦点恢复，创建期间禁止取消和遮罩关闭。
+
+### 本轮线上验证
+
+- 全站静态矩阵：`131` 路由 × `390/1440`，`262/262 PASS`，无 HTTP 失败、横向溢出或页面错误；证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-18_3b408d4.json`。
+- 综合交互：`14/14 PASS`，覆盖移动导航、弹窗焦点、商品/客户只读流程、补货、报表和 AI 助手；证据：`docs/UAT_INTERACTION_2026-10-14.json`。
+- 商品详情 lookup 故障注入：首次 Tax rates GET `503`，页面显示依赖错误，点击 Retry 后恢复；390px 无溢出、无页面错误、写请求 `0`；证据：`docs/UAT_PRODUCT_VIEW_RETRY_2026-10-18.json`。
+- 本地检查：`npm run typecheck`、目标 ESLint、`node --check`、`git diff --check` 通过；按约束未运行本地 Next/Docker build。
+
+### 当前主要功能范围
+
+- Odoo 收银：商品/客户搜索、开班、Cash/Card 模拟收款、找零、GST/现金舍入、收据、退款、库存回读、Cash in/out 和关班读取保护。
+- 商品与客户：目录、详情、编辑、新建、CSV 预览导入、分类/供应商分配、合并工作区、图片展示、客户付款/账单/销售历史。
+- 采购与库存：供应商、RFQ、收货/退货/调拨表单、补货计划、库存列表、盘点、外部盘点、采购周期、批量调价和封顶价。
+- 平台与设置：店铺列表/详情、租户恢复、价目表、角色权限、用户、Outlet/Register、税率、收据、支付和公司设置。
+- 报表与 AI：Odoo Overview、Reporting Dashboard、销售/采购/库存等页面；AI 助手和 Sommelier 的页面状态、权限和匿名鉴权保护。
+
+### 尚未完成或尚未验收
+
+- Dokploy 实际运行 SHA、frontend/backend 完整构建日志、容器状态和部署时间尚未从控制台独立保存；公网 200 不能替代部署身份。
+- 生产 DashScope AI 仍为 `AI_ENABLED=false`；真实语音转写、酒标识别、发票 OCR 未验收。
+- 实体刷卡终端、打印机、钱箱、离线 POS、分单/多支付方式未实现或未验收；Card 仅为 Odoo payment method 模拟。
+- SMTP 邀请/密码重置邮件、正式现金差异审批、财务对账和采购财务流程未完成正式运营验收。
+- 多数创建、编辑、合并、销售、退款、收货、现金和关班写入回归使用隔离租户或 mock；Demo 租户禁止写入，不能把只读/mock 结果当成生产业务验收。
 
 ## 2026-10-18 迭代快照
 

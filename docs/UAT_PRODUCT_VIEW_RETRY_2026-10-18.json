@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-10-18T11:57:46.830Z",
+  "deployment": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only product detail GET failure injection; one GET returns 503; Retry GETs continue to production; no business writes",
+  "checks": [
+    {
+      "name": "Product detail lookup read failure recovers in place",
+      "status": "PASS",
+      "evidence": {
+        "detailRequests": 2,
+        "taxRateRequests": 2,
+        "taxRateRetryRendered": true,
+        "viewport": {
+          "viewport": 390,
+          "document": 390
+        },
+        "pageErrors": []
+      }
+    }
+  ],
+  "writes": []
+}
