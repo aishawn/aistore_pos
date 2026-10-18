@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`7f9e3c0`：管理详情/列表 Retry 批次；线上只读回归通过，Dokploy 运行 SHA 待独立回读)
+**Last updated:** 2026-10-18 (`2f9149b`：创建/采购表单依赖 Retry；线上故障注入 `5/5`，Dokploy 运行 SHA 待独立回读)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -92,6 +92,7 @@ Statuses:
 | `48f4dd1` 详情读取恢复 | 订单查看/编辑、销售键编辑、客户账单、客户组详情、客户/商品合并选择器、商品详情和 AI 报表结果页在读取失败时提供原地 Retry；客户组子列表支持独立重试 | 线上订单 `16/16`、AI UI `2/2`、综合交互 `14/14`、全站静态矩阵 `262/262 PASS`；无业务写入 |
 | Sommelier Retry 故障注入 | 推荐和酒款详情首次读取注入 503，点击 Retry 后均恢复 | 推荐请求次数 `2`、详情请求次数 `2`；无业务写入 |
 | `257f764`/`7f9e3c0` 管理读取恢复批次 | 批量调价、封顶价、库存、分类/供应商分配、采购周期、客户/商品详情、客户收款、客户组/商品编辑的主数据和子面板接入原地 Retry；同步更新功能清单与交接 | 推送后管理列表 `8/8`、综合交互 `14/14`、订单页 `16/16`、Legacy Retry 故障注入 `5/5`、全站静态矩阵 `262/262`；写请求 `0`；Dokploy 实际 SHA 尚未从控制台独立确认 |
+| `2f9149b` 创建/采购表单依赖 Retry | 手工订单、收货、退货、信用单、调拨表单的供应商/Outlet 读取失败可原地 Retry，保留已填写表单，不需要刷新页面 | `docs/UAT_CREATE_FORM_RETRY_2026-10-18.json`：故障注入 `5/5 PASS`，首次 503 后第二次读取恢复，业务写请求 `0` |
 
 ### 仍未放行
 

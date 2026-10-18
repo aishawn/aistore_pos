@@ -1,0 +1,99 @@
+{
+  "generatedAt": "2026-10-18T06:46:13.834Z",
+  "sourceCommit": "unverified-before-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only injected 503 recovery for create forms; no business writes",
+  "results": [
+    {
+      "path": "/orders/manual",
+      "endpoint": "/api/suppliers",
+      "label": "Manual order supplier",
+      "retryVisible": true,
+      "recovered": true,
+      "requestCount": 2,
+      "writes": [],
+      "requests": [
+        "GET /api/suppliers",
+        "GET /api/outlets",
+        "GET /api/sell/parked",
+        "GET /api/auth/me",
+        "GET /api/suppliers",
+        "GET /api/outlets"
+      ],
+      "passed": true
+    },
+    {
+      "path": "/orders/receive/new",
+      "endpoint": "/api/suppliers",
+      "label": "Receive stock supplier",
+      "retryVisible": true,
+      "recovered": true,
+      "requestCount": 2,
+      "writes": [],
+      "requests": [
+        "GET /api/suppliers",
+        "GET /api/outlets",
+        "GET /api/sell/parked",
+        "GET /api/auth/me",
+        "GET /api/suppliers",
+        "GET /api/outlets"
+      ],
+      "passed": true
+    },
+    {
+      "path": "/orders/return/new",
+      "endpoint": "/api/suppliers",
+      "label": "Return stock supplier",
+      "retryVisible": true,
+      "recovered": true,
+      "requestCount": 2,
+      "writes": [],
+      "requests": [
+        "GET /api/suppliers",
+        "GET /api/outlets",
+        "GET /api/sell/parked",
+        "GET /api/auth/me",
+        "GET /api/suppliers",
+        "GET /api/outlets"
+      ],
+      "passed": true
+    },
+    {
+      "path": "/orders/credit/new",
+      "endpoint": "/api/suppliers",
+      "label": "Credit note supplier",
+      "retryVisible": true,
+      "recovered": true,
+      "requestCount": 2,
+      "writes": [],
+      "requests": [
+        "GET /api/suppliers",
+        "GET /api/outlets",
+        "GET /api/sell/parked",
+        "GET /api/auth/me",
+        "GET /api/suppliers",
+        "GET /api/outlets"
+      ],
+      "passed": true
+    },
+    {
+      "path": "/orders/transfer/new",
+      "endpoint": "/api/outlets",
+      "label": "Stock transfer outlet",
+      "retryVisible": true,
+      "recovered": true,
+      "requestCount": 2,
+      "writes": [],
+      "requests": [
+        "GET /api/outlets",
+        "GET /api/sell/parked",
+        "GET /api/auth/me",
+        "GET /api/outlets"
+      ],
+      "passed": true
+    }
+  ],
+  "passed": 5,
+  "failed": 0,
+  "writes": []
+}

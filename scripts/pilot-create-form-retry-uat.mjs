@@ -18,7 +18,7 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const base = "https://demo.orithos.com.au";
 const cases = [
-  { path: "/orders/new", endpoint: "/api/suppliers", label: "Create order supplier" },
+  { path: "/orders/manual", endpoint: "/api/suppliers", label: "Manual order supplier" },
   { path: "/orders/receive/new", endpoint: "/api/suppliers", label: "Receive stock supplier" },
   { path: "/orders/return/new", endpoint: "/api/suppliers", label: "Return stock supplier" },
   { path: "/orders/credit/new", endpoint: "/api/suppliers", label: "Credit note supplier" },
