@@ -123,14 +123,14 @@ export function CartSidebar() {
                 <p className="text-[16px] leading-[19px]">
                   {sell.productCount} {sell.productCount === 1 ? "Product" : "Products"}
                 </p>
-                <p className="text-[16px] leading-[19px]">Savings: $0.00</p>
-                <p className="text-[16px] leading-[19px]">Discount: $0.00</p>
+                <p className="text-[16px] leading-[19px]">Subtotal: ${sell.subtotal.toFixed(2)}</p>
+                <p className="text-[16px] leading-[19px]">Discount: -${sell.discountTotal.toFixed(2)}</p>
               </>
             ) : (
               <>
                 <p className="text-[16px] leading-[19px]">0 Products</p>
-                <p className="text-[16px] leading-[19px]">Savings: $0.00</p>
-                <p className="text-[16px] leading-[19px]">Discount: $0.00</p>
+                <p className="text-[16px] leading-[19px]">Subtotal: $0.00</p>
+                <p className="text-[16px] leading-[19px]">Discount: -$0.00</p>
               </>
             )}
           </div>

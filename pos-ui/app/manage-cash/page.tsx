@@ -135,9 +135,9 @@ export default function ManageCashPage() {
               ) : (
                 <>
                   <p className="text-sm text-[var(--oh-text-secondary)]">Session <strong className="text-[var(--oh-text)]">{openSession.name}</strong></p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setDirection("in")} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold ${direction === "in" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash in</button>
-                    <button type="button" onClick={() => setDirection("out")} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold ${direction === "out" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash out</button>
+                  <div role="group" aria-label="Cash adjustment direction" className="grid grid-cols-2 gap-2">
+                    <button type="button" aria-pressed={direction === "in"} onClick={() => setDirection("in")} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${direction === "in" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash in</button>
+                    <button type="button" aria-pressed={direction === "out"} onClick={() => setDirection("out")} className={`min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${direction === "out" ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]" : "border-[var(--oh-border)] text-[var(--oh-text)]"}`}>Cash out</button>
                   </div>
                   <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">
                     Amount (AUD)

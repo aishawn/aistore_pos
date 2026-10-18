@@ -135,6 +135,7 @@ function SearchBar() {
         type="text"
         value={sell.searchQuery}
         aria-label={isParked ? "Park sale" : "Search products and customers"}
+        aria-controls={sell.searchOpen && sell.searchResults ? "sell-search-results" : undefined}
         placeholder={
           isParked ? "Park Sale" : "Search for Products and Customers..."
         }
@@ -163,11 +164,13 @@ function SearchDropdown() {
   if (products.length === 0 && customers.length === 0) return null;
 
   return (
-    <div className="absolute left-0 right-0 top-[50px] z-20 max-h-[320px] overflow-y-auto border border-[var(--sf-muted)] bg-white shadow-lg">
+    <div id="sell-search-results" role="listbox" aria-label="Product and customer search results" className="absolute left-0 right-0 top-[50px] z-20 max-h-[320px] overflow-y-auto border border-[var(--sf-muted)] bg-white shadow-lg">
       {products.map((p) => (
         <button
           key={p.id}
           type="button"
+          role="option"
+          aria-selected={false}
           onClick={() => sell.pickSearchProduct(p)}
           className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-black/5"
         >
@@ -179,6 +182,8 @@ function SearchDropdown() {
         <button
           key={c.id}
           type="button"
+          role="option"
+          aria-selected={false}
           onClick={() => sell.pickSearchCustomer(c)}
           className="flex w-full cursor-pointer items-center justify-between border-t border-[#eee] px-4 py-3 text-left hover:bg-black/5"
         >

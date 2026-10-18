@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 
 type OdooOutlet = {
@@ -58,6 +58,12 @@ export default function RegistersOutletsPage() {
       count={loading || error ? undefined : outlets.length + registers.length}
       countLabel="Stores + registers"
       fullBleed
+      actions={
+        <AdminSecondaryButton onClick={() => setRetryKey((value) => value + 1)} disabled={loading}>
+          <RefreshCw size={15} className={loading ? "animate-spin" : undefined} aria-hidden="true" />
+          Refresh
+        </AdminSecondaryButton>
+      }
     >
       <section aria-label="Store and register source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />

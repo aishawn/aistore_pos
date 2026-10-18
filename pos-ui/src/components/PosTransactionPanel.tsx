@@ -42,10 +42,8 @@ export function PosTransactionPanel() {
   const sell = useSellScreen();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { whole, cents } = splitMoney(sell.total);
-  const hasItems = sell.lines.length > 0;
 
-  const wetGst = hasItems ? +(sell.total * 0.12).toFixed(2) : 0;
-  const gstTax = hasItems ? +(sell.total * 0.1).toFixed(2) : 0;
+  const gstTotal = sell.gstTotal;
 
   function onSearch(value: string) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -94,6 +92,7 @@ export function PosTransactionPanel() {
           type="text"
           value={sell.searchQuery}
           aria-label="Scan barcode or search product"
+          aria-controls={sell.searchOpen && sell.searchResults ? "pos-search-results" : undefined}
           placeholder="Scan barcode or search product…"
           onChange={(e) => onSearch(e.target.value)}
           onFocus={() => sell.setSearchOpen(true)}
@@ -106,14 +105,14 @@ export function PosTransactionPanel() {
 
       {/* Transaction table */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <table className="w-full text-[14px]">
+        <table aria-label="Current sale items" className="w-full text-[14px]">
           <thead>
             <tr className="border-b border-[var(--oh-border)] bg-[var(--oh-surface)] text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
-              <th className="px-5 py-3 text-left">Product</th>
-              <th className="w-16 px-2 py-3 text-center">Qty</th>
-              <th className="w-24 px-2 py-3 text-right">Price</th>
-              <th className="w-24 px-2 py-3 text-right">Total</th>
-              <th className="w-10 px-3 py-3" />
+              <th scope="col" className="px-5 py-3 text-left">Product</th>
+              <th scope="col" className="w-16 px-2 py-3 text-center">Qty</th>
+              <th scope="col" className="w-24 px-2 py-3 text-right">Price</th>
+              <th scope="col" className="w-24 px-2 py-3 text-right">Total</th>
+              <th scope="col" aria-label="Actions" className="w-10 px-3 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -174,19 +173,16 @@ export function PosTransactionPanel() {
       <div className="flex shrink-0 flex-wrap items-end justify-end gap-8 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/60 px-5 py-4">
         <div className="space-y-1 text-right text-[13px] text-[var(--oh-muted)]">
           <p>
-            Taxes <span className="text-[var(--oh-text-secondary)]">(WET/GST)</span>
-            <span className="ml-4 font-medium text-[var(--oh-text)]">${wetGst.toFixed(2)}</span>
+            Included GST
+            <span className="ml-4 font-medium text-[var(--oh-text)]">${gstTotal.toFixed(2)}</span>
           </p>
-          <p>
-            GST Taxe
-            <span className="ml-4 font-medium text-[var(--oh-text)]">${gstTax.toFixed(2)}</span>
-          </p>
+          <p className="text-xs">Prices include GST</p>
         </div>
         <div className="text-right">
           <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Grand Total
           </p>
-          <p className="text-[36px] font-bold leading-none tracking-tight text-[var(--oh-text)]">
+          <p aria-live="polite" className="text-[36px] font-bold leading-none tracking-tight text-[var(--oh-text)]">
             ${whole}
             <span className="text-[22px]">.{cents}</span>
           </p>
@@ -248,12 +244,14 @@ function SearchDropdown() {
   if (products.length === 0 && customers.length === 0) return null;
 
   return (
-    <div className="absolute left-5 right-5 top-full z-20 mt-1 max-h-[240px] overflow-y-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-lg">
+    <div id="pos-search-results" role="listbox" aria-label="Product and customer search results" className="absolute left-5 right-5 top-full z-20 mt-1 max-h-[240px] overflow-y-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-lg">
       {products.map((p) => (
         <button
           key={p.id}
           type="button"
           onClick={() => sell.pickSearchProduct(p)}
+          role="option"
+          aria-selected={false}
           className="flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left text-[13px] hover:bg-[var(--oh-surface)]"
         >
           <span className="text-[var(--oh-text)]">{p.name}</span>
@@ -265,6 +263,8 @@ function SearchDropdown() {
           key={c.id}
           type="button"
           onClick={() => sell.pickSearchCustomer(c)}
+          role="option"
+          aria-selected={false}
           className="flex w-full cursor-pointer items-center justify-between border-t border-[var(--oh-border)] px-4 py-2.5 text-left hover:bg-[var(--oh-surface)]"
         >
           <span className="text-[13px] text-[var(--oh-text)]">{c.name}</span>
