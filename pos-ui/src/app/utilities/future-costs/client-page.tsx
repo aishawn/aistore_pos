@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PlusIcon, SelectChevronIcon, BanIcon } from "@/components/icons";
 import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
+import { AsyncState } from "@/components/admin/AsyncState";
 import { useApiList } from "@/hooks/useApi";
 
 const PAGE_SIZE = 20;
@@ -21,8 +22,7 @@ interface FutureCost {
 
 export default function FutureCostsClientPage() {
   const [page, setPage] = useState(1);
-  const { items, total, loading, error } = useApiList<FutureCost>("/api/future-costs", { page, size: PAGE_SIZE });
-  const showTable = !loading && !error && items.length > 0;
+  const { items, total, loading, error, reload } = useApiList<FutureCost>("/api/future-costs", { page, size: PAGE_SIZE });
 
   return (
     <div className="h-full overflow-auto bg-white p-6 font-sans">
@@ -38,23 +38,27 @@ export default function FutureCostsClientPage() {
       </div>
       <button className="mt-4 rounded-lg bg-[var(--oh-primary)] px-8 py-3 text-[16px] font-bold text-white transition-colors hover:bg-[var(--oh-primary-hover)]">Filter</button>
 
-      {showTable ? (
-        <div className="mt-6">
-          <ListTable
-            columns={[{ label: "Product" }, { label: "Cost", width: "w-[200px]" }, { label: "Effective", width: "w-[260px]" }]}
-            rows={items.map((c) => [c.productId ?? "", `$${Number(c.cost).toFixed(2)}`, c.effectiveTime ?? ""])}
-          />
-          <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-        </div>
-      ) : (
-        <div className="mt-10 flex items-center justify-center gap-10">
-          <BanIcon size={150} strokeWidth={1.5} className="text-black" />
-          <div>
-            <h2 className="text-[28px] font-bold text-black">No Future Costs</h2>
-            <p className="mt-2 text-[18px] text-black">There are no costs set to be activated in the future.</p>
-          </div>
-        </div>
-      )}
+      <div className="mt-6">
+        <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
+          {items.length > 0 ? (
+            <>
+              <ListTable
+                columns={[{ label: "Product" }, { label: "Cost", width: "w-[200px]" }, { label: "Effective", width: "w-[260px]" }]}
+                rows={items.map((c) => [c.productId ?? "", `$${Number(c.cost).toFixed(2)}`, c.effectiveTime ?? ""])}
+              />
+              <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+            </>
+          ) : (
+            <div className="mt-10 flex items-center justify-center gap-10">
+              <BanIcon size={150} strokeWidth={1.5} className="text-black" />
+              <div>
+                <h2 className="text-[28px] font-bold text-black">No Future Costs</h2>
+                <p className="mt-2 text-[18px] text-black">There are no costs set to be activated in the future.</p>
+              </div>
+            </div>
+          )}
+        </AsyncState>
+      </div>
     </div>
   );
 }

@@ -20,6 +20,8 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 const cases = [
   { path: "/utilities/mail-log", endpoint: "/api/mail-log", heading: "Mail Log" },
   { path: "/utilities/trashed-items", endpoint: "/api/trashed-items", heading: "Trashed Items" },
+  { path: "/utilities/future-costs", endpoint: "/api/future-costs", heading: "Future Costs" },
+  { path: "/utilities/future-prices", endpoint: "/api/future-prices", heading: "Future Prices" },
   { path: "/promotions", endpoint: "/api/promotions", heading: "Promotions" },
 ];
 
