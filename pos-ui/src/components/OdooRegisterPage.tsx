@@ -135,6 +135,7 @@ export function OdooRegisterPage() {
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [customerSearchError, setCustomerSearchError] = useState<string | null>(null);
   const [customerSearchKey, setCustomerSearchKey] = useState(0);
+  const [customerActiveIndex, setCustomerActiveIndex] = useState(-1);
   const [customer, setCustomer] = useState<OdooCustomerRecord | null>(null);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [quote, setQuote] = useState<OdooCheckoutQuote | null>(null);
@@ -332,6 +333,7 @@ export function OdooRegisterPage() {
   useEffect(() => {
     const revision = ++customerSearchRevision.current;
     const term = customerQuery.trim();
+    setCustomerActiveIndex(-1);
     if (!connected || !term) {
       setCustomers([]);
       setCustomerSearchError(null);
@@ -356,6 +358,43 @@ export function OdooRegisterPage() {
     }, 220);
     return () => window.clearTimeout(timer);
   }, [customerQuery, connected, customerSearchKey]);
+
+  function selectCustomer(nextCustomer: OdooCustomerRecord) {
+    customerSearchRevision.current += 1;
+    setCustomerSearchLoading(false);
+    setCustomerSearchError(null);
+    setCustomer(nextCustomer);
+    setCustomers([]);
+    setCustomerActiveIndex(-1);
+    setCustomerQuery("");
+  }
+
+  function handleCustomerSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (!customers.length) {
+      if (event.key === "Escape") {
+        customerSearchRevision.current += 1;
+        setCustomers([]);
+        setCustomerActiveIndex(-1);
+      }
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setCustomerActiveIndex((current) => (current + 1) % customers.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setCustomerActiveIndex((current) => (current <= 0 ? customers.length - 1 : current - 1));
+    } else if (event.key === "Enter" && customerActiveIndex >= 0) {
+      event.preventDefault();
+      const nextCustomer = customers[customerActiveIndex];
+      if (nextCustomer) selectCustomer(nextCustomer);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      customerSearchRevision.current += 1;
+      setCustomers([]);
+      setCustomerActiveIndex(-1);
+    }
+  }
 
   const selectedConfig = bootstrap?.configs.find((item) => item.id === configId) ?? null;
   const currentQuoteFingerprint = JSON.stringify({
@@ -978,8 +1017,13 @@ export function OdooRegisterPage() {
                 <input
                   value={customerQuery}
                   aria-label="Search customers"
+                  role="combobox"
+                  aria-autocomplete="list"
                   aria-controls="customer-search-results"
+                  aria-expanded={customers.length > 0}
+                  aria-activedescendant={customerActiveIndex >= 0 ? `customer-option-${customers[customerActiveIndex]?.id}` : undefined}
                   onChange={(event) => { setCustomers([]); setCustomerQuery(event.target.value); }}
+                  onKeyDown={handleCustomerSearchKeyDown}
                   placeholder="Add customer"
                   className="oh-type-body-strong h-full min-w-0 flex-1 bg-transparent text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
                 />
@@ -990,8 +1034,8 @@ export function OdooRegisterPage() {
           {!customer && customerSearchError && <div role="alert" className="flex shrink-0 items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span>{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold"><RefreshCw size={13} /> Retry</button></div>}
           {!customer && customers.length > 0 && (
             <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
-              {customers.map((item) => (
-                <button key={item.id} type="button" role="option" aria-selected={false} onClick={() => { customerSearchRevision.current += 1; setCustomerSearchLoading(false); setCustomerSearchError(null); setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]">
+              {customers.map((item, index) => (
+                <button id={`customer-option-${item.id}`} key={item.id} type="button" role="option" aria-selected={index === customerActiveIndex} onClick={() => selectCustomer(item)} className={cn("block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]", index === customerActiveIndex && "bg-[var(--oh-orange-light)]")}>
                   {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
                 </button>
               ))}
