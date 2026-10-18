@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `73e67fd`；包含 `9a845bd`/`73e67fd` AI 可用状态提示、`ff110de` 外部盘点弹窗恢复、`92b0316` 结算计时稳定性与 `ca8855e` 库存/盘点恢复；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `7cd0652`；包含供应链搜索竞态、`d277698` 管理表单依赖恢复、AI 可用状态提示、外部盘点弹窗恢复与库存/盘点恢复；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,18 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `7cd0652` 供应链商品搜索竞态
+
+- Supply Chain 设置面板为商品搜索分配请求序号；清空查询或快速输入时，旧的商品响应不会覆盖当前结果。
+- 部署后订单 `16/16`、综合交互 `14/14`、全站静态矩阵 `262/262` 通过；未执行供应链写入。
+
+### `d277698` 管理表单依赖恢复
+
+- Orders 筛选的供应商、调拨方、Outlet、商品和用户 lookup 失败时显示逐项错误和 Retry。
+- Customer Make Payment 在支付方式读取失败时显示 Retry，并禁用记录支付；View Statements 模板读取失败可 Retry，弹窗补齐 dialog/焦点语义；Bulk Price Edit 分类读取失败可 Retry。
+- 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；ESLint 仅报告已有 `setState` effect warning，无 error。
+- 部署后管理列表 `8/8`、设置页 `27/27`、订单 `16/16`、综合交互 `14/14`、全站静态矩阵 `262/262` 通过；订单 `pageErrors: []`、`mutatingApiRequests: []`。
 
 ### `73e67fd` AI 可用状态线上验证
 
