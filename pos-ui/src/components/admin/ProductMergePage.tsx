@@ -276,7 +276,7 @@ export function ProductMergePage() {
           </section>
 
           {error && (
-            <p className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)]/10 px-4 py-3 text-[14px] text-[var(--oh-danger)]">
+            <p role="alert" aria-live="assertive" className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)]/10 px-4 py-3 text-[14px] text-[var(--oh-danger)]">
               {error}
             </p>
           )}

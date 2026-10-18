@@ -863,7 +863,7 @@ export function CustomerMergePage() {
       {/* Footer */}
       <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-6 py-4 shadow-[0_-4px_16px_rgba(28,37,54,0.04)]">
         {error && (
-          <div className="mb-3 rounded-[var(--oh-radius)] border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-2.5 text-[13px] text-[var(--oh-danger)]">
+          <div role="alert" aria-live="assertive" className="mb-3 rounded-[var(--oh-radius)] border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-2.5 text-[13px] text-[var(--oh-danger)]">
             {error}
           </div>
         )}

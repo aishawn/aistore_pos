@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ListTable } from "@/components/admin/ListTable";
@@ -535,6 +535,27 @@ export function ProductViewPage({ productId }: { productId: string }) {
         {product && (
           <div className="mx-5 mb-6 mt-4 flex flex-col gap-4 lg:mx-6 lg:flex-row">
             <div className="min-w-0 flex-1">
+              <AsyncDependencyNotice
+                dependencies={[
+                  { label: "Tax rates", error: taxRates.error, onRetry: taxRates.reload },
+                  { label: "Families", error: families.error, onRetry: families.reload },
+                  { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
+                ]}
+              />
+              {nav === "home" && chart.error && (
+                <div role="alert" aria-live="assertive" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>Sales and purchases chart: {chart.error}</span>
+                    <button
+                      type="button"
+                      onClick={chart.reload}
+                      className="min-h-9 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700"
+                    >
+                      Retry chart
+                    </button>
+                  </div>
+                </div>
+              )}
               {nav === "home" && (
                 <ProductHomeReport
                   product={product}
