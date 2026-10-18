@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `ae5dbb4`；报表、Overview、补货、关班与角色编辑竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `7a60b0e`；报表、Overview、补货、关班、角色编辑与 Odoo 连接卡片竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,13 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `7a60b0e` Odoo 连接卡片响应竞态批次
+
+- `OdooPosConnectionCard` 为刷新、连接和断开流程分配请求序号；旧的 session/bootstrap 响应、错误和 loading 结束状态不会覆盖当前连接状态。
+- 本地 `npm run typecheck`、`git diff --check` 通过；未运行本地 build、Next.js build 或 Docker build。
+- 推送后线上设置页、角色权限 Retry、Ops 只读和管理列表回归通过：设置页 `27/27 PASS`，角色权限 Retry `PASS`，Ops `3/3 PASS`，管理列表 `8/8 PASS`；专项请求均未写入 Demo 业务数据。
+- 证据：`docs/UAT_ROLE_PERMISSION_RETRY_2026-10-18.json`、`docs/UAT_OPS_READONLY_2026-10-13.json`、`docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json`。公网行为已验证，但 Dokploy 控制台实际运行 SHA、构建日志和容器状态仍待独立回读。
 
 ### `02f0103` 角色权限编辑竞态批次
 
