@@ -54,6 +54,7 @@ export default function RolesPage() {
   const [name, setName] = useState("");
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
   const [loadingRolePermissions, setLoadingRolePermissions] = useState(false);
+  const [retryingRoleId, setRetryingRoleId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<Role | null>(null);
@@ -68,6 +69,23 @@ export default function RolesPage() {
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [permissions]);
+
+  async function retryRolePermissions(role: Role) {
+    const roleId = String(role.id);
+    setRetryingRoleId(roleId);
+    try {
+      const assigned = await api.get<Permission[]>(`${BASE}/${role.id}/permissions`);
+      setRolePermissionSnapshot((current) => current.key === roleKey
+        ? { ...current, byRole: { ...current.byRole, [roleId]: assigned.map((permission) => permission.name) } }
+        : current);
+    } catch {
+      setRolePermissionSnapshot((current) => current.key === roleKey
+        ? { ...current, byRole: { ...current.byRole, [roleId]: null } }
+        : current);
+    } finally {
+      setRetryingRoleId((current) => current === roleId ? null : current);
+    }
+  }
 
   useEffect(() => {
     if (!roles.length) return;
@@ -234,7 +252,13 @@ export default function RolesPage() {
                       {rolePermissionSnapshot.key !== roleKey ? (
                         <p className="mt-2 text-sm text-[var(--oh-muted)]">Loading access…</p>
                       ) : assignedPermissions === null ? (
-                        <p className="mt-2 text-sm text-red-800">Could not load permissions</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-red-800">
+                          <span>Could not load permissions</span>
+                          <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 disabled:opacity-60">
+                            {retryingRoleId === String(role.id) && <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />}
+                            Retry permissions
+                          </button>
+                        </div>
                       ) : assignedPermissions?.length ? (
                         <ul className="mt-2 flex flex-wrap gap-1.5">
                           {assignedPermissions.map((permissionName) => (
@@ -287,7 +311,13 @@ export default function RolesPage() {
                           {rolePermissionSnapshot.key !== roleKey ? (
                             <span className="text-[var(--oh-muted)]">Loading access…</span>
                           ) : rolePermissionSnapshot.byRole[String(role.id)] === null ? (
-                            <span className="text-red-800">Could not load permissions</span>
+                            <span className="inline-flex items-center gap-2 text-red-800">
+                              Could not load permissions
+                              <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 disabled:opacity-60">
+                                {retryingRoleId === String(role.id) && <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />}
+                                Retry
+                              </button>
+                            </span>
                           ) : rolePermissionSnapshot.byRole[String(role.id)]?.length ? (
                             <div className="flex flex-wrap gap-1.5">
                               {rolePermissionSnapshot.byRole[String(role.id)]?.map((permissionName) => (
