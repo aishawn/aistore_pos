@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（当前代码基线 `d13544d`，文档基线待本次提交更新；代码已推送，Dokploy webhook 返回 `Branch Not Match`，待控制台确认部署）
+**Last updated:** 2026-10-18（当前代码基线 `b4cc0d9`，文档基线待本次提交更新；代码已推送，Dokploy webhook 返回 `Branch Not Match`，待控制台确认部署）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -283,8 +283,9 @@ Statuses:
 | 数据设置页恢复 | Retry 请求期间禁用并显示 `Retrying…` | 本地检查通过；公网旧版本只读回归无回归 |
 | 客户详情最近销售 | 客户/Tab 上下文变化时清空旧销售明细，避免跨客户残留 | `npm run typecheck`、目标 ESLint 通过；待部署后补充切换客户只读证据 |
 | 受保护文件下载 | 客户、商品模板、库存、外部盘点和礼品卡下载在 401 后刷新 token 并重试一次；写入请求不重放 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后做下载故障注入 |
+| 业务 API 写请求恢复 | 401 自动重试仅限 GET/HEAD/OPTIONS，销售、采购、导入和删除不会在刷新 token 后自动重放 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充写请求拦截证据 |
 
-本批次提交已推送 `origin/main`，当前代码为 `d13544d`。Dokploy webhook `https://dokploy.modkie.com/api/deploy/compose/bIiwuE7McQD2kxJl3oG8j` 当前仍返回 `HTTP 301` 和 `Branch Not Match`，所以 `d13544d` 尚未取得线上运行身份证据。当前发布结论继续保持 `NO-GO`；禁止把旧版本公网 UAT 的 `sourceCommit` 当作 Dokploy 审计 SHA。
+本批次提交已推送 `origin/main`，当前代码为 `b4cc0d9`。Dokploy webhook `https://dokploy.modkie.com/api/deploy/compose/bIiwuE7McQD2kxJl3oG8j` 当前仍返回 `HTTP 301` 和 `Branch Not Match`，所以 `b4cc0d9` 尚未取得线上运行身份证据。当前发布结论继续保持 `NO-GO`；禁止把旧版本公网 UAT 的 `sourceCommit` 当作 Dokploy 审计 SHA。
 
 ## Register & sales
 
