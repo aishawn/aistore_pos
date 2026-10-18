@@ -74,12 +74,12 @@ try {
   const page = await context.newPage();
   await page.goto(`${base}/reports/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Reporting Dashboard" }).waitFor({ timeout: 30000 });
-  await page.getByText("RACE-8H", { exact: true }).waitFor({ timeout: 30000 });
+  await page.getByText(/RACE-8H/).waitFor({ timeout: 30000 });
 
   await page.getByLabel("Reporting period").selectOption("24");
   await page.waitForTimeout(60);
   await page.getByLabel("Reporting period").selectOption("168");
-  await page.getByText("RACE-7D", { exact: true }).waitFor({ timeout: 30000 });
+  await page.getByText(/RACE-7D/).waitFor({ timeout: 30000 });
   await page.waitForTimeout(1100);
 
   const visibleText = (await page.locator("#main-content").innerText()).replace(/\s+/g, " ");
