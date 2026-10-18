@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `7a60b0e`；报表、Overview、补货、关班、角色编辑与 Odoo 连接卡片竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `a001d89`；包含 `92b0316` 结算计时稳定性与 `ca8855e` 库存/盘点恢复；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,22 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `92b0316` 结算完成计时稳定性
+
+- `FinaliseSalePage` 使用稳定的 `useCallback` 绑定自动完成收款回调，并将其纳入计时器 effect 依赖，避免自动完成流程捕获旧回调。
+- 该批次线上订单 `16/16`、综合交互 `14/14`、AI surface `10/10`、AI UI `2/2` 通过；动态页面 HTTP `200` 且 `Cache-Control: no-store, private`、Cloudflare `DYNAMIC`。
+- 证据：`docs/UAT_DEPLOYMENT_2026-10-18_92b0316.json` 与 `docs/HANDOFF_2026-10-18_7544d03.md`。Dokploy 控制台实际运行 SHA、完整构建日志和容器状态仍待独立回读。
+
+### `ca8855e` 库存与盘点恢复批次
+
+- 库存列表 CSV 导出失败不再静默；显示导出中状态、错误提示和 `Retry export`，并保留当前筛选条件。
+- 库存分类读取失败显示独立错误条和 `Retry categories`，不再把分类下拉框静默显示为空。
+- 新建盘点弹窗显示 outlet 读取错误并提供 `Retry outlets`；新建盘点写请求不自动重试，避免重复创建。
+- Express stocktake 对已有盘点的加载增加请求序号保护和 Retry；产品搜索失败与“无结果”分开显示，并支持 `Retry search`。
+- 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；未运行本地 build、Next.js build 或 Docker build。
+- 推送后线上回归：管理列表 `8/8`、设置页 `27/27`、综合交互 `14/14`、订单页 `16/16`、角色权限 Retry `PASS`、Ops 只读 `3/3`、全站静态矩阵 `262/262`；订单 `pageErrors: []`、`mutatingApiRequests: []`，专项无 Demo 业务写入。
+- 证据：`docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json`、`docs/UAT_SETTINGS_MOBILE_2026-10-14.json`、`docs/UAT_INTERACTION_2026-10-14.json`、`docs/UAT_ORDER_PAGES_2026-10-14.json`、`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`、`docs/UAT_ROLE_PERMISSION_RETRY_2026-10-18.json`、`docs/UAT_OPS_READONLY_2026-10-13.json`。Dokploy 控制台实际运行 SHA、构建日志和容器状态仍待独立回读。
 
 ### `7a60b0e` Odoo 连接卡片响应竞态批次
 
