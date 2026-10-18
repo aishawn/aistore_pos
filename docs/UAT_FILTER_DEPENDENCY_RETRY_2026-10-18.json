@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-18T07:30:42.082Z",
+  "sourceCommit": "unverified-after-deploy",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only injected 503 recovery for filter lookups; no business writes",
+  "results": [
+    {
+      "path": "/giftcards",
+      "label": "Gift Cards outlets",
+      "injected": true,
+      "recovered": true,
+      "requests": [
+        "GET /api/outlets",
+        "GET /api/gift-cards",
+        "GET /api/sell/parked",
+        "GET /api/auth/me",
+        "GET /api/outlets"
+      ],
+      "passed": true
+    }
+  ],
+  "writes": [],
+  "passed": 1,
+  "failed": 0
+}
