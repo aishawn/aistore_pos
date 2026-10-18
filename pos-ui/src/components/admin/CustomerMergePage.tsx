@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -18,8 +18,9 @@ import {
   AdminPrimaryButton,
   AdminSecondaryButton,
 } from "@/components/admin/AdminPageLayout";
-import { useApi, useApiList, useDebouncedValue } from "@/hooks/useApi";
+import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { api } from "@/lib/api";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { DEFAULT_PAGE_SIZE, DROPDOWN_PAGE_SIZE } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 import {
@@ -490,6 +491,8 @@ function CustomerPickerModal({
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const { items, total, loading, error } = useApiList<CustomerListItem>("/api/customers", {
@@ -500,6 +503,8 @@ function CustomerPickerModal({
 
   const available = items.filter((c) => !excludeIds.has(String(c.id)));
 
+  useDialogFocus(open, onClose, `customer-merge-picker-${titleId}`, searchInputRef);
+
   if (!open) return null;
 
   return (
@@ -508,12 +513,15 @@ function CustomerPickerModal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex max-h-[85vh] w-full max-w-[580px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-tile-blue-bg)] px-5 py-4">
           <div>
-            <h2 className="text-[18px] font-semibold text-[var(--oh-text)]">Select Customer</h2>
+            <h2 id={titleId} className="text-[18px] font-semibold text-[var(--oh-text)]">Select Customer</h2>
             <p className="mt-0.5 text-[13px] text-[var(--oh-muted)]">Search by name, email, or code</p>
           </div>
           <button
@@ -536,7 +544,7 @@ function CustomerPickerModal({
                 setPage(1);
               }}
               placeholder="Search customers…"
-              autoFocus
+              ref={searchInputRef}
               className="h-11 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white pl-10 pr-3 text-[14px] shadow-sm outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]"
             />
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -13,6 +13,7 @@ import { AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { api } from "@/lib/api";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface ProductListItem {
   id: string;
@@ -38,6 +39,8 @@ function ProductPickerModal({
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const { items, total, loading, error } = useApiList<ProductListItem>("/api/products", {
@@ -48,6 +51,8 @@ function ProductPickerModal({
 
   const available = items.filter((p) => !excludeIds.has(p.id));
 
+  useDialogFocus(open, onClose, `product-merge-picker-${titleId}`, searchInputRef);
+
   if (!open) return null;
 
   return (
@@ -56,12 +61,15 @@ function ProductPickerModal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex max-h-[85vh] w-full max-w-[580px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-tile-blue-bg)] px-5 py-4">
           <div>
-            <h2 className="text-[18px] font-semibold text-[var(--oh-text)]">{title}</h2>
+            <h2 id={titleId} className="text-[18px] font-semibold text-[var(--oh-text)]">{title}</h2>
             <p className="mt-0.5 text-[13px] text-[var(--oh-muted)]">Search by product name</p>
           </div>
           <button
@@ -84,7 +92,7 @@ function ProductPickerModal({
                 setPage(1);
               }}
               placeholder="Search products…"
-              autoFocus
+              ref={searchInputRef}
               className="h-11 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white pl-10 pr-3 text-[14px] shadow-sm outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]"
             />
           </div>
