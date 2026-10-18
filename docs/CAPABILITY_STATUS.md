@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `16d854e`；包含 `92b0316` 结算计时稳定性、`ca8855e` 库存/盘点恢复与匿名 AI 端点鉴权回归；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `9a845bd`；包含 `ff110de` 外部盘点弹窗恢复、`92b0316` 结算计时稳定性、`ca8855e` 库存/盘点恢复与匿名 AI 端点鉴权回归；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,18 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `9a845bd` AI 可用性提示
+
+- 收银 AI 助手读取客户端 AI 配置；当店铺 AI 关闭时，入口明确显示 `AI is disabled for this store`，避免把关闭能力显示成可用助手。
+- 代码变更已推送；生产 AI 仍保持关闭策略，端点匿名鉴权证据见 `docs/UAT_AI_ANONYMOUS_2026-10-18.json`。
+
+### `ff110de` 外部盘点弹窗恢复批次
+
+- 外部盘点导入弹窗补齐 dialog 语义、焦点管理、模板下载 loading/error 状态和可见错误提示。
+- 外部盘点导出弹窗补齐 dialog 语义、焦点管理、outlet 读取错误和 `Retry outlets`。
+- 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；线上 Playwright 注入验证 `2/2 PASS`，390px，无导入/导出业务写入。
+- 证据：`docs/UAT_EXTERNAL_STOCKTAKE_DIALOG_2026-10-18.json`。Dokploy 控制台运行 SHA、构建日志和容器状态仍待独立回读。
 
 ### `16d854e` 匿名 AI 端点鉴权回归
 

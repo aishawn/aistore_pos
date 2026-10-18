@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-18T11:00:00Z",
+  "sourceCommit": "ff110de",
+  "deployment": "dokploy-sha-unverified",
+  "target": "https://demo.orithos.com.au",
+  "viewport": 390,
+  "scope": "read-only external stocktake dialog recovery with Playwright route injection; no import or export business write",
+  "checks": [
+    {
+      "name": "Export dialog shows outlet failure and recovers with Retry outlets",
+      "status": "PASS"
+    },
+    {
+      "name": "Import dialog reports template download failure",
+      "status": "PASS"
+    }
+  ],
+  "outletCalls": 2,
+  "passed": 2,
+  "failed": 0,
+  "businessWrites": []
+}
