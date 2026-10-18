@@ -33,6 +33,7 @@ function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClea
 export function OdooCustomerDirectoryPage() {
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
+  const [checkingConnection, setCheckingConnection] = useState(true);
   const [items, setItems] = useState<OdooCustomerRecord[]>([]);
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -72,13 +73,16 @@ export function OdooCustomerDirectoryPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setCheckingConnection(true);
     void getOdooSession().then((user) => {
       if (!cancelled) setConnected(Boolean(user));
     }).catch((cause) => {
       if (!cancelled) {
-        setConnected(null);
+        setConnected(false);
         setError(cause instanceof Error ? cause.message : "Could not check the Odoo connection.");
       }
+    }).finally(() => {
+      if (!cancelled) setCheckingConnection(false);
     });
     return () => { cancelled = true; };
   }, [connectionRetryKey]);
@@ -171,7 +175,10 @@ export function OdooCustomerDirectoryPage() {
             <AlertCircle className="mx-auto text-amber-600" size={28} />
             <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view customers</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Odoo staff account to see customers used by the Odoo register.</p>
-            <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
+              <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+            </div>
           </div>
         </section>
       ) : (
