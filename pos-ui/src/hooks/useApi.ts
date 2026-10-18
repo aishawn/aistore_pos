@@ -32,6 +32,11 @@ export function useApi<T>(path: string | null, query?: Record<string, unknown>):
   const run = useCallback(() => {
     const sequence = ++requestSequence.current;
     if (!path) {
+      // Drop tenant-scoped data immediately when auth or route state disables the request.
+      // Keeping the previous response here can briefly expose stale data during sign-out
+      // or a tenant switch before the parent page unmounts.
+      setData(null);
+      setError(null);
       setLoading(false);
       return;
     }

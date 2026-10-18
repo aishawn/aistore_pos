@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Check, Copy } from "lucide-react";
@@ -76,8 +76,10 @@ export default function PlatformStoreDetailPage() {
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [linkResult, setLinkResult] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     if (!Number.isSafeInteger(id) || id < 1) {
       setError("Invalid store id");
       setLoading(false);
@@ -87,11 +89,13 @@ export default function PlatformStoreDetailPage() {
     setError(null);
     try {
       const data = await api.get<StoreDetail>(`/api/admin/tenants/${id}`);
-      setStore(data);
+      if (sequence === requestSequence.current) setStore(data);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "Failed to load store");
+      if (sequence === requestSequence.current) {
+        setError(cause instanceof ApiError ? cause.message : "Failed to load store");
+      }
     } finally {
-      setLoading(false);
+      if (sequence === requestSequence.current) setLoading(false);
     }
   }, [id]);
 
@@ -157,9 +161,18 @@ export default function PlatformStoreDetailPage() {
       }
     >
       {loading ? (
-        <p className="text-sm text-[var(--oh-muted)]">Loading store…</p>
+        <div role="status" aria-label="Loading store" className="space-y-4">
+          <div className="h-24 animate-pulse rounded-xl border border-[var(--oh-border)] bg-white" />
+          <div className="h-40 animate-pulse rounded-xl border border-[var(--oh-border)] bg-white" />
+          <div className="h-32 animate-pulse rounded-xl border border-[var(--oh-border)] bg-white" />
+        </div>
       ) : error && !store ? (
-        <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">{error}</p>
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
+          <span>{error}</span>
+          <button type="button" onClick={() => void load()} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-800">
+            Try again
+          </button>
+        </div>
       ) : store ? (
         <div className="mx-auto max-w-3xl space-y-5">
           {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">{error}</p>}

@@ -36,6 +36,7 @@ export function ConfirmDialog({
   variant = "danger",
   busy = false,
   busyLabel = variant === "danger" ? "Deleting…" : "Working…",
+  error = null,
   onConfirm,
   onCancel,
 }: {
@@ -47,6 +48,7 @@ export function ConfirmDialog({
   variant?: ConfirmVariant;
   busy?: boolean;
   busyLabel?: string;
+  error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -85,6 +87,12 @@ export function ConfirmDialog({
         <p id={`${dialogId}-message`} className="px-5 py-5 text-[14px] leading-relaxed text-[var(--oh-text-secondary)]">
           {message}
         </p>
+
+        {error ? (
+          <p role="alert" className="mx-5 mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-relaxed text-rose-800">
+            {error}
+          </p>
+        ) : null}
 
         <div className="flex justify-end gap-2.5 border-t border-[var(--oh-border)] px-5 py-4">
           <button

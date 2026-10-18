@@ -54,14 +54,13 @@ export default function PriceSetsPage() {
   async function confirmDelete() {
     if (!deleting) return;
     setDeleteBusy(true);
+    setActionError(null);
     try {
       await api.del(`/api/price-sets/${deleting.id}`);
       setDeleting(null);
-      setActionError(null);
       reload();
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : "Could not delete this price set.");
-      setDeleting(null);
     } finally {
       setDeleteBusy(false);
     }
@@ -152,7 +151,7 @@ export default function PriceSetsPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
                           <button type="button" onClick={() => setEditing(item)} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
-                          <button type="button" onClick={() => setDeleting(item)} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
+                          <button type="button" onClick={() => { setActionError(null); setDeleting(item); }} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
                         </div>
                       </td>
                     </tr>
@@ -175,7 +174,7 @@ export default function PriceSetsPage() {
                   </div>
                   <div className="mt-3 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-3">
                     <button type="button" onClick={() => setEditing(item)} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
-                    <button type="button" onClick={() => setDeleting(item)} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
+                    <button type="button" onClick={() => { setActionError(null); setDeleting(item); }} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
                   </div>
                 </li>
               ))}
@@ -201,6 +200,7 @@ export default function PriceSetsPage() {
         message={deleting ? `Delete “${deleting.name}”? Any records linked to this price set may prevent deletion.` : ""}
         confirmLabel="Delete price set"
         busy={deleteBusy}
+        error={actionError}
         onConfirm={() => void confirmDelete()}
         onCancel={() => {
           if (!deleteBusy) setDeleting(null);

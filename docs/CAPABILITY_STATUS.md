@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`9daca44`：角色权限 Retry；线上故障注入 PASS，Dokploy 运行 SHA 待独立回读)
+**Last updated:** 2026-10-18 (`a2324c2`：角色权限 Retry；下一批共享数据恢复与平台管理优化待 Dokploy 部署复验)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,18 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### 待部署批次：共享数据恢复与平台店铺管理
+
+代码已完成、尚未完成 Dokploy 线上复验：
+
+| 功能域 | 本批次改动 | 本地证据 |
+|---|---|---|
+| 认证/租户切换 | `useApi` 在请求路径变为 `null` 时立即清理旧数据和错误，避免登出或租户切换期间短暂显示上一份响应 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过 |
+| 平台店铺详情 | 详情读取增加请求序列保护，防止快速切换店铺时旧响应覆盖新店铺；首次读取失败提供原地 `Try again`；增加可感知加载骨架 | 同上 |
+| 价目表删除 | 删除失败时确认框保留当前对象并直接显示错误，可立即重试；共享 `ConfirmDialog` 新增可选错误区域 | 同上 |
+
+部署后应补充：平台店铺列表/详情只读回归、详情 503 → Retry 故障注入、价目表删除失败 mock（写请求必须拦截为 `0`），以及设置页移动端回归。
 
 ### 2026-10-18 线上复验快照
 
