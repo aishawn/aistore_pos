@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CUSTOMER_EDIT_PREFILL_STORAGE_KEY,
@@ -18,7 +18,6 @@ import {
   GlobeIcon,
   MailIcon,
   PackageIcon,
-  PlusIcon,
   SaveIcon,
   TagIcon,
   TruckIcon,
