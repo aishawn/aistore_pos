@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { CUSTOMER_WIZARD_STORAGE_KEY } from "@/components/admin/CreateCustomerPage";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/customerValidation";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { uniqueSelectOptions } from "@/components/admin/FilterSelect";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import {
   XIcon,
   ArrowLeftIcon,
@@ -198,6 +199,8 @@ export function CreateCustomerWizard({
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const stepInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
   const [form, setForm] = useState<CreateCustomerData>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +227,8 @@ export function CreateCustomerWizard({
       return { ...prev, customerGroupId: String(preferred.id) };
     });
   }, [open, groups]);
+
+  useDialogFocus(open, resetAndClose, `create-customer-${step}`, stepInputRef);
 
   if (!open) return null;
 
@@ -373,6 +378,9 @@ export function CreateCustomerWizard({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-6 font-sans">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onWizardKeyDown}
@@ -388,7 +396,7 @@ export function CreateCustomerWizard({
             Cancel
           </button>
           <ProgressDots step={step} />
-          <h2 className="mt-5 text-center text-[22px] font-semibold text-[var(--oh-text)]">Create Customer</h2>
+          <h2 id={titleId} className="mt-5 text-center text-[22px] font-semibold text-[var(--oh-text)]">Create Customer</h2>
         </div>
 
         {/* Step content */}
@@ -400,7 +408,7 @@ export function CreateCustomerWizard({
               </p>
               <FieldLabel required>First Name</FieldLabel>
               <input
-                autoFocus
+                ref={stepInputRef}
                 value={form.firstName}
                 onChange={(e) => {
                   set({ firstName: e.target.value });
@@ -465,7 +473,7 @@ export function CreateCustomerWizard({
               </p>
               <FieldLabel>Code</FieldLabel>
               <input
-                autoFocus
+                ref={stepInputRef}
                 value={form.code}
                 onChange={(e) => set({ code: e.target.value })}
                 placeholder="Auto-generated if empty"
@@ -482,7 +490,7 @@ export function CreateCustomerWizard({
               </p>
               <FieldLabel>Email</FieldLabel>
               <input
-                autoFocus
+                ref={stepInputRef}
                 type="email"
                 value={form.email}
                 onChange={(e) => {

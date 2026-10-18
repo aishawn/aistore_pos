@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { BARCODE_FORMAT_HINT, validateBarcode } from "@/lib/barcode";
 import { validatePositiveMoney, validatePositiveQuantity } from "@/lib/quantity";
@@ -8,6 +8,7 @@ import { isLiquorProduct } from "@/lib/au";
 import { useApi } from "@/hooks/useApi";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { uniqueSelectOptions } from "@/components/admin/FilterSelect";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import {
   XIcon,
   ArrowLeftIcon,
@@ -197,6 +198,8 @@ export function CreateProductWizard({
   initial?: Partial<CreateProductData> | null;
 }) {
   const [step, setStep] = useState(0);
+  const stepInputRef = useRef<HTMLInputElement>(null);
+  const titleId = useId();
   const [form, setForm] = useState<CreateProductData>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +248,8 @@ export function CreateProductWizard({
   useEffect(() => {
     if (open && step === 4 && !tagsProp) reloadTags();
   }, [open, step, tagsProp, reloadTags]);
+
+  useDialogFocus(open, resetAndClose, `create-product-${step}`, stepInputRef);
 
   if (!open) return null;
 
@@ -434,6 +439,9 @@ export function CreateProductWizard({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-6 font-sans">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onWizardKeyDown}
@@ -449,7 +457,7 @@ export function CreateProductWizard({
             Cancel
           </button>
           <ProgressDots step={step} />
-          <h2 className="mt-5 text-center text-[22px] font-semibold text-[var(--oh-text)]">Create Product</h2>
+          <h2 id={titleId} className="mt-5 text-center text-[22px] font-semibold text-[var(--oh-text)]">Create Product</h2>
         </div>
 
         {/* Step content */}
@@ -460,7 +468,7 @@ export function CreateProductWizard({
                 What is the barcode for the product?
               </p>
               <input
-                autoFocus
+                ref={stepInputRef}
                 required
                 value={form.barcode}
                 onChange={(e) => {
@@ -486,7 +494,7 @@ export function CreateProductWizard({
                 What is the name of this product?
               </p>
               <input
-                autoFocus
+                ref={stepInputRef}
                 value={form.name}
                 onChange={(e) => {
                   set({ name: e.target.value });
@@ -577,7 +585,7 @@ export function CreateProductWizard({
                 How many {productLabel}&apos;s come in a case?
               </p>
               <input
-                autoFocus
+                ref={stepInputRef}
                 type="number"
                 min="1"
                 step="1"
