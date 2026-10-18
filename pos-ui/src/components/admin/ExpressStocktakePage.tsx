@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi, useDebouncedValue } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
-import { LoaderCircle, PackageOpen, Search } from "lucide-react";
+import { LoaderCircle, PackageOpen, RefreshCw, Search } from "lucide-react";
 
 interface StocktakeProductLine {
   id: string;
@@ -79,25 +79,32 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<ProductSearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchRetryKey, setSearchRetryKey] = useState(0);
   const [scanError, setScanError] = useState<string | null>(null);
   const [showPrices, setShowPrices] = useState(false);
   const [scanning, setScanning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debouncedQuery = useDebouncedValue(query, 250);
   const bootedRef = useRef(false);
+  const loadRevision = useRef(0);
 
   const loadSession = useCallback(async (id: string) => {
+    const revision = ++loadRevision.current;
     setLoading(true);
     setError(null);
     try {
       const data = await api.get<ExpressStocktakeDetail>(`/api/stocktakes/${id}/express`);
+      if (revision !== loadRevision.current) return;
       setSession(data);
       setStocktakeId(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load stocktake");
-      setSession(null);
+      if (revision === loadRevision.current) {
+        setError(e instanceof Error ? e.message : "Failed to load stocktake");
+        setSession(null);
+      }
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   }, []);
 
@@ -144,19 +151,24 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
     const term = debouncedQuery.trim();
     if (!term || !stocktakeId) {
       setSearchResults([]);
+      setSearchError(null);
       setSearchLoading(false);
       return;
     }
 
     let cancelled = false;
     setSearchLoading(true);
+    setSearchError(null);
     api
       .get<ProductSearchHit[]>(`/api/stocktakes/${stocktakeId}/product-search`, { q: term })
       .then((items) => {
         if (!cancelled) setSearchResults(items);
       })
-      .catch(() => {
-        if (!cancelled) setSearchResults([]);
+      .catch((e) => {
+        if (!cancelled) {
+          setSearchResults([]);
+          setSearchError(e instanceof Error ? e.message : "Could not search products.");
+        }
       })
       .finally(() => {
         if (!cancelled) setSearchLoading(false);
@@ -165,7 +177,7 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, stocktakeId]);
+  }, [debouncedQuery, searchRetryKey, stocktakeId]);
 
   async function scan(body: { query?: string; productId?: number }) {
     if (!stocktakeId) return;
@@ -206,7 +218,14 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-4 sm:p-6">
         <section role="alert" className="w-full max-w-lg rounded-xl border border-rose-200 bg-white p-5 shadow-[var(--oh-shadow-card)] sm:p-6">
           <p className="text-sm leading-6 text-rose-800">{error}</p>
-          <Link href="/stocktake" className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Back to stocktakes</Link>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {initialStocktakeId && (
+              <button type="button" onClick={() => void loadSession(initialStocktakeId)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60">
+                <RefreshCw size={16} /> Retry
+              </button>
+            )}
+            <Link href="/stocktake" className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Back to stocktakes</Link>
+          </div>
         </section>
       </main>
     );
@@ -268,6 +287,13 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
             <div className="max-h-[min(50dvh,420px)] overflow-y-auto divide-y divide-[var(--oh-border)]">
               {searchLoading || query.trim() !== debouncedQuery.trim() ? (
                 <div role="status" className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[var(--oh-muted)]"><LoaderCircle size={17} className="animate-spin" />Searching products…</div>
+              ) : searchError ? (
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-rose-800">
+                  <span>{searchError}</span>
+                  <button type="button" onClick={() => setSearchRetryKey((value) => value + 1)} disabled={searchLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+                    <RefreshCw size={15} /> Retry search
+                  </button>
+                </div>
               ) : searchResults.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No products found. Check the barcode or try another name.</div>
               ) : (

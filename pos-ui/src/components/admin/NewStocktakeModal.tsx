@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { QuestionIcon } from "@/components/icons";
@@ -49,7 +50,7 @@ export function NewStocktakeModal({
   onCreated: () => void | Promise<void>;
   initialName?: string | null;
 }) {
-  const outlets = useApi<Outlet[]>("/api/outlets");
+  const { data: outletData, loading: outletsLoading, error: outletsError, reload: reloadOutlets } = useApi<Outlet[]>("/api/outlets");
   const [name, setName] = useState("");
   const [outletId, setOutletId] = useState("");
   const [displayExpected, setDisplayExpected] = useState(false);
@@ -58,7 +59,7 @@ export function NewStocktakeModal({
   const nameInputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
 
-  const outletOptions = (outlets.data ?? []).map((o) => ({ label: o.name, value: o.id }));
+  const outletOptions = (outletData ?? []).map((o) => ({ label: o.name, value: o.id }));
 
   useEffect(() => {
     if (!open) return;
@@ -69,9 +70,9 @@ export function NewStocktakeModal({
   }, [open, initialName]);
 
   useEffect(() => {
-    if (!open || outletId || !outlets.data?.length) return;
-    setOutletId(outlets.data[0].id);
-  }, [open, outletId, outlets.data]);
+    if (!open || outletId || !outletData?.length) return;
+    setOutletId(outletData[0].id);
+  }, [open, outletId, outletData]);
 
   function close() {
     if (busy) return;
@@ -146,11 +147,20 @@ export function NewStocktakeModal({
               <ClassificationFormSelect
                 value={outletId}
                 options={outletOptions}
-                loading={outlets.loading}
+                loading={outletsLoading}
                 onChange={setOutletId}
                 placeholder="Select..."
               />
             </label>
+
+            {outletsError && (
+              <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
+                <span>Could not load outlets: {outletsError}</span>
+                <button type="button" onClick={reloadOutlets} disabled={outletsLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+                  <RefreshCw size={15} /> Retry outlets
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <ToggleSwitch checked={displayExpected} onChange={setDisplayExpected} />

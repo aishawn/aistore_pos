@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ExportIcon } from "@/components/icons";
+import { RefreshCw } from "lucide-react";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
@@ -240,6 +241,7 @@ function StockListPageInner() {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim() ?? "";
@@ -248,7 +250,7 @@ function StockListPageInner() {
   }, [searchParams]);
 
   const debouncedSearch = useDebouncedValue(search, 300);
-  const categories = useApi<Named[]>("/api/classifications/category");
+  const { data: categoryData, error: categoryError, loading: categoriesLoading, reload: reloadCategories } = useApi<Named[]>("/api/classifications/category");
 
   const { items, total, loading, error, reload } = useApiList<StockListRow>("/api/stock-list", {
     search: debouncedSearch || undefined,
@@ -258,19 +260,22 @@ function StockListPageInner() {
     size: PAGE_SIZE,
   });
 
-  const categoryOptions: SelectOption[] = (categories.data ?? []).map((c) => ({
+  const categoryOptions: SelectOption[] = (categoryData ?? []).map((c) => ({
     label: c.name,
     value: c.id,
   }));
 
   async function onExport() {
     setExporting(true);
+    setExportError(null);
     try {
       await exportStockListCsv({
         search: debouncedSearch || undefined,
         categoryId: categoryId || undefined,
         inStockOnly: inStockOnly || undefined,
       });
+    } catch (cause) {
+      setExportError(cause instanceof Error ? cause.message : "Could not export the stock list.");
     } finally {
       setExporting(false);
     }
@@ -282,12 +287,30 @@ function StockListPageInner() {
         <h1 className="oh-type-title text-[var(--oh-text)]">Stock List</h1>
         <AdminPrimaryButton onClick={() => void onExport()} disabled={exporting} className="min-h-11">
           <ExportIcon size={16} />
-          Export to CSV
+          {exporting ? "Exporting…" : "Export to CSV"}
         </AdminPrimaryButton>
         <div className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
           <span className="font-semibold tabular-nums text-[var(--oh-text)]">{total.toLocaleString()}</span> Products
         </div>
       </div>
+
+      {exportError && (
+        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800 md:px-6">
+          <span>{exportError}</span>
+          <button type="button" onClick={() => void onExport()} disabled={exporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+            <ExportIcon size={15} /> Retry export
+          </button>
+        </div>
+      )}
+
+      {categoryError && (
+        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950 md:px-6">
+          <span>Could not load categories: {categoryError}</span>
+          <button type="button" onClick={reloadCategories} disabled={categoriesLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 disabled:opacity-60">
+            <RefreshCw size={15} /> Retry categories
+          </button>
+        </div>
+      )}
 
       <div className="shrink-0 space-y-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
         <div className="flex flex-wrap items-center gap-3">
