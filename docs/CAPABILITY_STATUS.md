@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `2ee8a57`；报表、Overview 与补货竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `ae374ba`；报表、Overview、补货与关班竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,12 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `ae374ba` 关班读取竞态批次
+
+- `OdooCloseRegisterPage` 的 register/session bootstrap 读取增加请求序号保护；快速 Refresh 或关班后重读时，旧响应不会覆盖当前 register 状态，旧请求也不会提前关闭 loading。
+- 线上关班恢复专项 `2/2 PASS`、Ops 只读专项 `3/3 PASS`；没有执行关班、现金或其它业务写入。
+- 证据：`docs/UAT_CLOSURE_RECOVERY_2026-10-18.json`、`docs/UAT_OPS_READONLY_2026-10-13.json`。
 
 ### `4852850` 补货计划请求竞态批次
 
