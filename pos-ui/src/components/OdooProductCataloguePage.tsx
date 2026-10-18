@@ -55,12 +55,14 @@ export function OdooProductCataloguePage() {
   const [importBusy, setImportBusy] = useState(false);
   const requestRevision = useRef(0);
   const newProductNameInputRef = useRef<HTMLInputElement>(null);
+  const productEditPriceInputRef = useRef<HTMLInputElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   useDialogFocus(editingProduct !== null, () => {
     if (!savingProduct) setEditingProduct(null);
-  });
+  }, undefined, productEditPriceInputRef);
   useDialogFocus(importOpen, () => {
     if (!importBusy) setImportOpen(false);
-  });
+  }, undefined, importFileInputRef);
   useDialogFocus(newProductOpen, () => {
     if (!creatingProduct) setNewProductOpen(false);
   }, undefined, newProductNameInputRef);
@@ -433,7 +435,7 @@ export function OdooProductCataloguePage() {
           <form onSubmit={(event) => void saveProduct(event)} className="mt-5 grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Sale price
-                <input name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue={editingProduct.list_price} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
+                <input ref={productEditPriceInputRef} name="list_price" type="number" min="0" max="1000000" step="0.01" required defaultValue={editingProduct.list_price} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">SKU
                 <input name="default_code" maxLength={64} defaultValue={editingProduct.default_code || ""} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
@@ -475,7 +477,7 @@ export function OdooProductCataloguePage() {
               <a href="/product-import-template.csv" download className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-xs font-semibold text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Download size={14} /> Download template</a>
             </div>
             <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Choose a CSV file
-              <input type="file" accept=".csv,text/csv" onChange={(event) => void selectImportFile(event)} disabled={importBusy || categoryLoading} className="block w-full rounded-md border border-[var(--oh-border)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--oh-text)] disabled:opacity-60" />
+              <input ref={importFileInputRef} type="file" accept=".csv,text/csv" onChange={(event) => void selectImportFile(event)} disabled={importBusy || categoryLoading} className="block w-full rounded-md border border-[var(--oh-border)] bg-white px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--oh-text)] disabled:opacity-60" />
             </label>
             {importFileName && <p className="-mt-2 text-xs text-[var(--oh-muted)]">Selected: {importFileName}</p>}
             {importErrors.length > 0 && <div role="alert" className="max-h-32 overflow-auto rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"><p className="font-semibold">Some rows need attention</p><ul className="mt-1 list-disc space-y-1 pl-5">{importErrors.slice(0, 30).map((message) => <li key={message}>{message}</li>)}</ul>{importErrors.length > 30 && <p className="mt-1">And {importErrors.length - 30} more row errors.</p>}</div>}

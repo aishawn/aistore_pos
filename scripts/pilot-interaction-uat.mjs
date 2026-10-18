@@ -197,7 +197,9 @@ try {
     if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
       throw new Error(`Product edit dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
     }
-    const price = await page.getByLabel("Sale price").evaluate((input) => Number(input.value));
+    const priceInput = page.getByLabel("Sale price");
+    if (!(await priceInput.evaluate((input) => document.activeElement === input))) throw new Error("Product edit dialog did not focus Sale price");
+    const price = await priceInput.evaluate((input) => Number(input.value));
     if (!Number.isFinite(price) || price <= 0) throw new Error(`Odoo sale price was not prefilled (received ${price})`);
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -233,6 +235,8 @@ try {
       await page.getByRole("button", { name: "Import CSV" }).click();
       const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
       await dialog.waitFor({ timeout: 10000 });
+      const fileInput = dialog.locator('input[type="file"]');
+      if (!(await fileInput.evaluate((input) => document.activeElement === input))) throw new Error("CSV import dialog did not focus file chooser");
       await page.waitForFunction(() => {
         const input = document.querySelector('input[type="file"]');
         return Boolean(input && !input.disabled);
