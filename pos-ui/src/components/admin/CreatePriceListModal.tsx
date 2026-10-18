@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { QuestionIcon } from "@/components/icons";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -20,6 +20,7 @@ export function CreatePriceListModal({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export function CreatePriceListModal({
     onClose();
   }
 
-  useDialogFocus(open, close, "create-price-list");
+  useDialogFocus(open, close, "create-price-list", nameInputRef);
 
   if (!open) return null;
 
@@ -78,7 +79,7 @@ export function CreatePriceListModal({
         <p className="mt-5 text-[15px] text-black">What should the price list be called?</p>
 
         <input
-          autoFocus
+          ref={nameInputRef}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {

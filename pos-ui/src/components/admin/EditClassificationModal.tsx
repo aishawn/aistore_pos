@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { EditIcon } from "@/components/icons";
 import { ClassificationFormSelect } from "@/components/admin/ClassificationFormSelect";
@@ -45,6 +45,7 @@ export function EditClassificationModal({
   const [mdbError, setMdbError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
 
   const typeLabel = TYPE_LABELS[type] ?? type;
@@ -87,7 +88,7 @@ export function EditClassificationModal({
     onClose();
   }
 
-  useDialogFocus(open, close, `edit-classification-${item.id}`, undefined);
+  useDialogFocus(open, close, `edit-classification-${item.id}`, nameInputRef);
 
   if (!open) return null;
 
@@ -135,7 +136,7 @@ export function EditClassificationModal({
             <label className="block text-[14px] font-medium text-[var(--oh-text)]">
               Name
               <input
-                autoFocus
+                ref={nameInputRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1 h-9 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border-strong)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-1 focus:ring-[var(--oh-info)]"

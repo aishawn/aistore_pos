@@ -55,6 +55,7 @@ export function CreateClassificationModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mdbRequestTypeRef = useRef<ClassificationType>(defaultType);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const titleId = useId();
 
   const loadMdbReferences = useCallback(async (classificationType: ClassificationType) => {
@@ -100,7 +101,7 @@ export function CreateClassificationModal({
     onClose();
   }
 
-  useDialogFocus(open, close, "create-classification", undefined);
+  useDialogFocus(open, close, "create-classification", nameInputRef);
 
   if (!open) return null;
 
@@ -169,7 +170,7 @@ export function CreateClassificationModal({
             <label className="block text-[14px] font-medium text-[var(--oh-text)]">
               Name
               <input
-                autoFocus
+                ref={nameInputRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1 h-9 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border-strong)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-1 focus:ring-[var(--oh-info)]"
