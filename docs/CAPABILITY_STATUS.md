@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（当前仓库基线 `d5050ca`；该批次已推送，Dokploy webhook 返回 `Branch Not Match`，待控制台确认部署）
+**Last updated:** 2026-10-18（当前代码基线 `632d3a0`，文档基线 `e7e2185`；代码已推送，Dokploy webhook 返回 `Branch Not Match`，待控制台确认部署）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
