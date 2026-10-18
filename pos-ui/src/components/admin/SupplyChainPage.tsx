@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AdminOutlineButton,
@@ -693,6 +693,7 @@ function SettingsPanel() {
   const [productQuery, setProductQuery] = useState("");
   const debounced = useDebouncedValue(productQuery, 300);
   const [products, setProducts] = useState<Array<{ id: number; name: string }>>([]);
+  const productRequestRef = useRef(0);
   const [pref, setPref] = useState({ supplierId: "", priority: "1", threshold: "", channel: "API" });
   const [price, setPrice] = useState({ productId: "", supplierId: "", sku: "", basePrice: "", caseSize: "6" });
   const [deal, setDeal] = useState({
@@ -720,14 +721,19 @@ function SettingsPanel() {
   }, []);
 
   useEffect(() => {
+    const requestId = ++productRequestRef.current;
     if (!debounced.trim()) {
       setProducts([]);
       return;
     }
     void api
       .get<Page<{ id: number; name: string }>>("/api/products", { name: debounced, size: 8, status: "ACTIVE" })
-      .then((page) => setProducts(page.items))
-      .catch(() => setProducts([]));
+      .then((page) => {
+        if (requestId === productRequestRef.current) setProducts(page.items);
+      })
+      .catch(() => {
+        if (requestId === productRequestRef.current) setProducts([]);
+      });
   }, [debounced]);
 
   async function save(action: () => Promise<Settings>) {
