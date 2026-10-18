@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
 import { getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const PAGE_SIZE = 40;
 
@@ -51,6 +52,9 @@ export function OdooSupplierDirectoryPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({ name: "", phone: "", email: "", vat: "", ref: "" });
   const requestRevision = useRef(0);
+  useDialogFocus(createOpen, () => {
+    if (!creating) setCreateOpen(false);
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

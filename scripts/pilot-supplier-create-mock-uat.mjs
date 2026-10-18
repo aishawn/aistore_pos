@@ -39,11 +39,22 @@ try {
   const initialLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
   if (initialLayout.viewport !== 390 || initialLayout.document > initialLayout.viewport) throw new Error(`Supplier directory overflows at mobile width: ${JSON.stringify(initialLayout)}`);
   if (await page.locator("table").isVisible().catch(() => false)) throw new Error("Supplier table should be replaced by mobile cards below xl width");
-  await page.getByRole("main").locator("header").getByRole("button", { name: "Add supplier" }).click();
+  const addSupplierButton = page.getByRole("main").locator("header").getByRole("button", { name: "Add supplier" });
+  await addSupplierButton.click();
   const dialog = page.getByRole("dialog", { name: "Add supplier to Odoo" });
   await dialog.waitFor({ timeout: 10000 });
   const dialogBox = await dialog.boundingBox();
   if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) throw new Error(`Supplier dialog does not fit mobile viewport: ${JSON.stringify(dialogBox)}`);
+  if (!(await page.evaluate(() => {
+    const active = document.activeElement;
+    const dialogElement = document.querySelector('[role="dialog"][aria-labelledby="supplier-create-title"]');
+    return Boolean(active && dialogElement?.contains(active));
+  }))) throw new Error("Supplier dialog did not receive initial focus");
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached", timeout: 10000 });
+  if (!(await addSupplierButton.evaluate((element) => document.activeElement === element))) throw new Error("Supplier dialog did not restore focus to its trigger");
+  await addSupplierButton.click();
+  await dialog.waitFor({ timeout: 10000 });
   await dialog.getByLabel(/Business name/).fill("UAT Winery Group (fixture only)");
   await dialog.getByLabel("Phone").fill("+61 2 5550 0100");
   await dialog.getByLabel("Email").fill("not-an-email");
@@ -65,7 +76,7 @@ try {
   await card.waitFor({ timeout: 10000 });
   if (!(await card.locator('a[href^="tel:"]').count()) || !(await card.locator('a[href^="mailto:"]').count())) throw new Error("Mobile supplier card is missing tap-to-call or email links");
   if (!(await card.locator("p").filter({ hasText: "UAT Winery Group (fixture only)" }).count())) throw new Error("Mobile supplier card is missing the supplier name");
-  const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: process.env.PILOT_DEPLOYMENT_SHA || null, status: "PASS", viewport: 390, fixture: "create API intercepted; no Odoo write", checks: ["mobile supplier directory has no horizontal overflow", "mobile card replaces wide supplier table", "supplier create dialog fits mobile viewport", "browser rejects malformed email before API", "duplicate ABN response is shown and form remains editable", "unique ABN and contact fields submit", "created supplier fixture appears with tap-to-call and email links"] };
+  const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: process.env.PILOT_DEPLOYMENT_SHA || null, status: "PASS", viewport: 390, fixture: "create API intercepted; no Odoo write", checks: ["mobile supplier directory has no horizontal overflow", "mobile card replaces wide supplier table", "supplier create dialog fits mobile viewport", "supplier dialog receives focus and Escape restores trigger focus", "browser rejects malformed email before API", "duplicate ABN response is shown and form remains editable", "unique ABN and contact fields submit", "created supplier fixture appears with tap-to-call and email links"] };
   const outputPath = path.join(root, "docs", "UAT_SUPPLIER_MOBILE_2026-10-14.json");
   fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
   console.log(JSON.stringify({ outputPath, ...output }));
