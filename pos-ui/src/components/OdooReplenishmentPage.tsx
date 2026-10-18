@@ -271,7 +271,7 @@ export function OdooReplenishmentPage() {
               </article>)}
         </div>
         <div className="hidden min-h-0 flex-1 overflow-auto xl:block xl:min-h-[104px]">
-        <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+        <table aria-label="Replenishment recommendations" className="w-full min-w-[980px] border-collapse text-left text-sm">
             <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
               <tr><th scope="col" className="px-4 py-3">Product</th><th scope="col" className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th scope="col" className="px-4 py-3 text-right">Forecast / day</th><th scope="col" className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th><th scope="col" className="px-4 py-3 text-right">On hand</th><th scope="col" className="px-4 py-3 text-right">Forecast stock</th><th scope="col" className="px-4 py-3 text-right">Stock cover</th><th scope="col" className="px-4 py-3 text-right">Suggested order</th><th scope="col" className="px-4 py-3">Why</th></tr>
             </thead>

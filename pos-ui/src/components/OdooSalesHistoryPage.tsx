@@ -108,7 +108,7 @@ function R2ArchivePanel({ query }: { query: string }) {
               <button type="button" onClick={() => setSelected(null)} aria-label="Close R2 receipt" className="grid h-11 w-11 shrink-0 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text)]"><X size={18} /></button>
             </header>
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[420px] text-left text-sm">
+              <table aria-label="Archived receipt items" className="w-full min-w-[420px] text-left text-sm">
                 <thead className="text-xs uppercase text-[var(--oh-muted)]"><tr><th scope="col" className="py-2">Product</th><th scope="col" className="py-2 text-right">Qty</th><th scope="col" className="py-2 text-right">Line total</th></tr></thead>
                 <tbody className="divide-y divide-[var(--oh-border)]">{selected.items.map((line) => <tr key={line.id}><td className="py-2.5 pr-3">{line.name}</td><td className="py-2.5 text-right tabular-nums">{line.quantity}</td><td className="py-2.5 text-right font-medium tabular-nums">{money(line.amount)}</td></tr>)}</tbody>
               </table>
@@ -446,7 +446,7 @@ export function OdooSalesHistoryPage() {
           <R2ArchivePanel query={debouncedQuery} />
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <table className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
+            <table aria-label="Odoo sales history" className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Receipt</th>
@@ -550,7 +550,7 @@ export function OdooSalesHistoryPage() {
             <span className="text-[var(--oh-muted)]">Status</span><span className={`justify-self-end rounded-full px-2.5 py-1 text-xs font-semibold ${stateClass(saleDetail.order.state)}`}>{stateLabel(saleDetail.order.state)}</span>
           </div>
           <div className="mt-5">
-            <table className="hidden w-full min-w-[420px] text-sm md:table">
+            <table aria-label="Sale line items" className="hidden w-full min-w-[420px] text-sm md:table">
               <thead><tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><th scope="col" className="py-2 text-left">Item</th><th scope="col" className="py-2 text-right">Qty</th><th scope="col" className="py-2 text-right">Unit</th><th scope="col" className="py-2 text-right">Total</th></tr></thead>
               <tbody className="divide-y divide-[var(--oh-border)]">{saleDetail.lines.map((line) => <tr key={line.id}>
                 <td className="py-2.5 pr-3 font-medium text-[var(--oh-text)]">{line.product_id ? line.product_id[1] : "Product"}</td>

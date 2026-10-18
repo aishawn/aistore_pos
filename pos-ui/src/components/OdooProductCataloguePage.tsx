@@ -336,7 +336,7 @@ export function OdooProductCataloguePage() {
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <table className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
+            <table aria-label="Odoo product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Product</th>
@@ -481,7 +481,7 @@ export function OdooProductCataloguePage() {
             {importRows.length > 0 && <>
               <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950"><span>{importRows.length} valid product{importRows.length === 1 ? "" : "s"} ready to import</span><span>Up to 500 per file</span></div>
               <div className="max-h-64 overflow-auto rounded-md border border-[var(--oh-border)]">
-                <table className="w-full min-w-[620px] text-left text-xs">
+                <table aria-label="Product import preview" className="w-full min-w-[620px] text-left text-xs">
                   <thead className="sticky top-0 bg-[#f7f8f8] font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-3 py-2">Line</th><th scope="col" className="px-3 py-2">Product</th><th scope="col" className="px-3 py-2">SKU / Barcode</th><th scope="col" className="px-3 py-2 text-right">Sale price</th><th scope="col" className="px-3 py-2 text-right">Cost</th></tr></thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">{importRows.slice(0, 30).map((row) => <tr key={row.line}><td className="px-3 py-2 text-[var(--oh-muted)]">{row.line}</td><td className="px-3 py-2 font-medium text-[var(--oh-text)]">{row.name}</td><td className="px-3 py-2 text-[var(--oh-muted)]">{row.default_code || "—"} / {row.barcode || "—"}</td><td className="px-3 py-2 text-right">{money(row.list_price)}</td><td className="px-3 py-2 text-right">{row.standard_price === undefined ? "—" : money(row.standard_price)}</td></tr>)}</tbody>
                 </table>

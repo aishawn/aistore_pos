@@ -409,7 +409,7 @@ export function OrithosOverviewPage() {
             </div>
             {data?.topProducts.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full table-fixed text-left">
+                <table aria-label="Top products by revenue" className="w-full table-fixed text-left">
                   <thead>
                     <tr className="oh-type-meta border-b border-[var(--oh-border)] text-[var(--oh-muted)]">
                       <th scope="col" className="w-[52%] px-3 py-1.5 font-semibold">Product</th>
