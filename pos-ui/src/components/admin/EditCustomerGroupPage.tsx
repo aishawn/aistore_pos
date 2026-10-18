@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { DROPDOWN_PAGE_SIZE } from "@/lib/pagination";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import {
   AdminPrimaryButton,
   AdminSecondaryButton,
@@ -434,6 +434,13 @@ export function EditCustomerGroupPage({ groupId }: { groupId: string }) {
         <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {form && (
             <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
+              <AsyncDependencyNotice
+                dependencies={[
+                  { label: "Price lists", error: priceLists.error, onRetry: priceLists.reload },
+                  { label: "Receipt templates", error: receipts.error, onRetry: receipts.reload },
+                  { label: "Statement templates", error: statements.error, onRetry: statements.reload },
+                ]}
+              />
               {tab === "general" && (
                 <>
                   <SectionHeading icon={UserIcon} title="General" />

@@ -42,3 +42,33 @@ export function AsyncState({
   }
   return <>{children}</>;
 }
+
+/** Keeps dependent lookup failures visible without replacing a user's form. */
+export function AsyncDependencyNotice({
+  dependencies,
+}: {
+  dependencies: Array<{ label: string; error: string | null; onRetry: () => void }>;
+}) {
+  const failed = dependencies.filter((dependency) => dependency.error);
+  if (failed.length === 0) return null;
+
+  return (
+    <div role="alert" aria-live="assertive" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+      <p className="font-semibold">Some lookup options could not be loaded.</p>
+      <div className="mt-2 space-y-2">
+        {failed.map((dependency) => (
+          <div key={dependency.label} className="flex flex-wrap items-center justify-between gap-2">
+            <span>{dependency.label}: {dependency.error}</span>
+            <button
+              type="button"
+              onClick={dependency.onRetry}
+              className="min-h-9 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700"
+            >
+              Retry
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

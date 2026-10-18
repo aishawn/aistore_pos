@@ -560,6 +560,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
   const [additionalContacts, setAdditionalContacts] = useState<AdditionalContact[]>([]);
   const [mdbOptions, setMdbOptions] = useState<{ label: string; value: string }[]>([]);
   const [mdbLoading, setMdbLoading] = useState(false);
+  const [mdbError, setMdbError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionId>("general");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -638,11 +639,13 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
   async function loadMdbReferences() {
     if (mdbOptions.length > 0) return;
     setMdbLoading(true);
+    setMdbError(null);
     try {
       const items = await api.get<MdbReference[]>("/api/classifications/brand/mdb-references");
       setMdbOptions(items.map((ref) => ({ label: ref.name, value: String(ref.id) })));
-    } catch {
+    } catch (e) {
       setMdbOptions([]);
+      setMdbError(e instanceof Error ? e.message : "Failed to load master database references");
     } finally {
       setMdbLoading(false);
     }
@@ -808,6 +811,14 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                       onOpen={() => void loadMdbReferences()}
                       placeholder="Master Database Reference"
                     />
+                    {mdbError && (
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-[var(--oh-danger)]" role="alert">
+                        <span>{mdbError}</span>
+                        <button type="button" onClick={() => void loadMdbReferences()} className="font-semibold underline">
+                          Retry
+                        </button>
+                      </div>
+                    )}
                   </label>
                 </FormSection>
 

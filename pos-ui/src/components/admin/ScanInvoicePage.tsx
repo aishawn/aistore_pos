@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Camera, FileImage, LoaderCircle, ReceiptText } from "lucide-react";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { SelectChevronIcon } from "@/components/icons";
+import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import {
   apiFailureMessage,
   scanInvoiceImage,
@@ -140,6 +141,13 @@ export function ScanInvoicePage() {
             </div>
             {preview && <figure className="mt-4 flex flex-col items-start gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:items-center"><img src={preview} alt="Invoice preview" className="max-h-64 max-w-full rounded-lg border border-[var(--oh-border)] object-contain" /><figcaption className="text-xs text-[var(--oh-muted)]">Uploaded invoice image</figcaption></figure>}
           </section>
+
+          <AsyncDependencyNotice
+            dependencies={[
+              { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
+              { label: "Outlets", error: outlets.error, onRetry: outlets.reload },
+            ]}
+          />
 
           {loading && <div role="status" className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"><LoaderCircle size={17} className="animate-spin" />Reading the invoice and extracting line items…</div>}
           {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800">{error}</p>}
