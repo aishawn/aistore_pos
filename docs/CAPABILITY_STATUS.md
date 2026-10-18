@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`0e89492`：客户/商品创建向导依赖读取 Retry；线上只读回归通过)
+**Last updated:** 2026-10-18 (`d17b268`：CSV 文件控件焦点修复、POS 浏览错误 Retry、向导依赖 Retry；线上只读回归通过)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `f92dc1c`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `d17b268`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`9b1031c` 的 webhook 和公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -45,6 +45,7 @@ Statuses:
 | POS 客户搜索竞态 | 为客户搜索请求增加序列号，过期响应不再覆盖最新输入结果 | POS 弹窗 `2/2 PASS`、综合交互 `14/14 PASS`；未产生销售或客户写入 |
 | POS 商品/促销浏览竞态 | 为商品目录和促销筛选增加请求序列保护，旧响应不再覆盖最新文件夹、周期或筛选词；加载状态仅由最新请求结束时解除 | `d8c99f1` 后 POS 弹窗 `2/2 PASS`、综合交互 `14/14 PASS`；未产生销售或库存写入 |
 | POS 商品/促销错误恢复 | 商品/促销浏览失败时区分错误态与空结果，显示可操作的 `Retry`，并复用当前目录/周期/筛选条件 | `66ddc46` 后 POS 弹窗 `2/2`、综合交互 `14/14`、订单页 `16/16 PASS`；无页面错误或变更请求 |
+| CSV 导入焦点时序 | 分类加载刚结束时，使用布局阶段立即聚焦可用文件控件，并保留动画帧重试，避免焦点短暂停在关闭按钮 | `9b1031c` 后综合交互串行 `14/14 PASS`；CSV 预览取消，无产品写入 |
 | 创建向导依赖错误恢复 | 客户分组、商品 family/tag 读取失败时提供原地 `Retry`，保留当前向导表单，不要求关闭重开 | `0e89492` 后综合交互 `14/14`、管理列表 `8/8`、订单页 `16/16 PASS`；无创建写入 |
 
 ### 最新只读回归结果
@@ -69,6 +70,7 @@ Statuses:
 | `f92dc1c` 搜索稳定性批次 | AI UI `2/2`、Sommelier `10/10`、POS `2/2`、综合交互 `14/14 PASS` | 首轮 AI UI 遇 504，串行重跑通过；Sommelier 价格/库存一致性和匿名 401 通过；无业务写入 |
 | `d8c99f1` POS 浏览竞态批次 | POS `2/2`、综合交互 `14/14 PASS` | 客户/商品/促销浏览旧响应保护；无业务写入 |
 | `66ddc46` POS 错误恢复批次 | POS `2/2`、综合交互 `14/14`、订单 `16/16 PASS` | 商品/促销请求失败显示 Retry；订单 `pageErrors: []`、`mutatingApiRequests: []` |
+| `9b1031c` CSV 焦点批次 | 综合交互 `14/14`、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、POS `2/2`、订单 `16/16 PASS` | 首轮综合交互 `13/14` 的 CSV 焦点时序失败已修复；AI UI 首轮 networkidle 超时后串行重跑通过；无业务写入 |
 | `0e89492` 向导依赖恢复批次 | 综合交互 `14/14`、管理列表 `8/8`、订单 `16/16 PASS` | 首轮登录瞬态失败，串行重跑通过；客户/商品创建仅验证错误恢复和表单保护，无业务写入 |
 
 ### 仍未放行
