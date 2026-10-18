@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`5f8c7b0`：POS 分类、Sommelier 推荐/详情 Retry；线上故障注入回归通过)
+**Last updated:** 2026-10-18 (`7f9e3c0`：管理详情/列表 Retry 批次；线上只读回归通过，Dokploy 运行 SHA 待独立回读)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -91,6 +91,7 @@ Statuses:
 | `4d7b4c4` utility 错误态回归 | Future Costs/Future Prices 不再把读取失败显示为空数据；邮件日志、回收站、促销列表和两个 utility 页面故障注入 `5/5` | Retry 恢复通过、写请求 `0`；管理列表 `8/8`、综合交互 `14/14`；Dokploy 运行 SHA 仍待控制台独立回读 |
 | `48f4dd1` 详情读取恢复 | 订单查看/编辑、销售键编辑、客户账单、客户组详情、客户/商品合并选择器、商品详情和 AI 报表结果页在读取失败时提供原地 Retry；客户组子列表支持独立重试 | 线上订单 `16/16`、AI UI `2/2`、综合交互 `14/14`、全站静态矩阵 `262/262 PASS`；无业务写入 |
 | Sommelier Retry 故障注入 | 推荐和酒款详情首次读取注入 503，点击 Retry 后均恢复 | 推荐请求次数 `2`、详情请求次数 `2`；无业务写入 |
+| `257f764`/`7f9e3c0` 管理读取恢复批次 | 批量调价、封顶价、库存、分类/供应商分配、采购周期、客户/商品详情、客户收款、客户组/商品编辑的主数据和子面板接入原地 Retry；同步更新功能清单与交接 | 推送后管理列表 `8/8`、综合交互 `14/14`、订单页 `16/16`、Legacy Retry 故障注入 `5/5`、全站静态矩阵 `262/262`；写请求 `0`；Dokploy 实际 SHA 尚未从控制台独立确认 |
 
 ### 仍未放行
 
