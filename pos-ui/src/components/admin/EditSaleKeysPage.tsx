@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { api } from "@/lib/api";
@@ -33,7 +33,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
   const router = useRouter();
   const id = Number(setId);
   const { data, loading, error, reload } = useApi<SaleKeysSet>(`${BASE}/${id}`);
-  const { data: allSets } = useApi<SaleKeysSet[]>(BASE);
+  const { data: allSets, loading: allSetsLoading, error: allSetsError, reload: reloadAllSets } = useApi<SaleKeysSet[]>(BASE);
 
   const [name, setName] = useState("");
   const [keys, setKeys] = useState<SaleKey[]>([]);
@@ -80,6 +80,10 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
   }
 
   async function save() {
+    if (!name.trim()) {
+      setActionError("Sale key set name is required.");
+      return;
+    }
     setSaving(true);
     try {
       await api.put(`${BASE}/${id}`, {
@@ -120,6 +124,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
             <select
               value={String(id)}
               onChange={(e) => switchSet(e.target.value)}
+              disabled={allSetsLoading || !!allSetsError}
               className="h-[44px] w-full appearance-none rounded-lg border border-neutral-300 bg-white pl-4 pr-10 text-[16px] text-black outline-none focus:border-[#5cb3e0]"
             >
               {(allSets ?? []).map((set) => (
@@ -133,6 +138,11 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
               className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500"
             />
           </div>
+        </div>
+        <div className="mt-3">
+          <AsyncDependencyNotice
+            dependencies={[{ label: "Sale key sets", error: allSetsError, onRetry: reloadAllSets }]}
+          />
         </div>
       </div>
 

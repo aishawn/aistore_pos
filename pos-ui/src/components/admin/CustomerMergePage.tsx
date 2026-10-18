@@ -12,7 +12,7 @@ import {
   UsersIcon,
   XIcon,
 } from "@/components/icons";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import {
   AdminPrimaryButton,
@@ -739,6 +739,12 @@ export function CustomerMergePage() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="shrink-0 px-6 pt-4">
+        <AsyncDependencyNotice
+          dependencies={[{ label: "Customer groups", error: groupsQuery.error, onRetry: groupsQuery.reload }]}
+        />
       </div>
 
       {/* Workspace — fixed-width columns with horizontal scroll when needed */}
