@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `23aa88e`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`25bff27` 的 AI/POS webhook 和公网回归已确认，`bef954e` utility 构建修复待部署后专项确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `c76233d`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`ccb0879` 的 legacy Retry 和动态 utility 路由公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -77,6 +77,7 @@ Statuses:
 | `c4ef5a4` Sommelier Retry 批次 | AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14 PASS` | AI UI 首轮导航超时，重跑通过；无模型写入、反馈写入或业务数据写入 |
 | `25bff27` 部署后回归 | AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14 PASS` | webhook 返回 200，等待约 5 分钟后串行回归通过；无业务写入 |
 | `23aa88e` utility 构建修复 | 待部署后复验 `/utilities/future-costs`、`/utilities/future-prices` | 本地检查通过；不把静态代码检查当作线上构建成功证据 |
+| `c76233d` 全站与 Retry 回归 | 全站 `262/262`、legacy Retry 故障注入 `3/3`、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14`、订单 `16/16` | 线上只读/故障注入通过；无业务写入；订单首轮一次导航 `ERR_ABORTED` 后串行重跑通过 |
 
 ### 仍未放行
 
