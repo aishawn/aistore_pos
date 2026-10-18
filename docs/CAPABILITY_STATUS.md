@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`48f4dd1`：详情页 Retry；线上订单/AI/POS 回归通过)
+**Last updated:** 2026-10-18 (`5f8c7b0`：POS 分类、Sommelier 推荐/详情 Retry；线上故障注入回归通过)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `48f4dd1`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`48f4dd1` 的详情 Retry、legacy Retry 和 utility 错误态公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。功能代码基线为 `5f8c7b0`，当前 `main` 的最新交接文档提交为 `2c301e8`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。详情 Retry、legacy Retry、utility 错误态、Sommelier Retry 和 POS 分类 Retry 公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -88,6 +88,13 @@ Statuses:
 - 生产 AI、实体支付终端、打印机/钱箱、SMTP、分单支付和离线 POS 仍未完成验收或未实现。
 - 正式门店现金差异审批、财务对账和正式运营流程仍需店主/财务验收。
 - 以上回归均为只读或 UI 语义验证；业务写入必须继续使用隔离 Odoo 测试公司/数据库。
+
+### 交接状态
+
+- **已通过：** 隔离租户基础 POS、采购收货、退款/库存回滚、现金管理/关班、多租户隔离，以及线上只读稳定性和 Retry 故障恢复。
+- **未覆盖：** Dokploy 运行身份独立证据、生产 AI、真实硬件、SMTP、正式财务/运营流程。
+- **产品未实现或延期：** 分单/多支付方式收款、离线 POS、视频损耗防范 AI、Banner/买方组价格文件。
+- **放行结论：** `NO-GO`，直到上述关键证据和产品边界完成复核。
 
 ## Register & sales
 
