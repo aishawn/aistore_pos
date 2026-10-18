@@ -29,6 +29,7 @@ export function OdooProductCataloguePage() {
   const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
+  const [checkingConnection, setCheckingConnection] = useState(true);
   const [exportBusy, setExportBusy] = useState(false);
   const [items, setItems] = useState<OdooProductRecord[]>([]);
   const [categories, setCategories] = useState<OdooPosCategoryRecord[]>([]);
@@ -101,6 +102,7 @@ export function OdooProductCataloguePage() {
 
   useEffect(() => {
     let cancelled = false;
+    setCheckingConnection(true);
     void getOdooSession().then((user) => {
       if (!cancelled) setConnected(Boolean(user));
     }).catch((cause) => {
@@ -108,6 +110,8 @@ export function OdooProductCataloguePage() {
         setConnected(false);
         setError(cause instanceof Error ? cause.message : "Could not check the Odoo connection.");
       }
+    }).finally(() => {
+      if (!cancelled) setCheckingConnection(false);
     });
     return () => { cancelled = true; };
   }, [connectionRetryKey]);
@@ -342,7 +346,7 @@ export function OdooProductCataloguePage() {
             <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view products</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Odoo staff account to view the POS catalogue and inventory available to that account.</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry connection</button>
+              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
               <Link href="/settings/integrations" className="inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
             </div>
           </div>
