@@ -25,7 +25,7 @@ try {
   const body = await login.json().catch(() => ({}));
   if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
 
-  await context.route("**/api/register-closures", async (route) => {
+  await context.route("**/api/register-closures*", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     await route.fulfill({
       status: 200,
@@ -33,7 +33,7 @@ try {
       body: JSON.stringify({ code: 0, data: { items: [{ id: "55", registerId: "Register 1", userId: "7", totalExpected: 120, totalReceived: 120, openedAt: "2026-10-18 09:00", closedAt: "2026-10-18 17:00" }], total: 1, page: 1, size: 20 } }),
     });
   });
-  await context.route("**/api/register-closures/55", async (route) => {
+  await context.route("**/api/register-closures/55*", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     detailRequests += 1;
     if (detailRequests === 1) {
@@ -50,7 +50,7 @@ try {
   const page = await context.newPage();
   await page.goto(`${base}/reports/closures`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Register Closures", exact: true }).waitFor({ timeout: 30000 });
-  await page.getByText("Register 1", { exact: true }).waitFor({ timeout: 30000 });
+  await page.locator("article").filter({ hasText: "Register 1" }).first().waitFor({ timeout: 30000 });
   const refresh = page.getByRole("button", { name: "Refresh", exact: true });
   if (!(await refresh.isVisible())) throw new Error("Closure list refresh button is not visible");
   checks.push({ name: "closure list renders data and refresh control", passed: true });
@@ -67,7 +67,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: "pending",
+  sourceCommit: "5871dbc",
   deployment: "unverified-after-deploy",
   scope: "mocked authenticated read-only closure checks; no business writes",
   status: checks.every((check) => check.passed) ? "PASS" : "FAIL",

@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-18T08:51:19.076Z",
+  "sourceCommit": "5871dbc",
+  "deployment": "unverified-after-deploy",
+  "scope": "mocked authenticated read-only closure checks; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "closure list renders data and refresh control",
+      "passed": true
+    },
+    {
+      "name": "closure detail 503 -> Retry -> recovered",
+      "passed": true
+    }
+  ],
+  "writes": 0
+}
