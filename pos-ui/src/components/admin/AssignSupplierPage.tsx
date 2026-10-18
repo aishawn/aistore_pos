@@ -219,6 +219,10 @@ export function AssignSupplierPage({ id }: { id: string }) {
           loading={loadingLists || supplier.loading}
           error={listError ?? supplier.error}
           empty={false}
+          onRetry={() => {
+            supplier.reload();
+            void loadLists();
+          }}
         >
           <div className="flex h-full min-h-[360px] gap-3">
             <ProductPane

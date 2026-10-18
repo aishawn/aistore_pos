@@ -277,6 +277,7 @@ function ActivityTable({
   error,
   empty,
   emptyText,
+  onRetry,
   columns,
   rows,
 }: {
@@ -284,11 +285,12 @@ function ActivityTable({
   error: string | null;
   empty: boolean;
   emptyText: string;
+  onRetry: () => void;
   columns: { label: string; width?: string; align?: "left" | "right" | "center" }[];
   rows: React.ReactNode[][];
 }) {
   return (
-    <AsyncState loading={loading} error={error} empty={empty} emptyText={emptyText}>
+    <AsyncState loading={loading} error={error} empty={empty} emptyText={emptyText} onRetry={onRetry}>
       <ListTable columns={columns} rows={rows} />
     </AsyncState>
   );
@@ -298,10 +300,12 @@ function ProductRevisionPanel({
   revisions,
   loading,
   error,
+  onRetry,
 }: {
   revisions: ProductRevision[];
   loading: boolean;
   error: string | null;
+  onRetry: () => void;
 }) {
   return (
     <AsyncState
@@ -309,6 +313,7 @@ function ProductRevisionPanel({
       error={error}
       empty={revisions.length === 0}
       emptyText="No revision history recorded for this product yet."
+      onRetry={onRetry}
     >
       <ListTable
         columns={[
@@ -553,6 +558,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                     error={sales.error}
                     empty={(sales.data ?? []).length === 0}
                     emptyText="No sales recorded for this product yet."
+                    onRetry={sales.reload}
                     columns={[
                       { label: "Date", width: "w-[180px]" },
                       { label: "Invoice" },
@@ -574,6 +580,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                   error={sales.error}
                   empty={(sales.data ?? []).length === 0}
                   emptyText="No sales recorded for this product yet."
+                  onRetry={sales.reload}
                   columns={[
                     { label: "Date", width: "w-[180px]" },
                     { label: "Invoice" },
@@ -598,6 +605,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                   error={purchases.error}
                   empty={(purchases.data ?? []).length === 0}
                   emptyText="No purchases recorded for this product yet."
+                  onRetry={purchases.reload}
                   columns={[
                     { label: "Date", width: "w-[180px]" },
                     { label: "Invoice" },
@@ -620,6 +628,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                   error={transfers.error}
                   empty={(transfers.data ?? []).length === 0}
                   emptyText="No transfers recorded for this product yet."
+                  onRetry={transfers.reload}
                   columns={[
                     { label: "Date", width: "w-[180px]" },
                     { label: "Reference" },
@@ -642,6 +651,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                   revisions={revisions.items}
                   loading={revisions.loading}
                   error={revisions.error}
+                  onRetry={revisions.reload}
                 />
               )}
               {nav === "inventory-log" && (
@@ -650,6 +660,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                   error={inventoryLog.error}
                   empty={(inventoryLog.data ?? []).length === 0}
                   emptyText="No inventory movements recorded for this product yet."
+                  onRetry={inventoryLog.reload}
                   columns={[
                     { label: "Date", width: "w-[180px]" },
                     { label: "Type" },

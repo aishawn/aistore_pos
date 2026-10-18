@@ -317,7 +317,7 @@ export function CappedPricingPage() {
           <div className="min-w-0 flex-1 px-3">%</div>
         </div>
 
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
+        <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
           {items.map((row) => (
             <CappedPriceRowEditor
               key={row.id}

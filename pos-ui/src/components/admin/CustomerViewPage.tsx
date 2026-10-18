@@ -114,11 +114,13 @@ function CustomerHomePanel({
   recentSales,
   loading,
   error,
+  onRetry,
 }: {
   customer: CustomerDetail;
   recentSales: CustomerRecentSaleLine[];
   loading: boolean;
   error: string | null;
+  onRetry: () => void;
 }) {
   const email = customer.email ?? customer.emails?.[0];
 
@@ -152,6 +154,7 @@ function CustomerHomePanel({
           error={error}
           empty={recentSales.length === 0}
           emptyText="No sales recorded for this customer yet."
+          onRetry={onRetry}
         >
           <ListTable
             columns={[
@@ -241,6 +244,8 @@ function CustomerBalancePanel({
   salesLoading,
   paymentsError,
   salesError,
+  onRetryPayments,
+  onRetrySales,
   onMakePayment,
   onViewStatement,
   onVoidPayment,
@@ -252,6 +257,8 @@ function CustomerBalancePanel({
   salesLoading: boolean;
   paymentsError: string | null;
   salesError: string | null;
+  onRetryPayments: () => void;
+  onRetrySales: () => void;
   onMakePayment: () => void;
   onViewStatement: () => void;
   onVoidPayment: (paymentId: string) => void;
@@ -321,6 +328,7 @@ function CustomerBalancePanel({
           error={salesError}
           empty={outstandingSales.length === 0}
           emptyText="No outstanding invoices for this customer."
+          onRetry={onRetrySales}
         >
           <ListTable
             columns={[
@@ -346,6 +354,7 @@ function CustomerBalancePanel({
           error={paymentsError}
           empty={payments.length === 0}
           emptyText="No payments recorded for this customer yet."
+          onRetry={onRetryPayments}
         >
           <ListTable
             columns={[
@@ -388,10 +397,12 @@ function CustomerRevisionPanel({
   revisions,
   loading,
   error,
+  onRetry,
 }: {
   revisions: CustomerRevision[];
   loading: boolean;
   error: string | null;
+  onRetry: () => void;
 }) {
   return (
     <AsyncState
@@ -399,6 +410,7 @@ function CustomerRevisionPanel({
       error={error}
       empty={revisions.length === 0}
       emptyText="No revision history recorded for this customer yet."
+      onRetry={onRetry}
     >
       <ListTable
         columns={[
@@ -502,7 +514,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
         </h1>
       </div>
 
-      <AsyncState loading={loading} error={error} empty={false}>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reloadCustomer}>
         {customer && (
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <main className="order-last min-h-0 min-w-0 flex-1 overflow-auto p-4 sm:p-6 lg:order-first">
@@ -512,6 +524,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                   recentSales={recentSales.data}
                   loading={recentSales.loading}
                   error={recentSales.error}
+                  onRetry={recentSales.reload}
                 />
               )}
               {nav === "balance" && (
@@ -523,6 +536,8 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                   salesLoading={sales.loading}
                   paymentsError={payments.error}
                   salesError={sales.error}
+                  onRetryPayments={payments.reload}
+                  onRetrySales={sales.reload}
                   onMakePayment={() => setPaying(true)}
                   onViewStatement={() => setStatementOpen(true)}
                   onVoidPayment={(paymentId) => setVoidPaymentId(paymentId)}
@@ -534,6 +549,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                   error={sales.error}
                   empty={sales.items.length === 0}
                   emptyText="No sales recorded for this customer yet."
+                  onRetry={sales.reload}
                 >
                   <ListTable
                     columns={[
@@ -560,6 +576,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                   revisions={revisions.items}
                   loading={revisions.loading}
                   error={revisions.error}
+                  onRetry={revisions.reload}
                 />
               )}
             </main>

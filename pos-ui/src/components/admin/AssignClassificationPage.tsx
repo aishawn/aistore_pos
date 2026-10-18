@@ -288,7 +288,15 @@ export function AssignClassificationPage({
       </div>
 
       <div className="min-h-0 flex-1 px-5 pb-4 md:px-6">
-        <AsyncState loading={loadingLists || classification.loading} error={listError ?? classification.error} empty={false}>
+        <AsyncState
+          loading={loadingLists || classification.loading}
+          error={listError ?? classification.error}
+          empty={false}
+          onRetry={() => {
+            classification.reload();
+            void loadLists();
+          }}
+        >
           <div className="flex h-full min-h-[360px] gap-3">
             <ProductPane
               products={assigned}

@@ -290,7 +290,7 @@ export function BulkPriceEditPage() {
             ))}
           </div>
 
-          <AsyncState loading={loading} error={error} empty={items.length === 0}>
+          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
             {items.map((row) => (
               <BulkPriceRowLine key={row.productId} row={row} quantities={quantities} onSaved={reload} />
             ))}

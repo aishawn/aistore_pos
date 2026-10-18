@@ -93,7 +93,7 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: customer, loading, error: customerError } = useApi<CustomerDetail>(
+  const { data: customer, loading, error: customerError, reload: reloadCustomer } = useApi<CustomerDetail>(
     customerId ? `/api/customers/${customerId}` : null,
   );
   const methods = useApi<PaymentMethod[]>("/api/payment-methods");
@@ -178,7 +178,7 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
         </p>
       </div>
 
-      <AsyncState loading={loading} error={customerError} empty={false}>
+      <AsyncState loading={loading} error={customerError} empty={false} onRetry={reloadCustomer}>
         {customer && (
           <div className="flex min-h-0 flex-1 flex-col px-6 pb-0">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -275,6 +275,7 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
                 error={sales.error}
                 empty={outstandingSales.length === 0}
                 emptyText="No outstanding invoices for this customer."
+                onRetry={sales.reload}
               >
                 {outstandingSales.map((s, i) => (
                   <div

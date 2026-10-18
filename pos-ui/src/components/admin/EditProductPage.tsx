@@ -958,7 +958,7 @@ export function EditProductPage({ productId }: { productId: string }) {
           })}
         </div>
 
-        <AsyncState loading={loading} error={error} empty={false}>
+        <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {form && (
             <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
               {/* Section title */}

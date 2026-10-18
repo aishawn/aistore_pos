@@ -338,7 +338,7 @@ function StockListPageInner() {
           <div className="min-w-0 flex-1 px-2">Profit %</div>
         </div>
 
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
+        <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
           {items.map((row) => (
             <StockListRowEditor key={row.id} row={row} onSaved={reload} />
           ))}

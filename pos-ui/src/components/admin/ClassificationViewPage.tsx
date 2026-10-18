@@ -216,6 +216,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
           loading={classification.loading}
           error={classification.error}
           empty={false}
+          onRetry={classification.reload}
         >
           <SalesChart />
 
@@ -226,6 +227,7 @@ export function ClassificationViewPage({ type, id }: { type: string; id: string 
               error={products.error}
               empty={products.items.length === 0}
               emptyText="No products assigned yet."
+              onRetry={products.reload}
             >
               <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
                 {products.items.map((product) => (

@@ -192,7 +192,7 @@ function ProductBuyingPeriodsPageInner() {
   return (
     <div className="h-full overflow-auto bg-white p-6 font-sans md:p-8">
       {loading || error ? (
-        <AsyncState loading={loading} error={error} empty={false}>
+        <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {null}
         </AsyncState>
       ) : empty ? (
