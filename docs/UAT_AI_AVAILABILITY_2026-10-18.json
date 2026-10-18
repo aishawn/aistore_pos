@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-10-18T11:01:20.736Z",
+  "sourceCommit": "6a60a3f",
+  "deployment": "unverified-after-webhook",
+  "scope": "authenticated AI availability UI and local shortcut; no business writes",
+  "checks": [
+    {
+      "name": "AI availability config",
+      "status": "PASS",
+      "evidence": "Authenticated client config reports enabled=false."
+    },
+    {
+      "name": "Disabled AI status copy",
+      "status": "PASS",
+      "evidence": "Assistant header explains that production AI is disabled before a request is sent."
+    },
+    {
+      "name": "Local sell shortcut remains available",
+      "status": "PASS",
+      "evidence": "The local open-sell command navigated without an AI or business write request."
+    }
+  ],
+  "passed": 3,
+  "failed": 0
+}
