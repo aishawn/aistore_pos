@@ -109,7 +109,7 @@ function R2ArchivePanel({ query }: { query: string }) {
             </header>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[420px] text-left text-sm">
-                <thead className="text-xs uppercase text-[var(--oh-muted)]"><tr><th className="py-2">Product</th><th className="py-2 text-right">Qty</th><th className="py-2 text-right">Line total</th></tr></thead>
+                <thead className="text-xs uppercase text-[var(--oh-muted)]"><tr><th scope="col" className="py-2">Product</th><th scope="col" className="py-2 text-right">Qty</th><th scope="col" className="py-2 text-right">Line total</th></tr></thead>
                 <tbody className="divide-y divide-[var(--oh-border)]">{selected.items.map((line) => <tr key={line.id}><td className="py-2.5 pr-3">{line.name}</td><td className="py-2.5 text-right tabular-nums">{line.quantity}</td><td className="py-2.5 text-right font-medium tabular-nums">{money(line.amount)}</td></tr>)}</tbody>
               </table>
             </div>
@@ -449,12 +449,12 @@ export function OdooSalesHistoryPage() {
             <table className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
-                  <th className="px-4 py-3">Receipt</th>
-                  <th className="px-4 py-3">Date &amp; time</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Register session</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3 text-right">Total</th>
+                  <th scope="col" className="px-4 py-3">Receipt</th>
+                  <th scope="col" className="px-4 py-3">Date &amp; time</th>
+                  <th scope="col" className="px-4 py-3">Customer</th>
+                  <th scope="col" className="px-4 py-3">Register session</th>
+                  <th scope="col" className="px-4 py-3">Status</th>
+                  <th scope="col" className="px-4 py-3 text-right">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
@@ -551,7 +551,7 @@ export function OdooSalesHistoryPage() {
           </div>
           <div className="mt-5">
             <table className="hidden w-full min-w-[420px] text-sm md:table">
-              <thead><tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><th className="py-2 text-left">Item</th><th className="py-2 text-right">Qty</th><th className="py-2 text-right">Unit</th><th className="py-2 text-right">Total</th></tr></thead>
+              <thead><tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><th scope="col" className="py-2 text-left">Item</th><th scope="col" className="py-2 text-right">Qty</th><th scope="col" className="py-2 text-right">Unit</th><th scope="col" className="py-2 text-right">Total</th></tr></thead>
               <tbody className="divide-y divide-[var(--oh-border)]">{saleDetail.lines.map((line) => <tr key={line.id}>
                 <td className="py-2.5 pr-3 font-medium text-[var(--oh-text)]">{line.product_id ? line.product_id[1] : "Product"}</td>
                 <td className="py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{new Intl.NumberFormat("en-AU", { maximumFractionDigits: 3 }).format(line.qty)}</td>

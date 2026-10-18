@@ -184,7 +184,7 @@ export function OdooCustomerDirectoryPage() {
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="hidden w-full min-w-[840px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-                <tr><th className="px-4 py-3">Customer</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Reference</th><th className="px-4 py-3 text-right">Actions</th></tr>
+                <tr><th scope="col" className="px-4 py-3">Customer</th><th scope="col" className="px-4 py-3">Phone</th><th scope="col" className="px-4 py-3">Email</th><th scope="col" className="px-4 py-3">Reference</th><th scope="col" className="px-4 py-3 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
                 {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`customer-skeleton-${index}`} aria-hidden="true">

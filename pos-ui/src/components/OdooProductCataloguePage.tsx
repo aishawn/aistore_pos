@@ -339,13 +339,13 @@ export function OdooProductCataloguePage() {
             <table className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Barcode / SKU</th>
-                  <th className="px-4 py-3 text-right">On hand</th>
-                  <th className="px-4 py-3 text-right">List price</th>
-                  <th className="px-4 py-3">POS</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th scope="col" className="px-4 py-3">Product</th>
+                  <th scope="col" className="px-4 py-3">Category</th>
+                  <th scope="col" className="px-4 py-3">Barcode / SKU</th>
+                  <th scope="col" className="px-4 py-3 text-right">On hand</th>
+                  <th scope="col" className="px-4 py-3 text-right">List price</th>
+                  <th scope="col" className="px-4 py-3">POS</th>
+                  <th scope="col" className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
@@ -482,7 +482,7 @@ export function OdooProductCataloguePage() {
               <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950"><span>{importRows.length} valid product{importRows.length === 1 ? "" : "s"} ready to import</span><span>Up to 500 per file</span></div>
               <div className="max-h-64 overflow-auto rounded-md border border-[var(--oh-border)]">
                 <table className="w-full min-w-[620px] text-left text-xs">
-                  <thead className="sticky top-0 bg-[#f7f8f8] font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-3 py-2">Line</th><th className="px-3 py-2">Product</th><th className="px-3 py-2">SKU / Barcode</th><th className="px-3 py-2 text-right">Sale price</th><th className="px-3 py-2 text-right">Cost</th></tr></thead>
+                  <thead className="sticky top-0 bg-[#f7f8f8] font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-3 py-2">Line</th><th scope="col" className="px-3 py-2">Product</th><th scope="col" className="px-3 py-2">SKU / Barcode</th><th scope="col" className="px-3 py-2 text-right">Sale price</th><th scope="col" className="px-3 py-2 text-right">Cost</th></tr></thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">{importRows.slice(0, 30).map((row) => <tr key={row.line}><td className="px-3 py-2 text-[var(--oh-muted)]">{row.line}</td><td className="px-3 py-2 font-medium text-[var(--oh-text)]">{row.name}</td><td className="px-3 py-2 text-[var(--oh-muted)]">{row.default_code || "—"} / {row.barcode || "—"}</td><td className="px-3 py-2 text-right">{money(row.list_price)}</td><td className="px-3 py-2 text-right">{row.standard_price === undefined ? "—" : money(row.standard_price)}</td></tr>)}</tbody>
                 </table>
                 {importRows.length > 30 && <p className="border-t border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">Showing the first 30 rows; {importRows.length - 30} more will be imported.</p>}

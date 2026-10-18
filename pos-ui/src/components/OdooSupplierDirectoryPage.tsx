@@ -179,7 +179,7 @@ export function OdooSupplierDirectoryPage() {
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table className="hidden w-full min-w-[760px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-                <tr><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Contact</th><th className="px-4 py-3">ABN / Tax ID</th><th className="px-4 py-3">Reference</th></tr>
+                <tr><th scope="col" className="px-4 py-3">Supplier</th><th scope="col" className="px-4 py-3">Contact</th><th scope="col" className="px-4 py-3">ABN / Tax ID</th><th scope="col" className="px-4 py-3">Reference</th></tr>
               </thead>
               <tbody className="divide-y divide-[var(--oh-border)]">
                 {loading && items.length === 0 ? Array.from({ length: 6 }, (_, index) => <tr key={`supplier-skeleton-${index}`} aria-hidden="true">

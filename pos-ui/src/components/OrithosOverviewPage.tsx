@@ -412,9 +412,9 @@ export function OrithosOverviewPage() {
                 <table className="w-full table-fixed text-left">
                   <thead>
                     <tr className="oh-type-meta border-b border-[var(--oh-border)] text-[var(--oh-muted)]">
-                      <th className="w-[52%] px-3 py-1.5 font-semibold">Product</th>
-                      <th className="w-[16%] px-2 py-1.5 text-right font-semibold">Units</th>
-                      <th className="w-[32%] px-3 py-1.5 text-right font-semibold">Revenue</th>
+                      <th scope="col" className="w-[52%] px-3 py-1.5 font-semibold">Product</th>
+                      <th scope="col" className="w-[16%] px-2 py-1.5 text-right font-semibold">Units</th>
+                      <th scope="col" className="w-[32%] px-3 py-1.5 text-right font-semibold">Revenue</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--oh-border)]">
