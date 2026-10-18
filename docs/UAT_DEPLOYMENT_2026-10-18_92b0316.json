@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-18T18:00:00+08:00",
+  "sourceCommit": "92b0316",
+  "repository": "https://github.com/aishawn/aistore_pos.git",
+  "branch": "main",
+  "deployment": "dokploy-sha-unverified",
+  "webhook": {
+    "status": 200,
+    "message": "Compose deployed successfully",
+    "payload": "GitHub push webhook for refs/heads/main",
+    "dokployService": "WvcUddxTnymK_K5RZPPtL"
+  },
+  "waitedMinutes": 5,
+  "status": "PARTIAL",
+  "cacheChecks": [
+    { "url": "https://demo.orithos.com.au/security", "httpStatus": 200, "cacheControl": "no-store, must-revalidate, no-cache, max-age=0, private", "cloudflareCacheStatus": "DYNAMIC" },
+    { "url": "https://demo.orithos.com.au/reports/dashboard", "httpStatus": 200, "cacheControl": "no-store, must-revalidate, no-cache, max-age=0, private", "cloudflareCacheStatus": "DYNAMIC" },
+    { "url": "https://demo.orithos.com.au/utilities/future-costs", "httpStatus": 200, "cacheControl": "no-store, must-revalidate, no-cache, max-age=0, private", "cloudflareCacheStatus": "DYNAMIC" },
+    { "url": "https://demo.orithos.com.au/utilities/future-prices", "httpStatus": 200, "cacheControl": "no-store, must-revalidate, no-cache, max-age=0, private", "cloudflareCacheStatus": "DYNAMIC" }
+  ],
+  "readOnlyRegression": {
+    "orders": { "checks": 16, "passed": 16, "failed": 0, "pageErrors": [], "mutatingApiRequests": [] },
+    "interaction": { "checks": 14, "passed": 14, "failed": 0 },
+    "aiSurface": { "checks": 10, "passed": 10, "failed": 0 },
+    "aiUi": { "checks": 2, "passed": 2, "failed": 0 }
+  },
+  "codeChange": "Finalise Sale auto-complete callback is stable and included in the timer effect dependencies.",
+  "interpretation": "Webhook and public behavior passed after a five-minute wait. Dokploy console runtime SHA, build logs, and container state remain unverified; production AI remains disabled."
+}
