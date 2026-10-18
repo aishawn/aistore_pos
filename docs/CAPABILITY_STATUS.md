@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-16 (tenant isolation: signup bootstrap token auto-login; Odoo provision creates per-store `res.company`; BFF forces company — no fail-open to demo catalog)
+**Last updated:** 2026-10-18 (tenant isolation: signup bootstrap token auto-login; Odoo provision creates per-store `res.company`; BFF forces company — no fail-open to demo catalog)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。代码功能批次基线为 `30fdc8d`；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push 或页面 HTTP 200 认定部署身份。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。代码功能批次基线为 `36bcfdf`；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push 或页面 HTTP 200 认定部署身份。
 
 ### 已完成能力
 
@@ -24,6 +24,7 @@ Statuses:
 | 关班 | Close Register 确认弹窗接入统一焦点初始聚焦、Tab 约束、Escape 取消和焦点恢复 | `pilot-ops-readonly` `3/3`；缺少现金时 API 返回 `422`，没有 Odoo 写入 |
 | 目录/采购/销售/补货/概览表格 | 所有列标题补齐 `scope="col"`，表格补齐明确 `aria-label` | 管理列表 `8/8`、订单 `16/16`、综合交互 `14/14` |
 | 搜索控件 | 商品目录、采购订单、销售历史搜索框补齐稳定 `aria-label` | 管理列表、订单和交互专项通过；订单探针 `pageErrors: []`、`mutatingApiRequests: []` |
+| 报表趋势图 | 趋势图容器增加基于当前数据的非视觉摘要，并通过 `aria-describedby` 关联；保留逐柱 `role="img"` 与键盘聚焦 | 本次提交 `36bcfdf` 后综合交互 `14/14`、订单页 `16/16`、AI UI `2/2` 通过 |
 | 页面稳定性 | utility 动态页面缓存策略修复为 `fetchCache = "force-no-store"` | `/utilities/future-costs`、`/utilities/future-prices` 等动态路由 HTTP 200、`no-store` |
 
 ### 最新只读回归结果
@@ -36,6 +37,7 @@ Statuses:
 | 订单页面 | `16/16 PASS` | 订单/采购/销售历史，0 页面错误、0 写请求 |
 | 设置页面 | `27/27 PASS` | 390/1440，设置只读视图与无溢出 |
 | AI surface/UI | `10/10`、`2/2 PASS` | AI 保持关闭时的配置、权限和匿名保护 |
+| 本轮定向回归 | `14/14`、`16/16`、`2/2 PASS` | `36bcfdf` 部署等待后；订单 `pageErrors: []`、`mutatingApiRequests: []` |
 | 全站静态矩阵 | `262/262 PASS` | 131 路由 × 390/1440，无横向溢出和页面错误 |
 
 ### 仍未放行
