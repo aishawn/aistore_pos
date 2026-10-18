@@ -274,6 +274,16 @@ Statuses:
 - **产品未实现或延期：** 分单/多支付方式收款、离线 POS、视频损耗防范 AI、Banner/买方组价格文件。
 - **放行结论：** `NO-GO`，直到上述关键证据和产品边界完成复核。
 
+## 2026-10-18 当前迭代：`632d3a0`
+
+| 功能域 | 本批次改动 | 验证结果 |
+|---|---|---|
+| Odoo 商品导出 | 商品目录和数据设置页导出改用 `fetchOdooRoute`，复用 Odoo 会话恢复 | 本地 typecheck、目标 ESLint、diff check 通过；待 Dokploy 运行 `632d3a0` 后做过期会话故障注入 |
+| Odoo 供应商创建 | 供应商 POST 统一经过 Odoo 请求封装；写请求仍不会被自动重放 | 本地 typecheck、目标 ESLint 通过；现有供应商真实写入证据不受影响 |
+| 数据设置页恢复 | Retry 请求期间禁用并显示 `Retrying…` | 本地检查通过；公网旧版本只读回归无回归 |
+
+本批次提交已推送 `origin/main`。Dokploy webhook `https://dokploy.modkie.com/api/deploy/compose/bIiwuE7McQD2kxJl3oG8j` 当前仍返回 `HTTP 301` 和 `Branch Not Match`，所以 `632d3a0` 尚未取得线上运行身份证据。当前发布结论继续保持 `NO-GO`；禁止把旧版本公网 UAT 的 `sourceCommit` 当作 Dokploy 审计 SHA。
+
 ## Register & sales
 
 | Capability | Status | Notes |
