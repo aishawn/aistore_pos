@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, RotateCcw, ShoppingBag, Store } from "lucide-react";
 import { fetchOdooRoute } from "@/lib/odoo-api";
@@ -64,8 +64,10 @@ export function OdooReportingDashboard() {
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
+  const requestRevision = useRef(0);
 
   const load = useCallback(async (refresh = false) => {
+    const revision = ++requestRevision.current;
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -75,6 +77,7 @@ export function OdooReportingDashboard() {
         cache: "no-store",
       });
       const payload = await response.json().catch(() => null) as DashboardData | { message?: string } | null;
+      if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
         setNeedsConnection(response.status === 401 || response.status === 503);
@@ -87,10 +90,14 @@ export function OdooReportingDashboard() {
       setData(payload);
       setLastLoadedAt(Date.now());
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load the Odoo dashboard.");
+      if (revision === requestRevision.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load the Odoo dashboard.");
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (revision === requestRevision.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [rangeHours]);
 
