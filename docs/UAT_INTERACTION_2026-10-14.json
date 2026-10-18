@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-14T14:50:21.551Z",
-  "deployment": "42844b86422bf81ad38d74122dddd3b8a3b1d8fe",
+  "generatedAt": "2026-10-18T07:14:36.743Z",
+  "deployment": "fc21fbcca6781e98f6e297bb115252fa10399ebe",
   "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   "checks": [
     {
@@ -12,6 +12,16 @@
       "name": "Compact account popover opens and closes accessibly",
       "status": "PASS",
       "evidence": "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click."
+    },
+    {
+      "name": "Sidebar keeps the active settings destination reachable",
+      "status": "PASS",
+      "evidence": "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page."
+    },
+    {
+      "name": "Classification creation restores mobile menu focus",
+      "status": "PASS",
+      "evidence": "At 390px the Menu opens the classification dialog, the MDB selector supports ArrowDown/Escape, and closing restores focus to Menu."
     },
     {
       "name": "Product search filters the Odoo catalogue",
@@ -26,7 +36,7 @@
     {
       "name": "New product form blocks submission without a name",
       "status": "PASS",
-      "evidence": "Product name is required; empty form validation was checked and the dialog was cancelled without creating a product."
+      "evidence": "Product name is required; dialog focus and trigger restoration passed; empty form validation was checked and no product was created."
     },
     {
       "name": "CSV product import previews valid rows without writing to Odoo",
@@ -36,7 +46,7 @@
     {
       "name": "Customer creation form is required-field guarded",
       "status": "PASS",
-      "evidence": "At 390px the customer dialog fit the viewport; Customer name is required and the empty form was cancelled without submission."
+      "evidence": "At 390px the customer dialog fit the viewport; initial focus, trigger restoration, required Customer name and empty-form protection passed."
     },
     {
       "name": "Customer mobile card and edit dialog render from a read-only fixture",
@@ -46,7 +56,7 @@
     {
       "name": "Sales history searches and opens a refunded receipt",
       "status": "PASS",
-      "evidence": "At 390px the mobile receipt card replaced the wide table; the receipt dialog fit the viewport, showed the prior refund, and hid the duplicate full-refund action."
+      "evidence": "At 390px the Refunded filter returned a mobile receipt card; the receipt dialog opened by keyboard, fit the viewport, and hid the duplicate full-refund action."
     },
     {
       "name": "Replenishment coverage control refreshes the estimate",

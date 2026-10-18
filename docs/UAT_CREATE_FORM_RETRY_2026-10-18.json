@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T07:01:30.005Z",
+  "generatedAt": "2026-10-18T07:13:37.167Z",
   "sourceCommit": "unverified-before-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only injected 503 recovery for create forms; no business writes",

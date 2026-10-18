@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T14:35:06.154Z",
-  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
-  "target": "https://app.orithos.com.au",
+  "generatedAt": "2026-10-18T07:16:00.038Z",
+  "deployment": null,
+  "target": "https://demo.orithos.com.au",
   "scope": "authenticated read-only orders list, supply-chain plan, and manual order form responsive checks; no order submitted",
   "routes": [
     "/orders",
@@ -96,7 +96,7 @@
       "documentWidth": 390,
       "bodyWidth": 390,
       "title": "Sales History",
-      "visibleInputs": 1,
+      "visibleInputs": 3,
       "status": "PASS",
       "state": "Sales rows present"
     },
@@ -176,7 +176,7 @@
       "documentWidth": 1440,
       "bodyWidth": 1440,
       "title": "Sales History",
-      "visibleInputs": 1,
+      "visibleInputs": 3,
       "status": "PASS",
       "state": "Sales rows present"
     }
