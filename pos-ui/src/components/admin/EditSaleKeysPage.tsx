@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { api, searchProducts, type SellProductHit } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import {
   BG_PRESETS,
@@ -40,8 +40,6 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [productQuery, setProductQuery] = useState("");
-  const [productHits, setProductHits] = useState<SellProductHit[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [discardTarget, setDiscardTarget] = useState<"cancel" | string | null>(null);
 

@@ -23,6 +23,9 @@ const INTENT_LABELS: Record<string, string> = {
   report_adhoc: "Custom",
 };
 
+const EMPTY_COLUMNS: string[] = [];
+const EMPTY_ROWS: Record<string, unknown>[] = [];
+
 function intentLabel(intent: string | null): string {
   if (!intent) return "Report";
   const mapped = INTENT_LABELS[intent];
@@ -116,8 +119,8 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
   );
   const [search, setSearch] = useState("");
 
-  const columns = data?.table?.columns ?? [];
-  const allRows = data?.table?.rows ?? [];
+  const columns = data?.table?.columns ?? EMPTY_COLUMNS;
+  const allRows = data?.table?.rows ?? EMPTY_ROWS;
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();

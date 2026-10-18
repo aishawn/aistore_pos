@@ -24,13 +24,6 @@ interface Page<T> {
   total: number;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  brand: "Brand",
-  category: "Category",
-  family: "Family",
-  tag: "Tag",
-};
-
 const WITHOUT_LABELS: Record<string, string> = {
   brand: "Only show Products without a Brand",
   category: "Only show Products without a Category",
@@ -139,8 +132,6 @@ export function AssignClassificationPage({
   id: string;
 }) {
   const router = useRouter();
-  const typeLabel = TYPE_LABELS[type] ?? type;
-
   const classification = useApi<Classification>(`/api/classifications/${type}/${id}`);
   const categories = useApi<{ id: string; name: string }[]>("/api/classifications/category");
 
