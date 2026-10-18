@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `4e707f0`；Register 焦点恢复、详情 Retry、采购详情 mock UAT、POS Retry 状态反馈和分类弹窗焦点已复验，POS 分类故障注入仍待 Dokploy 独立运行证据；不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `2c4d01c`；Register 焦点恢复、详情 Retry、采购详情 mock UAT、POS Retry 状态反馈、分类弹窗焦点和新建盘点弹窗焦点已复验，POS 分类故障注入仍待 Dokploy 独立运行证据；不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
 
 ### 已完成能力
 
@@ -37,6 +37,7 @@ Statuses:
 | POS 错误条移动布局 | 分类和客户搜索错误条允许长错误文案换行，Retry 操作在 390px 仍可见 | `fafe8eb` 后综合交互 `14/14`、POS 弹窗 `2/2`；无写请求 |
 | POS Retry 状态反馈 | 分类、客户和商品搜索 Retry 请求期间禁用重复点击并显示 `Retrying…` 与加载图标 | `18c9a1b` 后综合交互 `14/14`、POS 弹窗 `2/2`；订单 `16/16`，无写请求 |
 | 管理弹窗焦点 | 分类创建、分类编辑、价目表创建使用显式输入框初始焦点，移除原生 `autoFocus` 竞争 | `4e707f0` 后综合交互 `14/14`；分类创建移动焦点与触发按钮恢复通过 |
+| 新建盘点弹窗焦点 | 新建盘点弹窗补齐 `role=dialog`、`aria-modal`、标题关联和统一初始/恢复焦点 | `2c4d01c` 后综合交互 `14/14`；未执行盘点提交 |
 | 页面稳定性 | utility 动态页面由根布局统一使用 `dynamic = "force-dynamic"`；future costs/prices 局部 layout 移除可能触发 Next.js 16 构建误判的缓存导出 | `/utilities/future-costs`、`/utilities/future-prices` 等动态路由需在修复部署后复验 HTTP 200、`no-store` |
 
 ### 最新只读回归结果
