@@ -28,6 +28,7 @@ const quantity = (amount: number) => new Intl.NumberFormat("en-AU", { maximumFra
 export function OdooProductCataloguePage() {
   const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [exportBusy, setExportBusy] = useState(false);
   const [items, setItems] = useState<OdooProductRecord[]>([]);
   const [categories, setCategories] = useState<OdooPosCategoryRecord[]>([]);
@@ -109,7 +110,7 @@ export function OdooProductCataloguePage() {
       }
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [connectionRetryKey]);
 
   useEffect(() => {
     if (searchParams.get("import") === "1" && connected === true) {
@@ -340,7 +341,10 @@ export function OdooProductCataloguePage() {
             <AlertCircle className="mx-auto text-amber-600" size={28} />
             <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view products</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Odoo staff account to view the POS catalogue and inventory available to that account.</p>
-            <Link href="/settings/integrations" className="mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry connection</button>
+              <Link href="/settings/integrations" className="inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+            </div>
           </div>
         </section>
       ) : (
