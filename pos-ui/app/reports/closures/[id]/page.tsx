@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { LoaderCircle, RefreshCw } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { ApiError, api } from "@/lib/api";
 import { useParams } from "next/navigation";
@@ -45,8 +45,10 @@ export default function RegisterClosureDetailPage() {
   const [closure, setClosure] = useState<RegisterClosure | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const sequence = ++requestSequence.current;
     if (!Number.isSafeInteger(id) || id < 1) {
       setError("Invalid register closure id");
       setLoading(false);
@@ -55,11 +57,14 @@ export default function RegisterClosureDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      setClosure(await api.get<RegisterClosure>(`/api/register-closures/${id}`));
+      const result = await api.get<RegisterClosure>(`/api/register-closures/${id}`);
+      if (sequence === requestSequence.current) setClosure(result);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "Could not load register closure.");
+      if (sequence === requestSequence.current) {
+        setError(cause instanceof ApiError ? cause.message : "Could not load register closure.");
+      }
     } finally {
-      setLoading(false);
+      if (sequence === requestSequence.current) setLoading(false);
     }
   }, [id]);
 
@@ -69,9 +74,9 @@ export default function RegisterClosureDetailPage() {
     <AdminPageLayout
       title={closure ? `Register closure #${closure.id}` : "Register closure"}
       subtitle="Read-only close summary and tender breakdown"
-      actions={<div className="flex flex-wrap gap-2"><Link href="/reports/closures" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">All closures</Link><AdminSecondaryButton onClick={() => void load()}>Refresh</AdminSecondaryButton></div>}
+      actions={<div className="flex flex-wrap gap-2"><Link href="/reports/closures" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">All closures</Link><AdminSecondaryButton onClick={() => void load()} disabled={loading}>{loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}{loading ? "Refreshing…" : "Refresh"}</AdminSecondaryButton></div>}
     >
-      {loading ? <p role="status" className="text-sm text-[var(--oh-muted)]">Loading closure…</p> : error ? (
+      {loading ? <div role="status" aria-label="Loading register closure" className="space-y-4"><div className="h-40 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /><div className="h-32 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /></div> : error ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button></div>
       ) : closure ? (
         <div className="mx-auto max-w-3xl space-y-5">

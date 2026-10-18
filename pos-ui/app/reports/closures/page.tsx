@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { LoaderCircle, RefreshCw } from "lucide-react";
+import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList } from "@/hooks/useApi";
 
@@ -30,6 +30,12 @@ export default function RegisterClosuresPage() {
       title="Register Closures"
       subtitle="Review register open and close records"
       count={total}
+      actions={
+        <AdminSecondaryButton onClick={() => reload()} disabled={loading}>
+          {loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
+          {loading ? "Refreshing…" : "Refresh"}
+        </AdminSecondaryButton>
+      }
     >
       <p className="mb-3 text-right text-[13px] text-[var(--oh-muted)]">
         Showing {total} of {total} Register Closures
