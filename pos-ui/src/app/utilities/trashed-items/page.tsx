@@ -29,7 +29,7 @@ function Actions() {
 export default function TrashedItemsPage() {
   const [type, setType] = useState("");
   const [page, setPage] = useState(1);
-  const { items, total, loading, error } = useApiList<TrashedItem>("/api/trashed-items", {
+  const { items, total, loading, error, reload } = useApiList<TrashedItem>("/api/trashed-items", {
     type: type || undefined,
     page,
     size: PAGE_SIZE,
@@ -58,7 +58,7 @@ export default function TrashedItemsPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
+        <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
           <ListTable
             columns={[{ label: "Item" }, { label: "Type", width: "w-[160px]" }, { label: "Deleted", width: "w-[180px]" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
             rows={items.map((it) => [it.name ?? "", it.itemType ?? "", it.deletedAt ?? "", <Actions key="a" />])}

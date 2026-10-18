@@ -24,11 +24,11 @@ function percent(value: number | null | undefined) {
 }
 
 export default function DailySalesPage() {
-  const { data, loading, error } = useApi<DailySalesReport>("/api/reports/daily-sales");
+  const { data, loading, error, reload } = useApi<DailySalesReport>("/api/reports/daily-sales");
 
   return (
     <AdminPageLayout title="Daily Sales" subtitle="Completed sales for today">
-      <AsyncState loading={loading} error={error} empty={false}>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         <ListTable
           columns={[
             { label: "Date" },

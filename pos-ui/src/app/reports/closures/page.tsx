@@ -22,7 +22,7 @@ const COLS = ["Register", "Open Time", "Close Time", "Expected", "Received", "Ac
 
 export default function RegisterClosuresPage() {
   const [page, setPage] = useState(1);
-  const { items, total, loading, error } = useApiList<RegisterClosure>("/api/register-closures", { page, size: PAGE_SIZE });
+  const { items, total, loading, error, reload } = useApiList<RegisterClosure>("/api/register-closures", { page, size: PAGE_SIZE });
 
   return (
     <div className="h-full overflow-auto bg-white p-6 font-sans">
@@ -43,7 +43,7 @@ export default function RegisterClosuresPage() {
             <div key={c} className={`px-4 py-3 text-center ${i === 5 ? "w-[140px]" : "flex-1"} ${i > 0 ? "border-l border-neutral-300" : ""}`}>{c}</div>
           ))}
         </div>
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
+        <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
           {items.map((r) => (
             <div key={r.id} className="flex border-t border-neutral-300 bg-[#f8f8f8]">
               <div className="flex-1 px-4 py-4 text-black">{r.registerId}</div>

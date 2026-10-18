@@ -22,11 +22,11 @@ function percent(value: number | null | undefined) {
 }
 
 export default function LastMonthSalesPage() {
-  const { data, loading, error } = useApi<LastMonthSalesReport>("/api/reports/last-month-sales");
+  const { data, loading, error, reload } = useApi<LastMonthSalesReport>("/api/reports/last-month-sales");
 
   return (
     <AdminPageLayout title="Last Month Sales" subtitle="Previous calendar month's sales total">
-      <AsyncState loading={loading} error={error} empty={false}>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         <ListTable
           columns={[
             { label: "Total Sales", align: "right" },

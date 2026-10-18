@@ -22,11 +22,11 @@ function percent(value: number | null | undefined) {
 }
 
 export default function LastWeekSalesPage() {
-  const { data, loading, error } = useApi<LastWeekSalesReport>("/api/reports/last-week-sales");
+  const { data, loading, error, reload } = useApi<LastWeekSalesReport>("/api/reports/last-week-sales");
 
   return (
     <AdminPageLayout title="Last Week Sales" subtitle="Previous week's sales total, Monday through Sunday">
-      <AsyncState loading={loading} error={error} empty={false}>
+      <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
         <ListTable
           columns={[
             { label: "Total Sales", align: "right" },

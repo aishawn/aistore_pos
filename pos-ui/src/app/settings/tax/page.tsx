@@ -51,7 +51,7 @@ export default function TaxRatesPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={rates.length === 0}>
+        <AsyncState loading={loading} error={error} empty={rates.length === 0} onRetry={reload}>
           <ListTable
             columns={[{ label: "Name" }, { label: "Rate" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
             rows={rates.map((r) => [r.name, `${Number(r.amount)}%`, <RowActions key="a" onEdit={() => setEditing(r)} onDelete={() => setDeletingId(r.id)} />])}

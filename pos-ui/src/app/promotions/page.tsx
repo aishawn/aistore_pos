@@ -25,7 +25,7 @@ export default function PromotionsPage() {
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const { items, total, loading, error } = useApiList<Promotion>("/api/promotions", {
+  const { items, total, loading, error, reload } = useApiList<Promotion>("/api/promotions", {
     name: debouncedSearch || undefined,
     page,
     size: PAGE_SIZE,
@@ -77,7 +77,7 @@ export default function PromotionsPage() {
       </button>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={false}>
+        <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {items.length === 0 ? (
             <EmptyState />
           ) : (

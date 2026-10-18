@@ -47,7 +47,7 @@ export default function RolesPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={roles.length === 0}>
+        <AsyncState loading={loading} error={error} empty={roles.length === 0} onRetry={reload}>
           <ListTable
             columns={[{ label: "Role" }, { label: "Description" }, { label: "Users", width: "w-[120px]" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
             rows={roles.map((r) => [r.name, <span key="d" className="text-neutral-600">—</span>, "—", <RowActions key="a" onEdit={() => setEditing(r)} onDelete={() => setDeletingId(r.id)} />])}

@@ -59,7 +59,7 @@ export default function SaleKeysPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={sets.length === 0} emptyText="No sale keys sets found.">
+        <AsyncState loading={loading} error={error} empty={sets.length === 0} emptyText="No sale keys sets found." onRetry={reload}>
           <div className="overflow-hidden rounded-sm border border-neutral-300">
             <div className="grid grid-cols-[1fr_320px] border-b border-neutral-300 bg-white">
               <div className="border-r border-neutral-300 px-4 py-3 text-center text-[16px] font-semibold text-black">

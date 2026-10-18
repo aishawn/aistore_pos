@@ -300,7 +300,7 @@ export default function UsersSettingsPage() {
         </form>
       )}
 
-      <AsyncState loading={loading} error={error} empty={sortedUsers.length === 0}>
+      <AsyncState loading={loading} error={error} empty={sortedUsers.length === 0} onRetry={reload}>
         <div className="overflow-hidden rounded-lg border border-neutral-200">
           <table className="w-full border-collapse text-left text-[15px]">
             <thead className="bg-neutral-50 text-[13px] uppercase tracking-wide text-neutral-500">

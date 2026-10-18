@@ -21,7 +21,7 @@ export default function MailLogPage() {
   const [recipient, setRecipient] = useState("");
   const [page, setPage] = useState(1);
   const dq = useDebouncedValue(recipient, 300);
-  const { items, total, loading, error } = useApiList<MailLog>("/api/mail-log", {
+  const { items, total, loading, error, reload } = useApiList<MailLog>("/api/mail-log", {
     recipient: dq || undefined,
     page,
     size: PAGE_SIZE,
@@ -42,7 +42,7 @@ export default function MailLogPage() {
       />
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={items.length === 0}>
+          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
           <ListTable
             columns={[
               { label: "Date" },

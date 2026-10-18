@@ -84,7 +84,7 @@ export default function BalancesPage() {
 
   const groups = useApiList<Named>("/api/customers/groups", { page: 1, size: DROPDOWN_PAGE_SIZE });
 
-  const { items, total, loading, error } = useApiList<Customer>("/api/customers", {
+  const { items, total, loading, error, reload } = useApiList<Customer>("/api/customers", {
     name: debouncedSearch.trim() || undefined,
     groupIds: applied.groupIds.length > 0 ? applied.groupIds.join(",") : undefined,
     minOwing: applied.minOwing || undefined,
@@ -265,7 +265,7 @@ export default function BalancesPage() {
     >
       <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] text-[13px]">
         <div className="md:hidden">
-          <AsyncState loading={loading} error={error} empty={items.length === 0}>
+          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
             {items.map((c) => (
               <article key={c.id} className="border-b border-[var(--oh-border)] bg-white p-4 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">
@@ -289,7 +289,7 @@ export default function BalancesPage() {
             <div className="w-[260px] border-r border-white/20 px-4 py-3 text-center">Total Balance</div>
             <div className="flex-1 px-4 py-3 text-center">Actions</div>
           </div>
-          <AsyncState loading={loading} error={error} empty={items.length === 0}>
+          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
             {items.map((c) => (
               <div key={c.id} className="flex items-center border-b border-[var(--oh-border)] last:border-b-0">
               <div className="w-[260px] border-r border-[var(--oh-border)] px-4 py-4 text-[var(--oh-text)]">

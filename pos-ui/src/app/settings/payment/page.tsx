@@ -51,7 +51,7 @@ export default function PaymentMethodsPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={methods.length === 0}>
+        <AsyncState loading={loading} error={error} empty={methods.length === 0} onRetry={reload}>
           <ListTable
             columns={[{ label: "Name" }, { label: "Type" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
             rows={methods.map((m) => [

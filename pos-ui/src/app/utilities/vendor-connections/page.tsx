@@ -49,7 +49,7 @@ export default function VendorConnectionsPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={vendors.length === 0}>
+        <AsyncState loading={loading} error={error} empty={vendors.length === 0} onRetry={reload}>
           <ListTable
             columns={[{ label: "Vendor" }, { label: "Status", width: "w-[200px]" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
             rows={vendors.map((v) => [v.name ?? "", <span key="s" style={{ color: "#3cb44b" }}>Connected</span>, <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => setDeletingId(v.id)} />])}

@@ -47,7 +47,7 @@ export default function PromotionCategoriesPage() {
       </div>
 
       <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={categories.length === 0}>
+        <AsyncState loading={loading} error={error} empty={categories.length === 0} onRetry={reload}>
           <ListTable
             columns={[{ label: "Category" }, { label: "Promotions", width: "w-[160px]" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
             rows={categories.map((c) => [c.name, "—", <RowActions key="a" onEdit={() => setEditing(c)} onDelete={() => setDeletingId(c.id)} />])}

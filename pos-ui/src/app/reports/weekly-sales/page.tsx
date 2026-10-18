@@ -24,7 +24,7 @@ function percent(value: number | null | undefined) {
 }
 
 export default function WeeklySalesPage() {
-  const { data, loading, error } = useApi<WeeklySalesRow[]>("/api/reports/weekly-sales");
+  const { data, loading, error, reload } = useApi<WeeklySalesRow[]>("/api/reports/weekly-sales");
   const rows = data ?? [];
 
   return (
@@ -34,6 +34,7 @@ export default function WeeklySalesPage() {
         error={error}
         empty={!loading && !error && rows.length === 0}
         emptyText="No sales days in the current week."
+        onRetry={reload}
       >
         <ListTable
           columns={[

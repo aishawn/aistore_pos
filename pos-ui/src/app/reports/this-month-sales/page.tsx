@@ -24,7 +24,7 @@ function percent(value: number | null | undefined) {
 }
 
 export default function ThisMonthSalesPage() {
-  const { data, loading, error } = useApi<ThisMonthSalesRow[]>("/api/reports/this-month-sales");
+  const { data, loading, error, reload } = useApi<ThisMonthSalesRow[]>("/api/reports/this-month-sales");
   const rows = data ?? [];
 
   return (
@@ -34,6 +34,7 @@ export default function ThisMonthSalesPage() {
         error={error}
         empty={!loading && !error && rows.length === 0}
         emptyText="No sales days in the current month."
+        onRetry={reload}
       >
         <ListTable
           columns={[
