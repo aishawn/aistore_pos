@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-18T05:35:34.831Z",
+  "generatedAt": "2026-10-18T05:43:19.314Z",
   "sourceCommit": "unverified-after-webhook",
   "deployment": "unverified-after-webhook",
   "target": "https://demo.orithos.com.au",
@@ -18,6 +18,18 @@
       "passed": true
     },
     {
+      "path": "/utilities/future-costs",
+      "retryVisible": true,
+      "recovered": true,
+      "passed": true
+    },
+    {
+      "path": "/utilities/future-prices",
+      "retryVisible": true,
+      "recovered": true,
+      "passed": true
+    },
+    {
       "path": "/promotions",
       "retryVisible": true,
       "recovered": true,
@@ -25,7 +37,7 @@
     }
   ],
   "writes": [],
-  "passed": 3,
+  "passed": 5,
   "failed": 0,
   "status": "PASS"
 }

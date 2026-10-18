@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `c76233d`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`ccb0879` 的 legacy Retry 和动态 utility 路由公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `4d7b4c4`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`4d7b4c4` 的 legacy Retry 和 utility 错误态公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -38,7 +38,7 @@ Statuses:
 | POS Retry 状态反馈 | 分类、客户和商品搜索 Retry 请求期间禁用重复点击并显示 `Retrying…` 与加载图标 | `18c9a1b` 后综合交互 `14/14`、POS 弹窗 `2/2`；订单 `16/16`，无写请求 |
 | 管理弹窗焦点 | 分类创建、分类编辑、价目表创建使用显式输入框初始焦点，移除原生 `autoFocus` 竞争 | `4e707f0` 后综合交互 `14/14`；分类创建移动焦点与触发按钮恢复通过 |
 | 新建盘点弹窗焦点 | 新建盘点弹窗补齐 `role=dialog`、`aria-modal`、标题关联和统一初始/恢复焦点 | `2c4d01c` 后综合交互 `14/14`；未执行盘点提交 |
-| 页面稳定性 | utility 动态页面使用 `dynamic = "force-dynamic"`、`fetchCache = "force-no-store"` 和显式 `revalidate = 0`，避免 Next.js 16 将客户端同名函数误当路由配置 | `/utilities/future-costs`、`/utilities/future-prices` 已线上复验 HTTP 200、`no-store` |
+| 页面稳定性 | utility 动态页面使用 `dynamic = "force-dynamic"` 与 `fetchCache = "force-no-store"`；移除显式 `revalidate` 导出，避免 Next.js 16 将客户端同名函数误当路由配置 | `/utilities/future-costs`、`/utilities/future-prices` 已线上复验 HTTP 200、`no-store`；故障注入后 Retry 恢复 |
 | 合并选择器焦点 | 客户合并和商品合并选择器接入统一 `useDialogFocus`，补齐 dialog 语义、标题关联、Escape/Tab 和关闭后恢复焦点；移除原生 `autoFocus` | 本轮线上综合交互 `14/14`、全站静态矩阵 `262/262`；未执行合并写入 |
 | 全屏创建表单焦点 | 商品创建、供应商创建全屏表单接入统一 dialog 语义和显式名称字段初始焦点；保留未保存离开确认 | 本轮线上综合交互 `14/14`、管理列表 `8/8`；未执行商品/供应商写入 |
 | Sommelier Identify 请求状态 | 搜索/拍照请求期间禁用重复提交，输入框暴露 `aria-busy`，文本搜索失败提供原地 `Retry search` | AI UI `2/2 PASS`；Sommelier 只读回归 `10/10 PASS`，AI 关闭/匿名保护不变 |
@@ -48,7 +48,7 @@ Statuses:
 | CSV 导入焦点时序 | 分类加载刚结束时，使用布局阶段立即聚焦可用文件控件，并保留动画帧重试，避免焦点短暂停在关闭按钮 | `9b1031c` 后综合交互串行 `14/14 PASS`；CSV 预览取消，无产品写入 |
 | 创建向导依赖错误恢复 | 客户分组、商品 family/tag 读取失败时提供原地 `Retry`，保留当前向导表单，不要求关闭重开 | `0e89492` 后综合交互 `14/14`、管理列表 `8/8`、订单页 `16/16 PASS`；无创建写入 |
 | Sommelier 读取错误恢复 | 推荐失败提供 `Retry recommendation`；酒款详情加载失败提供 Retry 并重新读取当前商品 | `c4ef5a4` 后 AI UI `2/2 PASS`、Sommelier 只读 `10/10 PASS`、综合交互 `14/14 PASS`；匿名保护和 Odoo 价格/库存一致性通过 |
-| Legacy 读取页面 Retry | Promotion categories/promotions、客户余额、关班与销售报表、支付方式/角色/税率/用户、邮件日志、回收站、供应商连接在读取失败时提供原地 Retry；客户余额桌面/移动视图共用同一 reload | `ccb0879` 部署后管理列表 `8/8`、综合交互 `14/14`、订单 `16/16`、设置移动端 `27/27 PASS`；故障注入探针 `UAT_LEGACY_RETRY_2026-10-18.json` 为 `3/3 PASS`、写请求 `0` |
+| Legacy 读取页面 Retry | Promotion categories/promotions、客户余额、关班与销售报表、支付方式/角色/税率/用户、邮件日志、回收站、供应商连接，以及 Future Costs/Future Prices 在读取失败时提供原地 Retry；客户余额桌面/移动视图共用同一 reload | `4d7b4c4` 部署后管理列表 `8/8`、综合交互 `14/14`；故障注入探针 `UAT_LEGACY_RETRY_2026-10-18.json` 为 `5/5 PASS`、写请求 `0` |
 
 ### 最新只读回归结果
 
@@ -78,6 +78,7 @@ Statuses:
 | `25bff27` 部署后回归 | AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14 PASS` | webhook 返回 200，等待约 5 分钟后串行回归通过；无业务写入 |
 | `23aa88e` utility 构建修复 | 待部署后复验 `/utilities/future-costs`、`/utilities/future-prices` | 本地检查通过；不把静态代码检查当作线上构建成功证据 |
 | `c76233d` 全站与 Retry 回归 | 全站 `262/262`、legacy Retry 故障注入 `3/3`、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14`、订单 `16/16` | 线上只读/故障注入通过；无业务写入；订单首轮一次导航 `ERR_ABORTED` 后串行重跑通过 |
+| `4d7b4c4` utility 错误态回归 | Future Costs/Future Prices 不再把读取失败显示为空数据；邮件日志、回收站、促销列表和两个 utility 页面故障注入 `5/5` | Retry 恢复通过、写请求 `0`；管理列表 `8/8`、综合交互 `14/14`；Dokploy 运行 SHA 仍待控制台独立回读 |
 
 ### 仍未放行
 
