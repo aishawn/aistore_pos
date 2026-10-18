@@ -289,6 +289,8 @@ Statuses:
 | Odoo 客户目录连接恢复 | 客户目录 session 探测失败显示 `Retry connection`，并在探测期间锁定按钮 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充只读注入证据 |
 | 设置页 Retry 状态 | Payment、Tax、Registers/Outlets、Roles 的错误恢复按钮在请求期间禁用并显示 `Retrying…` | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充设置页回归 |
 
+脚本静态验证：仓库内 `51/51` 个 UAT `.mjs` 文件通过 `node --check`；该结果不替代 Dokploy 目标提交的线上运行证据。
+
 ### 认证重放专项（待目标部署）
 
 新增脚本 `scripts/pilot-auth-replay-uat.mjs`。在当前公网版本的故障注入结果为：GET 401 后 `refreshRequests=2`、DELETE 401 后 `priceSetDeletes=2`；DELETE 请求全部被 Playwright 路由拦截，Demo 没有真实业务写入。证据：`docs/UAT_AUTH_REPLAY_2026-10-18.json`。这是旧公网版本的反证，不能绑定到当前代码；目标 `b4cc0d9` 部署后必须达到 GET refresh `1` 次、DELETE `1` 次。
