@@ -210,10 +210,12 @@ interface SellScreenState {
   promotionFilter: string;
   promotionItems: PromotionBrowseItem[];
   promotionLoading: boolean;
+  promotionError: string | null;
   promotionMenuOpen: boolean;
   productFolder: string;
   productItems: ProductBrowseItem[];
   productLoading: boolean;
+  productError: string | null;
 
   addProduct: (p: {
     id: string;
@@ -267,9 +269,11 @@ interface SellScreenState {
   openProducts: (folder?: string) => void;
   setPromotionPeriod: (p: PromotionPeriod) => void;
   setPromotionFilter: (q: string) => void;
+  retryPromotions: () => void;
   setPromotionMenuOpen: (open: boolean) => void;
   pickPromotionProduct: (item: PromotionBrowseItem) => void;
   pickBrowseProduct: (item: ProductBrowseItem) => void;
+  retryProducts: () => void;
   backToKeys: () => void;
   openNoteDialog: () => void;
   closeNoteDialog: () => void;
@@ -323,10 +327,12 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   const [promotionFilter, setPromotionFilterState] = useState("");
   const [promotionItems, setPromotionItems] = useState<PromotionBrowseItem[]>([]);
   const [promotionLoading, setPromotionLoading] = useState(false);
+  const [promotionError, setPromotionError] = useState<string | null>(null);
   const [promotionMenuOpen, setPromotionMenuOpen] = useState(false);
   const [productFolder, setProductFolder] = useState("Products");
   const [productItems, setProductItems] = useState<ProductBrowseItem[]>([]);
   const [productLoading, setProductLoading] = useState(false);
+  const [productError, setProductError] = useState<string | null>(null);
   const customerSearchRequestRef = useRef(0);
   const promotionRequestRef = useRef(0);
   const productBrowseRequestRef = useRef(0);
@@ -951,12 +957,16 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   const loadPromotionBrowse = useCallback((period: PromotionPeriod, q: string) => {
     const requestId = ++promotionRequestRef.current;
     setPromotionLoading(true);
+    setPromotionError(null);
     browsePromotions(period, q || undefined)
       .then((res) => {
         if (requestId === promotionRequestRef.current) setPromotionItems(res.items);
       })
       .catch(() => {
-        if (requestId === promotionRequestRef.current) setPromotionItems([]);
+        if (requestId === promotionRequestRef.current) {
+          setPromotionItems([]);
+          setPromotionError("Could not load promotions.");
+        }
       })
       .finally(() => {
         if (requestId === promotionRequestRef.current) setPromotionLoading(false);
@@ -966,6 +976,7 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
   const loadProductBrowse = useCallback((folder: string, q?: string) => {
     const requestId = ++productBrowseRequestRef.current;
     setProductLoading(true);
+    setProductError(null);
     const category = folder === "Products" ? undefined : folder;
     browseProducts(category, q)
       .then((res) => {
@@ -974,7 +985,10 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
         setProductFolder(res.folderName);
       })
       .catch(() => {
-        if (requestId === productBrowseRequestRef.current) setProductItems([]);
+        if (requestId === productBrowseRequestRef.current) {
+          setProductItems([]);
+          setProductError("Could not load products.");
+        }
       })
       .finally(() => {
         if (requestId === productBrowseRequestRef.current) setProductLoading(false);
@@ -1020,6 +1034,11 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
     [promotionPeriod, loadPromotionBrowse],
   );
 
+  const retryPromotions = useCallback(
+    () => loadPromotionBrowse(promotionPeriod, promotionFilter),
+    [loadPromotionBrowse, promotionPeriod, promotionFilter],
+  );
+
   const pickPromotionProduct = useCallback(
     (item: PromotionBrowseItem) => {
       addProduct({ id: item.productId, name: item.productName, unitPrice: item.price });
@@ -1042,6 +1061,11 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
       backToKeys();
     },
     [addProduct, backToKeys],
+  );
+
+  const retryProducts = useCallback(
+    () => loadProductBrowse(productFolder),
+    [loadProductBrowse, productFolder],
   );
 
   useEffect(() => {
@@ -1098,10 +1122,12 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
     promotionFilter,
     promotionItems,
     promotionLoading,
+    promotionError,
     promotionMenuOpen,
     productFolder,
     productItems,
     productLoading,
+    productError,
     addProduct,
     selectLine,
     incQty,
@@ -1145,9 +1171,11 @@ export function SellScreenProvider({ children }: { children: React.ReactNode }) 
     openProducts,
     setPromotionPeriod,
     setPromotionFilter,
+    retryPromotions,
     setPromotionMenuOpen,
     pickPromotionProduct,
     pickBrowseProduct,
+    retryProducts,
     backToKeys,
     openNoteDialog,
     closeNoteDialog,

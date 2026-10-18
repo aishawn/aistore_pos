@@ -922,6 +922,17 @@ function PromotionsPanel() {
       />
       {sell.promotionLoading ? (
         <p className="py-6 text-center text-[13px] text-[var(--oh-muted)]">Loading…</p>
+      ) : sell.promotionError ? (
+        <div role="alert" className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-rose-50 px-3 py-3 text-center text-[13px] text-rose-700">
+          <span>{sell.promotionError}</span>
+          <button
+            type="button"
+            onClick={sell.retryPromotions}
+            className="font-semibold underline underline-offset-2"
+          >
+            Retry
+          </button>
+        </div>
       ) : sell.promotionItems.length === 0 ? (
         <p className="py-6 text-center text-[13px] text-[var(--oh-muted)]">No promotions found</p>
       ) : (
@@ -972,6 +983,17 @@ function ProductsPanel() {
       </div>
       {sell.productLoading ? (
         <p className="py-10 text-center text-[13px] text-[var(--oh-muted)]">Loading…</p>
+      ) : sell.productError ? (
+        <div role="alert" className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-rose-50 px-3 py-3 text-center text-[13px] text-rose-700">
+          <span>{sell.productError}</span>
+          <button
+            type="button"
+            onClick={sell.retryProducts}
+            className="font-semibold underline underline-offset-2"
+          >
+            Retry
+          </button>
+        </div>
       ) : sell.productItems.length === 0 ? (
         <p className="py-10 text-center text-[13px] text-[var(--oh-muted)]">No products found</p>
       ) : (
