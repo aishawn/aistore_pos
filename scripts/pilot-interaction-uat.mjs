@@ -236,11 +236,11 @@ try {
       const dialog = page.getByRole("dialog", { name: "Import products from CSV" });
       await dialog.waitFor({ timeout: 10000 });
       const fileInput = dialog.locator('input[type="file"]');
-      if (!(await fileInput.evaluate((input) => document.activeElement === input))) throw new Error("CSV import dialog did not focus file chooser");
       await page.waitForFunction(() => {
         const input = document.querySelector('input[type="file"]');
         return Boolean(input && !input.disabled);
       }, null, { timeout: 15000 });
+      if (!(await fileInput.evaluate((input) => document.activeElement === input))) throw new Error("CSV import dialog did not focus file chooser after categories loaded");
       await dialog.locator('input[type="file"]').setInputFiles({
         name: "preview-only.csv",
         mimeType: "text/csv",

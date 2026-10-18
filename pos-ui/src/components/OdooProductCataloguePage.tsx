@@ -66,6 +66,11 @@ export function OdooProductCataloguePage() {
   useDialogFocus(newProductOpen, () => {
     if (!creatingProduct) setNewProductOpen(false);
   }, undefined, newProductNameInputRef);
+  useEffect(() => {
+    if (!importOpen || categoryLoading || importBusy) return;
+    const frame = window.requestAnimationFrame(() => importFileInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [categoryLoading, importBusy, importOpen]);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
 
   useEffect(() => {
