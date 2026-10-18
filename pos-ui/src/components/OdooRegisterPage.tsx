@@ -896,7 +896,7 @@ export function OdooRegisterPage() {
                   ))}
                 </select>
               </div>
-              {categoriesError && <div role="status" className="flex shrink-0 items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span>{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"><RefreshCw size={13} /> Retry categories</button></div>}
+              {categoriesError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span className="min-w-0 break-words">{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"><RefreshCw size={13} /> Retry categories</button></div>}
               <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
                 {productsLoading && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Still waiting for products from Odoo…</p>}
                 {productsLoading && !products.length ? (
@@ -1071,7 +1071,7 @@ export function OdooRegisterPage() {
             )}
           </div>
           {!customer && customerSearchLoading && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
-          {!customer && customerSearchError && <div role="alert" className="flex shrink-0 items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span>{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold"><RefreshCw size={13} /> Retry</button></div>}
+          {!customer && customerSearchError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span className="min-w-0 break-words">{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold"><RefreshCw size={13} /> Retry</button></div>}
           {!customer && customers.length > 0 && (
             <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
               {customers.map((item, index) => (
