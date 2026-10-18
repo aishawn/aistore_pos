@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-18T09:22:14.946Z",
+  "sourceCommit": "d9b3647",
+  "scope": "mocked authenticated read-only overview request race; no business writes",
+  "requests": [
+    {
+      "hours": 720,
+      "method": "GET"
+    },
+    {
+      "hours": 24,
+      "method": "GET"
+    },
+    {
+      "hours": 168,
+      "method": "GET"
+    }
+  ],
+  "writes": 0,
+  "status": "PASS",
+  "failure": null
+}

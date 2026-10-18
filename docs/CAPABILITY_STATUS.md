@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `1634b38`；报表竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `d9b3647`；报表与 Overview 竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,12 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `d9b3647` Overview 请求竞态批次
+
+- Overview 首页的 Odoo 报表读取增加请求序号保护；旧时间范围的迟到响应、错误和 loading 结束状态不会覆盖当前范围。
+- 新增 `scripts/pilot-overview-race-uat.mjs`；线上 mock 让 24 小时请求延迟，确认请求顺序 `720 → 24 → 168` 后，最终 UI 保留 7 天数据，业务写请求 `0`。
+- 证据：`docs/UAT_OVERVIEW_RACE_2026-10-18.json`。报表 Dashboard 竞态证据仍见 `docs/UAT_REPORTING_RACE_2026-10-18.json`。
 
 ### `699dab0` / `1634b38` 报表请求竞态批次
 

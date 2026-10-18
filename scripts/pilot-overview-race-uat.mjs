@@ -77,7 +77,10 @@ try {
   await page.getByRole("heading", { name: /Good|Morning|Afternoon|Evening/ }).waitFor({ timeout: 30000 });
   await page.getByText(/OVERVIEW-30D/).waitFor({ timeout: 30000 });
   await page.getByRole("button", { name: "24 hours", exact: true }).click();
-  await page.waitForTimeout(60);
+  for (let attempt = 0; attempt < 50 && !requests.some((request) => request.hours === 24); attempt += 1) {
+    await page.waitForTimeout(10);
+  }
+  if (!requests.some((request) => request.hours === 24)) throw new Error("RANGE_24_REQUEST_NOT_STARTED");
   await page.getByRole("button", { name: "7 days", exact: true }).click();
   await page.getByText(/OVERVIEW-7D/).waitFor({ timeout: 30000 });
   await page.waitForTimeout(1100);
