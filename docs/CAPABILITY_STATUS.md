@@ -285,6 +285,10 @@ Statuses:
 | 受保护文件下载 | 客户、商品模板、库存、外部盘点和礼品卡下载在 401 后刷新 token 并重试一次；写入请求不重放 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后做下载故障注入 |
 | 业务 API 写请求恢复 | 401 自动重试仅限 GET/HEAD/OPTIONS，销售、采购、导入和删除不会在刷新 token 后自动重放 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充写请求拦截证据 |
 
+### 认证重放专项（待目标部署）
+
+新增脚本 `scripts/pilot-auth-replay-uat.mjs`。在当前公网版本的故障注入结果为：GET 401 后 `refreshRequests=2`、DELETE 401 后 `priceSetDeletes=2`；DELETE 请求全部被 Playwright 路由拦截，Demo 没有真实业务写入。证据：`docs/UAT_AUTH_REPLAY_2026-10-18.json`。这是旧公网版本的反证，不能绑定到当前代码；目标 `b4cc0d9` 部署后必须达到 GET refresh `1` 次、DELETE `1` 次。
+
 本批次提交已推送 `origin/main`，当前代码为 `b4cc0d9`。Dokploy webhook `https://dokploy.modkie.com/api/deploy/compose/bIiwuE7McQD2kxJl3oG8j` 当前仍返回 `HTTP 301` 和 `Branch Not Match`，所以 `b4cc0d9` 尚未取得线上运行身份证据。当前发布结论继续保持 `NO-GO`；禁止把旧版本公网 UAT 的 `sourceCommit` 当作 Dokploy 审计 SHA。
 
 ## Register & sales
