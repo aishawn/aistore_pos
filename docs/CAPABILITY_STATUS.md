@@ -44,6 +44,14 @@ Statuses:
 - SMTP 邀请/密码重置邮件、正式现金差异审批、财务对账和采购财务流程未完成正式运营验收。
 - 多数创建、编辑、合并、销售、退款、收货、现金和关班写入回归使用隔离租户或 mock；Demo 租户禁止写入，不能把只读/mock 结果当成生产业务验收。
 
+### Dokploy 部署后验证（2026-10-18，用户确认已部署）
+
+- 管理列表 `8/8 PASS`；设置页 `27/27 PASS`（390/1440）；订单页 `16/16 PASS`，`pageErrors: []`、`mutatingApiRequests: []`。
+- 综合交互 `14/14 PASS`；AI surface `10/10 PASS`；AI availability `3/3 PASS`；平台恢复 `5/5 PASS`，所有平台恢复写请求均被拦截为 `0`。
+- 全站静态矩阵 `131` 路由 × `390/1440`，`262/262 PASS`；无 HTTP 失败、横向溢出或页面错误。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-18_58f1926.json`。
+- 商品详情 Tax rates 首次 `503` 后 Retry 恢复，390px 无溢出、无页面错误、写请求 `0`。证据：`docs/UAT_PRODUCT_VIEW_RETRY_2026-10-18.json`。
+- 用户提供 Dokploy 已部署，但控制台运行 SHA、构建日志和容器状态仍未独立回读；UAT 中的 `deployment/sourceCommit` 只代表脚本运行时基线，不能替代 Dokploy 证据。
+
 ## 2026-10-18 迭代快照
 
 ### `5569fbd` 供应链竞态线上回归
