@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, CircleAlert, LoaderCircle, LogIn, LogOut, RefreshCw } from "lucide-react";
 import {
   getOdooPosBootstrap,
@@ -23,12 +23,15 @@ export function OdooPosConnectionCard() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const requestRevision = useRef(0);
 
   const refreshConnection = useCallback(async () => {
+    const revision = ++requestRevision.current;
     setBusy(true);
     setMessage(null);
     try {
       const session = await getOdooSessionStatus();
+      if (revision !== requestRevision.current) return;
       setUser(session.user);
       setAutoRecoverConfigured(session.autoRecoverConfigured);
       if (!session.user) {
@@ -37,14 +40,17 @@ export function OdooPosConnectionCard() {
         return;
       }
       const pos = await getOdooPosBootstrap();
+      if (revision !== requestRevision.current) return;
       setBootstrap(pos);
       setState("connected");
       if (pos.message) setMessage(pos.message);
     } catch (error) {
-      setState("error");
-      setMessage(error instanceof Error ? error.message : "Could not connect to Odoo.");
+      if (revision === requestRevision.current) {
+        setState("error");
+        setMessage(error instanceof Error ? error.message : "Could not connect to Odoo.");
+      }
     } finally {
-      setBusy(false);
+      if (revision === requestRevision.current) setBusy(false);
     }
   }, []);
 
@@ -55,41 +61,50 @@ export function OdooPosConnectionCard() {
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    const revision = ++requestRevision.current;
     setBusy(true);
     setMessage(null);
     try {
       const sessionUser = await loginToOdoo(username.trim(), password);
+      if (revision !== requestRevision.current) return;
       setPassword("");
       if (!sessionUser) throw new Error("Odoo did not return a valid user session.");
       setUser(sessionUser);
       const pos = await getOdooPosBootstrap();
+      if (revision !== requestRevision.current) return;
       setBootstrap(pos);
       setState("connected");
       setMessage(pos.message ?? null);
     } catch (error) {
-      setState("error");
-      setMessage(error instanceof OdooApiError && error.status === 503
-        ? "Odoo connection is not configured on the POS server."
-        : error instanceof Error ? error.message : "Could not connect to Odoo.");
+      if (revision === requestRevision.current) {
+        setState("error");
+        setMessage(error instanceof OdooApiError && error.status === 503
+          ? "Odoo connection is not configured on the POS server."
+          : error instanceof Error ? error.message : "Could not connect to Odoo.");
+      }
     } finally {
-      setBusy(false);
+      if (revision === requestRevision.current) setBusy(false);
     }
   }
 
   async function disconnect() {
     if (busy) return;
+    const revision = ++requestRevision.current;
     setBusy(true);
     try {
       await logoutFromOdoo();
+      if (revision !== requestRevision.current) return;
       setUser(null);
       setBootstrap(null);
       setState("disconnected");
       setMessage(null);
     } catch (error) {
-      setState("error");
-      setMessage(error instanceof Error ? error.message : "Could not disconnect from Odoo.");
+      if (revision === requestRevision.current) {
+        setState("error");
+        setMessage(error instanceof Error ? error.message : "Could not disconnect from Odoo.");
+      }
     } finally {
-      setBusy(false);
+      if (revision === requestRevision.current) setBusy(false);
     }
   }
 
