@@ -206,15 +206,18 @@ try {
 
   await check("New product form blocks submission without a name", async () => {
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByRole("button", { name: "New product" }).click();
+    const trigger = page.getByRole("button", { name: "New product" });
+    await trigger.click();
     const dialog = page.getByRole("dialog", { name: "New product" });
     const name = dialog.getByLabel(/Product name/i);
     await name.waitFor({ timeout: 10000 });
+    if (!(await name.evaluate((input) => document.activeElement === input))) throw new Error("New product dialog did not focus Product name");
     const blocked = await name.evaluate((input) => input.required && input.form?.checkValidity() === false);
     if (!blocked) throw new Error("An empty product form can pass browser validation");
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await dialog.waitFor({ state: "detached", timeout: 10000 });
-    return "Product name is required; empty form validation was checked and the dialog was cancelled without creating a product.";
+    if (!(await trigger.evaluate((element) => document.activeElement === element))) throw new Error("New product dialog did not restore trigger focus");
+    return "Product name is required; dialog focus and trigger restoration passed; empty form validation was checked and no product was created.";
   });
 
   await check("CSV product import previews valid rows without writing to Odoo", async () => {
@@ -260,10 +263,12 @@ try {
   await check("Customer creation form is required-field guarded", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/customers/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByRole("button", { name: /New customer/i }).click();
+    const trigger = page.getByRole("button", { name: /New customer/i });
+    await trigger.click();
     const dialog = page.getByRole("dialog", { name: "New customer" });
     const name = dialog.getByLabel(/Customer name/i);
     await name.waitFor({ timeout: 10000 });
+    if (!(await name.evaluate((input) => document.activeElement === input))) throw new Error("New customer dialog did not focus Customer name");
     const dialogBox = await dialog.boundingBox();
     if (!dialogBox || dialogBox.width > 390 || dialogBox.height > 844) {
       throw new Error(`Customer creation dialog exceeds the 390x844 viewport: ${JSON.stringify(dialogBox)}`);
@@ -272,7 +277,8 @@ try {
     const emptyFormIsInvalid = await name.evaluate((input) => input.form?.checkValidity() === false);
     if (!emptyFormIsInvalid) throw new Error("An empty customer form passes browser validation");
     await page.getByRole("button", { name: "Close", exact: true }).click();
-    return "At 390px the customer dialog fit the viewport; Customer name is required and the empty form was cancelled without submission.";
+    if (!(await trigger.evaluate((element) => document.activeElement === element))) throw new Error("New customer dialog did not restore trigger focus");
+    return "At 390px the customer dialog fit the viewport; initial focus, trigger restoration, required Customer name and empty-form protection passed.";
   });
 
   await check("Customer mobile card and edit dialog render from a read-only fixture", async () => {
