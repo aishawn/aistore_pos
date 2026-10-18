@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `4d7b4c4`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`4d7b4c4` 的 legacy Retry 和 utility 错误态公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `48f4dd1`；UAT JSON 中的 `deployment` 字段由脚本写入本地 Git HEAD，不能作为 Dokploy 运行身份。`48f4dd1` 的详情 Retry、legacy Retry 和 utility 错误态公网回归已确认，Dokploy 完整 SHA、构建日志和容器状态仍待独立回读。仍不能把只读/UI 验证当作真实业务写入、硬件、生产 AI 或正式财务验收。
 
 ### 已完成能力
 
@@ -79,6 +79,7 @@ Statuses:
 | `23aa88e` utility 构建修复 | 待部署后复验 `/utilities/future-costs`、`/utilities/future-prices` | 本地检查通过；不把静态代码检查当作线上构建成功证据 |
 | `c76233d` 全站与 Retry 回归 | 全站 `262/262`、legacy Retry 故障注入 `3/3`、AI surface `10/10`、AI UI `2/2`、Sommelier `10/10`、综合交互 `14/14`、订单 `16/16` | 线上只读/故障注入通过；无业务写入；订单首轮一次导航 `ERR_ABORTED` 后串行重跑通过 |
 | `4d7b4c4` utility 错误态回归 | Future Costs/Future Prices 不再把读取失败显示为空数据；邮件日志、回收站、促销列表和两个 utility 页面故障注入 `5/5` | Retry 恢复通过、写请求 `0`；管理列表 `8/8`、综合交互 `14/14`；Dokploy 运行 SHA 仍待控制台独立回读 |
+| `48f4dd1` 详情读取恢复 | 订单查看/编辑、销售键编辑、客户账单、客户组详情、客户/商品合并选择器、商品详情和 AI 报表结果页在读取失败时提供原地 Retry；客户组子列表支持独立重试 | 线上订单 `16/16`、AI UI `2/2`、综合交互 `14/14`、全站静态矩阵 `262/262 PASS`；无业务写入 |
 
 ### 仍未放行
 
