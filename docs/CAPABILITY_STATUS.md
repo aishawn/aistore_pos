@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `6c963a8`；Register 焦点恢复、详情 Retry 和采购详情 mock UAT 已复验，POS 分类 Retry 待本提交部署后复验；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `fafe8eb`；Register 焦点恢复、详情 Retry 和采购详情 mock UAT 已复验，POS 分类 Retry 待本提交部署后复验；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
 
 ### 已完成能力
 
@@ -34,6 +34,7 @@ Statuses:
 | 采购/销售详情恢复 | Odoo 详情读取失败时保留当前记录并提供原地 Retry，避免返回列表重新定位 | `ca11348` 后采购详情 mock `PASS`；订单 `16/16`，无页面错误、无写请求 |
 | 商品目录分类恢复 | 分类 API 临时失败时提供独立 Retry，恢复筛选和 CSV 导入所需的分类数据 | `97b99ee` 后管理列表 `8/8`、综合交互 `14/14`、订单 `16/16`；无写请求 |
 | POS 分类恢复 | 收银页分类 API 临时失败时提供独立 `Retry categories`，恢复收银分类筛选 | `88ae390` 本地 typecheck、目标 ESLint 通过；待 Dokploy 部署后做故障注入复验 |
+| POS 错误条移动布局 | 分类和客户搜索错误条允许长错误文案换行，Retry 操作在 390px 仍可见 | `fafe8eb` 后综合交互 `14/14`、POS 弹窗 `2/2`；无写请求 |
 | 页面稳定性 | utility 动态页面由根布局统一使用 `dynamic = "force-dynamic"`；future costs/prices 局部 layout 移除可能触发 Next.js 16 构建误判的缓存导出 | `/utilities/future-costs`、`/utilities/future-prices` 等动态路由需在修复部署后复验 HTTP 200、`no-store` |
 
 ### 最新只读回归结果
