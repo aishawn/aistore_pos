@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Camera, FileImage, LoaderCircle, ReceiptText } from "lucide-react";
 import { useApi, useApiList } from "@/hooks/useApi";
 import { SelectChevronIcon } from "@/components/icons";
@@ -139,7 +140,19 @@ export function ScanInvoicePage() {
                 {loading ? "Reading invoice…" : preview ? "Choose another image" : "Photograph or upload"}
               </button>
             </div>
-            {preview && <figure className="mt-4 flex flex-col items-start gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:items-center"><img src={preview} alt="Invoice preview" className="max-h-64 max-w-full rounded-lg border border-[var(--oh-border)] object-contain" /><figcaption className="text-xs text-[var(--oh-muted)]">Uploaded invoice image</figcaption></figure>}
+            {preview && (
+              <figure className="mt-4 flex flex-col items-start gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:items-center">
+                <Image
+                  src={preview}
+                  alt="Invoice preview"
+                  width={640}
+                  height={256}
+                  unoptimized
+                  className="h-auto max-h-64 max-w-full rounded-lg border border-[var(--oh-border)] object-contain"
+                />
+                <figcaption className="text-xs text-[var(--oh-muted)]">Uploaded invoice image</figcaption>
+              </figure>
+            )}
           </section>
 
           <AsyncDependencyNotice
