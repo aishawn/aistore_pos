@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusIcon } from "@/components/icons";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
 import { Pagination } from "@/components/admin/Pagination";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
@@ -220,6 +220,10 @@ export function BulkPriceEditPage() {
           <span className="font-semibold text-black">{total.toLocaleString()}</span> Products
         </div>
       </div>
+
+      <AsyncDependencyNotice
+        dependencies={[{ label: "Categories", error: categories.error, onRetry: categories.reload }]}
+      />
 
       <div className="shrink-0 space-y-3 border-b border-neutral-200 px-6 py-4">
         <div className="flex gap-3">

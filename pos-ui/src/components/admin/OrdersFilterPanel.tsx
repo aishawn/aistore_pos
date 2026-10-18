@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
+import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import { FormDatePicker } from "@/components/admin/FormDatePicker";
 import { FilterSelect } from "@/components/admin/FilterSelect";
 import { useApi } from "@/hooks/useApi";
@@ -143,6 +144,15 @@ export function OrdersFilterPanel({
 
   return (
     <div>
+      <AsyncDependencyNotice
+        dependencies={[
+          { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
+          { label: "Transferees", error: transferees.error, onRetry: transferees.reload },
+          { label: "Outlets", error: outlets.error, onRetry: outlets.reload },
+          { label: "Products", error: products.error, onRetry: products.reload },
+          { label: "Users", error: users.error, onRetry: users.reload },
+        ]}
+      />
       <div className={filterGridClass}>
         <FilterSelect
           label="Status"

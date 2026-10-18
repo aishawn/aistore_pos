@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { QuestionIcon } from "@/components/icons";
 import { ClassificationFormSelect } from "@/components/admin/ClassificationFormSelect";
 import {
@@ -8,6 +8,8 @@ import {
   getDefaultStatementDateRange,
 } from "@/components/admin/FormDateRangePicker";
 import { useApi } from "@/hooks/useApi";
+import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface Named {
   id: string;
@@ -51,6 +53,8 @@ export function ViewAllStatementsModal({
   const statements = useApi<Named[]>("/api/statements");
   const [range, setRange] = useState(getDefaultStatementDateRange);
   const [statementTemplateId, setStatementTemplateId] = useState("");
+  const titleId = useId();
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -64,11 +68,13 @@ export function ViewAllStatementsModal({
     setStatementTemplateId(preferred.id);
   }, [open, statements.data, statementTemplateId]);
 
-  if (!open) return null;
-
   function close() {
     onClose();
   }
+
+  useDialogFocus(open, close, "view-statements", cancelRef);
+
+  if (!open) return null;
 
   function submit() {
     if (!range.start || !range.end) return;
@@ -84,6 +90,9 @@ export function ViewAllStatementsModal({
       onClick={close}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="relative w-full max-w-[420px] rounded-lg bg-white px-8 pb-8 pt-14 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -91,7 +100,7 @@ export function ViewAllStatementsModal({
           <QuestionIcon size={36} className="text-white" strokeWidth={1.5} />
         </div>
 
-        <h2 className="text-center text-[22px] font-bold text-black">View Statement</h2>
+        <h2 id={titleId} className="text-center text-[22px] font-bold text-black">View Statement</h2>
         {customerName && (
           <p className="mt-2 text-center text-[15px] text-neutral-600">{customerName}</p>
         )}
@@ -114,8 +123,13 @@ export function ViewAllStatementsModal({
           />
         </label>
 
+        <AsyncDependencyNotice
+          dependencies={[{ label: "Statement templates", error: statements.error, onRetry: statements.reload }]}
+        />
+
         <div className="mt-6 flex gap-3">
           <button
+            ref={cancelRef}
             type="button"
             onClick={close}
             className="flex-1 rounded border border-neutral-300 bg-white py-2.5 text-[15px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
@@ -125,7 +139,7 @@ export function ViewAllStatementsModal({
           <button
             type="button"
             onClick={submit}
-            disabled={!range.start || !range.end || !statementTemplateId}
+            disabled={!range.start || !range.end || !statementTemplateId || statements.loading || Boolean(statements.error)}
             className="flex-1 rounded bg-[#5cb3e0] py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#4aa3d0] disabled:opacity-60"
           >
             View

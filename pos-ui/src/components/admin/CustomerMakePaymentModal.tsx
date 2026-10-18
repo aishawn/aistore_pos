@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/hooks/useApi";
 import { Modal } from "@/components/admin/Modal";
+import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 
 interface PaymentMethod {
   id: string;
@@ -71,7 +72,7 @@ export function CustomerMakePaymentModal({
           <button
             type="button"
             onClick={submit}
-            disabled={busy}
+            disabled={busy || methods.loading || Boolean(methods.error)}
             className="rounded-md bg-[var(--oh-success)] px-5 py-2 text-[15px] font-semibold text-white disabled:opacity-60"
           >
             {busy ? "Processing…" : "Record Payment"}
@@ -83,6 +84,10 @@ export function CustomerMakePaymentModal({
         <p className="text-[14px] text-[var(--oh-text-secondary)]">
           Recording payment for <span className="font-semibold text-[var(--oh-text)]">{customerName}</span>
         </p>
+
+        <AsyncDependencyNotice
+          dependencies={[{ label: "Payment methods", error: methods.error, onRetry: methods.reload }]}
+        />
 
         <label className="flex flex-col text-[14px] text-neutral-700">
           Amount
