@@ -66,7 +66,7 @@ try {
   await mobileCard.waitFor({ timeout: 10000 });
   if (!(await mobileCard.getByText("UAT Mock Supplier (not saved)").count())) throw new Error("Mobile purchase card is missing supplier information");
   await mobileCard.getByRole("button", { name: "View order" }).click();
-  const detailErrorDialog = page.getByRole("dialog", { name: "Purchase details" });
+  const detailErrorDialog = page.getByRole("alertdialog", { name: "Purchase details" });
   await detailErrorDialog.waitFor({ timeout: 15000 });
   await detailErrorDialog.getByRole("button", { name: "Retry details" }).click();
   const detailDialog = page.getByRole("dialog", { name: "UAT-RFQ-MOCK-001" });
