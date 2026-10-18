@@ -30,7 +30,7 @@ Statuses:
 | CSV 导入弹窗 | 分类数据加载完成后自动把焦点补到可用文件选择控件，避免首次打开时控件 disabled 导致键盘焦点停在关闭按钮 | `70cf8d2` 后综合交互 `14/14`；CSV 预览取消，无产品写入 |
 | 商品图片 | Odoo 商品图片安全读取 API、JPEG/PNG/WebP 上传压缩、目录/收银搜索/购物车缩略图和无图片分类 fallback | 图片只读探针：目录页 `54` 个图片元素、`13` 次请求、`0` 个 `5xx`、`0` 页面错误；无图商品 `404` 后正常 fallback |
 | 收银焦点 | 销售备注、折扣和 Finalise Sale 客户选择弹窗使用显式 `initialFocusRef`；移除原生 `autoFocus`，避免关闭后无法恢复触发按钮焦点 | POS 弹窗 `2/2`、串行综合交互 `14/14`；订单 `16/16`、无写请求 |
-| 收银弹窗恢复（待部署） | `useDialogFocus` 排除 `aria-hidden`/`inert` 后代；原触发控件 disabled 时恢复到 Register 选择器 | 本地 typecheck、目标 ESLint 通过；需部署后用 POS 弹窗/交互 UAT 复验 |
+| 收银弹窗恢复 | `useDialogFocus` 排除 `aria-hidden`/`inert` 后代；原触发控件 disabled 时恢复到 Register 选择器 | 部署后 POS 弹窗 `2/2`、综合交互 `14/14`；未产生业务写入 |
 | 页面稳定性 | utility 动态页面由根布局统一使用 `dynamic = "force-dynamic"`；future costs/prices 局部 layout 移除可能触发 Next.js 16 构建误判的缓存导出 | `/utilities/future-costs`、`/utilities/future-prices` 等动态路由需在修复部署后复验 HTTP 200、`no-store` |
 
 ### 最新只读回归结果
@@ -41,6 +41,7 @@ Statuses:
 | 综合交互 | `14/14 PASS` | 移动导航、筛选、弹窗、表单保护、补货和报表 |
 | 管理列表 | `8/8 PASS` | 商品、客户、供应商、采购及 utility 列表 |
 | 订单页面 | `16/16 PASS` | 订单/采购/销售历史，0 页面错误、0 写请求 |
+| 动态路由部署后复验 | `3/3 PASS` | `/`、`/utilities/future-costs`、`/utilities/future-prices` HTTP 200；`no-store` 响应头 |
 | 设置页面 | `27/27 PASS` | 390/1440，设置只读视图与无溢出 |
 | AI surface/UI | `10/10`、`2/2 PASS` | 2026-10-18 线上只读复验；AI 保持关闭时的配置、权限和匿名保护 |
 | 本轮定向回归 | `14/14`、`16/16`、`2/2 PASS` | `36bcfdf` 部署等待后；订单 `pageErrors: []`、`mutatingApiRequests: []` |
