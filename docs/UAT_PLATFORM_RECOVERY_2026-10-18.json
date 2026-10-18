@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-18T08:07:43.302Z",
-  "sourceCommit": "6c33147",
+  "generatedAt": "2026-10-18T08:23:35.295Z",
+  "sourceCommit": "383c8a5",
   "deployment": "unverified-after-deploy",
   "scope": "mocked authenticated UI recovery checks; all business writes intercepted",
   "status": "PASS",
@@ -11,6 +11,14 @@
     },
     {
       "name": "price set delete failure stays in dialog and retries",
+      "passed": true
+    },
+    {
+      "name": "promotion category delete failure stays in dialog and retries",
+      "passed": true
+    },
+    {
+      "name": "vendor connection delete failure stays in dialog and retries",
       "passed": true
     }
   ],

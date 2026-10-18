@@ -132,7 +132,7 @@ try {
 
   await demoPage.goto("https://demo.orithos.com.au/promotion/categories", { waitUntil: "domcontentloaded", timeout: 60000 });
   await demoPage.getByRole("heading", { name: "Promotion Categories", exact: true }).waitFor({ timeout: 30000 });
-  await demoPage.locator("button").filter({ hasText: "Delete" }).first().click();
+  await demoPage.locator("button:visible").filter({ hasText: "Delete" }).first().click();
   const categoryDialog = demoPage.getByRole("alertdialog");
   await categoryDialog.getByRole("button", { name: "Delete category", exact: true }).click();
   await categoryDialog.getByRole("alert").getByText("Injected linked category failure", { exact: true }).waitFor({ timeout: 10000 });
@@ -156,7 +156,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: "6c33147",
+  sourceCommit: "383c8a5",
   deployment: "unverified-after-deploy",
   scope: "mocked authenticated UI recovery checks; all business writes intercepted",
   status: checks.every((check) => check.passed) ? "PASS" : "FAIL",
