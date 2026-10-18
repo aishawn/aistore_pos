@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-18T08:07:43.302Z",
+  "sourceCommit": "6c33147",
+  "deployment": "unverified-after-deploy",
+  "scope": "mocked authenticated UI recovery checks; all business writes intercepted",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "platform store detail 503 -> Try again -> recovered",
+      "passed": true
+    },
+    {
+      "name": "price set delete failure stays in dialog and retries",
+      "passed": true
+    }
+  ],
+  "writes": 0
+}
