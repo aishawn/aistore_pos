@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
 import {
@@ -39,6 +39,7 @@ export function OdooCloseRegisterPage() {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
+  const requestRevision = useRef(0);
 
   useDialogFocus(confirming, () => {
     if (!busy) setConfirming(false);
@@ -46,10 +47,12 @@ export function OdooCloseRegisterPage() {
   const [result, setResult] = useState<{ sessionName: string; registerName: string; state: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
+    const revision = ++requestRevision.current;
     setLoading(true);
     setError(null);
     try {
       const user = await getOdooSession();
+      if (revision !== requestRevision.current) return;
       setConnected(Boolean(user));
       setOdooUserId(user?.id ?? null);
       if (!user) {
@@ -57,6 +60,7 @@ export function OdooCloseRegisterPage() {
         return;
       }
       const data = await getOdooPosBootstrap();
+      if (revision !== requestRevision.current) return;
       setBootstrap(data);
       setLastLoadedAt(Date.now());
       let rememberedId: number | null = null;
@@ -72,9 +76,11 @@ export function OdooCloseRegisterPage() {
         try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${user.id}`, String(open.id)); } catch { /* Keep the current selection for this session. */ }
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load Odoo registers.");
+      if (revision === requestRevision.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load Odoo registers.");
+      }
     } finally {
-      setLoading(false);
+      if (revision === requestRevision.current) setLoading(false);
     }
   }, []);
 
