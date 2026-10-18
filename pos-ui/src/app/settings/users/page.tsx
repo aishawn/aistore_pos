@@ -28,7 +28,6 @@ type Panel = "none" | "invite" | "create";
 export default function UsersSettingsPage() {
   const { user, ready } = useAuth();
   const { data, loading, error, reload } = useApi<StoreUser[]>("/api/users");
-  const users = data ?? [];
 
   const [panel, setPanel] = useState<Panel>("none");
   const [busy, setBusy] = useState(false);
@@ -41,13 +40,13 @@ export default function UsersSettingsPage() {
 
   const sortedUsers = useMemo(
     () =>
-      [...users].sort((a, b) => {
+      [...(data ?? [])].sort((a, b) => {
         if (Boolean(a.isAdmin) !== Boolean(b.isAdmin)) {
           return a.isAdmin ? -1 : 1;
         }
         return (a.name || a.username).localeCompare(b.name || b.username);
       }),
-    [users],
+    [data],
   );
 
   async function onInvite(event: FormEvent<HTMLFormElement>) {
