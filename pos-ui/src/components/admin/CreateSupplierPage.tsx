@@ -624,10 +624,6 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
 
   useDialogFocus(true, leavePage, `supplier-page-${supplierId ?? "new"}`, nameInputRef);
 
-  useEffect(() => {
-    void loadMdbReferences();
-  }, []);
-
   function set<K extends keyof SupplierForm>(key: K, value: SupplierForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
@@ -637,7 +633,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
     sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  async function loadMdbReferences() {
+  const loadMdbReferences = useCallback(async () => {
     if (mdbOptions.length > 0) return;
     setMdbLoading(true);
     setMdbError(null);
@@ -650,7 +646,11 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
     } finally {
       setMdbLoading(false);
     }
-  }
+  }, [mdbOptions.length]);
+
+  useEffect(() => {
+    void loadMdbReferences();
+  }, [loadMdbReferences]);
 
   function addContact() {
     setAdditionalContacts((prev) => [
