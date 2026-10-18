@@ -22,7 +22,7 @@ import {
   AdminPrimaryButton,
   AdminSearchInput,
 } from "@/components/admin/AdminPageLayout";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -264,6 +264,9 @@ export default function BalancesPage() {
       }
     >
       <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] text-[13px]">
+        <AsyncDependencyNotice
+          dependencies={[{ label: "Customer groups", error: groups.error, onRetry: groups.reload }]}
+        />
         <div className="md:hidden">
           <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
             {items.map((c) => (

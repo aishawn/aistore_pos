@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Gift, LoaderCircle, Search, Upload } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
+import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import { ListTable } from "@/components/admin/ListTable";
 import { Pagination } from "@/components/admin/Pagination";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
@@ -126,7 +127,9 @@ export default function GiftCardsPage() {
         </button>
       </div>
 
-      {outlets.error && <p role="status" className="mb-3 text-xs text-[var(--oh-muted)]">Outlet filtering is unavailable because outlets could not be loaded.</p>}
+      <AsyncDependencyNotice
+        dependencies={[{ label: "Outlets", error: outlets.error, onRetry: outlets.reload }]}
+      />
       {exportError && <p role="alert" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{exportError}</p>}
 
       {loading ? (
