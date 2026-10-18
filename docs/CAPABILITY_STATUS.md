@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `a001d89`；包含 `92b0316` 结算计时稳定性与 `ca8855e` 库存/盘点恢复；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `16d854e`；包含 `92b0316` 结算计时稳定性、`ca8855e` 库存/盘点恢复与匿名 AI 端点鉴权回归；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,11 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `16d854e` 匿名 AI 端点鉴权回归
+
+- 未登录访问配置、assistant、report、Sommelier、语音转写和酒标识别等 AI 端点均返回 `401`，共 `11/11 PASS`，没有业务写入。
+- 证据：`docs/UAT_AI_ANONYMOUS_2026-10-18.json`。生产 AI 仍保持关闭策略；Dokploy 控制台运行 SHA、构建日志和容器状态仍待独立回读。
 
 ### `92b0316` 结算完成计时稳定性
 
