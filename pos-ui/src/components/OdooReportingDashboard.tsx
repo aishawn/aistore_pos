@@ -98,6 +98,14 @@ export function OdooReportingDashboard() {
 
   const averageOrder = data?.transactions ? data.grossSales / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [])), [data]);
+  const trendSummary = useMemo(() => {
+    if (!data?.trend.length) return "No sales in this period.";
+    const totalRevenue = data.trend.reduce((sum, item) => sum + item.revenue, 0);
+    const totalTransactions = data.trend.reduce((sum, item) => sum + item.transactions, 0);
+    const peak = data.trend.reduce((highest, item) => item.revenue > highest.revenue ? item : highest, data.trend[0]);
+    const peakLabel = formatGroupedDate(peak.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+    return `${data.trend.length} periods with ${formatMoney(totalRevenue, data.currency)} in sales across ${totalTransactions} transactions. Highest period: ${peakLabel} at ${formatMoney(peak.revenue, data.currency)}.`;
+  }, [data]);
 
   if (loading && !data) return <DashboardSkeleton />;
 
@@ -176,7 +184,8 @@ export function OdooReportingDashboard() {
           </div>
           {data?.trend.length ? (
             <>
-            <div className="mt-6 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2 sm:gap-3">
+            <div aria-describedby="sales-trend-summary" className="mt-6 flex h-48 items-end gap-2 border-b border-l border-[var(--oh-border)] px-2 pb-0 pt-2 sm:gap-3">
+              <p id="sales-trend-summary" className="sr-only">{trendSummary}</p>
               {data.trend.map((item, index) => {
                 const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
                 const label = formatGroupedDate(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
