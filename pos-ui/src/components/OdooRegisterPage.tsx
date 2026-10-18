@@ -789,13 +789,14 @@ export function OdooRegisterPage() {
       )}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+        <section aria-label="POS products and parked sales" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           {saleView === "sell" ? (
             <>
               <div role="group" aria-label="Search and filter POS products" className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-3 sm:px-4">
                 <Search size={18} className="shrink-0 text-[var(--sf-placeholder)]" />
                 <input
                   aria-label="Search products by name, barcode or code"
+                  aria-controls="pos-product-results"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   onKeyDown={(event) => void handleProductSearchKeyDown(event)}
@@ -820,7 +821,7 @@ export function OdooRegisterPage() {
                 </select>
               </div>
               {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
-              <div className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
+              <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
                 {productsLoading && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Still waiting for products from Odoo…</p>}
                 {productsLoading && !products.length ? (
                   <div aria-label="Loading products" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
@@ -893,7 +894,7 @@ export function OdooRegisterPage() {
               </div>
             </>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
+            <div id="parked-sales-panel" className="min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
               <p className="mb-3 flex items-start gap-2 rounded-xl border border-[var(--oh-border)] bg-white p-3 text-xs leading-5 text-[var(--oh-text-secondary)]">
                 <Clock3 size={15} className="mt-0.5 shrink-0" />
                 Parked sales are saved on this terminal.
@@ -930,6 +931,7 @@ export function OdooRegisterPage() {
                 type="button"
                 role="tab"
                 aria-selected={saleView === "sell"}
+                aria-controls="pos-product-results"
                 onClick={() => setSaleView("sell")}
                 className={cn(
                   "oh-type-body flex h-11 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-colors",
@@ -942,6 +944,7 @@ export function OdooRegisterPage() {
                 type="button"
                 role="tab"
                 aria-selected={saleView === "parked"}
+                aria-controls="parked-sales-panel"
                 onClick={() => setSaleView("parked")}
                 className={cn(
                   "oh-type-body relative flex h-11 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-colors",
@@ -974,6 +977,8 @@ export function OdooRegisterPage() {
                 <PlusIcon size={18} strokeWidth={1.5} className="ml-3 mr-2 shrink-0 text-[var(--oh-primary)]" />
                 <input
                   value={customerQuery}
+                  aria-label="Search customers"
+                  aria-controls="customer-search-results"
                   onChange={(event) => { setCustomers([]); setCustomerQuery(event.target.value); }}
                   placeholder="Add customer"
                   className="oh-type-body-strong h-full min-w-0 flex-1 bg-transparent text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
@@ -984,9 +989,9 @@ export function OdooRegisterPage() {
           {!customer && customerSearchLoading && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
           {!customer && customerSearchError && <div role="alert" className="flex shrink-0 items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span>{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold"><RefreshCw size={13} /> Retry</button></div>}
           {!customer && customers.length > 0 && (
-            <div className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
+            <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
               {customers.map((item) => (
-                <button key={item.id} type="button" onClick={() => { customerSearchRevision.current += 1; setCustomerSearchLoading(false); setCustomerSearchError(null); setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]">
+                <button key={item.id} type="button" role="option" aria-selected={false} onClick={() => { customerSearchRevision.current += 1; setCustomerSearchLoading(false); setCustomerSearchError(null); setCustomer(item); setCustomers([]); setCustomerQuery(""); }} className="block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]">
                   {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
                 </button>
               ))}
@@ -1109,7 +1114,7 @@ export function OdooRegisterPage() {
           <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></header>
           <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatStoreDate(receipt.date, receipt.timezone)}</p></div>
           <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 border-y border-dashed border-[var(--oh-border)] py-3 text-xs"><dt className="text-[var(--oh-muted)]">Customer</dt><dd className="text-right font-medium text-[var(--oh-text)]">{receipt.customerName}</dd><dt className="text-[var(--oh-muted)]">Register</dt><dd className="text-right text-[var(--oh-text)]">{receipt.session}</dd></dl>
-          <table className="mt-4 w-full text-xs"><thead><tr className="border-b border-[var(--oh-border)] text-[var(--oh-muted)]"><th className="pb-2 text-left font-semibold">Item</th><th className="pb-2 text-right font-semibold">Qty</th><th className="pb-2 text-right font-semibold">Total</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{receipt.lines.map((line, index) => <tr key={`${line.name}-${index}`}><td className="py-2 pr-2 font-medium text-[var(--oh-text)]">{line.name}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.quantity}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text)]">{money(line.total)}</td></tr>)}</tbody></table>
+          <table className="mt-4 w-full text-xs"><thead><tr className="border-b border-[var(--oh-border)] text-[var(--oh-muted)]"><th scope="col" className="pb-2 text-left font-semibold">Item</th><th scope="col" className="pb-2 text-right font-semibold">Qty</th><th scope="col" className="pb-2 text-right font-semibold">Total</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{receipt.lines.map((line, index) => <tr key={`${line.name}-${index}`}><td className="py-2 pr-2 font-medium text-[var(--oh-text)]">{line.name}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.quantity}</td><td className="py-2 text-right tabular-nums text-[var(--oh-text)]">{money(line.total)}</td></tr>)}</tbody></table>
           <dl className="mt-4 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Subtotal</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.subtotal)}</dd><dt className="text-[var(--oh-muted)]">Tax</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.gst)}</dd><dt className="border-t border-[var(--oh-border)] pt-2 text-sm font-bold text-[var(--oh-text)]">Total</dt><dd className="border-t border-[var(--oh-border)] pt-2 text-right text-sm font-bold tabular-nums text-[var(--oh-text)]">{money(receipt.total)}</dd></dl>
           <section className="mt-4 border-t border-dashed border-[var(--oh-border)] pt-3"><h4 className="text-xs font-semibold text-[var(--oh-text)]">Payment</h4><dl className="mt-2 grid grid-cols-2 gap-y-1.5 text-xs"><dt className="text-[var(--oh-muted)]">Method</dt><dd className="text-right text-[var(--oh-text)]">{receipt.paymentMethod}</dd>{receipt.change > 0 && <><dt className="text-[var(--oh-muted)]">Cash received</dt><dd className="text-right tabular-nums text-[var(--oh-text)]">{money(receipt.tendered)}</dd><dt className="font-semibold text-[var(--oh-text)]">Change</dt><dd className="text-right font-semibold tabular-nums text-[var(--oh-text)]">{money(receipt.change)}</dd></>}</dl></section>
           <p className="mt-5 text-center text-[13px] text-[var(--oh-muted)]">Thank you for shopping with us.</p>
