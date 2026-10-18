@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-18T05:35:34.831Z",
+  "sourceCommit": "unverified-after-webhook",
+  "deployment": "unverified-after-webhook",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only injected 503 recovery; no business writes",
+  "results": [
+    {
+      "path": "/utilities/mail-log",
+      "retryVisible": true,
+      "recovered": true,
+      "passed": true
+    },
+    {
+      "path": "/utilities/trashed-items",
+      "retryVisible": true,
+      "recovered": true,
+      "passed": true
+    },
+    {
+      "path": "/promotions",
+      "retryVisible": true,
+      "recovered": true,
+      "passed": true
+    }
+  ],
+  "writes": [],
+  "passed": 3,
+  "failed": 0,
+  "status": "PASS"
+}
