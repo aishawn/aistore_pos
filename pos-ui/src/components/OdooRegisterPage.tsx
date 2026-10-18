@@ -126,6 +126,7 @@ export function OdooRegisterPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [posCategories, setPosCategories] = useState<OdooPosCategoryRecord[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [categoryRetryKey, setCategoryRetryKey] = useState(0);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
   const [productActiveIndex, setProductActiveIndex] = useState(-1);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -331,7 +332,7 @@ export function OdooRegisterPage() {
       .then((result) => { if (!cancelled) { setPosCategories(result.items); setCategoriesError(null); } })
       .catch((cause) => { if (!cancelled) setCategoriesError(cause instanceof Error ? cause.message : "Product categories could not be loaded."); });
     return () => { cancelled = true; };
-  }, [connected]);
+  }, [categoryRetryKey, connected]);
 
   useEffect(() => {
     const revision = ++customerSearchRevision.current;
@@ -895,7 +896,7 @@ export function OdooRegisterPage() {
                   ))}
                 </select>
               </div>
-              {categoriesError && <p role="status" className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900">{categoriesError}</p>}
+              {categoriesError && <div role="status" className="flex shrink-0 items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span>{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"><RefreshCw size={13} /> Retry categories</button></div>}
               <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
                 {productsLoading && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Still waiting for products from Odoo…</p>}
                 {productsLoading && !products.length ? (
