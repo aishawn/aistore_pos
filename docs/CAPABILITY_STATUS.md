@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `477d3a3`；商品删除恢复功能代码基线 `556923d`；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `1634b38`；报表竞态保护已推送；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,13 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `699dab0` / `1634b38` 报表请求竞态批次
+
+- `OdooReportingDashboard` 为每次读取分配请求序号；旧范围的迟到响应、错误和 loading 结束状态不会覆盖当前最新范围。
+- 新增 `scripts/pilot-reporting-race-uat.mjs`，让 24 小时响应延迟、7 天响应快速返回，验证最终页面仍显示最新 7 天数据。
+- Dokploy 部署后线上证据：报表竞态 `PASS`（请求顺序 `8 → 24 → 168`，业务写请求 `0`）；正常报表 `2/2 PASS`；关班恢复 `2/2 PASS`；管理列表 `8/8 PASS`；综合交互 `14/14 PASS`。
+- 证据：`docs/UAT_REPORTING_RACE_2026-10-18.json`、`docs/UAT_REPORTING_2026-10-14.json`、`docs/UAT_CLOSURE_RECOVERY_2026-10-18.json`。公网行为已验证，但 Dokploy 控制台运行 SHA、构建日志和容器状态仍未独立回读。
 
 ### 待部署批次：共享数据恢复与平台店铺管理
 
