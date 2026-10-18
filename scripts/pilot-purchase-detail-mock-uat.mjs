@@ -49,9 +49,14 @@ try {
   };
   await page.route("**/api/odoo/session**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: 1, name: "UAT" }, autoRecoverConfigured: true }) }));
   await page.route("**/api/odoo/purchase-orders?**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [order], limit: 40, offset: 0, hasNext: false }) }));
-  await page.route("**/api/odoo/purchase-orders/987654", (route) => route.request().method() === "GET"
-    ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(detail) })
-    : route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "Unexpected write blocked in UAT" }) }));
+  let detailAttempts = 0;
+  await page.route("**/api/odoo/purchase-orders/987654", (route) => {
+    if (route.request().method() !== "GET") return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "Unexpected write blocked in UAT" }) });
+    detailAttempts += 1;
+    return detailAttempts === 1
+      ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Temporary Odoo detail outage" }) })
+      : route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(detail) });
+  });
 
   await page.goto(`${base}/purchases/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
   const listLayout = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
@@ -61,6 +66,9 @@ try {
   await mobileCard.waitFor({ timeout: 10000 });
   if (!(await mobileCard.getByText("UAT Mock Supplier (not saved)").count())) throw new Error("Mobile purchase card is missing supplier information");
   await mobileCard.getByRole("button", { name: "View order" }).click();
+  const detailErrorDialog = page.getByRole("alertdialog", { name: "Purchase details" });
+  await detailErrorDialog.waitFor({ timeout: 15000 });
+  await detailErrorDialog.getByRole("button", { name: "Retry details" }).click();
   const detailDialog = page.getByRole("dialog", { name: "UAT-RFQ-MOCK-001" });
   await detailDialog.waitFor({ timeout: 15000 });
   const detailBox = await detailDialog.boundingBox();
@@ -79,7 +87,7 @@ try {
   await confirmDialog.waitFor({ state: "detached", timeout: 10000 });
   await detailDialog.getByRole("button", { name: "Close", exact: true }).last().click();
   if (writes.length) throw new Error("PURCHASE_CONFIRM_WRITE_DETECTED");
-  const output = { generatedAt: new Date().toISOString(), deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), status: "PASS", viewport: 390, fixture: "mock RFQ only; no Odoo write", checks: ["mobile purchase list has no horizontal overflow", "RFQ is displayed as a supplier card, not a wide table", "mobile detail dialog fits viewport", "purchase line uses mobile card instead of table", "RFQ detail and line rendered", "AUD total and tax rendered", "internal approval chatter rendered as escaped plain text", "empty incoming receipt state rendered", "purchase confirmation requires a second dialog", "confirmation dialog cancelled", "no purchase confirmation POST observed"] };
+  const output = { generatedAt: new Date().toISOString(), deployment: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), status: "PASS", viewport: 390, fixture: "mock RFQ only; no Odoo write", checks: ["mobile purchase list has no horizontal overflow", "RFQ is displayed as a supplier card, not a wide table", "detail error exposes a retry action", "retry reloads the same purchase detail", "mobile detail dialog fits viewport", "purchase line uses mobile card instead of table", "RFQ detail and line rendered", "AUD total and tax rendered", "internal approval chatter rendered as escaped plain text", "empty incoming receipt state rendered", "purchase confirmation requires a second dialog", "confirmation dialog cancelled", "no purchase confirmation POST observed"] };
   const outputPath = path.join(root, "docs", "UAT_PURCHASE_MOBILE_2026-10-14.json");
   fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
   console.log(JSON.stringify({ outputPath, ...output }));

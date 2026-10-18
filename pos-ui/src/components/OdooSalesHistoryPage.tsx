@@ -179,6 +179,7 @@ export function OdooSalesHistoryPage() {
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saleDetail, setSaleDetail] = useState<OdooSaleDetail | null>(null);
+  const [saleDetailId, setSaleDetailId] = useState<number | null>(null);
   const [saleDetailLoading, setSaleDetailLoading] = useState(false);
   const [saleDetailError, setSaleDetailError] = useState<string | null>(null);
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
@@ -275,6 +276,7 @@ export function OdooSalesHistoryPage() {
 
   async function openSale(saleId: number) {
     const revision = ++detailRevision.current;
+    setSaleDetailId(saleId);
     setSaleDetail(null);
     setSaleDetailError(null);
     setSaleDetailLoading(true);
@@ -292,6 +294,7 @@ export function OdooSalesHistoryPage() {
 
   function closeSale() {
     detailRevision.current += 1;
+    setSaleDetailId(null);
     setSaleDetail(null);
     setSaleDetailLoading(false);
     setSaleDetailError(null);
@@ -533,7 +536,7 @@ export function OdooSalesHistoryPage() {
 
       {(saleDetailLoading || saleDetailError || saleDetail) && <div className="receipt-overlay fixed inset-0 z-50 grid grid-cols-[minmax(0,1fr)] place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSale(); }}>
         {saleDetailLoading && <section role="status" className="rounded-xl bg-white p-8 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={22} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sale details…</span></section>}
-        {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><button type="button" onClick={closeSale} className="mt-5 h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button></section>}
+        {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><div className="mt-5 flex flex-wrap justify-end gap-2"><button type="button" onClick={closeSale} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>{saleDetailId !== null && <button type="button" onClick={() => void openSale(saleDetailId)} className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry</button>}</div></section>}
         {saleDetail && <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="receipt-print my-auto max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-7">
           <header className="receipt-print-hidden mb-4 flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
             <div><h2 id="receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale receipt</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Review this Odoo order or print a copy.</p></div>
