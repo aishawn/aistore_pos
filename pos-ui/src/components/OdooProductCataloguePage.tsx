@@ -39,6 +39,7 @@ export function OdooProductCataloguePage() {
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryRetryKey, setCategoryRetryKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -130,7 +131,7 @@ export function OdooProductCataloguePage() {
       // Keep Adelaide as the display fallback when bootstrap is unavailable.
     });
     return () => { cancelled = true; };
-  }, [connected]);
+  }, [categoryRetryKey, connected]);
 
   async function exportProductsCsv() {
     if (exportBusy || connected !== true) return;
@@ -187,8 +188,9 @@ export function OdooProductCataloguePage() {
     if (connected !== true) return;
     let cancelled = false;
     setCategoryLoading(true);
+    setCategoryError(null);
     void searchOdooRecords<OdooPosCategoryRecord>("posCategories", { limit: 100 })
-      .then((result) => { if (!cancelled) setCategories(result.items); })
+      .then((result) => { if (!cancelled) { setCategories(result.items); setCategoryError(null); } })
       .catch((cause) => { if (!cancelled) setCategoryError(cause instanceof Error ? cause.message : "Product categories are unavailable."); })
       .finally(() => { if (!cancelled) setCategoryLoading(false); });
     return () => { cancelled = true; };
@@ -359,7 +361,7 @@ export function OdooProductCataloguePage() {
             Stock quantities reflect the active Odoo inventory context. Use Odoo reports for location-specific counts.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
-          {categoryError && <p role="status" className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{categoryError}</p>}
+          {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
