@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { QuestionIcon } from "@/components/icons";
 import { ClassificationFormSelect } from "@/components/admin/ClassificationFormSelect";
 import { useApi } from "@/hooks/useApi";
 import { exportExternalStocktakesXlsx } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 interface Outlet {
   id: string;
@@ -44,13 +46,14 @@ export function ExportExternalStocktakeModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const outlets = useApi<Outlet[]>("/api/outlets");
+  const { data: outletData, loading: outletsLoading, error: outletsError, reload: reloadOutlets } = useApi<Outlet[]>("/api/outlets");
   const [outletId, setOutletId] = useState("");
   const [includeNoBarcode, setIncludeNoBarcode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
 
-  const outletOptions = (outlets.data ?? []).map((o) => ({ label: o.name, value: o.id }));
+  const outletOptions = (outletData ?? []).map((o) => ({ label: o.name, value: o.id }));
 
   useEffect(() => {
     if (!open) return;
@@ -59,16 +62,18 @@ export function ExportExternalStocktakeModal({
   }, [open]);
 
   useEffect(() => {
-    if (!open || outletId || !outlets.data?.length) return;
-    setOutletId(outlets.data[0].id);
-  }, [open, outletId, outlets.data]);
-
-  if (!open) return null;
+    if (!open || outletId || !outletData?.length) return;
+    setOutletId(outletData[0].id);
+  }, [open, outletId, outletData]);
 
   function close() {
     if (busy) return;
     onClose();
   }
+
+  useDialogFocus(open, close, "external-stocktake-export");
+
+  if (!open) return null;
 
   async function submit() {
     if (!outletId) {
@@ -97,12 +102,15 @@ export function ExportExternalStocktakeModal({
       onClick={close}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 bg-[var(--oh-tile-blue-bg)] px-5 py-3.5">
           <QuestionIcon size={18} className="shrink-0 text-[var(--oh-tile-blue-text)]" strokeWidth={2} />
-          <h2 className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">Export Stocktake File</h2>
+          <h2 id={titleId} className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">Export Stocktake File</h2>
         </div>
 
         <div className="px-5 py-5">
@@ -111,11 +119,20 @@ export function ExportExternalStocktakeModal({
             <ClassificationFormSelect
               value={outletId}
               options={outletOptions}
-              loading={outlets.loading}
+              loading={outletsLoading}
               onChange={setOutletId}
               placeholder="Select..."
             />
           </label>
+
+          {outletsError && (
+            <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
+              <span>Could not load outlets: {outletsError}</span>
+              <button type="button" onClick={reloadOutlets} disabled={outletsLoading || busy} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+                <RefreshCw size={15} /> Retry outlets
+              </button>
+            </div>
+          )}
 
           <div className="mt-4 flex items-center gap-3">
             <ToggleSwitch checked={includeNoBarcode} onChange={setIncludeNoBarcode} />
@@ -124,7 +141,7 @@ export function ExportExternalStocktakeModal({
             </span>
           </div>
 
-          {error && <p className="mt-3 text-[13px] text-[var(--oh-danger)]">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-[13px] text-[var(--oh-danger)]">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[var(--oh-border)] px-5 py-3.5">

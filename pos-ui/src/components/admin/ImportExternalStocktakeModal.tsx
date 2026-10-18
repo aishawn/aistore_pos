@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Download, LoaderCircle } from "lucide-react";
 import { QuestionIcon } from "@/components/icons";
 import { downloadExternalStocktakeImportTemplate, importExternalStocktakeFile } from "@/lib/api";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 /** Import external stocktake dialog with template download and file selection. */
 export function ImportExternalStocktakeModal({
@@ -16,8 +18,11 @@ export function ImportExternalStocktakeModal({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [templateBusy, setTemplateBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectFileRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -26,11 +31,25 @@ export function ImportExternalStocktakeModal({
     if (inputRef.current) inputRef.current.value = "";
   }, [open]);
 
-  if (!open) return null;
-
   function close() {
     if (busy) return;
     onClose();
+  }
+
+  useDialogFocus(open, close, "external-stocktake-import", selectFileRef);
+
+  if (!open) return null;
+
+  async function downloadTemplate() {
+    setTemplateBusy(true);
+    setError(null);
+    try {
+      await downloadExternalStocktakeImportTemplate();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not download the template.");
+    } finally {
+      setTemplateBusy(false);
+    }
   }
 
   async function submit() {
@@ -58,21 +77,26 @@ export function ImportExternalStocktakeModal({
       onClick={close}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className="flex w-full max-w-[480px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 bg-[var(--oh-tile-blue-bg)] px-5 py-3.5">
           <QuestionIcon size={18} className="shrink-0 text-[var(--oh-tile-blue-text)]" strokeWidth={2} />
-          <h2 className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">Import Stocktake File</h2>
+          <h2 id={titleId} className="text-[16px] font-semibold text-[var(--oh-tile-blue-text)]">Import Stocktake File</h2>
         </div>
 
         <div className="px-5 py-5">
           <button
             type="button"
-            onClick={() => void downloadExternalStocktakeImportTemplate()}
-            className="text-[14px] font-medium text-[#00a3ee] underline underline-offset-2 transition-colors hover:text-[#0090d4]"
+            onClick={() => void downloadTemplate()}
+            disabled={templateBusy || busy}
+            className="inline-flex min-h-10 items-center gap-2 text-[14px] font-medium text-[#00a3ee] underline underline-offset-2 transition-colors hover:text-[#0090d4] disabled:opacity-60"
           >
-            Download Template
+            {templateBusy ? <LoaderCircle size={15} className="animate-spin" /> : <Download size={15} />}
+            {templateBusy ? "Downloading…" : "Download Template"}
           </button>
 
           <p className="mt-3 text-[13px] text-[var(--oh-text-secondary)]">
@@ -83,6 +107,7 @@ export function ImportExternalStocktakeModal({
 
           <div className="mt-2 flex items-center gap-3">
             <button
+              ref={selectFileRef}
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={busy}
@@ -105,7 +130,7 @@ export function ImportExternalStocktakeModal({
             />
           </div>
 
-          {error && <p className="mt-3 text-[13px] text-[var(--oh-danger)]">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-[13px] text-[var(--oh-danger)]">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-[var(--oh-border)] px-5 py-3.5">
