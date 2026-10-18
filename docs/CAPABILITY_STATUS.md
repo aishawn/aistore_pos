@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（当前仓库基线 `3b408d4`；Dokploy 运行 SHA、完整构建日志和容器状态仍待控制台独立回读）
+**Last updated:** 2026-10-18（当前仓库基线 `d5050ca`；该批次已推送，Dokploy webhook 返回 `Branch Not Match`，待控制台确认部署）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -51,6 +51,13 @@ Statuses:
 - 全站静态矩阵 `131` 路由 × `390/1440`，`262/262 PASS`；无 HTTP 失败、横向溢出或页面错误。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-18_58f1926.json`。
 - 商品详情 Tax rates 首次 `503` 后 Retry 恢复，390px 无溢出、无页面错误、写请求 `0`。证据：`docs/UAT_PRODUCT_VIEW_RETRY_2026-10-18.json`。
 - 用户提供 Dokploy 已部署，但控制台运行 SHA、构建日志和容器状态仍未独立回读；UAT 中的 `deployment/sourceCommit` 只代表脚本运行时基线，不能替代 Dokploy 证据。
+
+### 待部署代码批次：`d5050ca`
+
+- 销售快捷键编辑页：Sale key sets 列表读取失败显示 Retry，失败时禁用切换选择器；保存前校验名称不能为空。
+- 客户合并页：Customer groups lookup 失败显示依赖错误和 Retry，避免下拉静默为空。
+- 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 已通过；未运行 build。
+- 尝试调用用户提供的 Dokploy Compose webhook 两次，均返回 HTTP `301` / `{"message":"Branch Not Match"}`，未确认触发部署。需在 Dokploy 控制台修正 webhook 分支或手动 Deploy 后再做线上验证。
 
 ## 2026-10-18 迭代快照
 
