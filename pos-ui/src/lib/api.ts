@@ -177,7 +177,10 @@ async function request<T>(
   }
 
   const authExpired = res.status === 401 || json?.code === 40100 || json?.code === 40103;
-  if (authExpired && !retriedAfterRefresh && !isAuthExemptPath(path) && await refreshAccessToken()) {
+  const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+  // Never replay a write after an auth refresh: the server may have accepted
+  // the original request before the response was interrupted.
+  if (authExpired && canReplay && !retriedAfterRefresh && !isAuthExemptPath(path) && await refreshAccessToken()) {
     return request<T>(method, path, opts, true);
   }
 
