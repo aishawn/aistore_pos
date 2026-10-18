@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18 (`ccb0879`：legacy read pages Retry；线上只读回归通过)
+**Last updated:** 2026-10-18 (`4d7b4c4`：utility 错误态 Retry；线上故障注入回归通过)
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
