@@ -127,6 +127,7 @@ export function OdooRegisterPage() {
   const [posCategories, setPosCategories] = useState<OdooPosCategoryRecord[]>([]);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
+  const [productActiveIndex, setProductActiveIndex] = useState(-1);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [productRetryKey, setProductRetryKey] = useState(0);
@@ -291,6 +292,7 @@ export function OdooRegisterPage() {
 
   useEffect(() => {
     const revision = ++searchRevision.current;
+    setProductActiveIndex(-1);
     if (!connected) {
       setProducts([]);
       setProductsError(null);
@@ -501,6 +503,34 @@ export function OdooRegisterPage() {
   }
 
   async function handleProductSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown" && products.length) {
+      event.preventDefault();
+      setProductActiveIndex((current) => (current + 1) % products.length);
+      return;
+    }
+    if (event.key === "ArrowUp" && products.length) {
+      event.preventDefault();
+      setProductActiveIndex((current) => (current <= 0 ? products.length - 1 : current - 1));
+      return;
+    }
+    if (event.key === "Escape" && products.length) {
+      event.preventDefault();
+      searchRevision.current += 1;
+      setProducts([]);
+      setProductActiveIndex(-1);
+      return;
+    }
+    if (event.key === "Enter" && productActiveIndex >= 0) {
+      const product = products[productActiveIndex];
+      if (!product) return;
+      event.preventDefault();
+      if (selectedConfig?.session && product.free_qty > 0) {
+        addProduct(product);
+        setQuery("");
+        setProductActiveIndex(-1);
+      }
+      return;
+    }
     if (event.key !== "Enter" || barcodeLookupBusy.current || !query.trim()) return;
     event.preventDefault();
     barcodeLookupBusy.current = true;
@@ -835,9 +865,13 @@ export function OdooRegisterPage() {
                 <Search size={18} className="shrink-0 text-[var(--sf-placeholder)]" />
                 <input
                   aria-label="Search products by name, barcode or code"
+                  role="combobox"
+                  aria-autocomplete="list"
                   aria-controls="pos-product-results"
+                  aria-expanded={products.length > 0}
+                  aria-activedescendant={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => { setProductActiveIndex(-1); setQuery(event.target.value); }}
                   onKeyDown={(event) => void handleProductSearchKeyDown(event)}
                   placeholder="Search products or scan a barcode…"
                   className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
@@ -879,19 +913,22 @@ export function OdooRegisterPage() {
                   </div>
                 ) : products.length ? (
                   <div className="flex min-h-full flex-col">
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                      {products.map((product) => {
+                    <div role="listbox" aria-label="POS product search results" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                      {products.map((product, index) => {
                         const fullName = product.display_name || product.name;
                         const label = friendlyProductLabel(fullName);
                         const initial = (label.replace(/[^A-Za-z0-9]/gu, "").charAt(0) || "?").toUpperCase();
                         return (
                           <button
                             key={product.id}
+                            id={`pos-product-option-${product.id}`}
                             type="button"
+                            role="option"
+                            aria-selected={index === productActiveIndex}
                             title={fullName}
                             onClick={() => addProduct(product)}
                             disabled={!selectedConfig?.session || product.free_qty <= 0}
-                            className="flex min-h-[112px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45"
+                            className={cn("flex min-h-[112px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", index === productActiveIndex && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}
                           >
                             <span className="oh-type-label mb-2 grid h-9 w-9 place-items-center rounded-full bg-[var(--oh-orange-light)] font-bold text-[var(--oh-primary)]" aria-hidden="true">
                               {initial}
