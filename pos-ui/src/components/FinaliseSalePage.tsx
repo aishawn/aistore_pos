@@ -1149,7 +1149,6 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
             className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-3 text-[13px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
 
-            autoFocus
 
           />
 

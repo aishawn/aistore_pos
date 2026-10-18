@@ -51,6 +51,9 @@ export function SellModals() {
             : pendingAction
               ? "action"
               : "closed";
+  const noteInputRef = useRef<HTMLTextAreaElement>(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
+  const initialFocusRef = noteDialogOpen ? noteInputRef : discountDialogOpen ? discountInputRef : undefined;
   useDialogFocus(dismissible, () => {
     if (confirmClearOpen) cancelClear();
     else if (pendingResumeId) cancelResumeParked();
@@ -58,7 +61,7 @@ export function SellModals() {
     else if (discountDialogOpen) closeDiscountDialog();
     else if (payment && payment.phase !== "processing") cancelPayment();
     else if (pendingAction) dismissAction();
-  }, dialogKey);
+  }, dialogKey, initialFocusRef);
 
   if (
     !confirmClearOpen &&
@@ -116,6 +119,7 @@ export function SellModals() {
           initial={saleNote}
           onCancel={closeNoteDialog}
           onSave={saveSaleNote}
+          inputRef={noteInputRef}
         />
       )}
 
@@ -125,6 +129,7 @@ export function SellModals() {
           onCancel={closeDiscountDialog}
           onApply={applyLineDiscount}
           onClear={clearLineDiscount}
+          inputRef={discountInputRef}
         />
       )}
 
@@ -156,10 +161,12 @@ function NoteDialog({
   initial,
   onCancel,
   onSave,
+  inputRef,
 }: {
   initial: string;
   onCancel: () => void;
   onSave: (note: string) => void;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -167,11 +174,11 @@ function NoteDialog({
       <h3 className="mb-3 text-[18px] font-semibold text-[var(--oh-text)]">Add Note</h3>
       <textarea
         value={value}
+        ref={inputRef}
         onChange={(e) => setValue(e.target.value)}
         rows={4}
         placeholder="Note for this sale…"
         className="mb-6 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] px-3 py-2 text-[14px] outline-none focus:border-[var(--oh-orange)]"
-        autoFocus
       />
       <div className="flex justify-end gap-3">
         <ModalBtn variant="secondary" onClick={onCancel}>
@@ -215,11 +222,13 @@ function DiscountDialog({
   onCancel,
   onApply,
   onClear,
+  inputRef,
 }: {
   line: { name: string; qty: number; unitPrice: number; discount?: number; discountReason?: string };
   onCancel: () => void;
   onApply: (params: { amount?: number; percent?: number; reason?: string }) => void;
   onClear: () => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const lineSubtotal = line.qty * line.unitPrice;
   const [mode, setMode] = useState<"amount" | "percent">("amount");
@@ -289,10 +298,10 @@ function DiscountDialog({
         step={mode === "amount" ? "0.01" : "1"}
         max={mode === "percent" ? 100 : lineSubtotal}
         value={value}
+        ref={inputRef}
         onChange={(e) => setValue(e.target.value)}
         placeholder={mode === "amount" ? "0.00" : "0"}
         className="mb-3 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] px-3 py-2 text-[14px] outline-none focus:border-[var(--oh-orange)]"
-        autoFocus
       />
 
       <label className="mb-1 block text-[13px] font-medium text-[var(--oh-muted)]">
