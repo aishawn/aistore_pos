@@ -131,6 +131,10 @@ export function CreateTransferPage() {
     [outlets.data],
   );
 
+  function reloadDependencies() {
+    outlets.reload();
+  }
+
   const selectedFromId = fromId || outletOptions[0]?.value || "";
   const selectedToId = toId || outletOptions.find((o) => o.value !== selectedFromId)?.value || "";
 
@@ -224,9 +228,10 @@ export function CreateTransferPage() {
             />
           </section>
           {!outlets.loading && (outlets.error || outletOptions.length < 2) && (
-            <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-              {outlets.error ? "Outlets could not be loaded. Refresh and try again before creating a transfer." : outletOptions.length === 0 ? "No outlets are available for this account." : "At least two outlets are needed to create a stock transfer."}
-            </p>
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+                <span>{outlets.error ? "Outlets could not be loaded. Refresh and try again before creating a transfer." : outletOptions.length === 0 ? "No outlets are available for this account." : "At least two outlets are needed to create a stock transfer."}</span>
+                {outlets.error && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Retry</button>}
+              </div>
           )}
           {outletOptions.length > 1 && (
             <p className="-mt-2 flex items-center gap-1.5 text-xs text-[var(--oh-muted)]"><ArrowRightLeft size={14} aria-hidden="true" />Source and destination must be different outlets.</p>

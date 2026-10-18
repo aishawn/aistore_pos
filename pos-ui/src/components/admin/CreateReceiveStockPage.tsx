@@ -131,6 +131,11 @@ export function CreateReceiveStockPage() {
     [outlets.data],
   );
 
+  function reloadDependencies() {
+    suppliers.reload();
+    outlets.reload();
+  }
+
   const selectedToId = outletOptions[0]?.value || "";
   const outletName = useMemo(
     () => outletOptions.find((o) => o.value === selectedToId)?.label ?? "",
@@ -214,9 +219,10 @@ export function CreateReceiveStockPage() {
             </FormField>
           </section>
           {(suppliers.error || outlets.error || (!outlets.loading && !outlets.error && outletOptions.length === 0)) && (
-            <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-              {outlets.error ? "The destination outlet could not be loaded. Refresh and try again before receiving stock." : !outlets.loading && outletOptions.length === 0 ? "No destination outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before receiving stock."}
-            </p>
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+                <span>{outlets.error ? "The destination outlet could not be loaded. Refresh and try again before receiving stock." : !outlets.loading && outletOptions.length === 0 ? "No destination outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before receiving stock."}</span>
+                {(suppliers.error || outlets.error) && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Retry</button>}
+              </div>
           )}
 
           <section aria-label="Invoice details" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -131,6 +131,11 @@ export function CreateReturnStockPage() {
     [outlets.data],
   );
 
+  function reloadDependencies() {
+    suppliers.reload();
+    outlets.reload();
+  }
+
   const selectedFromId = outletOptions[0]?.value || "";
   const outletName = useMemo(
     () => outletOptions.find((o) => o.value === selectedFromId)?.label ?? "",
@@ -214,9 +219,10 @@ export function CreateReturnStockPage() {
             />
           </section>
           {(suppliers.error || outlets.error || (!outlets.loading && outletOptions.length === 0)) && (
-            <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-              {outlets.error ? "The source outlet could not be loaded. Refresh and try again before returning stock." : !outlets.loading && outletOptions.length === 0 ? "No source outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before returning stock."}
-            </p>
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+                <span>{outlets.error ? "The source outlet could not be loaded. Refresh and try again before returning stock." : !outlets.loading && outletOptions.length === 0 ? "No source outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before returning stock."}</span>
+                {(suppliers.error || outlets.error) && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Retry</button>}
+              </div>
           )}
           {outletOptions.length > 0 && <p className="-mt-2 flex items-center gap-1.5 text-xs text-[var(--oh-muted)]"><Undo2 size={14} aria-hidden="true" />Stock will be returned from the selected outlet to the supplier.</p>}
 
