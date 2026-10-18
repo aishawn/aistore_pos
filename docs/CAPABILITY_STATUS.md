@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（仓库基线 `9a845bd`；包含 `ff110de` 外部盘点弹窗恢复、`92b0316` 结算计时稳定性、`ca8855e` 库存/盘点恢复与匿名 AI 端点鉴权回归；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
+**Last updated:** 2026-10-18（仓库基线 `73e67fd`；包含 `9a845bd`/`73e67fd` AI 可用状态提示、`ff110de` 外部盘点弹窗恢复、`92b0316` 结算计时稳定性与 `ca8855e` 库存/盘点恢复；专项线上 mock 与只读回归已通过，Dokploy 运行 SHA 待独立回读）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -13,6 +13,12 @@ Statuses:
 | **Planned** | Documented product intent; not a pilot commitment |
 
 ## 2026-10-18 迭代快照
+
+### `73e67fd` AI 可用状态线上验证
+
+- 增加 AI 可用状态专项 UAT：认证配置 `enabled=false` 时，收银 AI 助手在发起请求前显示明确的关闭说明；本地收银快捷入口仍可用。
+- 专项 `3/3 PASS`，并与 AI surface `10/10`、AI UI `2/2`、Sommelier `10/10` 一起复验；没有模型、反馈或业务写入。
+- 证据：`docs/UAT_AI_AVAILABILITY_2026-10-18.json`、`scripts/pilot-ai-availability-uat.mjs`。Dokploy 控制台实际运行 SHA、构建日志和容器状态仍待独立回读。
 
 ### `9a845bd` AI 可用性提示
 
