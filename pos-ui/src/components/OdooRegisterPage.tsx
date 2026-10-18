@@ -162,6 +162,7 @@ export function OdooRegisterPage() {
   const customerSearchRevision = useRef(0);
   const barcodeLookupBusy = useRef(false);
   const restoredDraftKey = useRef<string | null>(null);
+  const registerSelectRef = useRef<HTMLSelectElement | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
 
   const loadPos = useCallback(async (initial = false) => {
@@ -221,7 +222,7 @@ export function OdooRegisterPage() {
     else if (parkedAction) setParkedAction(null);
     else if (pendingRegisterId !== null) setPendingRegisterId(null);
     else if (receipt) setReceipt(null);
-  });
+  }, undefined, undefined, registerSelectRef);
 
   useEffect(() => {
     setParkedLoaded(false);
@@ -795,6 +796,7 @@ export function OdooRegisterPage() {
           >
             <span className={cn("h-2 w-2 shrink-0 rounded-full", sessionOpen ? "bg-[var(--oh-success)]" : "bg-amber-500")} aria-hidden="true" />
             <select
+              ref={registerSelectRef}
               aria-label="Register"
               value={configId ?? ""}
               disabled={busy || refreshing}

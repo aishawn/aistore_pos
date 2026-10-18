@@ -10,7 +10,18 @@ const activeDialogHandlers: DialogHandler[] = [];
 function visibleFocusableElements(dialog: HTMLElement): HTMLElement[] {
   return [...dialog.querySelectorAll<HTMLElement>(
     'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-  )].filter((element) => element.getClientRects().length > 0 && !element.hasAttribute("aria-hidden"));
+  )].filter((element) => element.getClientRects().length > 0
+    && !element.hasAttribute("aria-hidden")
+    && !element.closest('[aria-hidden="true"], [inert]'));
+}
+
+function canReceiveFocus(element: HTMLElement | null): element is HTMLElement {
+  return Boolean(element
+    && element.isConnected
+    && element.getClientRects().length > 0
+    && !element.hasAttribute("disabled")
+    && !element.hasAttribute("aria-hidden")
+    && !element.closest('[aria-hidden="true"], [inert]'));
 }
 
 /** Adds Escape handling and restores focus to the control that opened a dialog. */
@@ -19,6 +30,7 @@ export function useDialogFocus(
   onClose: () => void,
   focusKey?: string | number | boolean | null,
   initialFocusRef?: RefObject<HTMLElement | null>,
+  restoreFocusRef?: RefObject<HTMLElement | null>,
 ) {
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
@@ -30,9 +42,11 @@ export function useDialogFocus(
   useEffect(() => {
     if (!open) return;
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const restoreFocusTarget = restoreFocusRef?.current ?? null;
     const focusInitialControl = () => {
-      if (initialFocusRef?.current?.isConnected && initialFocusRef.current.getClientRects().length > 0) {
-        initialFocusRef.current.focus();
+      const initialFocus = initialFocusRef?.current ?? null;
+      if (canReceiveFocus(initialFocus)) {
+        initialFocus.focus();
         return;
       }
       const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')]
@@ -78,8 +92,10 @@ export function useDialogFocus(
       window.removeEventListener("keydown", handleKeyDown);
       const handlerIndex = activeDialogHandlers.lastIndexOf(handleKeyDown);
       if (handlerIndex >= 0) activeDialogHandlers.splice(handlerIndex, 1);
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      const previousFocus = previousFocusRef.current;
+      if (canReceiveFocus(previousFocus)) previousFocus.focus();
+      else if (canReceiveFocus(restoreFocusTarget)) restoreFocusTarget.focus();
       previousFocusRef.current = null;
     };
-  }, [focusKey, initialFocusRef, open]);
+  }, [focusKey, initialFocusRef, open, restoreFocusRef]);
 }
