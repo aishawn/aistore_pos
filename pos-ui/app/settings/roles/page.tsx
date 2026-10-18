@@ -233,7 +233,7 @@ export default function RolesPage() {
         ) : loadError ? (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <span>{loadError}</span>
-            <button type="button" onClick={reloadPage} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Retry</button>
+            <button type="button" onClick={reloadPage} disabled={pageLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={pageLoading ? "animate-spin" : undefined} /> {pageLoading ? "Retrying…" : "Retry"}</button>
           </div>
         ) : roles.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center text-sm text-[var(--oh-muted)]">No staff roles yet. Create a role before inviting staff who need non-administrator permissions.</div>

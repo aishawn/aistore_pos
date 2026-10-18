@@ -287,6 +287,7 @@ Statuses:
 | Odoo 连接失败恢复 | 商品目录和供应商目录的 session 探测失败显示原地 `Retry connection`；供应商异常进入明确 disconnected 状态 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后做 503 → Retry 只读注入 |
 | Odoo 连接 Retry 状态 | 连接探测期间按钮禁用并显示 `Retrying…`，成功或失败后恢复明确状态 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充按钮状态证据 |
 | Odoo 客户目录连接恢复 | 客户目录 session 探测失败显示 `Retry connection`，并在探测期间锁定按钮 | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充只读注入证据 |
+| 设置页 Retry 状态 | Payment、Tax、Registers/Outlets、Roles 的错误恢复按钮在请求期间禁用并显示 `Retrying…` | `npm run typecheck`、目标 ESLint、`git diff --check` 通过；待部署后补充设置页回归 |
 
 ### 认证重放专项（待目标部署）
 
