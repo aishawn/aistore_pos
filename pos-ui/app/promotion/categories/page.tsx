@@ -37,7 +37,6 @@ export default function PromotionCategoriesPage() {
       reload();
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : "Could not delete this category.");
-      setDeleting(null);
     } finally {
       setDeleteBusy(false);
     }
@@ -92,7 +91,7 @@ export default function PromotionCategoriesPage() {
                     <td className="px-4 py-2.5">
                       <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => setEditing(category)} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
-                        <button type="button" onClick={() => setDeleting(category)} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
+                        <button type="button" onClick={() => { setActionError(null); setDeleting(category); }} className="min-h-11 min-w-11 rounded-md px-3 font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -109,7 +108,7 @@ export default function PromotionCategoriesPage() {
                 </div>
                 <div className="mt-3 flex justify-end gap-2 border-t border-[var(--oh-border)] pt-3">
                   <button type="button" onClick={() => setEditing(category)} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-[var(--oh-primary)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">Edit</button>
-                  <button type="button" onClick={() => setDeleting(category)} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
+                  <button type="button" onClick={() => { setActionError(null); setDeleting(category); }} className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-rose-700">Delete</button>
                 </div>
               </li>
             ))}
@@ -129,6 +128,7 @@ export default function PromotionCategoriesPage() {
         message={deleting ? `Delete “${deleting.name}”?` : ""}
         confirmLabel="Delete category"
         busy={deleteBusy}
+        error={actionError}
         onConfirm={() => void remove()}
         onCancel={() => { if (!deleteBusy) setDeleting(null); }}
       />

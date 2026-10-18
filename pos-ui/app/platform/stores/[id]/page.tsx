@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, LoaderCircle, RefreshCw } from "lucide-react";
 import {
   AdminPageLayout,
   AdminSecondaryButton,
@@ -156,7 +156,10 @@ export default function PlatformStoreDetailPage() {
           <Link href="/platform/stores" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
             All stores
           </Link>
-          <AdminSecondaryButton onClick={() => void load()}>Refresh</AdminSecondaryButton>
+          <AdminSecondaryButton onClick={() => void load()} disabled={loading}>
+            {loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
+            {loading ? "Refreshing…" : "Refresh"}
+          </AdminSecondaryButton>
         </div>
       }
     >

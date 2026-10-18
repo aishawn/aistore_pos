@@ -65,6 +65,8 @@ try {
 
   const demoContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
   let deleteRequests = 0;
+  let categoryDeleteRequests = 0;
+  let vendorDeleteRequests = 0;
   await login(demoContext, "https://demo.orithos.com.au", "demo");
   await demoContext.route("**/api/price-sets", async (route) => {
     if (route.request().method() === "GET") {
@@ -83,6 +85,40 @@ try {
     }
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: null }) });
   });
+  await demoContext.route("**/api/promotion-categories", async (route) => {
+    if (route.request().method() === "GET") {
+      const data = categoryDeleteRequests >= 2 ? [] : [{ id: "88", name: "Mock Offers" }];
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data }) });
+      return;
+    }
+    await route.continue();
+  });
+  await demoContext.route("**/api/promotion-categories/88", async (route) => {
+    if (route.request().method() !== "DELETE") return route.continue();
+    categoryDeleteRequests += 1;
+    await route.fulfill({
+      status: categoryDeleteRequests === 1 ? 409 : 200,
+      contentType: "application/json",
+      body: JSON.stringify(categoryDeleteRequests === 1 ? { message: "Injected linked category failure" } : { code: 0, data: null }),
+    });
+  });
+  await demoContext.route("**/api/vendor-connections", async (route) => {
+    if (route.request().method() === "GET") {
+      const data = vendorDeleteRequests >= 2 ? [] : [{ id: "99", name: "Mock EDI", senderCode: "MOCK", customerId: "1" }];
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data }) });
+      return;
+    }
+    await route.continue();
+  });
+  await demoContext.route("**/api/vendor-connections/99", async (route) => {
+    if (route.request().method() !== "DELETE") return route.continue();
+    vendorDeleteRequests += 1;
+    await route.fulfill({
+      status: vendorDeleteRequests === 1 ? 409 : 200,
+      contentType: "application/json",
+      body: JSON.stringify(vendorDeleteRequests === 1 ? { message: "Injected vendor dependency failure" } : { code: 0, data: null }),
+    });
+  });
   const demoPage = await demoContext.newPage();
   await demoPage.goto("https://demo.orithos.com.au/settings/pricesets", { waitUntil: "domcontentloaded", timeout: 60000 });
   await demoPage.getByRole("heading", { name: "Price Sets", exact: true }).waitFor({ timeout: 30000 });
@@ -93,6 +129,26 @@ try {
   await dialog.getByRole("button", { name: "Delete price set", exact: true }).click();
   await demoPage.getByText("No price sets yet", { exact: true }).waitFor({ timeout: 30000 });
   checks.push({ name: "price set delete failure stays in dialog and retries", passed: deleteRequests === 2 });
+
+  await demoPage.goto("https://demo.orithos.com.au/promotion/categories", { waitUntil: "domcontentloaded", timeout: 60000 });
+  await demoPage.getByRole("heading", { name: "Promotion Categories", exact: true }).waitFor({ timeout: 30000 });
+  await demoPage.locator("button").filter({ hasText: "Delete" }).first().click();
+  const categoryDialog = demoPage.getByRole("alertdialog");
+  await categoryDialog.getByRole("button", { name: "Delete category", exact: true }).click();
+  await categoryDialog.getByRole("alert").getByText("Injected linked category failure", { exact: true }).waitFor({ timeout: 10000 });
+  await categoryDialog.getByRole("button", { name: "Delete category", exact: true }).click();
+  await demoPage.getByText("No promotion categories yet", { exact: true }).waitFor({ timeout: 30000 });
+  checks.push({ name: "promotion category delete failure stays in dialog and retries", passed: categoryDeleteRequests === 2 });
+
+  await demoPage.goto("https://demo.orithos.com.au/utilities/vendor-connections", { waitUntil: "domcontentloaded", timeout: 60000 });
+  await demoPage.getByRole("heading", { name: "Vendor Connections", exact: true }).waitFor({ timeout: 30000 });
+  await demoPage.getByRole("button", { name: "Delete", exact: true }).click();
+  const vendorDialog = demoPage.getByRole("alertdialog");
+  await vendorDialog.getByRole("button", { name: "Delete connection", exact: true }).click();
+  await vendorDialog.getByRole("alert").getByText("Injected vendor dependency failure", { exact: true }).waitFor({ timeout: 10000 });
+  await vendorDialog.getByRole("button", { name: "Delete connection", exact: true }).click();
+  await demoPage.getByText("No vendor connections have been configured yet.", { exact: true }).waitFor({ timeout: 30000 });
+  checks.push({ name: "vendor connection delete failure stays in dialog and retries", passed: vendorDeleteRequests === 2 });
   await demoContext.close();
 } finally {
   await browser.close();

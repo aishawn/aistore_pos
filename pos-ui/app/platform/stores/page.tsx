@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { LoaderCircle, RefreshCw } from "lucide-react";
 import {
   AdminPageLayout,
   AdminSearchInput,
@@ -107,7 +107,10 @@ export default function PlatformStoresPage() {
         </select>
       }
       actions={
-        <AdminSecondaryButton onClick={() => reload()}>Refresh</AdminSecondaryButton>
+        <AdminSecondaryButton onClick={() => reload()} disabled={loading}>
+          {loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
+          {loading ? "Refreshing…" : "Refresh"}
+        </AdminSecondaryButton>
       }
     >
       {loading ? (

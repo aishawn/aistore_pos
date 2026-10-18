@@ -41,7 +41,6 @@ export default function VendorConnectionsPage() {
       reload();
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : "Could not delete this vendor connection.");
-      setDeleting(null);
     } finally {
       setDeleteBusy(false);
     }
@@ -75,7 +74,7 @@ export default function VendorConnectionsPage() {
           rows={vendors.map((v) => [
             <span key="n" className="flex items-center gap-2"><CableIcon size={18} /> {v.name ?? ""}</span>,
             <span key="s" className="text-[var(--oh-success)]">Connected</span>,
-            <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => setDeleting(v)} />,
+            <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => { setActionError(null); setDeleting(v); }} />,
           ])}
         />
       )}
@@ -92,6 +91,7 @@ export default function VendorConnectionsPage() {
         message={deleting ? `Delete “${deleting.name}”?` : ""}
         confirmLabel="Delete connection"
         busy={deleteBusy}
+        error={actionError}
         onConfirm={() => void remove()}
         onCancel={() => { if (!deleteBusy) setDeleting(null); }}
       />
