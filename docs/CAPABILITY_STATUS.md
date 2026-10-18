@@ -14,7 +14,7 @@ Statuses:
 
 ## 2026-10-18 迭代快照
 
-本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `ab6c271`；Register 焦点恢复、详情 Retry 和采购详情 mock UAT 已复验，POS 分类 Retry 待本提交部署后复验；Dokploy 控制台的实际运行 SHA 仍需独立回读，不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
+本节记录最近一批已合并并经过 Demo 线上只读验证的功能。GitHub `main` 当前基线为 `ab6c271`；Register 焦点恢复、详情 Retry、采购详情 mock UAT 和 POS Retry 状态反馈已复验，POS 分类故障注入仍待 Dokploy 独立运行证据；不能仅凭 GitHub push、webhook 响应或页面 HTTP 200 认定部署身份。
 
 ### 已完成能力
 
