@@ -135,7 +135,7 @@ try {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: { items, total: items.length, page: 1, size: 10 } }) });
       return;
     }
-    if (requestUrl.pathname === "/api/products/101" && route.request().method() === "DELETE") {
+    if (requestUrl.pathname.startsWith("/api/products/") && route.request().method() === "DELETE") {
       productDeleteRequests += 1;
       await route.fulfill({
         status: productDeleteRequests === 1 ? 409 : 200,
@@ -145,6 +145,15 @@ try {
       return;
     }
     await route.continue();
+  });
+  await demoContext.route("**/api/products/*", async (route) => {
+    if (route.request().method() !== "DELETE") return route.continue();
+    productDeleteRequests += 1;
+    await route.fulfill({
+      status: productDeleteRequests === 1 ? 409 : 200,
+      contentType: "application/json",
+      body: JSON.stringify(productDeleteRequests === 1 ? { message: "Injected linked product failure" } : { code: 0, data: null }),
+    });
   });
   const demoPage = await demoContext.newPage();
   await demoPage.goto("https://demo.orithos.com.au/settings/pricesets", { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -159,7 +168,7 @@ try {
 
   await demoPage.goto("https://demo.orithos.com.au/promotion/categories", { waitUntil: "domcontentloaded", timeout: 60000 });
   await demoPage.getByRole("heading", { name: "Promotion Categories", exact: true }).waitFor({ timeout: 30000 });
-  await demoPage.locator("button:visible").filter({ hasText: "Delete" }).first().click();
+  await demoPage.locator("button:visible").filter({ hasText: /^Delete$/ }).first().click();
   const categoryDialog = demoPage.getByRole("alertdialog");
   await categoryDialog.getByRole("button", { name: "Delete category", exact: true }).click();
   await categoryDialog.getByRole("alert").getByText("Injected linked category failure", { exact: true }).waitFor({ timeout: 10000 });
@@ -177,12 +186,19 @@ try {
   await demoPage.getByText("No vendor connections have been configured yet.", { exact: true }).waitFor({ timeout: 30000 });
   checks.push({ name: "vendor connection delete failure stays in dialog and retries", passed: vendorDeleteRequests === 2 });
 
+  const productRequests = [];
+  demoPage.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (requestUrl.pathname.startsWith("/api/products")) productRequests.push(`${request.method()} ${requestUrl.pathname}`);
+  });
   await demoPage.goto("https://demo.orithos.com.au/products", { waitUntil: "domcontentloaded", timeout: 60000 });
   await demoPage.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 30000 });
-  await demoPage.locator("button:visible").filter({ hasText: "Delete" }).first().click();
+  await demoPage.locator("button:visible").filter({ hasText: /^Delete$/ }).first().click();
   const productDialog = demoPage.getByRole("alertdialog");
   await productDialog.getByRole("button", { name: "Deactivate", exact: true }).click();
-  await productDialog.getByRole("alert").getByText("Injected linked product failure", { exact: true }).waitFor({ timeout: 10000 });
+  await productDialog.getByRole("alert").getByText("Injected linked product failure", { exact: true }).waitFor({ timeout: 10000 }).catch((error) => {
+    throw new Error(`${error.message}; productRequests=${JSON.stringify(productRequests)}; productDeleteRequests=${productDeleteRequests}`);
+  });
   await productDialog.getByRole("button", { name: "Deactivate", exact: true }).click();
   await demoPage.getByText("No results found.", { exact: true }).waitFor({ timeout: 30000 });
   checks.push({ name: "product delete failure stays in dialog and retries", passed: productDeleteRequests === 2 });
@@ -193,7 +209,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: "383c8a5",
+  sourceCommit: "556923d",
   deployment: "unverified-after-deploy",
   scope: "mocked authenticated UI recovery checks; all business writes intercepted",
   status: checks.every((check) => check.passed) ? "PASS" : "FAIL",
