@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { CUSTOMER_WIZARD_STORAGE_KEY } from "@/components/admin/CreateCustomerPage";
@@ -210,7 +210,7 @@ export function CreateCustomerWizard({
     open && !groupsProp ? "/api/customers/groups" : null,
     { page: 1, size: DROPDOWN_PAGE_SIZE },
   );
-  const groups = groupsProp ?? groupsQuery.items ?? [];
+  const groups = useMemo(() => groupsProp ?? groupsQuery.items ?? [], [groupsProp, groupsQuery.items]);
 
   useEffect(() => {
     if (!open) return;
