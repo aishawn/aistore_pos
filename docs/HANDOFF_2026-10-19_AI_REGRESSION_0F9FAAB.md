@@ -53,3 +53,5 @@ HTTP 301
 后续 `c025427` 为 Store Roles 和 Stocktake 表补齐名称及列头语义，`a533496` 扩展回归路由。最新线上回归共 `14/14 PASS`，预期拦截写入 `4`，非预期写入 `0`；证据：`docs/UAT_TABLE_A11Y_ONLINE_RETRY_2026-10-20.json`。
 
 定价页面首轮回归出现一次 `/stock/bulk-price-edit` 在 1440px 返回 `504`，其余 `7/8` 通过；立即重试后 `8/8 PASS`、无页面错误、无阻塞写入。该问题目前判定为瞬态线上响应，不是稳定 UI 缺陷；证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_RETRY_2026-10-20.json`。
+
+在上述检查后重新执行 AI 全量回归：功能 `14/14 PASS`、metrics `9/9 PASS`、能力位 `PASS`、AI UI `2/2 PASS`，assistant intent 为 `search_product` 且 metrics path 严格匹配，业务或配置写入 `0`。证据：`docs/UAT_AI_REGRESSION_ONLINE_4D97862.json`。

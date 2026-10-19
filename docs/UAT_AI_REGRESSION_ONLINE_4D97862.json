@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-19T16:39:32.991Z",
+  "sourceCommit": "4d97862",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "scope": "read-only AI regression after pricing and accessibility checks; no business or configuration writes",
+  "checks": {
+    "aiFeatures": "14 PASS / 0 FAIL / 0 BLOCKED",
+    "aiMetrics": "9 PASS / 0 FAIL",
+    "aiCapabilityGates": "PASS",
+    "aiUi": "2 PASS / 0 FAIL",
+    "writes": 0
+  },
+  "details": {
+    "assistantIntent": "search_product",
+    "assistantPath": "assistant:search_product requests=9 allowed=9 p50=2842ms p95=7007ms estimatedTokens=101",
+    "metricsAuth": "admin=200 anonymous=401",
+    "responsiveAndAccessibility": "390px and 1440px passed; caption=1 scopedHeaders=8 aria-busy=1",
+    "capabilityGates": "chat enabled; voice disabled with explicit unavailable message; pageErrors=0"
+  },
+  "status": "PASS_WITH_SHA_UNVERIFIED"
+}
