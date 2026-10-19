@@ -25,7 +25,11 @@
 
 ## 部署与线上验证
 
-本批次代码待提交并推送后统一触发 Dokploy。部署后应使用平台管理员账号验证：
+代码已提交并推送：`80e6311`。
+
+本轮调用用户提供的 Dokploy webhook 返回 HTTP 301 / `{"message":"Branch Not Match"}`，没有生成可审计的部署任务，因此不能声称线上已运行 `80e6311`。需要在 Dokploy 控制台确认该 Compose 服务绑定的分支，或从控制台手动 Deploy 后再执行下面的线上检查。
+
+部署后应使用平台管理员账号验证：
 
 1. active 页面仅显示 Suspend / Mark expired。
 2. suspended 页面仅显示 Activate。
@@ -34,4 +38,12 @@
 5. 对受保护的 deleted/operator 店铺不出现可写生命周期按钮。
 
 该验证只涉及平台租户状态，不对 Demo `aipos` 执行业务写入。
+
+## 当前发布状态
+
+- GitHub：`origin/main` 已到 `80e6311`。
+- Dokploy：webhook 被分支匹配规则拒绝，未确认部署。
+- 后端 Maven：未运行，本机只有 Java 8，项目要求 Java 21。
+- 前端：`npm run typecheck` 和目标 ESLint 通过。
+- build：按约束未运行。
 
