@@ -30,6 +30,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 已在 `AiAssistantController` 与 `SommelierController` 增加 `app.ai.enabled` 服务端门禁：语音和酒标图像接口在关闭时统一返回 `50301`，不会进入文件校验或模型服务。
 - 本地已通过前端 typecheck、UAT 脚本语法和 diff check；后端 Maven 未运行，需 Java 21 CI/部署后验证。
 
+### `aac28da` 部署后 AI 环境回归
+
+- 价格建议页已从线上 `404` 恢复：认证 gate 可达、只读文案通过，静态矩阵上一轮为 `266/266 PASS`。
+- Dokploy 当前环境返回 `AI_ENABLED=true`；真实 assistant 请求返回 DashScope `HTTP 400 InvalidParameter: url error`，AI surface 和 enablement gate 失败。该问题需要修正 Dokploy 的 DashScope base URL/模型配置，不能用 mock 结果放行。
+- `AI_ENABLED=true` 时本轮不能验证关闭门禁 `50301`；生产应在模型配置完成前保持关闭，或由运维修正环境后重新跑模型 smoke。
+
 Statuses:
 
 | Status | Meaning |

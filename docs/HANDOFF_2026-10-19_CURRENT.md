@@ -26,6 +26,12 @@
 - `AiAssistantController` 的 transcribe 和 `SommelierController` 的 identify-image 现在先检查 `app.ai.enabled`，关闭时统一拒绝，再读取 multipart 文件或调用模型。
 - 本地前端 typecheck、脚本语法和 diff check 通过；后端 Maven 测试未运行，必须在 Java 21 CI/下一次部署后验证 `50301` 和无模型调用。
 
+## `aac28da` 部署后状态
+
+- 价格建议线上路由已恢复：认证 gate 到达页面并通过只读文案检查；上一轮全站矩阵 `266/266 PASS`。
+- Dokploy 当前实际 AI flag 为 `enabled=true`，assistant 调用返回 DashScope `HTTP 400 InvalidParameter: url error`；AI surface/gate 失败，说明生产 DashScope URL 或模型配置无效。
+- 当前不能把真实 AI 视为通过，也不能把关闭门禁视为线上通过，因为线上并非关闭状态。修正 Dokploy AI 环境后需重跑 assistant、语音、酒标和价格建议 gate；在此之前建议恢复 `AI_ENABLED=false`。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。

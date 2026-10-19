@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-10-19T06:13:12.890Z",
+  "sourceCommit": "aac28da2d1ba9de5868f4b89d0d3dead2f6a2634",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "Loaded 44 trigger keywords; enabled=true."
+    },
+    {
+      "name": "AI config intents",
+      "status": "PASS",
+      "evidence": "Loaded 13 records."
+    },
+    {
+      "name": "AI config slots",
+      "status": "PASS",
+      "evidence": "Loaded 12 records."
+    },
+    {
+      "name": "AI config slot-values",
+      "status": "PASS",
+      "evidence": "Loaded 119 records."
+    },
+    {
+      "name": "AI config prompts",
+      "status": "PASS",
+      "evidence": "Loaded 3 records."
+    },
+    {
+      "name": "AI surface regression",
+      "status": "FAIL",
+      "evidence": "AI_ASSISTANT_FAILED_500_HTTP 400 - {\"request_id\":\"13e139df-9f7c-974f-8203-776e50a6a12b\",\"code\":\"InvalidParameter\",\"message\":\"url error, please check url！ For details, see: https://help.aliyun.com/zh/model-studio/error-code#error-url\"}"
+    }
+  ],
+  "passed": 5,
+  "failed": 1
+}
