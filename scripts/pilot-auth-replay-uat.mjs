@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -74,13 +75,19 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? null,
+  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   target: base,
   scope: "read-only auth recovery injection; GET is replayed once, DELETE is intercepted and never replayed",
   checks,
   writes,
 };
-const outputPath = path.join(root, "docs", "UAT_AUTH_REPLAY_2026-10-19.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_AUTH_REPLAY_2026-10-19.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, checks, writes }));
 if (checks.some((check) => check.status !== "PASS") || writes.length !== 1) process.exitCode = 2;

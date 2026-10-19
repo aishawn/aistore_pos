@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（用户确认 `7544d03` 曾部署；`c982572` webhook 返回成功，但 Retry 公网专项失败且运行 SHA 未核验）
+**Last updated:** 2026-10-19（`b3c9eba` 后公网 Retry/Auth 专项通过；Dokploy 运行 SHA 未核验）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -31,12 +31,14 @@ Statuses:
 - 按 `docs/STORE_ADMIN_P0_SPEC.md`，Odoo 盘点写入前还需在获批隔离 Odoo 上完成版本/API spike，明确 location/company 解析与部分差异的应用模型；完成后必须验证应用前取消不改库存、确认后 Odoo 与 UI 库存一致。Demo 公司禁止写入。
 - Store Ops P0 尚未全部完成：采购收货有隔离环境写入验收；Odoo 盘点差异应用尚未实现。此前功能概览里的“盘点”描述的是经典系统页面存在，不等于 Odoo SoT 能力已验收。
 
-- 当前 `main` 与 `origin/main` 均为 `c982572`；该提交在 `2a2d9ab` 基础上增加 API 读取序号保护、共享 Retry 忙碌语义及确定性故障注入 UAT。`d801440` 统一了多数 UAT 的 source/deployment SHA 记录方式。
+- 当前 `main` 与 `origin/main` 均为 `b3c9eba`；`9f15b70` 修复共享 Retry 提示提前消失，`b3c9eba` 增加隔离本地 browser fixtures 和可指定 UAT 输出文件。此前 `c982572` 提供读取序号保护及 Retry 忙碌语义；`d801440` 统一了多数 UAT 的 source/deployment SHA 记录方式。
 - 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_1cde2cb.json` 为 131 路由 × 390/1440，`262/262 PASS`；它验证的是先前 `1cde2cb` 公网版本，不覆盖 `2a2d9ab`。
 - 用户此前确认部署 `7544d03`。`c982572` 推送后使用完整 GitHub push payload 调用 Dokploy webhook 返回 HTTP `200 Compose deployed successfully`，并等待超过 5 分钟；但实际运行 SHA、构建日志和容器状态未从控制台回读，不能确认公网已运行 `c982572`。全站矩阵 `262/262 PASS` 与旧认证重放证据来自较早公网版本。
-- 最新商品详情 UAT（source `c982572`）：确认第二次 Tax rates GET 已到达并保持 pending，Retry 进度锁与提示 `aria-busy` 未出现；首次误提示消失，390px 无溢出、页面错误和业务写入均为 `0`。Gift Cards UAT：确认第二次 Outlet GET pending，提示与 Retry 按钮仍消失，筛选器保持禁用；`503 → 200` 和搜索竞态通过，无溢出、页面错误或业务写入。deployment 均为 `unverified-after-deploy`。
-- 最新认证重放 UAT：GET 401 后刷新一次；DELETE 请求一次且被浏览器拦截，无真实业务写入，`2/2 PASS`。部署 SHA 未核验。
-- 当前发布判定：**NO-GO，商品详情和 Gift Cards Retry 进度锁回归仍未通过；部署身份待 Dokploy 控制台确认。**
+- `9f15b70` 修复 Retry 错误提示在 pending 期间被清除的问题，`b3c9eba` 加入无后端/无业务写入的 local mock browser UAT。两个提交均已推送；`b3c9eba` 的手工 webhook 请求返回 `301 Branch Not Match`，但公网行为 UAT 已在 push 后重跑，deployment SHA 仍标为 `unverified-after-deploy`。
+- 最新公网 Product Detail Retry UAT：`1/1 PASS`；第二次 Tax rates GET 保持 pending 时 Retry disabled、alert `aria-busy=true`，最终 `503 → Retry → 200`；390px 无溢出、page errors `0`、业务写入 `0`。Gift Cards UAT：Retry `1/1 PASS`、搜索竞态 `1/1 PASS`；Outlet pending 锁定正确，390px 无溢出、page errors `0`、业务写入 `0`。证据：`docs/UAT_PRODUCT_VIEW_RETRY_AFTER_B3C9EBA.json`、`docs/UAT_GIFTCARDS_OUTLET_RETRY_AFTER_B3C9EBA.json`。
+- 最新公网认证回放：`2/2 PASS`；GET 401 后刷新一次，DELETE 尝试一次并被 Playwright 拦截，无服务端写入。证据：`docs/UAT_AUTH_REPLAY_AFTER_B3C9EBA.json`。
+- 本地 fixture UAT 同样通过：商品详情 `1/1`、Gift Cards Retry/搜索竞态 `2/2`；证据 `docs/UAT_PRODUCT_VIEW_RETRY_LOCAL_9f15b70.json`、`docs/UAT_GIFTCARDS_OUTLET_RETRY_LOCAL_9f15b70.json`。
+- 当前发布判定仍为 **NO-GO**：Retry 与认证公网行为已通过，但 Dokploy 实际运行 SHA / 构建日志 / 容器状态未核验；262 路由全站矩阵是更早版本的证据。
 
 ## 已推送批次：`c982572`（部署请求已接受，运行版本待核验）
 
