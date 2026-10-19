@@ -760,15 +760,15 @@ function SettingsPanel() {
         >
           <h3 className="text-[14px] font-semibold">Preferred supplier</h3>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <select className={field} value={pref.supplierId} onChange={(e) => setPref({ ...pref, supplierId: e.target.value })} required>
+            <select aria-label="Preferred supplier" className={field} value={pref.supplierId} onChange={(e) => setPref({ ...pref, supplierId: e.target.value })} required>
               <option value="">Supplier</option>
               {settings?.suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
               ))}
             </select>
-            <input className={field} value={pref.priority} onChange={(e) => setPref({ ...pref, priority: e.target.value })} placeholder="Priority" />
-            <input className={field} value={pref.threshold} onChange={(e) => setPref({ ...pref, threshold: e.target.value })} placeholder="Switch if saving $/case" />
-            <select className={field} value={pref.channel} onChange={(e) => setPref({ ...pref, channel: e.target.value })}>
+            <input aria-label="Supplier priority" className={field} value={pref.priority} onChange={(e) => setPref({ ...pref, priority: e.target.value })} placeholder="Priority" />
+            <input aria-label="Switch if saving per case" className={field} value={pref.threshold} onChange={(e) => setPref({ ...pref, threshold: e.target.value })} placeholder="Switch if saving $/case" />
+            <select aria-label="Preferred ordering channel" className={field} value={pref.channel} onChange={(e) => setPref({ ...pref, channel: e.target.value })}>
               <option value="API">Ready to order</option>
               <option value="EMAIL">Sales rep email</option>
               <option value="OTHER">Manual task</option>
@@ -794,7 +794,7 @@ function SettingsPanel() {
             {settings?.preferences.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.supplierName} · priority {item.priority} · {item.channel}</span>
-                <button type="button" className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/preferences/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove preference for ${item.supplierName}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/preferences/${item.id}`))}>Remove</button>
               </li>
             ))}
           </ul>
@@ -805,7 +805,7 @@ function SettingsPanel() {
           onSubmit={(e) => e.preventDefault()}
         >
           <h3 className="text-[14px] font-semibold">Supplier case price</h3>
-          <input className={`${field} mt-3`} value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search product" />
+          <input aria-label="Search products for supplier pricing" className={`${field} mt-3`} value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search product" />
           {products.length > 0 && (
             <div className="mt-1 max-h-28 overflow-auto rounded border border-[var(--oh-border)]">
               {products.map((product) => (
@@ -826,15 +826,15 @@ function SettingsPanel() {
             </div>
           )}
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <select className={field} value={price.supplierId} onChange={(e) => setPrice({ ...price, supplierId: e.target.value })} required>
+            <select aria-label="Price supplier" className={field} value={price.supplierId} onChange={(e) => setPrice({ ...price, supplierId: e.target.value })} required>
               <option value="">Supplier</option>
               {settings?.suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
               ))}
             </select>
-            <input className={field} value={price.sku} onChange={(e) => setPrice({ ...price, sku: e.target.value })} placeholder="Supplier SKU" />
-            <input className={field} value={price.basePrice} onChange={(e) => setPrice({ ...price, basePrice: e.target.value })} placeholder="Price per case" required />
-            <input className={field} value={price.caseSize} onChange={(e) => setPrice({ ...price, caseSize: e.target.value })} placeholder="Case size" />
+            <input aria-label="Supplier SKU" className={field} value={price.sku} onChange={(e) => setPrice({ ...price, sku: e.target.value })} placeholder="Supplier SKU" />
+            <input aria-label="Price per case" className={field} value={price.basePrice} onChange={(e) => setPrice({ ...price, basePrice: e.target.value })} placeholder="Price per case" required />
+            <input aria-label="Case size" className={field} value={price.caseSize} onChange={(e) => setPrice({ ...price, caseSize: e.target.value })} placeholder="Case size" />
           </div>
           <div className="mt-3">
             <AdminPrimaryButton
@@ -857,7 +857,7 @@ function SettingsPanel() {
             {settings?.prices.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.productName} · {item.supplierName} · {money(item.basePrice)}</span>
-                <button type="button" className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/prices/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove price for ${item.productName}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/prices/${item.id}`))}>Remove</button>
               </li>
             ))}
           </ul>
@@ -869,29 +869,29 @@ function SettingsPanel() {
         >
           <h3 className="text-[14px] font-semibold">Deal</h3>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <select className={field} value={deal.supplierId} onChange={(e) => setDeal({ ...deal, supplierId: e.target.value })} required>
+            <select aria-label="Deal supplier" className={field} value={deal.supplierId} onChange={(e) => setDeal({ ...deal, supplierId: e.target.value })} required>
               <option value="">Supplier</option>
               {settings?.suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
               ))}
             </select>
-            <input className={field} value={deal.name} onChange={(e) => setDeal({ ...deal, name: e.target.value })} placeholder="Deal name" required />
-            <select className={field} value={deal.dealType} onChange={(e) => setDeal({ ...deal, dealType: e.target.value })}>
+            <input aria-label="Deal name" className={field} value={deal.name} onChange={(e) => setDeal({ ...deal, name: e.target.value })} placeholder="Deal name" required />
+            <select aria-label="Deal type" className={field} value={deal.dealType} onChange={(e) => setDeal({ ...deal, dealType: e.target.value })}>
               <option value="BUY_X_GET_Y">Buy X get Y</option>
               <option value="PERCENT">Percent off</option>
               <option value="AMOUNT_OFF">Amount off / case</option>
             </select>
-            <input className={field} value={deal.buyQuantity} onChange={(e) => setDeal({ ...deal, buyQuantity: e.target.value })} placeholder="Buy cases" />
-            <input className={field} value={deal.freeQuantity} onChange={(e) => setDeal({ ...deal, freeQuantity: e.target.value })} placeholder="Free cases" />
-            <input className={field} value={deal.discountPercent} onChange={(e) => setDeal({ ...deal, discountPercent: e.target.value })} placeholder="Discount %" />
-            <input className={field} value={deal.eligibleProducts} onChange={(e) => setDeal({ ...deal, eligibleProducts: e.target.value })} placeholder="Product ids, blank = all" />
+            <input aria-label="Deal buy cases" className={field} value={deal.buyQuantity} onChange={(e) => setDeal({ ...deal, buyQuantity: e.target.value })} placeholder="Buy cases" />
+            <input aria-label="Deal free cases" className={field} value={deal.freeQuantity} onChange={(e) => setDeal({ ...deal, freeQuantity: e.target.value })} placeholder="Free cases" />
+            <input aria-label="Deal discount percent" className={field} value={deal.discountPercent} onChange={(e) => setDeal({ ...deal, discountPercent: e.target.value })} placeholder="Discount %" />
+            <input aria-label="Eligible product IDs" className={field} value={deal.eligibleProducts} onChange={(e) => setDeal({ ...deal, eligibleProducts: e.target.value })} placeholder="Product ids, blank = all" />
           </div>
           <label className="mt-2 flex items-center gap-2 text-[13px]">
-            <input type="checkbox" checked={deal.mixMatch} onChange={(e) => setDeal({ ...deal, mixMatch: e.target.checked })} />
+            <input aria-label="Mix and match across SKUs" type="checkbox" checked={deal.mixMatch} onChange={(e) => setDeal({ ...deal, mixMatch: e.target.checked })} />
             Mix & match across SKUs
           </label>
           <label className="mt-1 flex items-center gap-2 text-[13px]">
-            <input type="checkbox" checked={deal.requiresRep} onChange={(e) => setDeal({ ...deal, requiresRep: e.target.checked })} />
+            <input aria-label="Must be ordered through sales representative" type="checkbox" checked={deal.requiresRep} onChange={(e) => setDeal({ ...deal, requiresRep: e.target.checked })} />
             Must be ordered through the sales rep
           </label>
           <div className="mt-3">
@@ -916,7 +916,7 @@ function SettingsPanel() {
             {settings?.deals.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
                 <span>{item.name} · {item.supplierName}</span>
-                <button type="button" className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/deals/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove deal ${item.name}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/deals/${item.id}`))}>Remove</button>
               </li>
             ))}
           </ul>
@@ -930,12 +930,12 @@ function SettingsPanel() {
             <h3 className="text-[14px] font-semibold">Product supplier rule</h3>
             <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Search a product in the price card to fill this id, or type it.</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <input className={field} value={rule.productId} onChange={(e) => setRule({ ...rule, productId: e.target.value })} placeholder="Product id" required />
-              <select className={field} value={rule.supplierMode} onChange={(e) => setRule({ ...rule, supplierMode: e.target.value })}>
+              <input aria-label="Rule product ID" className={field} value={rule.productId} onChange={(e) => setRule({ ...rule, productId: e.target.value })} placeholder="Product id" required />
+              <select aria-label="Rule supplier mode" className={field} value={rule.supplierMode} onChange={(e) => setRule({ ...rule, supplierMode: e.target.value })}>
                 <option value="LOCKED">Locked supplier</option>
                 <option value="OPTIMIZE">Compare suppliers</option>
               </select>
-              <select className={field} value={rule.supplierId} onChange={(e) => setRule({ ...rule, supplierId: e.target.value })}>
+              <select aria-label="Rule supplier" className={field} value={rule.supplierId} onChange={(e) => setRule({ ...rule, supplierId: e.target.value })}>
                 <option value="">Supplier</option>
                 {settings?.suppliers.map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
@@ -961,7 +961,7 @@ function SettingsPanel() {
               {settings?.rules.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2">
                   <span>{item.productName} · {item.supplierMode} {item.supplierName || ""}</span>
-                  <button type="button" className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/rules/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove rule for ${item.productName}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/rules/${item.id}`))}>Remove</button>
                 </li>
               ))}
             </ul>
@@ -973,9 +973,9 @@ function SettingsPanel() {
           >
             <h3 className="text-[14px] font-semibold">Upcoming holiday</h3>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <input className={field} type="date" value={event.eventDate} onChange={(e) => setEvent({ ...event, eventDate: e.target.value })} required />
-              <input className={field} value={event.name} onChange={(e) => setEvent({ ...event, name: e.target.value })} placeholder="Public holiday" required />
-              <input className={field} value={event.adjustmentPercent} onChange={(e) => setEvent({ ...event, adjustmentPercent: e.target.value })} placeholder="Demand lift %" />
+              <input aria-label="Holiday date" className={field} type="date" value={event.eventDate} onChange={(e) => setEvent({ ...event, eventDate: e.target.value })} required />
+              <input aria-label="Public holiday name" className={field} value={event.name} onChange={(e) => setEvent({ ...event, name: e.target.value })} placeholder="Public holiday" required />
+              <input aria-label="Demand lift percent" className={field} value={event.adjustmentPercent} onChange={(e) => setEvent({ ...event, adjustmentPercent: e.target.value })} placeholder="Demand lift %" />
             </div>
             <div className="mt-3">
               <AdminPrimaryButton
@@ -996,7 +996,7 @@ function SettingsPanel() {
               {settings?.events.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2">
                   <span>{item.eventDate} · {item.name} · +{qty(item.adjustmentPercent)}%</span>
-                  <button type="button" className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/events/${item.id}`))}>Remove</button>
+                <button type="button" aria-label={`Remove holiday ${item.name}`} className="text-rose-600" onClick={() => void save(() => api.del<Settings>(`/api/supply-chain/events/${item.id}`))}>Remove</button>
                 </li>
               ))}
             </ul>
