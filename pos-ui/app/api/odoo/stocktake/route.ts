@@ -39,6 +39,7 @@ type StockQuant = {
   owner_id: Relation;
   inventory_quantity_set: boolean;
 };
+type StocktakeWarehouse = { id: number; name: string; lot_stock_id: Relation; company_id: Relation };
 
 class StocktakeError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
@@ -78,6 +79,21 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result as T;
 }
 
+async function deriveSingleWarehouseLocation(sessionId: string, companyId: number, context: Record<string, unknown>) {
+  const warehouses = await rpc<StocktakeWarehouse[]>(sessionId, "stock.warehouse", "search_read", [[
+    ["company_id", "=", companyId],
+  ]], {
+    fields: ["id", "name", "lot_stock_id", "company_id"],
+    limit: 2,
+    order: "id asc",
+    context,
+  }) ?? [];
+  if (warehouses.length !== 1) return null;
+  const warehouse = warehouses[0];
+  const locationId = relationId(warehouse.lot_stock_id);
+  return locationId ? { id: locationId, source: "single-warehouse-fallback" as const } : null;
+}
+
 async function tenantScope(request: NextRequest, sessionId: string) {
   const response = await fetch(`${baseUrl()}/web/session/get_session_info`, {
     method: "POST",
@@ -94,11 +110,16 @@ async function tenantScope(request: NextRequest, sessionId: string) {
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanies);
   if (forced.error) throw new StocktakeError(forced.error, forced.status);
   const companyId = forced.companyIds[0];
-  const rootLocationId = forced.binding?.odooStockLocationId;
+  const context = odooCompanyContext(forced.companyIds);
+  const configuredLocationId = forced.binding?.odooStockLocationId;
+  const derived = !configuredLocationId && companyId
+    ? await deriveSingleWarehouseLocation(sessionId, companyId, context)
+    : null;
+  const rootLocationId = configuredLocationId ?? derived?.id ?? null;
   if (!companyId || !rootLocationId) {
-    throw new StocktakeError("This store has no Odoo stock location configured.", 409);
+    throw new StocktakeError("This store has no unambiguous Odoo stock location configured.", 409);
   }
-  return { companyId, rootLocationId, context: odooCompanyContext(forced.companyIds) };
+  return { companyId, rootLocationId, context, locationSource: configuredLocationId ? "tenant-binding" as const : derived?.source ?? "tenant-binding" as const };
 }
 
 async function leafLocations(sessionId: string, scope: Awaited<ReturnType<typeof tenantScope>>) {
