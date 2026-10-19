@@ -31,3 +31,9 @@ HTTP 301
 - 当前 AI 回归证明的是线上现有版本的行为，不是 `0f9faab` 的部署证明。
 - 不要把 webhook `301` 或 `Branch Not Match` 记录为部署成功。
 - 继续使用一次性隔离租户，AI 回归脚本保持只读。
+
+## 等待后的复验
+
+在 push 后等待约 4 分钟，第二轮线上回归仍通过：AI 功能 `14/14 PASS`、AI metrics `9/9 PASS`、能力位 `PASS`、AI UI `2/2 PASS`，无业务或配置写入。证据：`docs/UAT_AI_REGRESSION_ONLINE_39BD36C.json`。
+
+这轮复验仍没有 Dokploy 控制台的运行 SHA、构建日志或容器状态，因此只能确认线上行为正常，不能确认 `39bd36c` 已运行。
