@@ -4,9 +4,9 @@
 
 ### 2026-10-20 表格 DOM 复核（`88a164d`）
 
-- 线上 DOM 审计 `10/10 PASS`：设置用户、AI Metrics、Odoo 产品、供应链和发票扫描页面在 390/1440 视口的表格名称和列头语义均通过。
+- 线上 DOM 审计 `14/14 PASS`：设置用户、角色管理、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描页面在 390/1440 视口的表格名称和列头语义均通过。
 - 发现并修复实际生效的旧 `app/settings/users` 表格缺少 `aria-label`；4 个被拦截的 Odoo records POST 均为只读请求，业务写入为 `0`。
-- 证据：`docs/UAT_TABLE_A11Y_ONLINE_88A164D_FINAL.json`。
+- 证据：`docs/UAT_TABLE_A11Y_ONLINE_A533496_FINAL.json`。
 
 ### `0f9faab` 部署后 AI 回归
 

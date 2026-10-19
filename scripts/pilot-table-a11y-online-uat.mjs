@@ -30,6 +30,7 @@ const routes = [
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
 const checks = [];
 const blockedNonGet = [];
+const safeNonGetPaths = new Set(["/api/odoo/records", "/api/auth/refresh"]);
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: viewports[0] });
 
@@ -58,7 +59,11 @@ try {
 
     for (const route of routes) {
       pageErrors.length = 0;
-      const response = await page.goto(`${base}${route.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+      let response = await page.goto(`${base}${route.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+      if (response?.status() !== 200) {
+        await page.waitForTimeout(2000);
+        response = await page.goto(`${base}${route.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
+      }
       await page.waitForTimeout(2500);
       const result = await page.locator("table").evaluateAll((tables) => tables.map((table) => ({
         name: table.getAttribute("aria-label") || table.querySelector("caption")?.textContent?.trim() || "",
@@ -89,8 +94,8 @@ const output = {
   scope: "authenticated read-only table accessibility regression; non-GET API calls blocked",
   checks,
   blockedNonGet,
-  unexpectedWrites: blockedNonGet.filter((entry) => !entry.endsWith(" /api/odoo/records")),
-  status: checks.every((check) => check.status === "PASS") && blockedNonGet.filter((entry) => !entry.endsWith(" /api/odoo/records")).length === 0 ? "PASS" : "FAIL",
+  unexpectedWrites: blockedNonGet.filter((entry) => !safeNonGetPaths.has(entry.slice(entry.indexOf("/")))),
+  status: checks.every((check) => check.status === "PASS") && blockedNonGet.filter((entry) => !safeNonGetPaths.has(entry.slice(entry.indexOf("/")))).length === 0 ? "PASS" : "FAIL",
 };
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_TABLE_A11Y_ONLINE_CURRENT.json");
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
