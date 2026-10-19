@@ -23,6 +23,7 @@
 - AI 只读线上回归：availability `3/3`、surface `11/11`、UI `2/2`、Sommelier `10/10`、公网 AI route matrix `9/9` 均通过；本次复测证据 `docs/UAT_AI_ROUTE_MATRIX_2026-10-19_POST-A48CFD8.json`。
 - 普通非管理员对 13 个 AI 配置 reload/create/update/delete 接口全部被拒绝，业务码 `40300`，配置数量未变化；临时用户和角色已清理。
 - Stocktake 普通用户 GET/POST 均被拒绝（HTTP `403` / 业务码 `40300`）；生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false`，没有写入 Demo Odoo。
+- 新增 Smart Pricing 只读建议页 `/stock/price-suggestions`：本地 fixture、typecheck、目标 ESLint 均通过，`writeEnabled=false` 且没有价格写请求；但部署后公网 URL 当前返回 HTTP `404`，尚不能算线上通过。价格建议 gate 证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-23F9B76.json`。
 
 ### 已完成的本地质量检查
 
@@ -36,6 +37,7 @@
 - **Stocktake 数量边界**：`1,000,000` 上限和 40 行限制有本地 fixture 证据，缺少有效线上真实登录交互证据。
 - **采购当前版本回归**：采购确认、部分/全部收货有历史线上证据，但尚未在部署身份核实后的当前版本重跑。
 - **AI 生产能力**：真实 DashScope 对话、云端语音转写、酒标图像识别、真实发票 OCR 未验收；生产 `AI_ENABLED=false`。
+- **Smart Pricing 线上部署**：`/stock/price-suggestions` 在本地实现和 fixture 验证通过，但 Dokploy 部署等待后公网仍返回 `404`；需要从 Dokploy 控制台确认实际构建分支、frontend 镜像 SHA 和构建日志。
 - **现场与运营能力**：实体刷卡终端、打印机、钱箱、SMTP 邀请/密码重置邮件、正式现金差异审批和财务对账未验收。
 - **产品缺口**：分单/多支付方式收款和离线 POS 尚未实现或验收，不计入基础 POS 通过门槛。
 - **平台改动**：租户生命周期/店铺状态转换工作区改动未完整提交、未运行后端测试、未部署、未线上验收。
@@ -66,6 +68,13 @@
 - 本轮没有销售、采购、库存或现金业务写入；AI 仍按生产 `AI_ENABLED=false` 的关闭策略运行。
 - 证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_POST-8CF2CC0.json`、`docs/UAT_AI_SURFACE_2026-10-19_POST-8CF2CC0.json`、`docs/UAT_AI_ROUTE_MATRIX_2026-10-19_POST-8CF2CC0.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-8CF2CC0.json`。
 - 上述脚本的 `deployment` 字段仍为 `unverified-after-deploy`；只能证明 webhook 触发后公网行为通过，不能替代 Dokploy 容器 SHA、构建日志和健康状态回读。
+
+## 七、Smart Pricing 迭代状态（2026-10-19）
+
+- `158394a` 新增基于 Odoo 成本、售价和目标毛利的 GST-inclusive 货架价建议，只读返回，明确不写入 `list_price`；应用动作通过 Products / Bulk Price Edit 由人工完成。
+- 本地 fixture：`PASS`，无 API 写请求；`npm run typecheck`、目标 ESLint、UAT 脚本语法检查通过。
+- 已触发两次 Dokploy webhook 并等待约 3 分钟；公网登录成功，但 `/stock/price-suggestions` 返回 `404`，AI enablement gate 将价格建议记录为 `BLOCKED`。当前不能把该功能宣称为线上可用。
+- 生产 AI 仍为 `AI_ENABLED=false`；gate 的模型 smoke 保持阻塞，需在非生产隔离环境完成真实 DashScope、ASR、视觉和租户隔离验收后再考虑开启。
 
 更新时间：2026-10-19（Asia/Shanghai）
 仓库：`aishawn/aistore_pos`
