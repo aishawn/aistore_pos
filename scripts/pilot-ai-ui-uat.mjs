@@ -72,9 +72,10 @@ async function runViewport(viewport) {
   const identifyHttp = await identifyResponse;
   if (!identifyHttp.ok()) throw new Error(`IDENTIFY_HTTP_${identifyHttp.status()}`);
   await page.waitForTimeout(500);
-  const identifyItems = await page.locator("#main-content ul li").count();
-  if (!identifyItems) throw new Error(`IDENTIFY_EMPTY_URL_${page.url()}_main=${identifyItems}_all=${await page.locator("ul li").count()}_${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 500)}`);
-  await page.locator("#main-content ul li button").first().click();
+  const identifyList = page.locator("ul:has(li button)").last();
+  const identifyItems = await identifyList.locator("li").count();
+  if (!identifyItems) throw new Error(`IDENTIFY_EMPTY_URL_${page.url()}_results=${identifyItems}_all=${await page.locator("ul li").count()}_${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 500)}`);
+  await identifyList.locator("li button").first().click();
   await page.getByRole("heading", { name: "How to sell" }).waitFor({ timeout: 60000 });
   await page.getByRole("button", { name: "10s", exact: true }).click();
   await page.waitForTimeout(500);

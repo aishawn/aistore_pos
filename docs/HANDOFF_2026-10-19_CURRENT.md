@@ -22,6 +22,14 @@
 - 本地 fixture UAT 已通过：价格建议页面、SKU/状态筛选、CSV、深链、Bulk 搜索预填、Bulk API 查询参数和 AI 入口均通过，`0` 个非 GET 请求。
 - 证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`。本地未运行 build；线上部署后仍需重跑价格建议认证 gate 和 Bulk 页面只读回归。
 
+## 2026-10-19 `228fa6f` 部署后 AI 回归
+
+- 价格建议/Bulk 页面线上只读回归通过：搜索、状态筛选、CSV、SKU 深链、Bulk 搜索预填和 API 查询参数均通过，`0` 个写请求。证据：`docs/UAT_PRICE_SUGGESTIONS_ONLINE_2026-10-19_POST-228FA6F.json`。
+- AI 全功能只读回归：`14 PASS / 0 FAIL / 1 INFO`。NLQ、Sommelier、ASR/酒标空输入、价格建议 API/页面、补货页和匿名 assistant 鉴权通过；Invoice OCR 仍为 `50212` INFO，仅证明 provider 可达，未完成真实发票字段提取。证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-228FA6F.json`。
+- AI availability `3/3 PASS`、surface `11/11 PASS`、Sommelier `10/10 PASS`。证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_POST-228FA6F.json`、`docs/UAT_AI_SURFACE_2026-10-19_POST-228FA6F.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-228FA6F.json`。
+- AI UI 390/1440 两个视口 `2/2 PASS`，推荐卡片和识别结果均返回，页面错误为 `0`。测试脚本已改为定位实际结果列表，避免依赖不存在的 `#main-content` id。证据：`docs/UAT_AI_UI_2026-10-19_POST-228FA6F_RETRY2.json`。
+- 本轮所有线上检查均为只读或浏览器拦截请求；没有对 Demo 写入销售、采购、库存、现金、反馈或 AI 配置。
+
 > **当前有效摘要（2026-10-19）**
 >
 > 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `761e078`；接手时先确认线上实际运行提交。
