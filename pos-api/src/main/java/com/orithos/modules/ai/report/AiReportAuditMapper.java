@@ -71,4 +71,15 @@ public interface AiReportAuditMapper {
             """)
     List<Integer> latencyValues(@Param("vendorId") long vendorId,
                                 @Param("since") LocalDateTime since);
+
+    @Select("""
+            SELECT COALESCE(path, 'unknown') AS path, latency_ms
+            FROM ai_report_audit
+            WHERE vendor_id = #{vendorId}
+              AND created_at >= #{since}
+              AND latency_ms IS NOT NULL
+            ORDER BY path ASC, latency_ms ASC
+            """)
+    List<AiReportMetricsLatencyRow> latencyValuesByPath(@Param("vendorId") long vendorId,
+                                                        @Param("since") LocalDateTime since);
 }

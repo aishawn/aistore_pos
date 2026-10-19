@@ -33,6 +33,8 @@ public record AiReportMetricsResponse(
             long rejected,
             double allowedRate,
             double averageLatencyMs,
+            Integer p50LatencyMs,
+            Integer p95LatencyMs,
             long estimatedTokens
     ) {}
 }

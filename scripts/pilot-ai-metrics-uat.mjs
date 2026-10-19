@@ -74,9 +74,11 @@ try {
     && assistantPath
     && Number(assistantPath.requests) > 0
     && Number(assistantPath.allowed) > 0
+    && Number.isFinite(Number(assistantPath.p50LatencyMs))
+    && Number.isFinite(Number(assistantPath.p95LatencyMs))
     && Number(assistantPath.estimatedTokens) > 0;
   record("assistant intent metrics coverage", assistantPathValid ? "PASS" : "FAIL", assistantPathValid
-    ? `${assistantPath.path} requests=${assistantPath.requests} allowed=${assistantPath.allowed} estimatedTokens=${assistantPath.estimatedTokens}`
+    ? `${assistantPath.path} requests=${assistantPath.requests} allowed=${assistantPath.allowed} p50=${assistantPath.p50LatencyMs} p95=${assistantPath.p95LatencyMs} estimatedTokens=${assistantPath.estimatedTokens}`
     : `expected ${expectedAssistantPath || "assistant:<intent>"} path or estimated tokens missing`);
 
   const anonymousContext = await browser.newContext();
@@ -93,7 +95,7 @@ try {
     const table = await page.getByRole("heading", { name: "By AI path" }).isVisible().catch(() => false);
     record(`metrics UI ${viewport.width}px`, pageErrors.length === 0 && table ? "PASS" : "FAIL", `table=${table} pageErrors=${pageErrors.length}`);
     const tableSemantics = await page.locator("table caption").count() === 1
-      && await page.locator("table thead th[scope=col]").count() === 6
+        && await page.locator("table thead th[scope=col]").count() === 8
       && await page.locator("main[aria-busy]").count() === 1;
     record(`metrics accessibility ${viewport.width}px`, pageErrors.length === 0 && tableSemantics ? "PASS" : "FAIL", `caption=${await page.locator("table caption").count()} scopedHeaders=${await page.locator("table thead th[scope=col]").count()} busy=${await page.locator("main[aria-busy]").count()}`);
     await page.close();

@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class AiReportMetricsService {
@@ -27,6 +30,13 @@ public class AiReportMetricsService {
         long vendorId = user.vendorId() == null ? 0L : user.vendorId();
         AiReportMetricsRow row = mapper.summarize(vendorId, since);
         List<Integer> latencies = mapper.latencyValues(vendorId, since);
+        Map<String, List<Integer>> pathLatencies = mapper.latencyValuesByPath(vendorId, since).stream()
+                .filter(sample -> sample.latencyMs() != null)
+                .collect(Collectors.groupingBy(
+                        AiReportMetricsLatencyRow::path,
+                        LinkedHashMap::new,
+                        Collectors.mapping(AiReportMetricsLatencyRow::latencyMs, Collectors.toList())
+                ));
         return new AiReportMetricsResponse(
                 hours,
                 since,
@@ -50,6 +60,8 @@ public class AiReportMetricsService {
                                 path.rejected(),
                                 rate(path.allowed(), path.requests()),
                                 round(path.averageLatencyMs()),
+                        percentile(pathLatencies.get(path.path()), 0.50),
+                        percentile(pathLatencies.get(path.path()), 0.95),
                                 path.estimatedTokens()
                         ))
                         .toList()

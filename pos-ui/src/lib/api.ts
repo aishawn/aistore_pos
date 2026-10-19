@@ -766,6 +766,8 @@ export interface AiReportMetrics {
     rejected: number;
     allowedRate: number;
     averageLatencyMs: number;
+      p50LatencyMs: number | null;
+      p95LatencyMs: number | null;
     estimatedTokens: number;
   }>;
 }
