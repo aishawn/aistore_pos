@@ -27,7 +27,7 @@ export const NAVIGATION: NavEntry[] = [
         { label: "Classifications", href: "/classifications" },
         { label: "Suppliers", href: "/suppliers" },
         { label: "Orders & Invoices", href: "/orders" },
-        { label: "Stocktake", href: "/stocktake" },
+        { label: "Stocktake", href: "/stock/stocktake" },
         { label: "More", href: "/stock/more" },
       ],
     },
