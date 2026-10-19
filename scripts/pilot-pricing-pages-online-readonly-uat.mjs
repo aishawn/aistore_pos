@@ -59,8 +59,9 @@ try {
       const loading = page.getByRole("status", { name: "Loading" }).first();
       await loading.waitFor({ state: "hidden", timeout: 30000 }).catch(() => {});
       const loadingComplete = !(await loading.isVisible().catch(() => false));
+      const firstHeadingText = await page.locator("h1").first().innerText().catch(() => "");
       const headingVisible = await heading.isVisible().catch(() => false)
-        || await page.locator("h1").filter({ hasText: route.heading }).first().isVisible().catch(() => false)
+        || firstHeadingText.trim() === route.heading
         || await page.getByText(route.heading, { exact: true }).first().isVisible().catch(() => false);
       const hasDataTable = ["/stock/list", "/stock/capped-pricing"].includes(route.path);
       let mobileTableScroll = null;
