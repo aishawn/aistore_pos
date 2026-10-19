@@ -755,7 +755,13 @@ export function askAssistant(
 }
 
 export interface AiClientConfig {
+  /** Store AI_ENABLED flag (vision / ASR / chat feature gate). */
   enabled: boolean;
+  /** True when the NLQ graph bean is actually registered. */
+  assistantAvailable?: boolean;
+  transcriptionAvailable?: boolean;
+  labelVisionAvailable?: boolean;
+  invoiceVisionAvailable?: boolean;
   aiTriggerKeywords: string[];
 }
 

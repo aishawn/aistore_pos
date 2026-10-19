@@ -105,7 +105,7 @@ Statuses:
 ### 尚未完成或尚未验收
 
 - Dokploy 实际运行 SHA、frontend/backend 完整构建日志、容器状态和部署时间尚未从控制台独立保存；公网 200 不能替代部署身份。
-- 生产 DashScope AI 仍为 `AI_ENABLED=false`；真实语音转写、酒标识别、发票 OCR 未验收。
+- 生产已打开 `AI_ENABLED`（Dokploy），但 NLQ Graph 服务曾因 `@ConditionalOnBean(CompiledGraph)` 未注册导致 `/api/ai/assistant` 持续 `50301`（pitch/ask 仍可用）。修复见本轮提交；部署后用 `scripts/pilot-ai-features-verify-uat.mjs` 复验。发票/酒标 VL 在当前 DashScope 账号上仍报 `model_not_found`/`access_denied`，需开通视觉模型后再验。Price suggestions 只读已通（`writeEnabled=false`）。证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19.json`。
 - 实体刷卡终端、打印机、钱箱、离线 POS、分单/多支付方式未实现或未验收；Card 仅为 Odoo payment method 模拟。
 - SMTP 邀请/密码重置邮件、正式现金差异审批、财务对账和采购财务流程未完成正式运营验收。
 - 多数创建、编辑、合并、销售、退款、收货、现金和关班写入回归使用隔离租户或 mock；Demo 租户禁止写入，不能把只读/mock 结果当成生产业务验收。
@@ -387,10 +387,10 @@ Statuses:
 | Supplier directory (Odoo) | Accepted | `/suppliers/odoo` reads and creates tenant-scoped Odoo suppliers with ABN duplicate blocking. Live isolated tenant UAT passed invalid email 400, unique supplier 201, duplicate ABN 409, and Odoo company readback; evidence: `docs/UAT_SUPPLIER_ISOLATION_LIVE_2026-10-17.json`. Supplier writes now force the active tenant company context. |
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API; commit `6a8a393` adds layout-preserving first-load skeleton rows and keeps search/status controls visible while reads are pending. Online delayed-read smoke passed without exposing or submitting write actions. |
 | Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons; page copy states suggestions are not the chat model |
-| Price suggestions (margin rules, read-only) | In progress | `/stock/price-suggestions` + `GET /api/odoo/price-suggestions`; GST-inclusive shelf suggestions from Odoo cost and target margin on sell; `writeEnabled=false`; missing costs never invented; apply via Products / Bulk Price Edit |
+| Price suggestions (margin rules, read-only) | In progress | Demo read-only API/page PASS (`products=1000`, `writeEnabled=false`) in `docs/UAT_AI_FEATURES_VERIFY_2026-10-19.json`. Still apply changes only via Products / Bulk Price Edit; never auto-write list prices. |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
 | Replenishment approval audit | Accepted | Live isolated-company UAT created a draft RFQ and read back one internal Odoo chatter audit containing the forecast method, target coverage, suggested/ordered quantities and reason; zeroed suggestions remain audit-only and are excluded from PO lines. Evidence: `docs/UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`. RFQ remains draft and is never auto-confirmed. |
-| Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; commit `459a243` makes the preview-only boundary explicit, removes the Classic MySQL `Save as received order` action, and links staff to Odoo Purchases / Replenishment. Production AI remains disabled and no invoice write is available from this page. |
+| Supplier invoice OCR → receive draft | In progress | OCR preview only; no receive from this page (`459a243`). Live demo probe hits DashScope but returns `model_not_found` for `qwen-vl-plus` on the current key — enable a VL model in Model Studio / set `AI_VISION_MODEL`, then re-verify. |
 | Banner / buyer-group price files | Planned | |
 
 ## Reporting & AI
@@ -400,7 +400,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; 2026-10-16 refinements add a layout-preserving skeleton, retryable first-load and refresh failure states, explicit data-through vs loaded timestamps, and hide comparisons on low prior-period baselines. Commit `83815f2` is deployed and authenticated read-only smoke passed. |
-| Cashier assistant / NL reports | In progress | Spring Graph; report permissions now resolve from the active DB role on every request (`8721a08`); 113 Java 21 build tests pass. Production AI remains disabled until budget, so no live report call UAT yet |
+| Cashier assistant / NL reports | In progress | Spring Graph; production AI is on but NLQ was `50301` until `PosAssistantGraphService` registration fix (this round). Redeploy + `pilot-ai-features-verify-uat.mjs` required before claiming live NLQ. Report RO password still required for outlet report SQL. |
 | Wine / sommelier assistant | In progress | Odoo remains authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. Recommendation/detail price and free-stock parity passed 6/6 production read-only checks on `da508ce`; see `docs/UAT_SOMMELIER_REGRESSION_2026-10-13.json`. Still not verified against register-specific warehouse context or tax/pricelist customer totals. Image recognition and model-backed behavior remain off/unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
 

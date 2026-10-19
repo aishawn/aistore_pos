@@ -1,13 +1,17 @@
 package com.orithos.modules.ai.configstore;
 
-import com.orithos.modules.ai.PosAssistantGraphService;
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiTranscriptionService;
+import com.orithos.modules.ai.PosAssistantGraphService;
+import com.orithos.modules.ai.invoice.InvoiceVisionService;
+import com.orithos.modules.ai.sommelier.WineLabelVisionService;
 import com.orithos.security.AdminAccess;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +28,9 @@ public class AiConfigController {
     private final AiPromptMapper promptMapper;
     private final IntentConfigService configService;
     private final ObjectProvider<PosAssistantGraphService> graphService;
+    private final ObjectProvider<AiTranscriptionService> transcriptionService;
+    private final ObjectProvider<WineLabelVisionService> labelVisionService;
+    private final ObjectProvider<InvoiceVisionService> invoiceVisionService;
     private final boolean aiEnabled;
 
     public AiConfigController(AiIntentMapper intentMapper,
@@ -32,6 +39,9 @@ public class AiConfigController {
                               AiPromptMapper promptMapper,
                               IntentConfigService configService,
                               ObjectProvider<PosAssistantGraphService> graphService,
+                              ObjectProvider<AiTranscriptionService> transcriptionService,
+                              ObjectProvider<WineLabelVisionService> labelVisionService,
+                              ObjectProvider<InvoiceVisionService> invoiceVisionService,
                               @Value("${app.ai.enabled:false}") boolean aiEnabled) {
         this.intentMapper = intentMapper;
         this.slotMapper = slotMapper;
@@ -39,6 +49,9 @@ public class AiConfigController {
         this.promptMapper = promptMapper;
         this.configService = configService;
         this.graphService = graphService;
+        this.transcriptionService = transcriptionService;
+        this.labelVisionService = labelVisionService;
+        this.invoiceVisionService = invoiceVisionService;
         this.aiEnabled = aiEnabled;
     }
 
@@ -54,16 +67,18 @@ public class AiConfigController {
         ));
     }
 
-    /** Client-facing UI config (Sell panel AI trigger keywords, etc.). */
+    /** Client-facing UI config (Sell panel AI trigger keywords, capability flags, etc.). */
     @GetMapping("/client")
     public ApiResult<Map<String, Object>> clientConfig() {
         IntentConfigService.Snapshot snap = configService.getSnapshot();
-        // Do not advertise AI as enabled when the model bean failed to load (for example, a missing key).
-        boolean assistantAvailable = aiEnabled && graphService.getIfAvailable() != null;
-        return ApiResult.ok(Map.of(
-                "enabled", assistantAvailable,
-                "aiTriggerKeywords", snap.aiTriggerKeywords()
-        ));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("enabled", aiEnabled);
+        data.put("assistantAvailable", graphService.getIfAvailable() != null);
+        data.put("transcriptionAvailable", transcriptionService.getIfAvailable() != null);
+        data.put("labelVisionAvailable", labelVisionService.getIfAvailable() != null);
+        data.put("invoiceVisionAvailable", invoiceVisionService.getIfAvailable() != null);
+        data.put("aiTriggerKeywords", snap.aiTriggerKeywords());
+        return ApiResult.ok(data);
     }
 
     // --- intents ---

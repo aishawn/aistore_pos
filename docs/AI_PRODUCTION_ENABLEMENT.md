@@ -21,6 +21,23 @@ Do **not** put API keys or passwords in this file.
 - [ ] Isolation UAT PASS for NLQ, voice, Find, Identify (photo), pitch/ask, invoice preview, price suggestions (0 price writes) — attach `docs/UAT_AI_ENABLED_ISOLATION_*.json`.
 - [ ] Operator confirmation timestamp recorded in the current `docs/HANDOFF_*.md` snapshot.
 
+## Known failure modes (2026-10-19)
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `/api/ai/config/client` `enabled=true` but `/api/ai/assistant` returns `50301` | `PosAssistantGraphService` skipped by `@ConditionalOnBean(CompiledGraph)` timing | Use `@ConditionalOnProperty(app.ai.enabled=true)` (shipped); redeploy backend |
+| Pitch/ask work, chat does not | Same as above — `ChatClient` bean exists, graph service did not | Redeploy backend after the registration fix |
+| Invoice / label OCR `model_not_found` / `access_denied` | DashScope key has chat but not VL entitlement, or wrong `AI_VISION_MODEL` / region | Enable VL in Model Studio; set `AI_VISION_MODEL` to an entitled id; keep `AI_DASHSCOPE_BASE_URL` on the key’s region (CN vs intl) |
+| Price suggestions `Odoo session expired` on bare API call | Odoo cookie is minted after store shell load, not on JWT login alone | Open any store page first, or call after overview bootstrap |
+
+## Verify script
+
+```bash
+PILOT_BASE_URL=https://demo.orithos.com.au node scripts/pilot-ai-features-verify-uat.mjs
+```
+
+Expect: NLQ `PASS` when AI is on; Sommelier text/pitch/ask/similar `PASS`; price suggestions `writeEnabled=false`; anonymous assistant `401`. Vision may stay `FAIL` until the DashScope account entitles a VL model.
+
 ## Audit / logging policy
 
 - Prefer: intent name, thread id hash, latency, HTTP/business error code, model id, token usage if available.

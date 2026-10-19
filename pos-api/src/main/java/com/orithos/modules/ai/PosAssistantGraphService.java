@@ -9,7 +9,7 @@ import com.orithos.modules.ai.dto.UiAction;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
 import com.orithos.modules.ai.report.ReportJsonCells;
 import com.orithos.modules.ai.report.TenantContext;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -21,8 +21,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Graph-backed NLQ assistant. Bound to {@code app.ai.enabled} (not {@code @ConditionalOnBean})
+ * so registration is not skipped when {@link CompiledGraph} is defined later in the same context.
+ */
 @Service
-@ConditionalOnBean(CompiledGraph.class)
+@ConditionalOnProperty(name = "app.ai.enabled", havingValue = "true")
 public class PosAssistantGraphService {
 
     private final CompiledGraph posAssistantGraph;

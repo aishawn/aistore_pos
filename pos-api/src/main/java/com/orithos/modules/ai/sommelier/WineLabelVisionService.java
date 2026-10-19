@@ -124,7 +124,8 @@ public class WineLabelVisionService {
             throw e;
         } catch (RestClientResponseException e) {
             log.warn("DashScope VL HTTP {}: {}", e.getStatusCode().value(), e.getResponseBodyAsString());
-            throw new BusinessException(50213, "Label recognition failed: " + shorten(e.getResponseBodyAsString(), e.getMessage()));
+            throw new BusinessException(50213, visionFailureMessage(
+                    "Label recognition failed", properties.visionModel(), e.getResponseBodyAsString(), e.getMessage()));
         } catch (Exception e) {
             log.warn("DashScope VL failed: {}", e.getMessage());
             throw new BusinessException(50213, "Label recognition failed: " + e.getMessage());
@@ -219,5 +220,14 @@ public class WineLabelVisionService {
         if (!StringUtils.hasText(body)) return fallback;
         String t = body.replaceAll("\\s+", " ").trim();
         return t.length() > 240 ? t.substring(0, 240) + "…" : t;
+    }
+
+    static String visionFailureMessage(String prefix, String model, String body, String fallback) {
+        String detail = shorten(body, fallback);
+        if (detail != null && detail.toLowerCase(Locale.ROOT).matches("(?s).*(model_not_found|model not exist).*")) {
+            return prefix + ": vision model \"" + model + "\" is not available for this DashScope key/region. "
+                    + "Set AI_VISION_MODEL (for example qwen-vl-max or qwen3-vl-plus) and confirm AI_DASHSCOPE_BASE_URL matches the key region.";
+        }
+        return prefix + ": " + detail;
     }
 }

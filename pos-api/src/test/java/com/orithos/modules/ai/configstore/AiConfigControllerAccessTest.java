@@ -1,7 +1,10 @@
 package com.orithos.modules.ai.configstore;
 
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiTranscriptionService;
 import com.orithos.modules.ai.PosAssistantGraphService;
+import com.orithos.modules.ai.invoice.InvoiceVisionService;
+import com.orithos.modules.ai.sommelier.WineLabelVisionService;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,7 @@ class AiConfigControllerAccessTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void nonAdminCannotMutateSharedAiConfiguration() {
         AiIntentMapper intents = mock(AiIntentMapper.class);
         AiSlotMapper slots = mock(AiSlotMapper.class);
@@ -31,7 +35,11 @@ class AiConfigControllerAccessTest {
         AiPromptMapper prompts = mock(AiPromptMapper.class);
         IntentConfigService config = mock(IntentConfigService.class);
         ObjectProvider<PosAssistantGraphService> graph = mock(ObjectProvider.class);
-        AiConfigController controller = new AiConfigController(intents, slots, values, prompts, config, graph, false);
+        ObjectProvider<AiTranscriptionService> transcription = mock(ObjectProvider.class);
+        ObjectProvider<WineLabelVisionService> labelVision = mock(ObjectProvider.class);
+        ObjectProvider<InvoiceVisionService> invoiceVision = mock(ObjectProvider.class);
+        AiConfigController controller = new AiConfigController(
+                intents, slots, values, prompts, config, graph, transcription, labelVision, invoiceVision, false);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         new AuthUser(7L, "clerk", false, 1L, 2L), null, List.of()));

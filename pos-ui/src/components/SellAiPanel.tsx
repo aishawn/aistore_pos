@@ -355,12 +355,14 @@ export function SellAiPanel({
     void fetchAiClientConfig()
       .then((config) => {
         if (cancelled) return;
-        setAiEnabled(config.enabled);
+        // Chat needs the graph bean, not only AI_ENABLED. Older backends omit assistantAvailable.
+        const chatOn = config.assistantAvailable ?? config.enabled;
+        setAiEnabled(chatOn);
         setMessages((prev) => {
           if (prev.length !== 1 || prev[0]?.role !== "assistant" || !isStockGreeting(prev[0].text)) {
             return prev;
           }
-          const next = greetingText(config.enabled);
+          const next = greetingText(chatOn);
           if (prev[0].text === next) return prev;
           return [{ role: "assistant", text: next }];
         });
@@ -477,6 +479,9 @@ export function SellAiPanel({
         ]);
       }
     } catch (e) {
+      if (e instanceof ApiError && (e.code === 50301 || e.status === 503)) {
+        setAiEnabled(false);
+      }
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: aiFailureMessage(e, "chat") },

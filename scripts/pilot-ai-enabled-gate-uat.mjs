@@ -78,16 +78,18 @@ try {
 
         await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => null);
         const heading = page.getByRole("heading", { name: "Price suggestions", exact: true });
-        if (await heading.count()) {
+        try {
           await heading.waitFor({ timeout: 30000 });
           record("price suggestions reachable", "PASS", page.url());
           const body = (await page.locator("body").innerText()).replace(/\s+/g, " ");
           record(
             "price suggestions read-only copy",
-            body.includes("never writes") || body.includes("Suggestions only") ? "PASS" : "FAIL",
+            body.includes("never writes") || body.includes("Suggestions only") || body.includes("you apply")
+              ? "PASS"
+              : "FAIL",
             body.slice(0, 220),
           );
-        } else {
+        } catch {
           record(
             "price suggestions reachable",
             "FAIL",
@@ -95,20 +97,44 @@ try {
           );
         }
 
+        const assistantAvailable = configBody?.data?.assistantAvailable;
+        record(
+          "assistantAvailable flag",
+          "INFO",
+          assistantAvailable === undefined ? "omitted (older backend)" : String(assistantAvailable),
+        );
+
         if (enabled) {
+          const assistant = await context.request.post(`${base}/api/ai/assistant`, {
+            data: { question: "look up products" },
+            headers: { Origin: base },
+          });
+          const assistantBody = await assistant.json().catch(() => ({}));
+          if (assistantBody.code === 0 && assistantBody.data?.threadId) {
+            record("enabled NLQ API", "PASS", `intent=${assistantBody.data.intent ?? "n/a"}`);
+          } else if (assistantBody.code === 50301) {
+            record(
+              "enabled NLQ API",
+              "FAIL",
+              "AI_ENABLED=true but graph assistant unavailable (50301) — check DashScope key and PosAssistantGraphService registration",
+            );
+          } else {
+            record("enabled NLQ API", "FAIL", `status=${assistant.status()} code=${assistantBody.code} ${assistantBody.message || ""}`);
+          }
+
           await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 90000 });
           await page.getByRole("button", { name: /Open Orithos AI/ }).first().click();
           const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
           await dialog.waitFor({ state: "visible", timeout: 15000 });
-          const composer = dialog.getByPlaceholder("Ask Orithos AI…");
+          const composer = dialog.getByPlaceholder(/Ask Orithos AI|AI chat is off/);
           await composer.waitFor({ state: "visible", timeout: 15000 });
-          if (await composer.isDisabled()) {
-            record("enabled chat composer", "FAIL", "composer disabled while AI enabled");
+          const chatShouldWork = assistantAvailable !== false && assistantBody.code === 0;
+          if (chatShouldWork && (await composer.isDisabled())) {
+            record("enabled chat composer", "FAIL", "composer disabled while assistant API works");
+          } else if (!chatShouldWork) {
+            record("enabled chat composer", "INFO", `composer disabled=${await composer.isDisabled()} (assistant not ready)`);
           } else {
-            await composer.fill("look up products");
-            await composer.press("Enter");
-            await page.waitForTimeout(3000);
-            record("enabled NLQ attempt", "PASS", "submitted look up products");
+            record("enabled chat composer", "PASS", "composer ready");
           }
           await page.goto(`${base}/sommelier/find`, { waitUntil: "domcontentloaded", timeout: 60000 });
           await page.getByRole("heading", { name: "Find a wine" }).waitFor({ timeout: 30000 });
