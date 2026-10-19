@@ -58,14 +58,15 @@ public class AiAssistantController {
     /** Phase A: classify intent + return UI instructions; frontend dispatches search/navigation. */
     @PostMapping("/assistant")
     public ApiResult<AssistantResponse> assistant(@Valid @RequestBody AssistantRequest request) {
+        TenantContext tenant = tenantContextFactory.fromSecurity();
+        long startedAt = System.nanoTime();
         PosAssistantGraphService service = graphService.getIfAvailable();
         if (service == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
+            auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
             throw new BusinessException(50301,
                     "AI assistant is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
 
-        TenantContext tenant = tenantContextFactory.fromSecurity();
-        long startedAt = System.nanoTime();
         PosAssistantGraphService.AssistantResult result;
         try {
             result = service.ask(request.question(), request.threadId(), tenant);
