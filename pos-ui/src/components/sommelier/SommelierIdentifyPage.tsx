@@ -24,6 +24,7 @@ export function SommelierIdentifyPage() {
   const [scanHint, setScanHint] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [assistantAvailable, setAssistantAvailable] = useState<boolean | null>(null);
   const [labelVisionAvailable, setLabelVisionAvailable] = useState<boolean | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const lastQueryRef = useRef("");
@@ -34,6 +35,7 @@ export function SommelierIdentifyPage() {
       .then((config) => {
         if (!cancelled) {
           setAiEnabled(config.enabled);
+          setAssistantAvailable(config.assistantAvailable ?? config.enabled);
           setLabelVisionAvailable(config.labelVisionAvailable ?? config.enabled);
           setCapabilityError(false);
         }
@@ -163,7 +165,7 @@ export function SommelierIdentifyPage() {
           </p>
         ) : labelVisionAvailable === false ? (
           <p className="mt-2 text-[13px] leading-5 text-[var(--oh-muted)]">
-            Label photo recognition is unavailable for this store. Name and barcode search still work.
+            Label photo recognition is unavailable for this store. {assistantAvailable ? "Orithos AI assistant, name and barcode search still work." : "Name and barcode search still work."}
           </p>
         ) : null}
       </div>

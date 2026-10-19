@@ -44,6 +44,7 @@ export function ScanInvoicePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [assistantAvailable, setAssistantAvailable] = useState<boolean | null>(null);
   const [invoiceVisionAvailable, setInvoiceVisionAvailable] = useState<boolean | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
 
@@ -53,6 +54,7 @@ export function ScanInvoicePage() {
       .then((config) => {
         if (!cancelled) {
           setAiEnabled(config.enabled);
+          setAssistantAvailable(config.assistantAvailable ?? config.enabled);
           setInvoiceVisionAvailable(config.invoiceVisionAvailable ?? config.enabled);
           setCapabilityError(false);
         }
@@ -136,7 +138,7 @@ export function ScanInvoicePage() {
                 : aiEnabled === false
               ? " Store AI is off — upload is unavailable."
               : invoiceVisionAvailable === false
-                ? " Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead."
+                 ? ` Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead.${assistantAvailable ? " Orithos AI assistant remains available for questions." : ""}`
                 : aiEnabled === true
                   ? " Store AI is on — photos are read for preview only."
                   : ""}
