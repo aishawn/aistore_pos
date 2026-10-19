@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-19T17:20:43.000Z",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only closing AI regression; no business or configuration writes",
+  "checks": {
+    "aiSurface": "11 PASS / 0 FAIL",
+    "sommelier": "10 PASS / 0 FAIL",
+    "adminGuard": "15 PASS / 0 FAIL",
+    "typecheck": "PASS",
+    "writes": 0
+  },
+  "coverage": [
+    "AI client config and prompt metadata",
+    "assistant product lookup",
+    "voice and label input validation",
+    "anonymous route guards",
+    "Sommelier catalog parity and stock filtering",
+    "recommendation and sales pitch routes"
+  ],
+  "status": "PASS"
+}
