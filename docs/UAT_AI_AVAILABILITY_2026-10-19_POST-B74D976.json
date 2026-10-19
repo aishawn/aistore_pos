@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-10-19T04:33:17.259Z",
+  "sourceCommit": "f7548b781612029099d553b157633396d4022880",
+  "deployment": "b74d97697358563933c5f0e4d962ba42eb045c6b",
+  "scope": "authenticated AI availability UI and local shortcut; no business writes",
+  "checks": [
+    {
+      "name": "AI availability config",
+      "status": "PASS",
+      "evidence": "Authenticated client config reports enabled=false."
+    },
+    {
+      "name": "Disabled AI status copy",
+      "status": "PASS",
+      "evidence": "Assistant header and composer explain that production AI chat is off before a request is sent."
+    },
+    {
+      "name": "Local sell shortcut remains available",
+      "status": "PASS",
+      "evidence": "The local open-sell command navigated without an AI or business write request."
+    }
+  ],
+  "passed": 3,
+  "failed": 0
+}
