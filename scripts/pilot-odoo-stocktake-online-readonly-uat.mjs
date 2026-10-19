@@ -71,7 +71,9 @@ try {
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
+  deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   target: base,
   scope: "authenticated Odoo stocktake read-only browser UAT; no inventory writes",
   status: checks.length > 0 && checks.every((check) => check.status === "PASS") && writeRequests === 0 ? "PASS" : "FAIL",
