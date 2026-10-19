@@ -66,6 +66,15 @@
 4. **生产写入风险**：后续销售、退款、采购、收货、现金、关班和 Stocktake 只能使用一次性隔离租户，禁止写入 Demo 公司。
 5. **本地构建边界**：本轮按约束未运行本地 build；typecheck、目标 ESLint、脚本语法和 diff 检查不能替代 Dokploy 构建证据。
 
+## 本轮 AI 指标迭代（`e8e6c69`）
+
+- 新增管理员只读接口 `GET /api/ai/metrics?hours=24`，窗口限制为 1 小时至 7 天。
+- 指标按当前 vendor 隔离，返回请求数、允许/拒绝、允许率、平均/p50/p95 延迟、按 report path 聚合和估算 token 数。
+- 接口不返回原始问题、生成 SQL、JWT、API key 或 provider 错误；估算 token 明确不是真实 provider billing usage。
+- 新增 `/reports/ai/metrics` 管理页面，支持 390/1440 视口、窗口切换和重试。
+- 线上证据：`docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`，管理员 `200`、匿名 `401`、UI `2/2 PASS`、页面错误 `0`、业务/配置写入 `0`。
+- 同批线上 AI 复验：功能 `14 PASS / 0 FAIL / 1 INFO`、AI UI `2/2 PASS`、Sommelier `10/10 PASS`。发票 OCR 仍为 `50212 INFO`，需要真实发票图片才能继续验收。
+
 ## 关键证据
 
 - `docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-9E6B01A.json`
