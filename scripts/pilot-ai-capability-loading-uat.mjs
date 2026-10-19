@@ -1,0 +1,74 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
+  .split(/\r?\n/)
+  .filter((line) => line && !line.startsWith("#") && line.includes("="))
+  .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
+const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
+const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const sourceCommit = process.env.PILOT_SOURCE_COMMIT ?? "39e0dc8";
+if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+
+const browser = await chromium.launch({ headless: true });
+const checks = [];
+const record = (name, status, detail) => checks.push({ name, status, detail });
+try {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const login = await context.request.post(`${base}/api/auth/login`, {
+    data: { username: "admin", password },
+    headers: { Origin: base },
+    timeout: 60000,
+  });
+  const loginBody = await login.json().catch(() => ({}));
+  if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+
+  for (const test of [
+    { name: "Identify", route: "/sommelier/identify", button: "Photograph label", heading: "Identify a wine" },
+    { name: "Invoice", route: "/invoices/scan", button: "Photograph or upload", heading: "Scan supplier invoice" },
+  ]) {
+    const page = await context.newPage();
+    let configSeen = false;
+    let configStatus = null;
+    let configBody = null;
+    await page.route("**/api/ai/config/client", async (route) => {
+      configSeen = true;
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await route.fetch();
+      configStatus = response.status();
+      configBody = await response.json().catch(() => null);
+      await route.fulfill({ response });
+    });
+    await page.goto(`${base}${test.route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.getByRole("heading", { name: test.heading }).waitFor({ timeout: 30000 });
+    const button = page.getByRole("button", { name: test.button });
+    await button.waitFor({ timeout: 30000 });
+    const disabledWhileUnknown = await button.isDisabled();
+    await page.waitForTimeout(3500);
+    const enabledAfterConfig = await button.isEnabled();
+    record(`${test.name} gate while capability loads`, disabledWhileUnknown && configSeen ? "PASS" : "FAIL", `disabled=${disabledWhileUnknown} configSeen=${configSeen}`);
+    record(`${test.name} gate after capability loads`, enabledAfterConfig ? "PASS" : "FAIL", `enabled=${enabledAfterConfig} status=${configStatus} client=${JSON.stringify(configBody?.data ?? configBody)}`);
+    await page.close();
+  }
+  await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
+  await context.close();
+} finally {
+  await browser.close();
+}
+
+const evidence = {
+  generatedAt: new Date().toISOString(),
+  sourceCommit,
+  target: base,
+  scope: "read-only capability-loading gate regression; no image/model or business writes",
+  status: checks.every((check) => check.status === "PASS") ? "PASS" : "FAIL",
+  checks,
+  writes: [],
+};
+const outputPath = path.join(root, "docs", `UAT_AI_CAPABILITY_LOADING_ONLINE_${sourceCommit.toUpperCase()}.json`);
+fs.writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
+console.log(JSON.stringify(evidence, null, 2));
+if (evidence.status !== "PASS") process.exitCode = 1;
