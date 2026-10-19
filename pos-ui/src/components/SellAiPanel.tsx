@@ -408,7 +408,7 @@ export function SellAiPanel({
   function collapsePanel() {
     // The panel can lose activeElement during Escape dispatch or portal teardown.
     // Restore the actual launcher that opened it, including the desktop header entry.
-    if (!document.activeElement?.closest('[role="dialog"][aria-label="Orithos AI assistant"]')) {
+    if (!document.activeElement?.closest('[role="dialog"]')) {
       restoreFocusRef.current = null;
       restoreFabRef.current = false;
     }

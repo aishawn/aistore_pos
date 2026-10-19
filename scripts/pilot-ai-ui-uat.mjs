@@ -161,7 +161,18 @@ async function runViewport(viewport) {
     () => document.activeElement?.getAttribute("aria-label") === "Open Orithos AI",
     undefined,
     { timeout: 1500 },
-  ).catch(() => { throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`); });
+  ).catch(async () => {
+    const focusState = await page.evaluate(() => ({
+      active: document.activeElement instanceof HTMLElement
+        ? { tag: document.activeElement.tagName, label: document.activeElement.getAttribute("aria-label"), text: document.activeElement.textContent?.trim().slice(0, 80) }
+        : null,
+      launchers: Array.from(document.querySelectorAll('[aria-label="Open Orithos AI"]'))
+        .map((element) => ({ focused: element === document.activeElement, visible: Boolean(element.getClientRects().length) })),
+      dialogs: Array.from(document.querySelectorAll('[role="dialog"]'))
+        .map((dialog) => ({ visible: Boolean(dialog.getClientRects().length), label: dialog.getAttribute("aria-label"), labelledby: dialog.getAttribute("aria-labelledby") })),
+    }));
+    throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}_${JSON.stringify(focusState)}`);
+  });
   await restoredFab.click();
   await assistant.waitFor({ state: "visible", timeout: 10000 });
   if (assistantAvailable && (await composer.isDisabled())) {
