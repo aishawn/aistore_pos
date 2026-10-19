@@ -12,6 +12,13 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 价格建议整体仍为 **In progress**：公网 `/stock/price-suggestions` 仍需在 Dokploy 确认运行镜像后复测，CSV 本地证据不替代线上部署证据。
 - `26f1d47` 已推送并通过 Dokploy webhook 触发（HTTP 200）；等待部署窗口后价格建议 gate 仍记录页面不可达，证据 `docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-26F1D47.json`。这进一步说明 webhook 接受不等于 frontend 镜像已切换，需控制台构建日志/SHA 取证。
 
+### 2026-10-19 价格建议筛选与运营导出增强
+
+- 价格建议页新增商品名/SKU搜索和状态筛选（Raise price、Review、Missing cost、No shelf price、On target）。筛选结果数量、空状态和 CSV 导出均跟随当前筛选。
+- 搜索只作用于已加载的 Odoo 只读结果；没有新增写接口，`writeEnabled=false` 约束保持不变。
+- 本地 Playwright fixture `docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_SEARCH.json`：搜索命中、无匹配、状态筛选、CSV 导出和非 GET 请求 `0` 均 PASS。
+- 本批变更尚未部署；需和 `ea8f1b6` AI 编译修复一起通过 Dokploy Java 21 构建后，再做线上价格建议 gate 与全站矩阵。
+
 ### 2026-10-19 `26f1d47` 部署后回归
 
 - AI availability `3/3 PASS`、AI surface `11/11 PASS`、AI UI `2/2 PASS`、Sommelier 只读 `10/10 PASS`；生产 `AI_ENABLED=false`，未触发模型或业务写入。

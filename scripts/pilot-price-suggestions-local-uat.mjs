@@ -115,9 +115,25 @@ try {
   await page.getByRole("heading", { name: "Price suggestions", exact: true }).waitFor({ timeout: 30000 });
   await page.getByText("Suggestions only").waitFor({ timeout: 10000 });
   await page.getByText("DEMO Shiraz").waitFor({ timeout: 10000 });
-  await page.getByText("Raise price").waitFor({ timeout: 10000 });
+  await page.getByText("Raise price", { exact: true }).last().waitFor({ timeout: 10000 });
   await page.getByText("writeEnabled=false").waitFor({ timeout: 10000 });
   record("price suggestions page", true, "Heading, DEMO row, raise badge, writeEnabled=false visible");
+
+  const productSearch = page.getByPlaceholder("Search product or SKU");
+  await productSearch.fill("DEMO-SHIRAZ");
+  await page.getByText("1 shown").waitFor({ timeout: 5000 });
+  record("product and SKU search", await page.getByText("DEMO Shiraz").count() > 0, "SKU query keeps the matching product visible");
+  await productSearch.fill("does-not-exist");
+  await page.getByText("No products match the current filters.").waitFor({ timeout: 5000 });
+  record("empty search state", true, "Unmatched query explains that no products match");
+  await productSearch.fill("");
+  await page.getByLabel("Status").selectOption("raise");
+  await page.getByText("DEMO Shiraz").waitFor({ timeout: 5000 });
+  record("status filter", true, "Raise price filter keeps the matching row visible");
+  await page.getByLabel("Status").selectOption("missing_cost");
+  await page.getByText("No products match the current filters.").waitFor({ timeout: 5000 });
+  record("status empty state", true, "Missing cost filter hides non-matching rows");
+  await page.getByLabel("Status").selectOption("all");
 
   const productLink = page.getByRole("link", { name: "Open product" }).first();
   await productLink.waitFor({ state: "visible", timeout: 10000 });

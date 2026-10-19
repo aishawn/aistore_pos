@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 价格建议筛选增强
+
+- `/stock/price-suggestions` 增加商品名/SKU搜索、状态筛选和筛选结果计数；`Export CSV` 导出当前筛选结果，保持纯浏览器生成。
+- 本地验证：`npm run typecheck`、`npx eslint src/components/OdooPriceSuggestionsPage.tsx`、`node --check scripts/pilot-price-suggestions-local-uat.mjs`、`git diff --check` 均通过；Playwright fixture `PASS`，搜索命中/空结果、状态筛选、CSV 内容和非 GET 请求 `0` 均有证据。
+- 证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_SEARCH.json`。本地开发服务端口 `3035`，API 全部 fixture 拦截，没有 Odoo 或业务写入。
+- 本次 UI 改动尚未线上验证；应与 `ea8f1b6` 一起部署，随后重跑价格建议认证 gate、AI surface 和全站矩阵。
+
 ## 2026-10-19 Dokploy backend build failure and fix
 
 - Dokploy build `#38` failed during Maven compile, not because of the `Parenthesis` deprecation warnings. The blocking errors were missing symbol `AiProviderConfig` in `AiConfigController.java:78` and `SommelierController.java:65`.

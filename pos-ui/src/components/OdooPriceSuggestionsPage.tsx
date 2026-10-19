@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Download, LoaderCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Download, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
 import { fetchOdooRoute, getOdooPosBootstrap, getOdooSessionStatus } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 
@@ -84,6 +84,8 @@ export function OdooPriceSuggestionsPage() {
   const [data, setData] = useState<PriceSuggestionData | null>(null);
   const [marginTarget, setMarginTarget] = useState(0.3);
   const [showAll, setShowAll] = useState(false);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | SuggestionStatus>("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
@@ -148,7 +150,20 @@ export function OdooPriceSuggestionsPage() {
     () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost") ?? [],
     [data],
   );
-  const visibleItems = showAll ? data?.products ?? [] : actionItems;
+  const baseItems = useMemo(
+    () => (showAll ? data?.products ?? [] : actionItems),
+    [showAll, data?.products, actionItems],
+  );
+  const visibleItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return baseItems.filter((product) => {
+      const matchesQuery = !normalizedQuery
+        || product.name.toLowerCase().includes(normalizedQuery)
+        || product.sku.toLowerCase().includes(normalizedQuery);
+      const matchesStatus = statusFilter === "all" || product.status === statusFilter;
+      return matchesQuery && matchesStatus;
+    });
+  }, [baseItems, query, statusFilter]);
 
   if (loading && !data) {
     return (
@@ -186,7 +201,7 @@ export function OdooPriceSuggestionsPage() {
             )}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
           <label className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
             Target margin
             <select
@@ -262,9 +277,41 @@ export function OdooPriceSuggestionsPage() {
           </div>
         </div>
 
+        <div className="flex flex-col gap-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 sm:flex-row sm:items-center">
+          <label className="relative min-w-0 flex-1">
+            <span className="sr-only">Search products or SKU</span>
+            <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search product or SKU"
+              className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white pl-9 pr-9 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
+            />
+            {query ? (
+              <button type="button" onClick={() => setQuery("")} aria-label="Clear product search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--oh-muted)] hover:text-[var(--oh-text)]">
+                <X size={16} aria-hidden="true" />
+              </button>
+            ) : null}
+          </label>
+          <label className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+            <span className="text-[var(--oh-muted)]">Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | SuggestionStatus)} className="bg-transparent font-semibold outline-none">
+              <option value="all">All</option>
+              <option value="raise">Raise price</option>
+              <option value="review_cost">Review</option>
+              <option value="missing_cost">Missing cost</option>
+              <option value="unsaleable">No shelf price</option>
+              <option value="ok">On target</option>
+            </select>
+          </label>
+          {(query || statusFilter !== "all") ? (
+            <span className="text-xs text-[var(--oh-muted)]" aria-live="polite">{visibleItems.length} shown</span>
+          ) : null}
+        </div>
+
         {visibleItems.length === 0 ? (
           <p className="px-4 py-8 text-sm text-[var(--oh-muted)]">
-            {data?.products.length ? "No price raises suggested at this margin target." : "No POS products found."}
+            {data?.products.length ? "No products match the current filters." : "No POS products found."}
           </p>
         ) : (
           <ul className="divide-y divide-[var(--oh-border)]">
