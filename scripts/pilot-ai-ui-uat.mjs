@@ -120,7 +120,7 @@ try {
 const failures = results.filter((result) => result.failure || result.pageErrors?.length);
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-webhook",
   scope: "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
   checks: results.length,

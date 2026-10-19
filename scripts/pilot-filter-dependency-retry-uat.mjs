@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -91,8 +92,8 @@ try {
 
 const report = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: "unverified-after-deploy",
-  deployment: "unverified-after-deploy",
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
   target: base,
   scope: "read-only injected 503 recovery for filter lookups; no business writes",
   results,

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -111,7 +112,8 @@ await browser.close();
 const outputPath = path.join(root, "docs", "UAT_CREATE_FORM_RETRY_2026-10-18.json");
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: "unverified-before-deploy",
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
   target: base,
   scope: "read-only injected 503 recovery for create forms; no business writes",
   results,

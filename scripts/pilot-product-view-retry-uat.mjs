@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -18,6 +19,8 @@ const checks = [];
 const writes = [];
 let detailRequests = 0;
 let taxRateRequests = 0;
+let releaseInitialTax;
+const initialTaxGate = new Promise((resolve) => { releaseInitialTax = resolve; });
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password, subdomain: process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "demo" },
@@ -43,7 +46,11 @@ try {
   await page.route("**/api/tax-rates", async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     taxRateRequests += 1;
-    if (taxRateRequests === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected tax rate failure" }) });
+    if (taxRateRequests === 1) {
+      await initialTaxGate;
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected tax rate failure" }) });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     return route.continue();
   });
 
@@ -51,31 +58,44 @@ try {
   await page.getByRole("button", { name: "Retry" }).waitFor({ timeout: 30000 });
   await page.getByRole("button", { name: "Retry" }).click();
   await page.getByRole("heading", { name: "Product Report" }).waitFor({ timeout: 30000 });
+  await page.waitForTimeout(250);
+  const initialLookupNoticeVisible = await page.getByText("Refreshing lookup options…", { exact: true }).isVisible().catch(() => false);
+  releaseInitialTax();
   const dependencyAlert = page.getByRole("alert").filter({ hasText: "Tax rates:" });
   await dependencyAlert.waitFor({ timeout: 15000 });
   await dependencyAlert.getByRole("button", { name: "Retry" }).click();
+  const retryingButton = dependencyAlert.getByRole("button", { name: "Retrying…" });
+  let retryDisabledWhileLoading = false;
+  try {
+    await retryingButton.waitFor({ timeout: 4000 });
+    retryDisabledWhileLoading = await retryingButton.isDisabled();
+  } catch {
+    // Preserve failure evidence when the deployed UI does not expose retry progress.
+  }
   await dependencyAlert.waitFor({ state: "detached", timeout: 30000 });
 
   const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
   checks.push({
     name: "Product detail lookup read failure recovers in place",
-    status: detailRequests >= 2 && taxRateRequests >= 2 && dimensions.document <= dimensions.viewport && pageErrors.length === 0 ? "PASS" : "FAIL",
-    evidence: { detailRequests, taxRateRequests, taxRateRetryRendered: true, viewport: dimensions, pageErrors },
+    status: detailRequests >= 2 && taxRateRequests >= 2 && !initialLookupNoticeVisible && retryDisabledWhileLoading && dimensions.document <= dimensions.viewport && pageErrors.length === 0 ? "PASS" : "FAIL",
+    evidence: { detailRequests, taxRateRequests, initialLookupNoticeVisible, retryDisabledWhileLoading, viewport: dimensions, pageErrors },
   });
 } finally {
+  releaseInitialTax();
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
   await browser.close();
 }
 
 const output = {
   generatedAt: new Date().toISOString(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? null,
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
   target: base,
-  scope: "read-only product detail GET failure injection; one GET returns 503; Retry GETs continue to production; no business writes",
+  scope: "read-only product detail GET failure injection; one GET returns 503; verifies Retry progress lock; no business writes",
   checks,
   writes,
 };
-const outputPath = path.join(root, "docs", "UAT_PRODUCT_VIEW_RETRY_2026-10-18.json");
+const outputPath = path.join(root, "docs", "UAT_PRODUCT_VIEW_RETRY_2026-10-19.json");
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, checks, writes }));
 if (checks.some((check) => check.status !== "PASS") || writes.length) process.exitCode = 2;
