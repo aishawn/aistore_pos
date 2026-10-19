@@ -58,17 +58,15 @@ async function runViewport(viewport) {
     await dialog.waitFor({ state: "visible", timeout: 10000 });
     const dialogIsModal = await dialog.getAttribute("aria-modal") === "true";
     if (!dialogIsModal) throw new Error("AI assistant dialog must be announced as modal");
-    const composer = dialog.getByPlaceholder("Ask Orithos AI…");
+    const composer = dialog.getByPlaceholder("AI chat is off for this store");
     await composer.waitFor({ state: "visible", timeout: 10000 });
-    const composerInsideDialog = await dialog.locator("input[placeholder='Ask Orithos AI…']").count() === 1;
+    const composerInsideDialog = await dialog.locator("input[placeholder='AI chat is off for this store']").count() === 1;
+    const composerDisabled = await composer.isDisabled();
+    if (!composerDisabled) throw new Error("Composer must stay disabled when AI is disabled");
     const voiceButton = dialog.getByRole("button", { name: "Voice input" });
     const voiceInputDisabled = await voiceButton.isDisabled();
     if (!voiceInputDisabled) throw new Error("Voice input must stay disabled when AI is disabled");
-    await page.waitForFunction(
-      () => document.activeElement?.getAttribute("placeholder") === "Ask Orithos AI…",
-      undefined,
-      { timeout: 5000 },
-    );
+    await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
 
     let focusStayedInside = true;
     for (let index = 0; index < 8; index += 1) {
@@ -88,14 +86,18 @@ async function runViewport(viewport) {
 
     await trigger.click();
     await dialog.waitFor({ state: "visible", timeout: 10000 });
-    await dialog.getByPlaceholder("Ask Orithos AI…").fill("look up product DEMO");
-    await dialog.getByPlaceholder("Ask Orithos AI…").press("Enter");
-    await dialog.getByText(/AI assistant is not enabled|could not connect/i).waitFor({ timeout: 10000 });
+    if (await dialog.getByPlaceholder("AI chat is off for this store").isEnabled()) {
+      throw new Error("Composer must stay disabled after reopening");
+    }
+    if (!(await dialog.getByRole("button", { name: "Open sell", exact: true }).isEnabled())) {
+      throw new Error("Local shortcuts must stay available while chat is off");
+    }
 
     results.push({
       viewport: viewport.width,
       dialogIsModal,
       composerInsideDialog,
+      composerDisabled,
       voiceInputDisabled,
       focusStayedInside,
       escapeRestoredFocus: true,
@@ -116,7 +118,8 @@ try {
 
 const failures = results.filter((result) =>
   !result.dialogIsModal
-  || !result.composerInsideDialog
+  ||   !result.composerInsideDialog
+  || !result.composerDisabled
   || !result.voiceInputDisabled
   || !result.focusStayedInside
   || !result.escapeRestoredFocus
@@ -128,7 +131,7 @@ const output = {
   environment: "local-dev-fixtures",
   target: base,
   scope: "AI assistant dialog accessibility and disabled-state UI; all APIs intercepted locally; no model or business writes",
-  status: failures.length === 0 && assistantRequests === 2 && writes.length === 2 ? "PASS" : "FAIL",
+  status: failures.length === 0 && assistantRequests === 0 && writes.length === 0 ? "PASS" : "FAIL",
   checks: results,
   assistantRequests,
   transcriptionRequests,
