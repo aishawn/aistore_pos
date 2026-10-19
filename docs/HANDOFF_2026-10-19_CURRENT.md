@@ -4,7 +4,16 @@
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`958c3e7`（记录 `3afef08` 部署回归）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`2c64979`（记录 `a6d5a57` stocktake 权限顺序部署回归）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+
+## 最新状态覆盖（2026-10-19）
+
+以下结果优先于本文后面保留的历史回归段落：
+
+- AI 配置管理员保护已完成线上验证：临时非管理员店员对 13 个 reload/create/update/delete 写接口全部被拒绝，返回业务码 `40300`，配置计数未变化；证据 `docs/UAT_AI_ADMIN_GUARD_2026-10-19_POST-3AFEF08.json`。
+- Stocktake 权限顺序已修复并部署：`a6d5a57` 将 POST 身份验证前移到 payload、数量和写开关检查之前；普通店员 GET/POST 均返回 HTTP `403` / `40300`，未产生库存调整；证据 `docs/UAT_ODOO_STOCKTAKE_ADMIN_GUARD_2026-10-19_POST-A6D5A57.json`、`docs/HANDOFF_2026-10-19_STOCKTAKE_AUTH_ORDER_DEPLOY.md`。
+- 本轮完整 webhook 均返回 `200 Compose deployed successfully`，但 Dokploy 控制台容器 SHA、构建日志和健康状态仍未独立回读；这些 UAT 证明部署触发后公网页为预期行为，不替代容器级取证。
+- Stocktake 真实隔离 Odoo 写入仍未验收，生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false` 保持不变。
 
 ## 本次交接摘要
 
