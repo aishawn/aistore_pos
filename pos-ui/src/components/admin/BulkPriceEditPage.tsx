@@ -96,31 +96,46 @@ function PriceCell({
   onSaved: () => void;
 }) {
   const [value, setValue] = useState(num(priceBreak?.price));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     // Keep the local input in sync when the server row changes after a refresh.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(num(priceBreak?.price));
   }, [priceBreak]);
 
   const save = useCallback(async () => {
+    if (saving) return;
     const trimmed = value.trim();
-    if (trimmed === "") return;
+    if (trimmed === "") {
+      setValue(num(priceBreak?.price));
+      return;
+    }
     const priceNum = Number(trimmed);
     if (Number.isNaN(priceNum) || priceNum === priceBreak?.price) return;
     const priceError = validatePositiveMoney(priceNum, "Price");
     if (priceError) {
       setValue(num(priceBreak?.price));
+      setSaveError(priceError);
       return;
     }
-    await api.patch("/api/bulk-price-edit/prices", {
-      productId,
-      priceId: priceBreak?.priceId ?? null,
-      quantity,
-      price: priceNum,
-    });
-    onSaved();
-  }, [onSaved, priceBreak?.price, priceBreak?.priceId, productId, quantity, value]);
+    setSaveError(null);
+    setSaving(true);
+    try {
+      await api.patch("/api/bulk-price-edit/prices", {
+        productId,
+        priceId: priceBreak?.priceId ?? null,
+        quantity,
+        price: priceNum,
+      });
+      onSaved();
+    } catch (cause) {
+      setValue(num(priceBreak?.price));
+      setSaveError(cause instanceof Error ? cause.message : "Could not save this price.");
+    } finally {
+      setSaving(false);
+    }
+  }, [onSaved, priceBreak?.price, priceBreak?.priceId, productId, quantity, saving, value]);
 
   return (
     <div className="relative w-[88px] shrink-0 px-1">
@@ -131,7 +146,12 @@ function PriceCell({
         step="0.01"
         className={cellInput("pl-5")}
         value={value}
+        aria-busy={saving}
+        aria-invalid={saveError ? true : undefined}
+        title={saveError ?? undefined}
+        disabled={saving}
         onChange={(e) => {
+          setSaveError(null);
           const raw = e.target.value;
           if (raw === "" || raw === "-") {
             if (raw === "-") return;
@@ -144,6 +164,11 @@ function PriceCell({
         }}
         onBlur={() => void save()}
       />
+      {saveError ? (
+        <span role="alert" className="absolute left-1 top-full z-20 mt-1 w-48 rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] leading-4 text-red-800 shadow-sm">
+          {saveError}
+        </span>
+      ) : null}
     </div>
   );
 }

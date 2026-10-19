@@ -35,6 +35,7 @@
 - Invoice Scan 上传按钮现在遵循 `AI_ENABLED` 和 `invoiceVisionAvailable`：AI 关闭或视觉能力不可用时按钮直接禁用，页面仍保留 Odoo Purchases / Replenishment 下一步。
 - 本地 typecheck、Invoice Scan 目标 ESLint、脚本语法和 `git diff --check` 通过；线上 fixture Invoice mock 通过，`0` 个供应商/采购/收货业务写入。证据：`docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-228FA6F.json`。
 - 该修复尚未部署后单独验证；下一轮需确认启用态上传正常，并用能力位 fixture/线上配置确认关闭态按钮禁用。
+- Bulk Price Edit 保存失败保护也已完成本地验证：失败 PATCH 回滚输入并显示错误，输入不会保持 busy，随后重试可继续，fixture 共 2 次 PATCH 且没有真实业务写入。证据：`docs/UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-19.json`。该改动待与 Invoice guard 一起部署。
 
 ### `911ad11` 部署后复验
 
