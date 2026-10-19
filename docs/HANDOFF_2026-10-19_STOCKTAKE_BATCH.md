@@ -2,7 +2,7 @@
 
 更新时间：2026-10-19（Asia/Shanghai）  
 代码提交：`b2b1a05`（`feat: add guarded Odoo stocktake workflow`）  
-远端分支：`origin/main` 已指向 `b2b1a05a2e4986c4affdc9b564ffdb545b775890`
+文档跟进提交：`f09835c`；本次 Dokploy 部署对应代码提交 `b2b1a05`
 
 ## 本批次完成
 
