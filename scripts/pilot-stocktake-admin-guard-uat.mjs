@@ -59,9 +59,9 @@ try {
   const write = await request("/api/odoo/stocktake", "POST", {
     confirm: true, locationId: 1, lines: [{ productId: 1, expectedQty: 0, countedQty: 0 }],
   });
-  record("stocktake write remains disabled", write.response.status() === 423
-    && /not enabled/i.test(write.body.message ?? ""),
-    `HTTP ${write.response.status()} code ${write.body.code ?? ""}; feature flag blocks writes before Odoo.`);
+  record("clerk stocktake write denied before feature gate", write.response.status() === 403
+    && write.body.code === 40300,
+    `HTTP ${write.response.status()} code ${write.body.code ?? ""}; authorization is checked before the feature gate.`);
 } catch (error) {
   record("stocktake access guard UAT", false, error instanceof Error ? error.message : "Unexpected failure");
 } finally {

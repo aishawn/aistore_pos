@@ -277,6 +277,13 @@ type CountLineInput = { productId: number; expectedQty: number; countedQty: numb
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed." }, { status: 403 });
+  try {
+    // Authorize before parsing business input or checking the feature gate so every
+    // non-admin write attempt fails closed with the same permission response.
+    await requireStoreAdmin(request);
+  } catch (error) {
+    return responseError(error);
+  }
   let body: { confirm?: boolean; locationId?: number; lines?: CountLineInput[] };
   try {
     const parsed = await request.json() as unknown;
@@ -306,7 +313,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await requireStoreAdmin(request);
     const sessionId = sessionCookie(request);
     const scope = await tenantScope(request, sessionId);
     const locations = await leafLocations(sessionId, scope);
