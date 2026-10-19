@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Supply Chain 搜索状态复核（`fdd9c3a`）
+
+- Supply Chain 搜索结果改为派生显示，清空查询时不会保留旧建议；Supply Chain effect lint 告警已清零。
+- 线上 DOM/表单审计再次通过 `14/14 PASS`，包含 Rules & prices 面板控件名称和清空查询后的建议列表断言；页面错误 `0`，意外业务写入 `0`。
+- 证据：`docs/UAT_TABLE_A11Y_ONLINE_FDD9C3_FINAL.json`。`fdd9c3a` 已通过 Dokploy webhook 接受并完成只读验证。
+
 ## 2026-10-20 表格与 Supply Chain 表单 DOM 复核（`6ec5dc3`）
 
 - 线上 DOM 审计覆盖设置用户、角色管理、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描 7 个页面 × 390/1440，共 `14/14 PASS`；所有已渲染表格都有可访问名称，列头 `scope="col"` 正确，页面错误 `0`。

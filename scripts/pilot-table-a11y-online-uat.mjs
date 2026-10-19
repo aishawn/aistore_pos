@@ -66,6 +66,7 @@ try {
       }
       await page.waitForTimeout(2500);
       let unnamedControls = 0;
+      let suggestionsAfterClear = 0;
       if (route.path === "/orders/new") {
         const settingsButton = page.getByRole("button", { name: "Rules & prices", exact: true });
         if (await settingsButton.isVisible().catch(() => false)) {
@@ -76,6 +77,14 @@ try {
             const label = control.id ? document.querySelector(`label[for='${CSS.escape(control.id)}']`) : control.closest("label");
             return !labelled && !label && !control.getAttribute("placeholder");
           }).length);
+          const productSearch = page.getByRole("textbox", { name: "Search products for supplier pricing", exact: true });
+          if (await productSearch.isVisible().catch(() => false)) {
+            await productSearch.fill("a");
+            await page.waitForTimeout(700);
+            await productSearch.fill("");
+            await page.waitForTimeout(450);
+            suggestionsAfterClear = await productSearch.locator("xpath=following-sibling::div[1]//button").count();
+          }
         }
       }
       const result = await page.locator("table").evaluateAll((tables) => tables.map((table) => ({
@@ -86,11 +95,11 @@ try {
       })));
       const named = result.every((table) => table.name.length > 0);
       const scoped = result.every((table) => table.headers.every((scope) => scope === "col"));
-      const pass = response?.status() === 200 && named && scoped && unnamedControls === 0 && pageErrors.length === 0;
+      const pass = response?.status() === 200 && named && scoped && unnamedControls === 0 && suggestionsAfterClear === 0 && pageErrors.length === 0;
       checks.push({
         name: `${route.label} ${viewport.width}px`,
         status: pass ? "PASS" : "FAIL",
-        detail: `http=${response?.status() ?? 0} tables=${result.length} named=${named} scoped=${scoped} unnamedControls=${unnamedControls} pageErrors=${pageErrors.length}`,
+        detail: `http=${response?.status() ?? 0} tables=${result.length} named=${named} scoped=${scoped} unnamedControls=${unnamedControls} suggestionsAfterClear=${suggestionsAfterClear} pageErrors=${pageErrors.length}`,
         tables: result,
       });
     }
