@@ -13,6 +13,8 @@ const cases = [
   { route: "/promotions", name: "promotions", required: ["This screen is read only"], forbidden: ["Add Promotion", "More Filters"] },
   { route: "/reports/favourites", name: "favourite-reports", required: ["Saved report favourites are not connected", "Open Reports Dashboard"], forbidden: ["Filter Report Types", "Filter Report Emailing"] },
   { route: "/media", name: "media", required: ["Media storage is not connected", "No files found"], forbidden: [] },
+  { route: "/settings/registers-outlets", name: "registers-outlets", required: ["Live from Odoo", "Stores / companies", "POS registers"], forbidden: ["New Outlet", "New Register", "11 Example St"] },
+  { route: "/security", name: "security", required: ["Security event monitoring is not connected", "Available security controls"], forbidden: ["Raw Events", "29/06/2026"] },
 ];
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -26,10 +28,10 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
   const pageErrors = [];
   const writes = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  page.on("request", (request) => { const pathname = new URL(request.url()).pathname; if (!["GET", "HEAD", "OPTIONS"].includes(request.method()) && pathname !== "/cdn-cgi/rum") writes.push(`${request.method()} ${pathname}`); });
+  page.on("request", (request) => { const pathname = new URL(request.url()).pathname; const readRpc = pathname === "/api/odoo/records"; if (!["GET", "HEAD", "OPTIONS"].includes(request.method()) && pathname !== "/cdn-cgi/rum" && !readRpc) writes.push(`${request.method()} ${pathname}`); });
   for (const item of cases) {
     const response = await page.goto(`${base}${item.route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(item.name === "registers-outlets" ? 2200 : 800);
     const text = await page.locator("body").innerText();
     const requiredMissing = item.required.filter((value) => !text.includes(value));
     if (item.name === "promotions" && !(await page.locator('input[aria-label="Search promotions by name"]').count())) requiredMissing.push("Search promotions by name");

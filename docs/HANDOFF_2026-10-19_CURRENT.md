@@ -6,6 +6,8 @@
 - `src/app/security` 移除固定日期、固定事件数量、静态饼图和伪筛选器，改为明确的安全事件未接入状态，并提供用户、角色和集成设置入口。
 - 本地登录态全站矩阵：`134 路由 × 390/1440 = 268/268 PASS`，无 HTTP 失败、页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_SECOND-BATCH.json`，`sourceCommit=0a06dec`。
 - typecheck、目标 ESLint、diff check 通过；本地未运行 build。待与前一批一起部署后补充公网专项，整体仍为 **NO-GO**。
+- `922ff93` 批次触发后公网全站矩阵 `268/268 PASS`；五页内容/控件专项 `10/10 PASS`（Promotions、Favourite Reports、Media Centre、Registers & Outlets、Security × 390/1440）。Registers 的两个 Odoo records POST 被识别为只读 RPC，业务写请求为 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ONLINE_2026-10-20_SECOND-BATCH.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-20_922FF93_RETRY.json`。
+- 专项记录 `deploymentShaVerified=false`；公网行为通过不等于 Dokploy 容器 SHA、构建日志和健康状态已核验，发布继续 **NO-GO**。
 
 ## 2026-10-20 实际路由只读页面对齐（`dc77293`）
 

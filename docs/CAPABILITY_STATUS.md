@@ -7,6 +7,8 @@
 - Registers & Outlets 现在显示 Odoo companies/registers，只读且带 session 错误恢复；Security Centre 不再展示伪造事件/图表，改为明确未接入状态和真实设置入口。
 - 本地登录态全站矩阵 `268/268 PASS`，证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_SECOND-BATCH.json`，源码提交 `0a06dec`。
 - 线上专项待本批次部署后执行；Dokploy 容器 SHA、构建日志和健康状态仍待独立核验，发布继续 **NO-GO**。
+- `922ff93` 公网回归：全站 `268/268 PASS`，五页语义/控件专项 `10/10 PASS`；Registers 只读 Odoo RPC 正常，未发生业务写入。证据：`docs/UAT_ALL_STATIC_PAGES_ONLINE_2026-10-20_SECOND-BATCH.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-20_922FF93_RETRY.json`。
+- 公网证据仍未独立绑定 Dokploy 容器 SHA，不能把它当作构建审计结论。
 
 ### 2026-10-20 实际路由只读页面对齐（`dc77293`）
 
