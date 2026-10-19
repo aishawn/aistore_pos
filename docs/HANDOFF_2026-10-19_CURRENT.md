@@ -19,6 +19,7 @@
 - AI 关闭状态：对话输入和 Voice input 禁用；`Open sell`、商品查询、库存查询仍可用。
 - 登录后的门店页面显示 Orithos AI 入口；Sommelier 统一为 Wine Assistant；识标页在 AI 关闭时禁用拍照并保留名称/条码搜索。
 - 发票扫描明确为 preview-only，不创建供应商、采购单或收货单。
+- 发票扫描 mock 回归已通过：预览、详情、行编辑和 Odoo 采购链接正常，fixture 截获扫描请求且没有供应商/采购/收货业务写入；证据 `docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-B74D976.json`。这不代表真实 OCR 已验收。
 - AI 只读线上回归：availability `3/3`、surface `11/11`、UI `2/2`、Sommelier `10/10`、公网 AI route matrix `9/9` 均通过。
 - 普通非管理员对 13 个 AI 配置 reload/create/update/delete 接口全部被拒绝，业务码 `40300`，配置数量未变化；临时用户和角色已清理。
 - Stocktake 普通用户 GET/POST 均被拒绝（HTTP `403` / 业务码 `40300`）；生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false`，没有写入 Demo Odoo。
