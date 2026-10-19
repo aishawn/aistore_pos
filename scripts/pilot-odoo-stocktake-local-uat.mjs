@@ -26,12 +26,17 @@ async function runViewport(viewport) {
   const pageErrors = [];
   let interceptedWrites = 0;
   const stocktakeReads = [];
+  let locationFailuresRemaining = viewport.width === 390 ? 1 : 0;
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     if (url.pathname === "/api/odoo/stocktake" && request.method() === "GET") {
       const query = url.searchParams.get("q") ?? "";
+      if (!query && locationFailuresRemaining > 0) {
+        locationFailuresRemaining -= 1;
+        return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: 50300, message: "Fixture location read failed once", data: null }) });
+      }
       const products = query ? [
         { id: 7301, name: "Demo Chardonnay", sku: "DEMO-CH-01", barcode: "930000000001", uom: "Units", expectedQty: 5, eligible: true, ineligibleReason: null },
         { id: 7302, name: "Demo Shiraz", sku: "DEMO-SH-02", barcode: "930000000002", uom: "Units", expectedQty: 10, eligible: true, ineligibleReason: null },
@@ -63,6 +68,14 @@ async function runViewport(viewport) {
   try {
     await page.goto(`${base}/stock/stocktake?__uat_probe=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("heading", { name: "Odoo Stocktake" }).waitFor({ timeout: 30000 });
+    let locationRetryRecovered = true;
+    if (viewport.width === 390) {
+      const locationAlert = page.getByRole("alert").filter({ hasText: "Fixture location read failed once" });
+      await locationAlert.waitFor({ state: "visible", timeout: 10000 });
+      await locationAlert.getByRole("button", { name: "Retry" }).click();
+      await locationAlert.waitFor({ state: "detached", timeout: 10000 });
+      locationRetryRecovered = locationFailuresRemaining === 0;
+    }
     const locationSelect = page.locator("#stocktake-location");
     await locationSelect.waitFor({ state: "visible", timeout: 10000 });
     await page.waitForFunction(() => {
@@ -137,6 +150,7 @@ async function runViewport(viewport) {
       confirmationPayloadValid,
       horizontalOverflow,
       pageErrors,
+      locationRetryRecovered,
       screenshotPath,
     });
   } finally {
@@ -156,6 +170,7 @@ const failures = results.filter((result) => !result.cancelKeptNoWrite
   || !result.confirmedExactlyOnce
   || !result.confirmationPayloadValid
   || result.horizontalOverflow
+  || !result.locationRetryRecovered
   || result.pageErrors.length > 0);
 const output = {
   generatedAt: new Date().toISOString(),

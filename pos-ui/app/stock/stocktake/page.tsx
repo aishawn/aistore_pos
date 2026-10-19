@@ -44,6 +44,7 @@ export default function OdooStocktakePage() {
   const [locationLoading, setLocationLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationSource, setLocationSource] = useState<StocktakeResponse["locationSource"]>();
+  const [locationRetryKey, setLocationRetryKey] = useState(0);
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<StocktakeProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -76,7 +77,7 @@ export default function OdooStocktakePage() {
         if (!cancelled) setLocationLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [locationRetryKey]);
 
   useEffect(() => {
     const term = debouncedQuery.trim();
@@ -189,7 +190,7 @@ export default function OdooStocktakePage() {
           {locationError ? (
             <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
               <span>{locationError}</span>
-              <button type="button" onClick={() => window.location.reload()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold"><RefreshCw size={15} /> Retry</button>
+              <button type="button" onClick={() => setLocationRetryKey((value) => value + 1)} disabled={locationLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
             </div>
           ) : locationLoading ? (
             <div role="status" aria-label="Loading stock locations" className="h-12 animate-pulse rounded-md bg-[var(--oh-border)]" />
