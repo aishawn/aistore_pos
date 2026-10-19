@@ -19,6 +19,7 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - `05928f9` 推送后公网 pricing 矩阵 `8/8 PASS`，覆盖两页 × 390/1440；表头完整、数据行列对齐、移动端内部滚动和页面无溢出。页面错误和被拦截写请求均为 `0`。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-05928F9_FINAL.json`。Dokploy 容器 SHA、构建日志和健康状态仍待控制台核验。
 - Bulk Price Edit 新增相同的宽表列基准、最小宽度和单商品计数修正；本地响应式矩阵现为三页 × 390/1440，`6/6 PASS`，包含首行对齐和零业务写入。线上验证待下一次集中部署。
 - `e564c4d` 推送后线上 pricing 矩阵 `8/8 PASS`，覆盖 Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions × 390/1440；宽表列对齐、表头、手机滚动、页面无溢出均通过，页面错误/被拦截写请求为 `0`。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-E564C4D_FINAL.json` 和 `docs/screenshots/2026-10-19-pricing-post-e564c4d-final/`。
+- Bulk Price Edit 的搜索、分类下拉和新增数量输入已补充可访问名称；本地响应式 `6/6 PASS` 覆盖这些控件。公网验证待下一次集中部署。
 
 ### 2026-10-19 公网定价表格基线与 AI 会话摘要
 - 加载完成后的线上只读 pricing 基线 `4/8 PASS`：Stock List/Capped Pricing 在 390/1440 四项均有列文字溢出或首行列错位；没有页面 JS 错误或被拦截写请求。容器 SHA 未核验。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_BASELINE_FINAL.json` 及 `docs/screenshots/2026-10-19-pricing-reliability-online/`。

@@ -257,6 +257,7 @@ export function BulkPriceEditPage() {
       <div className="shrink-0 space-y-3 border-b border-neutral-200 px-6 py-4">
         <div className="flex gap-3">
           <input
+            aria-label="Search bulk price products"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -267,7 +268,7 @@ export function BulkPriceEditPage() {
           />
           <div className="w-[220px] shrink-0">
             <FilterSelect
-              label=""
+              label="Category"
               value={categoryId}
               onChange={(v) => {
                 setCategoryId(v);
@@ -290,6 +291,7 @@ export function BulkPriceEditPage() {
           />
           <div className="flex items-center gap-2">
             <input
+              aria-label="New quantity"
               value={newQuantity}
               onChange={(e) => setNewQuantity(e.target.value)}
               placeholder="New Quantity"

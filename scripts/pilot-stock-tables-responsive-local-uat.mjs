@@ -76,6 +76,11 @@ try {
       const productCountText = countTestId
         ? (await page.getByTestId(countTestId).locator("..").textContent())?.replace(/\s+/g, " ").trim() ?? ""
         : null;
+      const controlsAccessible = route.path === "/stock/bulk-price-edit"
+        ? await page.getByRole("textbox", { name: "Search bulk price products" }).isVisible()
+          && await page.getByRole("combobox", { name: "Category" }).isVisible()
+          && await page.getByRole("textbox", { name: "New quantity" }).isVisible()
+        : null;
       const table = page.getByTestId(route.testId);
       const layout = await table.evaluate((element) => {
         const scroller = element.parentElement;
@@ -119,6 +124,7 @@ try {
         httpStatus: response?.status() ?? 0,
         headingVisible: await heading.isVisible(),
         productCountText,
+        controlsAccessible,
         sampleRowVisible: await sampleRow.isVisible(),
         pageNoOverflow: dimensions.width <= dimensions.viewport + 1,
         internalHorizontalScroll: viewport.width === 390 ? horizontallyScrollable : null,
@@ -143,6 +149,7 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || (check.httpStatus != null && (check.httpStatus < 200 || check.httpStatus >= 400))
   || check.headingVisible === false
   || (check.productCountText != null && !check.productCountText.endsWith("1 Product"))
+  || check.controlsAccessible === false
   || check.sampleRowVisible === false
   || check.pageNoOverflow === false
   || check.internalHorizontalScroll === false

@@ -10,6 +10,7 @@
 - AI assistant 新增本地会话摘要（累计回复数、成功率、平均延迟）；`4/4 PASS` 覆盖单次与两次成功响应、逐条诊断和零业务写入。证据：`UAT_AI_DIAGNOSTICS_LOCAL_2026-10-19.json`。
 - 公网页面 AI 会话摘要 fixture `4/4 PASS`；助手响应由浏览器截获，未调用生产模型。证据：`UAT_AI_DIAGNOSTICS_ONLINE_FIXTURE_2026-10-19_POST-05928F9.json`。
 - Bulk Price Edit 同步采用稳定最小宽度和表头/数据行共同列基准，并修正单商品计数文案；本地响应式矩阵扩展为三页 × 390/1440，`6/6 PASS`。证据：`UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json` 与 `docs/screenshots/2026-10-19-stock-tables-local/`。
+- Bulk Price Edit 搜索、分类和新增数量控件补充可访问名称；本地 `6/6` 响应式矩阵同时验证三项控件在 390/1440 可定位。目标 ESLint、TypeScript、脚本语法和 diff 检查通过。
 - `e564c4d` 推送后公网 pricing 矩阵 `8/8 PASS`：Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions × 390/1440；三张宽表均加载完成，表头与数据行检查通过，手机表格滚动通过，页面错误与被拦截写请求均为 `0`。证据：`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-E564C4D_FINAL.json`、`docs/screenshots/2026-10-19-pricing-post-e564c4d-final/`。
 - 前端 `npm run typecheck`、Stock List/Capped Pricing 目标 ESLint、UAT 脚本 `node --check`、`git diff --check` 均通过；未运行本地 build。
 - 公网行为验证通过；Dokploy 控制台的实际 frontend/backend SHA、构建日志和健康状态仍未独立核验。`AiProviderConfig` 缺符号错误对应的 import 修复已在 `ea8f1b6`，包含于 `origin/main`，无需重复改代码。
@@ -20,6 +21,7 @@
 - 最新本地 `typecheck`、目标 ESLint、响应式 UAT 脚本语法与 `git diff --check` 通过；按约束未运行本地 build。
 - 当前 `main` 与 `origin/main` 已推进至 `05928f9`；本轮线上 UAT 通过。Dokploy 容器身份与构建/健康信息待控制台核验。
 - 当前 `main` 与 `origin/main` 已推进至 `e564c4d`；本轮线上 UAT 通过。Dokploy 容器身份与构建/健康信息待控制台核验。
+- 本轮可访问性改动尚未部署；将与文档和 UAT 证据一起形成下一次集中部署。
 
 ## 2026-10-19 Smart Pricing 到 Bulk Price Edit 闭环
 
