@@ -1,6 +1,15 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（行内价格保存保护与 Stock/Capped Pricing 响应式表格本地通过；响应式改动待部署）
+**Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
+
+### 表格可访问性批次（`b2e0b1a`）
+
+- 设置用户、Sell AI 动态结果、AI 报表、产品价格阶梯、发票 OCR 明细和供应链建议表均补齐可识别表名与 `scope="col"` 列头。
+- 本地 typecheck、目标 ESLint、UAT 脚本语法和全站表头语义扫描通过；未运行 build。
+- Dokploy webhook 返回 `HTTP 200 Compose deployed successfully`。
+- 线上只读证据：静态矩阵 `268/268 PASS`、AI Metrics `9/9 PASS`、Odoo 自动恢复 `6/6 PASS`、Pricing `8/8 PASS`。详细证据见交接文档中的四个 `B2E0B1A` 文件。
+- 运行容器 SHA、完整构建日志和健康状态仍需 Dokploy 控制台独立核验，因此总体仍为 **NO-GO**。
+- `f5413e0`、`2cc4e38`、`2bc8046` 随后补充 AI path 延迟指标和视觉能力位文案；B2E0B1A 线上证据对应上一批运行版本，需部署 `2bc8046` 后重跑受影响 AI 验证。
 
 ### AI Metrics UI 语义增强（`74e9412`）
 

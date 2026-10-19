@@ -1,9 +1,19 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 表格可访问性批次（`b2e0b1a`）
+
+- 为设置用户、Sell AI 动态结果、AI 报表结果、产品价格阶梯、发票 OCR 明细和供应链建议表补齐 `aria-label` 与列头 `scope="col"`；没有改变接口、数据写入或业务流程。
+- 本地 `npm run typecheck` 通过；6 个受影响文件 ESLint 为 `0 error / 3 warning`（warning 为既有未转义撇号和 SupplyChain effect 规则提示）；3 个 UAT 脚本 `node --check` 通过；全站源代码表头扫描 `TABLE_HEADER_SCOPE_SCAN PASS`；未运行 build。
+- `b2e0b1a` 已推送并通过 Dokploy webhook 接受：`HTTP 200 Compose deployed successfully`。
+- 线上验证：全站静态矩阵 `134 路由 × 390/1440 = 268/268 PASS`，AI Metrics `9/9 PASS`，Odoo 自动恢复 `6/6 PASS`，Pricing `8/8 PASS`。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-B2E0B1A_FINAL.json`、`docs/UAT_AI_METRICS_ONLINE_B2E0B1A.json`、`docs/UAT_ODOO_AUTORECOVER_2026-10-19_POST-B2E0B1A.json`、`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-B2E0B1A.json`。
+- 矩阵重跑期间两个设置页曾各出现一次 `502/504`，随后独立请求均连续 3 次返回 `200`，判定为部署窗口瞬态；没有新增产品缺陷证据。
+- Dokploy 控制台 frontend/backend 实际 SHA、完整构建日志、健康状态和部署完成时间仍未独立回读；整体继续保持 **NO-GO**，且本轮未运行本地 build。
+- 随后 `f5413e0`、`2cc4e38`、`2bc8046` 已推送到 `main`，补充 AI path 延迟指标和视觉能力位文案；上面四组 B2E0B1A 证据仍只证明 `b2e0b1a` 部署批次，需在 `2bc8046` 部署后重跑受影响 AI 验证。
+
 ## 2026-10-19 Dokploy #38 旧构建失败复核与重部署
 
 - Dokploy #38 的阻塞错误是两个控制器找不到 `AiProviderConfig`；`Parenthesis` 弃用信息只是 warning。当前源码已在 `ea8f1b6` 为 `AiConfigController` 和 `SommelierController` 加入显式 import，`AiProviderConfig.java` 也存在，因此不需要重复改代码。
-- 当前本地 `main` 与 `origin/main` 均为 `7fc2123d11ae3c3d1da6b75888edfbd9ba1f7861`，包含该修复。#38 应按旧源码快照处理，不能作为当前 `main` 的编译结论。
+- 当前 `main` 与 `origin/main` 为 `2bc8046c83b68d96a59462349d03b8c024870028`，包含该修复。#38 应按旧源码快照处理，不能作为当前 `main` 的编译结论。
 - 已用完整 GitHub push payload（`X-GitHub-Event: push`、`ref=refs/heads/main`）重新调用 Dokploy webhook，返回 `HTTP 200 Compose deployed successfully`。这只证明部署请求被接受，尚未证明构建成功、容器已切换或健康检查通过。
 - 仍需从 Dokploy 控制台回读本次部署的 frontend/backend SHA、Maven 完整日志、容器健康状态和完成时间；在这些证据补齐前，整体保持 **NO-GO**。本地未运行 Maven/build。
 
