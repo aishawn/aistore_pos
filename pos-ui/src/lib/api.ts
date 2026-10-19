@@ -744,6 +744,37 @@ export function fetchAiReportSnapshot(id: string | number): Promise<AiReportSnap
   return api.get<AiReportSnapshot>(`/api/ai/reports/${id}`);
 }
 
+export interface AiReportMetrics {
+  windowHours: number;
+  since: string;
+  generatedAt: string;
+  summary: {
+    requests: number;
+    allowed: number;
+    rejected: number;
+    allowedRate: number;
+    averageLatencyMs: number;
+    p50LatencyMs: number | null;
+    p95LatencyMs: number | null;
+    estimatedTokens: number;
+    estimatedTokensOnly: boolean;
+  };
+  byPath: Array<{
+    path: string;
+    requests: number;
+    allowed: number;
+    rejected: number;
+    allowedRate: number;
+    averageLatencyMs: number;
+    estimatedTokens: number;
+  }>;
+}
+
+/** Admin-only, vendor-scoped AI report audit metrics. Token values are estimates. */
+export function fetchAiReportMetrics(hours = 24): Promise<AiReportMetrics> {
+  return api.get<AiReportMetrics>("/api/ai/metrics", { hours });
+}
+
 export function askAssistant(
   question: string,
   threadId?: string | null,

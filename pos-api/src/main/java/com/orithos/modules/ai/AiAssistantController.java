@@ -7,6 +7,8 @@ import com.orithos.modules.ai.dto.AssistantRequest;
 import com.orithos.modules.ai.dto.AssistantResponse;
 import com.orithos.modules.ai.dto.TranscriptionResponse;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
+import com.orithos.modules.ai.report.AiReportMetricsResponse;
+import com.orithos.modules.ai.report.AiReportMetricsService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import jakarta.validation.Valid;
@@ -30,6 +32,7 @@ public class AiAssistantController {
     private final ObjectProvider<AiTranscriptionService> transcriptionService;
     private final TenantContextFactory tenantContextFactory;
     private final AiReportSnapshotService snapshotService;
+    private final AiReportMetricsService metricsService;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
     @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
@@ -39,11 +42,13 @@ public class AiAssistantController {
             ObjectProvider<PosAssistantGraphService> graphService,
             ObjectProvider<AiTranscriptionService> transcriptionService,
             TenantContextFactory tenantContextFactory,
-            AiReportSnapshotService snapshotService) {
+            AiReportSnapshotService snapshotService,
+            AiReportMetricsService metricsService) {
         this.graphService = graphService;
         this.transcriptionService = transcriptionService;
         this.tenantContextFactory = tenantContextFactory;
         this.snapshotService = snapshotService;
+        this.metricsService = metricsService;
     }
 
     /** Phase A: classify intent + return UI instructions; frontend dispatches search/navigation. */
@@ -84,6 +89,13 @@ public class AiAssistantController {
     public ApiResult<AiReportSnapshotResponse> reportSnapshot(@PathVariable long id) {
         TenantContext tenant = tenantContextFactory.fromSecurity();
         return ApiResult.ok(snapshotService.getOwned(id, tenant));
+    }
+
+    /** Administrator-only, vendor-scoped report audit metrics. */
+    @GetMapping("/metrics")
+    public ApiResult<AiReportMetricsResponse> metrics(
+            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+        return ApiResult.ok(metricsService.get(hours));
     }
 
     /**
