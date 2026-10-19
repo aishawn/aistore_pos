@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Mic } from "lucide-react";
 import { useSellScreen } from "@/lib/sell-screen";
+import { fetchAiClientConfig } from "@/lib/api";
 
 const QUICK_ACTIONS = [
   {
@@ -39,7 +40,22 @@ const DEMO_MESSAGES = [
 export function AiAssistant() {
   const [open, setOpen] = useState(true);
   const [input, setInput] = useState("");
+  const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const sell = useSellScreen();
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAiClientConfig()
+      .then((config) => {
+        if (!cancelled) setTranscriptionAvailable(config.transcriptionAvailable === true);
+      })
+      .catch(() => {
+        if (!cancelled) setTranscriptionAvailable(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function runAction(action: string) {
     if (action === "Void Item" && sell.selectedId) {
@@ -125,7 +141,9 @@ export function AiAssistant() {
         <button
           type="button"
           aria-label="Voice input"
-          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] text-[var(--oh-muted)] outline-none hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+          disabled={transcriptionAvailable !== true}
+          title={transcriptionAvailable === true ? "Start voice input" : "Voice transcription is unavailable for this store"}
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] text-[var(--oh-muted)] outline-none hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Mic size={14} />
         </button>

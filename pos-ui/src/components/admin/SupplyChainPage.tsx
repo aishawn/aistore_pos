@@ -693,7 +693,7 @@ function SettingsPanel() {
   const [productQuery, setProductQuery] = useState("");
   const debounced = useDebouncedValue(productQuery, 300);
   const [products, setProducts] = useState<Array<{ id: number; name: string }>>([]);
-  const visibleProducts = debounced.trim() ? products : [];
+  const visibleProducts = productQuery.trim() ? products : [];
   const productRequestRef = useRef(0);
   const [pref, setPref] = useState({ supplierId: "", priority: "1", threshold: "", channel: "API" });
   const [price, setPrice] = useState({ productId: "", supplierId: "", sku: "", basePrice: "", caseSize: "6" });
