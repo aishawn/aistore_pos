@@ -45,3 +45,7 @@ HTTP 301
 等待约 4 分钟后线上复验结果：AI 功能 `14/14 PASS`、AI metrics `9/9 PASS`、AI UI `2/2 PASS`，业务或配置写入 `0`。证据：`docs/UAT_AI_REGRESSION_ONLINE_5650D1B.json`。
 
 公网行为正常，但仍缺 Dokploy 控制台实际运行 SHA、构建日志和容器健康证据；因此 `5650d1b` 是否已被容器运行仍未独立证明。
+
+## 跨页面表格可访问性复验
+
+提交 `88a164d` 为 Store Users 桌面表增加 `aria-label`，并新增只读表格回归。线上 390/1440 两个视口共 `10/10 PASS`，覆盖 Store Users、AI Metrics、Odoo Products、Supply Chain 和 Invoice Scan；页面错误为 `0`，预期被拦截的 Odoo POST 为 `4`，非预期写入为 `0`。证据：`docs/UAT_TABLE_A11Y_ONLINE_CURRENT.json`。
