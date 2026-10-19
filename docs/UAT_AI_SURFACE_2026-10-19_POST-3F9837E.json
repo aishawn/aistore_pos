@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-10-19T04:36:00.565Z",
   "sourceCommit": "90401bda12974a7b80e1ffd909a9a4bef708a8c9",
-  "deployment": "3f9837ef400c6812d5a3af10881b4402834b5e24",
+  "deployment": "unverified-after-deploy",
   "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
   "checks": [
     {
