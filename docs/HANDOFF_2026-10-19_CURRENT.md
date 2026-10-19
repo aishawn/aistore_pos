@@ -104,6 +104,14 @@
 - UAT 脚本已改为使用可解码 PNG 探针：`50213` 计为硬失败，`50212` 仅表示 provider 可达但图片没有发票字段；这仍不替代真实发票照片的字段提取验收。
 - 本轮本地只执行 `node --check scripts/pilot-ai-features-verify-uat.mjs` 与 `git diff --check`，没有运行 build。部署和配置修复后需等待 Dokploy 完成，再重新执行同一脚本。
 
+## 2026-10-19 AI 视觉路由修复后回归（10facb6）
+
+- Dokploy webhook 返回 `HTTP 200 Compose deployed successfully`，等待约四分钟后线上 AI 全功能只读回归为 **14 PASS / 0 FAIL / 1 INFO**。证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-10FACB6.json`。
+- NLQ assistant、Sommelier 全部动作、ASR/酒标空输入、价格建议 API/页面、补货页和匿名鉴权均通过。
+- Invoice OCR 探针返回 `50212`：provider 已可达，但使用的是无发票字段的可解码页面截图，因此只记为 INFO；尚未用真实供应商发票照片完成字段提取验收。
+- `InvoiceVisionService` 和 `WineLabelVisionService` 已按模型在 compatible chat 与 native multimodal endpoint 之间路由，并兼容 native `output.choices` 响应结构。真实业务仍只预览，不创建采购或收货。
+- 之前的 `97eda76` 路由逻辑已通过 `META-INF/spring.factories` 注册到 Spring Boot 3.3，线上 NLQ 从 `50210` 恢复通过。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。
