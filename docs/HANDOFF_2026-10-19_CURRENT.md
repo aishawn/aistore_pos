@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Dokploy #38 复核（当前）
+
+- 当前 `main` 与 `origin/main` 均为 `d3aa74b2f493ae15ddbe23e79c6a40fba83e1fcf`。两个控制器的 `AiProviderConfig` 显式 import 已在 `ea8f1b6` 加入，类文件已被 Git 跟踪；#38 的编译错误属于旧源码快照，不需要再次改 Java 代码。
+- `AiProviderConfigTest` 覆盖 provider host 校验边界；本轮 `git diff --check` 通过。按项目约束没有运行本地 Maven/Next build。
+- 提供的 Dokploy compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，包括发送 `main`、`refs/heads/main` 和完整 push payload 变体；本次没有启动构建。下一步从 Dokploy 控制台确认 Compose 分支/Watch 配置为 `main`，或手动 Deploy `d3aa74b`。
+- `Parenthesis` deprecation 是非阻断 warning。Dokploy 实际 frontend/backend SHA、完整构建日志、健康状态和完成时间仍未独立回读；整体状态继续 **NO-GO**。
+
 ## 2026-10-20 根路由树与只读回归校正（`0477edc`）
 
 - Next.js 实际路由入口以 `pos-ui/app` 为准：根目录存在 `app`，`next.config` 使用标准 Next App Router，`tsconfig` 同时包含 `src` 只是类型检查范围。此前把 `src/app` 称为线上实际路由树的记录已校正；后续生产页面修改应优先落在 `pos-ui/app`。

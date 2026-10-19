@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 Dokploy #38 复核（`d3aa74b`）
+
+- 当前 `main` 与 `origin/main` 均为 `d3aa74b2f493ae15ddbe23e79c6a40fba83e1fcf`；该提交包含 `ea8f1b6` 的两个显式 `AiProviderConfig` import，且 `AiProviderConfig.java` 已被 Git 跟踪。#38 中两个 `cannot find symbol` 因此来自旧源码快照，当前源码不需要重复修改。
+- `AiProviderConfigTest` 已覆盖合法 HTTPS host、禁止 `/api/v1`、禁止非本地 HTTP、查询参数和非法 URL；`git diff --check` 通过（仅有历史文档换行提示）。
+- 对提供的 Dokploy compose webhook 发送 POST（含 `main`、`refs/heads/main` 和完整 push payload 变体）均返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动新构建。需在 Dokploy 控制台把 Compose Git 分支/Watch 配置核对为 `main`，或直接手动 Deploy 当前 `d3aa74b`。
+- `SqlAst.java` 的 `Parenthesis` 弃用提示仍是 warning，不是阻断错误。Dokploy backend/frontend 容器 SHA、完整构建日志、健康状态和完成时间仍未核验，发布继续 **NO-GO**。
+
 ### 2026-10-20 根路由树校正与只读回归（`0477edc`）
 
 - 已确认 Next.js 生产入口为 `pos-ui/app`；`pos-ui/src/app` 不应作为线上路由证据来源。后续页面优化和 UAT 路由收集以根 `app` 为准。
