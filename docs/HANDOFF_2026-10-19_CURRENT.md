@@ -7,6 +7,14 @@
 - 本地验证：`npm run typecheck`、目标 ESLint、stock table/table-a11y 脚本 `node --check`、`git diff --check` 通过；未运行 build。
 - 待与后续修改集中部署后，必须复跑 `/stock/list` 390/1440、stock table responsive 和全站矩阵，确认筛选开关状态、移动卡片字段、分页和无业务写入。
 
+## 2026-10-20 `da76894` Stock List 部署后回归
+
+- Dokploy webhook 返回 `HTTP 200 Compose deployed successfully`，公网已呈现 Stock List switch 结构和底部安全空间修复。
+- 价格/库存只读专项 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_POST_DA76894.json`：4 页面 × 390/1440，共 `8/8 PASS`，移动编辑卡片、分页底部/浮动助手避让和页面布局均通过，拦截业务写入 `0`。
+- 表格/表单专项 `docs/UAT_TABLE_A11Y_POST_DA76894.json`：`14/14 PASS`，只读 Odoo RPC 被单独拦截，`unexpectedWrites=0`。
+- 根 `app` 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_POST_DA76894.json`：`134 × 2 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出。
+- 当前线上专项已覆盖本轮修改；Dokploy 容器 SHA、完整构建日志和健康状态仍未从控制台独立回读，整体发布继续 **NO-GO**。
+
 ## 2026-10-20 发票扫描预览移动安全区批次（当前工作区）
 
 - `pos-ui/src/components/admin/ScanInvoicePage.tsx` 的上传区域补齐 `aria-labelledby`/`aria-busy`，OCR 进行中状态补齐 `aria-live`，底部 Odoo 导航 footer 预留 `safe-area-inset-bottom`，避免手机手势条遮挡操作。

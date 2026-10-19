@@ -8,6 +8,13 @@
 - 自定义列表滚动区域增加浮动助手和系统手势条的底部安全空间；桌面表格与移动产品编辑卡片字段不变。
 - 本地 typecheck、目标 ESLint、相关脚本语法和 diff check 通过；部署后需以公网 stock table 和全站只读矩阵验证实际效果。
 
+### 2026-10-20 `da76894` Stock List 部署后回归
+
+- Dokploy webhook 接受 `da76894`；价格/库存只读专项 `8/8 PASS`（4 页面 × 390/1440），表格/表单专项 `14/14 PASS`，全站根 `app` 矩阵 `268/268 PASS`。
+- Stock List 移动卡片字段、筛选开关、分页/浮动助手底部空间均通过；所有专项无意外业务写入。
+- 证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_POST_DA76894.json`、`docs/UAT_TABLE_A11Y_POST_DA76894.json`、`docs/UAT_ALL_STATIC_PAGES_POST_DA76894.json`。
+- Dokploy 容器 SHA/构建日志/健康状态仍待独立核验；生产 AI 质量、实体硬件、隔离 Odoo 写入和正式财务流程仍未完成，整体 **NO-GO**。
+
 ### 2026-10-20 `dfc76d0` 部署后全站回归
 
 - Dokploy webhook 接受 `dfc76d0`，公网根 `app` 矩阵 `268/268 PASS`（134 路由、390/1440），HTTP、页面错误和横向溢出均为 `0`；证据 `docs/UAT_ALL_STATIC_PAGES_POST_DFC76D0.json`。
