@@ -54,15 +54,19 @@ try {
   const metrics = await context.request.get(`${base}/api/ai/metrics?hours=24`, { headers: { Origin: base }, timeout: 60000 });
   const metricsBody = await metrics.json().catch(() => ({}));
   const summary = metricsBody?.data?.summary;
+  const hasRequests = Number(summary?.requests) > 0;
   const valid = metrics.ok()
     && metricsBody?.code === 0
     && Number(metricsBody?.data?.windowHours) === 24
     && Number.isFinite(Number(summary?.allowedRate))
     && Number.isFinite(Number(summary?.averageLatencyMs))
+    && (!hasRequests || (Number.isFinite(Number(summary?.p50LatencyMs)) && Number.isFinite(Number(summary?.p95LatencyMs))))
     && Number.isFinite(Number(summary?.estimatedTokens))
     && summary?.estimatedTokensOnly === true
     && Array.isArray(metricsBody?.data?.byPath);
-  record("admin metrics response", valid ? "PASS" : "FAIL", valid ? `status=${metrics.status()} paths=${metricsBody.data.byPath.length}` : `status=${metrics.status()} code=${metricsBody?.code ?? "missing"}`);
+  record("admin metrics response", valid ? "PASS" : "FAIL", valid
+    ? `status=${metrics.status()} paths=${metricsBody.data.byPath.length} p50=${summary.p50LatencyMs ?? "null"} p95=${summary.p95LatencyMs ?? "null"}`
+    : `status=${metrics.status()} code=${metricsBody?.code ?? "missing"}`);
 
   const expectedAssistantPath = assistantOk ? `assistant:${assistantIntent}` : "";
   const assistantPath = metricsBody?.data?.byPath?.find((item) => item?.path === expectedAssistantPath);

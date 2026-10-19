@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T14:04:17.455Z",
+  "generatedAt": "2026-10-19T14:09:20.961Z",
   "sourceCommit": "7cf7c3a",
   "target": "https://demo.orithos.com.au",
   "scope": "admin-only AI report metrics read-only regression; no business or configuration writes",
@@ -12,17 +12,17 @@
     {
       "name": "assistant audit seed",
       "status": "PASS",
-      "detail": "intent=search_product"
+      "detail": "intent=entity_action"
     },
     {
       "name": "admin metrics response",
       "status": "PASS",
-      "detail": "status=200 paths=2"
+      "detail": "status=200 paths=2 p50=2755 p95=6474"
     },
     {
       "name": "assistant intent metrics coverage",
       "status": "PASS",
-      "detail": "assistant:search_product requests=3 allowed=3 estimatedTokens=33"
+      "detail": "assistant:entity_action requests=6 allowed=6 estimatedTokens=88"
     },
     {
       "name": "anonymous metrics guard",
