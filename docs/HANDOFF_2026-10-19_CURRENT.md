@@ -2,7 +2,7 @@
 
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
-> 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `115bded`；本轮 webhook 触发目标为 `8cf2cc0`，代码部署身份仍需在 Dokploy 控制台确认。
+> 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `99da6d0`；价格建议部署验证目标为 `23f9b76`，代码部署身份仍需在 Dokploy 控制台确认。
 
 ## 一、已完成
 
@@ -80,7 +80,7 @@
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`115bded`（最新 AI 部署后回归证据）；本轮 webhook 触发目标为 `8cf2cc0`，最新已核实应用修复提交为 `b74d976`，stocktake 权限顺序部署为 `a6d5a57`，盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`99da6d0`（Smart Pricing 线上阻塞证据）；价格建议部署验证目标为 `23f9b76`，最新已核实应用修复提交为 `b74d976`，stocktake 权限顺序部署为 `a6d5a57`，盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
 
 ## 最新状态覆盖（2026-10-19）
 
