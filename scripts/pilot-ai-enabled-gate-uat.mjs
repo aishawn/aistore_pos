@@ -119,7 +119,13 @@ try {
               "AI_ENABLED=true but graph assistant unavailable (50301) — check DashScope key and PosAssistantGraphService registration",
             );
           } else {
-            record("enabled NLQ API", "FAIL", `status=${assistant.status()} code=${assistantBody.code} ${assistantBody.message || ""}`);
+            const message = String(assistantBody.message || "");
+            record("enabled NLQ API", "FAIL", `status=${assistant.status()} code=${assistantBody.code} ${message}`);
+            record(
+              "assistant provider error is sanitized",
+              /invalidparameter|url error|request_id|dashscope/i.test(message) ? "FAIL" : "PASS",
+              message || "No provider detail exposed",
+            );
           }
 
           await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 90000 });

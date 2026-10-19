@@ -98,6 +98,11 @@ function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
       ? "AI voice transcription is not enabled for this store. Type your request instead."
       : "The AI assistant is not enabled for this store. Contact your administrator. Product search and checkout are still available.";
   }
+  if (error instanceof ApiError && error.code === 50210) {
+    return mode === "voice"
+      ? "AI voice is temporarily unavailable. Check the AI configuration or type your request instead."
+      : "The AI assistant is temporarily unavailable. Check the AI configuration and try again.";
+  }
   return mode === "voice"
     ? "Voice transcription could not reach the assistant. Check your connection or type your request instead."
     : "The assistant could not connect. Check your connection and try again.";

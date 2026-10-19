@@ -54,8 +54,16 @@ public class AiAssistantController {
         }
 
         TenantContext tenant = tenantContextFactory.fromSecurity();
-        PosAssistantGraphService.AssistantResult result =
-                service.ask(request.question(), request.threadId(), tenant);
+        PosAssistantGraphService.AssistantResult result;
+        try {
+            result = service.ask(request.question(), request.threadId(), tenant);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            // Do not expose provider URLs, request ids, or model configuration details to store staff.
+            throw new BusinessException(50210,
+                    "AI assistant is temporarily unavailable. Check the AI configuration and try again.");
+        }
 
         return ApiResult.ok(new AssistantResponse(
                 result.threadId(),

@@ -32,6 +32,12 @@
 - Dokploy 当前实际 AI flag 为 `enabled=true`，assistant 调用返回 DashScope `HTTP 400 InvalidParameter: url error`；AI surface/gate 失败，说明生产 DashScope URL 或模型配置无效。
 - 当前不能把真实 AI 视为通过，也不能把关闭门禁视为线上通过，因为线上并非关闭状态。修正 Dokploy AI 环境后需重跑 assistant、语音、酒标和价格建议 gate；在此之前建议恢复 `AI_ENABLED=false`。
 
+## 下一批候选：AI provider 错误隔离
+
+- `AiAssistantController` 将未预期的 graph/DashScope 异常转换为业务码 `50210`，不再返回 HTTP 500 或供应商原始 URL、request id 和错误细节。
+- `SellAiPanel` 对 `50210` 显示“AI 暂时不可用”的可操作提示，保留商品查询和销售快捷入口。
+- AI gate 新增供应商错误泄漏断言；本地 typecheck、ESLint、脚本语法和 diff check 通过。需下一次部署后在当前错误配置环境验证。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。

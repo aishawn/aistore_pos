@@ -36,6 +36,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - Dokploy 当前环境返回 `AI_ENABLED=true`；真实 assistant 请求返回 DashScope `HTTP 400 InvalidParameter: url error`，AI surface 和 enablement gate 失败。该问题需要修正 Dokploy 的 DashScope base URL/模型配置，不能用 mock 结果放行。
 - `AI_ENABLED=true` 时本轮不能验证关闭门禁 `50301`；生产应在模型配置完成前保持关闭，或由运维修正环境后重新跑模型 smoke。
 
+### AI provider failure containment candidate
+
+- `AiAssistantController` now converts unexpected graph/provider exceptions to business code `50210` with a safe message; DashScope request IDs, URLs and raw provider details are not returned to staff.
+- `SellAiPanel` renders a specific temporary-unavailable message for `50210` and keeps local product/search shortcuts available.
+- The AI enablement gate now checks that failed model responses do not expose `InvalidParameter`, provider URLs, request IDs or `DashScope` details. This candidate is locally typechecked and script-syntax checked; it still needs Java 21 and online verification.
+
 Statuses:
 
 | Status | Meaning |
