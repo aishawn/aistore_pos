@@ -28,7 +28,7 @@ export default function MediaCentrePage() {
           <AdminNavyButton disabled className="rounded-none py-2.5">
             <FolderPlusIcon size={16} /> New Folder
           </AdminNavyButton>
-          <nav className="mt-2 flex flex-col gap-1 px-4 py-2 text-[14px]">
+          <nav aria-label="Media folders" className="mt-2 flex flex-col gap-1 px-4 py-2 text-[14px]">
             <span className="flex items-center gap-2 font-medium text-[var(--oh-orange)]">
               <FolderOpenIcon size={16} /> Home
             </span>
@@ -51,10 +51,14 @@ export default function MediaCentrePage() {
             </div>
           </div>
           <div className="px-4 py-3 sm:px-5">
-            <input
-              placeholder="Search for file in current directory"
-              className="h-10 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[14px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)]"
-            />
+            <label className="block">
+              <span className="sr-only">Search files in current directory</span>
+              <input
+                placeholder="Search for file in current directory"
+                aria-label="Search files in current directory"
+                className="h-10 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 text-[14px] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)]"
+              />
+            </label>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center text-[var(--oh-muted)]">
             <FolderUpIcon size={48} strokeWidth={1.5} />

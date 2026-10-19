@@ -84,7 +84,7 @@ export function AdminSecondaryButton({
 /** Fixed form actions with space reserved for the floating assistant button. */
 export function AdminActionFooter({ children }: { children: React.ReactNode }) {
   return (
-    <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+    <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6">
       <div className="mr-20 flex gap-2">{children}</div>
     </footer>
   );
@@ -167,7 +167,7 @@ export function AdminPageLayout({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("h-full overflow-auto bg-[var(--oh-surface)] font-sans pb-24 md:pb-6 print:overflow-visible print:bg-white print:p-0", compact ? "p-4 md:p-5" : "p-5 md:p-6")}>
+    <div className={cn("h-full overflow-auto bg-[var(--oh-surface)] font-sans pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 print:overflow-visible print:bg-white print:p-0", compact ? "p-4 md:p-5" : "p-5 md:p-6")}>
       <div className={cn("flex flex-wrap items-start justify-between gap-4 print:hidden", compact ? "mb-3" : "mb-5")}>
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">{title}</h1>

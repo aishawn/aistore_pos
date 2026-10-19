@@ -13,9 +13,10 @@ const adminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PA
 const adminSubdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "demo";
 if (!adminPassword) throw new Error("MISSING_ADMIN_PASSWORD");
 
-// Next uses src/app when both route trees exist. Discover the active route tree
-// so this matrix does not silently validate the ignored legacy app directory.
-const appRoot = path.join(root, "pos-ui", "src", "app");
+// Next.js uses the root app directory when both route trees exist. Keep the
+// matrix aligned with the production route tree instead of validating the
+// legacy duplicate under src/app.
+const appRoot = path.join(root, "pos-ui", "app");
 function collect(dir, relative = "") {
   const routes = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 根路由测试与移动安全区批次（当前工作区）
+
+- 发现全站矩阵脚本扫描 `pos-ui/src/app`，而 Next.js 实际使用根 `pos-ui/app`；两套路由有 96 个文件差异。已将 `scripts/pilot-all-static-pages-uat.mjs` 改为扫描根 `app`，避免把旧副本当成线上验证对象。
+- 根 `app` 线上只读矩阵：`134` 路由 × `390/1440` = `268/268 PASS`，HTTP、页面错误、横向溢出均为 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ROOT_APP_ONLINE_2026-10-20.json`，运行时身份仍未从 Dokploy 控制台核验。
+- 共享 `AdminPageLayout` 增加手机底部安全区，`AdminActionFooter` 增加表单底栏安全区；订单、采购、客户、库存等共享表单页面会继承该修复。Media Centre 搜索框补齐可访问名称，文件夹导航补齐 `nav` 标签。
+- 已通过 `npm run typecheck`、`npx eslint src/components/admin/AdminPageLayout.tsx app/media/page.tsx`、`node --check scripts/pilot-all-static-pages-uat.mjs` 和目标 `git diff --check`；未运行本地 build。线上变更后的专门 UI 验证待 Dokploy 分支配置修复后重跑。
+
 ## 2026-10-20 Dokploy #38 复核（当前）
 
 - 当前 `main` 与 `origin/main` 均为 `d3aa74b2f493ae15ddbe23e79c6a40fba83e1fcf`。两个控制器的 `AiProviderConfig` 显式 import 已在 `ea8f1b6` 加入，类文件已被 Git 跟踪；#38 的编译错误属于旧源码快照，不需要再次改 Java 代码。

@@ -1,6 +1,14 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
+**Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
+
+### 2026-10-20 根 `app` 真实路由矩阵与共享移动安全区（工作区）
+
+- 修正 `pilot-all-static-pages-uat.mjs` 的扫描根目录：Next.js 在根目录同时存在 `app` 与 `src/app` 时使用 `pos-ui/app`；两棵树有 96 个文件不同，旧脚本可能验证到非生产入口。
+- 线上只读矩阵按根 `pos-ui/app` 收集到 `134` 路由 × `390/1440` = `268/268 PASS`；HTTP、页面错误和横向溢出均为 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ROOT_APP_ONLINE_2026-10-20.json`。该证据对应运行时旧镜像，不能替代 Dokploy SHA 核验。
+- `AdminPageLayout` 的移动底部空间和 `AdminActionFooter` 的表单底栏加入 `safe-area-inset-bottom`，覆盖订单、采购、客户、库存等共享管理页面，减少手势条/浮动 AI 按钮遮挡。
+- Media Centre 的文件搜索框补齐可访问名称，媒体目录补齐 `nav` 标签；媒体存储仍未接入，未新增虚假上传功能。
+- 本地 `npm run typecheck`、目标 ESLint、UAT 脚本 `node --check` 和 `git diff --check` 通过；未运行 build。Dokploy 部署和变更后的线上 DOM 复验待分支修复后执行。
 
 ### 2026-10-20 Dokploy #38 复核（`d3aa74b`）
 
