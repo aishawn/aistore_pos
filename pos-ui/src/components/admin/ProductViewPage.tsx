@@ -537,9 +537,9 @@ export function ProductViewPage({ productId }: { productId: string }) {
             <div className="min-w-0 flex-1">
               <AsyncDependencyNotice
                 dependencies={[
-                  { label: "Tax rates", error: taxRates.error, onRetry: taxRates.reload },
-                  { label: "Families", error: families.error, onRetry: families.reload },
-                  { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
+                  { label: "Tax rates", error: taxRates.error, loading: taxRates.loading, onRetry: taxRates.reload },
+                  { label: "Families", error: families.error, loading: families.loading, onRetry: families.reload },
+                  { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
                 ]}
               />
               {nav === "home" && chart.error && (

@@ -436,9 +436,9 @@ export function EditCustomerGroupPage({ groupId }: { groupId: string }) {
             <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
               <AsyncDependencyNotice
                 dependencies={[
-                  { label: "Price lists", error: priceLists.error, onRetry: priceLists.reload },
-                  { label: "Receipt templates", error: receipts.error, onRetry: receipts.reload },
-                  { label: "Statement templates", error: statements.error, onRetry: statements.reload },
+                  { label: "Price lists", error: priceLists.error, loading: priceLists.loading, onRetry: priceLists.reload },
+                  { label: "Receipt templates", error: receipts.error, loading: receipts.loading, onRetry: receipts.reload },
+                  { label: "Statement templates", error: statements.error, loading: statements.loading, onRetry: statements.reload },
                 ]}
               />
               {tab === "general" && (

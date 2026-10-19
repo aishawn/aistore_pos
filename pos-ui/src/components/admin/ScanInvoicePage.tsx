@@ -157,8 +157,8 @@ export function ScanInvoicePage() {
 
           <AsyncDependencyNotice
             dependencies={[
-              { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
-              { label: "Outlets", error: outlets.error, onRetry: outlets.reload },
+              { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
+              { label: "Outlets", error: outlets.error, loading: outlets.loading, onRetry: outlets.reload },
             ]}
           />
 

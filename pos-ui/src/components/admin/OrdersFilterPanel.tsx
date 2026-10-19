@@ -146,11 +146,11 @@ export function OrdersFilterPanel({
     <div>
       <AsyncDependencyNotice
         dependencies={[
-          { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
-          { label: "Transferees", error: transferees.error, onRetry: transferees.reload },
-          { label: "Outlets", error: outlets.error, onRetry: outlets.reload },
-          { label: "Products", error: products.error, onRetry: products.reload },
-          { label: "Users", error: users.error, onRetry: users.reload },
+          { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
+          { label: "Transferees", error: transferees.error, loading: transferees.loading, onRetry: transferees.reload },
+          { label: "Outlets", error: outlets.error, loading: outlets.loading, onRetry: outlets.reload },
+          { label: "Products", error: products.error, loading: products.loading, onRetry: products.reload },
+          { label: "Users", error: users.error, loading: users.loading, onRetry: users.reload },
         ]}
       />
       <div className={filterGridClass}>

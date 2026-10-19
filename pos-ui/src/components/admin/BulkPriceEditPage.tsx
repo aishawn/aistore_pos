@@ -222,7 +222,7 @@ export function BulkPriceEditPage() {
       </div>
 
       <AsyncDependencyNotice
-        dependencies={[{ label: "Categories", error: categories.error, onRetry: categories.reload }]}
+        dependencies={[{ label: "Categories", error: categories.error, loading: categories.loading, onRetry: categories.reload }]}
       />
 
       <div className="shrink-0 space-y-3 border-b border-neutral-200 px-6 py-4">

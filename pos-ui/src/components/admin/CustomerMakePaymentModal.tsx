@@ -86,7 +86,7 @@ export function CustomerMakePaymentModal({
         </p>
 
         <AsyncDependencyNotice
-          dependencies={[{ label: "Payment methods", error: methods.error, onRetry: methods.reload }]}
+          dependencies={[{ label: "Payment methods", error: methods.error, loading: methods.loading, onRetry: methods.reload }]}
         />
 
         <label className="flex flex-col text-[14px] text-neutral-700">

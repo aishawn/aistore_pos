@@ -963,12 +963,12 @@ export function EditProductPage({ productId }: { productId: string }) {
             <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
               <AsyncDependencyNotice
                 dependencies={[
-                  { label: "Brands", error: brands.error, onRetry: brands.reload },
-                  { label: "Categories", error: categories.error, onRetry: categories.reload },
-                  { label: "Families", error: families.error, onRetry: families.reload },
-                  { label: "Tags", error: tags.error, onRetry: tags.reload },
-                  { label: "Tax rates", error: taxRates.error, onRetry: taxRates.reload },
-                  { label: "Suppliers", error: suppliers.error, onRetry: suppliers.reload },
+                  { label: "Brands", error: brands.error, loading: brands.loading, onRetry: brands.reload },
+                  { label: "Categories", error: categories.error, loading: categories.loading, onRetry: categories.reload },
+                  { label: "Families", error: families.error, loading: families.loading, onRetry: families.reload },
+                  { label: "Tags", error: tags.error, loading: tags.loading, onRetry: tags.reload },
+                  { label: "Tax rates", error: taxRates.error, loading: taxRates.loading, onRetry: taxRates.reload },
+                  { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
                 ]}
               />
               {/* Section title */}

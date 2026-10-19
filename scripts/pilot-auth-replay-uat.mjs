@@ -80,7 +80,7 @@ const output = {
   checks,
   writes,
 };
-const outputPath = path.join(root, "docs", "UAT_AUTH_REPLAY_2026-10-18.json");
+const outputPath = path.join(root, "docs", "UAT_AUTH_REPLAY_2026-10-19.json");
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, checks, writes }));
 if (checks.some((check) => check.status !== "PASS") || writes.length !== 1) process.exitCode = 2;

@@ -141,7 +141,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
         </div>
         <div className="mt-3">
           <AsyncDependencyNotice
-            dependencies={[{ label: "Sale key sets", error: allSetsError, onRetry: reloadAllSets }]}
+            dependencies={[{ label: "Sale key sets", error: allSetsError, loading: allSetsLoading, onRetry: reloadAllSets }]}
           />
         </div>
       </div>

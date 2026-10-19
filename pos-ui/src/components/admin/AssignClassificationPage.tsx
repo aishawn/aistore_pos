@@ -283,7 +283,7 @@ export function AssignClassificationPage({
       </div>
 
       <div className="px-5 md:px-6">
-        <AsyncDependencyNotice dependencies={[{ label: "Classifications", error: categories.error, onRetry: categories.reload }]} />
+        <AsyncDependencyNotice dependencies={[{ label: "Classifications", error: categories.error, loading: categories.loading, onRetry: categories.reload }]} />
       </div>
 
       <div className="min-h-0 flex-1 px-5 pb-4 md:px-6">

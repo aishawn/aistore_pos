@@ -124,7 +124,7 @@ export function ViewAllStatementsModal({
         </label>
 
         <AsyncDependencyNotice
-          dependencies={[{ label: "Statement templates", error: statements.error, onRetry: statements.reload }]}
+          dependencies={[{ label: "Statement templates", error: statements.error, loading: statements.loading, onRetry: statements.reload }]}
         />
 
         <div className="mt-6 flex gap-3">

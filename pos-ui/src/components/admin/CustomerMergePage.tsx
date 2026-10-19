@@ -743,7 +743,7 @@ export function CustomerMergePage() {
 
       <div className="shrink-0 px-6 pt-4">
         <AsyncDependencyNotice
-          dependencies={[{ label: "Customer groups", error: groupsQuery.error, onRetry: groupsQuery.reload }]}
+          dependencies={[{ label: "Customer groups", error: groupsQuery.error, loading: groupsQuery.loading, onRetry: groupsQuery.reload }]}
         />
       </div>
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { LoaderCircle, RefreshCw } from "lucide-react";
+
 /** Renders loading / error / empty placeholders consistently across data pages. */
 export function AsyncState({
   loading,
@@ -47,24 +49,27 @@ export function AsyncState({
 export function AsyncDependencyNotice({
   dependencies,
 }: {
-  dependencies: Array<{ label: string; error: string | null; onRetry: () => void }>;
+  dependencies: Array<{ label: string; error: string | null; loading?: boolean; onRetry: () => void }>;
 }) {
-  const failed = dependencies.filter((dependency) => dependency.error);
-  if (failed.length === 0) return null;
+  const active = dependencies.filter((dependency) => dependency.error || dependency.loading);
+  if (active.length === 0) return null;
+  const hasErrors = active.some((dependency) => dependency.error);
 
   return (
     <div role="alert" aria-live="assertive" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-      <p className="font-semibold">Some lookup options could not be loaded.</p>
+      <p className="font-semibold">{hasErrors ? "Some lookup options could not be loaded." : "Refreshing lookup options…"}</p>
       <div className="mt-2 space-y-2">
-        {failed.map((dependency) => (
+        {active.map((dependency) => (
           <div key={dependency.label} className="flex flex-wrap items-center justify-between gap-2">
-            <span>{dependency.label}: {dependency.error}</span>
+            <span>{dependency.label}: {dependency.error || "Retrying…"}</span>
             <button
               type="button"
               onClick={dependency.onRetry}
-              className="min-h-9 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700"
+              disabled={dependency.loading}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:cursor-wait disabled:opacity-60"
             >
-              Retry
+              {dependency.loading ? <LoaderCircle size={13} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={13} aria-hidden="true" />}
+              {dependency.loading ? "Retrying…" : "Retry"}
             </button>
           </div>
         ))}
