@@ -17,6 +17,7 @@ import com.orithos.modules.ai.sommelier.dto.SimilarResponse;
 import com.orithos.modules.ai.sommelier.dto.WineAssistantResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,8 @@ public class SommelierController {
     private final SommelierService sommelierService;
     private final TenantContextFactory tenantContextFactory;
     private final ObjectProvider<WineLabelVisionService> visionService;
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
 
     public SommelierController(
             SommelierService sommelierService,
@@ -57,7 +60,7 @@ public class SommelierController {
     @PostMapping(value = "/identify-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResult<IdentifyImageResponse> identifyImage(@RequestParam("file") MultipartFile file) {
         WineLabelVisionService vision = visionService.getIfAvailable();
-        if (vision == null) {
+        if (!aiEnabled || vision == null) {
             throw new BusinessException(50301,
                     "Label recognition is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }

@@ -24,6 +24,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 已补齐 wrapper、Stock Tools 入口，并将本地 UAT 扩展为检查 wrapper/导航、CSV 下载和零写请求；当前本地 `8/8 PASS`。
 - 该修复尚未部署，必须与下一批改动一起触发 Dokploy 后重新验证线上 404 是否消失。
 
+### AI 关闭状态一致性修复候选
+
+- `c478371` 后线上 AI client flag 为 `enabled=false`，但空语音请求仍返回 `40010`；这暴露了后端 multipart 校验先于 AI 关闭门禁的问题，AI surface 回归为 `6 PASS / 1 FAIL`。
+- 已在 `AiAssistantController` 与 `SommelierController` 增加 `app.ai.enabled` 服务端门禁：语音和酒标图像接口在关闭时统一返回 `50301`，不会进入文件校验或模型服务。
+- 本地已通过前端 typecheck、UAT 脚本语法和 diff check；后端 Maven 未运行，需 Java 21 CI/部署后验证。
+
 Statuses:
 
 | Status | Meaning |

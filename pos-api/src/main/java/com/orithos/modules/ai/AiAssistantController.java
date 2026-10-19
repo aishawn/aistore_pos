@@ -11,6 +11,7 @@ import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +30,8 @@ public class AiAssistantController {
     private final ObjectProvider<AiTranscriptionService> transcriptionService;
     private final TenantContextFactory tenantContextFactory;
     private final AiReportSnapshotService snapshotService;
+    @Value("${app.ai.enabled:false}")
+    private boolean aiEnabled;
 
     public AiAssistantController(
             ObjectProvider<PosAssistantGraphService> graphService,
@@ -84,7 +87,7 @@ public class AiAssistantController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "lang", required = false) String lang) {
         AiTranscriptionService service = transcriptionService.getIfAvailable();
-        if (service == null) {
+        if (!aiEnabled || service == null) {
             throw new BusinessException(50301,
                     "AI transcription is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
