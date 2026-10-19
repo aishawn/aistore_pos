@@ -53,4 +53,13 @@ class InvoiceVisionServiceTest {
         assertEquals("Asahi Super Dry Bottles 24PK", read.lines().get(0).description());
         assertEquals(0, new BigDecimal("10").compareTo(read.lines().get(0).qtyCases()));
     }
+
+    @Test
+    void providerConfigurationDetailsAreNotShownToStaff() {
+        String message = InvoiceVisionService.visionFailureMessage(
+                "Invoice recognition failed", "qwen-vl-plus",
+                "{\"code\":\"InvalidParameter\",\"message\":\"url error\",\"request_id\":\"secret\"}",
+                "fallback");
+        assertEquals("Invoice recognition failed: AI provider configuration is invalid. Check the AI configuration and try again.", message);
+    }
 }

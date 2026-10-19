@@ -44,6 +44,12 @@
 - DashScope 配置仍无效，assistant 请求失败，但响应已变为业务码 `50210` 的安全提示；不再泄漏原始 `InvalidParameter`、URL 或 request id。gate 的 provider 错误脱敏检查通过。
 - 真实 AI 仍是 `NO-GO`，需先修正 Dokploy `AI_DASHSCOPE_BASE_URL` / 模型配置，之后再跑 assistant、voice、label 和 invoice UAT。
 
+## 下一批候选：视觉 AI provider 错误隔离
+
+- 酒标识别和发票 OCR 的视觉服务现在会隐藏 DashScope URL、request id、`InvalidParameter` 等供应商原始详情，改为可操作的 AI 配置提示。
+- 新增两份 Java 单测覆盖错误脱敏；本机未运行 Maven，因为只有 Java 8，项目要求 Java 21。
+- 该批次尚未部署，需与下一次集中部署一起重跑视觉接口和 AI gate。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。

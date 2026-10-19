@@ -47,4 +47,13 @@ class WineLabelVisionServiceTest {
         assertNotNull(read);
         assertEquals("House Shiraz", read.name());
     }
+
+    @Test
+    void providerConfigurationDetailsAreNotShownToStaff() {
+        String message = WineLabelVisionService.visionFailureMessage(
+                "Label recognition failed", "qwen-vl-plus",
+                "{\"code\":\"InvalidParameter\",\"message\":\"url error\",\"request_id\":\"secret\"}",
+                "fallback");
+        assertEquals("Label recognition failed: AI provider configuration is invalid. Check the AI configuration and try again.", message);
+    }
 }

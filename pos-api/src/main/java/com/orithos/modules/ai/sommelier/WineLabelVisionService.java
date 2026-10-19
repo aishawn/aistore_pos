@@ -128,7 +128,7 @@ public class WineLabelVisionService {
                     "Label recognition failed", properties.visionModel(), e.getResponseBodyAsString(), e.getMessage()));
         } catch (Exception e) {
             log.warn("DashScope VL failed: {}", e.getMessage());
-            throw new BusinessException(50213, "Label recognition failed: " + e.getMessage());
+            throw new BusinessException(50213, "Label recognition failed. Check the AI configuration and try again.");
         }
     }
 
@@ -227,6 +227,9 @@ public class WineLabelVisionService {
         if (detail != null && detail.toLowerCase(Locale.ROOT).matches("(?s).*(model_not_found|model not exist).*")) {
             return prefix + ": vision model \"" + model + "\" is not available for this DashScope key/region. "
                     + "Set AI_VISION_MODEL (for example qwen-vl-max or qwen3-vl-plus) and confirm AI_DASHSCOPE_BASE_URL matches the key region.";
+        }
+        if (detail != null && detail.toLowerCase(Locale.ROOT).matches("(?s).*(invalidparameter|url error|request_id|dashscope).*")) {
+            return prefix + ": AI provider configuration is invalid. Check the AI configuration and try again.";
         }
         return prefix + ": " + detail;
     }

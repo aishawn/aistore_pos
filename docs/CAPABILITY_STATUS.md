@@ -48,6 +48,11 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - AI provider 请求仍失败（`AI_ENABLED=true` 且 DashScope URL 配置无效），但已返回业务码 `50210` 和安全提示；原始 `InvalidParameter` / URL / request id 泄漏断言 `PASS`。
 - 证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-9FF8C12.json`。真实 AI 仍未放行，需先修正 Dokploy AI 环境。
 
+### 视觉 AI provider 错误隔离候选
+
+- Wine label vision 和 invoice vision 现在对 `InvalidParameter`、URL、request id、DashScope 原始错误统一返回安全提示；普通异常也不再把 `Exception.getMessage()` 返回给店员。
+- 新增 `WineLabelVisionServiceTest` / `InvoiceVisionServiceTest` 脱敏断言；当前未在本机 Java 8 执行 Maven，需 Java 21 CI/部署验证。
+
 Statuses:
 
 | Status | Meaning |
