@@ -2,7 +2,7 @@
 
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
-> 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `99da6d0`；价格建议部署验证目标为 `23f9b76`，代码部署身份仍需在 Dokploy 控制台确认。
+> 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `1cc2861`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。
 
 ## 一、已完成
 
@@ -73,14 +73,14 @@
 
 - `158394a` 新增基于 Odoo 成本、售价和目标毛利的 GST-inclusive 货架价建议，只读返回，明确不写入 `list_price`；应用动作通过 Products / Bulk Price Edit 由人工完成。
 - 本地 fixture：`PASS`，无 API 写请求；`npm run typecheck`、目标 ESLint、UAT 脚本语法检查通过。
-- 已触发两次 Dokploy webhook 并等待约 3 分钟；公网登录成功，但 `/stock/price-suggestions` 返回 `404`，AI enablement gate 将价格建议记录为 `BLOCKED`。当前不能把该功能宣称为线上可用。
+- 已使用简化和标准 GitHub push payload 多次触发 Dokploy webhook（均返回 HTTP `200`）并等待约 3 分钟；公网登录成功，但 `/stock/price-suggestions` 仍不可达，最新 AI enablement gate 明确为 `FAIL`。这确认问题不是 payload 过简，当前不能把该功能宣称为线上可用。
 - 生产 AI 仍为 `AI_ENABLED=false`；gate 的模型 smoke 保持阻塞，需在非生产隔离环境完成真实 DashScope、ASR、视觉和租户隔离验收后再考虑开启。
 
 更新时间：2026-10-19（Asia/Shanghai）
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`99da6d0`（Smart Pricing 线上阻塞证据）；价格建议部署验证目标为 `23f9b76`，最新已核实应用修复提交为 `b74d976`，stocktake 权限顺序部署为 `a6d5a57`，盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`1cc2861`（Smart Pricing 路由缺失失败证据）；价格建议部署验证目标为 `b34c9d0`，最新已核实应用修复提交为 `b74d976`，stocktake 权限顺序部署为 `a6d5a57`，盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
 
 ## 最新状态覆盖（2026-10-19）
 
