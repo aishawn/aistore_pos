@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 第二批假数据清理（`0a06dec`）
+
+- `src/app/settings/registers-outlets` 移除硬编码门店/收银台和无行为新增按钮，改为读取当前 Odoo session 的 companies/registers，只读展示、加载/错误/Retry 状态和移动卡片。
+- `src/app/security` 移除固定日期、固定事件数量、静态饼图和伪筛选器，改为明确的安全事件未接入状态，并提供用户、角色和集成设置入口。
+- 本地登录态全站矩阵：`134 路由 × 390/1440 = 268/268 PASS`，无 HTTP 失败、页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_SECOND-BATCH.json`，`sourceCommit=0a06dec`。
+- typecheck、目标 ESLint、diff check 通过；本地未运行 build。待与前一批一起部署后补充公网专项，整体仍为 **NO-GO**。
+
 ## 2026-10-20 实际路由只读页面对齐（`dc77293`）
 
 - 对齐 `src/app` 实际生效入口：Promotions 移除不会工作的创建/筛选占位控件，保留真实 API 读取、搜索、分页、刷新和移动列表；Favourite Reports 明确当前 pilot 未接入收藏/邮件调度，并提供真实 Reports Dashboard 入口；Media Centre 明确媒体存储未接入，上传、建文件夹、搜索和文件操作全部禁用，三栏布局在移动端改为纵向。

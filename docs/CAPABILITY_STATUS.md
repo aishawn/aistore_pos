@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 第二批假数据清理（`0a06dec`）
+
+- Registers & Outlets 现在显示 Odoo companies/registers，只读且带 session 错误恢复；Security Centre 不再展示伪造事件/图表，改为明确未接入状态和真实设置入口。
+- 本地登录态全站矩阵 `268/268 PASS`，证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_SECOND-BATCH.json`，源码提交 `0a06dec`。
+- 线上专项待本批次部署后执行；Dokploy 容器 SHA、构建日志和健康状态仍待独立核验，发布继续 **NO-GO**。
+
 ### 2026-10-20 实际路由只读页面对齐（`dc77293`）
 
 - Promotions、Favourite Reports、Media Centre 的 `src/app` 入口已移除误导性的静态创建/筛选/上传控件，改为真实读取或明确未接入状态，并补齐移动布局和可访问语义。
