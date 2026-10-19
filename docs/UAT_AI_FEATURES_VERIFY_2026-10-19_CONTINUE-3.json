@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-10-19T06:35:45.928Z",
+  "sourceCommit": "bc9c7df9d04024904e52525f1d76022fb878405e",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "login",
+      "status": "PASS",
+      "evidence": "admin"
+    },
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "enabled=true assistantAvailable=true transcription=true labelVision=true invoiceVision=true"
+    },
+    {
+      "name": "NLQ assistant",
+      "status": "FAIL",
+      "evidence": "code=50210 AI assistant is temporarily unavailable. Check the AI configuration and try again."
+    },
+    {
+      "name": "ASR empty guard",
+      "status": "PASS",
+      "evidence": "40010"
+    },
+    {
+      "name": "Sommelier identify text",
+      "status": "PASS",
+      "evidence": "count=8 productId=5669"
+    },
+    {
+      "name": "Sommelier recommend",
+      "status": "PASS",
+      "evidence": "recs=3"
+    },
+    {
+      "name": "Sommelier pitch",
+      "status": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "name": "Sommelier ask",
+      "status": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "name": "Sommelier similar",
+      "status": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "name": "Label image empty guard",
+      "status": "PASS",
+      "evidence": "40010"
+    },
+    {
+      "name": "Invoice OCR probe",
+      "status": "INFO",
+      "evidence": "reachable code=50213 Invoice recognition failed: AI provider configuration is invalid. Check the AI configuration and try again."
+    },
+    {
+      "name": "Price suggestions API",
+      "status": "PASS",
+      "evidence": "products=1000 writeEnabled=false"
+    },
+    {
+      "name": "Price suggestions page",
+      "status": "PASS",
+      "evidence": "https://demo.orithos.com.au/stock/price-suggestions"
+    },
+    {
+      "name": "Replenishment page",
+      "status": "PASS",
+      "evidence": "https://demo.orithos.com.au/stock/replenishment"
+    },
+    {
+      "name": "Anonymous assistant guard",
+      "status": "PASS",
+      "evidence": "status=401"
+    }
+  ],
+  "passed": 13,
+  "failed": 1,
+  "blocked": 0
+}

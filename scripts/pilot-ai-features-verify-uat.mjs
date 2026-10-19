@@ -131,12 +131,19 @@ try {
     else if (emptyImageBody.code === 50301) record("Label image empty guard", "BLOCKED", "vision disabled");
     else record("Label image empty guard", "FAIL", `code=${emptyImageBody.code}`);
 
+    // Use a decodable image so this check reaches provider/model validation.
+    // It is intentionally not treated as a successful OCR fixture: a real invoice
+    // photo is still required for field extraction acceptance.
+    const validImage = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    );
     const invoice = await context.request.post(`${base}/api/orders/receives/scan`, {
       multipart: {
         file: {
-          name: "probe.jpg",
-          mimeType: "image/jpeg",
-          buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+          name: "valid-image.png",
+          mimeType: "image/png",
+          buffer: validImage,
         },
       },
     });
@@ -145,8 +152,12 @@ try {
     else if (invoiceBody.code === 50301) record("Invoice OCR probe", "BLOCKED", invoiceBody.message || "disabled");
     else if (String(invoiceBody.message || "").toLowerCase().includes("model")) {
       record("Invoice OCR probe", "FAIL", invoiceBody.message || `code=${invoiceBody.code}`);
-    } else if (invoiceBody.code === 40010 || invoiceBody.code === 50212 || invoiceBody.code === 50213) {
-      record("Invoice OCR probe", "INFO", `reachable code=${invoiceBody.code} ${(invoiceBody.message || "").slice(0, 160)}`);
+    } else if (invoiceBody.code === 50212) {
+      record("Invoice OCR probe", "INFO", `provider reachable; image has no invoice fields code=${invoiceBody.code}`);
+    } else if (invoiceBody.code === 40010) {
+      record("Invoice OCR probe", "FAIL", `valid image was rejected as empty code=${invoiceBody.code}`);
+    } else if (invoiceBody.code === 50213) {
+      record("Invoice OCR probe", "FAIL", `provider/model configuration failure code=${invoiceBody.code} ${(invoiceBody.message || "").slice(0, 160)}`);
     } else {
       record("Invoice OCR probe", "FAIL", `code=${invoiceBody.code} ${(invoiceBody.message || "").slice(0, 160)}`);
     }
