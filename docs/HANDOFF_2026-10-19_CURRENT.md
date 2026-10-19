@@ -6,7 +6,9 @@
 - 桌面表格和手机卡片的数量输入都补齐稳定的可访问名称；未改变搜索、扫码、数量校验、Review and apply 或 Odoo 写入逻辑。
 - 本地验证通过：`npm run typecheck`、目标 ESLint、stocktake UAT 脚本 `node --check`、`git diff --check`；按约束未运行本地 build。
 - 公网只读基线：`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_BASELINE.json`，管理员/Odoo 会话/库位读取和 390/1440 页面均 PASS，横向溢出 `0`，非 GET stocktake 请求 `0`。该证据的 `deployment` 仍为 `unverified-after-deploy`，不证明新 ARIA 代码已上线。
-- 下一次 Dokploy 成功部署后，需复跑 stocktake 390/1440 专项并增加搜索结果 `combobox/listbox/option` DOM 断言；生产 Demo 继续禁止库存写入。
+- 已集中提交并推送 `ca5991a`，Dokploy webhook 返回 `HTTP 200 Compose deployed successfully`。增强版公网回归第一次因固定等待 700ms 过短而误报结果节点未出现，随后改为等待 `aria-busy` 结束并重跑通过。
+- Post-deploy 证据：`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_POST-CA5991A_RETRY.json`；管理员/Odoo 会话/库位读取、390/1440 页面、搜索 `combobox/listbox` 语义均 PASS，横向溢出 `0`，非 GET stocktake 请求 `0`。Dokploy 容器 SHA 和完整构建日志仍未从控制台独立回读，不能据此解除整体 NO-GO。
+- 生产 Demo 继续禁止库存写入；隔离 Odoo stocktake 写入验收仍待获批环境完成。
 
 ## 2026-10-20 Dokploy #38 编译结果（最新）
 

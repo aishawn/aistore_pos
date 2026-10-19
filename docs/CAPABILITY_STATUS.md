@@ -8,7 +8,9 @@
 - 业务逻辑不变：仍以 Odoo 为库存来源，`Review and apply` 受 `writeEnabled`、数量边界和 variance 保护；本次没有新增或执行库存写入。
 - 本地 `npm run typecheck`、目标 ESLint、相关脚本 `node --check` 和 `git diff --check` 通过，未运行 build。
 - 公网只读基线 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_BASELINE.json`：`PASS`；管理员/Odoo 会话/库位读取、390/1440 布局均通过，非 GET 请求 `0`。`deploymentShaVerified` 尚未核验。
-- 部署后仍需验证新的 ARIA DOM 语义，并在获批隔离 Odoo 租户完成 stocktake 写入验收；Demo 保持 `writeEnabled=false`。
+- `ca5991a` 已经由 Dokploy webhook 接受并出现在公网行为中；增强版 post-deploy 只读回归 `PASS`，证据 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_POST-CA5991A_RETRY.json`。首次结果只是等待不足导致的测试误报，已修正为等待 `aria-busy` 结束。
+- Post-deploy 回归覆盖管理员/Odoo 会话、库位读取、390/1440 布局、combobox/listbox 语义和非 GET 请求 `0`；Dokploy 容器 SHA/完整构建日志仍待控制台独立核验，整体发布继续 **NO-GO**。
+- Demo 保持 `writeEnabled=false`；在获批隔离 Odoo 租户完成 stocktake 写入验收前，不把库存调整标记为已完成。
 
 ### 2026-10-20 Dokploy #38 编译结果（最新）
 

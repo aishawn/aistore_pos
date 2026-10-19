@@ -68,7 +68,7 @@ try {
       && searchSemantics.expanded === "false";
     checks.push({ name: `stocktake search combobox semantics ${viewport.width}px`, status: searchSemanticPass ? "PASS" : "FAIL", semantics: searchSemantics });
     await search.fill("wine");
-    await page.waitForTimeout(700);
+    await page.waitForFunction(() => document.querySelector("#stocktake-search")?.getAttribute("aria-busy") !== "true", null, { timeout: 30000 });
     const resultSemantics = await page.evaluate(() => {
       const list = document.querySelector("#stocktake-search-results");
       return {
