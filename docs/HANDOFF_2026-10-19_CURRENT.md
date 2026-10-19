@@ -7,6 +7,7 @@
 - 因此 #38 对应的是修复前源码快照，或 Dokploy 服务绑定的分支/提交不是当前 `main`；不能把该失败归因于 `2434f27`。本地按既定约束未运行 Maven/Next build。
 - 下一步必须在 Dokploy 控制台核对 Compose 服务绑定分支为 `main`，手动部署 `2434f27`，并回读 backend/frontend 构建日志、容器 SHA、健康状态和完成时间。仅 webhook 返回值或公网页面行为不能替代构建身份证据。
 - 当前发布结论仍为 **NO-GO**；在控制台确认前不要把 `2434f27` 标记为已部署。
+- 交接文档提交 `7f6ecc0` 已推送到 `main`；使用完整 push payload 触发 webhook 后返回 `HTTP 200 Compose deployed successfully`。该返回只证明 Dokploy 接受了触发，仍未证明构建通过或运行镜像已切换。
 
 ## 2026-10-20 `b058ef3` AI capability 与表单回归
 

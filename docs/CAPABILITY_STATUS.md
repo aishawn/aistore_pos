@@ -7,6 +7,7 @@
 - 构建日志中的两个 `AiProviderConfig` 编译错误来自旧源码快照：当前 `main`/`origin/main` 为 `2434f27`，且已包含 `ea8f1b6` 的显式 import 修复及 `AiProviderConfig.java`。
 - `SqlAst.java` 的 `Parenthesis` deprecation 是 warning，不是阻断错误；当前源码检查已确认两个控制器引用可解析。
 - Dokploy 尚未提供 `2434f27` 的可审计构建完成记录。需在控制台确认 Compose 分支为 `main` 并部署该提交，再回读 backend/frontend 容器 SHA、构建日志和健康状态。发布状态继续为 **NO-GO**。
+- 交接文档提交 `7f6ecc0` 已推送；完整 push payload 触发 webhook 返回 `HTTP 200 Compose deployed successfully`，但尚未获得 Dokploy 构建完成、容器 SHA 或健康状态证据。
 
 ### 2026-10-20 `854bf6a` 后线上只读复核
 
