@@ -49,3 +49,7 @@ HTTP 301
 ## 跨页面表格可访问性复验
 
 提交 `88a164d` 为 Store Users 桌面表增加 `aria-label`，并新增只读表格回归。线上 390/1440 两个视口共 `10/10 PASS`，覆盖 Store Users、AI Metrics、Odoo Products、Supply Chain 和 Invoice Scan；页面错误为 `0`，预期被拦截的 Odoo POST 为 `4`，非预期写入为 `0`。证据：`docs/UAT_TABLE_A11Y_ONLINE_CURRENT.json`。
+
+后续 `c025427` 为 Store Roles 和 Stocktake 表补齐名称及列头语义，`a533496` 扩展回归路由。最新线上回归共 `14/14 PASS`，预期拦截写入 `4`，非预期写入 `0`；证据：`docs/UAT_TABLE_A11Y_ONLINE_RETRY_2026-10-20.json`。
+
+定价页面首轮回归出现一次 `/stock/bulk-price-edit` 在 1440px 返回 `504`，其余 `7/8` 通过；立即重试后 `8/8 PASS`、无页面错误、无阻塞写入。该问题目前判定为瞬态线上响应，不是稳定 UI 缺陷；证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_RETRY_2026-10-20.json`。
