@@ -59,10 +59,13 @@ for (const viewport of viewports) {
       await clearButton.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
       const clearVisible = await clearButton.isVisible().catch(() => false);
       const visibleClearText = await page.getByText(clearLabel, { exact: true }).isVisible().catch(() => false);
+      const createVisible = route.path === "/platform/stores"
+        ? await page.getByRole("link", { name: "Create store", exact: true }).isVisible().catch(() => false)
+        : true;
       if (clearVisible) await clearButton.click();
       await page.waitForTimeout(250);
       const cleared = (await input.inputValue().catch(() => "")) === "";
-      interactiveChecks.push({ emptyStateVisible, clearVisible, visibleClearText, cleared, passed: emptyStateVisible && clearVisible && cleared });
+      interactiveChecks.push({ emptyStateVisible, clearVisible, visibleClearText, createVisible, cleared, passed: emptyStateVisible && clearVisible && createVisible && cleared });
     }
     const checks = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,

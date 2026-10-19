@@ -107,10 +107,15 @@ export default function PlatformStoresPage() {
         </select>
       }
       actions={
-        <AdminSecondaryButton onClick={() => reload()} disabled={loading}>
-          {loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
-          {loading ? "Refreshing…" : "Refresh"}
-        </AdminSecondaryButton>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/signup" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+            Create store
+          </Link>
+          <AdminSecondaryButton onClick={() => reload()} disabled={loading}>
+            {loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
+            {loading ? "Refreshing…" : "Refresh"}
+          </AdminSecondaryButton>
+        </div>
       }
     >
       {loading ? (
@@ -123,7 +128,7 @@ export default function PlatformStoresPage() {
       ) : items.length === 0 ? (
         <section role="status" className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
           <p>{hasFilters ? "No stores match the current filters." : "No stores found."}</p>
-          {hasFilters ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <p className="mt-1">Use Create store to add a trial vendor.</p>}
+          {hasFilters ? <button type="button" onClick={clearFilters} className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] bg-white px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/signup" className="mt-4 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Create store</Link>}
         </section>
       ) : (
         <>
