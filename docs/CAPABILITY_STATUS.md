@@ -4,6 +4,13 @@
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
+### 2026-10-19 价格建议运营补强
+
+- `/stock/price-suggestions` 增加只读 `Export CSV`：导出当前页面筛选结果（建议项或全部商品）的 SKU、成本、当前/建议售价、毛利、销量、库存和解释原因，使用 UTF-8 BOM 兼容门店表格工具。
+- 导出只在浏览器生成文件，不调用任何价格写入接口；`writeEnabled=false` 边界保持不变。
+- 本地浏览器 UAT `docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`：页面缓存头、建议展示、人工应用入口、CSV 内容、AI 悬浮入口和非 GET 请求 `0` 全部通过。
+- 价格建议整体仍为 **In progress**：公网 `/stock/price-suggestions` 仍需在 Dokploy 确认运行镜像后复测，CSV 本地证据不替代线上部署证据。
+
 Statuses:
 
 | Status | Meaning |

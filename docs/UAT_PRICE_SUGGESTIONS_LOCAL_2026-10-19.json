@@ -1,11 +1,16 @@
 {
-  "generatedAt": "2026-10-19T04:56:33.643Z",
-  "sourceCommit": "8cf2cc09bb96f0687323433187462e83e357da86",
+  "generatedAt": "2026-10-19T05:26:23.698Z",
+  "sourceCommit": "4cc4131d476abd3218e6390d72cc6ec28e117fde",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
   "status": "PASS",
   "checks": [
+    {
+      "name": "live pricing page is not cached",
+      "status": "PASS",
+      "evidence": "no-cache, must-revalidate"
+    },
     {
       "name": "price suggestions page",
       "status": "PASS",
@@ -15,6 +20,11 @@
       "name": "apply CTA present",
       "status": "PASS",
       "evidence": "Open product link present; no apply-price write control"
+    },
+    {
+      "name": "read-only CSV export",
+      "status": "PASS",
+      "evidence": "orithos-price-suggestions-2026-10-19.csv ﻿\"Product\",\"SKU\",\"Status\",\"Cost (AUD)\",\"Current price (AUD)\",\"Suggested price (AUD)\",\"Current margin\",\"Suggested margin\",\"Sold units (28d)\",\"On hand\",\"Reason\"\r\n\"DEMO Shiraz\",\"DEMO-"
     },
     {
       "name": "ai fab on price page",

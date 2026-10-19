@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, LoaderCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Download, LoaderCircle, RefreshCw } from "lucide-react";
 import { fetchOdooRoute, getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 
@@ -46,6 +46,38 @@ function statusLabel(status: SuggestionStatus) {
   if (status === "missing_cost") return "Missing cost";
   if (status === "unsaleable") return "No shelf price";
   return "On target";
+}
+
+function csvCell(value: string | number | null) {
+  const text = value == null ? "" : String(value);
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function downloadSuggestions(products: PriceSuggestionProduct[]) {
+  const headers = ["Product", "SKU", "Status", "Cost (AUD)", "Current price (AUD)", "Suggested price (AUD)", "Current margin", "Suggested margin", "Sold units (28d)", "On hand", "Reason"];
+  const rows = products.map((product) => [
+    product.name,
+    product.sku,
+    statusLabel(product.status),
+    product.cost == null ? "" : product.cost.toFixed(2),
+    product.currentPrice == null ? "" : product.currentPrice.toFixed(2),
+    product.suggestedPrice == null ? "" : product.suggestedPrice.toFixed(2),
+    product.currentMargin == null ? "" : `${(product.currentMargin * 100).toFixed(1)}%`,
+    product.suggestedMargin == null ? "" : `${(product.suggestedMargin * 100).toFixed(1)}%`,
+    product.soldUnits,
+    product.onHand,
+    product.reason,
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map((value) => csvCell(value)).join(",")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}\r\n`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `orithos-price-suggestions-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
 }
 
 export function OdooPriceSuggestionsPage() {
@@ -200,6 +232,15 @@ export function OdooPriceSuggestionsPage() {
             <p className="mt-1 text-xs text-[var(--oh-muted)]">Method: rules_v1_margin_on_sell · writeEnabled=false</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => data && downloadSuggestions(visibleItems)}
+              disabled={!data || visibleItems.length === 0}
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
             <Link href="/stock/bulk-price-edit" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)]">
               Bulk price edit
             </Link>

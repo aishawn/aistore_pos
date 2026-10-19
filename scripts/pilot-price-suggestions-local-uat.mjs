@@ -108,6 +108,17 @@ try {
   await productLink.waitFor({ state: "visible", timeout: 10000 });
   record("apply CTA present", true, "Open product link present; no apply-price write control");
 
+  const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const download = await downloadPromise;
+  const downloadPath = await download.path();
+  const downloadText = downloadPath ? fs.readFileSync(downloadPath, "utf8") : "";
+  record(
+    "read-only CSV export",
+    download.suggestedFilename().endsWith(".csv") && downloadText.includes("DEMO Shiraz") && downloadText.includes("Suggested price (AUD)"),
+    `${download.suggestedFilename()} ${downloadText.slice(0, 180)}`,
+  );
+
   const fab = page.getByRole("button", { name: "Open Orithos AI" }).first();
   await fab.waitFor({ state: "visible", timeout: 15000 });
   record("ai fab on price page", true);
