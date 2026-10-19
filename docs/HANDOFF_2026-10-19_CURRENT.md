@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 Dokploy #38 旧构建失败复核与重部署
+
+- Dokploy #38 的阻塞错误是两个控制器找不到 `AiProviderConfig`；`Parenthesis` 弃用信息只是 warning。当前源码已在 `ea8f1b6` 为 `AiConfigController` 和 `SommelierController` 加入显式 import，`AiProviderConfig.java` 也存在，因此不需要重复改代码。
+- 当前本地 `main` 与 `origin/main` 均为 `7fc2123d11ae3c3d1da6b75888edfbd9ba1f7861`，包含该修复。#38 应按旧源码快照处理，不能作为当前 `main` 的编译结论。
+- 已用完整 GitHub push payload（`X-GitHub-Event: push`、`ref=refs/heads/main`）重新调用 Dokploy webhook，返回 `HTTP 200 Compose deployed successfully`。这只证明部署请求被接受，尚未证明构建成功、容器已切换或健康检查通过。
+- 仍需从 Dokploy 控制台回读本次部署的 frontend/backend SHA、Maven 完整日志、容器健康状态和完成时间；在这些证据补齐前，整体保持 **NO-GO**。本地未运行 Maven/build。
+
 ## 2026-10-19 AI Metrics 可访问性迭代
 
 - `74e9412` 为 AI Metrics 页面增加表格 caption、6 个列头 `scope="col"` 和刷新期间的 `aria-busy` 状态；这些语义不改变业务数据或 AI 请求行为。
