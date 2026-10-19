@@ -1,5 +1,14 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 路由树修复与最新验证
+
+- 发现 Next 同时存在 `pos-ui/app` 与 `pos-ui/src/app`，实际使用的是 `src/app`；Odoo 产品目录、采购、供应商、客户、补货、Odoo 收银台、Overview、AI 指标等 17 个入口此前只在旧目录，导致自动恢复脚本访问 `/products/odoo` 时出现空页面。已将入口补齐到 `src/app`，并保留现有组件和动态数据策略。
+- 静态 UAT 脚本现在扫描实际生效的 `src/app`，并支持 `PILOT_UAT_FILENAME=docs/...`，不会再生成错误的 `docs/docs/...` 路径。
+- 最新主店只读静态矩阵已完成：`139` 路由 × `390/1440`，全部 `278/278 PASS`，无 HTTP 失败、横向溢出或页面错误。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-19_PRE-ROUTE-MIGRATION.json`。该证据是当前线上基线，尚不代表新路由补丁已部署。
+- 线上 pricing 回归 `8/8 PASS`（Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions × 390/1440），证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-B784457.json`。
+- Odoo 自动恢复专项仍为 `4 PASS / 1 FAIL`：登录、service-account 配置、清 cookie、补货页自动恢复通过；产品目录初始加载失败，需要在新路由部署后重跑。当前失败不能标记为产品数据故障，需结合新页面和网络响应重新确认。
+- 前端 `npm run typecheck`、脚本 `node --check`、`git diff --check` 通过；按约束未运行本地 build。后端 `AiProviderConfig` import 已存在于当前 `main`（`ea8f1b6`），本次 Dokploy #38 错误对应旧源码快照。
+
 ## 2026-10-19 当前批次：价格编辑与移动端表格
 
 - 已推送 `05928f9` 并触发 Dokploy。Stock List/Capped Pricing 数量列加宽、对齐表头和数据行、手机内部横向滚动；Stock List 商品计数按 `Product/Products` 正确单复数显示。AI assistant 新增回复数、成功率和平均延迟的会话摘要。

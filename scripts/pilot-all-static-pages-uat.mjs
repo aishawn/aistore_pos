@@ -13,7 +13,9 @@ const adminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PA
 const adminSubdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "demo";
 if (!adminPassword) throw new Error("MISSING_ADMIN_PASSWORD");
 
-const appRoot = path.join(root, "pos-ui", "app");
+// Next uses src/app when both route trees exist. Discover the active route tree
+// so this matrix does not silently validate the ignored legacy app directory.
+const appRoot = path.join(root, "pos-ui", "src", "app");
 function collect(dir, relative = "") {
   const routes = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -75,7 +77,12 @@ const output = {
   failures,
   result: failures.length ? "FAIL" : "PASS",
 };
-const outputPath = path.join(root, "docs", process.env.PILOT_UAT_FILENAME || "UAT_ALL_STATIC_PAGES_2026-10-15.json");
+const requestedOutput = process.env.PILOT_UAT_FILENAME || "UAT_ALL_STATIC_PAGES_2026-10-15.json";
+const outputPath = path.isAbsolute(requestedOutput)
+  ? requestedOutput
+  : path.join(root, requestedOutput.startsWith(`docs${path.sep}`) || requestedOutput.startsWith("docs/")
+    ? requestedOutput
+    : path.join("docs", requestedOutput));
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(`WROTE ${outputPath}`);
 if (failures.length) process.exitCode = 1;

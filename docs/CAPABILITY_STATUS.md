@@ -1,6 +1,12 @@
 # Orithos POS — capability status
 
 **Last updated:** 2026-10-19（行内价格保存保护与 Stock/Capped Pricing 响应式表格本地通过；响应式改动待部署）
+
+### 2026-10-19 当前路由树修复
+
+- Next 实际使用 `pos-ui/src/app`；已补齐此前只存在于旧 `pos-ui/app` 的 17 个业务/认证入口，覆盖 Odoo 产品目录、采购、客户、供应商、补货、Odoo 收银台、Overview、AI 指标、数据设置、盘点和认证页面。
+- 静态 UAT 脚本已改为扫描 `src/app`。当前线上基线 `139 × 2 = 278/278 PASS`，证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_PRE-ROUTE-MIGRATION.json`；新路由提交需部署后再次确认。
+- 自动恢复专项仍有产品目录初始加载失败（`4/5`），补货页恢复通过；部署路由修复后必须重跑，整体放行仍为 **NO-GO**。
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
