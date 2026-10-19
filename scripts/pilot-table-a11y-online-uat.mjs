@@ -60,7 +60,9 @@ try {
       await page.waitForTimeout(2500);
       const result = await page.locator("table").evaluateAll((tables) => tables.map((table) => ({
         name: table.getAttribute("aria-label") || table.querySelector("caption")?.textContent?.trim() || "",
-        headers: [...table.querySelectorAll("thead th, tr:first-child > th")].map((header) => header.getAttribute("scope") || ""),
+        headers: [...(table.querySelectorAll("thead th").length
+          ? table.querySelectorAll("thead th")
+          : table.querySelectorAll("tr:first-child > th"))].map((header) => header.getAttribute("scope") || ""),
       })));
       const named = result.every((table) => table.name.length > 0);
       const scoped = result.every((table) => table.headers.every((scope) => scope === "col"));

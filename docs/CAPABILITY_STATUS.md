@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 表格 DOM 复核（`88a164d`）
+
+- 线上 DOM 审计 `10/10 PASS`：设置用户、AI Metrics、Odoo 产品、供应链和发票扫描页面在 390/1440 视口的表格名称和列头语义均通过。
+- 发现并修复实际生效的旧 `app/settings/users` 表格缺少 `aria-label`；4 个被拦截的 Odoo records POST 均为只读请求，业务写入为 `0`。
+- 证据：`docs/UAT_TABLE_A11Y_ONLINE_88A164D_FINAL.json`。
+
 ### `0f9faab` 部署后 AI 回归
 
 - availability `3/3`、surface `11/11`、UI `2/2`、AI Features `14/14` 通过；空输入边界、匿名鉴权和启用态 assistant 均通过。

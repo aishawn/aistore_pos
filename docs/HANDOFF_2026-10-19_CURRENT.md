@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 表格 DOM 可访问性复核（`88a164d`）
+
+- 线上 DOM 审计覆盖设置用户、AI Metrics、Odoo 产品、供应链和发票扫描 5 个页面 × 390/1440，共 `10/10 PASS`；所有已渲染表格都有可访问名称，列头 `scope="col"` 正确，页面错误 `0`。
+- 审计发现 `/settings/users` 实际命中旧 `pos-ui/app/settings/users` 入口，已补上 `aria-label="Store users"`；`src/app` 入口也保留同等语义。
+- 审计拦截到的 4 个非 GET 请求全部为 Odoo 只读 `POST /api/odoo/records`，没有业务写入；证据：`docs/UAT_TABLE_A11Y_ONLINE_88A164D_FINAL.json`。
+- `npm run typecheck`、旧 users 入口 ESLint、脚本 `node --check` 和 `git diff --check` 通过；未运行 build。
+
 ## 2026-10-19 最新 Dokploy 触发结果（`39bd36c`）
 
 - 交接补充 `docs/HANDOFF_2026-10-19_AI_REGRESSION_0F9FAAB.md` 记录过一次 `301 Branch Not Match`；随后使用完整 GitHub push payload、`ref=refs/heads/main`、当前 HEAD `39bd36c` 重试，webhook 返回 `HTTP 200 Compose deployed successfully`。
