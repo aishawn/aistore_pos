@@ -91,6 +91,7 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                       reject_reason VARCHAR(512) NULL,
                       row_count INT NULL,
                       latency_ms INT NULL,
+                      estimated_tokens INT NULL,
                       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                       KEY idx_ai_report_audit_created (created_at),
                       KEY idx_ai_report_audit_outlet (outlet_id, created_at),
@@ -98,6 +99,11 @@ public class AiReportSchemaMigrator implements CommandLineRunner {
                     )
                     """);
             log.info("Ensured ai_report_audit table");
+            try {
+                st.execute("ALTER TABLE ai_report_audit ADD COLUMN estimated_tokens INT NULL");
+            } catch (Exception ignored) {
+                // Existing deployments may already have the column.
+            }
         }
     }
 

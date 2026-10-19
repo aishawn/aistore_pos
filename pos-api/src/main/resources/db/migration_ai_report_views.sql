@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS ai_report_audit (
   reject_reason VARCHAR(512) NULL,
   row_count INT NULL,
   latency_ms INT NULL,
+  estimated_tokens INT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_ai_report_audit_created (created_at),
   KEY idx_ai_report_audit_outlet (outlet_id, created_at)

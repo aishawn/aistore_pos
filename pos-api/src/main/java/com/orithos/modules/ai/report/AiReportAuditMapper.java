@@ -14,10 +14,10 @@ public interface AiReportAuditMapper {
     @Insert("""
             INSERT INTO ai_report_audit
               (vendor_id, user_id, outlet_id, outlet_ids, question, sql_text, path,
-               allowed, reject_reason, row_count, latency_ms)
+               allowed, reject_reason, row_count, latency_ms, estimated_tokens)
             VALUES
               (#{vendorId}, #{userId}, #{outletId}, #{outletIds}, #{question}, #{sqlText}, #{path},
-               #{allowed}, #{rejectReason}, #{rowCount}, #{latencyMs})
+               #{allowed}, #{rejectReason}, #{rowCount}, #{latencyMs}, #{estimatedTokens})
             """)
     int insert(@Param("vendorId") long vendorId,
                @Param("userId") long userId,
@@ -29,15 +29,16 @@ public interface AiReportAuditMapper {
                @Param("allowed") boolean allowed,
                @Param("rejectReason") String rejectReason,
                @Param("rowCount") Integer rowCount,
-               @Param("latencyMs") Integer latencyMs);
+               @Param("latencyMs") Integer latencyMs,
+               @Param("estimatedTokens") Integer estimatedTokens);
 
     @Select("""
             SELECT COUNT(*) AS requests,
                    COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) AS allowed,
                    COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) AS rejected,
                    COALESCE(AVG(latency_ms), 0) AS averageLatencyMs,
-                   COALESCE(SUM(CEIL((COALESCE(CHAR_LENGTH(question), 0) +
-                                     COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0)), 0) AS estimatedTokens
+                   COALESCE(SUM(COALESCE(estimated_tokens, CEIL((COALESCE(CHAR_LENGTH(question), 0) +
+                                     COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0))), 0) AS estimatedTokens
             FROM ai_report_audit
             WHERE vendor_id = #{vendorId} AND created_at >= #{since}
             """)
@@ -50,8 +51,8 @@ public interface AiReportAuditMapper {
                    COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) AS allowed,
                    COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) AS rejected,
                    COALESCE(AVG(latency_ms), 0) AS averageLatencyMs,
-                   COALESCE(SUM(CEIL((COALESCE(CHAR_LENGTH(question), 0) +
-                                     COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0)), 0) AS estimatedTokens
+                   COALESCE(SUM(COALESCE(estimated_tokens, CEIL((COALESCE(CHAR_LENGTH(question), 0) +
+                                     COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0))), 0) AS estimatedTokens
             FROM ai_report_audit
             WHERE vendor_id = #{vendorId} AND created_at >= #{since}
             GROUP BY COALESCE(path, 'unknown')

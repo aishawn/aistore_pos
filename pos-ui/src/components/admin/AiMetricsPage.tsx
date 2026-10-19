@@ -42,8 +42,8 @@ export function AiMetricsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Orithos AI · Admin</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Report query metrics</h1>
-          <p className="oh-type-label mt-1 max-w-2xl text-[var(--oh-muted)]">Read-only report audit metrics for this store. Questions and generated SQL are intentionally excluded.</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI query metrics</h1>
+          <p className="oh-type-label mt-1 max-w-2xl text-[var(--oh-muted)]">Read-only report and assistant audit metrics for this store. Questions, answers and generated SQL are intentionally excluded.</p>
         </div>
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="ai-metrics-window">Metrics window</label>
@@ -68,7 +68,7 @@ export function AiMetricsPage() {
         </section>
 
         <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-          <div className="border-b border-[var(--oh-border)] px-4 py-4 md:px-5"><h2 className="oh-type-title text-[var(--oh-text)]">By report path</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Only aggregate counts and latency are shown.</p></div>
+          <div className="border-b border-[var(--oh-border)] px-4 py-4 md:px-5"><h2 className="oh-type-title text-[var(--oh-text)]">By AI path</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Assistant intents and report paths are aggregate only.</p></div>
           {data.byPath.length ? <div className="overflow-x-auto"><table className="min-w-[720px] w-full text-left text-sm"><thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-4 py-3 font-semibold md:px-5">Path</th><th className="px-4 py-3 font-semibold">Requests</th><th className="px-4 py-3 font-semibold">Allowed</th><th className="px-4 py-3 font-semibold">Rate</th><th className="px-4 py-3 font-semibold">Avg latency</th><th className="px-4 py-3 font-semibold">Est. tokens</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{data.byPath.map((item) => <tr key={item.path}><td className="px-4 py-3 font-medium text-[var(--oh-text)] md:px-5">{item.path}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.requests}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowed}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowedRate.toFixed(1)}%</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{Math.round(item.averageLatencyMs)} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.estimatedTokens.toLocaleString()}</td></tr>)}</tbody></table></div> : <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No report audit events in this period.</p>}
         </section>
         <p className="oh-type-meta inline-flex items-start gap-2 text-[var(--oh-muted)]"><ShieldCheck size={14} className="mt-0.5 shrink-0" />Generated {new Date(data.generatedAt).toLocaleString()} · Estimated tokens are calculated from stored prompt/SQL character counts and are not provider billing usage.</p>

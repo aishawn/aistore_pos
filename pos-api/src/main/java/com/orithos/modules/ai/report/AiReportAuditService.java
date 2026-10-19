@@ -39,6 +39,7 @@ public class AiReportAuditService {
             if (t0 instanceof Number n) {
                 latency = (int) Math.max(0, System.currentTimeMillis() - n.longValue());
             }
+            String question = ReportGraphState.string(state, "question");
             String outlets = tenant.outletIds() == null ? null
                     : tenant.outletIds().stream().map(String::valueOf).collect(Collectors.joining(","));
             mapper.insert(
@@ -46,19 +47,52 @@ public class AiReportAuditService {
                     tenant.userId(),
                     tenant.currentOutletId(),
                     outlets,
-                    ReportGraphState.string(state, "question"),
+                    question,
                     sql,
                     path,
                     allowed,
                     allowed ? null : error,
                     allowed ? rowCount : null,
-                    latency
+                    latency,
+                    AiReportQuotaService.estimateTokens(question, sql)
             );
             log.info("AI report audit path={} allowed={} sql={}", path, allowed, sql);
         } catch (DataAccessException e) {
             log.warn("AI report audit insert skipped: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("AI report audit skipped: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Records a generic assistant request without retaining the user's question
+     * or generated answer. The path contains only the classified intent.
+     */
+    public void recordAssistant(TenantContext tenant, String intent, boolean allowed,
+                                Integer latencyMs, String question, String answer) {
+        if (tenant == null) return;
+        try {
+            String normalizedIntent = intent == null || intent.isBlank() ? "unknown" : intent.trim();
+            String path = "assistant:" + normalizedIntent;
+            if (path.length() > 32) path = path.substring(0, 32);
+            String outlets = tenant.outletIds() == null ? null
+                    : tenant.outletIds().stream().map(String::valueOf).collect(Collectors.joining(","));
+            mapper.insert(
+                    tenant.vendorId(),
+                    tenant.userId(),
+                    tenant.currentOutletId(),
+                    outlets,
+                    null,
+                    null,
+                    path,
+                    allowed,
+                    allowed ? null : "ASSISTANT_FAILED",
+                    null,
+                    latencyMs,
+                    AiReportQuotaService.estimateTokens(question, answer)
+            );
+        } catch (Exception e) {
+            log.warn("AI assistant audit skipped: {}", e.getMessage());
         }
     }
 

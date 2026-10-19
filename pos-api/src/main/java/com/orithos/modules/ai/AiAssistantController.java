@@ -9,6 +9,7 @@ import com.orithos.modules.ai.dto.TranscriptionResponse;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
 import com.orithos.modules.ai.report.AiReportMetricsResponse;
 import com.orithos.modules.ai.report.AiReportMetricsService;
+import com.orithos.modules.ai.report.AiReportAuditService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class AiAssistantController {
     private final TenantContextFactory tenantContextFactory;
     private final AiReportSnapshotService snapshotService;
     private final AiReportMetricsService metricsService;
+    private final AiReportAuditService auditService;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
     @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
@@ -43,12 +45,14 @@ public class AiAssistantController {
             ObjectProvider<AiTranscriptionService> transcriptionService,
             TenantContextFactory tenantContextFactory,
             AiReportSnapshotService snapshotService,
-            AiReportMetricsService metricsService) {
+            AiReportMetricsService metricsService,
+            AiReportAuditService auditService) {
         this.graphService = graphService;
         this.transcriptionService = transcriptionService;
         this.tenantContextFactory = tenantContextFactory;
         this.snapshotService = snapshotService;
         this.metricsService = metricsService;
+        this.auditService = auditService;
     }
 
     /** Phase A: classify intent + return UI instructions; frontend dispatches search/navigation. */
@@ -61,16 +65,21 @@ public class AiAssistantController {
         }
 
         TenantContext tenant = tenantContextFactory.fromSecurity();
+        long startedAt = System.nanoTime();
         PosAssistantGraphService.AssistantResult result;
         try {
             result = service.ask(request.question(), request.threadId(), tenant);
         } catch (BusinessException e) {
+            auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
             throw e;
         } catch (Exception e) {
+            auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
             // Do not expose provider URLs, request ids, or model configuration details to store staff.
             throw new BusinessException(50210,
                     "AI assistant is temporarily unavailable. Check the AI configuration and try again.");
         }
+
+        auditService.recordAssistant(tenant, result.intent(), true, elapsedMs(startedAt), request.question(), result.answer());
 
         return ApiResult.ok(new AssistantResponse(
                 result.threadId(),
@@ -82,6 +91,10 @@ public class AiAssistantController {
                 result.table(),
                 result.reportId()
         ));
+    }
+
+    private static int elapsedMs(long startedAt) {
+        return (int) Math.max(0, (System.nanoTime() - startedAt) / 1_000_000L);
     }
 
     /** Full AI report snapshot for the dedicated results page. */

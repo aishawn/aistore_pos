@@ -64,8 +64,8 @@ try {
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.goto(`${base}/reports/ai/metrics`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByRole("heading", { name: "Report query metrics" }).waitFor({ timeout: 60000 });
-    const table = await page.getByRole("heading", { name: "By report path" }).isVisible().catch(() => false);
+    await page.getByRole("heading", { name: "AI query metrics" }).waitFor({ timeout: 60000 });
+    const table = await page.getByRole("heading", { name: "By AI path" }).isVisible().catch(() => false);
     record(`metrics UI ${viewport.width}px`, pageErrors.length === 0 && table ? "PASS" : "FAIL", `table=${table} pageErrors=${pageErrors.length}`);
     await page.close();
   }
