@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-10-19T15:38:39.223Z",
+  "sourceCommit": "0f9faab",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only AI regression; no business or configuration writes",
+  "checks": {
+    "aiFeatures": "14 PASS / 0 FAIL / 0 BLOCKED",
+    "aiMetrics": "9 PASS / 0 FAIL",
+    "aiCapabilityGates": "PASS",
+    "aiSurface": "11 PASS / 0 FAIL",
+    "aiUi": "2 PASS / 0 FAIL",
+    "writes": 0
+  },
+  "details": {
+    "metricsAdmin": "HTTP 200",
+    "metricsAnonymous": "HTTP 401",
+    "metricsAssistantPath": "assistant:entity_action requests=19 allowed=19 p50=3348ms p95=6998ms estimatedTokens=259",
+    "metricsResponsive": "390px and 1440px passed",
+    "metricsAccessibility": "caption=1 scopedHeaders=8 aria-busy=1 at both viewports",
+    "capabilityGates": "chat enabled; voice disabled with explicit unavailable message; no page errors",
+    "surface": "AI config, assistant lookup, input validation, anonymous route guards all passed"
+  },
+  "deploymentAttempt": {
+    "webhook": "https://dokploy.modkie.com/api/deploy/compose/...",
+    "result": "HTTP 301",
+    "message": "Branch Not Match",
+    "status": "NOT_DEPLOYED"
+  },
+  "status": "PASS_WITH_DEPLOYMENT_BLOCKED"
+}
