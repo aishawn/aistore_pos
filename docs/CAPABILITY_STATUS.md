@@ -4,6 +4,14 @@
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
+### 2026-10-19 当前公网回归汇总
+
+- 线上 AI 已启用：availability `3/3 PASS`、surface `11/11 PASS`、UI `2/2 PASS`；AI 全功能只读矩阵 `14 PASS / 0 FAIL / 1 INFO`。Invoice OCR 的 `INFO` 仅表示探针图片没有发票字段，不代表真实发票字段提取已验收。
+- 价格建议页的商品/SKU搜索、状态筛选、CSV导出和 `writeEnabled=false` 保护已在公网观察到；未产生价格写入。
+- 全站静态矩阵更新为 `133 路由 × 390/1440 = 266/266 PASS`，独立证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-4487A12.json`。
+- 视觉 AI 已按模型路由 native multimodal / compatible chat；真实酒标和发票照片的业务字段提取仍需专门验收。
+- 以上公网行为不替代 Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态取证。
+
 ### 2026-10-19 价格建议运营补强
 
 - `/stock/price-suggestions` 增加只读 `Export CSV`：导出当前页面筛选结果（建议项或全部商品）的 SKU、成本、当前/建议售价、毛利、销量、库存和解释原因，使用 UTF-8 BOM 兼容门店表格工具。
