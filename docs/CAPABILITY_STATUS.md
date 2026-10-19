@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-19（行内价格保存保护与 Stock/Capped Pricing 响应式表格本地通过；响应式改动待部署）
 
+### 最新专项回归（2026-10-19）
+
+- Sommelier `10/10`、Legacy Retry `5/5`、Closure、Overview、Reporting、权限、采购移动端和发票 mock 均通过，均未写入 Demo 业务数据。
+- AI Features `14/14`、availability `3/3`、surface `11/11`、UI `2/2`、AI Metrics `7/7` 通过。
+- 真实发票 OCR preview 已通过：供应商、发票号、日期、2 行明细和总额均可解析；preview-only 非 GET 业务写入为 `0`。证据 `docs/UAT_INVOICE_OCR_PREVIEW_ONLINE_1EAB632.json`。
+- OCR 仍只代表预览解析能力，不代表自动创建供应商、采购单、收货或库存写入已经放行。
+
 ### 2026-10-19 当前路由树修复
 
 - Next 实际使用 `pos-ui/src/app`；已补齐此前只存在于旧 `pos-ui/app` 的 17 个业务/认证入口，覆盖 Odoo 产品目录、采购、客户、供应商、补货、Odoo 收银台、Overview、AI 指标、数据设置、盘点和认证页面。

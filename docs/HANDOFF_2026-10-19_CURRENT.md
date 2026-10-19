@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 最新专项回归汇总
+
+- 主店只读专项全部通过：Sommelier `10/10`、Legacy Retry `5/5`、Closure Recovery、Overview Race、Reporting Race、Role Permission Retry、Purchase Mobile Mock、Invoice Scan Mock 均 PASS；没有产生业务写入。
+- AI 线上专项通过：AI Features `14 PASS / 0 FAIL / 0 BLOCKED`、AI availability `3/3`、AI surface `11/11`、AI UI `2/2`、AI Metrics `7/7`。AI metrics 包含 assistant intent 覆盖、管理员鉴权、匿名 `401` 和 390/1440 UI。
+- 真实发票 OCR preview `PASS`：识别 `Harbour Wine Co`、发票号 `HW-2026-1042`、日期 `2026-10-19`、2 行明细、总额 `382.8`；preview-only 边界的非 GET 业务写入为 `0`。证据：`docs/UAT_INVOICE_OCR_PREVIEW_ONLINE_1EAB632.json`。
+- 这些结果补齐了此前“真实 OCR 尚未验收”的旧记录，但仍不等于供应商、采购单、收货和库存流程已完成验收；OCR 页面仍是预览模式。
+- 当前线上待补证据集中在 Dokploy frontend/backend 容器 SHA、完整构建日志、健康状态，以及隔离 Odoo 的 stocktake/采购写入回归。整体仍保持 **NO-GO**。
+
 ## 2026-10-19 路由树修复与最新验证
 
 - 发现 Next 同时存在 `pos-ui/app` 与 `pos-ui/src/app`，实际使用的是 `src/app`；Odoo 产品目录、采购、供应商、客户、补货、Odoo 收银台、Overview、AI 指标等 17 个入口此前只在旧目录，导致自动恢复脚本访问 `/products/odoo` 时出现空页面。已将入口补齐到 `src/app`，并保留现有组件和动态数据策略。
