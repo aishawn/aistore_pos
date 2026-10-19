@@ -295,13 +295,13 @@ export default function RolesPage() {
 
             <div className="hidden overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:block">
               <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table aria-label="Store roles" className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Role</th>
-                    <th className="px-4 py-3 font-semibold">Permissions</th>
-                    <th className="px-4 py-3 font-semibold">Staff</th>
-                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Role</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Permissions</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Staff</th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

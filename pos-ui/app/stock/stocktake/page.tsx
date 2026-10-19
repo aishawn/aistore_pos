@@ -274,8 +274,8 @@ export default function OdooStocktakePage() {
             ) : (
               <>
                 <div className="hidden overflow-x-auto md:block">
-                  <table className="w-full min-w-[640px] text-left text-sm">
-                    <thead className="bg-[var(--oh-surface)] text-xs text-[var(--oh-muted)]"><tr><th className="px-4 py-3 font-medium">Product</th><th className="px-4 py-3 font-medium">Expected</th><th className="px-4 py-3 font-medium">Counted</th><th className="px-4 py-3 font-medium">Variance</th><th className="px-2 py-3"><span className="sr-only">Remove</span></th></tr></thead>
+                  <table aria-label="Stocktake count lines" className="w-full min-w-[640px] text-left text-sm">
+                    <thead className="bg-[var(--oh-surface)] text-xs text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3 font-medium">Product</th><th scope="col" className="px-4 py-3 font-medium">Expected</th><th scope="col" className="px-4 py-3 font-medium">Counted</th><th scope="col" className="px-4 py-3 font-medium">Variance</th><th scope="col" className="px-2 py-3"><span className="sr-only">Remove</span></th></tr></thead>
                     <tbody className="divide-y divide-[var(--oh-border)]">
                       {countLines.map((line) => {
                         const variance = delta(line.expectedQty, line.countedQty);
