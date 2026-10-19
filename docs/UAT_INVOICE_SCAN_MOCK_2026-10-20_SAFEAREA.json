@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-19T23:12:42.481Z",
+  "sourceCommit": "046327146dfc1d5e0d03010dc04a70423075bab7",
+  "deployment": null,
+  "target": "https://demo.orithos.com.au",
+  "status": "PASS",
+  "fixture": "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
+  "viewport": 390,
+  "checks": [
+    "invoice preview has no received-order save button before scanning",
+    "mock scan image preview and details render",
+    "invoice line is editable before leaving preview",
+    "Odoo purchasing links are shown and no business write was sent"
+  ],
+  "scanCalls": 1,
+  "businessWrites": [
+    "POST /api/orders/receives/scan"
+  ]
+}

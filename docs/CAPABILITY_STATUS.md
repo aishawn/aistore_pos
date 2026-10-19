@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 发票扫描预览移动安全区批次（工作区）
+
+- `ScanInvoicePage` 的上传区域和 OCR loading 状态补齐可访问状态语义；底部 Odoo Purchases/Replenishment 操作预留手机安全区。
+- 仍是 preview-only，不创建供应商、采购单、收货或库存调整；mock 浏览器证据 `docs/UAT_INVOICE_SCAN_MOCK_2026-10-20_SAFEAREA.json` 为 `PASS`，业务写入为 `0`（扫描请求由 fixture 拦截）。
+- 真实 provider OCR 证据 `docs/UAT_INVOICE_OCR_PREVIEW_ONLINE_39E0DC8.json` 已验证供应商、发票号、日期、行项目和总额字段；真实收货闭环仍未验收。
+- 本地 typecheck 和目标 ESLint 通过，未运行 build；部署后需补 390/1440 上传/错误/预览和 safe-area 公网回归。
+
 ### 2026-10-20 Odoo Stocktake 搜索可访问性批次（工作区）
 
 - 真实入口 `pos-ui/app/stock/stocktake/page.tsx` 现在为产品搜索提供 combobox/listbox/option 语义、加载状态和结果关联；数量输入在桌面/移动布局均有稳定可访问名称。

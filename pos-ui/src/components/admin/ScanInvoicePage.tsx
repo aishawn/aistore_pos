@@ -148,7 +148,7 @@ export function ScanInvoicePage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-          <section className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white p-4 sm:p-5">
+          <section aria-labelledby="invoice-upload-title" aria-busy={loading} className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white p-4 sm:p-5">
             <input
               ref={fileRef}
               type="file"
@@ -165,7 +165,7 @@ export function ScanInvoicePage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileImage size={21} aria-hidden="true" /></span>
-                <div className="min-w-0"><h2 className="text-sm font-semibold text-[var(--oh-text)]">Upload a supplier invoice</h2><p className="mt-1 text-sm leading-5 text-[var(--oh-muted)]">Take a photo or choose an image. OCR will fill in the invoice details for review.</p></div>
+                <div className="min-w-0"><h2 id="invoice-upload-title" className="text-sm font-semibold text-[var(--oh-text)]">Upload a supplier invoice</h2><p className="mt-1 text-sm leading-5 text-[var(--oh-muted)]">Take a photo or choose an image. OCR will fill in the invoice details for review.</p></div>
               </div>
               <button
                 type="button"
@@ -199,7 +199,7 @@ export function ScanInvoicePage() {
             ]}
           />
 
-          {loading && <div role="status" className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"><LoaderCircle size={17} className="animate-spin" />Reading the invoice and extracting line items…</div>}
+          {loading && <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"><LoaderCircle size={17} className="animate-spin" />Reading the invoice and extracting line items…</div>}
           {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800">{error}</p>}
 
           {scan && (
@@ -276,7 +276,7 @@ export function ScanInvoicePage() {
         </div>
       </div>
 
-      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Review the OCR preview, then continue in Odoo for purchasing and receiving." : "Choose an invoice image to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">

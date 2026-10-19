@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 发票扫描预览移动安全区批次（当前工作区）
+
+- `pos-ui/src/components/admin/ScanInvoicePage.tsx` 的上传区域补齐 `aria-labelledby`/`aria-busy`，OCR 进行中状态补齐 `aria-live`，底部 Odoo 导航 footer 预留 `safe-area-inset-bottom`，避免手机手势条遮挡操作。
+- 页面继续明确 preview-only：不新增保存采购单、供应商或收货的行为；真实 OCR 结果仍需在 Odoo Purchases/Replenishment 中人工继续。
+- 本地验证：`npm run typecheck`、目标 ESLint 通过；mock 浏览器回归 `PASS`，证据 `docs/UAT_INVOICE_SCAN_MOCK_2026-10-20_SAFEAREA.json`。mock 拦截扫描接口，不调用模型，不产生业务写入。
+- 已有真实 provider 只读证据 `docs/UAT_INVOICE_OCR_PREVIEW_ONLINE_39E0DC8.json` 仍显示供应商、发票号、日期、行项目和总额提取通过；真实收货写入仍未验收。
+- 本批次需与后续修改集中部署后，在 390/1440 重新验证上传、错误、预览和底部操作；Demo 禁止业务写入。
+
 ## 2026-10-20 Odoo Stocktake 搜索可访问性批次（当前工作区）
 
 - `pos-ui/app/stock/stocktake/page.tsx` 的真实生产入口已补齐搜索 `combobox`、`aria-controls`、`aria-expanded`、`aria-busy`，产品结果使用 `listbox/option` 语义，空结果和搜索状态可被读屏器识别。
