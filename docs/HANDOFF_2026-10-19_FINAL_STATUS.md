@@ -98,3 +98,12 @@
 - 不得写入密码、JWT、cookie、API key、供应商原始错误或 token 内容。
 - 生产 Demo 的只读证据和隔离租户的写入证据分开保存，并明确 `read-only`、`fixture`、`mock` 或 `real isolated tenant`。
 
+## 2026-10-19 本轮 AI 迭代补充
+
+- `ac4c307` 修复销售助手语音能力位：聊天能力和 `transcriptionAvailable` 分开判断；聊天可用但转写不可用时，语音按钮禁用并显示明确提示，不会启动麦克风或发送转写请求。
+- 本地能力位 fixture：390/1440 两个视口均通过，聊天可用、语音禁用、转写请求 `0`、业务写请求 `0`。证据：`docs/UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-19.json`。
+- `9341a67` 部署触发后，线上完整 AI 回归通过：AI 功能 `14/14`、AI UI `2/2`、AI surface `11/11`、Sommelier `10/10`。证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-9341A67.json`、`docs/UAT_AI_UI_2026-10-19_POST-9341A67.json`、`docs/UAT_AI_SURFACE_2026-10-19_POST-9341A67.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-9341A67.json`。
+- 线上能力位故障注入通过：把真实配置的 `transcriptionAvailable` 临时改为 false 后，线上前端仍保持聊天可用、语音禁用、提示准确、页面错误 `0`、写请求 `0`。证据：`docs/UAT_AI_CAPABILITY_GATES_ONLINE_2026-10-19_POST-9341A67.json`。
+- `b91c03e` 仅增强 AI UI 回归脚本，使其分别检查 `assistantAvailable` 和 `transcriptionAvailable`；该提交不改变应用运行代码。能力位感知回归证据：`docs/UAT_AI_UI_2026-10-19_POST-9341A67_CAPABILITY-AWARE.json`。
+- 本轮仍未完成真实发票字段 OCR、持久化 AI 成本/成功率看板、实体硬件、分单支付、离线 POS 和正式财务/邮件流程；整体结论继续为 **NO-GO**。
+
