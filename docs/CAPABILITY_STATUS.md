@@ -7,6 +7,12 @@
 - 移动 Stock List 内容区增加右侧安全区，降低固定 AI 助手遮挡产品卡片的风险；桌面布局不变。
 - 部署前只读 pricing 回归 `docs/UAT_PRICING_PREDEPLOY_C73B324.json` 为 `8/8 PASS`，新增卡片/FAB 相交断言通过，`blockedWrites=0`；仍需部署后复验。
 
+### 2026-10-20 `3da583e` 部署后回归
+
+- Stock List 移动右侧安全区已在公网截图中生效；pricing/stock 只读专项 `8/8 PASS`，`assistantCardOverlap=true`，业务写入 `0`。
+- 表格/表单 `14/14 PASS`、根 `app` 全站 `268/268 PASS`、AI availability `3/3 PASS`；证据分别为 `docs/UAT_TABLE_A11Y_POST_3DA583E.json`、`docs/UAT_ALL_STATIC_PAGES_POST_3DA583E.json`、`docs/UAT_AI_AVAILABILITY_POST_3DA583E.json`。
+- 仍未从 Dokploy 控制台独立核验实际构建日志、运行容器 SHA 和健康状态；生产发布继续 **NO-GO**。
+
 ### 2026-10-20 当前构建诊断与 Stock List 遮挡检测
 
 - 当前 `main`/`origin/main` 为 `91ddfb9`；两个控制器的 `AiProviderConfig` 显式 import 和 `AiProviderConfig.java` 均已存在。Dokploy #38 的 `cannot find symbol` 属于旧源码快照或错误 Compose 分支，不需要重复修改 Java。

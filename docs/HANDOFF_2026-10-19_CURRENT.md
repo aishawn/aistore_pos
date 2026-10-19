@@ -7,6 +7,15 @@
 - 本地 `npm run typecheck`、目标 ESLint、UAT 脚本语法检查和 `git diff --check` 通过；未运行本地 build。
 - 下一步集中部署后重跑 pricing、表格可访问性和全站根 `app` 矩阵；Demo 继续只读，禁止业务写入。
 
+## 2026-10-20 `3da583e` 部署后回归
+
+- 完整 GitHub push payload 触发 Dokploy 返回 `HTTP 200 Compose deployed successfully`；公网截图已显示 Stock List 移动产品卡片与浮动助手之间有右侧间距。
+- Pricing/Stock 只读专项 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_POST_3DA583E.json`：`8/8 PASS`，`assistantCardOverlap=true`，页面错误 `0`，`blockedWrites=0`。
+- 表格/表单专项 `docs/UAT_TABLE_A11Y_POST_3DA583E.json`：`14/14 PASS`，`unexpectedWrites=0`；其中 3 个非 GET 请求均为受控只读检查路径。
+- 根 `app` 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_POST_3DA583E.json`：`134 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出。
+- AI capability `docs/UAT_AI_AVAILABILITY_POST_3DA583E.json`：`3/3 PASS`；仅验证配置、composer 和本地快捷入口，未提交模型提示词。
+- 这些证据的 Dokploy 容器 SHA/完整构建日志/健康状态仍未从控制台独立回读，整体发布状态继续 **NO-GO**。
+
 ## 2026-10-20 当前构建诊断与移动遮挡断言
 
 - 当前 `main`/`origin/main` 为 `91ddfb9`；`AiProviderConfig.java` 已被 Git 跟踪，`AiConfigController` 与 `SommelierController` 均包含 `import com.orithos.modules.ai.AiProviderConfig;`。因此 Dokploy #38 的两个 `cannot find symbol` 不是当前源码缺陷，应视为旧快照或 Compose 分支/提交配置错误。
