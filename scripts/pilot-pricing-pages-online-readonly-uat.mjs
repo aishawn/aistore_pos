@@ -21,7 +21,7 @@ const routes = [
   { path: "/stock/price-suggestions", heading: "Price suggestions", image: "price-suggestions" },
 ];
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
-const outputDir = path.join(root, "docs", "screenshots", "2026-10-19-pricing-reliability-online");
+const outputDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-19-pricing-reliability-online");
 fs.mkdirSync(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const checks = [];
@@ -60,6 +60,7 @@ try {
       await loading.waitFor({ state: "hidden", timeout: 30000 }).catch(() => {});
       const loadingComplete = !(await loading.isVisible().catch(() => false));
       const headingVisible = await heading.isVisible().catch(() => false)
+        || await page.locator("h1").filter({ hasText: route.heading }).first().isVisible().catch(() => false)
         || await page.getByText(route.heading, { exact: true }).first().isVisible().catch(() => false);
       const hasDataTable = ["/stock/list", "/stock/capped-pricing"].includes(route.path);
       let mobileTableScroll = null;

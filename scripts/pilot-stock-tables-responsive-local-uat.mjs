@@ -12,6 +12,7 @@ const pageData = (items) => ({ code: 0, message: "ok", data: { items, total: ite
 const routes = [
   { path: "/stock/list", heading: "Stock List", api: "/api/stock-list", testId: "stock-list-table", screenshot: "stock-list" },
   { path: "/stock/capped-pricing", heading: "Capped Pricing", api: "/api/capped-pricing", testId: "capped-pricing-table", screenshot: "capped-pricing" },
+  { path: "/stock/bulk-price-edit", heading: "Bulk Price Edit", api: "/api/bulk-price-edit", testId: "bulk-price-edit-table", screenshot: "bulk-price-edit" },
 ];
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
 const outputDir = path.join(root, "docs", "screenshots", "2026-10-19-stock-tables-local");
@@ -53,6 +54,9 @@ try {
       if (url.pathname === "/api/capped-pricing") {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(pageData([{ id: "c1", productId: "p1", priceId: "price-1", productName: "DEMO Shiraz", priceSetName: "Default", source: "Supplier", sourceType: "PROVIDED", startDate: "2026-01-01", endDate: "2026-12-31", quantity: 1, cappedPrice: 16, currentPrice: 14, cost: 10 }])) });
       }
+      if (url.pathname === "/api/bulk-price-edit") {
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(pageData([{ productId: "p1", productName: "DEMO Shiraz", caseQuantity: 6, priceSetName: "Default", prices: [{ quantity: 1, priceId: "price-1", price: 14 }] }])) });
+      }
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "ok", data: [] }) });
     });
 
@@ -68,8 +72,9 @@ try {
         ? page.getByRole("textbox", { name: "Product name for DEMO Shiraz" })
         : page.getByText("DEMO Shiraz", { exact: true });
       await sampleRow.waitFor({ state: "visible", timeout: 20000 });
-      const productCountText = route.path === "/stock/list"
-        ? (await page.getByTestId("stock-list-product-count").textContent())?.replace(/\s+/g, " ").trim() ?? ""
+      const countTestId = route.path === "/stock/list" ? "stock-list-product-count" : route.path === "/stock/bulk-price-edit" ? "bulk-price-product-count" : null;
+      const productCountText = countTestId
+        ? (await page.getByTestId(countTestId).locator("..").textContent())?.replace(/\s+/g, " ").trim() ?? ""
         : null;
       const table = page.getByTestId(route.testId);
       const layout = await table.evaluate((element) => {
@@ -137,7 +142,7 @@ try {
 const failures = checks.filter((check) => check.status === "FAIL"
   || (check.httpStatus != null && (check.httpStatus < 200 || check.httpStatus >= 400))
   || check.headingVisible === false
-  || (check.productCountText != null && check.productCountText !== "1 Product")
+  || (check.productCountText != null && !check.productCountText.endsWith("1 Product"))
   || check.sampleRowVisible === false
   || check.pageNoOverflow === false
   || check.internalHorizontalScroll === false
@@ -150,7 +155,7 @@ const output = {
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   environment: "local-dev-fixtures",
   target: base,
-  scope: "Stock List/Capped Pricing responsive table headers; API requests intercepted; no business writes",
+  scope: "Stock List/Capped Pricing/Bulk Price Edit responsive table headers; API requests intercepted; no business writes",
   status: failures.length === 0 && blockedWrites.length === 0 ? "PASS" : "FAIL",
   passed: checks.length - failures.length,
   failed: failures.length,

@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-19T10:17:58.672Z",
-  "sourceCommit": "722f0e296af041b5322ea4516d0f553325a050f6",
+  "generatedAt": "2026-10-19T10:32:56.860Z",
+  "sourceCommit": "05928f9e94da26181bbb6bd7c6f09e6a50bda3a9",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
-  "scope": "Stock List/Capped Pricing responsive table headers; API requests intercepted; no business writes",
+  "scope": "Stock List/Capped Pricing/Bulk Price Edit responsive table headers; API requests intercepted; no business writes",
   "status": "PASS",
-  "passed": 4,
+  "passed": 6,
   "failed": 0,
   "checks": [
     {
@@ -13,7 +13,7 @@
       "viewport": 390,
       "httpStatus": 200,
       "headingVisible": true,
-      "productCountText": "1 Product",
+      "productCountText": "Stock ListExport to CSV1 Product",
       "sampleRowVisible": true,
       "pageNoOverflow": true,
       "internalHorizontalScroll": true,
@@ -59,11 +59,36 @@
       "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-390.png"
     },
     {
+      "route": "/stock/bulk-price-edit",
+      "viewport": 390,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "productCountText": "1 Product",
+      "sampleRowVisible": true,
+      "pageNoOverflow": true,
+      "internalHorizontalScroll": true,
+      "columnsDoNotOverlap": true,
+      "columnsAlignWithFirstRow": true,
+      "headerTextFits": true,
+      "layout": {
+        "tableWidth": 1172,
+        "scrollerWidth": 390,
+        "scrollerScrollWidth": 1220,
+        "columnsDoNotOverlap": true,
+        "columnsAlignWithFirstRow": true,
+        "columnAlignmentIssues": [],
+        "headerTextIssues": [],
+        "headerTextFits": true
+      },
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-390.png"
+    },
+    {
       "route": "/stock/list",
       "viewport": 1440,
       "httpStatus": 200,
       "headingVisible": true,
-      "productCountText": "1 Product",
+      "productCountText": "Stock ListExport to CSV1 Product",
       "sampleRowVisible": true,
       "pageNoOverflow": true,
       "internalHorizontalScroll": null,
@@ -107,6 +132,31 @@
       },
       "pageErrors": [],
       "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-1440.png"
+    },
+    {
+      "route": "/stock/bulk-price-edit",
+      "viewport": 1440,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "productCountText": "1 Product",
+      "sampleRowVisible": true,
+      "pageNoOverflow": true,
+      "internalHorizontalScroll": null,
+      "columnsDoNotOverlap": true,
+      "columnsAlignWithFirstRow": true,
+      "headerTextFits": true,
+      "layout": {
+        "tableWidth": 1172,
+        "scrollerWidth": 1184,
+        "scrollerScrollWidth": 1220,
+        "columnsDoNotOverlap": true,
+        "columnsAlignWithFirstRow": true,
+        "columnAlignmentIssues": [],
+        "headerTextIssues": [],
+        "headerTextFits": true
+      },
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-1440.png"
     }
   ],
   "blockedWrites": []

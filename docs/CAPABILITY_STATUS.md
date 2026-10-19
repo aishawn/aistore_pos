@@ -12,15 +12,18 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 以上公网行为不替代 Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态取证。
 - 价格建议现在可将单个 SKU 深链到 Bulk Price Edit，Bulk Price Edit 会预填 SKU 并发送同一搜索条件；本地 `16` 项 fixture UAT 全部通过，仍保持无自动价格写入。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_DEEP-LINK.json`。
 
-### 2026-10-19 Stock 与 Capped Pricing 响应式修正（待部署）
+### 2026-10-19 Stock 与 Capped Pricing 响应式修正（公网行为通过）
 - Stock List 与 Capped Pricing 为表格设置最小宽度，在手机视口内使用表格区域横向滚动；两页 Quantity 列加宽，完整显示列名；Stock List 商品计数按单复数显示。
 - 本地 fixture UAT `4/4 PASS`：两页面在 390/1440 视口均渲染样例行；表头和首行列边界误差不超过 1px、表头文字不越列、页面不横向溢出；Stock List 的 `1 Product` 计数文案通过；390px 表格区域可滚动。`0` 个页面错误、`0` 个业务写入。证据：`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json`；截图见 `docs/screenshots/2026-10-19-stock-tables-local/`。
 - 同批本地复验保存失败重试 `8/8 PASS`、价格建议交互/深链 `16/16 PASS`、AI capability gate `2/2 PASS`。这些是 fixture/UI 验证，不代表线上实际 Odoo 写入或生产 AI 验收。
-- 尚未部署。待下一批改动合并部署后，在线上 Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions 做只读矩阵复验，并核对 Dokploy 容器 SHA/构建日志/健康状态。
+- `05928f9` 推送后公网 pricing 矩阵 `8/8 PASS`，覆盖两页 × 390/1440；表头完整、数据行列对齐、移动端内部滚动和页面无溢出。页面错误和被拦截写请求均为 `0`。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-05928F9_FINAL.json`。Dokploy 容器 SHA、构建日志和健康状态仍待控制台核验。
+- Bulk Price Edit 新增相同的宽表列基准、最小宽度和单商品计数修正；本地响应式矩阵现为三页 × 390/1440，`6/6 PASS`，包含首行对齐和零业务写入。线上验证待下一次集中部署。
 
-### 2026-10-19 公网定价表格基线与 AI 会话摘要（待部署）
+### 2026-10-19 公网定价表格基线与 AI 会话摘要
 - 加载完成后的线上只读 pricing 基线 `4/8 PASS`：Stock List/Capped Pricing 在 390/1440 四项均有列文字溢出或首行列错位；没有页面 JS 错误或被拦截写请求。容器 SHA 未核验。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_BASELINE_FINAL.json` 及 `docs/screenshots/2026-10-19-pricing-reliability-online/`。
-- 本地修正的 fixture 检查 `4/4 PASS`，包含首行真实对齐断言；AI assistant 会话摘要 `4/4 PASS`，验证单/多次响应统计及零业务写入。响应式修复和 AI 摘要尚未部署。
+- 本地修正的 fixture 检查 `4/4 PASS`，包含首行真实对齐断言；AI assistant 会话摘要本地 `4/4 PASS`，验证单/多次响应统计及零业务写入。
+- `05928f9` 推送后，线上只读 pricing 矩阵 `8/8 PASS`；公网 AI 会话摘要 fixture `4/4 PASS`，AI 请求被浏览器截获，没有调用生产模型。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-05928F9_FINAL.json`、`docs/UAT_AI_DIAGNOSTICS_ONLINE_FIXTURE_2026-10-19_POST-05928F9.json` 和 `docs/screenshots/2026-10-19-pricing-post-05928f9-final/`。
+- Dokploy webhook 已接受部署，但 frontend/backend 容器 SHA、构建日志与健康状态仍需控制台独立核实；公网行为通过不替代镜像身份取证。
 
 ### 2026-10-19 行内价格保存可靠性
 

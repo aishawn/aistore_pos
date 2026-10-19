@@ -246,7 +246,7 @@ export function BulkPriceEditPage() {
       <div className="flex shrink-0 items-center gap-4 border-b border-neutral-200 px-6 py-4">
         <h1 className="text-[28px] font-normal text-black">Bulk Price Edit</h1>
         <div className="ml-auto text-[15px] text-neutral-700">
-          <span className="font-semibold text-black">{total.toLocaleString()}</span> Products
+          <span data-testid="bulk-price-product-count" className="font-semibold text-black">{total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
 
@@ -311,8 +311,8 @@ export function BulkPriceEditPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
-        <div className="inline-block min-w-full">
-          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black px-3 py-2 text-[13px] font-bold text-white">
+        <div data-testid="bulk-price-edit-table" className="inline-block min-w-[1170px]">
+          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black py-2 text-[13px] font-bold text-white">
             <div className="w-[220px] shrink-0 px-2">Product</div>
             <div className="w-[72px] shrink-0 px-2 text-center">Case Qty</div>
             <div className="w-[88px] shrink-0 px-2">Price Set</div>

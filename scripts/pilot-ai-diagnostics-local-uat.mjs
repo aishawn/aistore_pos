@@ -76,7 +76,7 @@ const failed = checks.filter((check) => check.status === "FAIL").length;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  environment: "local-dev-fixtures",
+  environment: new URL(base).hostname.endsWith("localhost") ? "local-dev-fixtures" : "online-browser-fixture",
   target: base,
   scope: "assistant response diagnostics UI; AI request intercepted; no business writes",
   status: failed === 0 ? "PASS" : "FAIL",

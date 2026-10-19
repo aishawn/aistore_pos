@@ -2,19 +2,23 @@
 
 ## 2026-10-19 当前批次：价格编辑与移动端表格
 
-- 最新基线已推进至 `722f0e2`（与 `origin/main` 一致）。本轮 Stock List 数量列与 Capped Pricing 数量列加宽，表头不再压缩文字；两页在 390px 下使用表格内部横向滚动，桌面布局保持在内容区内。Stock List 商品计数也按 `Product/Products` 正确单复数显示。
+- 已推送 `05928f9` 并触发 Dokploy。Stock List/Capped Pricing 数量列加宽、对齐表头和数据行、手机内部横向滚动；Stock List 商品计数按 `Product/Products` 正确单复数显示。AI assistant 新增回复数、成功率和平均延迟的会话摘要。
 - 本地响应式 fixture UAT `4/4 PASS`：Stock List/Capped Pricing × 390/1440；四项均检查真实 DEMO Shiraz 行可见、数据行与表头列边界误差不超过 1px、列不重叠、表头文字留在本列内、页面不横向溢出；Stock List 同时检查 `1 Product` 文案；移动端内部可横向滚动；页面错误 `0`、业务写入 `0`。检查曾发现最多 13px 的逐列漂移，已通过移除表头容器额外水平内边距修正。证据：`UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json` 和 `docs/screenshots/2026-10-19-stock-tables-local/`。
 - 线上 pricing 只读基线在加载完成后为 `4/8 PASS`：Stock List/Capped Pricing × 390/1440 四项均因表头文字溢出或列边界与数据行错位未通过；浏览器非 GET 请求拦截 `0`，JS 错误 `0`。Capped Pricing 390px 实际列表行和叠字表头截图已保存。运行部署 SHA 未核验。证据：`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_BASELINE_FINAL.json`、`docs/screenshots/2026-10-19-pricing-reliability-online/`。
+- 推送后的公网 pricing 矩阵 `8/8 PASS`：Stock List/Capped Pricing × 390/1440；表头与首行列边界对齐、移动端表格内部滚动、无页面溢出；浏览器非 GET 请求拦截 `0`，JS 错误 `0`。证据：`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-05928F9_FINAL.json`、`docs/screenshots/2026-10-19-pricing-post-05928f9-final/`。
 - 同轮复验：价格行保存失败/重试 `8/8 PASS`（所有 PATCH fixture 拦截）；Price Suggestions 搜索、筛选、CSV、Bulk 深链 `16/16 PASS`（API 写入 `0`）；AI capability gate `2/2 PASS`（390/1440，语音转写请求 `0`）。证据：`UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-19.json`、`UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`、`UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-19.json`。
 - AI assistant 新增本地会话摘要（累计回复数、成功率、平均延迟）；`4/4 PASS` 覆盖单次与两次成功响应、逐条诊断和零业务写入。证据：`UAT_AI_DIAGNOSTICS_LOCAL_2026-10-19.json`。
+- 公网页面 AI 会话摘要 fixture `4/4 PASS`；助手响应由浏览器截获，未调用生产模型。证据：`UAT_AI_DIAGNOSTICS_ONLINE_FIXTURE_2026-10-19_POST-05928F9.json`。
+- Bulk Price Edit 同步采用稳定最小宽度和表头/数据行共同列基准，并修正单商品计数文案；本地响应式矩阵扩展为三页 × 390/1440，`6/6 PASS`。证据：`UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json` 与 `docs/screenshots/2026-10-19-stock-tables-local/`。
 - 前端 `npm run typecheck`、Stock List/Capped Pricing 目标 ESLint、UAT 脚本 `node --check`、`git diff --check` 均通过；未运行本地 build。
-- 以上布局和新增 UAT 尚未部署。继续积累适合一起验证的改进后，再提交/推送并触发一次 Dokploy；部署后需做线上 390/1440 只读复验并从控制台核对镜像 SHA、构建日志、健康状态。`AiProviderConfig` 缺符号错误对应的 import 修复已在 `ea8f1b6`，且已包含于当前 `origin/main`，不需重复改代码。
+- 公网行为验证通过；Dokploy 控制台的实际 frontend/backend SHA、构建日志和健康状态仍未独立核验。`AiProviderConfig` 缺符号错误对应的 import 修复已在 `ea8f1b6`，包含于 `origin/main`，无需重复改代码。
 - Stock List 与 Capped Pricing 现在防止同一行重复 blur 提交；提交中锁定该行输入。失败时显示单元格/行错误，保留用户输入供修正或重试。
 - Bulk Price Edit 已有相同保存失败保护：失败显示错误并回滚到已保存价格；busy 状态清除后可继续编辑。
 - 本地 fixture 结果：Stock List + Capped Pricing 保存失败恢复 `8/8 PASS`；Bulk Price Edit `7/7 PASS`；Price Suggestions 深链 `16/16 PASS`；AI capability gate `2/2 PASS`（390/1440）。业务 PATCH 由 fixture 拦截，Price Suggestions API 写入 `0`，语音转写请求 `0`。本次复验记录见顶部当前批次及对应 `UAT_*_LOCAL_2026-10-19.json`。
-- 线上 390px 旧版截图曾发现 Stock List/Capped Pricing 列表难以浏览；本地已验证内部滚动、表头/数据行列对齐、无页面溢出。最新 Dokploy 容器 SHA 尚未核验，本轮修复未部署；旧版线上诊断见 `UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-F1993D6_DIAGNOSTIC.json`。
+- 线上 390px 旧版截图曾发现 Stock List/Capped Pricing 列表难以浏览；`05928f9` 推送后公网 390/1440 只读矩阵 `8/8 PASS`，容器 SHA/构建日志/健康状态尚未从 Dokploy 控制台核验；旧版线上诊断见 `UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_BASELINE_FINAL.json`。
 - 最新本地 `typecheck`、目标 ESLint、响应式 UAT 脚本语法与 `git diff --check` 通过；按约束未运行本地 build。
-- 当前 `main` 与 `origin/main` 均为 `722f0e2`；本轮响应式 UI、UAT 和文档仍在工作树，尚未提交/部署。凑齐本批改进后，统一提交推送并只触发一次 Dokploy；部署后重跑线上 pricing UAT 并核对构建日志、容器 SHA/健康信息。
+- 当前 `main` 与 `origin/main` 已推进至 `05928f9`；本轮线上 UAT 通过。Dokploy 容器身份与构建/健康信息待控制台核验。
+- Bulk Price Edit 的新布局尚未部署；与后续批次集中部署后，线上 pricing UAT 应保持 `8/8 PASS` 并补验 Bulk 页实际数据行。
 
 ## 2026-10-19 Smart Pricing 到 Bulk Price Edit 闭环
 
@@ -72,7 +76,7 @@
 
 > **当前有效摘要（2026-10-19）**
 >
-> 当前 Git 基线为 `722f0e2`，顶部记录的 Stock List/Capped Pricing 表格布局与 AI 会话摘要仍在本地候选批次。加载就绪后的公网 pricing 矩阵 `4/8 PASS`，四个 Stock List/Capped Pricing 视口都显示列文本溢出或表格列错位；非 GET 页面 API 写入为 `0`，页面错误为 `0`。该公网结果的 Dokploy 容器 SHA 尚未独立核验。候选批次本地响应式矩阵 `4/4 PASS`、行内保存故障注入 `8/8 PASS`、Price Suggestions `16/16 PASS`、AI capability `2/2 PASS`、AI diagnostics `4/4 PASS`。尚未部署；未运行本地 build。
+> 当前 Git 基线为 `05928f9`，已推送且 Dokploy webhook 接受。公网 pricing 只读矩阵 `8/8 PASS`，AI 会话摘要在公网 shell 的 fixture 验证 `4/4 PASS`；页面业务写入为 `0`。Dokploy 控制台的实际容器 SHA、构建日志与健康状态仍待独立核验。未运行本地 build。
 
 ## 交接结论
 
