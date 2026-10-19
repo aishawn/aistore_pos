@@ -71,10 +71,11 @@ class AdminTenantLifecycleTest {
         updated.setId(2L);
         when(vendorMapper.findById(2L)).thenReturn(store, updated);
         when(platformAccess.isPlatformOperatorVendor(store)).thenReturn(false);
+        when(vendorMapper.updateStatusIfCurrent(2L, "suspended", "trial")).thenReturn(1);
         when(userMapper.findPrimaryByVendor(2L)).thenReturn(null);
 
         var result = controller.patchStatus(2L, new AdminTenantController.StatusBody("suspended"));
-        verify(vendorMapper).updateStatus(2L, "suspended");
+        verify(vendorMapper).updateStatusIfCurrent(2L, "suspended", "trial");
         assertEquals("suspended", result.data().get("status"));
     }
 
@@ -101,12 +102,29 @@ class AdminTenantLifecycleTest {
         active.setId(8L);
         when(vendorMapper.findById(8L)).thenReturn(expired, active);
         when(platformAccess.isPlatformOperatorVendor(expired)).thenReturn(false);
+        when(vendorMapper.updateStatusIfCurrent(8L, "active", "expired")).thenReturn(1);
         when(userMapper.findPrimaryByVendor(8L)).thenReturn(null);
 
         var result = controller.patchStatus(8L, new AdminTenantController.StatusBody("active"));
 
-        verify(vendorMapper).updateStatus(8L, "active");
+        verify(vendorMapper).updateStatusIfCurrent(8L, "active", "expired");
         assertEquals("active", result.data().get("status"));
+    }
+
+    @Test
+    void rejectsStatusChangeWhenStoreWasModifiedConcurrently() {
+        Vendor trial = vendor("acme", "trial");
+        trial.setId(9L);
+        when(vendorMapper.findById(9L)).thenReturn(trial);
+        when(platformAccess.isPlatformOperatorVendor(trial)).thenReturn(false);
+        when(vendorMapper.updateStatusIfCurrent(9L, "active", "trial")).thenReturn(0);
+
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                controller.patchStatus(9L, new AdminTenantController.StatusBody("active")));
+
+        assertEquals(40910, ex.getCode());
+        assertTrue(ex.getMessage().contains("status changed"));
+        verify(vendorMapper).updateStatusIfCurrent(9L, "active", "trial");
     }
 
     @Test
@@ -118,13 +136,30 @@ class AdminTenantLifecycleTest {
         after.setTrialEndsAt(LocalDateTime.now().plusDays(14));
         when(vendorMapper.findById(3L)).thenReturn(store, after);
         when(platformAccess.isPlatformOperatorVendor(store)).thenReturn(false);
+        when(vendorMapper.updateTrialEndsAtIfCurrent(eq(3L), any(LocalDateTime.class), eq("trial"), eq("expired"))).thenReturn(1);
         when(userMapper.findPrimaryByVendor(3L)).thenReturn(null);
 
         controller.patchTrial(3L, new AdminTenantController.TrialBody(14));
 
         ArgumentCaptor<LocalDateTime> ends = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(vendorMapper).updateTrialEndsAt(eq(3L), ends.capture(), eq("trial"));
+        verify(vendorMapper).updateTrialEndsAtIfCurrent(eq(3L), ends.capture(), eq("trial"), eq("expired"));
         assertTrue(ends.getValue().isAfter(LocalDateTime.now().plusDays(13)));
+    }
+
+    @Test
+    void rejectsTrialExtensionWhenStoreWasModifiedConcurrently() {
+        Vendor store = vendor("acme", "active");
+        store.setId(10L);
+        when(vendorMapper.findById(10L)).thenReturn(store);
+        when(platformAccess.isPlatformOperatorVendor(store)).thenReturn(false);
+        when(vendorMapper.updateTrialEndsAtIfCurrent(eq(10L), any(LocalDateTime.class), eq("active"), eq("active"))).thenReturn(0);
+
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                controller.patchTrial(10L, new AdminTenantController.TrialBody(14)));
+
+        assertEquals(40910, ex.getCode());
+        assertTrue(ex.getMessage().contains("status changed"));
+        verify(vendorMapper).updateTrialEndsAtIfCurrent(eq(10L), any(LocalDateTime.class), eq("active"), eq("active"));
     }
 
     @Test

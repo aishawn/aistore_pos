@@ -166,7 +166,9 @@ public class AdminTenantController {
         if (!STATUS_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(status)) {
             throw new BusinessException(40910, "Cannot change store status from " + currentStatus + " to " + status);
         }
-        vendorMapper.updateStatus(id, status);
+        if (vendorMapper.updateStatusIfCurrent(id, status, currentStatus) != 1) {
+            throw new BusinessException(40910, "Store status changed; refresh and try again");
+        }
         return ApiResult.ok(toDetail(requireVendor(id)));
     }
 
@@ -185,7 +187,9 @@ public class AdminTenantController {
         } else if (!"active".equalsIgnoreCase(status)) {
             status = "trial";
         }
-        vendorMapper.updateTrialEndsAt(id, ends, status);
+        if (vendorMapper.updateTrialEndsAtIfCurrent(id, ends, status, currentStatus) != 1) {
+            throw new BusinessException(40910, "Store status changed; refresh and try again");
+        }
         return ApiResult.ok(toDetail(requireVendor(id)));
     }
 
