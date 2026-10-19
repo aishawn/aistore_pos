@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 `854bf6a` 后线上只读复核
+
+- 表格/表单 DOM 审计 `14/14 PASS`，覆盖用户、角色、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描的 390/1440 视口；页面错误和意外业务写入均为 `0`。证据：`docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`。
+- AI availability `3/3 PASS`；当前 Demo client config 报告 `enabled=true`，AI composer 可用，未提交提示词。证据：`docs/UAT_AI_AVAILABILITY_2026-10-20_POST-854BF6A.json`。
+- 两份证据均为 `deployment=unverified-after-deploy`；Dokploy webhook 对 `854bf6a` 返回 `301 Branch Not Match`，因此不能把公网行为归因于该提交，容器 SHA、构建日志和健康状态仍待控制台核验。整体保持 **NO-GO**。
+
 ### 2026-10-20 `b058ef3` AI capability 与表单回归
 
 - voice capability gate、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2` 和表格/表单 DOM `14/14` 均通过，业务/配置写入为 `0`。

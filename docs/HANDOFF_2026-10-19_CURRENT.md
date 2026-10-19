@@ -614,3 +614,9 @@
 - 平台店铺移动列表改为明确的 `list`/`listitem` 语义；Manage Cash 首屏 skeleton 标记为忙状态。
 - 本地验证：`pos-ui` `npm run typecheck` 退出码 0；目标 ESLint（Manage Cash、Platform Stores、Express Stocktake）`0 warning / 0 error`；`pilot-table-a11y-online-uat.mjs`、`pilot-ai-features-verify-uat.mjs` `node --check` 通过；`git diff --check` 通过。
 - 这批只完成源码级和静态检查，尚未证明 Dokploy 已运行该提交；部署后应复跑管理员只读表格/表单 UAT，并增加 Express Stocktake 390/1440 视口验证。生产 Demo 仍禁止业务写入。
+
+## 2026-10-20 线上只读复测（提交 854bf6a，部署身份未核验）
+
+- `docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`：7 页面 × 390/1440 共 `14/14 PASS`，页面错误 0，未命名控件 0，清空供应商搜索建议残留 0，意外业务写入 0。脚本主动拦截了安全非 GET 请求，不能替代写入验收。
+- `docs/UAT_AI_AVAILABILITY_2026-10-20_POST-854BF6A.json`：`3/3 PASS`；当前 Demo 的 `/api/ai/config/client` 报告 `enabled=true`，AI composer 可用，未提交提示词。该结果的 `deployment=unverified-after-deploy`，只能说明当前公网行为，不证明运行镜像来自 `854bf6a`。
+- 由于线上 AI 开关已报告为开启，后续必须从 Dokploy 回读环境变量、模型/region 配置、构建日志和运行 SHA，再进行预算可控的真实模型回归；在此之前不把 NLQ、语音、酒标或发票 OCR 标记为已验收。
