@@ -111,6 +111,7 @@
 - Invoice OCR 探针返回 `50212`：provider 已可达，但使用的是无发票字段的可解码页面截图，因此只记为 INFO；尚未用真实供应商发票照片完成字段提取验收。
 - `InvoiceVisionService` 和 `WineLabelVisionService` 已按模型在 compatible chat 与 native multimodal endpoint 之间路由，并兼容 native `output.choices` 响应结构。真实业务仍只预览，不创建采购或收货。
 - 之前的 `97eda76` 路由逻辑已通过 `META-INF/spring.factories` 注册到 Spring Boot 3.3，线上 NLQ 从 `50210` 恢复通过。
+- 同一部署后的 UI/availability 回归也通过：AI UI `2/2`，availability `3/3`；证据为 `docs/UAT_AI_UI_2026-10-19_POST-10FACB6.json` 和 `docs/UAT_AI_AVAILABILITY_2026-10-19_POST-10FACB6.json`。
 
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
