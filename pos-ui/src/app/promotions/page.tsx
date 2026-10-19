@@ -1,99 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { FilterSelect } from "@/components/admin/FilterSelect";
-import { EmptyState } from "@/components/admin/EmptyState";
-import { ListTable } from "@/components/admin/ListTable";
-import { AsyncState } from "@/components/admin/AsyncState";
+import { CalendarDays, Info, LoaderCircle, Megaphone, RefreshCw, Search } from "lucide-react";
+import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { Pagination } from "@/components/admin/Pagination";
 import { useApiList, useDebouncedValue } from "@/hooks/useApi";
-import { PlusIcon } from "@/components/icons";
 
-interface Promotion {
-  id: string;
-  name: string;
-  active: boolean;
-  start: string | null;
-  end: string | null;
-}
-
+interface Promotion { id: string; name: string; active: boolean; start: string | null; end: string | null; }
 const PAGE_SIZE = 20;
+function formatDate(value: string | null) {
+  if (!value) return "—";
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) : new Date(value);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en-AU", { dateStyle: "medium" }).format(date);
+}
 
 export default function PromotionsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-
   const debouncedSearch = useDebouncedValue(search, 300);
-
-  const { items, total, loading, error, reload } = useApiList<Promotion>("/api/promotions", {
-    name: debouncedSearch || undefined,
-    page,
-    size: PAGE_SIZE,
-  });
-
+  const { items, total, loading, error, reload } = useApiList<Promotion>("/api/promotions", { name: debouncedSearch.trim() || undefined, page, size: PAGE_SIZE });
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <div className="flex items-center gap-5">
-        <h1 className="text-[34px] font-bold text-black">Promotions</h1>
-        <button className="flex items-center gap-2 rounded-full bg-[#5cb3e0] px-6 py-3 text-[16px] font-bold text-white">
-          <PlusIcon size={18} /> Add Promotion
-        </button>
-        <div className="ml-auto text-center leading-none">
-          <div className="text-[32px] font-bold text-black">{total}</div>
-          <div className="text-[14px] text-black">Results</div>
-        </div>
-      </div>
-
-      <label className="mt-5 block">
-        <span className="text-[16px] text-black">Search</span>
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          className="mt-1 h-[56px] w-full rounded-xl border-2 border-black px-4 text-[16px] outline-none"
-        />
-      </label>
-
-      <div className="mt-4 flex items-end gap-6">
-        <div className="flex flex-col">
-          <span className="mb-1 text-[16px] text-black">Show Inactive</span>
-          <span className="flex items-center gap-3">
-            <span className="flex h-7 w-12 items-center rounded-full bg-neutral-300 p-1">
-              <span className="h-5 w-5 rounded-full bg-white" />
-            </span>
-            <span className="text-[15px] text-neutral-600">Inactive promotions are hidden</span>
-          </span>
-        </div>
-        <FilterSelect label="Promotion Categories" />
-        <FilterSelect label="Products" />
-        <FilterSelect label="Brands" />
-        <FilterSelect label="Categories" />
-      </div>
-
-      <button className="mt-4 flex items-center gap-2 rounded-lg bg-[#5cb3e0] px-6 py-3 text-[16px] font-bold text-white">
-        <PlusIcon size={18} /> More Filters
-      </button>
-
-      <div className="mt-6">
-        <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
-          {items.length === 0 ? (
-            <EmptyState />
-          ) : (
-            <ListTable
-              columns={[{ label: "Name" }, { label: "Status" }, { label: "Start" }, { label: "End" }]}
-              rows={items.map((p) => [
-                p.name,
-                p.active ? "Active" : "Inactive",
-                p.start ?? "",
-                p.end ?? "",
-              ])}
-            />
-          )}
-        </AsyncState>
+    <AdminPageLayout title="Promotions" subtitle="Browse campaigns currently available to this POS" count={loading || error ? undefined : total} countLabel="Promotions" actions={<AdminSecondaryButton className="min-h-11" onClick={reload} disabled={loading}>{loading ? <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}Refresh</AdminSecondaryButton>} search={<label className="flex min-h-11 items-center gap-2.5 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-muted)] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15"><Search size={17} aria-hidden="true" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} aria-label="Search promotions by name" placeholder="Search promotions by name" className="min-w-0 flex-1 bg-transparent py-2 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)]" /></label>}>
+      <div className="mb-4 flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-950"><Info size={18} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" /><p className="leading-5">This screen is read only. Promotion creation and advanced filters are not available here yet.</p></div>
+      {loading ? <div role="status" aria-label="Loading promotions" className="space-y-3 rounded-lg border border-[var(--oh-border)] bg-white p-4">{Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 md:grid-cols-4"><span className="h-4 w-40 animate-pulse rounded bg-[var(--oh-surface)]" /><span className="h-4 w-20 animate-pulse rounded bg-[var(--oh-surface)]" /><span className="h-4 w-24 animate-pulse rounded bg-[var(--oh-surface)]" /><span className="h-4 w-24 animate-pulse rounded bg-[var(--oh-surface)]" /></div>)}</div> : error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><span>{error}</span><button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-4 font-semibold hover:bg-amber-100"><RefreshCw size={15} /> Try again</button></div> : items.length === 0 ? <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center"><Megaphone className="mx-auto text-[var(--oh-primary)]" size={22} aria-hidden="true" /><h2 className="mt-3 text-base font-semibold text-[var(--oh-text)]">No promotions found</h2><p className="mt-1.5 text-sm text-[var(--oh-muted)]">Try another search term or clear the search.</p></div> : <>
+        <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] md:block"><table className="w-full border-collapse text-left text-sm"><caption className="sr-only">Available promotions</caption><thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Promotion</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3">Start date</th><th scope="col" className="px-4 py-3">End date</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{items.map((promotion) => <tr key={promotion.id}><th scope="row" className="px-4 py-3.5 font-medium text-[var(--oh-text)]">{promotion.name}</th><td className="px-4 py-3.5"><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${promotion.active ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{promotion.active ? "Active" : "Inactive"}</span></td><td className="px-4 py-3.5 tabular-nums text-[var(--oh-text-secondary)]">{formatDate(promotion.start)}</td><td className="px-4 py-3.5 tabular-nums text-[var(--oh-text-secondary)]">{formatDate(promotion.end)}</td></tr>)}</tbody></table></div>
+        <ul className="grid gap-3 md:hidden" aria-label="Promotions">{items.map((promotion) => <li key={promotion.id} className="rounded-xl border border-[var(--oh-border)] bg-white p-4"><div className="flex items-start justify-between gap-3"><h2 className="min-w-0 break-words text-sm font-semibold text-[var(--oh-text)]">{promotion.name}</h2><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${promotion.active ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{promotion.active ? "Active" : "Inactive"}</span></div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3"><div><p className="flex items-center gap-1 text-xs text-[var(--oh-muted)]"><CalendarDays size={13} aria-hidden="true" />Starts</p><p className="mt-1 text-sm">{formatDate(promotion.start)}</p></div><div><p className="flex items-center gap-1 text-xs text-[var(--oh-muted)]"><CalendarDays size={13} aria-hidden="true" />Ends</p><p className="mt-1 text-sm">{formatDate(promotion.end)}</p></div></div></li>)}</ul>
         <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-      </div>
-    </div>
+      </>}
+    </AdminPageLayout>
   );
 }

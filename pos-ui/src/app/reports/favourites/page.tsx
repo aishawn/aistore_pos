@@ -1,26 +1,13 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { SelectChevronIcon } from "@/components/icons";
+import Link from "next/link";
+import { ArrowUpRight, Bookmark, Info } from "lucide-react";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 export default function FavouriteReportsPage() {
-  return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <h1 className="text-[34px] font-bold text-black">Favourite Reports</h1>
-
-      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-3">
-        <label className="flex flex-col text-[16px] text-black">Report Name
-          <input placeholder="Search Report Name..." className="mt-1 h-[52px] rounded-lg border border-neutral-300 px-3 outline-none placeholder:text-neutral-400" />
-        </label>
-        <label className="flex flex-col text-[16px] text-black">Report Type
-          <span className="mt-1 flex h-[52px] items-center justify-between rounded-lg border border-neutral-300 px-3 text-neutral-400">Filter Report Types... <SelectChevronIcon size={18} /></span>
-        </label>
-        <label className="flex flex-col text-[16px] text-black">Email Filter
-          <span className="mt-1 flex h-[52px] items-center justify-between rounded-lg border border-neutral-300 px-3 text-neutral-400">Filter Report Emailing... <SelectChevronIcon size={18} /></span>
-        </label>
-      </div>
-
-      <p className="mt-16 text-center text-[20px] text-neutral-500">No reports found.</p>
-    </div>
-  );
+  return <AdminPageLayout title="Favourite Reports" subtitle="Quick access to your saved reports">
+    <section role="status" className="rounded-xl border border-sky-200 bg-sky-50/70 p-5 text-sky-950 sm:p-6"><div className="flex items-start gap-3"><Info className="mt-0.5 shrink-0 text-sky-700" size={20} aria-hidden="true" /><div><h2 className="font-semibold">Saved report favourites are not connected in this pilot</h2><p className="mt-2 max-w-3xl text-sm leading-6">Search and email scheduling are not connected, so this page does not present placeholder controls or fake report data.</p><Link href="/reports/dashboard" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Reports Dashboard <ArrowUpRight size={15} aria-hidden="true" /></Link></div></div></section>
+    <div className="mt-6 rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center"><Bookmark className="mx-auto text-[var(--oh-muted)]" size={24} aria-hidden="true" /><p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">No saved report favourites</p><p className="mt-1 text-sm text-[var(--oh-muted)]">Use the Reports Dashboard to review live reporting surfaces.</p></div>
+  </AdminPageLayout>;
 }
