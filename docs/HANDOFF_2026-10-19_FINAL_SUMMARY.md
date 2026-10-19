@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前运行时代码：`7cf7c3a`；当前仓库/`origin/main`：`7cf7c3a`
+当前运行时代码：`7cf7c3a`；当前仓库/`origin/main`：`89f496c`（后续仅 UAT/文档更新）
 本轮 Dokploy webhook：HTTP `200`，返回 `Compose deployed successfully`；控制台运行容器 SHA 仍未独立回读。
 
 ## 结论
@@ -87,6 +87,7 @@
 - 已通过本地 `pos-ui` typecheck、目标 ESLint、UAT 脚本语法和 `git diff --check`。
 - 线上验证：assistant `entity_action` 成功；`byPath` 出现 `assistant:entity_action`，requests `2`，allowed `2`，estimatedTokens `32`；metrics 管理员 `200`、匿名 `401`，390/1440 页面均无 JS 错误。
 - 最新线上验证：assistant `search_product` 成功；metrics UAT 严格检查 `assistant:search_product`，并通过管理员 `200`、匿名 `401`、390/1440 页面无 JS 错误。
+- 延迟分位数也已验证：有请求时 API 返回有效 `p50`/`p95`，本轮线上值为 `2755ms` / `6474ms`。
 
 ## 本轮视觉能力位修复（`39e0dc8`）
 
