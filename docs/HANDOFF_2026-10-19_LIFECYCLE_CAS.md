@@ -17,9 +17,13 @@
 - `AdminTenantLifecycleTest` 新增状态转换和试用期并发冲突断言；尚未在本机执行 Maven，因为当前 Java 8 不满足项目 Java 21 要求。
 - 未运行 `npm run build`，遵循当前迭代约束。
 
-## 部署计划
+## 部署与线上验证
 
-该改动应与下一批已完成的前端/AI/平台回归一起提交后统一触发 Dokploy，减少重复构建缓存。部署后只读验证平台管理员状态页和 API；不对 Demo `aipos` 执行销售、库存、采购或现金写入。
+- 本批次与前端/AI/平台改动一起提交后统一触发 Dokploy，webhook 返回 `HTTP 200 Compose deployed successfully`。
+- 多店平台只读回归 `15/15 PASS`：平台登录、租户列表/详情、operator 生命周期保护、Demo Odoo binding、无 Odoo session 时 receive/cash 拒绝、Manage Cash/Purchases 页面均通过。证据：`docs/UAT_MULTISTORE_DEPLOY_2026-10-19.json`。
+- AI 路由矩阵 `9/9 PASS`，全站页面 `264/264 PASS`（132 路由 × 390/1440），盘点只读 `PASS`，无横向溢出、无页面错误、无非 GET 盘点请求。证据：`docs/UAT_AI_ROUTE_MATRIX_2026-10-19_POST-335E1A1.json`、`docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-335E1A1.json`、`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19_POST-335E1A1.json`。
+- 本轮没有对 Demo `aipos` 执行销售、库存、采购或现金写入。
+- Dokploy frontend/backend 实际运行 SHA、构建日志和容器健康状态仍需从控制台独立回读；以上 UAT 的 `sourceCommit` 只表示测试 runner 基线。
 
 ## 仍待验证
 
