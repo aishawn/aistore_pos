@@ -162,7 +162,7 @@ export function ScanInvoicePage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                disabled={loading}
+                disabled={loading || aiEnabled === false || invoiceVisionAvailable === false}
                 className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               >
                 {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}

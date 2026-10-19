@@ -30,6 +30,12 @@
 - AI UI 390/1440 两个视口 `2/2 PASS`，推荐卡片和识别结果均返回，页面错误为 `0`。测试脚本已改为定位实际结果列表，避免依赖不存在的 `#main-content` id。证据：`docs/UAT_AI_UI_2026-10-19_POST-228FA6F_RETRY2.json`。
 - 本轮所有线上检查均为只读或浏览器拦截请求；没有对 Demo 写入销售、采购、库存、现金、反馈或 AI 配置。
 
+## 2026-10-19 AI capability guard 修复
+
+- Invoice Scan 上传按钮现在遵循 `AI_ENABLED` 和 `invoiceVisionAvailable`：AI 关闭或视觉能力不可用时按钮直接禁用，页面仍保留 Odoo Purchases / Replenishment 下一步。
+- 本地 typecheck、Invoice Scan 目标 ESLint、脚本语法和 `git diff --check` 通过；线上 fixture Invoice mock 通过，`0` 个供应商/采购/收货业务写入。证据：`docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-228FA6F.json`。
+- 该修复尚未部署后单独验证；下一轮需确认启用态上传正常，并用能力位 fixture/线上配置确认关闭态按钮禁用。
+
 > **当前有效摘要（2026-10-19）**
 >
 > 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `761e078`；接手时先确认线上实际运行提交。
