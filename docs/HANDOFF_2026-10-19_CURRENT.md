@@ -4,7 +4,50 @@
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`5bcfb72`（最新交接记录）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`65a1e57`（最新 AI surface/UI 证据记录）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+
+## 本次交接摘要
+
+### 已完成并有证据
+
+- 品牌站注册、租户自动登录、Odoo 公司绑定、Outlet/Register 配置、dummy data 初始化，以及删除租户后的认证拒绝。
+- 基础 POS：开班、商品搜索、数量修改、Cash 收款/找零、Card 模拟收款、GST/现金舍入、收据和订单回读、销售扣库存。
+- 退款与现金：Cash/Card 全额退款、退款订单、库存恢复、Cash in/out、正确现金盘点值关班。
+- 采购：隔离公司供应商、RFQ、采购确认、部分收货/backorder、最终收货、重复收货保护和库存回读；该项需要在当前已核实部署版本重新回归。
+- 多租户读取隔离、登出保护、平台删除租户后的认证拒绝。
+- 全站静态页面历史矩阵 `131 路由 x 390/1440 = 262/262 PASS`，以及多个 Retry、Auth replay、列表、订单、报表和移动端回归。
+- AI 关闭策略和鉴权：availability `3/3 PASS`、surface `11/11 PASS`，27 个受保护 AI/config/voice/label/Sommelier 路由匿名访问均为 `401`；AI UI `2/2 PASS`；Sommelier `10/10 PASS`；发票扫描 mock 通过且没有供应商/采购写入。
+- Odoo stocktake 页面/API 的租户、company、库位隔离，叶子库位和库存类型校验，数量/行数边界，提交前重读，应用后库存回读，admin-only 和默认关闭写开关；线上只读回归通过，当前无盘点写入。
+
+### 未完成或只完成部分验证
+
+- Odoo stocktake 的真实隔离公司写入尚未验收：取消不改库存、确认只应用一次、quant reference、库存前后值、跨租户拒绝和普通用户拒绝仍需在一次性隔离租户中完成。生产保持 `ODOO_STOCKTAKE_WRITE_ENABLED=false`。
+- stocktake 数量边界（`1000001`）目前有本地 fixture 证据，但没有有效的线上真实登录交互证据；之前一次尝试被登录壳重定向，不能计为通过。
+- AI 配置写接口虽已加入管理员保护并有控制器单测，但没有普通店员线上 `403` 证据；本地 Maven 测试也未执行。
+- 真实 DashScope 对话、云端语音转写、酒标图像识别、真实发票 OCR 尚未验收；生产 `AI_ENABLED=false`，当前 AI 结果不代表模型已启用。
+- 实体刷卡终端、打印机、钱箱、SMTP 邀请/重置邮件、正式现金差异审批、财务对账未验收。
+- 分单/多支付方式收款和离线 POS 尚未实现或验收，不计入当前基础 POS 通过门槛。
+- 平台店铺状态转换、租户生命周期相关工作区改动尚未提交、未运行后端测试、未部署、未线上验收。
+
+### 当前问题和风险
+
+- Dokploy 当前运行镜像的 frontend/backend SHA、构建日志、健康状态和部署时间没有从控制台独立回读。用户提供的 `7544d03` 只能作为“用户称已部署”的信息，不能替代可审计部署证据。
+- 对 `14a052a`、`0a337c7` 的简化/标准 webhook 请求均返回 HTTP `301` / `Branch Not Match`；更早完整 GitHub payload 对 `5afab93` 等提交曾返回 `200`。需要先修正 Dokploy 分支/触发配置，再确认运行 SHA。
+- 线上只读 UAT 中记录的 deployment SHA 不能自动证明容器实际运行该 SHA；必须以 Dokploy 构建日志或容器标签回读为准。
+- 本地只做了 typecheck、目标 ESLint、脚本语法和 fixture UAT，没有运行 build；当前 Node `22.22.2`，而 `pos-ui/package.json` 声明 Node `>=24`，构建结论应以受支持 Node 或 Dokploy 日志为准。
+- 工作区存在大量未提交的历史 UAT、截图、平台租户代码和配置改动。接手时不得 `git add -A`、清理或重置；只提交明确属于当前修复的文件。
+
+### 建议的接手顺序
+
+1. 在 Dokploy 控制台读取 frontend/backend 当前 SHA、构建日志、健康状态和部署时间，核对 `65a1e57`、`5afab93`、用户所称 `7544d03` 的关系；修复 `Branch Not Match` 后再做新部署。
+2. 用普通店员账号验证 AI 配置写接口返回 `403`，并保留线上响应证据；继续保持生产 AI 关闭。
+3. 使用一次性隔离租户完成 stocktake 写入验收，记录库存前后值、quant reference、取消/重复提交/跨租户/非管理员结果，结束后删除租户并验证认证拒绝。
+4. 在当前已核实部署版本重新执行采购收货和核心冒烟：`signup -> login -> outlet/register -> dummy catalog -> open session -> cash/card sale -> refund -> close register -> delete tenant`。
+5. 将生产 AI、硬件、邮件、正式财务、分单支付、离线 POS 单独列入产品验收计划，不从 mock 或只读测试推断已完成。
+
+### 放行结论
+
+当前整体仍为 **NO-GO**。基础 POS、退款、现金管理和已有采购链路有历史线上证据，AI 关闭策略/鉴权和 stocktake 只读行为有近期线上证据；但部署身份未核实，stocktake 真实写入、普通用户权限、当前版本采购回归及生产运营能力仍缺证据。
 
 ## 本轮继续：Odoo 盘点 P0
 
