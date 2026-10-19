@@ -20,8 +20,10 @@ function execGitHead() {
 
 const routes = [
   { path: "/settings/users", label: "store users" },
+  { path: "/settings/roles", label: "store roles" },
   { path: "/reports/ai/metrics", label: "AI metrics" },
   { path: "/products/odoo", label: "Odoo products" },
+  { path: "/stock/stocktake", label: "stocktake" },
   { path: "/orders/new", label: "supply chain" },
   { path: "/invoices/scan", label: "invoice scan" },
 ];
