@@ -22,6 +22,7 @@ type StocktakeResponse = {
   locations: StocktakeLocation[];
   defaultLocationId: number | null;
   selectedLocation?: StocktakeLocation;
+  locationSource?: "tenant-binding" | "single-warehouse-fallback";
   writeEnabled: boolean;
   products: StocktakeProduct[];
 };
@@ -42,6 +43,7 @@ export default function OdooStocktakePage() {
   const [writeEnabled, setWriteEnabled] = useState(false);
   const [locationLoading, setLocationLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationSource, setLocationSource] = useState<StocktakeResponse["locationSource"]>();
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<StocktakeProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -63,6 +65,7 @@ export default function OdooStocktakePage() {
       .then((data) => {
         if (cancelled) return;
         setLocations(data.locations);
+        setLocationSource(data.locationSource);
         setWriteEnabled(data.writeEnabled);
         setLocationId(data.defaultLocationId ? String(data.defaultLocationId) : "");
       })
@@ -172,6 +175,9 @@ export default function OdooStocktakePage() {
                 <option value="">{locationLoading ? "Loading locations…" : "Choose a location"}</option>
                 {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
               </select>
+              {locationSource === "single-warehouse-fallback" && (
+                <p role="status" className="mt-1.5 text-xs text-[var(--oh-muted)]">Location derived from the store&apos;s only Odoo warehouse. Ask an administrator to save an explicit store binding before enabling stock adjustments.</p>
+              )}
             </div>
             {countLines.length > 0 && (
               <button type="button" onClick={() => setCountLines([])} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">

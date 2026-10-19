@@ -43,6 +43,7 @@ async function runViewport(viewport) {
         locations: [{ id: 7101, name: "Main Warehouse / Stock" }],
         defaultLocationId: 7101,
         selectedLocation: { id: 7101, name: "Main Warehouse / Stock" },
+        locationSource: "tenant-binding",
         writeEnabled,
         products,
       })) });

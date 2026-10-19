@@ -41,7 +41,9 @@ try {
   const apiBody = await apiResponse.json().catch(() => ({}));
   const locations = Array.isArray(apiBody.data?.locations) ? apiBody.data.locations : [];
   const apiReadable = apiResponse.ok() && apiBody.code === 0 && locations.every((location) => Number.isSafeInteger(location.id) && typeof location.name === "string");
-  checks.push({ name: "authenticated stocktake location read", status: apiReadable ? "PASS" : "FAIL", httpStatus: apiResponse.status(), message: apiBody.message ?? null, locationCount: locations.length, writeEnabled: apiBody.data?.writeEnabled ?? null });
+  const locationSource = apiBody.data?.locationSource;
+  const sourceExplained = locationSource === "tenant-binding" || locationSource === "single-warehouse-fallback";
+  checks.push({ name: "authenticated stocktake location read", status: apiReadable && sourceExplained ? "PASS" : "FAIL", httpStatus: apiResponse.status(), message: apiBody.message ?? null, locationCount: locations.length, locationSource: locationSource ?? null, writeEnabled: apiBody.data?.writeEnabled ?? null });
   const storageState = await context.storageState();
 
   for (const viewport of viewports) {

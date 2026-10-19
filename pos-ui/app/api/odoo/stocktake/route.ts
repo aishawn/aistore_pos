@@ -255,7 +255,7 @@ export async function GET(request: NextRequest) {
       ? requestedLocationId
       : defaultLocationId;
     if (!locationId) {
-      return NextResponse.json({ code: 0, message: "OK", data: { locations, defaultLocationId, writeEnabled: process.env.ODOO_STOCKTAKE_WRITE_ENABLED === "true", products: [] } }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ code: 0, message: "OK", data: { locations, defaultLocationId, locationSource: scope.locationSource, writeEnabled: process.env.ODOO_STOCKTAKE_WRITE_ENABLED === "true", products: [] } }, { headers: { "Cache-Control": "no-store" } });
     }
     const location = selectLocation(locations, locationId);
     const query = (request.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 100);
@@ -264,6 +264,7 @@ export async function GET(request: NextRequest) {
       locations,
       defaultLocationId,
       selectedLocation: location,
+      locationSource: scope.locationSource,
       writeEnabled: process.env.ODOO_STOCKTAKE_WRITE_ENABLED === "true",
       products,
     } }, { headers: { "Cache-Control": "no-store" } });
