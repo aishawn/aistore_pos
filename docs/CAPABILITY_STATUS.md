@@ -42,6 +42,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - `SellAiPanel` renders a specific temporary-unavailable message for `50210` and keeps local product/search shortcuts available.
 - The AI enablement gate now checks that failed model responses do not expose `InvalidParameter`, provider URLs, request IDs or `DashScope` details. This candidate is locally typechecked and script-syntax checked; it still needs Java 21 and online verification.
 
+### `9ff8c12` provider error isolation online result
+
+- 线上价格建议 gate：页面可达、只读文案通过、无价格写入。
+- AI provider 请求仍失败（`AI_ENABLED=true` 且 DashScope URL 配置无效），但已返回业务码 `50210` 和安全提示；原始 `InvalidParameter` / URL / request id 泄漏断言 `PASS`。
+- 证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-9FF8C12.json`。真实 AI 仍未放行，需先修正 Dokploy AI 环境。
+
 Statuses:
 
 | Status | Meaning |

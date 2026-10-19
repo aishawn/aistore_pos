@@ -38,6 +38,12 @@
 - `SellAiPanel` 对 `50210` 显示“AI 暂时不可用”的可操作提示，保留商品查询和销售快捷入口。
 - AI gate 新增供应商错误泄漏断言；本地 typecheck、ESLint、脚本语法和 diff check 通过。需下一次部署后在当前错误配置环境验证。
 
+## `9ff8c12` 部署后 provider 隔离验证
+
+- 价格建议线上页面和只读 gate 通过。
+- DashScope 配置仍无效，assistant 请求失败，但响应已变为业务码 `50210` 的安全提示；不再泄漏原始 `InvalidParameter`、URL 或 request id。gate 的 provider 错误脱敏检查通过。
+- 真实 AI 仍是 `NO-GO`，需先修正 Dokploy `AI_DASHSCOPE_BASE_URL` / 模型配置，之后再跑 assistant、voice、label 和 invoice UAT。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。
