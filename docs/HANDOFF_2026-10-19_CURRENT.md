@@ -7,6 +7,13 @@
 - 价格建议搜索/状态筛选/CSV 和只读保护已在公网出现并通过，价格、销售、库存、采购和现金写入均为 `0`。
 - `10facb6` 视觉路由修复已有线上矩阵通过记录；`41507d9`、`4487a12` 已补充证据。Dokploy 容器 SHA、构建日志和健康状态仍未从控制台独立回读。
 
+## 2026-10-19 AI 迭代：价格建议到 Bulk Price Edit
+
+- 价格建议每个商品现在提供 `Bulk edit this product` 深链，携带当前 SKU（无 SKU 时使用商品名）。
+- Bulk Price Edit 页面读取 `search` 查询参数并预填搜索框；路由使用 `Suspense` 包裹 `useSearchParams`，避免 Next.js 静态渲染问题。
+- 本地 fixture UAT 已通过：价格建议页面、SKU/状态筛选、CSV、深链、Bulk 搜索预填、Bulk API 查询参数和 AI 入口均通过，`0` 个非 GET 请求。
+- 证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`。本地未运行 build；线上部署后仍需重跑价格建议认证 gate 和 Bulk 页面只读回归。
+
 > **当前有效摘要（2026-10-19）**
 >
 > 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `761e078`；接手时先确认线上实际运行提交。
@@ -29,7 +36,7 @@
 
 ### 已实现但证据不足，不能标记为完成
 
-- Smart Pricing `/stock/price-suggestions`：本地页面、筛选、CSV 和写保护通过；线上路由、当前部署身份及后续 Bulk Price Edit SKU 预填仍需确认。
+- Smart Pricing `/stock/price-suggestions`：本地页面、筛选、CSV、写保护和 Bulk Price Edit SKU 预填通过；线上当前部署身份及部署后 Bulk 页面只读回归仍需确认。
 - Invoice OCR：当前探针仅证明 provider 可达，返回 `50212`；使用的不是包含真实发票字段的图片，尚未证明 supplier、invoice number、日期、行项目和合计字段提取成功。
 - 采购/收货：已有历史隔离租户证据，但尚未绑定到用户所称 `7544d03` 或 Dokploy 当前容器后重跑。
 - Stocktake：管理员只读页面、权限保护和 location fallback 有证据；真实隔离 Odoo 盘点写入、取消不改库存、重复确认只生效一次、quant reference 和跨租户拒绝尚未验收。生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false`。

@@ -50,6 +50,7 @@ const suggestionPayload = {
 
 const browser = await chromium.launch({ headless: true });
 const writes = [];
+const bulkPriceQueries = [];
 const checks = [];
 const record = (name, ok, evidence = "") => checks.push({ name, status: ok ? "PASS" : "FAIL", evidence });
 const srcRoute = path.join(root, "pos-ui", "src", "app", "stock", "price-suggestions", "page.tsx");
@@ -78,6 +79,23 @@ try {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(suggestionPayload),
+      });
+    }
+    if (url.pathname === "/api/bulk-price-edit") {
+      bulkPriceQueries.push(url.searchParams.get("search") ?? "");
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: 0,
+          message: "OK",
+          data: {
+            items: [{ productId: "101", productName: "DEMO Shiraz", caseQuantity: 6, priceSetName: "Default", prices: [] }],
+            total: 1,
+            page: 1,
+            size: 20,
+          },
+        }),
       });
     }
     if (url.pathname === "/api/auth/me") {
@@ -138,7 +156,13 @@ try {
   const productLink = page.getByRole("link", { name: "Open product" }).first();
   await productLink.waitFor({ state: "visible", timeout: 10000 });
   record("apply CTA present", true, "Open product link present; no apply-price write control");
-
+  const bulkEditLink = page.getByRole("link", { name: "Bulk edit this product" }).first();
+  await bulkEditLink.waitFor({ state: "visible", timeout: 10000 });
+  record(
+    "bulk edit deep link",
+    (await bulkEditLink.getAttribute("href")) === "/stock/bulk-price-edit?search=DEMO-SHIRAZ",
+    await bulkEditLink.getAttribute("href") ?? "missing href",
+  );
   const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
   await page.getByRole("button", { name: "Export CSV" }).click();
   const download = await downloadPromise;
@@ -149,6 +173,14 @@ try {
     download.suggestedFilename().endsWith(".csv") && downloadText.includes("DEMO Shiraz") && downloadText.includes("Suggested price (AUD)"),
     `${download.suggestedFilename()} ${downloadText.slice(0, 180)}`,
   );
+
+  await bulkEditLink.click();
+  const bulkSearch = page.getByPlaceholder("Search for Product or Classification...");
+  await bulkSearch.waitFor({ state: "visible", timeout: 10000 });
+  record("bulk edit pre-fills SKU", await bulkSearch.inputValue() === "DEMO-SHIRAZ", await bulkSearch.inputValue());
+  record("bulk edit requests SKU query", bulkPriceQueries.includes("DEMO-SHIRAZ"), JSON.stringify(bulkPriceQueries));
+  await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("heading", { name: "Price suggestions", exact: true }).waitFor({ timeout: 30000 });
 
   const fab = page.getByRole("button", { name: "Open Orithos AI" }).first();
   await fab.waitFor({ state: "visible", timeout: 15000 });

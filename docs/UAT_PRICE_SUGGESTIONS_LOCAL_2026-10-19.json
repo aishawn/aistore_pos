@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T05:48:58.838Z",
-  "sourceCommit": "7e5e9c74d673f74ab494eed341cf2fc79528d287",
+  "generatedAt": "2026-10-19T07:50:19.515Z",
+  "sourceCommit": "e30db08b1f31f4181e09b5a970a53415a5d20123",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
@@ -27,14 +27,49 @@
       "evidence": "Heading, DEMO row, raise badge, writeEnabled=false visible"
     },
     {
+      "name": "product and SKU search",
+      "status": "PASS",
+      "evidence": "SKU query keeps the matching product visible"
+    },
+    {
+      "name": "empty search state",
+      "status": "PASS",
+      "evidence": "Unmatched query explains that no products match"
+    },
+    {
+      "name": "status filter",
+      "status": "PASS",
+      "evidence": "Raise price filter keeps the matching row visible"
+    },
+    {
+      "name": "status empty state",
+      "status": "PASS",
+      "evidence": "Missing cost filter hides non-matching rows"
+    },
+    {
       "name": "apply CTA present",
       "status": "PASS",
       "evidence": "Open product link present; no apply-price write control"
     },
     {
+      "name": "bulk edit deep link",
+      "status": "PASS",
+      "evidence": "/stock/bulk-price-edit?search=DEMO-SHIRAZ"
+    },
+    {
       "name": "read-only CSV export",
       "status": "PASS",
       "evidence": "orithos-price-suggestions-2026-10-19.csv ﻿\"Product\",\"SKU\",\"Status\",\"Cost (AUD)\",\"Current price (AUD)\",\"Suggested price (AUD)\",\"Current margin\",\"Suggested margin\",\"Sold units (28d)\",\"On hand\",\"Reason\"\r\n\"DEMO Shiraz\",\"DEMO-"
+    },
+    {
+      "name": "bulk edit pre-fills SKU",
+      "status": "PASS",
+      "evidence": "DEMO-SHIRAZ"
+    },
+    {
+      "name": "bulk edit requests SKU query",
+      "status": "PASS",
+      "evidence": "[\"DEMO-SHIRAZ\",\"DEMO-SHIRAZ\"]"
     },
     {
       "name": "ai fab on price page",

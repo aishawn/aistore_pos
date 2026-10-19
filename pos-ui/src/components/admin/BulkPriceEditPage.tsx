@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PlusIcon } from "@/components/icons";
 import { AsyncDependencyNotice, AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
@@ -97,6 +98,8 @@ function PriceCell({
   const [value, setValue] = useState(num(priceBreak?.price));
 
   useEffect(() => {
+    // Keep the local input in sync when the server row changes after a refresh.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(num(priceBreak?.price));
   }, [priceBreak]);
 
@@ -182,7 +185,8 @@ function BulkPriceRowLine({
 
 /** Bulk edit product prices across quantity breaks. */
 export function BulkPriceEditPage() {
-  const [search, setSearch] = useState("");
+  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("search")?.trim() ?? "");
   const [categoryId, setCategoryId] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [page, setPage] = useState(1);

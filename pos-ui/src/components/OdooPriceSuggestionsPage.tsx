@@ -340,6 +340,12 @@ export function OdooPriceSuggestionsPage() {
                     >
                       Open product
                     </Link>
+                    <Link
+                      href={`/stock/bulk-price-edit?search=${encodeURIComponent(product.sku || product.name)}`}
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold"
+                    >
+                      Bulk edit this product
+                    </Link>
                     <button
                       type="button"
                       onClick={() => setExpandedId((current) => (current === product.id ? null : product.id))}
