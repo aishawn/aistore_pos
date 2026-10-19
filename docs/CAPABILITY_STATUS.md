@@ -46,6 +46,14 @@
 - 本地验证：`npm run typecheck`、目标 ESLint、两个 UAT 脚本 `node --check`、`git diff --check` 均通过；Stock List/Capped Pricing/Bulk Price Edit `6/6 PASS`，Vendor Connections `2/2 PASS`，页面错误 `0`，拦截业务写入 `0`。证据：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20.json`、`docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-20.json`。
 - 该批次尚未由 Dokploy 运行镜像验证；部署前继续保持 **NO-GO**，部署后需回归 `/stock/list`、`/stock/capped-pricing`、`/stock/bulk-price-edit` 和 `/utilities/vendor-connections` 的 390/1440 只读布局及操作可见性。
 
+### 2026-10-20 部署后验证与共享安全区修复
+
+- `AdminPageLayout` 在手机端增加底部安全空间，避免固定 AI 助手按钮遮挡列表最后一行、分页或表单操作；桌面端保持原有密度。
+- `d350428` 部署后公网价格/库存回归 `8/8 PASS`，Stock List 390px 已按卡片字段验证，Capped Pricing 仍按横向表格验证；非 GET 业务请求 `0`。证据：`docs/UAT_PRICING_POST_D350428_RETRY.json`。
+- 公网诚实化页面矩阵 `18/18 PASS`，覆盖 9 页面 × 390/1440，无横向溢出、页面错误或非 GET 请求。证据：`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_D350428.json`。
+- 公网 Vendor Connections `2/2 PASS`；当前生产无连接数据，因此验证空状态、标题、无溢出、无页面错误和业务写入 `0`，不把空状态误报为移动卡片已被真实数据渲染。证据：`docs/UAT_VENDOR_CONNECTIONS_ONLINE_D350428.json`。
+- 上述公网结果的 `deployment=unverified-after-deploy`；webhook 只证明 Dokploy 接收了部署请求，容器 SHA、完整构建日志和健康状态仍需控制台回读。整体保持 **NO-GO**。
+
 ### 2026-10-20 `854bf6a` 后线上只读复核
 
 - 表格/表单 DOM 审计 `14/14 PASS`，覆盖用户、角色、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描的 390/1440 视口；页面错误和意外业务写入均为 `0`。证据：`docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`。

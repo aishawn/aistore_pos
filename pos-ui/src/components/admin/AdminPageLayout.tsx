@@ -167,7 +167,7 @@ export function AdminPageLayout({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("h-full overflow-auto bg-[var(--oh-surface)] font-sans print:overflow-visible print:bg-white print:p-0", compact ? "p-4 md:p-5" : "p-5 md:p-6")}>
+    <div className={cn("h-full overflow-auto bg-[var(--oh-surface)] font-sans pb-24 md:pb-6 print:overflow-visible print:bg-white print:p-0", compact ? "p-4 md:p-5" : "p-5 md:p-6")}>
       <div className={cn("flex flex-wrap items-start justify-between gap-4 print:hidden", compact ? "mb-3" : "mb-5")}>
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">{title}</h1>

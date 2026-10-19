@@ -616,6 +616,13 @@
 - 新增/更新 UAT：`scripts/pilot-stock-tables-responsive-local-uat.mjs`、`scripts/pilot-vendor-connections-responsive-local-uat.mjs`；本地证据为 Stock 三页 `6/6 PASS`、Vendor `2/2 PASS`，页面错误和业务写入均为 `0`。结果文件：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20.json`、`docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-20.json`。
 - 当前只完成本地静态检查和 fixture 浏览器验证，未运行本地 build；需集中提交后推送，再从 Dokploy 控制台核对构建日志、容器 SHA 和健康状态，最后执行公网只读回归。
 
+### 2026-10-20 部署后回归与固定助手安全区
+
+- 公网 `d350428` 后价格/库存回归 `8/8 PASS`，诚实化页面矩阵 `18/18 PASS`；供应商连接空状态 `2/2 PASS`。所有回归均拦截业务非 GET 请求，写入计数为 `0`。
+- 公网 Stock List 390px 截图确认产品卡片字段完整，固定 AI 助手按钮不再覆盖分页或底部内容；本地安全区证据：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20_SAFEAREA.json`。
+- 新增共享修复：`pos-ui/src/components/admin/AdminPageLayout.tsx` 手机端预留底部空间；新增公网回归脚本 `scripts/pilot-vendor-connections-online-uat.mjs`，并修正价格回归脚本以识别 Stock List 卡片布局。
+- 公网结果仍不能证明 Dokploy 容器实际运行 `d350428`；必须从控制台回读运行 SHA、backend/frontend 构建日志和健康状态。上述脚本与证据文件将在下一次集中提交时纳入版本。
+
 - `main` 与 `origin/main` 当前为 `5bcfb72`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
 - 工作区仍有大量未提交变更，当前可见包括能力状态/旧交接文档、平台租户生命周期后端代码与测试、平台店铺详情前端、多个 UAT JSON/截图以及 `tsconfig.json`。Odoo stocktake 页面/API 已提交；其本地 UAT 证据和截图目前仍未提交。AI 修复源码和 Odoo stocktake 实现均已提交，不应再按未提交代码处理。接手时检查实际 diff 和归属。

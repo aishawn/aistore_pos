@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-19T20:51:22.176Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "d350428",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated Vendor Connections responsive read-only regression",
+  "status": "PASS",
+  "passed": 2,
+  "failed": 0,
+  "checks": [
+    {
+      "viewport": 390,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "mobileListVisible": null,
+      "desktopTableVisible": null,
+      "hasVendorText": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": [],
+      "pass": true
+    },
+    {
+      "viewport": 1440,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "mobileListVisible": null,
+      "desktopTableVisible": null,
+      "hasVendorText": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": [],
+      "pass": true
+    }
+  ],
+  "blockedWrites": []
+}

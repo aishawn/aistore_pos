@@ -65,6 +65,7 @@ try {
         || await page.getByText(route.heading, { exact: true }).first().isVisible().catch(() => false);
       const hasDataTable = ["/stock/list", "/stock/capped-pricing"].includes(route.path);
       let mobileTableScroll = null;
+      let mobileCardFields = null;
       let tableColumnsDoNotOverlap = null;
       let columnsAlignWithFirstRow = null;
       let headerTextFits = null;
@@ -107,6 +108,19 @@ try {
         columnsAlignWithFirstRow = layout.columnsAlignWithFirstRow;
         headerTextFits = layout.headerTextFits;
       }
+      if (route.path === "/stock/list" && viewport.width === 390) {
+        const mobileEditor = page.locator('input[aria-label^="Product name for "]').last();
+        const hasMobileEditor = await mobileEditor.count() > 0;
+        mobileCardFields = !hasMobileEditor || await Promise.all([
+          mobileEditor.isVisible(),
+          page.locator('dl dt', { hasText: "Category" }).last().isVisible(),
+          page.locator('dl dt', { hasText: "Stock on hand" }).last().isVisible(),
+          page.locator('input[aria-label^="Price quantity for "]').last().isVisible(),
+          page.locator('input[aria-label^="Cost for "]').last().isVisible(),
+          page.locator('input[aria-label^="Price for "]').last().isVisible(),
+          page.locator('input[aria-label^="Profit margin for "]').last().isVisible(),
+        ]).then((fields) => fields.every(Boolean));
+      }
       const dimensions = await page.evaluate(() => ({
         width: document.documentElement.scrollWidth,
         viewport: window.innerWidth,
@@ -121,6 +135,7 @@ try {
         loadingComplete,
         noHorizontalOverflow: dimensions.width <= dimensions.viewport + 1,
         mobileTableScroll: viewport.width === 390 && hasDataTable ? mobileTableScroll : null,
+        mobileCardFields,
         tableColumnsDoNotOverlap,
         columnsAlignWithFirstRow,
         headerTextFits,
@@ -143,7 +158,8 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.headingVisible === false
   || check.loadingComplete === false
   || check.noHorizontalOverflow === false
-  || check.mobileTableScroll === false
+  || (check.mobileTableScroll === false && check.route !== "/stock/list")
+  || check.mobileCardFields === false
   || check.tableColumnsDoNotOverlap === false
   || check.columnsAlignWithFirstRow === false
   || check.headerTextFits === false
