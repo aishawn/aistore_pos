@@ -66,6 +66,13 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - AI client capability flags、assistant、语音和视觉接口共用该 readiness guard；配置无效时不发起模型请求，返回 `50301` 并将 capability 标为不可用。
 - 新增 `AiProviderConfigTest` 和 gate 的 readiness 断言；本机未运行 Maven/build，需 Java 21/线上验证。
 
+### `392c85f` readiness guard 部署后结果
+
+- 价格建议页面和只读 gate 继续通过。
+- 线上 `assistantAvailable=true`，说明 base URL 形式校验通过；实际 DashScope 仍返回 provider `url error`，assistant 已安全返回 `50210`，无原始错误泄漏。
+- 这将阻断范围收窄到 DashScope 区域/模型或 Spring AI endpoint 配置；需要 Dokploy 构建日志和环境变量核对，不能靠前端或 mock UAT 放行。
+- 证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-392C85F.json`。
+
 Statuses:
 
 | Status | Meaning |

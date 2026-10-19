@@ -70,6 +70,11 @@
 - 新增统一 URL readiness 检查，拒绝带 API path/query 的 DashScope base URL；配置无效时 assistant、voice、label、invoice capability 均标为不可用，接口返回 `50301`，避免外部请求。
 - 新增 Java 单测和线上 gate readiness 断言；本地不运行 Maven/build，需 Java 21 CI/部署后验证。
 
+## `392c85f` 部署后回归
+
+- 价格建议和只读边界通过；assistant 原始 provider 错误仍被转换为 `50210` 安全提示。
+- base URL 形式 readiness 通过，但 DashScope 实际仍返回 `url error`，所以真实 AI 仍未放行。下一步需要 Dokploy 控制台核对 `AI_DASHSCOPE_BASE_URL`、region/model 和 Spring AI endpoint 配置。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。
