@@ -17,13 +17,32 @@ const getSession = async (context) => {
   const response = await context.request.get(`${base}/api/odoo/session`);
   return { status: response.status(), body: await response.json().catch(() => ({})) };
 };
-const waitForProductPageData = async (page, label) => {
+const waitForProductPageData = async (page, label, status = 0, responses = [], errors = []) => {
   try {
-    await page.waitForFunction(() => document.querySelector("tbody tr") || document.querySelector('[role="alert"]') || document.body.innerText.includes("Connect Odoo to view products"), undefined, { timeout: 30000 });
+    await page.waitForFunction(() => {
+      const hasRows = Boolean(document.querySelector("tbody tr:not([aria-hidden='true'])"));
+      const hasTextAlert = [...document.querySelectorAll('[role="alert"]')]
+        .some((element) => Boolean(element.textContent?.trim()));
+      const body = document.body.innerText;
+      const refreshReady = document.querySelector('button[aria-label="Refresh products"]:not([disabled])');
+      return hasRows
+        || hasTextAlert
+        || Boolean(refreshReady && (body.includes("No POS products yet") || body.includes("No matching products")))
+        || body.includes("Connect Odoo to view products")
+        || body.includes("No POS products yet");
+    }, undefined, { timeout: 30000 });
   } catch {
-    throw new Error(`${label}: product page did not reach a data/error/connection state; body=${(await page.locator("main").innerText().catch(() => "<no main>" )).slice(0, 400)}`);
+    const body = (await page.locator("body").innerText().catch(() => "<no body>" )).slice(0, 500);
+    throw new Error(`${label}: product page did not reach a data/error/connection state; status=${status} url=${page.url()} title=${await page.title().catch(() => "<no title>")} body=${body} responses=${JSON.stringify(responses)} pageErrors=${JSON.stringify(errors)}`);
   }
-  if (await page.getByRole("alert").count()) throw new Error(`${label}: ${(await page.getByRole("alert").innerText()).slice(0, 240)}; main=${(await page.locator("main").innerText().catch(() => "<no main>")).slice(0, 400)}`);
+  const alert = await page.locator('[role="alert"]').evaluateAll((elements) =>
+    elements.map((element) => element.textContent?.trim() ?? "").find(Boolean) ?? "",
+  );
+  if (alert) {
+    const alertText = alert.slice(0, 240);
+    const body = (await page.locator("body").innerText().catch(() => "<no body>" )).slice(0, 500);
+    throw new Error(`${label}: alert=${alertText}; status=${status} url=${page.url()} body=${body} responses=${JSON.stringify(responses)} pageErrors=${JSON.stringify(errors)}`);
+  }
   if (await page.getByText("Connect Odoo to view products", { exact: true }).count()) throw new Error(`${label}: product page reports Odoo disconnected`);
   if (!(await page.locator("tbody tr").count())) throw new Error(`${label}: no product rows; page says ${(await page.locator("main").innerText()).slice(0, 300)}`);
 };
@@ -32,6 +51,17 @@ const { chromium } = await import("playwright");
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
 const page = await context.newPage();
+const productResponses = [];
+const productErrors = [];
+page.on("pageerror", (error) => productErrors.push(error.message));
+page.on("response", async (response) => {
+  if (!new URL(response.url()).pathname.startsWith("/api/odoo/")) return;
+  productResponses.push({
+    url: response.url(),
+    status: response.status(),
+    body: (await response.text().catch(() => "")).slice(0, 800),
+  });
+});
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -59,9 +89,17 @@ try {
   }
   record("First business page reconnects without manual Connect", "PASS", "After clearing the Odoo cookie, replenishment loaded through its data API and returned to the normal page without a manual connect action.");
 
-  await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 30000 });
-  await waitForProductPageData(page, "Product catalogue initial load failed");
+  const productNavigation = await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  try {
+    await page.getByRole("heading", { name: "Products", exact: true }).waitFor({ timeout: 30000 });
+  } catch {
+    const body = (await page.locator("body").innerText().catch(() => "<no body>" )).slice(0, 500);
+    throw new Error(`Product catalogue heading missing: status=${productNavigation?.status() ?? 0} url=${page.url()} title=${await page.title().catch(() => "<no title>")} body=${body}`);
+  }
+  // The route shell renders "No records" before the client component hydrates.
+  // Give the first session and records effects a chance to start before checking state.
+  await page.waitForTimeout(2500);
+  await waitForProductPageData(page, "Product catalogue initial load failed", productNavigation?.status() ?? 0, productResponses, productErrors);
   const clearInPageSession = await page.evaluate(async () => {
     const response = await fetch("/api/odoo/session", { method: "DELETE", credentials: "same-origin", headers: { "Origin": location.origin } });
     return response.ok;

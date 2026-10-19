@@ -7,6 +7,8 @@
 - 最新主店只读静态矩阵已完成：`139` 路由 × `390/1440`，全部 `278/278 PASS`，无 HTTP 失败、横向溢出或页面错误。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-19_PRE-ROUTE-MIGRATION.json`。该证据是当前线上基线，尚不代表新路由补丁已部署。
 - 线上 pricing 回归 `8/8 PASS`（Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions × 390/1440），证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-B784457.json`。
 - Odoo 自动恢复专项仍为 `4 PASS / 1 FAIL`：登录、service-account 配置、清 cookie、补货页自动恢复通过；产品目录初始加载失败，需要在新路由部署后重跑。当前失败不能标记为产品数据故障，需结合新页面和网络响应重新确认。
+- 路由修复提交 `6aa867c` 已推送并由 Dokploy 接受部署；pricing 线上回归仍为 `8/8 PASS`。自动恢复脚本随后修正了两个判定问题：忽略空的全局 `role=alert`，并等待产品目录客户端 hydration 完成后再判断 SSR 的 `No records`。修正后线上自动恢复专项 `6/6 PASS`，证据：`docs/UAT_ODOO_AUTORECOVER_2026-10-19_POST-6AA867C_FINAL.json`。
+- 自动恢复最终证据覆盖：管理员登录、service-account 配置、清除 Odoo cookie、补货页无手动 Connect 恢复、产品目录页面内读请求自动恢复、Odoo 用户及 `orithos_store1/00004` POS session 恢复。所有请求仍为只读或会话清理，不包含销售、库存、采购、退款或关班写入。
 - 前端 `npm run typecheck`、脚本 `node --check`、`git diff --check` 通过；按约束未运行本地 build。后端 `AiProviderConfig` import 已存在于当前 `main`（`ea8f1b6`），本次 Dokploy #38 错误对应旧源码快照。
 
 ## 2026-10-19 当前批次：价格编辑与移动端表格
