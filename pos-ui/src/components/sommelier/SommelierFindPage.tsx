@@ -131,7 +131,7 @@ export function SommelierFindPage() {
 
   const title =
     step === "results"
-      ? "Orion Recommendation"
+      ? "Wine recommendations"
       : "Find a wine";
   const subtitle =
     step === "results"

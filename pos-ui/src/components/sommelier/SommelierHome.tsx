@@ -14,7 +14,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
 
   return (
     <SommelierShell
-      title="Orion Sommelier"
+      title="Wine Assistant"
       subtitle="Help the customer find the right bottle from this store — then help sell it."
     >
       <div className="grid gap-4">

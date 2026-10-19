@@ -252,7 +252,8 @@ function SidebarNavGroup({
                     if (!event.defaultPrevented) onNavigate?.();
                   }}
                   className={cn(
-                    "oh-type-label relative flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 font-medium transition-colors",
+                    "oh-type-label relative flex gap-2 rounded-md px-2 py-2 font-medium transition-colors",
+                    item.hint ? "items-start whitespace-normal" : "items-center whitespace-nowrap",
                     active
                       ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
                       : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
@@ -280,7 +281,14 @@ function SidebarNavGroup({
                       )}
                     />
                   ) : null}
-                  {item.more ? "More" : item.label}
+                  {item.hint ? (
+                    <span className="min-w-0">
+                      <span className="block">{item.more ? "More" : item.label}</span>
+                      <span className="mt-0.5 block text-[12px] font-normal leading-4 text-[var(--oh-muted)]">
+                        {item.hint}
+                      </span>
+                    </span>
+                  ) : item.more ? "More" : item.label}
                 </Link>
               </li>
             );

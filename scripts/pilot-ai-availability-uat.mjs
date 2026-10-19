@@ -50,11 +50,13 @@ try {
   const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await dialog.waitFor({ state: "visible", timeout: 15000 });
   await dialog.getByText("AI is disabled for this store", { exact: true }).waitFor({ timeout: 15000 });
-  record("Disabled AI status copy", "PASS", "Assistant header explains that production AI is disabled before a request is sent.");
+  await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 15000 });
+  const composer = dialog.getByPlaceholder("AI chat is off for this store");
+  await composer.waitFor({ state: "visible", timeout: 15000 });
+  if (await composer.isEnabled()) throw new Error("AI_COMPOSER_ENABLED_WHILE_STORE_AI_DISABLED");
+  record("Disabled AI status copy", "PASS", "Assistant header and composer explain that production AI chat is off before a request is sent.");
 
-  const composer = page.getByPlaceholder("Ask Orithos AI…");
-  await composer.fill("open sell");
-  await composer.press("Enter");
+  await dialog.getByRole("button", { name: "Open sell", exact: true }).click();
   await page.waitForURL((url) => url.pathname === "/", { timeout: 15000 });
   record("Local sell shortcut remains available", "PASS", "The local open-sell command navigated without an AI or business write request.");
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });

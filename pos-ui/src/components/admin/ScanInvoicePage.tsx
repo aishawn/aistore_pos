@@ -104,7 +104,7 @@ export function ScanInvoicePage() {
         <div className="mx-auto w-full max-w-5xl">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Purchasing · Documents</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Review the details extracted from your invoice before saving it as a received order.</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">OCR is preview-only in this pilot. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.</p>
         </div>
       </header>

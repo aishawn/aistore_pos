@@ -56,7 +56,7 @@ async function runViewport(viewport) {
   await page.getByRole("button", { name: "Recommend", exact: true }).click();
   const recommendHttp = await recommendResponse;
   if (!recommendHttp.ok()) throw new Error(`RECOMMEND_HTTP_${recommendHttp.status()}`);
-  await page.getByRole("heading", { name: "Orion Recommendation" }).waitFor({ timeout: 120000 });
+  await page.getByRole("heading", { name: "Wine recommendations" }).waitFor({ timeout: 120000 });
   const recommendationCards = await page.locator("article").count();
 
   await page.goto(`${base}/sommelier/identify`, { waitUntil: "networkidle", timeout: 60000 });
@@ -81,8 +81,7 @@ async function runViewport(viewport) {
   await page.getByRole("button", { name: "Similar but cheaper", exact: true }).click();
   await page.getByText(/cheaper|No cheaper/i).first().waitFor({ timeout: 60000 });
 
-  // Overview exposes the floating assistant entry; the Sell home intentionally
-  // hides the duplicate FAB because its in-page entry owns that surface.
+  // Every signed-in store page, including overview, exposes the floating assistant.
   await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
   const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
   await fab.waitFor({ state: "visible", timeout: 30000 }).catch(async () => {
@@ -97,13 +96,13 @@ async function runViewport(viewport) {
   if (await assistant.getByRole("button", { name: "Voice input" }).isEnabled()) {
     throw new Error(`AI_VOICE_ENABLED_WHILE_STORE_AI_DISABLED_${viewport.width}`);
   }
-  const composer = assistant.getByPlaceholder("Ask Orithos AI…");
+  const composer = assistant.getByPlaceholder("AI chat is off for this store");
   await composer.waitFor({ state: "visible", timeout: 10000 });
-  await page.waitForFunction(
-    () => document.activeElement?.getAttribute("placeholder") === "Ask Orithos AI…",
-    undefined,
-    { timeout: 5000 },
-  );
+  if (await composer.isEnabled()) {
+    throw new Error(`AI_COMPOSER_ENABLED_WHILE_STORE_AI_DISABLED_${viewport.width}`);
+  }
+  await assistant.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
+  await assistant.getByText("Shortcuts still work without AI chat").waitFor({ timeout: 10000 });
   for (let index = 0; index < 6; index += 1) {
     await page.keyboard.press("Tab");
     const trapped = await assistant.evaluate((element) => element.contains(document.activeElement));
@@ -128,9 +127,10 @@ async function runViewport(viewport) {
     { timeout: 1500 },
   ).catch(() => { throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`); });
   await restoredFab.click();
-  await composer.fill("look up product DEMO");
-  await composer.press("Enter");
-  await page.getByText(/AI assistant is not enabled|could not connect/i).waitFor({ timeout: 60000 });
+  await assistant.waitFor({ state: "visible", timeout: 10000 });
+  if (await composer.isEnabled()) {
+    throw new Error(`AI_COMPOSER_STILL_ENABLED_${viewport.width}`);
+  }
   results.push({ viewport: viewport.width, recommendationCards, identifyItems, pageErrors });
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
   await context.close();

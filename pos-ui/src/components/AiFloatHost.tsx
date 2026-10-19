@@ -6,39 +6,15 @@ import { SellAiPanel } from "@/components/SellAiPanel";
 import { useAiAssistant } from "@/lib/ai-assistant";
 import { getUiMode } from "@/lib/ui-mode";
 
-/** Routes (and nested paths) that show the floating Orithos AI entry. */
-const AI_FLOAT_PREFIXES = [
-  "/overview",
-  "/products",
-  "/classifications",
-  "/suppliers",
-  "/orders",
-  "/stocktake",
-  "/stock/list",
-  "/stock/external-stocktake",
-  "/stocktake/external",
-  "/stock/capped-pricing",
-  "/stock/bulk-price-edit",
-  "/stock/import-supplier-products",
-  "/stock/buying-periods",
-  "/customers",
-  "/customer-groups",
-  "/pricelists",
-  "/giftcards",
-  "/reports",
-] as const;
-
-export function shouldShowAiFloat(pathname: string): boolean {
-  if (pathname === "/sommelier" || pathname.startsWith("/sommelier/")) return false;
-  if (pathname === "/invoices/scan" || pathname.startsWith("/invoices/")) return false;
-  // Sell home (/), mobile AI home (/m), and checkout share the assistant panel.
-  if (pathname === "/" || pathname === "/m" || pathname === "/finalise") return true;
-  return AI_FLOAT_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+/**
+ * AppShell mounts this host only on signed-in store pages.
+ * Login, signup, and the platform control plane never reach it.
+ */
+export function shouldShowAiFloat(): boolean {
+  return true;
 }
 
-/** Global floating AI host — mounts on inventory / sell / report routes via AppShell. */
+/** Global floating AI host — every store-shell route. */
 export function AiFloatHost() {
   const pathname = usePathname();
   const { expanded, setExpanded } = useAiAssistant();
@@ -52,13 +28,12 @@ export function AiFloatHost() {
     }
   }, [pathname, setExpanded]);
 
-  if (!shouldShowAiFloat(pathname)) return null;
+  if (!shouldShowAiFloat()) return null;
 
   return (
     <SellAiPanel
       expanded={expanded}
       onExpandedChange={setExpanded}
-      hideFab={pathname === "/" || pathname === "/finalise" || pathname === "/products/odoo" || pathname === "/customers/odoo" || pathname === "/suppliers/odoo" || pathname === "/reports/dashboard"}
     />
   );
 }

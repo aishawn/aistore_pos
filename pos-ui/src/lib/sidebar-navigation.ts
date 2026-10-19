@@ -15,6 +15,8 @@ export interface SidebarGroupItem {
   href: string;
   /** Renders as "+ More" for expandable module hubs. */
   more?: boolean;
+  /** One-line description shown under the label. */
+  hint?: string;
 }
 
 export interface SidebarGroup {
@@ -78,11 +80,10 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Orithos AI",
     icon: "sommelier",
     items: [
-      { label: "Replenishment Plan", href: "/stock/replenishment" },
-      { label: "Scan Supplier Invoice", href: "/invoices/scan" },
-      { label: "Wine Assistant", href: "/sommelier" },
-      { label: "Find a Wine", href: "/sommelier/find" },
-      { label: "Identify Wine Label", href: "/sommelier/identify" },
+      { label: "Wine Assistant", href: "/sommelier", hint: "Find a wine or identify a label" },
+      { label: "Find a Wine", href: "/sommelier/find", hint: "Recommend in-stock bottles by budget and taste" },
+      { label: "Identify Wine Label", href: "/sommelier/identify", hint: "Search by name, barcode, or label photo" },
+      { label: "Scan Supplier Invoice", href: "/invoices/scan", hint: "Preview only. Does not create a purchase" },
     ],
   },
   {

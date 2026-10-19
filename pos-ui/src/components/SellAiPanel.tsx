@@ -73,12 +73,18 @@ interface ChatMessage {
   reportId?: number | null;
 }
 
-const DEMO_MESSAGES: ChatMessage[] = [
-  {
-    role: "assistant",
-    text: "Hi, I'm the Orithos AI assistant. Ask me to create customers, look up products, or check sales.",
-  },
-];
+const ENABLED_GREETING =
+  "Hi, I'm the Orithos AI assistant. Ask me to create customers, look up products, or check sales.";
+const DISABLED_GREETING =
+  "AI chat is off for this store. The shortcuts below still open the right page.";
+
+function greetingText(enabled: boolean | null): string {
+  return enabled === false ? DISABLED_GREETING : ENABLED_GREETING;
+}
+
+function isStockGreeting(text: string): boolean {
+  return text === ENABLED_GREETING || text === DISABLED_GREETING;
+}
 
 function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
   if (error instanceof ApiError && error.status === 401) {
@@ -109,22 +115,21 @@ const SELL_VIEWS = new Set<LeftView>(["keys", "parked", "customers", "promotions
 interface SellAiPanelProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  /** When true, the corner FAB is hidden (in-page entry opens the panel). */
-  hideFab?: boolean;
 }
 
 /** Sell page AI chat panel — intent → frontend dispatcher. */
 export function SellAiPanel({
   expanded,
   onExpandedChange,
-  hideFab = false,
 }: SellAiPanelProps) {
   const mobileOnly = getUiMode() === "mobile";
   const sell = useOptionalSellScreen();
   const ai = useOptionalAiAssistant();
   const router = useRouter();
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>(DEMO_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: "assistant", text: ENABLED_GREETING },
+  ]);
   const [listening, setListening] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -340,16 +345,25 @@ export function SellAiPanel({
   }, [messages, busy]);
 
   useEffect(() => {
-    if (expanded) {
+    if (expanded && aiEnabled !== false) {
       requestAnimationFrame(() => inputRef.current?.focus());
     }
-  }, [expanded]);
+  }, [expanded, aiEnabled]);
 
   useEffect(() => {
     let cancelled = false;
     void fetchAiClientConfig()
       .then((config) => {
-        if (!cancelled) setAiEnabled(config.enabled);
+        if (cancelled) return;
+        setAiEnabled(config.enabled);
+        setMessages((prev) => {
+          if (prev.length !== 1 || prev[0]?.role !== "assistant" || !isStockGreeting(prev[0].text)) {
+            return prev;
+          }
+          const next = greetingText(config.enabled);
+          if (prev[0].text === next) return prev;
+          return [{ role: "assistant", text: next }];
+        });
       })
       .catch(() => {
         // The assistant request still provides the authoritative error state.
@@ -418,7 +432,7 @@ export function SellAiPanel({
 
   function clearChat() {
     if (busy || busyRef.current) return;
-    setMessages(DEMO_MESSAGES);
+    setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
     setThreadId(null);
   }
 
@@ -432,7 +446,7 @@ export function SellAiPanel({
 
   async function submitInput() {
     const trimmed = input.trim();
-    if (!trimmed || busy || busyRef.current) return;
+    if (!trimmed || busy || busyRef.current || aiEnabled === false) return;
     await runIntent(trimmed);
   }
 
@@ -716,6 +730,10 @@ export function SellAiPanel({
     }
     // Report shortcuts go through the AI intent pipeline, not sell-pad actions.
     if (action === "Today's sales") {
+      if (aiEnabled === false) {
+        openWorkspace("/history/odoo", "Opened sales history.");
+        return;
+      }
       void runIntent("Today's sales");
       return;
     }
@@ -726,12 +744,13 @@ export function SellAiPanel({
     runSellAction(action);
   }
 
+  const chatOff = aiEnabled === false;
   const composer = (
     <div className="flex w-full items-center gap-2.5">
       <div
         className={cn(
           "flex h-[48px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[var(--oh-border)] bg-white px-4 transition-[border-color,box-shadow] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-orange-muted)]",
-          busy && "pointer-events-none opacity-60",
+          (busy || chatOff) && "pointer-events-none opacity-60",
         )}
         style={{ boxShadow: FLOAT_SHADOW }}
       >
@@ -746,9 +765,9 @@ export function SellAiPanel({
             e.preventDefault();
             void submitInput();
           }}
-          disabled={busy}
-          readOnly={busy}
-          placeholder={busy ? "Waiting for reply…" : "Ask Orithos AI…"}
+          disabled={busy || chatOff}
+          readOnly={busy || chatOff}
+          placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"}
           className="min-w-0 flex-1 bg-transparent text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] disabled:cursor-not-allowed"
         />
       </div>
@@ -885,7 +904,9 @@ export function SellAiPanel({
 
             <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
               <div className="flex items-center justify-end gap-2">
-                {voiceStatus ? (
+                {aiEnabled === false ? (
+                  <p className="text-[13px] text-[var(--oh-muted)]">Shortcuts still work without AI chat</p>
+                ) : voiceStatus ? (
                   <p className="min-w-0 flex-1 truncate text-right text-[13px] font-medium text-[var(--oh-primary)]">
                     {voiceStatus}
                   </p>
@@ -918,7 +939,7 @@ export function SellAiPanel({
         </div>
       )}
 
-      {!expanded && !hideFab && (
+      {!expanded && (
         <button
           type="button"
           onClick={onFabClick}
@@ -940,11 +961,9 @@ export function SellAiPanel({
     </div>
   );
 
-  const showFloat = expanded || !hideFab;
-
   return (
     <>
-      {mounted && showFloat ? createPortal(floatUi, document.body) : null}
+      {mounted ? createPortal(floatUi, document.body) : null}
       {panelDialogs}
     </>
   );
@@ -961,7 +980,7 @@ function DialogueView({
   onClear: () => void;
   busy?: boolean;
 }) {
-  const canClear = !busy && messages.length > DEMO_MESSAGES.length;
+  const canClear = !busy && messages.length > 1;
   return (
     <div className="flex h-full flex-col p-3.5">
       <div className="mb-2.5 flex items-center justify-between gap-2">

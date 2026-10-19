@@ -29,13 +29,13 @@ export function SommelierShell({
                 href={homeHref}
                 className="mb-2 inline-flex text-[13px] font-semibold text-[var(--oh-primary)]"
               >
-                Orion Sommelier
+                Wine Assistant
               </Link>
             )}
             <div className="flex items-center gap-2">
               <Wine size={21} strokeWidth={1.8} className="text-[var(--oh-primary)]" />
               <h1 className="text-[20px] font-semibold tracking-tight sm:text-[24px]">
-                {title ?? "Orion Sommelier"}
+                {title ?? "Wine Assistant"}
               </h1>
             </div>
             {subtitle ? (
