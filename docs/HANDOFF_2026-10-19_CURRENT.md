@@ -603,6 +603,12 @@
 - 本次只确认部署已被接受，尚未从 Dokploy 控制台回读 backend/frontend 实际容器 SHA、完整 Maven/Next 构建日志、健康状态和完成时间。完成这些回读前，不把本次部署标记为构建通过。
 - 本地 Maven 编译在当前 Windows 工作区被既有源码编码错误阻断（`ApiResult.java`、`AiReportSchemaMigrator.java` 等非本次改动文件），未将该结果归因于 `AiProviderConfig`；生产构建仍以 Dokploy Java 21 日志为准。
 
+### 2026-10-20 Dokploy #38 后续触发记录
+
+- 已核对 `main` 与 `origin/main` 均为 `0ceb21ff2cd89caf4b6897bc8a93091f90ce0938`；该提交历史包含 `ea8f1b6` 的两个显式 import 修复，且 `AiProviderConfig.java` 已被 Git 跟踪。#38 的 `cannot find symbol` 因此属于旧源码快照，不需要再次修改控制器。
+- 使用现有 compose webhook 发送 `ref=refs/heads/main`、`after=0ceb21ff2cd89caf4b6897bc8a93091f90ce0938` 的 push payload，返回 `HTTP 301 {"message":"Branch Not Match"}`。本次没有启动新的 Dokploy 构建，不能把该响应记为部署成功。
+- 下一步应在 Dokploy 控制台确认 Compose 的 Git 分支设置；手动 Deploy 必须选择包含 `ea8f1b6` 的 `0ceb21f`（或更晚提交），并回读 backend 的 Maven 日志。`Parenthesis` 仅为弃用警告，不是失败原因。
+
 - `main` 与 `origin/main` 当前为 `5bcfb72`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
 - 工作区仍有大量未提交变更，当前可见包括能力状态/旧交接文档、平台租户生命周期后端代码与测试、平台店铺详情前端、多个 UAT JSON/截图以及 `tsconfig.json`。Odoo stocktake 页面/API 已提交；其本地 UAT 证据和截图目前仍未提交。AI 修复源码和 Odoo stocktake 实现均已提交，不应再按未提交代码处理。接手时检查实际 diff 和归属。
