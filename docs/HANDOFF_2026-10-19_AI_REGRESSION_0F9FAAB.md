@@ -57,3 +57,11 @@ HTTP 301
 在上述检查后重新执行 AI 全量回归：功能 `14/14 PASS`、metrics `9/9 PASS`、能力位 `PASS`、AI UI `2/2 PASS`，assistant intent 为 `search_product` 且 metrics path 严格匹配，业务或配置写入 `0`。证据：`docs/UAT_AI_REGRESSION_ONLINE_4D97862.json`。
 
 提交 `6ec5dc3` 为供应链 Rules & prices 设置控件补充可访问标签。线上打开该折叠面板后，27 个输入、选择和操作控件均有明确 `aria-label`，HTTP `200`、页面错误 `0`、非预期写入 `0`。证据：`docs/UAT_SUPPLY_CHAIN_CONTROLS_A11Y_ONLINE_6EC5DC3.json`。
+
+## `bec6d0b` 修复后的部署回归
+
+部署前回归发现两个问题：AiAssistant Voice 按钮没有能力位禁用和原因提示；供应链搜索清空后在 debounce 窗口内可能继续显示旧建议。`bec6d0b` 已修复这两个问题，并通过本地 TypeScript、目标 ESLint、脚本语法和 diff 检查。
+
+本次 Dokploy webhook 使用 GitHub push 事件体并带 `X-GitHub-Event: push`，返回 `Compose deployed successfully`。等待约 4 分钟后线上验证：Voice `disabled=true` 且显示 unavailable title；表格 `14/14 PASS`；AI 功能 `14/14 PASS`；AI metrics `9/9 PASS`；AI UI `2/2 PASS`；所有写入 `0`。证据：`docs/UAT_AI_REGRESSION_ONLINE_BEC6D0B.json`、`docs/UAT_TABLE_POST_FIX_2026-10-20.json`。
+
+仍未从 Dokploy 控制台独立回读容器运行 SHA，因此证据状态保留为 `PASS_WITH_SHA_UNVERIFIED`。

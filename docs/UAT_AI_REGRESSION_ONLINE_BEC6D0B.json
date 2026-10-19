@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-10-19T17:11:34.669Z",
+  "sourceCommit": "bec6d0b",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "deploymentTrigger": "GitHub push payload with X-GitHub-Event: push; Dokploy returned Compose deployed successfully",
+  "scope": "read-only post-fix AI regression; no business or configuration writes",
+  "checks": {
+    "voiceCapabilityGate": "PASS; disabled=true; title=Voice transcription is unavailable for this store",
+    "aiFeatures": "14 PASS / 0 FAIL / 0 BLOCKED",
+    "aiMetrics": "9 PASS / 0 FAIL",
+    "aiUi": "2 PASS / 0 FAIL",
+    "tableAccessibility": "14 PASS / 0 FAIL",
+    "writes": 0
+  },
+  "metrics": {
+    "assistantPath": "assistant:entity_action requests=29 allowed=29 p50=2470ms p95=6582ms estimatedTokens=394",
+    "admin": 200,
+    "anonymous": 401,
+    "responsive": "390px and 1440px"
+  },
+  "status": "PASS_WITH_SHA_UNVERIFIED"
+}
