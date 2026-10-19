@@ -66,6 +66,7 @@ try {
       const hasDataTable = ["/stock/list", "/stock/capped-pricing"].includes(route.path);
       let mobileTableScroll = null;
       let mobileCardFields = null;
+      let bottomSafeArea = null;
       let tableColumnsDoNotOverlap = null;
       let columnsAlignWithFirstRow = null;
       let headerTextFits = null;
@@ -120,6 +121,16 @@ try {
           page.locator('input[aria-label^="Price for "]').last().isVisible(),
           page.locator('input[aria-label^="Profit margin for "]').last().isVisible(),
         ]).then((fields) => fields.every(Boolean));
+        await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
+        bottomSafeArea = await page.evaluate(() => {
+          const assistant = document.querySelector('[aria-label="Open AI assistant"]');
+          const next = [...document.querySelectorAll("button")].find((button) => /Next/i.test(button.textContent ?? ""));
+          if (!assistant || !next) return true;
+          const a = assistant.getBoundingClientRect();
+          const n = next.getBoundingClientRect();
+          return a.right <= n.left || a.left >= n.right || a.bottom <= n.top || a.top >= n.bottom;
+        });
+        await page.evaluate(() => window.scrollTo(0, 0));
       }
       const dimensions = await page.evaluate(() => ({
         width: document.documentElement.scrollWidth,
@@ -136,6 +147,7 @@ try {
         noHorizontalOverflow: dimensions.width <= dimensions.viewport + 1,
         mobileTableScroll: viewport.width === 390 && hasDataTable ? mobileTableScroll : null,
         mobileCardFields,
+        bottomSafeArea,
         tableColumnsDoNotOverlap,
         columnsAlignWithFirstRow,
         headerTextFits,
@@ -160,6 +172,7 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.noHorizontalOverflow === false
   || (check.mobileTableScroll === false && check.route !== "/stock/list")
   || check.mobileCardFields === false
+  || check.bottomSafeArea === false
   || check.tableColumnsDoNotOverlap === false
   || check.columnsAlignWithFirstRow === false
   || check.headerTextFits === false

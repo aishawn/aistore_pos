@@ -619,7 +619,7 @@
 ### 2026-10-20 部署后回归与固定助手安全区
 
 - 公网 `d350428` 后价格/库存回归 `8/8 PASS`，诚实化页面矩阵 `18/18 PASS`；供应商连接空状态 `2/2 PASS`。所有回归均拦截业务非 GET 请求，写入计数为 `0`。
-- 公网 Stock List 390px 截图确认产品卡片字段完整，固定 AI 助手按钮不再覆盖分页或底部内容；本地安全区证据：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20_SAFEAREA.json`。
+- 公网 Stock List 390px 截图确认产品卡片字段完整；共享安全区保证滚动到末尾时固定 AI 助手按钮不覆盖分页或底部内容。本地证据：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20_SAFEAREA.json`。初始视口中间内容与浮动按钮同屏的定位优化仍待后续批次处理。
 - 新增共享修复：`pos-ui/src/components/admin/AdminPageLayout.tsx` 手机端预留底部空间；新增公网回归脚本 `scripts/pilot-vendor-connections-online-uat.mjs`，并修正价格回归脚本以识别 Stock List 卡片布局。
 - 公网结果仍不能证明 Dokploy 容器实际运行 `d350428`；必须从控制台回读运行 SHA、backend/frontend 构建日志和健康状态。上述脚本与证据文件将在下一次集中提交时纳入版本。
 

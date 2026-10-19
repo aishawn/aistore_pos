@@ -48,7 +48,7 @@
 
 ### 2026-10-20 部署后验证与共享安全区修复
 
-- `AdminPageLayout` 在手机端增加底部安全空间，避免固定 AI 助手按钮遮挡列表最后一行、分页或表单操作；桌面端保持原有密度。
+- `AdminPageLayout` 在手机端增加底部安全空间，确保滚动到列表末尾时固定 AI 助手按钮不会遮挡最后一行、分页或表单操作；初始视口中靠近右下角的中间内容仍可能与浮动按钮同屏，这是后续浮动助手定位优化项。
 - `d350428` 部署后公网价格/库存回归 `8/8 PASS`，Stock List 390px 已按卡片字段验证，Capped Pricing 仍按横向表格验证；非 GET 业务请求 `0`。证据：`docs/UAT_PRICING_POST_D350428_RETRY.json`。
 - 公网诚实化页面矩阵 `18/18 PASS`，覆盖 9 页面 × 390/1440，无横向溢出、页面错误或非 GET 请求。证据：`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_D350428.json`。
 - 公网 Vendor Connections `2/2 PASS`；当前生产无连接数据，因此验证空状态、标题、无溢出、无页面错误和业务写入 `0`，不把空状态误报为移动卡片已被真实数据渲染。证据：`docs/UAT_VENDOR_CONNECTIONS_ONLINE_D350428.json`。
