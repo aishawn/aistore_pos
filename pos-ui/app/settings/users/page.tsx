@@ -356,7 +356,7 @@ export default function UsersSettingsPage() {
                 </ul>
 
                 <div className="mt-2 hidden overflow-x-auto xl:block">
-                  <table className="w-full min-w-[820px] text-left text-sm">
+                  <table aria-label="Store users" className="w-full min-w-[820px] text-left text-sm">
                     <thead>
                       <tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
                         <th scope="col" className="px-2 py-3 font-semibold">Name</th>
