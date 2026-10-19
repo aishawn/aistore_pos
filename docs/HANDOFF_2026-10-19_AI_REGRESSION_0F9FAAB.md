@@ -37,3 +37,11 @@ HTTP 301
 在 push 后等待约 4 分钟，第二轮线上回归仍通过：AI 功能 `14/14 PASS`、AI metrics `9/9 PASS`、能力位 `PASS`、AI UI `2/2 PASS`，无业务或配置写入。证据：`docs/UAT_AI_REGRESSION_ONLINE_39BD36C.json`。
 
 这轮复验仍没有 Dokploy 控制台的运行 SHA、构建日志或容器状态，因此只能确认线上行为正常，不能确认 `39bd36c` 已运行。
+
+## `5650d1b` 异步状态修复后的复验
+
+提交 `5650d1b` 为用户、AI 报表、商品库存和供应链页面补充了 `aria-busy` / `role=status` 异步状态语义。本地 TypeScript、目标 ESLint、脚本语法和 diff 检查通过；ESLint 仅保留 SupplyChainPage 原有的 2 个 effect warning。
+
+等待约 4 分钟后线上复验结果：AI 功能 `14/14 PASS`、AI metrics `9/9 PASS`、AI UI `2/2 PASS`，业务或配置写入 `0`。证据：`docs/UAT_AI_REGRESSION_ONLINE_5650D1B.json`。
+
+公网行为正常，但仍缺 Dokploy 控制台实际运行 SHA、构建日志和容器健康证据；因此 `5650d1b` 是否已被容器运行仍未独立证明。
