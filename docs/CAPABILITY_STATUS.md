@@ -456,7 +456,7 @@ Statuses:
 | Price suggestions (margin rules, read-only) | In progress | Demo read-only API/page PASS (`products=1000`, `writeEnabled=false`) in `docs/UAT_AI_FEATURES_VERIFY_2026-10-19.json`. Still apply changes only via Products / Bulk Price Edit; never auto-write list prices. |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
 | Replenishment approval audit | Accepted | Live isolated-company UAT created a draft RFQ and read back one internal Odoo chatter audit containing the forecast method, target coverage, suggested/ordered quantities and reason; zeroed suggestions remain audit-only and are excluded from PO lines. Evidence: `docs/UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`. RFQ remains draft and is never auto-confirmed. |
-| Supplier invoice OCR → receive draft | In progress | OCR preview only; no receive from this page (`459a243`). Live demo probe hits DashScope but returns `model_not_found` for `qwen-vl-plus` on the current key — enable a VL model in Model Studio / set `AI_VISION_MODEL`, then re-verify. |
+| Supplier invoice OCR → receive draft | In progress | OCR remains preview-only and never creates supplier/PO/receipt. Provider routing is reachable and the probe returns `50212` for an image without invoice fields; real supplier invoice field extraction is still required. |
 | Banner / buyer-group price files | Planned | |
 
 ## Reporting & AI
@@ -466,8 +466,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; 2026-10-16 refinements add a layout-preserving skeleton, retryable first-load and refresh failure states, explicit data-through vs loaded timestamps, and hide comparisons on low prior-period baselines. Commit `83815f2` is deployed and authenticated read-only smoke passed. |
-| Cashier assistant / NL reports | In progress | Spring Graph; production AI is on but NLQ was `50301` until `PosAssistantGraphService` registration fix (this round). The 2026-10-19 Dokploy backend build failed because `AiConfigController` and `SommelierController` lacked imports for `AiProviderConfig`; the minimal import fix is pending redeploy. Redeploy + `pilot-ai-features-verify-uat.mjs` required before claiming live NLQ. Report RO password still required for outlet report SQL. |
-| Wine / sommelier assistant | In progress | Odoo remains authoritative even when its response is empty, preventing stale Classic MySQL fallback; page copy no longer claims AI is doing deterministic matching. Recommendation/detail price and free-stock parity passed 6/6 production read-only checks on `da508ce`; see `docs/UAT_SOMMELIER_REGRESSION_2026-10-13.json`. Still not verified against register-specific warehouse context or tax/pricelist customer totals. Image recognition and model-backed behavior remain off/unverified. |
+| Cashier assistant / NL reports | In progress | Spring Graph NLQ is live in the latest public read-only matrix: assistant product lookup and chat composer passed; provider routing for `qwen3.8-flash` is covered by `10facb6`. Report RO password and formal report SQL acceptance remain outstanding. |
+| Wine / sommelier assistant | In progress | Odoo remains authoritative; public read-only matrix passed identify, recommend, pitch, ask and similar flows. Register-specific warehouse context, tax/pricelist customer totals and real label photo extraction remain unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
 
 ## Ops / integration
