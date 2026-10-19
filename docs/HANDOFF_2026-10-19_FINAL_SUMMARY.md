@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前运行时代码：`74e9412`；当前仓库/`origin/main`：`b54c11a`（后续为文档证据更新）
+当前运行时代码：`74e9412`；当前仓库/`origin/main`：`b77d802`（后续为文档证据更新）
 本轮 Dokploy webhook：HTTP `200`，返回 `Compose deployed successfully`；控制台运行容器 SHA 仍未独立回读。
 
 ## 结论
