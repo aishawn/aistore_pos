@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-10-19T02:55:09.505Z",
+  "sourceCommit": "563ebcb1f863b756910c64a15eec02b98f4465b0",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "Odoo stocktake UI only; all APIs intercepted locally; no Odoo calls or inventory writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 390,
+      "writeEnabled": true,
+      "cancelKeptNoWrite": true,
+      "confirmedExactlyOnce": true,
+      "confirmationPayloadValid": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "locationRetryRecovered": true,
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake\\stocktake-390.png"
+    },
+    {
+      "viewport": 1440,
+      "writeEnabled": true,
+      "cancelKeptNoWrite": true,
+      "confirmedExactlyOnce": true,
+      "confirmationPayloadValid": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "locationRetryRecovered": true,
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake\\stocktake-1440.png"
+    },
+    {
+      "viewport": 768,
+      "writeEnabled": false,
+      "cancelKeptNoWrite": true,
+      "confirmedExactlyOnce": true,
+      "confirmationPayloadValid": true,
+      "horizontalOverflow": false,
+      "pageErrors": [],
+      "locationRetryRecovered": true,
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake\\stocktake-768.png"
+    }
+  ],
+  "interceptedApplyRequests": 2
+}

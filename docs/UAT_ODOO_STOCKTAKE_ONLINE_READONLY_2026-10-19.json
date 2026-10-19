@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-19T02:49:06.370Z",
-  "sourceCommit": "3cd5be03f16adbec84aca3ae30327f697aaec927",
-  "deployment": "3cd5be03f16adbec84aca3ae30327f697aaec927",
+  "generatedAt": "2026-10-19T02:57:39.183Z",
+  "sourceCommit": "14a052a70cb881f2ec1ee7b2505af08acfed3d71",
+  "deployment": "14a052a70cb881f2ec1ee7b2505af08acfed3d71",
   "target": "https://demo.orithos.com.au",
   "scope": "authenticated Odoo stocktake read-only browser UAT; no inventory writes",
   "status": "PASS",
