@@ -10,6 +10,7 @@
 
 以下结果优先于本文后面保留的历史回归段落：
 
+- 门店壳里每个已登录页面都显示可拖动的 Orithos AI 悬浮图标，包括收银、设置、采购、补货、侍酒和发票扫描。侧边栏 Orithos AI 去掉了与 Stock 重复的 Replenishment Plan，其余四项各有一行说明。AI 关闭时输入框和语音禁用，今日销售、打开收银、查商品、查库存仍可跳转。酒款页标题统一为 Wine Assistant；识标页在 AI 关闭时禁用拍照并说明名称和条码搜索仍可用。本地 fixture 截图在 `docs/screenshots/2026-10-19-ai-nav/`。生产 `AI_ENABLED` 未打开，没有销售或采购写入。
 - AI 配置管理员保护已完成线上验证：临时非管理员店员对 13 个 reload/create/update/delete 写接口全部被拒绝，返回业务码 `40300`，配置计数未变化；证据 `docs/UAT_AI_ADMIN_GUARD_2026-10-19_POST-3AFEF08.json`。
 - Stocktake 权限顺序已修复并部署：`a6d5a57` 将 POST 身份验证前移到 payload、数量和写开关检查之前；普通店员 GET/POST 均返回 HTTP `403` / `40300`，未产生库存调整；证据 `docs/UAT_ODOO_STOCKTAKE_ADMIN_GUARD_2026-10-19_POST-A6D5A57.json`、`docs/HANDOFF_2026-10-19_STOCKTAKE_AUTH_ORDER_DEPLOY.md`。
 - 本轮完整 webhook 均返回 `200 Compose deployed successfully`，但 Dokploy 控制台容器 SHA、构建日志和健康状态仍未独立回读；这些 UAT 证明部署触发后公网页为预期行为，不替代容器级取证。
