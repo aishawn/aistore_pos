@@ -12,6 +12,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 价格建议整体仍为 **In progress**：公网 `/stock/price-suggestions` 仍需在 Dokploy 确认运行镜像后复测，CSV 本地证据不替代线上部署证据。
 - `26f1d47` 已推送并通过 Dokploy webhook 触发（HTTP 200）；等待部署窗口后价格建议 gate 仍记录页面不可达，证据 `docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-26F1D47.json`。这进一步说明 webhook 接受不等于 frontend 镜像已切换，需控制台构建日志/SHA 取证。
 
+### 2026-10-19 `26f1d47` 部署后回归
+
+- AI availability `3/3 PASS`、AI surface `11/11 PASS`、AI UI `2/2 PASS`、Sommelier 只读 `10/10 PASS`；生产 `AI_ENABLED=false`，未触发模型或业务写入。
+- 全站静态矩阵 `133 路由 x 390/1440 = 264/266 PASS`；唯一失败是 `/stock/price-suggestions` 在两个视口均返回 `404`，其余路由和页面错误/溢出检查通过。
+- 独立证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_SURFACE_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-26F1D47.json`、`docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-26F1D47.json`。
+
 Statuses:
 
 | Status | Meaning |

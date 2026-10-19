@@ -7,6 +7,13 @@
 - 本地检查：`npm run typecheck`、目标 ESLint、`node --check scripts/pilot-price-suggestions-local-uat.mjs`、`git diff --check` 通过；本地 Playwright UAT `PASS`，下载内容包含 DEMO 商品和表头，非 GET API 请求 `0`。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`。
 - 线上尚未验收：公网价格建议页当前仍返回 `404`，必须先从 Dokploy 控制台核对 frontend SHA / 构建日志 / 健康状态，再重跑线上 UAT。
 
+## 2026-10-19 `26f1d47` 部署后只读回归
+
+- AI availability `3/3`、AI surface `11/11`、AI UI `2/2`、Sommelier `10/10` 通过；AI 仍关闭，未产生模型或业务写入。
+- 全站矩阵 `133 x 2 = 264/266`：仅 `/stock/price-suggestions` 在 390/1440 返回 `404`，其余 132 路由通过，无页面错误或横向溢出。
+- 证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_SURFACE_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-26F1D47.json`、`docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-26F1D47.json`。
+- 放行结论仍为 `NO-GO`：frontend 实际 SHA、构建日志和健康状态未从 Dokploy 控制台独立核验，价格建议线上路由仍不可见。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。

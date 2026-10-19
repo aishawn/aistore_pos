@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-10-19T05:35:36.994Z",
+  "sourceCommit": "b5daa260ef787513851beb4b4f0d69b0ef423032",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "Loaded 44 trigger keywords."
+    },
+    {
+      "name": "AI config intents",
+      "status": "PASS",
+      "evidence": "Loaded 13 records."
+    },
+    {
+      "name": "AI config slots",
+      "status": "PASS",
+      "evidence": "Loaded 12 records."
+    },
+    {
+      "name": "AI config slot-values",
+      "status": "PASS",
+      "evidence": "Loaded 119 records."
+    },
+    {
+      "name": "AI config prompts",
+      "status": "PASS",
+      "evidence": "Loaded 3 records."
+    },
+    {
+      "name": "AI assistant availability",
+      "status": "PASS",
+      "evidence": "Assistant is intentionally disabled because production AI_ENABLED is false."
+    },
+    {
+      "name": "Voice input availability",
+      "status": "PASS",
+      "evidence": "Cloud transcription is intentionally disabled because production AI_ENABLED is false."
+    },
+    {
+      "name": "Label image availability",
+      "status": "PASS",
+      "evidence": "Cloud label recognition is intentionally disabled because production AI_ENABLED is false."
+    },
+    {
+      "name": "Anonymous AI assistant guard",
+      "status": "PASS",
+      "evidence": "Assistant API returns HTTP 401 after logout."
+    },
+    {
+      "name": "Anonymous AI report guard",
+      "status": "PASS",
+      "evidence": "Report snapshot API returns HTTP 401 after logout."
+    },
+    {
+      "name": "Anonymous AI route matrix",
+      "status": "PASS",
+      "evidence": "27 protected config, voice, label, and Sommelier routes returned HTTP 401; assistant and report were checked separately."
+    }
+  ],
+  "passed": 11,
+  "failed": 0
+}
