@@ -54,13 +54,16 @@ try {
   if (!clerk.response.ok() || clerk.body.code !== 0) throw new Error(`CLERK_LOGIN_FAILED_${clerk.response.status()}`);
 
   const read = await request("/api/odoo/stocktake");
-  record("clerk stocktake read denied", read.response.ok() && read.body.code === 40300,
+  record("clerk stocktake read denied", read.response.status() === 403 && read.body.code === 40300,
     `HTTP ${read.response.status()} code ${read.body.code ?? ""}`);
-  const write = await request("/api/odoo/stocktake", "POST", { confirm: true, locationId: 1, lines: [] });
-  record("clerk stocktake write denied", write.response.ok() && write.body.code === 40300,
-    `HTTP ${write.response.status()} code ${write.body.code ?? ""}`);
+  const write = await request("/api/odoo/stocktake", "POST", {
+    confirm: true, locationId: 1, lines: [{ productId: 1, expectedQty: 0, countedQty: 0 }],
+  });
+  record("stocktake write remains disabled", write.response.status() === 423
+    && /not enabled/i.test(write.body.message ?? ""),
+    `HTTP ${write.response.status()} code ${write.body.code ?? ""}; feature flag blocks writes before Odoo.`);
 } catch (error) {
-  record("stocktake admin guard UAT", false, error instanceof Error ? error.message : "Unexpected failure");
+  record("stocktake access guard UAT", false, error instanceof Error ? error.message : "Unexpected failure");
 } finally {
   if (temporaryUserId !== null || temporaryRoleId !== null) {
     await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
@@ -84,7 +87,7 @@ const output = {
   deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase() : "unverified-after-deploy",
   target: base,
-  scope: "temporary non-admin stocktake read/write guard; no inventory writes",
+  scope: "temporary non-admin stocktake read guard and disabled-write fail-closed check; no inventory writes",
   checks,
   status: checks.length > 0 && checks.every((check) => check.status === "PASS") ? "PASS" : "FAIL",
 };
