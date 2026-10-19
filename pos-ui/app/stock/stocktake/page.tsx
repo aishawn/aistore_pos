@@ -225,9 +225,14 @@ export default function OdooStocktakePage() {
                   }}
                   placeholder="Name, SKU or barcode"
                   autoComplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="stocktake-search-results"
+                  aria-expanded={Boolean(query.trim())}
+                  aria-busy={productsLoading}
                   className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-white pl-10 pr-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
                 />
-                {productsLoading && <LoaderCircle size={17} aria-label="Searching" className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
+                {productsLoading && <LoaderCircle size={17} role="status" aria-label="Searching products" className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
               </div>
               {productsError && (
                 <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
@@ -236,11 +241,11 @@ export default function OdooStocktakePage() {
                 </div>
               )}
               {query.trim() && !productsLoading && !productsError && (
-                <div className="divide-y divide-[var(--oh-border)] overflow-hidden rounded-md border border-[var(--oh-border)] bg-white">
+                <div id="stocktake-search-results" role="listbox" aria-label="Stocktake product results" className="divide-y divide-[var(--oh-border)] overflow-hidden rounded-md border border-[var(--oh-border)] bg-white">
                   {products.length === 0 ? (
-                    <p className="px-4 py-6 text-center text-sm text-[var(--oh-muted)]">No matching products.</p>
+                    <p role="status" className="px-4 py-6 text-center text-sm text-[var(--oh-muted)]">No matching products.</p>
                   ) : products.map((product) => (
-                    <div key={product.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div key={product.id} role="option" aria-selected={countLines.some((line) => line.id === product.id)} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0">
                         <p className="break-words text-sm font-medium text-[var(--oh-text)]">{product.name}</p>
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{product.sku || product.barcode || product.uom} · On hand {quantity(product.expectedQty)} {product.uom}</p>
@@ -282,7 +287,7 @@ export default function OdooStocktakePage() {
                         return <tr key={line.id}>
                           <td className="max-w-[320px] px-4 py-3"><p className="break-words font-medium text-[var(--oh-text)]">{line.name}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></td>
                           <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{quantity(line.expectedQty)} {line.uom}</td>
-                          <td className="px-4 py-2"><input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="h-11 w-32 rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></td>
+                          <td className="px-4 py-2"><label><span className="sr-only">Counted quantity for {line.name}</span><input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="h-11 w-32 rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></label></td>
                           <td className={`whitespace-nowrap px-4 py-3 tabular-nums ${variance == null ? "text-[var(--oh-muted)]" : variance < 0 ? "text-rose-700" : variance > 0 ? "text-emerald-700" : "text-[var(--oh-text-secondary)]"}`}>{variance == null ? "—" : `${variance > 0 ? "+" : ""}${quantity(variance)}`}</td>
                           <td className="px-2 py-2"><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><Trash2 size={17} /></button></td>
                         </tr>;
@@ -295,7 +300,7 @@ export default function OdooStocktakePage() {
                     const variance = delta(line.expectedQty, line.countedQty);
                     return <article key={line.id} className="space-y-3 p-4">
                       <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></div><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-rose-50 hover:text-rose-700"><Trash2 size={17} /></button></div>
-                      <div className="grid grid-cols-2 gap-3"><p className="text-xs text-[var(--oh-muted)]">Expected<span className="mt-1 block text-sm font-medium tabular-nums text-[var(--oh-text)]">{quantity(line.expectedQty)} {line.uom}</span></p><label className="text-xs text-[var(--oh-muted)]">Counted<input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="mt-1 h-11 w-full rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></label></div>
+                      <div className="grid grid-cols-2 gap-3"><p className="text-xs text-[var(--oh-muted)]">Expected<span className="mt-1 block text-sm font-medium tabular-nums text-[var(--oh-text)]">{quantity(line.expectedQty)} {line.uom}</span></p><label className="text-xs text-[var(--oh-muted)]">Counted<span className="sr-only"> quantity for {line.name}</span><input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="mt-1 h-11 w-full rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></label></div>
                       <p className="text-xs text-[var(--oh-muted)]">Variance <span className="font-semibold tabular-nums text-[var(--oh-text)]">{variance == null ? "—" : `${variance > 0 ? "+" : ""}${quantity(variance)}`}</span></p>
                     </article>;
                   })}

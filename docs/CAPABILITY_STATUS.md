@@ -2,6 +2,14 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Odoo Stocktake 搜索可访问性批次（工作区）
+
+- 真实入口 `pos-ui/app/stock/stocktake/page.tsx` 现在为产品搜索提供 combobox/listbox/option 语义、加载状态和结果关联；数量输入在桌面/移动布局均有稳定可访问名称。
+- 业务逻辑不变：仍以 Odoo 为库存来源，`Review and apply` 受 `writeEnabled`、数量边界和 variance 保护；本次没有新增或执行库存写入。
+- 本地 `npm run typecheck`、目标 ESLint、相关脚本 `node --check` 和 `git diff --check` 通过，未运行 build。
+- 公网只读基线 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_BASELINE.json`：`PASS`；管理员/Odoo 会话/库位读取、390/1440 布局均通过，非 GET 请求 `0`。`deploymentShaVerified` 尚未核验。
+- 部署后仍需验证新的 ARIA DOM 语义，并在获批隔离 Odoo 租户完成 stocktake 写入验收；Demo 保持 `writeEnabled=false`。
+
 ### 2026-10-20 Dokploy #38 编译结果（最新）
 
 - #38 的阻断错误是 `AiConfigController.java` 和 `SommelierController.java` 找不到 `AiProviderConfig`；`Parenthesis` 弃用提示只是 warning。

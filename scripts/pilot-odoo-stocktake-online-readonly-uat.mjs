@@ -55,6 +55,32 @@ try {
     const page = await pageContext.newPage();
     const response = await page.goto(`${base}/stock/stocktake`, { waitUntil: "networkidle", timeout: 60000 });
     await page.getByRole("heading", { name: "Odoo Stocktake" }).waitFor({ state: "visible", timeout: 30000 });
+    const search = page.locator("#stocktake-search");
+    const searchSemantics = await search.evaluate((element) => ({
+      role: element.getAttribute("role"),
+      autocomplete: element.getAttribute("aria-autocomplete"),
+      controls: element.getAttribute("aria-controls"),
+      expanded: element.getAttribute("aria-expanded"),
+    }));
+    const searchSemanticPass = searchSemantics.role === "combobox"
+      && searchSemantics.autocomplete === "list"
+      && searchSemantics.controls === "stocktake-search-results"
+      && searchSemantics.expanded === "false";
+    checks.push({ name: `stocktake search combobox semantics ${viewport.width}px`, status: searchSemanticPass ? "PASS" : "FAIL", semantics: searchSemantics });
+    await search.fill("wine");
+    await page.waitForTimeout(700);
+    const resultSemantics = await page.evaluate(() => {
+      const list = document.querySelector("#stocktake-search-results");
+      return {
+        listRole: list?.getAttribute("role") ?? null,
+        optionCount: list?.querySelectorAll('[role="option"]').length ?? 0,
+        expanded: document.querySelector("#stocktake-search")?.getAttribute("aria-expanded") ?? null,
+      };
+    });
+    const resultSemanticPass = resultSemantics.listRole === "listbox"
+      && resultSemantics.expanded === "true"
+      && (resultSemantics.optionCount > 0 || resultSemantics.listRole === "listbox");
+    checks.push({ name: `stocktake search result semantics ${viewport.width}px`, status: resultSemanticPass ? "PASS" : "FAIL", semantics: resultSemantics });
     const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth }));
     const screenshot = path.join(outputDir, `stocktake-${viewport.width}.png`);
     await page.screenshot({ path: screenshot, fullPage: true });

@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Odoo Stocktake 搜索可访问性批次（当前工作区）
+
+- `pos-ui/app/stock/stocktake/page.tsx` 的真实生产入口已补齐搜索 `combobox`、`aria-controls`、`aria-expanded`、`aria-busy`，产品结果使用 `listbox/option` 语义，空结果和搜索状态可被读屏器识别。
+- 桌面表格和手机卡片的数量输入都补齐稳定的可访问名称；未改变搜索、扫码、数量校验、Review and apply 或 Odoo 写入逻辑。
+- 本地验证通过：`npm run typecheck`、目标 ESLint、stocktake UAT 脚本 `node --check`、`git diff --check`；按约束未运行本地 build。
+- 公网只读基线：`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_BASELINE.json`，管理员/Odoo 会话/库位读取和 390/1440 页面均 PASS，横向溢出 `0`，非 GET stocktake 请求 `0`。该证据的 `deployment` 仍为 `unverified-after-deploy`，不证明新 ARIA 代码已上线。
+- 下一次 Dokploy 成功部署后，需复跑 stocktake 390/1440 专项并增加搜索结果 `combobox/listbox/option` DOM 断言；生产 Demo 继续禁止库存写入。
+
 ## 2026-10-20 Dokploy #38 编译结果（最新）
 
 - #38 后端构建失败的阻断错误是两个控制器找不到 `AiProviderConfig`；`SqlAst.java` 的 `Parenthesis` 仅为弃用 warning，不是失败原因。
