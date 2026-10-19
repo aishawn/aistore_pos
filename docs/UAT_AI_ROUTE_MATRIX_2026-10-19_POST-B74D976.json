@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-10-19T04:41:04.628Z",
+  "sourceCommit": "68d26072ab55c51b278526f59a982157cdadf0f1",
+  "deployment": "b74d97697358563933c5f0e4d962ba42eb045c6b",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated AI entry-point and disabled label-photo route matrix; no business writes",
+  "checks": [
+    {
+      "name": "/overview",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/overview",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/settings/users",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/settings/users",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/purchases/odoo",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/purchases/odoo",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/stock/replenishment",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/stock/replenishment",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/sommelier",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/sommelier",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/sommelier/find",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/sommelier/find",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/sommelier/identify",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/sommelier/identify",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": [],
+        "labelPhotoButtonDisabled": true,
+        "disabledCopy": true
+      }
+    },
+    {
+      "name": "/invoices/scan",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/invoices/scan",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "/stock/stocktake",
+      "status": "PASS",
+      "evidence": {
+        "pathname": "/stock/stocktake",
+        "httpStatus": 200,
+        "aiFab": true,
+        "horizontalOverflow": false,
+        "pageErrors": []
+      }
+    }
+  ],
+  "passed": 9,
+  "failed": 0,
+  "status": "PASS"
+}
