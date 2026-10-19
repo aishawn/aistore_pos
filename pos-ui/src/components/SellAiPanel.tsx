@@ -1024,6 +1024,17 @@ function DialogueView({
   busy?: boolean;
 }) {
   const canClear = !busy && messages.length > 1;
+  const diagnosticMessages = messages.filter((message) => message.role === "assistant" && message.diagnostics);
+  const successfulResponses = diagnosticMessages.filter((message) => message.diagnostics?.status === "ok").length;
+  const averageLatency = diagnosticMessages.length
+    ? Math.round(
+        diagnosticMessages.reduce((total, message) => total + (message.diagnostics?.latencyMs ?? 0), 0)
+          / diagnosticMessages.length,
+      )
+    : 0;
+  const successRate = diagnosticMessages.length
+    ? Math.round((successfulResponses / diagnosticMessages.length) * 100)
+    : 0;
   return (
     <div className="flex h-full flex-col p-3.5">
       <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -1042,6 +1053,15 @@ function DialogueView({
           Clear
         </button>
       </div>
+      {diagnosticMessages.length > 0 ? (
+        <p
+          aria-label="AI session diagnostics"
+          className="mb-2.5 rounded-md bg-white px-2.5 py-1.5 text-[11px] tabular-nums text-[var(--oh-muted)]"
+        >
+          AI session · {diagnosticMessages.length} {diagnosticMessages.length === 1 ? "response" : "responses"}
+          {" · "}{successRate}% success · {averageLatency}ms avg
+        </p>
+      ) : null}
       <div className="min-h-0 flex-1 space-y-2.5">
         {messages.map((msg, i) => (
           <div

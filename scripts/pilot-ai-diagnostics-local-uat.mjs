@@ -56,6 +56,14 @@ try {
   await page.getByText(/AI · report_sales · \d+ms/).waitFor({ timeout: 10000 });
   const diagnostics = await page.getByText(/AI · report_sales · \d+ms/).last().innerText();
   record("assistant diagnostics visible", /^AI · report_sales · \d+ms$/.test(diagnostics), diagnostics);
+  const sessionDiagnostics = page.getByLabel("AI session diagnostics");
+  record("single-response session summary", /AI session · 1 response · 100% success · \d+ms avg/.test(await sessionDiagnostics.innerText()), await sessionDiagnostics.innerText());
+
+  await composer.fill("Show sales by product.");
+  await composer.press("Enter");
+  await page.waitForFunction(() => document.body.innerText.match(/AI · report_sales · \d+ms/g)?.length === 2, null, { timeout: 10000 });
+  const twoResponseSummary = await sessionDiagnostics.innerText();
+  record("multi-response session summary", /AI session · 2 responses · 100% success · \d+ms avg/.test(twoResponseSummary), twoResponseSummary);
   record("no business writes", writes.length === 0, JSON.stringify(writes));
   await context.close();
 } catch (error) {

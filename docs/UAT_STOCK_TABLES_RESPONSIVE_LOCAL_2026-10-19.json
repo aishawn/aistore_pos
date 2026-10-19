@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-10-19T10:17:58.672Z",
+  "sourceCommit": "722f0e296af041b5322ea4516d0f553325a050f6",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "Stock List/Capped Pricing responsive table headers; API requests intercepted; no business writes",
+  "status": "PASS",
+  "passed": 4,
+  "failed": 0,
+  "checks": [
+    {
+      "route": "/stock/list",
+      "viewport": 390,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "productCountText": "1 Product",
+      "sampleRowVisible": true,
+      "pageNoOverflow": true,
+      "internalHorizontalScroll": true,
+      "columnsDoNotOverlap": true,
+      "columnsAlignWithFirstRow": true,
+      "headerTextFits": true,
+      "layout": {
+        "tableWidth": 1100,
+        "scrollerWidth": 390,
+        "scrollerScrollWidth": 1124,
+        "columnsDoNotOverlap": true,
+        "columnsAlignWithFirstRow": true,
+        "columnAlignmentIssues": [],
+        "headerTextIssues": [],
+        "headerTextFits": true
+      },
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-390.png"
+    },
+    {
+      "route": "/stock/capped-pricing",
+      "viewport": 390,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "productCountText": null,
+      "sampleRowVisible": true,
+      "pageNoOverflow": true,
+      "internalHorizontalScroll": true,
+      "columnsDoNotOverlap": true,
+      "columnsAlignWithFirstRow": true,
+      "headerTextFits": true,
+      "layout": {
+        "tableWidth": 1050,
+        "scrollerWidth": 390,
+        "scrollerScrollWidth": 1098,
+        "columnsDoNotOverlap": true,
+        "columnsAlignWithFirstRow": true,
+        "columnAlignmentIssues": [],
+        "headerTextIssues": [],
+        "headerTextFits": true
+      },
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-390.png"
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 1440,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "productCountText": "1 Product",
+      "sampleRowVisible": true,
+      "pageNoOverflow": true,
+      "internalHorizontalScroll": null,
+      "columnsDoNotOverlap": true,
+      "columnsAlignWithFirstRow": true,
+      "headerTextFits": true,
+      "layout": {
+        "tableWidth": 1136,
+        "scrollerWidth": 1184,
+        "scrollerScrollWidth": 1184,
+        "columnsDoNotOverlap": true,
+        "columnsAlignWithFirstRow": true,
+        "columnAlignmentIssues": [],
+        "headerTextIssues": [],
+        "headerTextFits": true
+      },
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-1440.png"
+    },
+    {
+      "route": "/stock/capped-pricing",
+      "viewport": 1440,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "productCountText": null,
+      "sampleRowVisible": true,
+      "pageNoOverflow": true,
+      "internalHorizontalScroll": null,
+      "columnsDoNotOverlap": true,
+      "columnsAlignWithFirstRow": true,
+      "headerTextFits": true,
+      "layout": {
+        "tableWidth": 1136,
+        "scrollerWidth": 1184,
+        "scrollerScrollWidth": 1184,
+        "columnsDoNotOverlap": true,
+        "columnsAlignWithFirstRow": true,
+        "columnAlignmentIssues": [],
+        "headerTextIssues": [],
+        "headerTextFits": true
+      },
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-1440.png"
+    }
+  ],
+  "blockedWrites": []
+}

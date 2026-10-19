@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（行内价格保存失败保护本地通过，待集中部署线上复验）
+**Last updated:** 2026-10-19（行内价格保存保护与 Stock/Capped Pricing 响应式表格本地通过；响应式改动待部署）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -12,12 +12,29 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 以上公网行为不替代 Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态取证。
 - 价格建议现在可将单个 SKU 深链到 Bulk Price Edit，Bulk Price Edit 会预填 SKU 并发送同一搜索条件；本地 `16` 项 fixture UAT 全部通过，仍保持无自动价格写入。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_DEEP-LINK.json`。
 
+### 2026-10-19 Stock 与 Capped Pricing 响应式修正（待部署）
+- Stock List 与 Capped Pricing 为表格设置最小宽度，在手机视口内使用表格区域横向滚动；两页 Quantity 列加宽，完整显示列名；Stock List 商品计数按单复数显示。
+- 本地 fixture UAT `4/4 PASS`：两页面在 390/1440 视口均渲染样例行；表头和首行列边界误差不超过 1px、表头文字不越列、页面不横向溢出；Stock List 的 `1 Product` 计数文案通过；390px 表格区域可滚动。`0` 个页面错误、`0` 个业务写入。证据：`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json`；截图见 `docs/screenshots/2026-10-19-stock-tables-local/`。
+- 同批本地复验保存失败重试 `8/8 PASS`、价格建议交互/深链 `16/16 PASS`、AI capability gate `2/2 PASS`。这些是 fixture/UI 验证，不代表线上实际 Odoo 写入或生产 AI 验收。
+- 尚未部署。待下一批改动合并部署后，在线上 Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions 做只读矩阵复验，并核对 Dokploy 容器 SHA/构建日志/健康状态。
+
+### 2026-10-19 公网定价表格基线与 AI 会话摘要（待部署）
+- 加载完成后的线上只读 pricing 基线 `4/8 PASS`：Stock List/Capped Pricing 在 390/1440 四项均有列文字溢出或首行列错位；没有页面 JS 错误或被拦截写请求。容器 SHA 未核验。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_BASELINE_FINAL.json` 及 `docs/screenshots/2026-10-19-pricing-reliability-online/`。
+- 本地修正的 fixture 检查 `4/4 PASS`，包含首行真实对齐断言；AI assistant 会话摘要 `4/4 PASS`，验证单/多次响应统计及零业务写入。响应式修复和 AI 摘要尚未部署。
+
 ### 2026-10-19 行内价格保存可靠性
 
 - Stock List、Capped Pricing、Bulk Price Edit 的行内编辑在提交失败时提供错误提示；Stock List/Capped Pricing 保留用户编辑值供修正或重试，Bulk Price Edit 失败回滚到服务端值。提交期间输入禁用并标记 `aria-busy`，Stock List/Capped Pricing 使用同步锁抑制重复 blur PATCH。
 - Stock List 与 Capped Pricing 本地 Playwright 故障注入 `8/8 PASS`：两处首次 PATCH 503 后错误可见、编辑值保留、重试成功；Stock List 重叠 blur 只产生一次并发 PATCH。所有 PATCH 均由 fixture 截获。证据：`docs/UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`。
 - Bulk Price Edit 本地故障注入 `7/7 PASS`：失败提示、回滚、busy 清除和后续重试通过；证据：`docs/UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`。
 - 本地 TypeScript、三个目标组件 ESLint 和相关 UAT 脚本语法检查通过。未运行本地 build；这批变更待 Dokploy 部署后做线上只读与容器构建回归。
+
+### 2026-10-19 Stock List / Capped Pricing 移动端表格
+
+- 公网只读截图在 390px 发现 Stock List 和 Capped Pricing 表头相互重叠；诊断记录 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-F1993D6_DIAGNOSTIC.json` 在 390px 两页均判定列重叠、内部横向滚动缺失。该页面行为证据不证明 Dokploy 容器 SHA。
+- 已给两张宽表设置稳定最小宽度（Stock List `1100px`、Capped Pricing `1050px`），放在原有 overflow scroller 内；移动端只在表格区域横向滚动，页面本身不溢出。
+- 最新本地布局 UAT `4/4 PASS`：两个页面在 390/1440 视口验证了样例行、表头与数据列对齐（最大误差 1px）、表头文字不越界、390px 内部横向滚动及页面无整体横向溢出；页面错误 `0`。证据：`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json`；截图位于 `docs/screenshots/2026-10-19-stock-tables-local/`。
+- Online pricing UAT 已修正 viewport 设置和标题等待；应在下一批部署后重跑 8 条已登录只读页面检查，并确认 blocked non-GET requests 为 `0`。
 
 ### 2026-10-19 价格建议运营补强
 

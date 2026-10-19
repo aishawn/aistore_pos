@@ -123,7 +123,7 @@ function CappedPriceRowEditor({
       <div className="w-[18%] shrink-0 px-3 leading-snug">{row.source}</div>
       <div className="w-[9%] shrink-0 px-3">{formatDate(row.startDate)}</div>
       <div className="w-[9%] shrink-0 px-3">{formatDate(row.endDate)}</div>
-      <div className="w-[6%] shrink-0 px-3 text-center">{row.quantity ?? ""}</div>
+      <div className="w-[10%] shrink-0 px-3 text-center">{row.quantity ?? ""}</div>
       <div className="w-[9%] shrink-0 px-3">{money(row.cappedPrice)}</div>
       <div className="w-[11%] shrink-0 px-3">
         <div className="relative">
@@ -337,31 +337,33 @@ export function CappedPricingPage() {
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6 pt-3">
         {tab === "IMPORTED" ? <CappedPricingImportPanel onImported={reload} /> : null}
 
-        <div className="sticky top-0 z-10 flex items-center rounded-md bg-black px-3 py-2 text-[13px] font-bold text-white">
-          <div className="w-[24%] px-3">Product</div>
-          <div className="w-[18%] px-3">Capped Pricing</div>
-          <div className="w-[9%] px-3">Start Date</div>
-          <div className="w-[9%] px-3">End Date</div>
-          <div className="w-[6%] px-3 text-center">Quantity</div>
-          <div className="w-[9%] px-3">Capped Price</div>
-          <div className="w-[11%] px-3">Current Price</div>
-          <div className="min-w-0 flex-1 px-3">%</div>
-        </div>
+        <div data-testid="capped-pricing-table" className="min-w-[1050px]">
+          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black py-2 text-[13px] font-bold text-white">
+            <div className="w-[24%] shrink-0 px-3">Product</div>
+            <div className="w-[18%] shrink-0 px-3">Capped Pricing</div>
+            <div className="w-[9%] shrink-0 px-3">Start Date</div>
+            <div className="w-[9%] shrink-0 px-3">End Date</div>
+            <div className="w-[10%] shrink-0 px-3 text-center">Quantity</div>
+            <div className="w-[9%] shrink-0 px-3">Capped Price</div>
+            <div className="w-[11%] shrink-0 px-3">Current Price</div>
+            <div className="min-w-0 flex-1 px-3">%</div>
+          </div>
 
-        <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
-          {items.map((row) => (
-            <CappedPriceRowEditor
-              key={row.id}
-              row={row}
-              onDirty={() => setHasChanges(true)}
-              onSaved={() => {
-                setHasChanges(false);
-                reload();
-              }}
-            />
-          ))}
-        </AsyncState>
-        <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
+            {items.map((row) => (
+              <CappedPriceRowEditor
+                key={row.id}
+                row={row}
+                onDirty={() => setHasChanges(true)}
+                onSaved={() => {
+                  setHasChanges(false);
+                  reload();
+                }}
+              />
+            ))}
+          </AsyncState>
+          <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+        </div>
       </div>
     </div>
   );

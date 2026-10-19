@@ -176,7 +176,7 @@ function StockListRowEditor({
       <div className="w-[7%] shrink-0 px-2 text-center">{num(row.caseQuantity)}</div>
       <div className={`w-[7%] shrink-0 px-2 text-center tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.casesOnHand)}</div>
       <div className={`w-[7%] shrink-0 px-2 text-center tabular-nums ${hasStock ? "text-[var(--oh-text)]" : "font-semibold text-[var(--oh-danger)]"}`}>{num(row.itemsOnHand)}</div>
-      <div className="w-[6%] shrink-0 px-2">
+      <div className="w-[8%] shrink-0 px-2">
         <input
           type="number"
           min="1"
@@ -319,8 +319,8 @@ function StockListPageInner() {
           <ExportIcon size={16} />
           {exporting ? "Exporting…" : "Export to CSV"}
         </AdminPrimaryButton>
-        <div className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
-          <span className="font-semibold tabular-nums text-[var(--oh-text)]">{total.toLocaleString()}</span> Products
+        <div data-testid="stock-list-product-count" className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
+          <span className="font-semibold tabular-nums text-[var(--oh-text)]">{total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
 
@@ -378,25 +378,27 @@ function StockListPageInner() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-3 pb-5 sm:px-4 md:px-6">
-        <div className="sticky top-0 z-10 flex items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">
-          <div className="w-[22%] shrink-0 px-2">Product</div>
-          <div className="w-[10%] shrink-0 px-2">Category</div>
-          <div className="w-[8%] shrink-0 px-2">Price Set</div>
-          <div className="w-[7%] shrink-0 px-2 text-center">Case Quantity</div>
-          <div className="w-[7%] shrink-0 px-2 text-center">Cases on Hand</div>
-          <div className="w-[7%] shrink-0 px-2 text-center">Items on Hand</div>
-          <div className="w-[6%] shrink-0 px-2 text-center">Quantity</div>
-          <div className="w-[8%] shrink-0 px-2">Cost</div>
-          <div className="w-[8%] shrink-0 px-2">Price</div>
-          <div className="min-w-0 flex-1 px-2">Profit %</div>
-        </div>
+        <div data-testid="stock-list-table" className="min-w-[1100px]">
+          <div className="sticky top-0 z-10 flex items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">
+            <div className="w-[22%] shrink-0 px-2">Product</div>
+            <div className="w-[10%] shrink-0 px-2">Category</div>
+            <div className="w-[8%] shrink-0 px-2">Price Set</div>
+            <div className="w-[7%] shrink-0 px-2 text-center">Case Quantity</div>
+            <div className="w-[7%] shrink-0 px-2 text-center">Cases on Hand</div>
+            <div className="w-[7%] shrink-0 px-2 text-center">Items on Hand</div>
+            <div className="w-[8%] shrink-0 px-2 text-center">Quantity</div>
+            <div className="w-[8%] shrink-0 px-2">Cost</div>
+            <div className="w-[8%] shrink-0 px-2">Price</div>
+            <div className="min-w-0 flex-1 px-2">Profit %</div>
+          </div>
 
-        <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
-          {items.map((row) => (
-            <StockListRowEditor key={row.id} row={row} onSaved={reload} />
-          ))}
-          <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
-        </AsyncState>
+          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
+            {items.map((row) => (
+              <StockListRowEditor key={row.id} row={row} onSaved={reload} />
+            ))}
+            <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+          </AsyncState>
+        </div>
       </div>
     </div>
   );

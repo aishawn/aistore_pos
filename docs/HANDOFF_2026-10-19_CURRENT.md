@@ -1,12 +1,20 @@
 # Orithos POS 当前交接
 
-## 2026-10-19 当前批次：价格编辑可靠性
+## 2026-10-19 当前批次：价格编辑与移动端表格
 
+- 最新基线已推进至 `722f0e2`（与 `origin/main` 一致）。本轮 Stock List 数量列与 Capped Pricing 数量列加宽，表头不再压缩文字；两页在 390px 下使用表格内部横向滚动，桌面布局保持在内容区内。Stock List 商品计数也按 `Product/Products` 正确单复数显示。
+- 本地响应式 fixture UAT `4/4 PASS`：Stock List/Capped Pricing × 390/1440；四项均检查真实 DEMO Shiraz 行可见、数据行与表头列边界误差不超过 1px、列不重叠、表头文字留在本列内、页面不横向溢出；Stock List 同时检查 `1 Product` 文案；移动端内部可横向滚动；页面错误 `0`、业务写入 `0`。检查曾发现最多 13px 的逐列漂移，已通过移除表头容器额外水平内边距修正。证据：`UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json` 和 `docs/screenshots/2026-10-19-stock-tables-local/`。
+- 线上 pricing 只读基线在加载完成后为 `4/8 PASS`：Stock List/Capped Pricing × 390/1440 四项均因表头文字溢出或列边界与数据行错位未通过；浏览器非 GET 请求拦截 `0`，JS 错误 `0`。Capped Pricing 390px 实际列表行和叠字表头截图已保存。运行部署 SHA 未核验。证据：`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_BASELINE_FINAL.json`、`docs/screenshots/2026-10-19-pricing-reliability-online/`。
+- 同轮复验：价格行保存失败/重试 `8/8 PASS`（所有 PATCH fixture 拦截）；Price Suggestions 搜索、筛选、CSV、Bulk 深链 `16/16 PASS`（API 写入 `0`）；AI capability gate `2/2 PASS`（390/1440，语音转写请求 `0`）。证据：`UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-19.json`、`UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`、`UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-19.json`。
+- AI assistant 新增本地会话摘要（累计回复数、成功率、平均延迟）；`4/4 PASS` 覆盖单次与两次成功响应、逐条诊断和零业务写入。证据：`UAT_AI_DIAGNOSTICS_LOCAL_2026-10-19.json`。
+- 前端 `npm run typecheck`、Stock List/Capped Pricing 目标 ESLint、UAT 脚本 `node --check`、`git diff --check` 均通过；未运行本地 build。
+- 以上布局和新增 UAT 尚未部署。继续积累适合一起验证的改进后，再提交/推送并触发一次 Dokploy；部署后需做线上 390/1440 只读复验并从控制台核对镜像 SHA、构建日志、健康状态。`AiProviderConfig` 缺符号错误对应的 import 修复已在 `ea8f1b6`，且已包含于当前 `origin/main`，不需重复改代码。
 - Stock List 与 Capped Pricing 现在防止同一行重复 blur 提交；提交中锁定该行输入。失败时显示单元格/行错误，保留用户输入供修正或重试。
 - Bulk Price Edit 已有相同保存失败保护：失败显示错误并回滚到已保存价格；busy 状态清除后可继续编辑。
-- 本地 fixture 结果：Stock List + Capped Pricing `8/8 PASS`；Bulk Price Edit `7/7 PASS`；Price Suggestions 深链 `16/16 PASS`；AI capability gate `2/2 PASS`（390/1440）。所有业务请求在浏览器 fixture 中拦截，真实业务写请求 `0`。证据分别见 `UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`、`UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`、`UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_POST-1C4A7B1.json`、`UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-19_POST-1C4A7B1.json`。
-- TypeScript、目标 ESLint、测试脚本语法与 `git diff --check` 通过。按约束未运行本地 build。
-- 源码提交 `1c4a7b1`；该批次尚未部署。下一步将本批代码、UAT 证据与功能清单一起推送，并只触发一次 Dokploy；部署后检查 Stock List、Capped Pricing、Bulk Price Edit 和 AI 能力状态，再回读容器 SHA/构建/健康信息。
+- 本地 fixture 结果：Stock List + Capped Pricing 保存失败恢复 `8/8 PASS`；Bulk Price Edit `7/7 PASS`；Price Suggestions 深链 `16/16 PASS`；AI capability gate `2/2 PASS`（390/1440）。业务 PATCH 由 fixture 拦截，Price Suggestions API 写入 `0`，语音转写请求 `0`。本次复验记录见顶部当前批次及对应 `UAT_*_LOCAL_2026-10-19.json`。
+- 线上 390px 旧版截图曾发现 Stock List/Capped Pricing 列表难以浏览；本地已验证内部滚动、表头/数据行列对齐、无页面溢出。最新 Dokploy 容器 SHA 尚未核验，本轮修复未部署；旧版线上诊断见 `UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19_POST-F1993D6_DIAGNOSTIC.json`。
+- 最新本地 `typecheck`、目标 ESLint、响应式 UAT 脚本语法与 `git diff --check` 通过；按约束未运行本地 build。
+- 当前 `main` 与 `origin/main` 均为 `722f0e2`；本轮响应式 UI、UAT 和文档仍在工作树，尚未提交/部署。凑齐本批改进后，统一提交推送并只触发一次 Dokploy；部署后重跑线上 pricing UAT 并核对构建日志、容器 SHA/健康信息。
 
 ## 2026-10-19 Smart Pricing 到 Bulk Price Edit 闭环
 
@@ -64,7 +72,7 @@
 
 > **当前有效摘要（2026-10-19）**
 >
-> 用户此前反馈线上已部署 `7544d03`，但没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。当前仓库源码已推进至 `1c4a7b1`；本交接顶部列出的新批次尚未部署。不要把历史部署声明或公网页面行为当作当前容器 SHA 的证明。
+> 当前 Git 基线为 `722f0e2`，顶部记录的 Stock List/Capped Pricing 表格布局与 AI 会话摘要仍在本地候选批次。加载就绪后的公网 pricing 矩阵 `4/8 PASS`，四个 Stock List/Capped Pricing 视口都显示列文本溢出或表格列错位；非 GET 页面 API 写入为 `0`，页面错误为 `0`。该公网结果的 Dokploy 容器 SHA 尚未独立核验。候选批次本地响应式矩阵 `4/4 PASS`、行内保存故障注入 `8/8 PASS`、Price Suggestions `16/16 PASS`、AI capability `2/2 PASS`、AI diagnostics `4/4 PASS`。尚未部署；未运行本地 build。
 
 ## 交接结论
 

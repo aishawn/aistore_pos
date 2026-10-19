@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T09:19:16.760Z",
-  "sourceCommit": "a4d5281c70e5d80aaf8a96839b850e81eb625b26",
+  "generatedAt": "2026-10-19T10:17:55.159Z",
+  "sourceCommit": "722f0e296af041b5322ea4516d0f553325a050f6",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "AI capability gate UI; chat enabled while transcription is unavailable; no model or business writes",
