@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T02:55:09.505Z",
-  "sourceCommit": "563ebcb1f863b756910c64a15eec02b98f4465b0",
+  "generatedAt": "2026-10-19T03:02:07.810Z",
+  "sourceCommit": "5f75cebec722dd43b0936c102229896d3dc492a6",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "Odoo stocktake UI only; all APIs intercepted locally; no Odoo calls or inventory writes",
@@ -15,6 +15,7 @@
       "horizontalOverflow": false,
       "pageErrors": [],
       "locationRetryRecovered": true,
+      "invalidQuantityGuard": true,
       "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake\\stocktake-390.png"
     },
     {
@@ -26,6 +27,7 @@
       "horizontalOverflow": false,
       "pageErrors": [],
       "locationRetryRecovered": true,
+      "invalidQuantityGuard": true,
       "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake\\stocktake-1440.png"
     },
     {
@@ -37,6 +39,7 @@
       "horizontalOverflow": false,
       "pageErrors": [],
       "locationRetryRecovered": true,
+      "invalidQuantityGuard": true,
       "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake\\stocktake-768.png"
     }
   ],
