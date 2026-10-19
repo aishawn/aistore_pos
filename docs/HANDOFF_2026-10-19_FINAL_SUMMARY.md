@@ -82,6 +82,13 @@
 - 线上专项验证：能力未知时两个入口均 `disabled=true`，配置返回后均 `enabled=true`，页面未产生图片、模型或业务写入。证据：`docs/UAT_AI_CAPABILITY_LOADING_ONLINE_39E0DC8.json`。
 - 同批线上发票预览 fixture、AI 功能和 UI 回归均通过；发票仍严格为 preview-only。
 
+## 本轮真实 provider OCR 预览验证
+
+- 使用合成但可读的测试发票图片调用真实线上 OCR provider，成功提取供应商、发票号、日期、2 条明细和总额。
+- preview-only 边界通过：没有调用保存接口，没有创建供应商、采购单、收货单或库存。
+- 证据：`docs/UAT_INVOICE_OCR_PREVIEW_ONLINE_39E0DC8.json`。
+- 该结果证明 provider 和字段映射链路可用，但合成票据不替代现场真实供应商发票验收；真实票据仍需抽样复验。
+
 ## 关键证据
 
 - `docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-9E6B01A.json`

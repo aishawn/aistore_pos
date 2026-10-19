@@ -1,0 +1,75 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
+  .split(/\r?\n/)
+  .filter((line) => line && !line.startsWith("#") && line.includes("="))
+  .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
+const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
+const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+const sourceCommit = process.env.PILOT_SOURCE_COMMIT ?? "39e0dc8";
+if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+const evidence = {
+  generatedAt: new Date().toISOString(),
+  sourceCommit,
+  target: base,
+  scope: "real provider invoice OCR preview only; no supplier, purchase, receipt, inventory, or configuration writes",
+  status: "FAIL",
+  checks: [],
+  writes: [],
+};
+const record = (name, status, detail) => evidence.checks.push({ name, status, detail });
+
+try {
+  const login = await context.request.post(`${base}/api/auth/login`, {
+    data: { username: "admin", password },
+    headers: { Origin: base },
+    timeout: 60000,
+  });
+  const body = await login.json().catch(() => ({}));
+  if (!login.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+  record("admin login", "PASS", `status=${login.status()}`);
+
+  const page = await context.newPage();
+  await page.setContent(`<!doctype html><html><body style="margin:0;background:#fff;font-family:Arial,sans-serif;color:#172033"><main style="width:1000px;padding:56px 64px"><div style="display:flex;justify-content:space-between;border-bottom:4px solid #135dcc;padding-bottom:24px"><div><h1 style="font-size:42px;margin:0;color:#135dcc">Harbour Wine Co</h1><p style="font-size:18px;margin:12px 0 0">ABN 12 345 678 901 · 18 King Street, Adelaide SA 5000</p></div><div style="text-align:right"><h2 style="font-size:30px;margin:0">TAX INVOICE</h2><p style="font-size:20px;margin:12px 0 0">Invoice No: HW-2026-1042</p><p style="font-size:20px;margin:8px 0 0">Date: 19/10/2026</p></div></div><section style="margin-top:36px;font-size:20px"><p><b>Bill to:</b> Orithos Demo Store</p><p><b>Delivery:</b> Main Store</p></section><table style="width:100%;border-collapse:collapse;margin-top:32px;font-size:20px"><thead><tr style="background:#eaf2ff"><th style="padding:16px;text-align:left">Product</th><th style="padding:16px;text-align:right">Qty</th><th style="padding:16px;text-align:right">Unit price</th><th style="padding:16px;text-align:right">Amount</th></tr></thead><tbody><tr><td style="padding:18px;border-bottom:1px solid #ccd5e3">Harbour Shiraz 2024</td><td style="padding:18px;text-align:right;border-bottom:1px solid #ccd5e3">12</td><td style="padding:18px;text-align:right;border-bottom:1px solid #ccd5e3">$18.00</td><td style="padding:18px;text-align:right;border-bottom:1px solid #ccd5e3">$216.00</td></tr><tr><td style="padding:18px;border-bottom:1px solid #ccd5e3">Coastal Sauvignon Blanc 2025</td><td style="padding:18px;text-align:right;border-bottom:1px solid #ccd5e3">6</td><td style="padding:18px;text-align:right;border-bottom:1px solid #ccd5e3">$22.00</td><td style="padding:18px;text-align:right;border-bottom:1px solid #ccd5e3">$132.00</td></tr></tbody></table><section style="margin:36px 0 0 auto;width:420px;font-size:22px"><p style="display:flex;justify-content:space-between"><span>Subtotal</span><b>$348.00</b></p><p style="display:flex;justify-content:space-between"><span>GST (10%)</span><b>$34.80</b></p><p style="display:flex;justify-content:space-between;border-top:3px solid #135dcc;padding-top:18px"><span>Total payable</span><b>$382.80</b></p></section></main></body></html>`);
+  const image = await page.screenshot({ type: "png", fullPage: true });
+  await page.close();
+
+  const before = [];
+  context.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/") && request.method() !== "GET") before.push(`${request.method()} ${url.pathname}`);
+  });
+  const response = await context.request.post(`${base}/api/orders/receives/scan`, {
+    multipart: { file: { name: "harbour-test-invoice.png", mimeType: "image/png", buffer: image } },
+    timeout: 120000,
+  });
+  const result = await response.json().catch(() => ({}));
+  const data = result.data ?? {};
+  if (result.code === 0) {
+    const line = data.lines?.[0] ?? {};
+    record("provider OCR response", "PASS", `supplier=${Boolean(data.supplierName)} invoice=${data.invoiceNumber ?? ""} date=${data.invoiceDate ?? ""} lines=${data.lines?.length ?? 0} total=${data.totalPayable ?? ""}`);
+    record("required invoice fields", data.supplierName && data.invoiceNumber && data.invoiceDate && data.lines?.length && data.totalPayable ? "PASS" : "FAIL", `supplier=${data.supplierName ?? ""} invoice=${data.invoiceNumber ?? ""} date=${data.invoiceDate ?? ""} line=${line.description ?? ""}`);
+  } else {
+    record("provider OCR response", result.code === 50212 ? "INFO" : "FAIL", `code=${result.code ?? ""} message=${String(result.message ?? "").slice(0, 160)}`);
+  }
+  const forbidden = before.filter((entry) => !entry.includes("/api/orders/receives/scan"));
+  record("preview-only write boundary", forbidden.length === 0 ? "PASS" : "FAIL", `unexpected=${forbidden.join(",")}`);
+  evidence.providerCode = result.code ?? null;
+  evidence.status = evidence.checks.every((check) => check.status !== "FAIL") ? "PASS" : "FAIL";
+} finally {
+  await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
+  await context.close();
+  await browser.close();
+}
+
+const outputPath = path.join(root, "docs", `UAT_INVOICE_OCR_PREVIEW_ONLINE_${sourceCommit.toUpperCase()}.json`);
+fs.writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
+console.log(JSON.stringify(evidence, null, 2));
+if (evidence.status === "FAIL") process.exitCode = 1;

@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-19T12:58:08.001Z",
+  "sourceCommit": "39e0dc8",
+  "target": "https://demo.orithos.com.au",
+  "scope": "real provider invoice OCR preview only; no supplier, purchase, receipt, inventory, or configuration writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "provider OCR response",
+      "status": "PASS",
+      "detail": "supplier=true invoice=HW-2026-1042 date=2026-10-19 lines=2 total=382.8"
+    },
+    {
+      "name": "required invoice fields",
+      "status": "PASS",
+      "detail": "supplier=Harbour Wine Co invoice=HW-2026-1042 date=2026-10-19 line=Harbour Shiraz 2024"
+    },
+    {
+      "name": "preview-only write boundary",
+      "status": "PASS",
+      "detail": "unexpected="
+    }
+  ],
+  "writes": [],
+  "providerCode": 0
+}
