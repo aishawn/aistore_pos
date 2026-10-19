@@ -1,5 +1,67 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 当前公网汇总
+
+- 全站静态矩阵：`133` 路由 × `390/1440` 视口，`266/266 PASS`，无 HTTP 路由失败；独立证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-4487A12.json`。
+- AI availability `3/3 PASS`、surface `11/11 PASS`、UI `2/2 PASS`，AI 全功能只读矩阵 `14 PASS / 0 FAIL / 1 INFO`。AI 当前线上为 `enabled=true`，真实 NLQ、Sommelier、ASR/视觉边界和匿名鉴权均已回归；Invoice OCR 探针没有发票字段，真实发票照片字段提取仍未验收。
+- 价格建议搜索/状态筛选/CSV 和只读保护已在公网出现并通过，价格、销售、库存、采购和现金写入均为 `0`。
+- `10facb6` 视觉路由修复已有线上矩阵通过记录；`41507d9`、`4487a12` 已补充证据。Dokploy 容器 SHA、构建日志和健康状态仍未从控制台独立回读。
+
+> **当前有效摘要（2026-10-19）**
+>
+> 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `32b3b30`；接手时先确认线上实际运行提交。
+
+## 交接结论
+
+当前整体状态：**NO-GO（可继续只读回归，禁止据此宣称生产全量通过）**。
+
+### 已完成并有线上证据
+
+- 注册、租户自动登录、Odoo 公司绑定、Outlet/Register 配置、dummy data 初始化，以及租户删除后的认证拒绝。
+- 基础 POS：开班、商品搜索、数量修改、Cash 收款/找零、Card 模拟收款、GST/现金舍入、收据/订单回读和销售扣库存。
+- Cash/Card 全额退款、退款订单、库存恢复、Cash in/out，以及正确现金盘点值关班。
+- 隔离公司中的供应商、RFQ、采购确认、部分收货/backorder、最终收货、重复收货保护和库存回读；但必须在当前已核实部署版本重跑一次。
+- 多租户读取隔离、登出保护、平台删除租户后的认证拒绝。
+- AI 视觉路由修复后线上只读回归：`14 PASS / 0 FAIL / 1 INFO`，证据 `docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-10FACB6.json`。NLQ、Sommelier、ASR/空图边界、价格建议只读接口、补货页和匿名鉴权通过。
+- AI UI `2/2`、availability `3/3` 通过，证据 `docs/UAT_AI_UI_2026-10-19_POST-10FACB6.json`、`docs/UAT_AI_AVAILABILITY_2026-10-19_POST-10FACB6.json`。
+- AI 价格建议保持 `writeEnabled=false`；价格建议筛选/CSV 导出已完成本地 fixture 验证，不产生价格写入。
+- Invoice OCR 明确为 preview-only；mock 扫描通过且没有创建供应商、采购单或收货单。
+
+### 已实现但证据不足，不能标记为完成
+
+- Smart Pricing `/stock/price-suggestions`：本地页面、筛选、CSV 和写保护通过；线上路由、当前部署身份及后续 Bulk Price Edit SKU 预填仍需确认。
+- Invoice OCR：当前探针仅证明 provider 可达，返回 `50212`；使用的不是包含真实发票字段的图片，尚未证明 supplier、invoice number、日期、行项目和合计字段提取成功。
+- 采购/收货：已有历史隔离租户证据，但尚未绑定到用户所称 `7544d03` 或 Dokploy 当前容器后重跑。
+- Stocktake：管理员只读页面、权限保护和 location fallback 有证据；真实隔离 Odoo 盘点写入、取消不改库存、重复确认只生效一次、quant reference 和跨租户拒绝尚未验收。生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false`。
+- AI 配置管理员保护：代码和控制器单测已加入，但普通员工线上调用写接口的拒绝结果尚未形成可审计证据。
+
+### 尚未完成或产品未实现
+
+- 真实 DashScope 生产能力尚未作为全量生产能力放行；真实语音转写、酒标图像识别和真实发票 OCR 字段提取仍需按真实输入验收。
+- 实体刷卡终端、打印机、钱箱未接入验证；当前 Card 只是 Odoo 模拟支付方式。
+- 分单/多支付方式收款、离线 POS 尚未实现或未验收，不计入基础 POS 通过门槛。
+- SMTP 邀请/密码重置邮件、正式现金差异审批、财务对账和完整采购财务流程未完成。
+- 当前版本的完整采购/收货、stocktake 写入和删除租户后的全链路冒烟仍待重跑。
+- Dokploy 当前 frontend/backend SHA、构建日志、健康状态和部署时间尚未独立核验。
+- 本地未运行 build；本机 Java 8 不满足后端 Java 21 要求，Maven 结果必须以 Java 21 CI/Dokploy 构建为准。
+
+## 当前问题与风险
+
+- 用户给出的 `7544d03` 与仓库当前 `32b3b30` 不一致；不能假定线上运行的是哪一个。
+- Dokploy webhook 历史上出现过 `301 Branch Not Match`；即使 webhook 返回 `200 Compose deployed successfully`，也不等于容器已切换，必须回读控制台证据。
+- 历史 UAT JSON 同时包含旧版本、`unverified-after-deploy` 和已接受部署目标，阅读时必须按时间和 deployment 字段区分。
+- 工作区有大量历史 UAT、截图和用户未提交改动。禁止 `git add -A`、reset、clean 或覆盖无关文件；只提交明确纳入交接的文件。
+- 不得对生产 Demo 公司做销售、采购、库存、现金或 stocktake 写入；业务写入必须使用一次性隔离租户，结束后删除并验证认证拒绝。
+
+## 接手后的优先顺序
+
+1. 从 Dokploy 控制台回读当前 frontend/backend SHA、构建日志、健康状态和部署时间，核对 `7544d03`。
+2. 在一次性隔离租户重跑基础冒烟：`signup -> bootstrap login -> Odoo binding -> outlet/register -> dummy catalog -> open session -> cash/card sale -> refund -> close register -> platform delete`。
+3. 在同一隔离租户完成 stocktake 写入和当前版本采购/部分收货/全部收货回归，保存库存前后值、session、订单、收货和权限 JSON 证据。
+4. 找到真实可解码供应商发票图片，完成 preview-only OCR 字段提取验收，并确认不创建 supplier、PO、receipt 或库存写入。
+5. 在受支持 Java 21/Node 版本执行后端测试和生产构建验证；部署后只重跑受影响用例及完整冒烟。
+6. 在上述证据补齐前保持 `AI_ENABLED=false`、`ODOO_STOCKTAKE_WRITE_ENABLED=false`，整体保持 `NO-GO`。
+
 ## 2026-10-19 价格建议筛选增强
 
 - `/stock/price-suggestions` 增加商品名/SKU搜索、状态筛选和筛选结果计数；`Export CSV` 导出当前筛选结果，保持纯浏览器生成。
