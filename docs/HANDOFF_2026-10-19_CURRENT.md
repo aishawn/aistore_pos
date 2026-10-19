@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 当前构建诊断与移动遮挡断言
+
+- 当前 `main`/`origin/main` 为 `91ddfb9`；`AiProviderConfig.java` 已被 Git 跟踪，`AiConfigController` 与 `SommelierController` 均包含 `import com.orithos.modules.ai.AiProviderConfig;`。因此 Dokploy #38 的两个 `cannot find symbol` 不是当前源码缺陷，应视为旧快照或 Compose 分支/提交配置错误。
+- `SqlAst.java` 的 `Parenthesis` 弃用信息只是 warning，不会导致 Maven 退出。未重复修改 Java 控制器，也未运行本地 Maven/Next build。
+- Dokploy 必须从控制台确认 Compose 分支为 `main` 并部署 `91ddfb9` 或更晚提交；需要回读完整 Maven/Next 日志、frontend/backend 容器 SHA、健康状态和完成时间。仅 webhook 返回值不能证明构建完成，整体状态继续 **NO-GO**。
+- 价格/库存只读 UAT 脚本新增 390px Stock List 浮动助手与可见产品卡片相交断言；下一次 UI 部署后需重新生成专项证据。现有 `da76894` 截图已发现首屏产品卡片仍可能被 FAB 覆盖，该问题尚未标记为已修复。
+
 ## 2026-10-20 Stock List 筛选与移动底部空间批次（当前工作区）
 
 - `pos-ui/src/components/admin/StockListPage.tsx` 修正库存筛选开关的 HTML 结构：不再让 `<label>` 包裹交互式 `<button role="switch">`，改为普通分组容器和可见文本，避免重复触发与辅助技术语义冲突。

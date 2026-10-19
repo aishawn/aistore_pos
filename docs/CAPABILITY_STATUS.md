@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 当前构建诊断与 Stock List 遮挡检测
+
+- 当前 `main`/`origin/main` 为 `91ddfb9`；两个控制器的 `AiProviderConfig` 显式 import 和 `AiProviderConfig.java` 均已存在。Dokploy #38 的 `cannot find symbol` 属于旧源码快照或错误 Compose 分支，不需要重复修改 Java。
+- `Parenthesis` deprecation 是非阻断 warning。需在 Dokploy 控制台确认部署 `91ddfb9`（或更晚提交），并独立回读构建日志、容器 SHA、健康状态和完成时间；在证据补齐前整体 **NO-GO**。
+- Stock List 价格专项脚本已增加移动端 FAB 与可见产品卡片相交断言；现有截图仍显示遮挡风险，尚未验收为通过。
+
 ### 2026-10-20 Stock List 筛选与移动底部空间批次（工作区）
 
 - 修正 `StockListPage` 的库存筛选 switch 结构，移除 label/button 嵌套；保留 `role="switch"`、`aria-checked` 和现有筛选请求行为。

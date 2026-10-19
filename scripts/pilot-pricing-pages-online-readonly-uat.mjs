@@ -67,6 +67,7 @@ try {
       let mobileTableScroll = null;
       let mobileCardFields = null;
       let bottomSafeArea = null;
+      let assistantCardOverlap = null;
       let tableColumnsDoNotOverlap = null;
       let columnsAlignWithFirstRow = null;
       let headerTextFits = null;
@@ -121,6 +122,18 @@ try {
           page.locator('input[aria-label^="Price for "]').last().isVisible(),
           page.locator('input[aria-label^="Profit margin for "]').last().isVisible(),
         ]).then((fields) => fields.every(Boolean));
+        assistantCardOverlap = await page.evaluate(() => {
+          const assistant = document.querySelector('[aria-label="Open AI assistant"]');
+          if (!assistant) return true;
+          const assistantRect = assistant.getBoundingClientRect();
+          const intersects = (a, b) => a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
+          return ![...document.querySelectorAll('article')].some((card) => {
+            const rect = card.getBoundingClientRect();
+            const style = getComputedStyle(card);
+            return style.visibility !== 'hidden' && style.display !== 'none'
+              && rect.width > 0 && rect.height > 0 && intersects(assistantRect, rect);
+          });
+        });
         await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
         bottomSafeArea = await page.evaluate(() => {
           const assistant = document.querySelector('[aria-label="Open AI assistant"]');
@@ -148,6 +161,7 @@ try {
         mobileTableScroll: viewport.width === 390 && hasDataTable ? mobileTableScroll : null,
         mobileCardFields,
         bottomSafeArea,
+        assistantCardOverlap,
         tableColumnsDoNotOverlap,
         columnsAlignWithFirstRow,
         headerTextFits,
@@ -173,6 +187,7 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || (check.mobileTableScroll === false && check.route !== "/stock/list")
   || check.mobileCardFields === false
   || check.bottomSafeArea === false
+  || check.assistantCardOverlap === false
   || check.tableColumnsDoNotOverlap === false
   || check.columnsAlignWithFirstRow === false
   || check.headerTextFits === false
