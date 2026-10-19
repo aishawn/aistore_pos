@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 `0f9faab` 部署后 AI 回归
+
+- `0f9faab`（包含 `2bc8046` 视觉能力位文案修复）已通过 Dokploy webhook 接受，返回 `HTTP 200 Compose deployed successfully`。
+- 线上受影响 AI 只读回归全部通过：availability `3/3`、surface `11/11`、UI `2/2`、AI Features `14/14`；空音频/空图片边界、匿名 `401`、启用态 assistant 和 AI 配置读取均通过。
+- Invoice OCR 探针为 `INFO`（provider 可达、探针图片没有发票字段，业务码 `50212`），不代表真实供应商发票字段提取或采购/收货/库存写入已放行。
+- 证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_SURFACE_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_FEATURES_VERIFY_2026-10-19.json`。上述 AI 文件的 `sourceCommit` 为 `0f9faab`。
+- Dokploy 控制台 frontend/backend 实际 SHA、完整构建日志、健康状态和完成时间仍需独立回读；整体仍为 **NO-GO**。
+
 ## 2026-10-19 表格可访问性批次（`b2e0b1a`）
 
 - 为设置用户、Sell AI 动态结果、AI 报表结果、产品价格阶梯、发票 OCR 明细和供应链建议表补齐 `aria-label` 与列头 `scope="col"`；没有改变接口、数据写入或业务流程。

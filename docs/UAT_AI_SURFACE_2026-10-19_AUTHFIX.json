@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-10-19T05:35:36.994Z",
-  "sourceCommit": "b5daa260ef787513851beb4b4f0d69b0ef423032",
+  "generatedAt": "2026-10-19T15:39:00.504Z",
+  "sourceCommit": "0f9faabf651a2700122de69ddb62d8fcd6ea6734",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
   "checks": [
     {
       "name": "AI client config",
       "status": "PASS",
-      "evidence": "Loaded 44 trigger keywords."
+      "evidence": "Loaded 44 trigger keywords; enabled=true."
     },
     {
       "name": "AI config intents",
@@ -30,19 +30,19 @@
       "evidence": "Loaded 3 records."
     },
     {
-      "name": "AI assistant availability",
+      "name": "AI assistant product lookup",
       "status": "PASS",
-      "evidence": "Assistant is intentionally disabled because production AI_ENABLED is false."
+      "evidence": "Returned intent search_product."
     },
     {
-      "name": "Voice input availability",
+      "name": "Voice input validation",
       "status": "PASS",
-      "evidence": "Cloud transcription is intentionally disabled because production AI_ENABLED is false."
+      "evidence": "Empty audio is rejected with code 40010 (HTTP 200)."
     },
     {
-      "name": "Label image availability",
+      "name": "Label image validation",
       "status": "PASS",
-      "evidence": "Cloud label recognition is intentionally disabled because production AI_ENABLED is false."
+      "evidence": "Empty image is rejected with code 40010 (HTTP 200)."
     },
     {
       "name": "Anonymous AI assistant guard",

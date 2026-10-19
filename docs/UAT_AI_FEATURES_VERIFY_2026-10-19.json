@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-19T05:59:16.859Z",
-  "sourceCommit": "c478371c0fa094223b439d7a019d37fc49943e17",
+  "generatedAt": "2026-10-19T15:40:59.014Z",
+  "sourceCommit": "0f9faabf651a2700122de69ddb62d8fcd6ea6734",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
-  "status": "FAIL",
+  "status": "PASS",
   "checks": [
     {
       "name": "login",
@@ -13,12 +13,12 @@
     {
       "name": "AI client config",
       "status": "PASS",
-      "evidence": "enabled=false assistantAvailable=undefined transcription=undefined labelVision=undefined invoiceVision=undefined"
+      "evidence": "enabled=true assistantAvailable=true transcription=true labelVision=true invoiceVision=true"
     },
     {
       "name": "NLQ assistant",
-      "status": "BLOCKED",
-      "evidence": "AI disabled (50301)"
+      "status": "PASS",
+      "evidence": "intent=entity_action"
     },
     {
       "name": "ASR empty guard",
@@ -57,8 +57,8 @@
     },
     {
       "name": "Invoice OCR probe",
-      "status": "FAIL",
-      "evidence": "Invoice recognition failed: {\"error\":{\"message\":\"Model not exist.\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"model_not_found\"},\"id\":\"chatcmpl-107ce7e3-4f65-9d4f-b29e-57d4c9b7fc7e\",\"request_id\":\"107ce7e3-4f65-9d4f-b29e-57d4c9b7fc7e\"}"
+      "status": "INFO",
+      "evidence": "provider reachable; image has no invoice fields code=50212"
     },
     {
       "name": "Price suggestions API",
@@ -81,7 +81,7 @@
       "evidence": "status=401"
     }
   ],
-  "passed": 13,
-  "failed": 1,
-  "blocked": 1
+  "passed": 14,
+  "failed": 0,
+  "blocked": 0
 }

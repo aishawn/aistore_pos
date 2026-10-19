@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### `0f9faab` 部署后 AI 回归
+
+- availability `3/3`、surface `11/11`、UI `2/2`、AI Features `14/14` 通过；空输入边界、匿名鉴权和启用态 assistant 均通过。
+- Invoice OCR 当前为 provider 可达 `INFO`，仍需真实供应商发票照片字段提取验收；不允许据此执行供应商、采购、收货或库存写入。
+- 证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_SURFACE_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_FEATURES_VERIFY_2026-10-19.json`。
+
 ### 表格可访问性批次（`b2e0b1a`）
 
 - 设置用户、Sell AI 动态结果、AI 报表、产品价格阶梯、发票 OCR 明细和供应链建议表均补齐可识别表名与 `scope="col"` 列头。
