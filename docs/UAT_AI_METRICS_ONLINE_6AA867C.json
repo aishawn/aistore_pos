@@ -15,6 +15,11 @@
       "detail": "status=200 paths=1"
     },
     {
+      "name": "assistant intent metrics coverage",
+      "status": "PASS",
+      "detail": "assistant request returned intent=entity_action; byPath=assistant:entity_action requests=2 allowed=2 estimatedTokens=32"
+    },
+    {
       "name": "anonymous metrics guard",
       "status": "PASS",
       "detail": "status=401"
