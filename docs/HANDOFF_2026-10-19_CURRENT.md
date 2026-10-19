@@ -9,7 +9,7 @@
 
 > **当前有效摘要（2026-10-19）**
 >
-> 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `468bccc`；接手时先确认线上实际运行提交。
+> 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `62eeb9a`；接手时先确认线上实际运行提交。
 
 ## 交接结论
 
@@ -67,7 +67,7 @@
 - `/stock/price-suggestions` 增加商品名/SKU搜索、状态筛选和筛选结果计数；`Export CSV` 导出当前筛选结果，保持纯浏览器生成。
 - 本地验证：`npm run typecheck`、`npx eslint src/components/OdooPriceSuggestionsPage.tsx`、`node --check scripts/pilot-price-suggestions-local-uat.mjs`、`git diff --check` 均通过；Playwright fixture `PASS`，搜索命中/空结果、状态筛选、CSV 内容和非 GET 请求 `0` 均有证据。
 - 证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_SEARCH.json`。本地开发服务端口 `3035`，API 全部 fixture 拦截，没有 Odoo 或业务写入。
-- 本次 UI 改动尚未线上验证；应与 `ea8f1b6` 一起部署，随后重跑价格建议认证 gate、AI surface 和全站矩阵。
+- 本次 UI 改动已在公网观察到；由于 Dokploy 容器 SHA 尚未从控制台核验，仍需将行为证据与运行镜像身份对应起来。
 - 集中批次已提交并推送：`d9089bb`（价格建议筛选/导出范围）及其父提交包含 `ea8f1b6`（AI provider 导入修复）。对最新提交发送完整 GitHub push payload 后，Dokploy webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有产生构建任务；线上验证继续等待 Dokploy Compose 分支配置修正。
 - 随后公网只读 gate 观察到价格建议页已出现搜索和状态筛选，且 assistant NLQ、AI capability、Sommelier 页面和价格写保护均通过；证据 `docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-D9089BB_ONLINE-PRICE-FILTER.json`。由于 Dokploy 控制台未回读容器 SHA/构建日志，不能据此确认运行镜像对应 `d9089bb`。
 - 启用态回归已串行重跑并通过：AI surface `11/11`、AI UI `2/2`；空音频/空图片业务边界、匿名路由鉴权、390/1440 UI 焦点与启用态聊天/语音状态均通过。证据 `docs/UAT_AI_SURFACE_2026-10-19_POST-9B01128_ENABLED-AWARE-RETRY2.json`、`docs/UAT_AI_UI_2026-10-19_POST-9B01128_ENABLED-AWARE-RETRY.json`。首次并行运行的登录 `404/502` 为瞬态失败，未计入通过或失败结论。
@@ -87,7 +87,7 @@
 - `/stock/price-suggestions` 现在支持 `Export CSV`，导出当前视图（默认建议项；切换后为全部 POS 商品）的产品、SKU、状态、成本、当前价、建议价、毛利、28 天销量、库存和解释原因。
 - CSV 在浏览器内生成并下载，未增加服务端写接口；价格建议仍明确 `writeEnabled=false`，人工变价仍从 Products / Bulk Price Edit 完成。
 - 本地检查：`npm run typecheck`、目标 ESLint、`node --check scripts/pilot-price-suggestions-local-uat.mjs`、`git diff --check` 通过；本地 Playwright UAT `PASS`，下载内容包含 DEMO 商品和表头，非 GET API 请求 `0`。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`。
-- 线上尚未验收：公网价格建议页当前仍返回 `404`，必须先从 Dokploy 控制台核对 frontend SHA / 构建日志 / 健康状态，再重跑线上 UAT。
+- 以上是早期 `404` 记录；后续 `266/266` 全站矩阵和价格建议线上 gate 已确认页面可达，不能将该旧失败当作当前状态。
 
 ## 2026-10-19 `26f1d47` 部署后只读回归
 

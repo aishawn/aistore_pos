@@ -49,8 +49,8 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 
 ### `aac28da` 部署后 AI 环境回归
 
-- 价格建议页已从线上 `404` 恢复：认证 gate 可达、只读文案通过，静态矩阵上一轮为 `266/266 PASS`。
-- Dokploy 当前环境返回 `AI_ENABLED=true`；真实 assistant 请求返回 DashScope `HTTP 400 InvalidParameter: url error`，AI surface 和 enablement gate 失败。该问题需要修正 Dokploy 的 DashScope base URL/模型配置，不能用 mock 结果放行。
+- 价格建议页已从线上 `404` 恢复：认证 gate、商品/SKU筛选、状态筛选、CSV 和只读文案均通过；静态矩阵最新为 `266/266 PASS`。
+- 以下旧段落记录的是 DashScope 路由修复前的 `AI_ENABLED=true` / `url error` 反例；当前 `10facb6` 后的线上 AI 全功能矩阵为 `14 PASS / 0 FAIL / 1 INFO`，不得把旧失败当作当前运行状态。
 - `AI_ENABLED=true` 时本轮不能验证关闭门禁 `50301`；生产应在模型配置完成前保持关闭，或由运维修正环境后重新跑模型 smoke。
 
 ### AI provider failure containment candidate
