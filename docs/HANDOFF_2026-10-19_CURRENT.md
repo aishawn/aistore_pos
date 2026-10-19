@@ -1,5 +1,10 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 最新 Dokploy 触发结果（`39bd36c`）
+
+- 交接补充 `docs/HANDOFF_2026-10-19_AI_REGRESSION_0F9FAAB.md` 记录过一次 `301 Branch Not Match`；随后使用完整 GitHub push payload、`ref=refs/heads/main`、当前 HEAD `39bd36c` 重试，webhook 返回 `HTTP 200 Compose deployed successfully`。
+- 该 `200` 仅表示 Dokploy 接受请求，不能替代控制台构建完成、运行容器 SHA、健康状态和部署完成时间证据；AI 回归仍按 `PASS_WITH_DEPLOYMENT_BLOCKED` 历史证据阅读，直到控制台独立核验。
+
 ## 2026-10-19 `0f9faab` 部署后 AI 回归
 
 - `0f9faab`（包含 `2bc8046` 视觉能力位文案修复）已通过 Dokploy webhook 接受，返回 `HTTP 200 Compose deployed successfully`。
