@@ -89,6 +89,17 @@ try {
               : "FAIL",
             body.slice(0, 220),
           );
+          const productSearch = page.getByPlaceholder("Search product or SKU");
+          if (await productSearch.count()) {
+            await productSearch.fill("DEMO");
+            record("price suggestions product search", "PASS", "Search control accepts product/SKU query");
+            await productSearch.fill("");
+            const statusFilter = page.getByLabel("Status");
+            record("price suggestions status filter", await statusFilter.count() > 0 ? "PASS" : "FAIL", "Status filter is available on the live page");
+          } else {
+            record("price suggestions product search", false, "Deployed page does not expose the new product/SKU search control");
+            record("price suggestions status filter", false, "Deployed page does not expose the new status filter");
+          }
         } catch {
           record(
             "price suggestions reachable",

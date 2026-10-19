@@ -18,6 +18,7 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 搜索只作用于已加载的 Odoo 只读结果；没有新增写接口，`writeEnabled=false` 约束保持不变。
 - 本地 Playwright fixture `docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_SEARCH.json`：搜索命中、无匹配、状态筛选、CSV 导出和非 GET 请求 `0` 均 PASS。
 - 本批变更尚未部署；需和 `ea8f1b6` AI 编译修复一起通过 Dokploy Java 21 构建后，再做线上价格建议 gate 与全站矩阵。
+- 公网只读 gate 后续观察到 `/stock/price-suggestions` 已显示商品/SKU搜索和状态筛选，AI assistant、Sommelier 页面及价格无写入断言也通过；证据 `docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-D9089BB_ONLINE-PRICE-FILTER.json`。该行为证据不替代 Dokploy 容器 SHA、构建日志和健康状态取证。
 
 ### 2026-10-19 `26f1d47` 部署后回归
 
