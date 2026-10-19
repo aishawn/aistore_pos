@@ -75,6 +75,13 @@
 - 线上证据：`docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`；部署后复验：`docs/UAT_AI_METRICS_ONLINE_2275378.json`。两次均为管理员 `200`、匿名 `401`、UI `2/2 PASS`、页面错误 `0`、业务/配置写入 `0`。
 - 同批线上 AI 复验：功能 `14 PASS / 0 FAIL / 1 INFO`、AI UI `2/2 PASS`、Sommelier `10/10 PASS`。发票 OCR 仍为 `50212 INFO`，需要真实发票图片才能继续验收。
 
+## 本轮视觉能力位修复（`39e0dc8`）
+
+- Identify Wine Label 和 Scan Supplier Invoice 在 `/api/ai/config/client` 返回前保持上传按钮禁用，避免页面刚打开时误发视觉请求。
+- 能力检查中显示明确状态；能力检查失败时按钮保持禁用并提示刷新，姓名/条码搜索仍可使用。
+- 线上专项验证：能力未知时两个入口均 `disabled=true`，配置返回后均 `enabled=true`，页面未产生图片、模型或业务写入。证据：`docs/UAT_AI_CAPABILITY_LOADING_ONLINE_39E0DC8.json`。
+- 同批线上发票预览 fixture、AI 功能和 UI 回归均通过；发票仍严格为 preview-only。
+
 ## 关键证据
 
 - `docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-9E6B01A.json`
