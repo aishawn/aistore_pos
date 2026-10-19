@@ -73,7 +73,7 @@
 
 - `158394a` 新增基于 Odoo 成本、售价和目标毛利的 GST-inclusive 货架价建议，只读返回，明确不写入 `list_price`；应用动作通过 Products / Bulk Price Edit 由人工完成。
 - 本地 fixture：`PASS`，无 API 写请求；`npm run typecheck`、目标 ESLint、UAT 脚本语法检查通过。
-- 已使用简化和标准 GitHub push payload 多次触发 Dokploy webhook（均返回 HTTP `200`）并等待约 3 分钟；公网登录成功，但 `/stock/price-suggestions` 仍不可达，最新 AI enablement gate 明确为 `FAIL`。这确认问题不是 payload 过简，当前不能把该功能宣称为线上可用。
+- 已使用简化和标准 GitHub push payload 多次触发 Dokploy webhook（均返回 HTTP `200`）并等待约 3 分钟；公网登录成功，但 `/stock/price-suggestions` 仍不可达，包含 no-store 缓存修复后最新 AI enablement gate 仍为 `FAIL`。这确认问题不是 payload 过简或缓存，当前不能把该功能宣称为线上可用。
 - 生产 AI 仍为 `AI_ENABLED=false`；gate 的模型 smoke 保持阻塞，需在非生产隔离环境完成真实 DashScope、ASR、视觉和租户隔离验收后再考虑开启。
 
 更新时间：2026-10-19（Asia/Shanghai）
