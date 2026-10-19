@@ -20,6 +20,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext();
 const checks = [];
 let temporaryUserId = null;
+let temporaryRoleId = null;
 let temporaryUsername = null;
 let clerkPassword = null;
 
@@ -47,10 +48,20 @@ try {
   }
 
   const roles = await jsonRequest("/api/roles");
-  const role = Array.isArray(roles.body.data)
+  let role = Array.isArray(roles.body.data)
     ? roles.body.data.find((item) => !item.managedId) ?? roles.body.data[0]
     : null;
-  if (!role?.id) throw new Error("NO_ROLE_AVAILABLE_FOR_TEMPORARY_USER");
+  if (!role?.id) {
+    const roleCreate = await jsonRequest("/api/roles", "POST", {
+      name: `AI guard temporary role ${Date.now()}`,
+      permissionIds: [],
+    });
+    if (!roleCreate.response.ok() || roleCreate.body.code !== 0 || !roleCreate.body.data?.id) {
+      throw new Error(`TEMP_ROLE_CREATE_FAILED_${roleCreate.response.status()}_${roleCreate.body.message ?? ""}`);
+    }
+    role = roleCreate.body.data;
+    temporaryRoleId = role.id;
+  }
 
   const adminUser = adminLogin.body.data?.user ?? {};
   temporaryUsername = `ai_guard_${Date.now()}`;
@@ -126,13 +137,18 @@ try {
 } catch (error) {
   record("AI admin guard UAT", "FAIL", error instanceof Error ? error.message : "Unexpected failure");
 } finally {
-  if (temporaryUserId !== null) {
+  if (temporaryUserId !== null || temporaryRoleId !== null) {
     await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
     await context.request.post(`${base}/api/auth/login`, {
       data: { username: "admin", password: adminPassword },
       headers: { Origin: base },
     }).catch(() => {});
-    await context.request.delete(`${base}/api/users/${temporaryUserId}`, { headers: { Origin: base } }).catch(() => {});
+    if (temporaryUserId !== null) {
+      await context.request.delete(`${base}/api/users/${temporaryUserId}`, { headers: { Origin: base } }).catch(() => {});
+    }
+  }
+  if (temporaryRoleId !== null) {
+    await context.request.delete(`${base}/api/roles/${temporaryRoleId}`, { headers: { Origin: base } }).catch(() => {});
   }
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await browser.close();
