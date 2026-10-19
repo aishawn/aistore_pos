@@ -122,7 +122,7 @@ try {
     if (passed) denied += 1;
     record(`clerk ${name}`, passed ? "PASS" : "FAIL", `HTTP ${result.response.status()} code ${result.body.code ?? ""}`);
   }
-  record("all AI config writes denied", denied === writeCases.length ? "PASS" : "FAIL", `${denied}/${writeCases.length} returned HTTP 403 / code 40300.`);
+  record("all AI config writes denied", denied === writeCases.length ? "PASS" : "FAIL", `${denied}/${writeCases.length} returned HTTP 200 with business code 40300.`);
 
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
   const adminAgain = await jsonRequest("/api/auth/login", "POST", { username: "admin", password: adminPassword });

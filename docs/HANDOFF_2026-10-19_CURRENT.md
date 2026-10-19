@@ -4,7 +4,7 @@
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`5392598`（stocktake UAT 部署 SHA 校验修复）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`958c3e7`（记录 `3afef08` 部署回归）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
 
 ## 本次交接摘要
 
@@ -17,13 +17,14 @@
 - 多租户读取隔离、登出保护、平台删除租户后的认证拒绝。
 - 全站静态页面历史矩阵 `131 路由 x 390/1440 = 262/262 PASS`，以及多个 Retry、Auth replay、列表、订单、报表和移动端回归。
 - AI 关闭策略和鉴权：availability `3/3 PASS`、surface `11/11 PASS`，27 个受保护 AI/config/voice/label/Sommelier 路由匿名访问均为 `401`；AI UI `2/2 PASS`；Sommelier `10/10 PASS`；发票扫描 mock 通过且没有供应商/采购写入。
+- 普通店员 AI 配置写保护：临时空权限角色和店员线上测试 `13/13 PASS`，所有 reload/create/update/delete 均返回业务码 `40300`，AI 配置数量 `[13,12,119,3]` 前后一致；测试用户和角色已清理。
 - Odoo stocktake 页面/API 的租户、company、库位隔离，叶子库位和库存类型校验，数量/行数边界，提交前重读，应用后库存回读，admin-only 和默认关闭写开关；线上只读回归通过，当前无盘点写入。
 
 ### 未完成或只完成部分验证
 
 - Odoo stocktake 的真实隔离公司写入尚未验收：取消不改库存、确认只应用一次、quant reference、库存前后值、跨租户拒绝和普通用户拒绝仍需在一次性隔离租户中完成。生产保持 `ODOO_STOCKTAKE_WRITE_ENABLED=false`。
 - stocktake 数量边界（`1000001`）目前有本地 fixture 证据，但没有有效的线上真实登录交互证据；之前一次尝试被登录壳重定向，不能计为通过。
-- AI 配置写接口虽已加入管理员保护并有控制器单测，但没有普通店员线上 `403` 证据；本地 Maven 测试也未执行。
+- AI 配置写接口的权限行为已完成线上验证；当前 API 使用统一业务信封，HTTP 状态为 `200`、业务码为 `40300`，监控若只看 HTTP 状态需同时检查响应码字段。本地 Maven 测试仍未执行。
 - 真实 DashScope 对话、云端语音转写、酒标图像识别、真实发票 OCR 尚未验收；生产 `AI_ENABLED=false`，当前 AI 结果不代表模型已启用。
 - 实体刷卡终端、打印机、钱箱、SMTP 邀请/重置邮件、正式现金差异审批、财务对账未验收。
 - 分单/多支付方式收款和离线 POS 尚未实现或验收，不计入当前基础 POS 通过门槛。
@@ -40,10 +41,9 @@
 ### 建议的接手顺序
 
 1. 在 Dokploy 控制台读取 frontend/backend 当前 SHA、构建日志、健康状态和部署时间，核对 `65a1e57`、`5afab93`、用户所称 `7544d03` 的关系；修复 `Branch Not Match` 后再做新部署。
-2. 用普通店员账号验证 AI 配置写接口返回 `403`，并保留线上响应证据；继续保持生产 AI 关闭。
-3. 使用一次性隔离租户完成 stocktake 写入验收，记录库存前后值、quant reference、取消/重复提交/跨租户/非管理员结果，结束后删除租户并验证认证拒绝。
-4. 在当前已核实部署版本重新执行采购收货和核心冒烟：`signup -> login -> outlet/register -> dummy catalog -> open session -> cash/card sale -> refund -> close register -> delete tenant`。
-5. 将生产 AI、硬件、邮件、正式财务、分单支付、离线 POS 单独列入产品验收计划，不从 mock 或只读测试推断已完成。
+2. 使用一次性隔离租户完成 stocktake 写入验收，记录库存前后值、quant reference、取消/重复提交/跨租户/非管理员结果，结束后删除租户并验证认证拒绝。
+3. 在当前已核实部署版本重新执行采购收货和核心冒烟：`signup -> login -> outlet/register -> dummy catalog -> open session -> cash/card sale -> refund -> close register -> delete tenant`。
+4. 将生产 AI、硬件、邮件、正式财务、分单支付、离线 POS 单独列入产品验收计划，不从 mock 或只读测试推断已完成。
 
 ### 放行结论
 
@@ -55,6 +55,12 @@
 - 等待超过 2 分钟后，主店公网回归通过：AI availability `3/3`、AI surface `11/11`、AI UI `2/2`、Sommelier `10/10`、Odoo stocktake 只读 `PASS`。证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_POST-5392598.json`、`docs/UAT_AI_SURFACE_2026-10-19_POST-5392598.json`、`docs/UAT_AI_UI_2026-10-19_POST-5392598.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-5392598.json`、`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19_POST-5392598.json`。
 - 本轮仍验证生产 `AI_ENABLED=false`、匿名受保护 AI 路由为 `401`、Sommelier 价格/库存与 Odoo 目录一致；stocktake `locationSource=single-warehouse-fallback`、`writeEnabled=false`、非 GET 请求为 0。
 - 这些是部署触发后的公网行为证据；Dokploy 控制台 frontend/backend 容器实际 SHA、构建日志和健康状态仍未独立回读，因此不能把脚本中的 deployment 字段当作容器取证。整体放行仍为 **NO-GO**。
+
+## 2026-10-19 AI 管理员保护回归
+
+- `3afef08` 的部署 webhook 返回 HTTP `200`；等待部署窗口后，使用临时非管理员店员测试 AI 配置全部 13 个写接口。
+- 结果 `15/15 PASS`：13 个 reload/create/update/delete 请求均返回 HTTP `200` + 业务码 `40300`，配置计数 `[13,12,119,3]` 未变化；临时角色和账号已删除。证据：`docs/UAT_AI_ADMIN_GUARD_2026-10-19_POST-3AFEF08.json`。
+- 这证明权限拒绝和无写入成立，但不代表 HTTP 状态码为 403；当前项目统一使用业务码表达该类错误，后续监控和客户端必须检查 `code` 字段。
 
 ## 本轮继续：Odoo 盘点 P0
 
