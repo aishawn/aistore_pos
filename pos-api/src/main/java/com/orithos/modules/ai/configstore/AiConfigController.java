@@ -2,6 +2,7 @@ package com.orithos.modules.ai.configstore;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiProviderConfig;
 import com.orithos.modules.ai.AiTranscriptionService;
 import com.orithos.modules.ai.PosAssistantGraphService;
 import com.orithos.modules.ai.invoice.InvoiceVisionService;

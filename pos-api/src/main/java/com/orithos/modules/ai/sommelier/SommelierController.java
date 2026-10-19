@@ -2,6 +2,7 @@ package com.orithos.modules.ai.sommelier;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiProviderConfig;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import com.orithos.modules.ai.sommelier.dto.AskRequest;
 import com.orithos.modules.ai.sommelier.dto.AskResponse;

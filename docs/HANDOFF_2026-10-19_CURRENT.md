@@ -1,5 +1,14 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 Dokploy backend build failure and fix
+
+- Dokploy build `#38` failed during Maven compile, not because of the `Parenthesis` deprecation warnings. The blocking errors were missing symbol `AiProviderConfig` in `AiConfigController.java:78` and `SommelierController.java:65`.
+- Root cause: both controllers referenced `com.orithos.modules.ai.AiProviderConfig` from child packages without importing it.
+- Fixed locally by adding the two explicit imports. No runtime behavior or API contract changed.
+- Local Maven verification is unavailable in this workspace because only JDK 8 is installed while the project requires Java 21; the attempted compile also reports unrelated UTF-8 source decoding errors under the Windows JDK. Verify with the Docker/Maven Java 21 build.
+- The deprecation warning for `net.sf.jsqlparser.expression.Parenthesis` remains non-blocking and is separate cleanup work.
+- Next step: commit and push the import fix, trigger the provided Dokploy webhook once, then confirm build success and rerun AI UAT. Until that succeeds, production AI remains **NO-GO**.
+
 ## 2026-10-19 本轮新增：价格建议 CSV 导出
 
 - `/stock/price-suggestions` 现在支持 `Export CSV`，导出当前视图（默认建议项；切换后为全部 POS 商品）的产品、SKU、状态、成本、当前价、建议价、毛利、28 天销量、库存和解释原因。
