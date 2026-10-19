@@ -53,6 +53,7 @@
 - 公网诚实化页面矩阵 `18/18 PASS`，覆盖 9 页面 × 390/1440，无横向溢出、页面错误或非 GET 请求。证据：`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_D350428.json`。
 - 公网 Vendor Connections `2/2 PASS`；当前生产无连接数据，因此验证空状态、标题、无溢出、无页面错误和业务写入 `0`，不把空状态误报为移动卡片已被真实数据渲染。证据：`docs/UAT_VENDOR_CONNECTIONS_ONLINE_D350428.json`。
 - 上述公网结果的 `deployment=unverified-after-deploy`；webhook 只证明 Dokploy 接收了部署请求，容器 SHA、完整构建日志和健康状态仍需控制台回读。整体保持 **NO-GO**。
+- 全站静态矩阵在 `09b7997` 部署后复测：`134` 路由 × `390/1440`，`268/268 PASS`；HTTP 全部 200，无横向溢出或页面错误。证据：`docs/UAT_ALL_STATIC_PAGES_POST_09B7997.json`。该证据仍未替代 Dokploy 容器 SHA 回读。
 
 ### 2026-10-20 `854bf6a` 后线上只读复核
 

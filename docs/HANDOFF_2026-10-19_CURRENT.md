@@ -623,6 +623,11 @@
 - 新增共享修复：`pos-ui/src/components/admin/AdminPageLayout.tsx` 手机端预留底部空间；新增公网回归脚本 `scripts/pilot-vendor-connections-online-uat.mjs`，并修正价格回归脚本以识别 Stock List 卡片布局。
 - 公网结果仍不能证明 Dokploy 容器实际运行 `d350428`；必须从控制台回读运行 SHA、backend/frontend 构建日志和健康状态。上述脚本与证据文件将在下一次集中提交时纳入版本。
 
+### 2026-10-20 全站矩阵（`09b7997` 部署后）
+
+- `134` 路由 × `390/1440` 共 `268/268 PASS`，HTTP 全部 200，无横向溢出、页面错误或脚本失败。证据：`docs/UAT_ALL_STATIC_PAGES_POST_09B7997.json`。
+- 这是页面加载/布局矩阵，不代表所有页面的业务写入、真实 Odoo 数据流程或生产 AI 已验收；对应专项仍以各自 UAT 和隔离租户写入证据为准。
+
 - `main` 与 `origin/main` 当前为 `5bcfb72`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
 - 工作区仍有大量未提交变更，当前可见包括能力状态/旧交接文档、平台租户生命周期后端代码与测试、平台店铺详情前端、多个 UAT JSON/截图以及 `tsconfig.json`。Odoo stocktake 页面/API 已提交；其本地 UAT 证据和截图目前仍未提交。AI 修复源码和 Odoo stocktake 实现均已提交，不应再按未提交代码处理。接手时检查实际 diff 和归属。
