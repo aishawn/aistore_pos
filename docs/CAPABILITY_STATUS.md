@@ -7,6 +7,8 @@
 - Promotions、Favourite Reports、Media Centre 的 `src/app` 入口已移除误导性的静态创建/筛选/上传控件，改为真实读取或明确未接入状态，并补齐移动布局和可访问语义。
 - 登录态本地全站矩阵 `134 × 2 = 268/268 PASS`，无 HTTP 失败、页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_PROMOTIONS-MEDIA.json`，源码提交 `dc77293`。
 - 目标 typecheck、ESLint 和 diff check 通过；未运行 build。线上 Dokploy 与公网回归待本批次部署后补充。
+- `523e654` 批次触发后，公网全站矩阵 `268/268 PASS`，实际页面专项 `6/6 PASS`（Promotions、Favourite Reports、Media Centre × 390/1440）；非 GET 业务请求 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ONLINE_2026-10-20_DC77293.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-20_523E654_RETRY.json`。
+- 这些证据的 Dokploy 运行身份仍未独立核验，发布结论继续为 **NO-GO**。
 
 ### 2026-10-20 Dokploy #38 构建失败诊断
 

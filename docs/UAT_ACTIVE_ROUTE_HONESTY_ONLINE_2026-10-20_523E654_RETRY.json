@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-10-19T19:09:15.200Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "523e654",
+  "deploymentShaVerified": false,
+  "checksPassed": 6,
+  "checksTotal": 6,
+  "checks": [
+    {
+      "route": "/promotions",
+      "viewport": 390,
+      "status": 200,
+      "requiredMissing": [],
+      "forbiddenFound": [],
+      "disabledControls": null,
+      "overflow": false,
+      "pageErrors": [],
+      "nonGetRequests": [],
+      "result": "PASS"
+    },
+    {
+      "route": "/reports/favourites",
+      "viewport": 390,
+      "status": 200,
+      "requiredMissing": [],
+      "forbiddenFound": [],
+      "disabledControls": null,
+      "overflow": false,
+      "pageErrors": [],
+      "nonGetRequests": [],
+      "result": "PASS"
+    },
+    {
+      "route": "/media",
+      "viewport": 390,
+      "status": 200,
+      "requiredMissing": [],
+      "forbiddenFound": [],
+      "disabledControls": 2,
+      "overflow": false,
+      "pageErrors": [],
+      "nonGetRequests": [],
+      "result": "PASS"
+    },
+    {
+      "route": "/promotions",
+      "viewport": 1440,
+      "status": 200,
+      "requiredMissing": [],
+      "forbiddenFound": [],
+      "disabledControls": null,
+      "overflow": false,
+      "pageErrors": [],
+      "nonGetRequests": [],
+      "result": "PASS"
+    },
+    {
+      "route": "/reports/favourites",
+      "viewport": 1440,
+      "status": 200,
+      "requiredMissing": [],
+      "forbiddenFound": [],
+      "disabledControls": null,
+      "overflow": false,
+      "pageErrors": [],
+      "nonGetRequests": [],
+      "result": "PASS"
+    },
+    {
+      "route": "/media",
+      "viewport": 1440,
+      "status": 200,
+      "requiredMissing": [],
+      "forbiddenFound": [],
+      "disabledControls": 2,
+      "overflow": false,
+      "pageErrors": [],
+      "nonGetRequests": [],
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS"
+}

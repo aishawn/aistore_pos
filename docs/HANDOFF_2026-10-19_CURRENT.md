@@ -6,6 +6,8 @@
 - 本地登录态浏览器矩阵覆盖 `134 路由 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_PROMOTIONS-MEDIA.json`，`sourceCommit=dc77293`。
 - `npm run typecheck`、三页目标 ESLint 和 `git diff --check` 通过；本地未运行 build。
 - 待把 `dc77293` 推送并触发 Dokploy 后，重新执行公网只读回归；不能用本地矩阵替代线上镜像身份或构建日志。
+- `523e654`（包含本批次代码和证据文档）已推送，webhook 返回 HTTP 200；等待部署窗口后公网全站矩阵仍为 `268/268 PASS`，三页内容/控件专项为 `6/6 PASS`。证据：`docs/UAT_ALL_STATIC_PAGES_ONLINE_2026-10-20_DC77293.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-20_523E654_RETRY.json`。
+- 专项确认 Promotions 没有误导性 Add/More Filters，Favourite Reports 没有静态筛选占位，Media Centre 的两个写入控件处于 disabled；两种视口均无页面错误、横向溢出或非 GET 业务请求。证据的 `deploymentShaVerified=false`，仍不能替代 Dokploy 容器 SHA。
 
 ## 2026-10-20 Dokploy #38 后端构建诊断
 
