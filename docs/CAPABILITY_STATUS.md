@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 `b058ef3` AI capability 与表单回归
+
+- voice capability gate、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2` 和表格/表单 DOM `14/14` 均通过，业务/配置写入为 `0`。
+- 供应链搜索清空断言通过；AI 汇总证据：`docs/UAT_AI_REGRESSION_ONLINE_BEC6D0B.json`，DOM 证据：`docs/UAT_TABLE_A11Y_ONLINE_FDD9C3_FINAL.json`。
+- `deploymentShaVerified=false`，Dokploy 实际运行 SHA、构建日志和健康状态仍待控制台核验，整体保持 **NO-GO**。
+
 ### 2026-10-20 Supply Chain 搜索状态（`fdd9c3a`）
 
 - 搜索结果改为派生显示，清空查询不会残留旧建议；Supply Chain ESLint 告警已清零。

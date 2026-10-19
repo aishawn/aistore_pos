@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 `b058ef3` AI capability 与表单回归
+
+- 线上 AI 回归：voice capability gate `PASS`（不可用时按钮 disabled 且显示明确原因）、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2`、表格/表单 DOM `14/14`，业务/配置写入 `0`。
+- 供应链搜索清空断言通过；最新审计证据为 `docs/UAT_TABLE_A11Y_ONLINE_FDD9C3_FINAL.json`，并行批次汇总见 `docs/UAT_AI_REGRESSION_ONLINE_BEC6D0B.json`。
+- Dokploy webhook 返回 `Compose deployed successfully`，但 `deploymentShaVerified=false`；控制台实际 frontend/backend SHA、构建日志和健康状态仍需独立回读，整体保持 **NO-GO**。
+
 ## 2026-10-20 Supply Chain 搜索状态复核（`fdd9c3a`）
 
 - Supply Chain 搜索结果改为派生显示，清空查询时不会保留旧建议；Supply Chain effect lint 告警已清零。
