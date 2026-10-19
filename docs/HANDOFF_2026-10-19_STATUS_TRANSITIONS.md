@@ -41,7 +41,7 @@
 
 ## 当前发布状态
 
-- GitHub：`origin/main` 已到 `80e6311`。
+- GitHub：`origin/main` 当前为 `5392598`；状态转换代码提交 `80e6311` 和本交接提交均在其历史中。
 - Dokploy：webhook 被分支匹配规则拒绝，未确认部署。
 - 后端 Maven：未运行，本机只有 Java 8，项目要求 Java 21。
 - 前端：`npm run typecheck` 和目标 ESLint 通过。
