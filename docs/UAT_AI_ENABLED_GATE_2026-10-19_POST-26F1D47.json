@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-19T05:30:35.093Z",
+  "sourceCommit": "26f1d47fb5e3cdcee3e268762205fcb005a5a1c3",
+  "target": "https://demo.orithos.com.au",
+  "scope": "AI enablement gate + price suggestions surface; production AI flip still requires Dokploy secrets",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "local env AI_ENABLED",
+      "status": "INFO",
+      "evidence": "false"
+    },
+    {
+      "name": "local env DashScope key present",
+      "status": "PASS",
+      "evidence": "set"
+    },
+    {
+      "name": "checklist doc",
+      "status": "PASS",
+      "evidence": "docs/AI_PRODUCTION_ENABLEMENT.md"
+    },
+    {
+      "name": "remote AI enabled flag",
+      "status": "INFO",
+      "evidence": "enabled=false http=200"
+    },
+    {
+      "name": "price suggestions reachable",
+      "status": "FAIL",
+      "evidence": "page not on this deployment or auth redirected: https://demo.orithos.com.au/stock/price-suggestions"
+    },
+    {
+      "name": "enabled model smoke",
+      "status": "BLOCKED",
+      "evidence": "remote AI_ENABLED=false — complete AI_PRODUCTION_ENABLEMENT.md before Phase 3"
+    },
+    {
+      "name": "no product price writes observed",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "nextStep": "Run isolation model UAT with AI_ENABLED=true on a non-production stack, then Dokploy flip per AI_PRODUCTION_ENABLEMENT.md"
+}

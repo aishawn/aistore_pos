@@ -10,6 +10,7 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 导出只在浏览器生成文件，不调用任何价格写入接口；`writeEnabled=false` 边界保持不变。
 - 本地浏览器 UAT `docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`：页面缓存头、建议展示、人工应用入口、CSV 内容、AI 悬浮入口和非 GET 请求 `0` 全部通过。
 - 价格建议整体仍为 **In progress**：公网 `/stock/price-suggestions` 仍需在 Dokploy 确认运行镜像后复测，CSV 本地证据不替代线上部署证据。
+- `26f1d47` 已推送并通过 Dokploy webhook 触发（HTTP 200）；等待部署窗口后价格建议 gate 仍记录页面不可达，证据 `docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-26F1D47.json`。这进一步说明 webhook 接受不等于 frontend 镜像已切换，需控制台构建日志/SHA 取证。
 
 Statuses:
 
