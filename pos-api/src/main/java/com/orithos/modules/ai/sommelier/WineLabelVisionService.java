@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.DashScopeModelRouting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -94,20 +95,30 @@ public class WineLabelVisionService {
         String mime = resolveMime(file.getContentType(), file.getOriginalFilename());
         String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
 
-        Map<String, Object> imageUrl = Map.of("url", dataUri);
-        List<Map<String, Object>> content = List.of(
-                Map.of("type", "image_url", "image_url", imageUrl),
+        boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(properties.visionModel());
+        List<Map<String, Object>> content = multimodal
+                ? List.of(Map.of("image", dataUri), Map.of("text", PROMPT))
+                : List.of(
+                Map.of("type", "image_url", "image_url", Map.of("url", dataUri)),
                 Map.of("type", "text", "text", PROMPT)
         );
         Map<String, Object> message = Map.of("role", "user", "content", content);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", properties.visionModel());
-        body.put("messages", List.of(message));
+        if (multimodal) {
+            body.put("input", Map.of("messages", List.of(message)));
+            body.put("parameters", Map.of("result_format", "message"));
+            body.put("multiModel", true);
+        } else {
+            body.put("messages", List.of(message));
+        }
         body.put("stream", false);
 
         try {
             JsonNode root = restClient.post()
-                    .uri("/compatible-mode/v1/chat/completions")
+                    .uri(multimodal
+                            ? DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH
+                            : "/compatible-mode/v1/chat/completions")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("Authorization", "Bearer " + apiKey)
                     .body(body)
@@ -166,6 +177,7 @@ public class WineLabelVisionService {
     static String extractText(JsonNode root) {
         if (root == null) return null;
         JsonNode choices = root.path("choices");
+        if (!choices.isArray()) choices = root.path("output").path("choices");
         if (choices.isArray() && !choices.isEmpty()) {
             JsonNode content = choices.get(0).path("message").path("content");
             if (content.isTextual()) return content.asText();

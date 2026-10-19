@@ -29,6 +29,10 @@ const env = fs.existsSync(envPath)
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
 const checks = [];
 const record = (name, status, evidence = "") => checks.push({ name, status, evidence });
+const safeEvidence = (value) => String(value ?? "")
+  .replace(/(?:cookie|authorization):[^\r\n]*/gi, "$1: [redacted]")
+  .replace(/(?:access|refresh)[_-]?token=[^;\s]+/gi, "$1=[redacted]")
+  .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[redacted-token]");
 
 if (!env.INITIAL_ADMIN_PASSWORD) {
   console.error("MISSING_ADMIN_PASSWORD");
@@ -134,10 +138,13 @@ try {
     // Use a decodable image so this check reaches provider/model validation.
     // It is intentionally not treated as a successful OCR fixture: a real invoice
     // photo is still required for field extraction acceptance.
-    const validImage = Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
-      "base64",
-    );
+    const validImagePath = path.join(root, "docs", "screenshots", "2026-10-19-ai-nav", "invoice-1440.png");
+    const validImage = fs.existsSync(validImagePath)
+      ? fs.readFileSync(validImagePath)
+      : Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      );
     const invoice = await context.request.post(`${base}/api/orders/receives/scan`, {
       multipart: {
         file: {
@@ -207,7 +214,7 @@ try {
     record("Anonymous assistant guard", anon.status() === 401 ? "PASS" : "FAIL", `status=${anon.status()}`);
   }
 } catch (error) {
-  record("run", "FAIL", error instanceof Error ? error.message : "failed");
+  record("run", "FAIL", safeEvidence(error instanceof Error ? error.message : "failed"));
 } finally {
   await browser.close();
 }
