@@ -4,7 +4,7 @@
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`14a052a`（盘点库位 Retry 修复）；盘点来源提示部署提交为 `3cd5be0`，此前 location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`0a337c7`（盘点数量边界保护）；此前页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
 
 ## 本轮继续：Odoo 盘点 P0
 
@@ -16,6 +16,7 @@
 - 后续 `5afab93` 增加单 warehouse `lot_stock_id` 只读兜底，`3cd5be0` 增加 `locationSource` 和 UI 来源提示；管理员线上只读 UAT 通过，Demo binding 缺少 location 但成功解析出 1 个库位，未产生任何非 GET 盘点请求。证据 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19.json`。
 - `14a052a` 将库位读取失败从整页 reload 改为局部 Retry；390px fixture 首次 503 后恢复，线上管理员只读回归也通过。证据 `docs/HANDOFF_2026-10-19_STOCKTAKE_RETRY.md`。线上证据的行为通过不替代 Dokploy 容器 SHA 取证。
 - 本地 fixture 首次 503 后点击 Retry 恢复，390/768/1440 三视口及原有确认/取消写保护均通过。
+- `0a337c7` 将数量上限（1,000,000）和最多 40 行限制前移到 Review 按钮；超限数量时 Review 保持禁用。本地 390/768/1440 fixture 通过，证据 `docs/UAT_ODOO_STOCKTAKE_LOCAL_2026-10-19_LATEST.json`。
 
 ## 当前结论
 
@@ -40,7 +41,7 @@
 
 ### 2026-10-19 后续只读回归
 
-- 本地曾用简化和标准 GitHub push payload 请求部署 `14a052a`，均返回 HTTP `301` / `Branch Not Match`；因此无法从 webhook 单独确认 Dokploy 已切换到该 SHA，但线上 UAT 观察到了 Retry 修复后的页面行为。此前 `b2b1a05`、`5afab93`、`3cd5be0` 的完整 payload 曾返回 HTTP `200 Compose deployed successfully`。
+- 本地曾用简化和标准 GitHub push payload 请求部署 `14a052a` 与 `0a337c7`，均返回 HTTP `301` / `Branch Not Match`；因此无法从 webhook 单独确认 Dokploy 已切换到这些 SHA。公开页面本轮数量边界专项被重定向到登录壳，未形成有效线上数量证据。此前 `b2b1a05`、`5afab93`、`3cd5be0` 的完整 payload 曾返回 HTTP `200 Compose deployed successfully`。
 - 主商店 AI 线上回归再次通过：availability `3/3`、surface `11/11`（包括 27 个匿名路由 `401`）、AI UI `2/2`、Sommelier `10/10`。推荐产品价格/库存与 Odoo 商品目录一致；生产 `AI_ENABLED=false`，没有调用真实模型、语音转写或图像识别服务。发票扫描 mock `PASS`，扫描端点由浏览器 fixture 截获，没有创建供应商或采购。
 - `5afab93` 部署等待超过 5 分钟后的 AI 回归：availability `3/3`、surface `11/11`、UI `2/2`、Sommelier `10/10`、invoice mock `PASS`。证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_POST-5AFAB93.json`、`docs/UAT_AI_SURFACE_2026-10-19_POST-5AFAB93.json`、`docs/UAT_AI_UI_2026-10-19_POST-5AFAB93.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-5AFAB93.json`、`docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-5AFAB93.json`。这些脚本记录的 deployment SHA 为 `5afab93`；容器 SHA 仍未在 Dokploy 控制台核实。
 - `3cd5be0` stocktake source UX 线上只读证据更新为 PASS：`locationSource=single-warehouse-fallback`，管理员可看到写入前需显式绑定的提示；证据 `docs/HANDOFF_2026-10-19_STOCKTAKE_SOURCE_UX.md` 与 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19.json`。
@@ -70,7 +71,7 @@
 
 ## 未完成或未覆盖
 
-- **Dokploy 容器构建身份待独立核验**：`3cd5be0` 后线上 stocktake 与 AI UAT 通过，但 `14a052a` 的部署请求返回 `Branch Not Match`；frontend/backend 容器实际 SHA、完整构建日志、健康状态和部署时间仍需从控制台回读。
+- **Dokploy 容器构建身份待独立核验**：`3cd5be0` 后线上 stocktake 与 AI UAT 通过，但 `14a052a`/`0a337c7` 的部署请求返回 `Branch Not Match`；frontend/backend 容器实际 SHA、完整构建日志、健康状态和部署时间仍需从控制台回读。
 - **AI 配置管理员权限仍缺线上验证**：修复已提交于 `56cd7c1`，但未用普通员工账号验证写接口返回拒绝；控制器单测存在，尚无本地 Maven 执行结果或可审计 CI 构建记录。
 - **AI 生产功能未验收**：当前生产 `AI_ENABLED=false`。真实 DashScope 对话、云端语音转写、酒标图像识别、真实发票 OCR 尚未验证；现有通过项只证明关闭策略、UI 状态和匿名鉴权。
 - **实体设备未验证**：实体刷卡终端、打印机、钱箱没有接入现场设备验收。Card 是 Odoo 模拟支付方式。
@@ -84,7 +85,7 @@
 
 ## 当前问题与工作区状态
 
-- `main` 与 `origin/main` 当前为 `14a052a`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复提交为 `14a052a`。
+- `main` 与 `origin/main` 当前为 `0a337c7`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
 - 工作区仍有大量未提交变更，当前可见包括能力状态/旧交接文档、平台租户生命周期后端代码与测试、平台店铺详情前端、多个 UAT JSON/截图以及 `tsconfig.json`。Odoo stocktake 页面/API 已提交；其本地 UAT 证据和截图目前仍未提交。AI 修复源码和 Odoo stocktake 实现均已提交，不应再按未提交代码处理。接手时检查实际 diff 和归属。
 - 不要运行 `git add -A`，不要清理、重置或覆盖这些改动。新增交接文件应单独处理。
@@ -109,7 +110,7 @@
 | Retry、Auth replay、AI surface 最近专项 | 通过只读线上回归；部署 SHA 未核验 |
 | AI dialog/语音禁用修复 | 已包含在 `5afab93` 部署批次；post-deploy UI 2/2 PASS；容器 SHA 待控制台回读 |
 | AI 配置管理员保护 | `56cd7c1` 已推送；控制器单测已新增；普通员工线上拒绝及可审计测试结果待补 |
-| Odoo stocktake | `3cd5be0` 已部署且线上管理员只读通过；`14a052a` 页面内 Retry 本地三视口和线上只读行为通过，但 Dokploy 运行 SHA 待核实；服务端 admin-only；隔离 Odoo 写入未验收 |
+| Odoo stocktake | `3cd5be0` 已部署且线上管理员只读通过；`14a052a` Retry 和 `0a337c7` 数量边界本地三视口通过，最新部署 SHA 待核实；服务端 admin-only；隔离 Odoo 写入未验收 |
 | Dokploy 当前运行版本及完整构建 | 未核验 |
 | 生产 AI、实体硬件、SMTP、正式财务流程 | 未验收 |
 | 分单/多支付、离线 POS | 未实现或未验收 |
