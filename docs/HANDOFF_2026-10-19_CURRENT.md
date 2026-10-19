@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Dokploy #38 编译结果（最新）
+
+- #38 后端构建失败的阻断错误是两个控制器找不到 `AiProviderConfig`；`SqlAst.java` 的 `Parenthesis` 仅为弃用 warning，不是失败原因。
+- 当前本地 `main` 与 GitHub `origin/main` 均为 `50ac59ece899da00114c404b7eb599490ccbd9fb`（短 SHA：`50ac59e`）。`ea8f1b6` 已为 `AiConfigController` 和 `SommelierController` 补齐 `import com.orithos.modules.ai.AiProviderConfig;`，`AiProviderConfig.java` 也已被 Git 跟踪；源码检查确认当前提交可解析这两个引用。
+- 因此 #38 使用的是修复前源码快照，或 Dokploy Compose 绑定了错误分支/提交；不需要再次修改 Java 控制器。未运行本地 Maven build，遵循当前项目约束。
+- Dokploy 下一步必须在控制台将 Compose 分支确认设为 `main`，手动部署 `50ac59e`（或更晚提交），并回读 backend/frontend 完整构建日志、运行容器 SHA、健康状态和部署完成时间。仅 webhook 响应或公网 200 不能证明构建成功。
+- 在上述证据补齐前，整体发布状态保持 **NO-GO**。
+
 ## 2026-10-20 根路由测试与移动安全区批次（当前工作区）
 
 - 批次已提交并推送为 `ca0041b`。
@@ -10,11 +18,11 @@
 - 已通过 `npm run typecheck`、`npx eslint src/components/admin/AdminPageLayout.tsx app/media/page.tsx`、`node --check scripts/pilot-all-static-pages-uat.mjs` 和目标 `git diff --check`；未运行本地 build。线上变更后的专门 UI 验证待 Dokploy 分支配置修复后重跑。
 - 推送后手动 webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，没有新的 Dokploy 构建；控制台修正 Compose 分支后手动部署 `ca0041b`，再回读 frontend/backend SHA、构建日志、健康状态并重跑受影响页面。
 
-## 2026-10-20 Dokploy #38 复核（当前）
+## 2026-10-20 Dokploy #38 复核（历史记录）
 
-- 当前 `main` 与 `origin/main` 均为 `d3aa74b2f493ae15ddbe23e79c6a40fba83e1fcf`。两个控制器的 `AiProviderConfig` 显式 import 已在 `ea8f1b6` 加入，类文件已被 Git 跟踪；#38 的编译错误属于旧源码快照，不需要再次改 Java 代码。
+- 当时记录的 `d3aa74b` 已被后续提交推进；两个控制器的 `AiProviderConfig` 显式 import 已在 `ea8f1b6` 加入，类文件已被 Git 跟踪；#38 的编译错误属于旧源码快照，不需要再次改 Java 代码。
 - `AiProviderConfigTest` 覆盖 provider host 校验边界；本轮 `git diff --check` 通过。按项目约束没有运行本地 Maven/Next build。
-- 提供的 Dokploy compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，包括发送 `main`、`refs/heads/main` 和完整 push payload 变体；本次没有启动构建。下一步从 Dokploy 控制台确认 Compose 分支/Watch 配置为 `main`，或手动 Deploy `d3aa74b`。
+- 提供的 Dokploy compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，包括发送 `main`、`refs/heads/main` 和完整 push payload 变体；本次没有启动构建。后续以文档顶部最新记录为准，从 Dokploy 控制台确认 Compose 分支/Watch 配置为 `main`，或手动 Deploy 当前提交。
 - `Parenthesis` deprecation 是非阻断 warning。Dokploy 实际 frontend/backend SHA、完整构建日志、健康状态和完成时间仍未独立回读；整体状态继续 **NO-GO**。
 
 ## 2026-10-20 根路由树与只读回归校正（`0477edc`）

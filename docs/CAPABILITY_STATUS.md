@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Dokploy #38 编译结果（最新）
+
+- #38 的阻断错误是 `AiConfigController.java` 和 `SommelierController.java` 找不到 `AiProviderConfig`；`Parenthesis` 弃用提示只是 warning。
+- 当前 `main`/`origin/main` 为 `50ac59e`，包含 `ea8f1b6` 的显式 import 修复，且 `AiProviderConfig.java` 已被 Git 跟踪。当前源码不需要重复修改 Java 控制器。
+- #38 应视为修复前源码快照或错误 Dokploy 分支的构建结果。需在控制台选择 `main` 的 `50ac59e`（或更晚提交）重新部署，并回读 Maven/Next 构建日志、frontend/backend 容器 SHA、健康状态和完成时间。
+- 在 Dokploy 证据独立核验前，发布状态继续为 **NO-GO**；本地未运行 Maven/Next build。
+
 ### 2026-10-20 根 `app` 真实路由矩阵与共享移动安全区（工作区）
 
 - 代码已提交并推送为 `ca0041b`；本次集中批次包含路由 UAT 修正、共享管理壳层/POS 移动安全区和 Media Centre 无障碍改进。
