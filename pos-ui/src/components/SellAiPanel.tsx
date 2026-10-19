@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Eraser, ExternalLink, MessageCircle, Mic, X } from "lucide-react";
+import { Eraser, ExternalLink, MessageCircle, Mic, Send, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
@@ -39,7 +39,8 @@ type FloatAnchor = { x: number; y: number };
 
 function defaultAnchor(): FloatAnchor {
   if (typeof window === "undefined") return { x: 88, y: 88 };
-  return { x: window.innerWidth - 24, y: window.innerHeight - 24 };
+  const bottomInset = window.matchMedia("(max-width: 767px)").matches ? 88 : 24;
+  return { x: window.innerWidth - 24, y: window.innerHeight - bottomInset };
 }
 
 function loadAnchor(): FloatAnchor {
@@ -783,7 +784,13 @@ export function SellAiPanel({
 
   const chatOff = aiEnabled === false;
   const composer = (
-    <div className="flex w-full items-center gap-2.5">
+    <form
+      className="flex w-full items-center gap-2.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submitInput();
+      }}
+    >
       <div
         className={cn(
           "flex h-[48px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[var(--oh-border)] bg-white px-4 transition-[border-color,box-shadow] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-orange-muted)]",
@@ -794,6 +801,7 @@ export function SellAiPanel({
         <MessageCircle size={16} className="shrink-0 text-[var(--oh-primary)]" />
         <input
           ref={inputRef}
+          aria-label="Ask Orithos AI"
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -808,6 +816,16 @@ export function SellAiPanel({
           className="min-w-0 flex-1 bg-transparent text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] disabled:cursor-not-allowed"
         />
       </div>
+      <button
+        type="submit"
+        aria-label="Send message"
+        title="Send message"
+        disabled={busy || chatOff || !input.trim()}
+        className="flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white text-[var(--oh-primary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-50"
+        style={{ boxShadow: FLOAT_SHADOW }}
+      >
+        <Send size={18} />
+      </button>
       <button
         type="button"
         onClick={toggleVoice}
@@ -830,7 +848,7 @@ export function SellAiPanel({
       >
         <Mic size={18} />
       </button>
-    </div>
+    </form>
   );
 
   const panelDialogs = (
@@ -891,7 +909,7 @@ export function SellAiPanel({
       {expanded && (
         <div
           role="dialog"
-          aria-label="Orithos AI assistant"
+          aria-labelledby="orithos-ai-assistant-title"
           aria-modal="true"
           className="pointer-events-auto flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5"
         >
@@ -911,7 +929,7 @@ export function SellAiPanel({
             >
               <AiFabIcon size={40} className="pointer-events-none shadow-sm" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-semibold text-[var(--oh-text)]">
+                <p id="orithos-ai-assistant-title" className="truncate text-[15px] font-semibold text-[var(--oh-text)]">
                   Orithos AI
                 </p>
                 <p className="truncate text-[13px] text-[var(--oh-muted)]">
@@ -935,6 +953,8 @@ export function SellAiPanel({
 
             <div
               ref={scrollRef}
+              aria-live="polite"
+              aria-atomic="false"
               className="min-h-[240px] flex-1 overflow-y-auto bg-[var(--oh-surface)]"
             >
               <DialogueView

@@ -99,6 +99,12 @@ async function runViewport(viewport) {
   if (await assistant.getAttribute("aria-modal") !== "true") {
     throw new Error(`AI_DIALOG_NOT_MODAL_${viewport.width}`);
   }
+  if (await assistant.getAttribute("aria-labelledby") !== "orithos-ai-assistant-title") {
+    throw new Error(`AI_DIALOG_UNNAMED_${viewport.width}`);
+  }
+  if (await assistant.locator('[aria-live="polite"]').count() !== 1) {
+    throw new Error(`AI_DIALOG_LIVE_REGION_MISSING_${viewport.width}`);
+  }
   const voiceButton = assistant.getByRole("button", { name: "Voice input" });
   if (transcriptionAvailable && !(await voiceButton.isEnabled())) {
     throw new Error(`AI_VOICE_DISABLED_WHILE_TRANSCRIPTION_AVAILABLE_${viewport.width}`);
@@ -108,6 +114,21 @@ async function runViewport(viewport) {
   }
   const composer = assistant.getByPlaceholder(/Ask Orithos AI|AI chat is off for this store/);
   await composer.waitFor({ state: "visible", timeout: 10000 });
+  const sendButton = assistant.getByRole("button", { name: "Send message", exact: true });
+  await sendButton.waitFor({ state: "visible", timeout: 10000 });
+  if (await composer.getAttribute("aria-label") !== "Ask Orithos AI") {
+    throw new Error(`AI_COMPOSER_UNNAMED_${viewport.width}`);
+  }
+  if (assistantAvailable && !(await sendButton.isDisabled())) {
+    throw new Error(`AI_SEND_ENABLED_WITH_EMPTY_INPUT_${viewport.width}`);
+  }
+  if (assistantAvailable) {
+    await composer.fill("check stock");
+    if (await sendButton.isDisabled()) {
+      throw new Error(`AI_SEND_DISABLED_WITH_INPUT_${viewport.width}`);
+    }
+    await composer.fill("");
+  }
   if (assistantAvailable && (await composer.isDisabled())) {
     throw new Error(`AI_COMPOSER_DISABLED_WHILE_ASSISTANT_AVAILABLE_${viewport.width}`);
   }
@@ -149,7 +170,12 @@ async function runViewport(viewport) {
   if (!assistantAvailable && (await composer.isEnabled())) {
     throw new Error(`AI_COMPOSER_STILL_ENABLED_${viewport.width}`);
   }
-  results.push({ viewport: viewport.width, recommendationCards, identifyItems, assistantAvailable, transcriptionAvailable, pageErrors });
+  const fabRect = await restoredFab.boundingBox();
+  const fabSafeBottom = viewport.width > 767 || !fabRect || fabRect.y >= 72;
+  if (!fabSafeBottom) {
+    throw new Error(`AI_FAB_TOO_CLOSE_TO_BOTTOM_${viewport.width}_${JSON.stringify(fabRect)}`);
+  }
+  results.push({ viewport: viewport.width, recommendationCards, identifyItems, assistantAvailable, transcriptionAvailable, sendButton: true, fabSafeBottom, pageErrors });
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
   await context.close();
 }
