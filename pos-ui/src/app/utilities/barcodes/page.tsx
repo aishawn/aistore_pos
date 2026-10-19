@@ -1,28 +1,14 @@
+import { PackageSearch, Printer, Ruler, ScanLine, TriangleAlert, type LucideIcon } from "lucide-react";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
-
-import { BarcodeIcon, SelectChevronIcon, PrinterIcon } from "@/components/icons";
+const steps: Array<{ title: string; detail: string; icon: LucideIcon }> = [
+  { title: "Choose products", detail: "The product picker is not connected to the live catalogue on this page.", icon: PackageSearch },
+  { title: "Choose a label", detail: "Label formats shown in the previous UI were sample values, not saved templates.", icon: Ruler },
+  { title: "Print labels", detail: "No label document is generated or sent to a printer by this page.", icon: Printer },
+];
 
 export default function BarcodesPage() {
-  return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <h1 className="flex items-center gap-3 text-[34px] font-bold text-black"><BarcodeIcon size={30} /> Barcodes</h1>
-
-      <div className="mt-6 max-w-2xl rounded-lg border border-neutral-300 p-6">
-        <h2 className="text-[22px] font-bold text-black">Generate Barcodes</h2>
-        <div className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col text-[16px] text-black">Products
-            <span className="mt-1 flex h-[52px] items-center justify-between rounded-lg border border-neutral-300 px-4 text-neutral-400">Select Products... <SelectChevronIcon size={18} /></span>
-          </label>
-          <label className="flex flex-col text-[16px] text-black">Template
-            <span className="mt-1 flex h-[52px] items-center justify-between rounded-lg border border-neutral-300 px-4 text-neutral-400">EAN-13 (40mm x 28mm) <SelectChevronIcon size={18} /></span>
-          </label>
-          <label className="flex flex-col text-[16px] text-black">Quantity per product
-            <input defaultValue={1} className="mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] outline-none" />
-          </label>
-          <button className="mt-2 flex items-center justify-center gap-2 rounded-lg bg-[#5cb3e0] py-3 text-[16px] font-bold text-white"><PrinterIcon size={18} /> Generate &amp; Print</button>
-        </div>
-      </div>
-    </div>
-  );
+  return <AdminPageLayout title="Barcodes" subtitle="Barcode label generation status"><section role="status" className="flex items-start gap-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-4 sm:p-5"><span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm ring-1 ring-amber-200/80"><TriangleAlert size={18} aria-hidden="true" /></span><div className="min-w-0"><h2 className="text-sm font-semibold text-amber-950">Barcode label printing is not connected</h2><p className="mt-1 max-w-3xl text-sm leading-6 text-amber-900/80">The previous selectors and Generate &amp; Print button were visual placeholders. This page does not load products, create labels, or send print jobs.</p></div></section><section aria-labelledby="barcode-process-title" className="mt-6"><h2 id="barcode-process-title" className="text-sm font-semibold text-[var(--oh-text)]">Label workflow</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">The steps required to generate and print labels</p><ol className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{steps.map(({ title, detail, icon: Icon }, index) => <li key={title} className="flex min-w-0 gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]"><span className="relative flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-surface)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-border)]"><Icon size={19} aria-hidden="true" /><span className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-[var(--oh-primary)] text-[10px] font-semibold text-white ring-2 ring-white">{index + 1}</span></span><div className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold text-[var(--oh-text)]">{title}</h3><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200"><ScanLine size={12} aria-hidden="true" /> Unavailable</span></div><p className="mt-2 text-sm leading-5 text-[var(--oh-muted)]">{detail}</p></div></li>)}</ol></section></AdminPageLayout>;
 }

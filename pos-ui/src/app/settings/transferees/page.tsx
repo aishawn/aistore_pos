@@ -1,30 +1,10 @@
+import Link from "next/link";
+import { AlertCircle, ArrowUpRight, MapPin } from "lucide-react";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { ListTable } from "@/components/admin/ListTable";
-import { RowActions } from "@/components/admin/RowActions";
-import { PlusIcon } from "@/components/icons";
-
-const ENTRIES = [
-  ["Main Warehouse", "Outlet"],
-  ["City Store", "Outlet"],
-  ["Airport Kiosk", "Outlet"],
-];
-
 export default function TransferListPage() {
-  return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <div className="flex items-center gap-5">
-        <h1 className="text-[34px] font-bold text-black">Transfer List</h1>
-        <button className="flex items-center gap-2 rounded-md border border-[#5cb3e0] px-5 py-2.5 font-semibold text-[var(--sf-tab-blue)]"><PlusIcon size={18} /> New</button>
-      </div>
-
-      <div className="mt-6">
-        <ListTable
-          columns={[{ label: "Name" }, { label: "Type" }, { label: "Actions", align: "right", width: "w-[300px]" }]}
-          rows={ENTRIES.map(([n, t]) => [n, t, <RowActions key="a" />])}
-        />
-      </div>
-    </div>
-  );
+  return <AdminPageLayout title="Transfer List" subtitle="Locations available for stock transfers"><section role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-950 sm:p-6"><div className="flex items-start gap-3"><AlertCircle className="mt-0.5 shrink-0" size={20} aria-hidden="true" /><div><h2 className="font-semibold">Transfer locations are not loaded from Odoo here</h2><p className="mt-2 max-w-3xl text-sm leading-6">The locations and row actions previously shown were sample placeholders. This page does not create or edit transfer locations, and it does not change stock.</p><div className="mt-4 flex flex-wrap gap-2"><Link href="/orders/transfer/new" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Start a stock transfer <ArrowUpRight size={15} aria-hidden="true" /></Link><Link href="/settings/registers-outlets" className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-4 text-sm font-medium text-amber-950 hover:bg-amber-100">View Odoo locations <MapPin size={15} aria-hidden="true" /></Link></div></div></div></section></AdminPageLayout>;
 }
