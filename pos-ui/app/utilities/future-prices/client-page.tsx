@@ -59,9 +59,9 @@ export default function FuturePricesPage() {
               rows={items.map((p) => [p.productId ?? "", `$${Number(p.price).toFixed(2)}`, p.effectiveTime ?? ""])}
             />
           </div>
-          <div className="space-y-2 md:hidden" aria-label="Future prices list">
+          <div role="list" className="space-y-2 md:hidden" aria-label="Future prices list">
             {items.map((p) => (
-              <article key={p.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-sm">
+              <article role="listitem" key={p.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[var(--oh-text)]">{p.productId || "Unknown product"}</p>

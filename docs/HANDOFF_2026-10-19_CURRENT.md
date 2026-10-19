@@ -615,6 +615,11 @@
 - 本地验证：`pos-ui` `npm run typecheck` 退出码 0；目标 ESLint（Manage Cash、Platform Stores、Express Stocktake）`0 warning / 0 error`；`pilot-table-a11y-online-uat.mjs`、`pilot-ai-features-verify-uat.mjs` `node --check` 通过；`git diff --check` 通过。
 - 这批只完成源码级和静态检查，尚未证明 Dokploy 已运行该提交；部署后应复跑管理员只读表格/表单 UAT，并增加 Express Stocktake 390/1440 视口验证。生产 Demo 仍禁止业务写入。
 
+## 2026-10-20 工具与报表移动列表语义
+
+- Future Costs、Future Prices、This Month Sales、Weekly Sales 的移动端列表补齐 `role="list"` / `role="listitem"`，修正原先把 `aria-label` 放在无列表语义 div 上的问题；只影响辅助技术语义，不改变数据读取、分页或业务写入。
+- 全站静态只读矩阵 `134 路由 × 390/1440 = 268/268 PASS`，HTTP 均为 200，无横向溢出或页面错误。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-20_PRE-DEPLOY.json`。该证据观察的是当前公网页面，`deployment` 身份仍未核验。
+
 ## 2026-10-20 线上只读复测（提交 854bf6a，部署身份未核验）
 
 - `docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`：7 页面 × 390/1440 共 `14/14 PASS`，页面错误 0，未命名控件 0，清空供应商搜索建议残留 0，意外业务写入 0。脚本主动拦截了安全非 GET 请求，不能替代写入验收。

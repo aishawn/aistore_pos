@@ -8,6 +8,12 @@
 - AI availability `3/3 PASS`；当前 Demo client config 报告 `enabled=true`，AI composer 可用，未提交提示词。证据：`docs/UAT_AI_AVAILABILITY_2026-10-20_POST-854BF6A.json`。
 - 两份证据均为 `deployment=unverified-after-deploy`；Dokploy webhook 对 `854bf6a` 返回 `301 Branch Not Match`，因此不能把公网行为归因于该提交，容器 SHA、构建日志和健康状态仍待控制台核验。整体保持 **NO-GO**。
 
+### 2026-10-20 移动列表语义批次（`e187e7f` 工作区后）
+
+- Future Costs、Future Prices、This Month Sales、Weekly Sales 的移动列表补齐 `list/listitem` 语义；未改变 Odoo 读取或任何业务写入。
+- 全站静态矩阵 `268/268 PASS`（134 路由 × 390/1440），证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-20_PRE-DEPLOY.json`。
+- 这批源码尚未被 Dokploy 运行镜像确认；webhook 仍返回 `301 Branch Not Match`，整体保持 **NO-GO**。
+
 ### 2026-10-20 `b058ef3` AI capability 与表单回归
 
 - voice capability gate、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2` 和表格/表单 DOM `14/14` 均通过，业务/配置写入为 `0`。

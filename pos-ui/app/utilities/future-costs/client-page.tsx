@@ -59,9 +59,9 @@ export default function FutureCostsPage() {
               rows={items.map((c) => [c.productId ?? "", `$${Number(c.cost).toFixed(2)}`, c.effectiveTime ?? ""])}
             />
           </div>
-          <div className="space-y-2 md:hidden" aria-label="Future costs list">
+          <div role="list" className="space-y-2 md:hidden" aria-label="Future costs list">
             {items.map((c) => (
-              <article key={c.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-sm">
+              <article role="listitem" key={c.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[var(--oh-text)]">{c.productId || "Unknown product"}</p>
