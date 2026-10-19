@@ -607,3 +607,10 @@
 - `ea8f1b6` 已在两个控制器补齐 `import com.orithos.modules.ai.AiProviderConfig;`。该修复已包含在当前 `main`/`origin/main=feef55e`，因此 #38 不能作为当前提交仍然无法编译的证据，应视为旧源码快照的构建失败。
 - `Parenthesis` deprecated warning 不是本次失败原因；真正导致退出的是上述两个 Java 编译错误。
 - 当前工作区未运行本地 Maven build，仍以 Dokploy Java 21 构建日志和控制台容器 SHA 作为最终构建证据。触发后续部署时必须确认目标 SHA 为 `feef55e`（或其后包含该 import 修复的提交），并回读 frontend/backend 构建完成、健康状态和运行 SHA。
+
+## 2026-10-20 UI 可访问性批次（本地）
+
+- `ExpressStocktakePage` 的产品搜索框补齐可访问名称、combobox 状态、结果 `listbox`、选项 `aria-selected` 与加载状态；不改变搜索、扫描或库存写入逻辑。
+- 平台店铺移动列表改为明确的 `list`/`listitem` 语义；Manage Cash 首屏 skeleton 标记为忙状态。
+- 本地验证：`pos-ui` `npm run typecheck` 退出码 0；目标 ESLint（Manage Cash、Platform Stores、Express Stocktake）`0 warning / 0 error`；`pilot-table-a11y-online-uat.mjs`、`pilot-ai-features-verify-uat.mjs` `node --check` 通过；`git diff --check` 通过。
+- 这批只完成源码级和静态检查，尚未证明 Dokploy 已运行该提交；部署后应复跑管理员只读表格/表单 UAT，并增加 Express Stocktake 390/1440 视口验证。生产 Demo 仍禁止业务写入。

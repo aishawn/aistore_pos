@@ -256,6 +256,12 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
               ref={inputRef}
               value={query}
               disabled={!ready || loading}
+              id="express-stocktake-product-search"
+              aria-label="Search or scan a product"
+              aria-autocomplete="list"
+              aria-controls="express-stocktake-search-results"
+              aria-expanded={hasResults && searchOpen}
+              role="combobox"
               onChange={(e) => {
                 setQuery(e.target.value);
                 setSearchOpen(true);
@@ -284,7 +290,7 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
           </header>
 
           {hasResults && searchOpen ? (
-            <div className="max-h-[min(50dvh,420px)] overflow-y-auto divide-y divide-[var(--oh-border)]">
+            <div id="express-stocktake-search-results" role="listbox" aria-label="Product search results" aria-busy={searchLoading || query.trim() !== debouncedQuery.trim()} className="max-h-[min(50dvh,420px)] overflow-y-auto divide-y divide-[var(--oh-border)]">
               {searchLoading || query.trim() !== debouncedQuery.trim() ? (
                 <div role="status" className="flex items-center justify-center gap-2 px-4 py-8 text-sm text-[var(--oh-muted)]"><LoaderCircle size={17} className="animate-spin" />Searching products…</div>
               ) : searchError ? (
@@ -301,6 +307,9 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
                   <button
                     key={product.id}
                     type="button"
+                    role="option"
+                    aria-selected={false}
+                    aria-label={`Add ${product.name} to this stocktake`}
                     disabled={scanning}
                     onClick={() => handleSelectProduct(product.id)}
                     className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
