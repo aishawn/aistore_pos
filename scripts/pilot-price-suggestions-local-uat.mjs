@@ -87,6 +87,13 @@ try {
         body: JSON.stringify({ code: 0, message: "OK", data: fixtureUser }),
       });
     }
+    if (url.pathname === "/api/odoo/session") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ user: fixtureUser, autoRecoverConfigured: true }),
+      });
+    }
     if (url.pathname === "/api/ai/config/client") {
       return route.fulfill({
         status: 200,

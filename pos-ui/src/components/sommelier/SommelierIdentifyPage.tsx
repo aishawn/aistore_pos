@@ -24,13 +24,17 @@ export function SommelierIdentifyPage() {
   const [scanHint, setScanHint] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [labelVisionAvailable, setLabelVisionAvailable] = useState<boolean | null>(null);
   const lastQueryRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
     void fetchAiClientConfig()
       .then((config) => {
-        if (!cancelled) setAiEnabled(config.enabled);
+        if (!cancelled) {
+          setAiEnabled(config.enabled);
+          setLabelVisionAvailable(config.labelVisionAvailable ?? config.enabled);
+        }
       })
       .catch(() => {
         if (!cancelled) setAiEnabled(null);
@@ -137,7 +141,7 @@ export function SommelierIdentifyPage() {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={loading || aiEnabled === false}
+          disabled={loading || aiEnabled === false || labelVisionAvailable === false}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Camera size={16} />
@@ -146,6 +150,10 @@ export function SommelierIdentifyPage() {
         {aiEnabled === false ? (
           <p className="mt-2 text-[13px] leading-5 text-[var(--oh-muted)]">
             Label photos need AI turned on. Name and barcode search still work.
+          </p>
+        ) : labelVisionAvailable === false ? (
+          <p className="mt-2 text-[13px] leading-5 text-[var(--oh-muted)]">
+            Label photo recognition is unavailable for this store. Name and barcode search still work.
           </p>
         ) : null}
       </div>

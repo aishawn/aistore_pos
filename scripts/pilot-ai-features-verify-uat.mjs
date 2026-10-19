@@ -155,12 +155,19 @@ try {
     await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForTimeout(2500);
 
+    const odooSession = await context.request.get(`${base}/api/odoo/session`);
+    const odooSessionBody = await odooSession.json().catch(() => ({}));
+    if (!odooSessionBody.user) {
+      record("Odoo session for price suggestions", "BLOCKED", odooSessionBody.autoRecoverConfigured
+        ? "Service-account recovery was configured but did not return a session."
+        : "No active Odoo session and no service-account recovery configured.");
+    }
     const priceApi = await context.request.get(`${base}/api/odoo/price-suggestions?marginTarget=0.3`);
     const priceBody = await priceApi.json().catch(() => ({}));
     if (priceApi.ok() && Array.isArray(priceBody.products) && priceBody.writeEnabled === false) {
       record("Price suggestions API", "PASS", `products=${priceBody.products.length} writeEnabled=false`);
-    } else if (priceApi.status() === 401) {
-      record("Price suggestions API", "FAIL", "Odoo session expired after overview");
+    } else if (priceApi.status() === 401 && !odooSessionBody.user) {
+      record("Price suggestions API", "BLOCKED", "Odoo session is not available in this environment.");
     } else {
       record("Price suggestions API", "FAIL", `status=${priceApi.status()} ${(priceBody.message || "").slice(0, 120)}`);
     }

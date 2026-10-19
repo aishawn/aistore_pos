@@ -14,12 +14,16 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
   const identifyHref = "/sommelier/identify";
   const mobile = getUiMode() === "mobile";
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [labelVisionAvailable, setLabelVisionAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void fetchAiClientConfig()
       .then((config) => {
-        if (!cancelled) setAiEnabled(config.enabled);
+        if (!cancelled) {
+          setAiEnabled(config.enabled);
+          setLabelVisionAvailable(config.labelVisionAvailable ?? config.enabled);
+        }
       })
       .catch(() => {
         if (!cancelled) setAiEnabled(null);
@@ -66,7 +70,9 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
           <p className="mt-2 text-[14px] leading-6 text-[var(--oh-muted)]">
             {aiEnabled === false
               ? "Search by name or barcode now. Label photos need store AI turned on."
-              : "Snap the wine label to match this store's stock, then get tasting notes, pairing, and a sales pitch."}
+              : labelVisionAvailable === false
+                ? "Search by name or barcode now. Label photo recognition is unavailable for this store."
+                : "Snap the wine label to match this store's stock, then get tasting notes, pairing, and a sales pitch."}
           </p>
         </Link>
 

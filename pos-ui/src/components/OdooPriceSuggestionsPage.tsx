@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Download, LoaderCircle, RefreshCw } from "lucide-react";
-import { fetchOdooRoute, getOdooPosBootstrap } from "@/lib/odoo-api";
+import { fetchOdooRoute, getOdooPosBootstrap, getOdooSessionStatus } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 
 type SuggestionStatus = "ok" | "raise" | "review_cost" | "missing_cost" | "unsaleable";
@@ -99,6 +99,11 @@ export function OdooPriceSuggestionsPage() {
     else setLoading(true);
     setError(null);
     try {
+      const session = await getOdooSessionStatus();
+      if (!session.user) {
+        setNeedsConnection(true);
+        throw new Error("Connect Odoo to review price suggestions.");
+      }
       const response = await fetchOdooRoute(
         `/api/odoo/price-suggestions?marginTarget=${marginTarget}`,
         { credentials: "same-origin", cache: "no-store" },
