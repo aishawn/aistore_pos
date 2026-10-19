@@ -929,7 +929,10 @@ export function SellAiPanel({
             >
               <AiFabIcon size={40} className="pointer-events-none shadow-sm" />
               <div className="min-w-0 flex-1">
-                <p id="orithos-ai-assistant-title" className="truncate text-[15px] font-semibold text-[var(--oh-text)]">
+                <span id="orithos-ai-assistant-title" className="sr-only">
+                  Orithos AI assistant
+                </span>
+                <p aria-hidden="true" className="truncate text-[15px] font-semibold text-[var(--oh-text)]">
                   Orithos AI
                 </p>
                 <p className="truncate text-[13px] text-[var(--oh-muted)]">
