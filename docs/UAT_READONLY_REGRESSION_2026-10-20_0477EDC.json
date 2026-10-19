@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-19T20:05:00Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "0477edc",
+  "deploymentShaVerified": false,
+  "scope": "authenticated browser read-only regression; no sale, refund, inventory, purchasing, cash, register-close, role, user, supplier, or configuration writes",
+  "checks": [
+    { "name": "table and form accessibility", "passed": 14, "total": 14, "unexpectedBusinessWrites": 0, "evidence": "UAT_TABLE_A11Y_ONLINE_CURRENT.json" },
+    { "name": "admin list mobile and desktop interaction", "passed": 8, "total": 8, "unexpectedBusinessWrites": 0, "evidence": "UAT_ADMIN_LIST_BATCH_2026-10-17.json" },
+    { "name": "AI availability", "passed": 3, "total": 3, "unexpectedBusinessWrites": 0, "evidence": "UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json" },
+    { "name": "AI protected surface and anonymous guards", "passed": 11, "total": 11, "unexpectedBusinessWrites": 0, "evidence": "UAT_AI_SURFACE_2026-10-19_AUTHFIX.json" },
+    { "name": "AI UI", "passed": 2, "total": 2, "unexpectedBusinessWrites": 0, "evidence": "UAT_AI_UI_2026-10-19_AUTHFIX.json" }
+  ],
+  "result": "PASS_WITH_DEPLOYMENT_IDENTITY_UNVERIFIED",
+  "limitations": [
+    "Dokploy frontend/backend container SHA, complete build logs, health status, and deployment completion time were not independently read from the console.",
+    "AI availability reports enabled=true, but this regression did not submit prompts or validate production model quality."
+  ]
+}

@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 根路由树与只读回归校正（`0477edc`）
+
+- Next.js 实际路由入口以 `pos-ui/app` 为准：根目录存在 `app`，`next.config` 使用标准 Next App Router，`tsconfig` 同时包含 `src` 只是类型检查范围。此前把 `src/app` 称为线上实际路由树的记录已校正；后续生产页面修改应优先落在 `pos-ui/app`。
+- 当前根 `app` 的 Promotions、Favourite Reports、Media Centre、Registers & Outlets、Security、Barcodes、Customer Utilities、Product Utilities、Transfer List 已有真实读取或明确未接入状态；上一轮公网专项结果仍有效，但不应归因于仅修改 `src/app` 的死代码。
+- `0477edc` 只读回归汇总：表格/表单 `14/14`、管理列表 `8/8`、AI availability `3/3`、AI surface `11/11`、AI UI `2/2`；业务写入 `0`。证据：`docs/UAT_READONLY_REGRESSION_2026-10-20_0477EDC.json`。
+- 当前公网证据的 `deploymentShaVerified=false`，Dokploy 容器 SHA、完整构建日志和健康状态仍需控制台独立核验；整体继续 **NO-GO**。
+
 ## 2026-10-20 第三批占位数据清理（`e506619`）
 
 - Barcodes、Customer Utilities、Product Utilities、Transfer List 的 `src/app` 入口移除硬编码示例、静态筛选器和无行为批量操作，改为明确未接入状态，并链接到真实 Odoo 目录、调拨流程或集成状态。

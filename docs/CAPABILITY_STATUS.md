@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 根路由树校正与只读回归（`0477edc`）
+
+- 已确认 Next.js 生产入口为 `pos-ui/app`；`pos-ui/src/app` 不应作为线上路由证据来源。后续页面优化和 UAT 路由收集以根 `app` 为准。
+- 只读回归汇总：表格/表单 `14/14`、管理列表 `8/8`、AI availability `3/3`、AI surface `11/11`、AI UI `2/2`，意外业务写入 `0`。证据：`docs/UAT_READONLY_REGRESSION_2026-10-20_0477EDC.json`。
+- 生产 AI 模型质量、真实硬件、写入型 Odoo 验收和 Dokploy 容器身份仍未完成，发布保持 **NO-GO**。
+
 ### 2026-10-20 第三批占位数据清理（`e506619`）
 
 - Barcodes、Customer Utilities、Product Utilities、Transfer List 不再展示伪造产品/客户/位置或假操作按钮；页面明确未接入边界，并提供真实导航入口。
