@@ -78,6 +78,37 @@ class AdminTenantLifecycleTest {
     }
 
     @Test
+    void rejectsUnsupportedStatusTransition() {
+        Vendor suspended = vendor("acme", "suspended");
+        suspended.setId(2L);
+        when(vendorMapper.findById(2L)).thenReturn(suspended);
+        when(platformAccess.isPlatformOperatorVendor(suspended)).thenReturn(false);
+
+        BusinessException ex = assertThrows(BusinessException.class, () ->
+                controller.patchStatus(2L, new AdminTenantController.StatusBody("expired")));
+
+        assertEquals(40910, ex.getCode());
+        assertTrue(ex.getMessage().contains("suspended to expired"));
+        verify(vendorMapper, never()).updateStatus(any(), any());
+    }
+
+    @Test
+    void allowsExpiredStoreToBeReactivated() {
+        Vendor expired = vendor("acme", "expired");
+        Vendor active = vendor("acme", "active");
+        expired.setId(8L);
+        active.setId(8L);
+        when(vendorMapper.findById(8L)).thenReturn(expired, active);
+        when(platformAccess.isPlatformOperatorVendor(expired)).thenReturn(false);
+        when(userMapper.findPrimaryByVendor(8L)).thenReturn(null);
+
+        var result = controller.patchStatus(8L, new AdminTenantController.StatusBody("active"));
+
+        verify(vendorMapper).updateStatus(8L, "active");
+        assertEquals("active", result.data().get("status"));
+    }
+
+    @Test
     void extendsTrialFromNow() {
         Vendor store = vendor("acme", "expired");
         store.setId(3L);

@@ -147,6 +147,8 @@ export default function PlatformStoreDetailPage() {
 
   if (!ready || !user) return null;
 
+  const status = (store?.status || "").toLowerCase();
+
   return (
     <AdminPageLayout
       title={store?.name || "Store"}
@@ -245,9 +247,9 @@ export default function PlatformStoreDetailPage() {
               <p className="mt-3 text-sm text-[var(--oh-muted)]">Tenant access is deleted. Odoo sales and audit history are retained.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>
-                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "active", title: "Activate store?", message: "Restores access for this store URL." })}>Activate</button>
-                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "expired", title: "Mark expired?", message: "Marks the store as expired; login should be blocked." })}>Mark expired</button>
+                {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>}
+                {(status === "suspended" || status === "expired" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "active", title: "Activate store?", message: "Restores access for this store URL." })}>Activate</button>}
+                {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "expired", title: "Mark expired?", message: "Marks the store as expired; login should be blocked." })}>Mark expired</button>}
                 <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "trial", days: 14, title: "Extend trial by 14 days?", message: "Extends trial by 14 days from now." })}>Extend trial 14d</button>
                 {store.owner ? (
                   <>

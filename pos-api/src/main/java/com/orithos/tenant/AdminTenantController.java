@@ -37,6 +37,11 @@ import java.util.Set;
 public class AdminTenantController {
 
     private static final Set<String> STATUS_VALUES = Set.of("active", "suspended", "expired", "trial");
+    private static final Map<String, Set<String>> STATUS_TRANSITIONS = Map.of(
+            "active", Set.of("active", "suspended", "expired"),
+            "trial", Set.of("trial", "active", "suspended", "expired"),
+            "suspended", Set.of("suspended", "active"),
+            "expired", Set.of("expired", "active"));
 
     private final TenantProvisionService provisionService;
     private final PlatformAccessService platformAccess;
@@ -156,6 +161,10 @@ public class AdminTenantController {
         String status = body.status().trim().toLowerCase(Locale.ROOT);
         if (!STATUS_VALUES.contains(status)) {
             throw new BusinessException(40001, "status must be active, suspended, expired, or trial");
+        }
+        String currentStatus = vendor.getStatus() == null ? "" : vendor.getStatus().trim().toLowerCase(Locale.ROOT);
+        if (!STATUS_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(status)) {
+            throw new BusinessException(40910, "Cannot change store status from " + currentStatus + " to " + status);
         }
         vendorMapper.updateStatus(id, status);
         return ApiResult.ok(toDetail(requireVendor(id)));
