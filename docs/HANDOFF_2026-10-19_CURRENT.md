@@ -14,6 +14,12 @@
 - 证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_SURFACE_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-26F1D47.json`、`docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-26F1D47.json`。
 - 放行结论仍为 `NO-GO`：frontend 实际 SHA、构建日志和健康状态未从 Dokploy 控制台独立核验，价格建议线上路由仍不可见。
 
+## 下一批部署候选：补齐 `src/app` 价格建议 wrapper
+
+- 生产代码同时存在根 `app/` 页面和 `src/app/` wrapper；价格建议此前只有根页面，缺少 `src/app/stock/price-suggestions/page.tsx`，Stock Tools 的 `src/app/stock/more` 也没有入口。
+- 已补齐 wrapper 和导航入口；本地 UAT 新增结构检查，连同页面、缓存头、CSV 内容和非 GET 请求 `0` 共 `8/8 PASS`。
+- 这只是线上 404 的修复候选，尚未取得线上证据；下一次集中部署后需优先重跑价格建议 gate 和全站矩阵。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。

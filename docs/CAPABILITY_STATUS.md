@@ -18,6 +18,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 全站静态矩阵 `133 路由 x 390/1440 = 264/266 PASS`；唯一失败是 `/stock/price-suggestions` 在两个视口均返回 `404`，其余路由和页面错误/溢出检查通过。
 - 独立证据：`docs/UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_SURFACE_2026-10-19_AUTHFIX.json`、`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_SOMMELIER_READONLY_2026-10-19_POST-26F1D47.json`、`docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-26F1D47.json`。
 
+### 价格建议线上 404 修复候选
+
+- 复核发现生产路由同时维护 `app/` 实现和 `src/app/` wrapper；价格建议此前缺少 `src/app/stock/price-suggestions/page.tsx`，而 `src/app/stock/more/page.tsx` 也没有入口。
+- 已补齐 wrapper、Stock Tools 入口，并将本地 UAT 扩展为检查 wrapper/导航、CSV 下载和零写请求；当前本地 `8/8 PASS`。
+- 该修复尚未部署，必须与下一批改动一起触发 Dokploy 后重新验证线上 404 是否消失。
+
 Statuses:
 
 | Status | Meaning |

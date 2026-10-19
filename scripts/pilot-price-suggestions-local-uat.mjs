@@ -52,6 +52,14 @@ const browser = await chromium.launch({ headless: true });
 const writes = [];
 const checks = [];
 const record = (name, ok, evidence = "") => checks.push({ name, status: ok ? "PASS" : "FAIL", evidence });
+const srcRoute = path.join(root, "pos-ui", "src", "app", "stock", "price-suggestions", "page.tsx");
+const srcStockHub = path.join(root, "pos-ui", "src", "app", "stock", "more", "page.tsx");
+record("production app route wrapper", fs.existsSync(srcRoute), srcRoute);
+record(
+  "production stock hub links pricing",
+  fs.existsSync(srcStockHub) && fs.readFileSync(srcStockHub, "utf8").includes("/stock/price-suggestions"),
+  srcStockHub,
+);
 
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
