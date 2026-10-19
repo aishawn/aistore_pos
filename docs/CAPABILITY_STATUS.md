@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 Dokploy #38 构建失败诊断
+
+- 构建日志中的两个 `AiProviderConfig` 编译错误来自旧源码快照：当前 `main`/`origin/main` 为 `2434f27`，且已包含 `ea8f1b6` 的显式 import 修复及 `AiProviderConfig.java`。
+- `SqlAst.java` 的 `Parenthesis` deprecation 是 warning，不是阻断错误；当前源码检查已确认两个控制器引用可解析。
+- Dokploy 尚未提供 `2434f27` 的可审计构建完成记录。需在控制台确认 Compose 分支为 `main` 并部署该提交，再回读 backend/frontend 容器 SHA、构建日志和健康状态。发布状态继续为 **NO-GO**。
+
 ### 2026-10-20 `854bf6a` 后线上只读复核
 
 - 表格/表单 DOM 审计 `14/14 PASS`，覆盖用户、角色、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描的 390/1440 视口；页面错误和意外业务写入均为 `0`。证据：`docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`。

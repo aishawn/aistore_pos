@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Dokploy #38 后端构建诊断
+
+- Dokploy #38 在 `AiConfigController.java:78` 和 `SommelierController.java:65` 报 `cannot find symbol: variable AiProviderConfig`；`SqlAst.java` 的 `Parenthesis` 仅为弃用警告，不是失败原因。
+- 当前 `main`/`origin/main` 为 `2434f27`，其中已包含 `ea8f1b6` 的修复：两个控制器均显式导入 `com.orithos.modules.ai.AiProviderConfig`，类文件位于 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java`。源码检查确认当前提交不会产生这两个未解析符号。
+- 因此 #38 对应的是修复前源码快照，或 Dokploy 服务绑定的分支/提交不是当前 `main`；不能把该失败归因于 `2434f27`。本地按既定约束未运行 Maven/Next build。
+- 下一步必须在 Dokploy 控制台核对 Compose 服务绑定分支为 `main`，手动部署 `2434f27`，并回读 backend/frontend 构建日志、容器 SHA、健康状态和完成时间。仅 webhook 返回值或公网页面行为不能替代构建身份证据。
+- 当前发布结论仍为 **NO-GO**；在控制台确认前不要把 `2434f27` 标记为已部署。
+
 ## 2026-10-20 `b058ef3` AI capability 与表单回归
 
 - 线上 AI 回归：voice capability gate `PASS`（不可用时按钮 disabled 且显示明确原因）、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2`、表格/表单 DOM `14/14`，业务/配置写入 `0`。
