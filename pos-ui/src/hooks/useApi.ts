@@ -28,9 +28,12 @@ export function useApi<T>(path: string | null, query?: Record<string, unknown>):
   const requestSequence = useRef(0);
 
   const key = JSON.stringify({ path, query });
+  const previousKey = useRef(key);
 
   const run = useCallback(() => {
     const sequence = ++requestSequence.current;
+    const keyChanged = previousKey.current !== key;
+    previousKey.current = key;
     if (!path) {
       // Drop tenant-scoped data immediately when auth or route state disables the request.
       // Keeping the previous response here can briefly expose stale data during sign-out
@@ -41,11 +44,14 @@ export function useApi<T>(path: string | null, query?: Record<string, unknown>):
       return;
     }
     setLoading(true);
-    setError(null);
+    if (keyChanged) setError(null);
     api
       .get<T>(path, query as Record<string, string | number | boolean | null | undefined>)
       .then((d) => {
-        if (sequence === requestSequence.current) setData(d);
+        if (sequence === requestSequence.current) {
+          setData(d);
+          setError(null);
+        }
       })
       .catch((e: unknown) => {
         if (sequence === requestSequence.current) {

@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（用户确认 Dokploy 已部署；公网回归已重跑，运行 SHA 未从控制台核验）
+**Last updated:** 2026-10-19（用户确认 `7544d03` 曾部署；`c982572` webhook 返回成功，但 Retry 公网专项失败且运行 SHA 未核验）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -14,19 +14,41 @@ Statuses:
 
 ## 2026-10-19 最新验证
 
-- 当前 `main` 与 `origin/main` 均为 `2a2d9ab`；提交包含 Retry 错误状态修复及 Gift Cards Outlet 进度锁。`d801440` 统一了多数 UAT 的 source/deployment SHA 记录方式。
+### 本地待部署批次：共享 Retry 状态保留
+
+- 根因：`useApi` 在任何 GET 开始时立即清空错误；`AsyncDependencyNotice` 仅在 `error` 非空时渲染，因此 Retry 请求还在 pending 时错误条和按钮先被卸载。线上 Product Detail 与 Gift Cards UAT 已确定复现该行为。
+- 修复：相同 path/query 的手动 Retry 保留上一次错误，直到 GET 成功后清除；path/query 改变时仍立即清理旧错误。共享依赖提示因此在 pending 窗口继续渲染，并使用既有 `disabled` 与 `aria-busy` 状态。
+- 两个 Retry UAT 脚本新增 `PILOT_UAT_OUTPUT_PATH`，允许把新运行证据写到独立文件，避免覆盖既有用户/历史 JSON。默认路径保持兼容。
+- 验证：`npm run typecheck`、目标 ESLint、两个 UAT 的 `node --check`、`git diff --check` 通过；未运行 build。线上 UAT 尚待本批部署后重跑。
+- 这次修复覆盖所有使用 `useApi` 的手动重试。旧错误会在新 path/query 发起请求时清除，且迟到请求仍受现有 sequence 保护。
+
+### Store Ops 源码与验收边界复核
+
+- **Purchase receive：Accepted（隔离租户/部署 `822f36b`）。** `POST /api/odoo/purchase-orders/{id}/receive` 和 Purchases 详情收货弹窗已实现；API 有同源校验、Odoo session、租户强制 company、订单/收货单/stock move 归属检查、明确确认及数量上限。专门的 live UAT（`docs/UAT_PURCHASE_RECEIVE_LIVE_2026-10-16.json`）验证 PO 确认、部分收货创建 backorder、最终收货、重复收货拒绝及库存增加 `+4`。`docs/UAT_RECEIVE_MANAGE_CASH_2026-10-16.json` 是更早的部署前/收货写入尚待验证快照，不覆盖后续隔离 UAT。当前 `c982572` 的部署身份仍未核验；这不撤销 `822f36b` 对应版本的验收，但后续代码变更仍需回归。
+- **Stocktake / inventory adjustment：Planned（Odoo P0 未完成）。** 当前 `/stocktake`、`/stocktake/express` 使用 Spring `/api/stocktakes`，对应 `StocktakeController` / `StocktakeMapper`，记录落在经典 `stocktake` / `stocktake_product` 表；此路径不是 Odoo BFF，也没有把盘点差异应用到 Odoo 的 API。线上已有证据只验证页面读取、Retry、加载和拦截写请求（`docs/UAT_STOCKTAKES_RECOVERY_2026-10-16.json`、`docs/UAT_EXPRESS_STOCKTAKE_LOADING_2026-10-16.json`），不能视作库存调整验收。
+- 按 `docs/STORE_ADMIN_P0_SPEC.md`，Odoo 盘点写入前还需在获批隔离 Odoo 上完成版本/API spike，明确 location/company 解析与部分差异的应用模型；完成后必须验证应用前取消不改库存、确认后 Odoo 与 UI 库存一致。Demo 公司禁止写入。
+- Store Ops P0 尚未全部完成：采购收货有隔离环境写入验收；Odoo 盘点差异应用尚未实现。此前功能概览里的“盘点”描述的是经典系统页面存在，不等于 Odoo SoT 能力已验收。
+
+- 当前 `main` 与 `origin/main` 均为 `c982572`；该提交在 `2a2d9ab` 基础上增加 API 读取序号保护、共享 Retry 忙碌语义及确定性故障注入 UAT。`d801440` 统一了多数 UAT 的 source/deployment SHA 记录方式。
 - 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_1cde2cb.json` 为 131 路由 × 390/1440，`262/262 PASS`；它验证的是先前 `1cde2cb` 公网版本，不覆盖 `2a2d9ab`。
-- 用户确认 Dokploy 已部署后重跑了线上只读 UAT；实际运行 SHA 未从控制台回读，不能绑定到 `2a2d9ab`。全站矩阵 `262/262 PASS` 与认证重放旧证据 `2/2 PASS` 都来自之前的公网版本。
-- 最新商品详情 UAT：确认第二次 Tax rates GET 已到达并保持 pending，Retry 进度锁与提示 `aria-busy` 未出现；首次误提示消失，390px 无溢出、页面错误和业务写入均为 `0`。Gift Cards UAT：确认第二次 Outlet GET pending，提示与 Retry 按钮仍消失，筛选器保持禁用；`503 → 200` 和搜索竞态通过，无溢出、页面错误或业务写入。部署身份均未核验。
+- 用户此前确认部署 `7544d03`。`c982572` 推送后使用完整 GitHub push payload 调用 Dokploy webhook 返回 HTTP `200 Compose deployed successfully`，并等待超过 5 分钟；但实际运行 SHA、构建日志和容器状态未从控制台回读，不能确认公网已运行 `c982572`。全站矩阵 `262/262 PASS` 与旧认证重放证据来自较早公网版本。
+- 最新商品详情 UAT（source `c982572`）：确认第二次 Tax rates GET 已到达并保持 pending，Retry 进度锁与提示 `aria-busy` 未出现；首次误提示消失，390px 无溢出、页面错误和业务写入均为 `0`。Gift Cards UAT：确认第二次 Outlet GET pending，提示与 Retry 按钮仍消失，筛选器保持禁用；`503 → 200` 和搜索竞态通过，无溢出、页面错误或业务写入。deployment 均为 `unverified-after-deploy`。
 - 最新认证重放 UAT：GET 401 后刷新一次；DELETE 请求一次且被浏览器拦截，无真实业务写入，`2/2 PASS`。部署 SHA 未核验。
 - 当前发布判定：**NO-GO，商品详情和 Gift Cards Retry 进度锁回归仍未通过；部署身份待 Dokploy 控制台确认。**
 
-## 本地待部署批次
+## 已推送批次：`c982572`（部署请求已接受，运行版本待核验）
 
 - `useApi` 增加请求序号保护；查询切换、组件卸载或新一轮 Retry 后，旧请求不能覆盖新数据/错误/loading 状态。
 - 共享依赖错误提示增加 `aria-busy`，为 Retry 进行状态提供可访问的忙碌语义。
 - 商品详情与 Gift Cards Retry UAT 用 Promise gate 控制待处理 GET，在放行响应前检查按钮禁用和提示忙碌状态，避免依赖固定延迟造成竞态误判。
-- 本地 `npm run typecheck`、目标 ESLint、两份 UAT `node --check`、`git diff --check` 通过；未运行 build，以上改动尚无线上验证。
+- 本地 `npm run typecheck`、目标 ESLint、两份 UAT `node --check`、`git diff --check` 通过；未运行 build。
+- `c982572` 已推送到 `origin/main`。完整 GitHub push payload 调用 Dokploy webhook 返回 HTTP `200 Compose deployed successfully`，并等待超过 5 分钟；仍需从控制台确认实际运行 SHA、构建日志和容器状态。线上 Retry 专项未通过，不能视为本批验收完成。UAT 只有在显式提供 `PILOT_DEPLOYMENT_VERIFIED=true` 与完整 40 位 `PILOT_DEPLOYMENT_SHA` 时才记录运行 SHA；否则保持 `unverified-after-deploy`。
+
+## 下一本地批次：平台商店状态转换
+
+- 对照 `docs/PLATFORM_ADMIN_P0_SPEC.md`，详情页/API 已具备生命周期操作，但当前 UI 原先无视当前状态显示全部状态按钮，API 也未约束非法转换。
+- 本地改动按 P0 允许的状态转换矩阵隐藏不适用按钮，并让 API 对非法转换返回 `40910`；新增控制器单测覆盖 `suspended → expired` 拒绝。
+- 前端 `npm run typecheck` 与详情页 ESLint 通过。后端单测未能运行：当前 Maven 使用 JDK `1.8.0_292`，项目要求 Java 21；编译在仓库其他 `record` 语法处失败。该改动尚未提交、部署或线上验证。
 
 ## 当前迭代快照：`3b408d4` / `2012146`
 

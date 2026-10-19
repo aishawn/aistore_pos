@@ -38,6 +38,12 @@ try {
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+  const accessCookie = (await context.cookies(base)).find((cookie) => cookie.name === "orithos_access_token");
+  if (!accessCookie || !loginBody.data?.user) throw new Error("LOGIN_SESSION_NOT_AVAILABLE_TO_BROWSER");
+  await context.addInitScript(({ token, user }) => {
+    localStorage.setItem("sf_token", token);
+    localStorage.setItem("sf_user", JSON.stringify(user));
+  }, { token: accessCookie.value, user: loginBody.data.user });
 
   const page = await context.newPage();
   const pageErrors = [];
@@ -148,14 +154,19 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
+  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   target: base,
   scope: "read-only gift card outlet lookup failure injection; one GET returns 503; Retry progress and outlet filter lock are verified; no business writes",
   checks,
   writes,
 };
-const outputPath = path.join(root, "docs", "UAT_GIFTCARDS_OUTLET_RETRY_2026-10-19.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_GIFTCARDS_OUTLET_RETRY_2026-10-19.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, checks, writes }));
 if (checks.some((check) => check.status !== "PASS") || writes.length) process.exitCode = 2;
