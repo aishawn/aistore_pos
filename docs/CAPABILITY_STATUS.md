@@ -11,6 +11,7 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 全站静态矩阵更新为 `133 路由 × 390/1440 = 266/266 PASS`，独立证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-4487A12.json`。
 - 视觉 AI 已按模型路由 native multimodal / compatible chat；真实酒标和发票照片的业务字段提取仍需专门验收。
 - 以上公网行为不替代 Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态取证。
+- 价格建议现在可将单个 SKU 深链到 Bulk Price Edit，Bulk Price Edit 会预填 SKU 并发送同一搜索条件；本地 `16` 项 fixture UAT 全部通过，仍保持无自动价格写入。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_DEEP-LINK.json`。
 
 ### 2026-10-19 价格建议运营补强
 

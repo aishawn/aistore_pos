@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 Smart Pricing 到 Bulk Price Edit 闭环
+
+- 价格建议每行新增 `Bulk edit this product`，携带 SKU 进入 `/stock/bulk-price-edit?search=...`；Bulk Price Edit 使用 `useSearchParams` 预填搜索并请求相同 SKU。
+- Bulk Price Edit 路由增加 Suspense 边界，避免 `useSearchParams` 在静态渲染阶段缺少 boundary。
+- 本地 fixture UAT `16/16 PASS`：搜索、状态筛选、CSV、SKU 深链、Bulk 页面预填、SKU query 和非 GET 写请求 `0` 均通过。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_DEEP-LINK.json`。
+- 本地 `npm run typecheck`、Bulk/Price 目标 ESLint、`node --check scripts/pilot-price-suggestions-local-uat.mjs`、`git diff --check` 均通过；未运行 build。
+- 该代码批次尚未重新触发 Dokploy；应与后续集中改动一起部署，再重跑价格建议和 Bulk Price Edit 公网 UAT。
+
 ## 2026-10-19 当前公网汇总
 
 - 全站静态矩阵：`133` 路由 × `390/1440` 视口，`266/266 PASS`，无 HTTP 路由失败；独立证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-4487A12.json`。
@@ -414,6 +422,13 @@
 - **租户生命周期/平台店铺状态改动未完成验收**：后端租户删除状态转换和前端平台店铺详情等改动未提交；对应后端测试未运行，也没有线上回归证据。
 
 ## 当前问题与工作区状态
+
+### 2026-10-19 Dokploy #38 构建故障处理
+
+- Dokploy 构建日志曾报 `AiConfigController` 与 `SommelierController` 找不到 `AiProviderConfig`。当前 `main`/`origin/main` 为 `228fa6f`，该提交已包含 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 以及两个控制器的显式 import；因此该日志对应旧源码快照，而不是当前提交缺少类文件。
+- 直接空 POST 到 compose webhook 会返回 `301 {"message":"Branch Not Match"}`。Dokploy 需要 GitHub push payload 中的 `ref=refs/heads/main`；按 push 格式重试后返回 `200 {"message":"Compose deployed successfully"}`。
+- 本次只确认部署已被接受，尚未从 Dokploy 控制台回读 backend/frontend 实际容器 SHA、完整 Maven/Next 构建日志、健康状态和完成时间。完成这些回读前，不把本次部署标记为构建通过。
+- 本地 Maven 编译在当前 Windows 工作区被既有源码编码错误阻断（`ApiResult.java`、`AiReportSchemaMigrator.java` 等非本次改动文件），未将该结果归因于 `AiProviderConfig`；生产构建仍以 Dokploy Java 21 日志为准。
 
 - `main` 与 `origin/main` 当前为 `5bcfb72`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
