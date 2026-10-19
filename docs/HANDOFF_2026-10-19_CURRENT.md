@@ -625,6 +625,12 @@
 - Mail Log、Trashed Items 的移动端结果容器补齐 `list/listitem` 语义；首屏 skeleton 标记 `aria-busy="true"`，让读屏器能区分加载中和已加载列表。
 - 本地验证：`pos-ui` `npm run typecheck` 退出码 0；两个目标页面 ESLint `0 warning / 0 error`；静态 UAT 与表格 UAT 脚本 `node --check`、`git diff --check` 均通过。
 
+## 2026-10-20 实际路由树对齐
+
+- `src/app/utilities/future-costs` 与 `future-prices` 现在使用已修正的只读客户端实现，同时保留 `dynamic="force-dynamic"` 和 `fetchCache="force-no-store"`；避免旧的“New/Filter”假控件覆盖真实只读能力，并规避历史 `revalidate` client/server 冲突。
+- `src/app/utilities/trashed-items` 的搜索输入现在受控并发送 `q` 参数；此前输入框不会影响请求。`src/app/utilities/mail-log` 搜索框补齐可访问名称。
+- typecheck、相关页面 ESLint、UAT 脚本语法和 `git diff --check` 均通过；本地未运行 build，部署后需重新验证 `/utilities/future-costs`、`/utilities/future-prices`、`/utilities/mail-log`、`/utilities/trashed-items` 的 390/1440 行为。
+
 ## 2026-10-20 线上只读复测（提交 854bf6a，部署身份未核验）
 
 - `docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`：7 页面 × 390/1440 共 `14/14 PASS`，页面错误 0，未命名控件 0，清空供应商搜索建议残留 0，意外业务写入 0。脚本主动拦截了安全非 GET 请求，不能替代写入验收。

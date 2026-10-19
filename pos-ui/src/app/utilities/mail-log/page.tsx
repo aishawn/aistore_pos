@@ -32,6 +32,7 @@ export default function MailLogPage() {
       <h1 className="text-[34px] font-bold text-black">Mail Log</h1>
 
       <input
+        aria-label="Search mail by recipient"
         value={recipient}
         onChange={(e) => {
           setRecipient(e.target.value);

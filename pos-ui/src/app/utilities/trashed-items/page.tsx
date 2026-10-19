@@ -27,10 +27,12 @@ function Actions() {
 }
 
 export default function TrashedItemsPage() {
+  const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [page, setPage] = useState(1);
   const { items, total, loading, error, reload } = useApiList<TrashedItem>("/api/trashed-items", {
     type: type || undefined,
+    q: search.trim() || undefined,
     page,
     size: PAGE_SIZE,
   });
@@ -40,7 +42,16 @@ export default function TrashedItemsPage() {
       <h1 className="text-[34px] font-bold text-black">Trashed Items</h1>
 
       <div className="mt-4 flex gap-6">
-        <input placeholder="Search trashed items..." className="h-[52px] flex-1 rounded-xl border-2 border-black px-4 text-[16px] outline-none placeholder:text-neutral-400" />
+        <input
+          aria-label="Search trashed items"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Search trashed items..."
+          className="h-[52px] flex-1 rounded-xl border-2 border-black px-4 text-[16px] outline-none placeholder:text-neutral-400"
+        />
         <select
           value={type}
           onChange={(e) => {

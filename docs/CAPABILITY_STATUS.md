@@ -19,6 +19,11 @@
 - Mail Log、Trashed Items 移动列表补齐 `list/listitem` 语义，加载 skeleton 增加 `aria-busy`；不改变邮件日志、回收项读取或筛选行为。
 - typecheck、目标 ESLint、UAT 脚本语法和 diff check 通过；源码待下一次可审计 Dokploy 部署后复跑线上 DOM 回归。
 
+### 2026-10-20 实际路由树对齐（工作区）
+
+- Future Costs/Prices 的 `src/app` 页面改为复用已验证的只读客户端，并保留动态不缓存策略，避免历史 `revalidate` 冲突和无效的 New/Filter 控件。
+- Trashed Items 搜索现在真正绑定并发送 `q`，Mail Log 搜索框有明确可访问名称；相关源码检查通过，线上验证待部署。
+
 ### 2026-10-20 `b058ef3` AI capability 与表单回归
 
 - voice capability gate、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2` 和表格/表单 DOM `14/14` 均通过，业务/配置写入为 `0`。

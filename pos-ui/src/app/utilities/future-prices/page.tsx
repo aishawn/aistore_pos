@@ -1,4 +1,4 @@
-import FuturePricesClientPage from "./client-page";
+import FuturePricesClientPage from "../../../../app/utilities/future-prices/client-page";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
