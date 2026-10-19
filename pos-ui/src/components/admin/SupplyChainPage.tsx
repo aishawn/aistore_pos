@@ -261,8 +261,8 @@ export function SupplyChainPage() {
       {settingsOpen ? (
         <SettingsPanel />
       ) : loading ? (
-        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">
-          Building this week's purchase plan…
+        <div role="status" aria-live="polite" className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">
+          Building this week&apos;s purchase plan…
         </div>
       ) : !plan ? (
         <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-10 text-center text-[13px] text-[var(--oh-muted)]">

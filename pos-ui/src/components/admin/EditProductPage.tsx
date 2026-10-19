@@ -918,7 +918,7 @@ export function EditProductPage({ productId }: { productId: string }) {
   const productName = form?.name?.trim() || "Product";
 
   return (
-    <div className="h-full overflow-auto bg-[var(--oh-surface)] p-5 font-sans md:p-6">
+    <div aria-busy={loading || inventoryLoading} className="h-full overflow-auto bg-[var(--oh-surface)] p-5 font-sans md:p-6">
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <button
@@ -1471,7 +1471,7 @@ export function EditProductPage({ productId }: { productId: string }) {
                   </div>
 
                   {inventoryLoading && (
-                    <div className="py-8 text-center text-[13px] text-[var(--oh-muted)]">
+                    <div role="status" aria-live="polite" className="py-8 text-center text-[13px] text-[var(--oh-muted)]">
                       Loading inventory…
                     </div>
                   )}

@@ -137,7 +137,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-white text-[16px] text-neutral-500">
+      <div role="status" aria-live="polite" className="flex h-full items-center justify-center bg-white text-[16px] text-neutral-500">
         Loading report…
       </div>
     );
