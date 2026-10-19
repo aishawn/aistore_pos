@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-10-19T04:27:38.917Z",
+  "sourceCommit": "126c6575ed34dea5e46ddaf8d959b1493ab20941",
+  "deploymentSha": "a6d5a579761cdce9d755c691f00deae5f749ee4a",
+  "appBase": "https://app.orithos.com.au",
+  "demoBase": "https://demo.orithos.com.au",
+  "passed": 15,
+  "failed": 0,
+  "result": "PASS",
+  "checks": [
+    {
+      "name": "platform.login",
+      "status": "PASS",
+      "platformOperator": true
+    },
+    {
+      "name": "platform.tenants.list",
+      "status": "PASS",
+      "httpStatus": 200,
+      "count": 53
+    },
+    {
+      "name": "platform.tenants.detail",
+      "status": "PASS",
+      "httpStatus": 200,
+      "storeId": 1,
+      "subdomain": "demo",
+      "hasOwner": true,
+      "hasBinding": true,
+      "odooProvisionStatus": "ready",
+      "odooCompanyId": 1
+    },
+    {
+      "name": "platform.operator.lifecycleBlocked",
+      "status": "PASS",
+      "httpStatus": 200,
+      "code": 40910,
+      "message": "Lifecycle changes are not allowed on the platform operator store"
+    },
+    {
+      "name": "platform.stores.page",
+      "status": "PASS",
+      "url": "https://app.orithos.com.au/platform/stores",
+      "snippet": "Platform admin All stores · app.orithos.com.au Stores Create store Open demo store admin Sign out Stores Platform admin view of every vendor. Store owners from brand signup manage staff only inside their own store URL. R"
+    },
+    {
+      "name": "platform.stores.detailPage",
+      "status": "PASS",
+      "url": "https://app.orithos.com.au/platform/stores/1",
+      "snippet": "Platform admin All stores · app.orithos.com.au Stores Create store Open demo store admin Sign out Orithos Demo Platform lifecycle, owner recovery, and Odoo binding All stores Refresh IDENTITY Name Orithos Demo Subdomain "
+    },
+    {
+      "name": "platform.noSellChrome",
+      "status": "PASS",
+      "sellNav": 0
+    },
+    {
+      "name": "platform.stores.listLink",
+      "status": "PASS",
+      "detailHref": 0,
+      "platformOperator": true
+    },
+    {
+      "name": "demo.login",
+      "status": "PASS"
+    },
+    {
+      "name": "demo.odooBinding",
+      "status": "PASS",
+      "httpStatus": 200,
+      "odooProvisionStatus": "ready",
+      "companyId": 1,
+      "r2Prefix": "shopfront/demo/"
+    },
+    {
+      "name": "demo.receive.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401,
+      "body": "{\"message\":\"Odoo session expired\"}"
+    },
+    {
+      "name": "demo.cash.noOdooSession",
+      "status": "PASS",
+      "httpStatus": 401,
+      "body": "{\"message\":\"Odoo session expired\"}"
+    },
+    {
+      "name": "demo.cash.csrfOrigin",
+      "status": "PASS",
+      "httpStatus": 403
+    },
+    {
+      "name": "demo.manageCash.page",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Loadin"
+    },
+    {
+      "name": "demo.purchases.page",
+      "status": "PASS",
+      "snippet": "orithos Overview Register Stock Products Replenishment Plan Purchases Suppliers Customers Reporting Orithos AI Setup ONLINE admin Skip to main content STOCK MANAGEMENT · ODOO Purch"
+    }
+  ]
+}

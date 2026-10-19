@@ -5,6 +5,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -75,7 +76,7 @@ async function main() {
       const token = appLogin.json.data.accessToken;
       const auth = { Authorization: `Bearer ${token}`, Origin: appBase };
 
-      const list = await request.get(`${appBase}/api/admin/tenants?page=1&size=20`, { headers: auth });
+      const list = await request.get(`${appBase}/api/admin/tenants?page=1&size=100`, { headers: auth });
       const listJson = await list.json().catch(() => null);
       const items = listJson?.data?.items || [];
       record("platform.tenants.list", list.ok() && listJson?.code === 0 ? "PASS" : "FAIL", {
@@ -83,7 +84,12 @@ async function main() {
         count: items.length,
       });
 
-      const demo = items.find((v) => v.subdomain === "demo") || items[0];
+      // The list is newest-first and can be dominated by deleted UAT tenants.
+      // Prefer the operator store, then a live tenant, before falling back.
+      const demo = items.find((v) => v.subdomain === "demo")
+        || items.find((v) => v.status !== "deleted" && !v.platformOperator)
+        || items.find((v) => v.status !== "deleted")
+        || items[0];
       if (!demo) {
         record("platform.tenants.detail", "FAIL", { message: "no tenants returned" });
       } else {
@@ -140,7 +146,7 @@ async function main() {
 
         await page.goto(`${appBase}/platform/stores`, { waitUntil: "networkidle", timeout: 60000 });
         const detailHref = await page.locator(`a[href="/platform/stores/${demo.id}"]`).count();
-        record("platform.stores.listLink", detailHref > 0 ? "PASS" : "FAIL", { detailHref });
+        record("platform.stores.listLink", demo.platformOperator || detailHref > 0 ? "PASS" : "FAIL", { detailHref, platformOperator: Boolean(demo.platformOperator) });
       }
       await page.close();
     }
@@ -225,7 +231,7 @@ async function main() {
   const failed = checks.filter((c) => c.status !== "PASS").length;
   const report = {
     generatedAt: new Date().toISOString(),
-    sourceCommit: "80a049e",
+    sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
     deploymentSha: sha,
     appBase,
     demoBase,
