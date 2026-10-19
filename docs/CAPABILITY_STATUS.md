@@ -670,3 +670,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Write evidence: Card `$28.60` receipt `260-1-000009`, Cash `$38.39` receipt `260-1-000010`, refunds created, stock restored to 12/12 — `docs/UAT_WRITE_2026-10-13.json`.
 - AI remained off; SMTP still unconfigured (invite/reset copy-link path verified in UI copy).
 - Session `orithos_store1/00004` left **opened** after net-zero this-round sales/refunds.
+
+### 2026-10-20 Dokploy #38 后续触发（`faecf07`）
+
+- 当前源码已包含 `AiProviderConfig.java` 和两个控制器的显式 import；#38 的 `cannot find symbol` 属于旧源码快照，`Parenthesis` 仅为弃用警告。
+- `faecf07` 已推送到 GitHub `main`；完整 push payload 触发 Dokploy 返回 `HTTP 200 Compose deployed successfully`。
+- 等待部署后 `/overview` 返回 `200`；未认证 API 返回 `401`。这些结果不证明构建完成或镜像身份。
+- Dokploy frontend/backend 容器 SHA、完整构建日志和健康状态仍待控制台回读，整体发布保持 **NO-GO**。

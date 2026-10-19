@@ -703,3 +703,11 @@
 - `docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`：7 页面 × 390/1440 共 `14/14 PASS`，页面错误 0，未命名控件 0，清空供应商搜索建议残留 0，意外业务写入 0。脚本主动拦截了安全非 GET 请求，不能替代写入验收。
 - `docs/UAT_AI_AVAILABILITY_2026-10-20_POST-854BF6A.json`：`3/3 PASS`；当前 Demo 的 `/api/ai/config/client` 报告 `enabled=true`，AI composer 可用，未提交提示词。该结果的 `deployment=unverified-after-deploy`，只能说明当前公网行为，不证明运行镜像来自 `854bf6a`。
 - 由于线上 AI 开关已报告为开启，后续必须从 Dokploy 回读环境变量、模型/region 配置、构建日志和运行 SHA，再进行预算可控的真实模型回归；在此之前不把 NLQ、语音、酒标或发票 OCR 标记为已验收。
+
+## 2026-10-20 Dokploy #38 后续触发（`faecf07`）
+
+- 复核当前源码：`AiProviderConfig.java` 已被 Git 跟踪，`AiConfigController` 和 `SommelierController` 均显式导入 `com.orithos.modules.ai.AiProviderConfig`；因此 #38 的两个 `cannot find symbol` 对应修复前源码快照，不需要重复修改 Java 控制器。
+- 已将本地 `main` 的 `0751ee0`、`faecf07` 推送到 GitHub，远端 `main` 与本地均为 `faecf073fb91228f52f036b0ae78de380bd78b12`。
+- 使用完整 GitHub push payload（`ref=refs/heads/main`、`after=faecf07`）调用 Dokploy compose webhook，返回 `HTTP 200 {"message":"Compose deployed successfully"}`。这只证明 Dokploy 接受触发，不能替代构建完成证据。
+- 等待部署窗口后，公开入口 `/overview` 返回 `200`；未认证 `/api/health` 与 `/api/ai/config/client` 返回 `401`，符合鉴权边界。尚未从 Dokploy 控制台取得 frontend/backend 容器 SHA、完整 Maven/Next 构建日志、健康状态和完成时间。
+- 发布结论保持 **NO-GO**，直到控制台确认构建通过且运行容器 SHA 与 `faecf07`（或其后提交）一致。
