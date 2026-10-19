@@ -36,6 +36,12 @@
 - 本地 typecheck、Invoice Scan 目标 ESLint、脚本语法和 `git diff --check` 通过；线上 fixture Invoice mock 通过，`0` 个供应商/采购/收货业务写入。证据：`docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-228FA6F.json`。
 - 该修复尚未部署后单独验证；下一轮需确认启用态上传正常，并用能力位 fixture/线上配置确认关闭态按钮禁用。
 
+### `911ad11` 部署后复验
+
+- Invoice Scan mock `PASS`：预览、详情、行编辑、Odoo 下一步链接通过，未产生供应商/采购/收货写入。证据：`docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-911AD11.json`。
+- AI 全功能只读回归 `14 PASS / 0 FAIL / 1 INFO`，AI UI `2/2 PASS`（390/1440、无页面错误）。证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-911AD11.json`、`docs/UAT_AI_UI_2026-10-19_POST-911AD11.json`。
+- 线上验证的是启用态；AI 关闭/视觉不可用的按钮禁用逻辑已由代码实现，但尚无生产切换后的线上截图证据。真实发票字段 OCR 仍未验收。
+
 > **当前有效摘要（2026-10-19）**
 >
 > 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `761e078`；接手时先确认线上实际运行提交。
