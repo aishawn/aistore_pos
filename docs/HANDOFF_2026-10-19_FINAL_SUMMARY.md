@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前运行时代码：`74e9412`；当前仓库/`origin/main`：`b77d802`（后续为文档证据更新）
+当前运行时代码：`74e9412`；当前仓库/`origin/main`：`fe7003d`（后续为文档证据更新）
 本轮 Dokploy webhook：HTTP `200`，返回 `Compose deployed successfully`；控制台运行容器 SHA 仍未独立回读。
 
 ## 结论
@@ -67,7 +67,7 @@
 
 ## 当前问题和风险
 
-1. **版本证据断链**：当前 `origin/main` 为 `b54c11a`，运行时代码为 `74e9412`，历史证据仍包含旧 deployment 字段；公网返回 200 和 webhook 成功不能替代 Dokploy 控制台运行 SHA、构建日志和健康状态证据。
+1. **版本证据断链**：当前 `origin/main` 为 `fe7003d`，运行时代码为 `74e9412`，历史证据仍包含旧 deployment 字段；公网返回 200 和 webhook 成功不能替代 Dokploy 控制台运行 SHA、构建日志和健康状态证据。
 2. **AI 环境记录不一致**：历史批次曾记录 `AI_ENABLED=false`，最新批次记录 `enabled=true`。必须以 Dokploy 当前容器环境和真实请求结果为准。
 3. **证据类型混杂**：`docs/` 同时包含真实隔离租户、只读、fixture、mock 和旧版本证据；阅读时必须检查 `generatedAt`、`sourceCommit`、`deployment` 和是否产生写入。
 4. **生产写入风险**：后续销售、退款、采购、收货、现金、关班和 Stocktake 只能使用一次性隔离租户，禁止写入 Demo 公司。

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T14:36:33.098Z",
+  "generatedAt": "2026-10-19T14:50:39.000Z",
   "sourceCommit": "74e9412",
   "target": "https://demo.orithos.com.au",
   "scope": "admin-only AI report metrics read-only regression; no business or configuration writes",
@@ -17,12 +17,12 @@
     {
       "name": "admin metrics response",
       "status": "PASS",
-      "detail": "status=200 paths=2 p50=2951 p95=6582"
+      "detail": "status=200 paths=2 p50=2842 p95=6582"
     },
     {
       "name": "assistant intent metrics coverage",
       "status": "PASS",
-      "detail": "assistant:entity_action requests=11 allowed=11 estimatedTokens=152"
+      "detail": "assistant:entity_action requests=12 allowed=12 estimatedTokens=160"
     },
     {
       "name": "anonymous metrics guard",
