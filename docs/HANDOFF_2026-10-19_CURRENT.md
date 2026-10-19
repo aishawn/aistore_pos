@@ -9,6 +9,7 @@
 - Odoo 自动恢复专项仍为 `4 PASS / 1 FAIL`：登录、service-account 配置、清 cookie、补货页自动恢复通过；产品目录初始加载失败，需要在新路由部署后重跑。当前失败不能标记为产品数据故障，需结合新页面和网络响应重新确认。
 - 路由修复提交 `6aa867c` 已推送并由 Dokploy 接受部署；pricing 线上回归仍为 `8/8 PASS`。自动恢复脚本随后修正了两个判定问题：忽略空的全局 `role=alert`，并等待产品目录客户端 hydration 完成后再判断 SSR 的 `No records`。修正后线上自动恢复专项 `6/6 PASS`，证据：`docs/UAT_ODOO_AUTORECOVER_2026-10-19_POST-6AA867C_FINAL.json`。
 - 自动恢复最终证据覆盖：管理员登录、service-account 配置、清除 Odoo cookie、补货页无手动 Connect 恢复、产品目录页面内读请求自动恢复、Odoo 用户及 `orithos_store1/00004` POS session 恢复。所有请求仍为只读或会话清理，不包含销售、库存、采购、退款或关班写入。
+- 最新 `70cd722` 部署请求也已被 Dokploy 接受；部署等待后的自动恢复回归仍为 `6/6 PASS`，证据：`docs/UAT_ODOO_AUTORECOVER_2026-10-19_POST-70CD722.json`。Dokploy 控制台容器 SHA、完整构建日志和健康状态仍需独立回读。
 - 前端 `npm run typecheck`、脚本 `node --check`、`git diff --check` 通过；按约束未运行本地 build。后端 `AiProviderConfig` import 已存在于当前 `main`（`ea8f1b6`），本次 Dokploy #38 错误对应旧源码快照。
 
 ## 2026-10-19 当前批次：价格编辑与移动端表格
