@@ -43,6 +43,7 @@ const NO_STORE_PAGES = new Set([
   "/reports/this-month-sales",
   "/reports/weekly-sales",
   "/stock/replenishment",
+  "/stock/price-suggestions",
   "/customers/odoo",
   "/suppliers/odoo",
   "/settings/company/date-time",

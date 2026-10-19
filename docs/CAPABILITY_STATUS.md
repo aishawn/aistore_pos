@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（`b3c9eba` 后公网 Retry/Auth 专项通过；Dokploy 运行 SHA 未核验）
+**Last updated:** 2026-10-19（Retry/Auth 与 131 路由全站矩阵通过；Dokploy 运行 SHA 未核验）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -14,31 +14,35 @@ Statuses:
 
 ## 2026-10-19 最新验证
 
-### 本地待部署批次：共享 Retry 状态保留
+### 共享 Retry 状态保留：已做本地与公网行为验证
 
 - 根因：`useApi` 在任何 GET 开始时立即清空错误；`AsyncDependencyNotice` 仅在 `error` 非空时渲染，因此 Retry 请求还在 pending 时错误条和按钮先被卸载。线上 Product Detail 与 Gift Cards UAT 已确定复现该行为。
 - 修复：相同 path/query 的手动 Retry 保留上一次错误，直到 GET 成功后清除；path/query 改变时仍立即清理旧错误。共享依赖提示因此在 pending 窗口继续渲染，并使用既有 `disabled` 与 `aria-busy` 状态。
 - 两个 Retry UAT 脚本新增 `PILOT_UAT_OUTPUT_PATH`，允许把新运行证据写到独立文件，避免覆盖既有用户/历史 JSON。默认路径保持兼容。
 - 两个脚本新增 local mock 模式：测试请求只由 Playwright fixture 响应，非 GET 请求统一拦截为 `405`，不需要登录、后端或真实业务数据；本地结果使用 `not-applicable-local-dev`，不冒充部署验证。
 - 本地 Playwright UAT：Product Detail `1/1 PASS`；Gift Cards Retry 与搜索竞态 `2/2 PASS`。两项都验证 pending 时 Retry 按钮 disabled、alert `aria-busy=true`、390px 无溢出、page errors `0`、写请求 `0`。证据：`docs/UAT_PRODUCT_VIEW_RETRY_LOCAL_9f15b70.json`、`docs/UAT_GIFTCARDS_OUTLET_RETRY_LOCAL_9f15b70.json`。
-- 验证：`npm run typecheck`、目标 ESLint、两个 UAT 的 `node --check`、`git diff --check` 通过；未运行 build。公网 UAT 尚待本批部署后重跑。
+- 验证：`npm run typecheck`、目标 ESLint、两个 UAT 的 `node --check`、`git diff --check` 通过；本轮 Product Detail、Gift Cards 与 Auth 公网专项通过。未运行 build。
 - 这次修复覆盖所有使用 `useApi` 的手动重试。旧错误会在新 path/query 发起请求时清除，且迟到请求仍受现有 sequence 保护。
 
 ### Store Ops 源码与验收边界复核
 
 - **Purchase receive：Accepted（隔离租户/部署 `822f36b`）。** `POST /api/odoo/purchase-orders/{id}/receive` 和 Purchases 详情收货弹窗已实现；API 有同源校验、Odoo session、租户强制 company、订单/收货单/stock move 归属检查、明确确认及数量上限。专门的 live UAT（`docs/UAT_PURCHASE_RECEIVE_LIVE_2026-10-16.json`）验证 PO 确认、部分收货创建 backorder、最终收货、重复收货拒绝及库存增加 `+4`。`docs/UAT_RECEIVE_MANAGE_CASH_2026-10-16.json` 是更早的部署前/收货写入尚待验证快照，不覆盖后续隔离 UAT。当前 `c982572` 的部署身份仍未核验；这不撤销 `822f36b` 对应版本的验收，但后续代码变更仍需回归。
-- **Stocktake / inventory adjustment：Planned（Odoo P0 未完成）。** 当前 `/stocktake`、`/stocktake/express` 使用 Spring `/api/stocktakes`，对应 `StocktakeController` / `StocktakeMapper`，记录落在经典 `stocktake` / `stocktake_product` 表；此路径不是 Odoo BFF，也没有把盘点差异应用到 Odoo 的 API。线上已有证据只验证页面读取、Retry、加载和拦截写请求（`docs/UAT_STOCKTAKES_RECOVERY_2026-10-16.json`、`docs/UAT_EXPRESS_STOCKTAKE_LOADING_2026-10-16.json`），不能视作库存调整验收。
-- 按 `docs/STORE_ADMIN_P0_SPEC.md`，Odoo 盘点写入前还需在获批隔离 Odoo 上完成版本/API spike，明确 location/company 解析与部分差异的应用模型；完成后必须验证应用前取消不改库存、确认后 Odoo 与 UI 库存一致。Demo 公司禁止写入。
-- Store Ops P0 尚未全部完成：采购收货有隔离环境写入验收；Odoo 盘点差异应用尚未实现。此前功能概览里的“盘点”描述的是经典系统页面存在，不等于 Odoo SoT 能力已验收。
+- **Odoo stocktake / inventory adjustment：In progress。** 新增 `/stock/stocktake` 与 `/api/odoo/stocktake`，仅搜索 POS 商品并按当前租户绑定的 company/location 限定；只能选内部叶子库位，批次/序列、包装、寄售及已有待盘记录会被阻止。提交前要求人工确认，写入前重新检查商品、当前库存和租户范围，应用后回读核对并返回 Odoo quant 调整引用。Orithos 后端 `/api/auth/me` 管理员核验已加到 GET/POST；角色 `stock.adjust` 尚未纳入后端授权模型，因此目前按规格 admin-only。`ODOO_STOCKTAKE_WRITE_ENABLED` 默认关闭。
+- 本地 fixture 浏览器 UAT 3 个视口通过：390/1440 下取消不发请求、确认仅发送一次且 payload 正确；768 下写入开关关闭时不能提交；无页面错误/横向溢出。证据：`docs/UAT_ODOO_STOCKTAKE_LOCAL_ITERATION_2026-10-19.json` 与 `docs/screenshots/2026-10-19-stocktake/`。fixture 测试不代表 Odoo API 或库存写入验收。
+- Odoo 19 源码/实例能力只读探测已确认 `stock.quant` 盘点字段及 `inventory_quantity_auto_apply` 行为。仍需核对 Demo 当前绑定库位树，并在获批隔离 Odoo 上做取消、写入、回读和审计验收；**没有对 Demo 的 `aipos` 执行任何写入**。旧 `/stocktake`、`/stocktake/express` Classic 页面仍是 Spring/MySQL 路径，不等于 Odoo SoT 盘点已验收。
+- 部署 `3cd5be0` 后管理员线上只读 UAT 通过：登录、Odoo session 自动恢复、租户 binding 读取、盘点 location GET、390/1440 页面均 PASS；Demo binding 的 `odooStockLocationId` 为空，API 通过单 warehouse 的 `lot_stock_id` 只读兜底返回 1 个 location，并在 UI 显示来源提示。全程非 GET 盘点请求为 0，`writeEnabled=false`。证据：`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19.json`、`docs/screenshots/2026-10-19-stocktake-online/`。
+- 部署 `14a052a` 后库位加载 Retry 线上回归通过；本地 390px 故障注入验证首次 503 后局部 Retry 恢复，线上管理员只读页面 390/1440 继续 PASS。盘点 API 未产生非 GET 请求。证据：`docs/UAT_ODOO_STOCKTAKE_LOCAL_2026-10-19.json`、`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19.json`。
+- Store Ops P0 尚未全部完成：采购收货已有隔离环境写入验收；Odoo 盘点处于代码/fixture 验证阶段，隔离写入验收未完成。
 
-- 当前 `main` 与 `origin/main` 均为 `b3c9eba`；`9f15b70` 修复共享 Retry 提示提前消失，`b3c9eba` 增加隔离本地 browser fixtures 和可指定 UAT 输出文件。此前 `c982572` 提供读取序号保护及 Retry 忙碌语义；`d801440` 统一了多数 UAT 的 source/deployment SHA 记录方式。
+- 当前 `main` 与 `origin/main` 均为 `94ccc32`；应用代码修复在 `9f15b70`，`b3c9eba` 增加隔离本地 browser fixtures，可指定 UAT 输出文件；`94ccc32` 更新认证 UAT 独立输出与回归文档。此前 `c982572` 提供读取序号保护及 Retry 忙碌语义。
 - 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_1cde2cb.json` 为 131 路由 × 390/1440，`262/262 PASS`；它验证的是先前 `1cde2cb` 公网版本，不覆盖 `2a2d9ab`。
 - 用户此前确认部署 `7544d03`。`c982572` 推送后使用完整 GitHub push payload 调用 Dokploy webhook 返回 HTTP `200 Compose deployed successfully`，并等待超过 5 分钟；但实际运行 SHA、构建日志和容器状态未从控制台回读，不能确认公网已运行 `c982572`。全站矩阵 `262/262 PASS` 与旧认证重放证据来自较早公网版本。
 - `9f15b70` 修复 Retry 错误提示在 pending 期间被清除的问题，`b3c9eba` 加入无后端/无业务写入的 local mock browser UAT。两个提交均已推送；`b3c9eba` 的手工 webhook 请求返回 `301 Branch Not Match`，但公网行为 UAT 已在 push 后重跑，deployment SHA 仍标为 `unverified-after-deploy`。
+- 全站静态矩阵在本轮公网重跑：131 路由 × 390/1440，`262/262 PASS`，无 HTTP 失败、横向溢出或页面错误；证据 `docs/UAT_ALL_STATIC_PAGES_AFTER_94CCC32.json`。`sourceCommit` 标记 UAT runner 基线，不替代 Dokploy 运行 SHA。
 - 最新公网 Product Detail Retry UAT：`1/1 PASS`；第二次 Tax rates GET 保持 pending 时 Retry disabled、alert `aria-busy=true`，最终 `503 → Retry → 200`；390px 无溢出、page errors `0`、业务写入 `0`。Gift Cards UAT：Retry `1/1 PASS`、搜索竞态 `1/1 PASS`；Outlet pending 锁定正确，390px 无溢出、page errors `0`、业务写入 `0`。证据：`docs/UAT_PRODUCT_VIEW_RETRY_AFTER_B3C9EBA.json`、`docs/UAT_GIFTCARDS_OUTLET_RETRY_AFTER_B3C9EBA.json`。
 - 最新公网认证回放：`2/2 PASS`；GET 401 后刷新一次，DELETE 尝试一次并被 Playwright 拦截，无服务端写入。证据：`docs/UAT_AUTH_REPLAY_AFTER_B3C9EBA.json`。
 - 本地 fixture UAT 同样通过：商品详情 `1/1`、Gift Cards Retry/搜索竞态 `2/2`；证据 `docs/UAT_PRODUCT_VIEW_RETRY_LOCAL_9f15b70.json`、`docs/UAT_GIFTCARDS_OUTLET_RETRY_LOCAL_9f15b70.json`。
-- 当前发布判定仍为 **NO-GO**：Retry 与认证公网行为已通过，但 Dokploy 实际运行 SHA / 构建日志 / 容器状态未核验；262 路由全站矩阵是更早版本的证据。
+- 当前发布判定仍为 **NO-GO**：Retry、Auth 和全站公网行为均已通过，但 Dokploy 实际运行 SHA / 构建日志 / 容器状态未核验，无法将结果绑定到具体镜像提交。
 
 ## 已推送批次：`c982572`（部署请求已接受，运行版本待核验）
 
@@ -362,7 +366,8 @@ Statuses:
 | Product catalogue (Odoo) | Accepted | `/products/odoo` shows DEMO wines; browser matrix re-check after hydrate shows SKUs and on-hand 12. The catalogue shows the last successful refresh time and labels retained rows as potentially stale when a refresh fails; online authenticated smoke confirmed Last refreshed. Commit `036580c` adds desktop/mobile first-load skeleton rows while preserving search and refresh controls; delayed-read smoke passed with no page errors or write action. |
 | Supplier directory (Odoo) | Accepted | `/suppliers/odoo` reads and creates tenant-scoped Odoo suppliers with ABN duplicate blocking. Live isolated tenant UAT passed invalid email 400, unique supplier 201, duplicate ABN 409, and Odoo company readback; evidence: `docs/UAT_SUPPLIER_ISOLATION_LIVE_2026-10-17.json`. Supplier writes now force the active tenant company context. |
 | Purchases / RFQ list | Accepted | `/purchases/odoo` shell + Odoo list API; commit `6a8a393` adds layout-preserving first-load skeleton rows and keeps search/status controls visible while reads are pending. Online delayed-read smoke passed without exposing or submitting write actions. |
-| Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons |
+| Explainable replenishment suggestions | Accepted | Rules-based velocity; row-level reasons; page copy states suggestions are not the chat model |
+| Price suggestions (margin rules, read-only) | In progress | `/stock/price-suggestions` + `GET /api/odoo/price-suggestions`; GST-inclusive shelf suggestions from Odoo cost and target margin on sell; `writeEnabled=false`; missing costs never invented; apply via Products / Bulk Price Edit |
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
 | Replenishment approval audit | Accepted | Live isolated-company UAT created a draft RFQ and read back one internal Odoo chatter audit containing the forecast method, target coverage, suggested/ordered quantities and reason; zeroed suggestions remain audit-only and are excluded from PO lines. Evidence: `docs/UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`. RFQ remains draft and is never auto-confirmed. |
 | Supplier invoice OCR → receive draft | In progress | OCR preview only when AI enabled; commit `459a243` makes the preview-only boundary explicit, removes the Classic MySQL `Save as received order` action, and links staff to Odoo Purchases / Replenishment. Production AI remains disabled and no invoice write is available from this page. |
@@ -370,7 +375,7 @@ Statuses:
 
 ## Reporting & AI
 
-AI remains disabled in production. The tenant report database account has no source-controlled default password; configuring `AI_REPORT_RO_PASSWORD` is required before outlet report access can be provisioned.
+Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRODUCTION_ENABLEMENT.md` is complete (budget, DashScope key, report RO password, isolation UAT). The tenant report database account has no source-controlled default password; configuring `AI_REPORT_RO_PASSWORD` is required before outlet report access can be provisioned.
 
 | Capability | Status | Notes |
 |---|---|---|

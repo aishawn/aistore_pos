@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Camera, Search, Sparkles } from "lucide-react";
 import { SommelierShell } from "@/components/sommelier/SommelierShell";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
+import { fetchAiClientConfig } from "@/lib/api";
 import { getUiMode } from "@/lib/ui-mode";
 
 export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?: boolean }) {
@@ -11,6 +13,21 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
   const findHref = "/sommelier/find";
   const identifyHref = "/sommelier/identify";
   const mobile = getUiMode() === "mobile";
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAiClientConfig()
+      .then((config) => {
+        if (!cancelled) setAiEnabled(config.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setAiEnabled(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <SommelierShell
@@ -18,6 +35,11 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
       subtitle="Help the customer find the right bottle from this store — then help sell it."
     >
       <div className="grid gap-4">
+        {aiEnabled === false ? (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-5 text-amber-950">
+            Store AI chat and label photos are off. Find a wine still matches this store&apos;s catalogue; name and barcode search still work on Identify.
+          </p>
+        ) : null}
         <Link
           href={findHref}
           className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-blue-300 hover:shadow-md sm:p-6"
@@ -42,7 +64,9 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
           </div>
           <h2 className="mt-3 text-[21px] font-semibold leading-snug text-[var(--oh-text)] sm:text-[23px]">Photograph the label or search a bottle</h2>
           <p className="mt-2 text-[14px] leading-6 text-[var(--oh-muted)]">
-            Snap the wine label to match this store&apos;s stock, then get tasting notes, pairing, and a sales pitch.
+            {aiEnabled === false
+              ? "Search by name or barcode now. Label photos need store AI turned on."
+              : "Snap the wine label to match this store's stock, then get tasting notes, pairing, and a sales pitch."}
           </p>
         </Link>
 

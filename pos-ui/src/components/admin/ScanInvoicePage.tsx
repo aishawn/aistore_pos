@@ -9,6 +9,7 @@ import { SelectChevronIcon } from "@/components/icons";
 import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import {
   apiFailureMessage,
+  fetchAiClientConfig,
   scanInvoiceImage,
   type InvoiceScanLine,
   type InvoiceScanPayload,
@@ -42,6 +43,21 @@ export function ScanInvoicePage() {
   const [scan, setScan] = useState<InvoiceScanPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAiClientConfig()
+      .then((config) => {
+        if (!cancelled) setAiEnabled(config.enabled);
+      })
+      .catch(() => {
+        if (!cancelled) setAiEnabled(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const outlets = useApi<Named[]>("/api/outlets");
@@ -105,7 +121,14 @@ export function ScanInvoicePage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Purchasing · Documents</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">OCR is preview-only in this pilot. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.</p>
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+            OCR is preview-only. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.
+            {aiEnabled === false
+              ? " Store AI is off — upload may fail until AI is enabled."
+              : aiEnabled === true
+                ? " Store AI is on — photos are read for preview only."
+                : ""}
+          </p>
         </div>
       </header>
 

@@ -58,6 +58,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     items: [
       { label: "Products", href: "/products/odoo" },
       { label: "Replenishment Plan", href: "/stock/replenishment" },
+      { label: "Price Suggestions", href: "/stock/price-suggestions" },
       { label: "Purchases", href: "/purchases/odoo" },
       { label: "Suppliers", href: "/suppliers/odoo" },
     ],
@@ -83,6 +84,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Wine Assistant", href: "/sommelier", hint: "Find a wine or identify a label" },
       { label: "Find a Wine", href: "/sommelier/find", hint: "Recommend in-stock bottles by budget and taste" },
       { label: "Identify Wine Label", href: "/sommelier/identify", hint: "Search by name, barcode, or label photo" },
+      { label: "Price Suggestions", href: "/stock/price-suggestions", hint: "Suggested shelf prices. You apply changes" },
       { label: "Scan Supplier Invoice", href: "/invoices/scan", hint: "Preview only. Does not create a purchase" },
     ],
   },

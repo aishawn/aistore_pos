@@ -39,6 +39,7 @@ const pages = [
   { path: "/suppliers/odoo", expect: [/Suppliers|No suppliers|empty|0/i] },
   { path: "/purchases/odoo", expect: [/Purchases|No purchase|empty|RFQ|0/i] },
   { path: "/stock/replenishment", expect: [/Replenishment|suggest|0|no completed sales/i] },
+  { path: "/stock/price-suggestions", expect: [/Price suggestions|margin|Suggestions only|cost|never writes/i] },
   { path: "/reports/dashboard", expect: [/Reporting|Sales|transaction|\$/i] },
   { path: "/reports/actions", expect: [/Actions report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/advanced", expect: [/Advanced report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
