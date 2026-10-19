@@ -3,14 +3,14 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-本轮运行代码：`e8e6c69`；部署后线上回归绑定：`2275378`
-用户确认已部署：`7544d03`
+当前仓库 HEAD：`4b11473`
+用户确认已部署：`7544d03`（仅为用户确认，尚未由 Dokploy 控制台独立回读运行容器 SHA）
 
 ## 结论
 
 当前整体放行状态：**NO-GO**。
 
-核心租户、POS、库存、退款、现金、采购收货和多租户隔离已有隔离租户证据；近期 AI、价格表和移动端回归也已通过。但仍缺少部署运行身份的独立证明、部分真实生产能力和若干运营能力，不能宣称全量生产验收完成。
+核心租户、POS、库存、退款、现金、采购收货和多租户隔离已有隔离租户证据；近期 AI、价格表和移动端回归也已通过。NO-GO 的原因是部署运行身份仍缺独立证明，部分 AI、硬件和运营能力仍未完成，且当前工作区还有未提交改动，不能宣称全量生产验收完成。
 
 ## 已完成
 
@@ -42,6 +42,8 @@
 - Stock List、Capped Pricing、Bulk Price Edit 的响应式表格通过 `6/6` 线上只读验证。
 - 价格建议支持 SKU 深链到 Bulk Price Edit；价格保存失败会回滚并允许重试；价格建议保持只读。
 - 销售助手显示 intent、响应耗时、成功/失败和会话摘要，不伪造 token usage。
+- AI metrics 基础能力已完成：管理员只读 `GET /api/ai/metrics?hours=24`、vendor 隔离、允许/拒绝、允许率、平均/p50/p95 延迟、按 AI path 聚合和估算 token；匿名访问返回 `401`，线上管理员访问返回 `200`。
+- AI metrics 页面已支持 390/1440 视口，线上页面错误为 `0`；估算 token 明确不是 provider billing usage。
 - 聊天与语音转写能力位分离；语音不可用时按钮禁用，不启动麦克风或发送转写请求。
 - 最新 AI 全功能只读矩阵 `14 PASS / 0 FAIL / 1 INFO`；AI UI `2/2 PASS`；能力位故障注入通过。
 
@@ -50,8 +52,8 @@
 | 项目 | 状态 |
 |---|---|
 | Dokploy 运行身份 | 未从控制台独立回读 frontend/backend SHA、构建日志、健康状态和部署完成时间。 |
-| `7544d03` 线上对应关系 | 用户确认已部署，但当前仓库为 `e128a6c`，最新回归证据主要标记为 `9e6b01a` 或 `unverified-after-deploy`，尚未证明容器实际运行 `7544d03`。 |
-| 持久化 AI 指标看板 | 目前只有前端会话级计数、成功率和平均延迟；没有安全的管理员 metrics API，也没有跨请求真实 provider token 成本看板。现有 quota/token 值只能标为估算。 |
+| `7544d03` 线上对应关系 | 用户确认已部署，但尚未从 Dokploy 控制台独立证明容器实际运行 `7544d03`；公网返回 `200` 不能替代 SHA、构建日志和健康状态证据。 |
+| AI metrics 的 assistant 覆盖 | 基础 report/NL2SQL metrics API 已完成并线上验证；当前工作区正在补充普通 assistant intent 的持久化审计、延迟和估算 token 统计，但尚未提交、部署或线上验证。 |
 | 真实发票 OCR | 当前为 preview-only；没有真实供应商发票图片字段提取的完整证据。不得据此创建供应商、采购单、收货单或库存。 |
 | Stocktake 写入 | 管理员只读和前置保护已完成；隔离公司中的确认、取消、库存回读和幂等写入尚未验收，生产写入开关保持关闭。 |
 | 实体支付和设备 | 实体刷卡机、打印机、钱箱、终端断网和硬件对账未接入/未验收。 |
@@ -60,11 +62,12 @@
 
 ## 当前问题和风险
 
-1. **版本证据断链**：`7544d03`、历史证据中的 deployment 字段、当前 `e128a6c` 不一致。公网返回 200 不能证明指定 SHA 正在运行。
+1. **版本证据断链**：`7544d03`、历史证据中的 deployment 字段、当前仓库 HEAD `4b11473` 不一致。公网返回 200 不能证明指定 SHA 正在运行。
 2. **AI 环境记录不一致**：历史批次曾记录 `AI_ENABLED=false`，最新批次记录 `enabled=true`。必须以 Dokploy 当前容器环境和真实请求结果为准。
 3. **证据类型混杂**：`docs/` 同时包含真实隔离租户、只读、fixture、mock 和旧版本证据；阅读时必须检查 `generatedAt`、`sourceCommit`、`deployment` 和是否产生写入。
 4. **生产写入风险**：后续销售、退款、采购、收货、现金、关班和 Stocktake 只能使用一次性隔离租户，禁止写入 Demo 公司。
 5. **本地构建边界**：本轮按约束未运行本地 build；typecheck、目标 ESLint、脚本语法和 diff 检查不能替代 Dokploy 构建证据。
+6. **工作区未提交改动**：assistant metrics 相关 7 个文件仍在工作区；同时存在用户已有 UAT JSON、截图、页面目录和 `pos-ui/tsconfig.json` 改动。接手时只能按文件精确提交，禁止 `git add -A`、`git reset` 或 `git clean`。
 
 ## 本轮 AI 指标迭代（`e8e6c69`）
 
@@ -74,6 +77,14 @@
 - 新增 `/reports/ai/metrics` 管理页面，支持 390/1440 视口、窗口切换和重试。
 - 线上证据：`docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`；部署后复验：`docs/UAT_AI_METRICS_ONLINE_2275378.json`。两次均为管理员 `200`、匿名 `401`、UI `2/2 PASS`、页面错误 `0`、业务/配置写入 `0`。
 - 同批线上 AI 复验：功能 `14 PASS / 0 FAIL / 1 INFO`、AI UI `2/2 PASS`、Sommelier `10/10 PASS`。发票 OCR 仍为 `50212 INFO`，需要真实发票图片才能继续验收。
+
+## 待部署 AI 指标扩展（工作区未提交）
+
+- assistant 请求记录 `path=assistant:<intent>`、允许/拒绝、耗时和估算 token。
+- 指标表新增持久化 `estimated_tokens`，旧数据继续使用字符数 fallback。
+- assistant 审计不保存原问题、答案或 SQL；失败请求记录统一的 `ASSISTANT_FAILED` 原因。
+- 管理页面和 UAT 定位文案已从 report metrics 更新为 AI metrics。
+- 已通过本地 `pos-ui` typecheck、目标 ESLint、UAT 脚本语法和 `git diff --check`；尚未提交、部署和线上验证。
 
 ## 本轮视觉能力位修复（`39e0dc8`）
 
@@ -97,20 +108,24 @@
 - `docs/UAT_AI_DIAGNOSTICS_ONLINE_2026-10-19_SESSION-SUMMARY.json`
 - `docs/UAT_STOCK_TABLES_RESPONSIVE_ONLINE_READONLY_2026-10-19_POST-9E6B01A.json`
 - `docs/CAPABILITY_STATUS.md`
+- `docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`
+- `docs/UAT_AI_METRICS_ONLINE_2275378.json`
 
 这些证据未保存密码、JWT、cookie、API key 或 provider 原始错误。
 
 ## 接手后的优先顺序
 
-1. 在 Dokploy 控制台保存 `7544d03` 与当前 `main` 的实际运行 SHA、构建日志、容器状态和部署时间。
-2. 核对 `AI_ENABLED`、语音/视觉开关和 provider 配置，明确当前生产能力。
-3. 新建一次性隔离租户，重跑基础写入链路：
+1. 精确检查并提交 assistant metrics 的 7 个代码文件，确认 `AiReportAuditMapper.insert` 的所有调用均提供 `estimatedTokens`；不要提交用户已有 UAT、截图或页面目录改动。
+2. 推送 `main` 后触发 Dokploy webhook，保存部署响应、构建日志、容器状态、实际运行 SHA 和部署时间；验证是否真的运行新提交，而不是只引用 `7544d03`。
+3. 核对 `AI_ENABLED`、语音/视觉开关和 provider 配置，明确当前生产能力。
+4. 新建一次性隔离租户，重跑基础写入链路：
 
    `signup → bootstrap login → Odoo binding → outlet/register → dummy catalog → open session → cash/card sale → refund → close register → platform delete`
 
-4. 使用真实可解码发票图片做 preview-only OCR，只保存字段提取证据，不写入供应商、采购或库存。
-5. 补做隔离公司 Stocktake 写入和幂等验收；若要实现正式放行，再规划 AI metrics、SMTP、财务和硬件接入。
-6. 每次部署后等待 Dokploy 完成，核对实际 commit/chunk，再重跑受影响用例和固定冒烟链路。
+5. 运行一次真实 assistant 请求后重新执行 metrics UAT，确认 `byPath` 出现 `assistant:<intent>`、估算 token 可回读、管理员 `200`、匿名 `401`、无业务写入。
+6. 使用真实可解码发票图片做 preview-only OCR，只保存字段提取证据，不写入供应商、采购或库存。
+7. 补做隔离公司 Stocktake 写入和幂等验收；若要实现正式放行，再规划 SMTP、财务和硬件接入。
+8. 每次部署后等待 Dokploy 完成，核对实际 commit/chunk，再重跑受影响用例和固定冒烟链路。
 
 ## 放行标准
 
