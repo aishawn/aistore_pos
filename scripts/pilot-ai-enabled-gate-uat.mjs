@@ -88,7 +88,11 @@ try {
             body.slice(0, 220),
           );
         } else {
-          record("price suggestions reachable", "BLOCKED", "page not on this deployment yet or auth redirected");
+          record(
+            "price suggestions reachable",
+            "FAIL",
+            `page not on this deployment or auth redirected: ${page.url()}`,
+          );
         }
 
         if (enabled) {

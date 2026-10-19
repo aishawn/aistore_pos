@@ -14,6 +14,7 @@
 - `npm run typecheck`：通过。
 - 本地 fixture 价格建议：通过；建议行、Raise price、Open product、AI 悬浮入口均出现，API 写请求 `0`。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_CURRENT.json`。
 - AI gate：脚本执行无 hard fail，生产 `AI_ENABLED=false`，没有模型调用或价格写入。证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_CURRENT.json`。
+- Gate 已加强：当价格建议页在目标部署中缺失时现在记为 `FAIL`，不再以 `BLOCKED` 掩盖发布缺口。当前线上复测明确失败（认证访问页面返回 `404`），证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_404-FAIL.json`。
 
 ## 线上状态
 
