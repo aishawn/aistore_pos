@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-19T10:53:56.996Z",
+  "sourceCommit": "b7844578f950223cc858523b7d2d18e50913ed2a",
+  "environment": "online-browser-fixture",
+  "target": "https://demo.orithos.com.au",
+  "scope": "assistant response diagnostics UI; AI request intercepted; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "assistant diagnostics visible",
+      "status": "PASS",
+      "evidence": "AI · report_sales · 21ms"
+    },
+    {
+      "name": "single-response session summary",
+      "status": "PASS",
+      "evidence": "AI session · 1 response · 100% success · 21ms avg"
+    },
+    {
+      "name": "multi-response session summary",
+      "status": "PASS",
+      "evidence": "AI session · 2 responses · 100% success · 14ms avg"
+    },
+    {
+      "name": "no business writes",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "writes": []
+}
