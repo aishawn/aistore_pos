@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 第三批占位数据清理（`e506619`）
+
+- Barcodes、Customer Utilities、Product Utilities、Transfer List 不再展示伪造产品/客户/位置或假操作按钮；页面明确未接入边界，并提供真实导航入口。
+- 本地登录态全站矩阵 `268/268 PASS`，证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_THIRD-BATCH.json`，源码提交 `e506619`。
+- 公网回归和 Dokploy 构建身份待本批次部署后补充，发布继续 **NO-GO**。
+
 ### 2026-10-20 第二批假数据清理（`0a06dec`）
 
 - Registers & Outlets 现在显示 Odoo companies/registers，只读且带 session 错误恢复；Security Centre 不再展示伪造事件/图表，改为明确未接入状态和真实设置入口。

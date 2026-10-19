@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 第三批占位数据清理（`e506619`）
+
+- Barcodes、Customer Utilities、Product Utilities、Transfer List 的 `src/app` 入口移除硬编码示例、静态筛选器和无行为批量操作，改为明确未接入状态，并链接到真实 Odoo 目录、调拨流程或集成状态。
+- 本地登录态全站矩阵：`134 路由 × 390/1440 = 268/268 PASS`，无 HTTP 失败、页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_THIRD-BATCH.json`，`sourceCommit=e506619`。
+- typecheck、目标 ESLint、diff check 和专项脚本语法通过；本地未运行 build。待本批次部署后补充公网专项。
+
 ## 2026-10-20 第二批假数据清理（`0a06dec`）
 
 - `src/app/settings/registers-outlets` 移除硬编码门店/收银台和无行为新增按钮，改为读取当前 Odoo session 的 companies/registers，只读展示、加载/错误/Retry 状态和移动卡片。
