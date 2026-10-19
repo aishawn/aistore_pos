@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前本地与 `origin/main`：`0112d00`
+本轮运行代码：`e8e6c69`；部署后线上回归绑定：`2275378`
 用户确认已部署：`7544d03`
 
 ## 结论
