@@ -38,6 +38,12 @@ try {
     localStorage.setItem("sf_token", token);
     localStorage.setItem("sf_user", JSON.stringify(user));
   }, { token: accessCookie?.value, user: loginBody.data.user });
+  const configResponse = await context.request.get(`${base}/api/ai/config/client`);
+  const configBody = await configResponse.json().catch(() => ({}));
+  if (!configResponse.ok() || configBody.code !== 0 || typeof configBody.data?.enabled !== "boolean") {
+    throw new Error(`AI_CONFIG_FAILED_${configResponse.status()}`);
+  }
+  const aiEnabled = configBody.data.enabled;
 
   for (const pathname of routes) {
     const page = await context.newPage();
@@ -50,16 +56,21 @@ try {
       const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, width: window.innerWidth }));
       const result = { pathname, httpStatus: response?.status() ?? 0, aiFab: true, horizontalOverflow: layout.scrollWidth > layout.width, pageErrors };
       if (pathname === "/sommelier/identify") {
-        // AI availability loads after the page shell; wait for the disabled state
-        // before asserting the label-photo control.
-        await page.getByText("Label photos need AI turned on. Name and barcode search still work.", { exact: true })
-          .waitFor({ state: "visible", timeout: 15000 });
         const camera = page.getByRole("button", { name: "Photograph label", exact: true });
-        result.labelPhotoButtonDisabled = await camera.isDisabled();
-        result.disabledCopy = await page.getByText("Label photos need AI turned on. Name and barcode search still work.", { exact: true }).count() > 0;
+        if (aiEnabled) {
+          await camera.waitFor({ state: "visible", timeout: 15000 });
+          result.labelPhotoButtonDisabled = await camera.isDisabled();
+          result.disabledCopy = false;
+        } else {
+          await page.getByText("Label photos need AI turned on. Name and barcode search still work.", { exact: true })
+            .waitFor({ state: "visible", timeout: 15000 });
+          result.labelPhotoButtonDisabled = await camera.isDisabled();
+          result.disabledCopy = true;
+        }
+        result.aiEnabled = aiEnabled;
       }
       checks.push({ name: pathname, status: result.aiFab && !result.horizontalOverflow && result.pageErrors.length === 0
-        && (pathname !== "/sommelier/identify" || (result.labelPhotoButtonDisabled && result.disabledCopy)) ? "PASS" : "FAIL", evidence: result });
+        && (pathname !== "/sommelier/identify" || (aiEnabled ? !result.labelPhotoButtonDisabled : (result.labelPhotoButtonDisabled && result.disabledCopy))) ? "PASS" : "FAIL", evidence: result });
     } catch (error) {
       checks.push({ name: pathname, status: "FAIL", evidence: { error: error instanceof Error ? error.message : "Unexpected failure", pageErrors } });
     } finally {

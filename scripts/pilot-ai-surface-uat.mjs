@@ -42,10 +42,8 @@ try {
   if (!config.response.ok() || config.body.code !== 0 || !Array.isArray(config.body.data?.aiTriggerKeywords)) {
     throw new Error(`AI_CLIENT_CONFIG_FAILED_${config.response.status()}`);
   }
-  if (config.body.data.enabled !== false) {
-    throw new Error("PRODUCTION_AI_IS_ENABLED_ABORTING_MODEL_REQUESTS");
-  }
-  record("AI client config", "PASS", `Loaded ${config.body.data.aiTriggerKeywords.length} trigger keywords.`);
+  const enabled = Boolean(config.body.data.enabled);
+  record("AI client config", "PASS", `Loaded ${config.body.data.aiTriggerKeywords.length} trigger keywords; enabled=${enabled}.`);
 
   for (const endpoint of ["/api/ai/config/intents", "/api/ai/config/slots", "/api/ai/config/slot-values", "/api/ai/config/prompts"]) {
     const result = await jsonRequest(endpoint);
@@ -57,7 +55,7 @@ try {
   }
 
   const assistant = await jsonRequest("/api/ai/assistant", "POST", { question: "look up product DEMO" });
-  if (assistant.body.code === 50301) {
+  if (assistant.body.code === 50301 && !enabled) {
     record("AI assistant availability", "PASS", "Assistant is intentionally disabled because production AI_ENABLED is false.");
   } else if (!assistant.response.ok() || assistant.body.code !== 0 || !assistant.body.data?.threadId) {
     throw new Error(`AI_ASSISTANT_FAILED_${assistant.response.status()}_${assistant.body.message || ""}`);
@@ -69,7 +67,7 @@ try {
     multipart: { file: { name: "empty.webm", mimeType: "audio/webm", buffer: Buffer.alloc(0) } },
   });
   const emptyAudioBody = await emptyAudio.json().catch(() => ({}));
-  if (emptyAudioBody.code === 50301) {
+  if (emptyAudioBody.code === 50301 && !enabled) {
     record("Voice input availability", "PASS", "Cloud transcription is intentionally disabled because production AI_ENABLED is false.");
   } else if (emptyAudio.status() !== 400 || emptyAudioBody.code !== 40010) {
     throw new Error(`EMPTY_AUDIO_GUARD_${emptyAudio.status()}_${emptyAudioBody.code ?? ""}`);
@@ -81,7 +79,7 @@ try {
     multipart: { file: { name: "empty.jpg", mimeType: "image/jpeg", buffer: Buffer.alloc(0) } },
   });
   const emptyImageBody = await emptyImage.json().catch(() => ({}));
-  if (emptyImageBody.code === 50301) {
+  if (emptyImageBody.code === 50301 && !enabled) {
     record("Label image availability", "PASS", "Cloud label recognition is intentionally disabled because production AI_ENABLED is false.");
   } else if (emptyImage.status() !== 400 || emptyImageBody.code !== 40010) {
     throw new Error(`EMPTY_IMAGE_GUARD_${emptyImage.status()}_${emptyImageBody.code ?? ""}`);

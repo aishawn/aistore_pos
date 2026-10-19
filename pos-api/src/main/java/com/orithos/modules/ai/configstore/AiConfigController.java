@@ -1,8 +1,10 @@
 package com.orithos.modules.ai.configstore;
 
+import com.orithos.modules.ai.PosAssistantGraphService;
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
 import com.orithos.security.AdminAccess;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,7 @@ public class AiConfigController {
     private final AiSlotValueMapper slotValueMapper;
     private final AiPromptMapper promptMapper;
     private final IntentConfigService configService;
+    private final ObjectProvider<PosAssistantGraphService> graphService;
     private final boolean aiEnabled;
 
     public AiConfigController(AiIntentMapper intentMapper,
@@ -28,12 +31,14 @@ public class AiConfigController {
                               AiSlotValueMapper slotValueMapper,
                               AiPromptMapper promptMapper,
                               IntentConfigService configService,
+                              ObjectProvider<PosAssistantGraphService> graphService,
                               @Value("${app.ai.enabled:false}") boolean aiEnabled) {
         this.intentMapper = intentMapper;
         this.slotMapper = slotMapper;
         this.slotValueMapper = slotValueMapper;
         this.promptMapper = promptMapper;
         this.configService = configService;
+        this.graphService = graphService;
         this.aiEnabled = aiEnabled;
     }
 
@@ -53,8 +58,10 @@ public class AiConfigController {
     @GetMapping("/client")
     public ApiResult<Map<String, Object>> clientConfig() {
         IntentConfigService.Snapshot snap = configService.getSnapshot();
+        // Do not advertise AI as enabled when the model bean failed to load (for example, a missing key).
+        boolean assistantAvailable = aiEnabled && graphService.getIfAvailable() != null;
         return ApiResult.ok(Map.of(
-                "enabled", aiEnabled,
+                "enabled", assistantAvailable,
                 "aiTriggerKeywords", snap.aiTriggerKeywords()
         ));
     }

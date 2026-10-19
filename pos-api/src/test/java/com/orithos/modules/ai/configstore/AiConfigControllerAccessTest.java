@@ -1,9 +1,11 @@
 package com.orithos.modules.ai.configstore;
 
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.PosAssistantGraphService;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -28,7 +30,8 @@ class AiConfigControllerAccessTest {
         AiSlotValueMapper values = mock(AiSlotValueMapper.class);
         AiPromptMapper prompts = mock(AiPromptMapper.class);
         IntentConfigService config = mock(IntentConfigService.class);
-        AiConfigController controller = new AiConfigController(intents, slots, values, prompts, config, false);
+        ObjectProvider<PosAssistantGraphService> graph = mock(ObjectProvider.class);
+        AiConfigController controller = new AiConfigController(intents, slots, values, prompts, config, graph, false);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         new AuthUser(7L, "clerk", false, 1L, 2L), null, List.of()));

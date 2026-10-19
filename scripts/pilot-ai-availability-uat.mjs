@@ -38,10 +38,11 @@ try {
 
   const configResponse = await context.request.get(`${base}/api/ai/config/client`);
   const configBody = await configResponse.json().catch(() => ({}));
-  if (!configResponse.ok() || configBody.code !== 0 || configBody.data?.enabled !== false) {
+  if (!configResponse.ok() || configBody.code !== 0 || typeof configBody.data?.enabled !== "boolean") {
     throw new Error(`AI_ENABLED_FLAG_${configResponse.status()}_${String(configBody.data?.enabled)}`);
   }
-  record("AI availability config", "PASS", "Authenticated client config reports enabled=false.");
+  const enabled = configBody.data.enabled;
+  record("AI availability config", "PASS", `Authenticated client config reports enabled=${enabled}.`);
 
   const page = await context.newPage();
   await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
@@ -49,12 +50,19 @@ try {
   await fab.click();
   const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await dialog.waitFor({ state: "visible", timeout: 15000 });
-  await dialog.getByText("AI is disabled for this store", { exact: true }).waitFor({ timeout: 15000 });
-  await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 15000 });
-  const composer = dialog.getByPlaceholder("AI chat is off for this store");
-  await composer.waitFor({ state: "visible", timeout: 15000 });
-  if (await composer.isEnabled()) throw new Error("AI_COMPOSER_ENABLED_WHILE_STORE_AI_DISABLED");
-  record("Disabled AI status copy", "PASS", "Assistant header and composer explain that production AI chat is off before a request is sent.");
+  if (enabled) {
+    const composer = dialog.getByPlaceholder("Ask Orithos AI…");
+    await composer.waitFor({ state: "visible", timeout: 15000 });
+    if (await composer.isDisabled()) throw new Error("AI_COMPOSER_DISABLED_WHILE_STORE_AI_ENABLED");
+    record("Enabled AI composer", "PASS", "Assistant composer is enabled while store AI is on; no prompt was submitted by this check.");
+  } else {
+    await dialog.getByText("AI is disabled for this store", { exact: true }).waitFor({ timeout: 15000 });
+    await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 15000 });
+    const composer = dialog.getByPlaceholder("AI chat is off for this store");
+    await composer.waitFor({ state: "visible", timeout: 15000 });
+    if (await composer.isEnabled()) throw new Error("AI_COMPOSER_ENABLED_WHILE_STORE_AI_DISABLED");
+    record("Disabled AI status copy", "PASS", "Assistant header and composer explain that production AI chat is off before a request is sent.");
+  }
 
   await dialog.getByRole("button", { name: "Open sell", exact: true }).click();
   await page.waitForURL((url) => url.pathname === "/", { timeout: 15000 });
