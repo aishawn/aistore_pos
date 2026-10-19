@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Stock List 筛选与移动底部空间批次（当前工作区）
+
+- `pos-ui/src/components/admin/StockListPage.tsx` 修正库存筛选开关的 HTML 结构：不再让 `<label>` 包裹交互式 `<button role="switch">`，改为普通分组容器和可见文本，避免重复触发与辅助技术语义冲突。
+- Stock List 自定义滚动区域补齐 `6rem + safe-area-inset-bottom` 底部空间，保留分页和最后一行不被浮动 AI 助手或系统手势条遮挡；筛选、编辑、保存和导出逻辑不变。
+- 本地验证：`npm run typecheck`、目标 ESLint、stock table/table-a11y 脚本 `node --check`、`git diff --check` 通过；未运行 build。
+- 待与后续修改集中部署后，必须复跑 `/stock/list` 390/1440、stock table responsive 和全站矩阵，确认筛选开关状态、移动卡片字段、分页和无业务写入。
+
 ## 2026-10-20 发票扫描预览移动安全区批次（当前工作区）
 
 - `pos-ui/src/components/admin/ScanInvoicePage.tsx` 的上传区域补齐 `aria-labelledby`/`aria-busy`，OCR 进行中状态补齐 `aria-live`，底部 Odoo 导航 footer 预留 `safe-area-inset-bottom`，避免手机手势条遮挡操作。

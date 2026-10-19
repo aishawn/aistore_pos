@@ -59,7 +59,7 @@ function Toggle({
   label: string;
 }) {
   return (
-    <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[13px] text-[var(--oh-text-secondary)]">
+    <div className="flex min-h-11 items-center gap-2.5 text-[13px] text-[var(--oh-text-secondary)]">
       <button
         type="button"
         role="switch"
@@ -76,8 +76,8 @@ function Toggle({
           }`}
         />
       </button>
-      {label}
-    </label>
+      <span>{label}</span>
+    </div>
   );
 }
 
@@ -405,7 +405,7 @@ function StockListPageInner() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-3 pb-5 sm:px-4 md:px-6">
+      <div className="min-h-0 flex-1 overflow-auto px-3 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-4 md:px-6">
         <div data-testid="stock-list-table" className="md:min-w-[1100px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)] md:flex">
             <div className="w-[22%] shrink-0 px-2">Product</div>

@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Stock List 筛选与移动底部空间批次（工作区）
+
+- 修正 `StockListPage` 的库存筛选 switch 结构，移除 label/button 嵌套；保留 `role="switch"`、`aria-checked` 和现有筛选请求行为。
+- 自定义列表滚动区域增加浮动助手和系统手势条的底部安全空间；桌面表格与移动产品编辑卡片字段不变。
+- 本地 typecheck、目标 ESLint、相关脚本语法和 diff check 通过；部署后需以公网 stock table 和全站只读矩阵验证实际效果。
+
 ### 2026-10-20 `dfc76d0` 部署后全站回归
 
 - Dokploy webhook 接受 `dfc76d0`，公网根 `app` 矩阵 `268/268 PASS`（134 路由、390/1440），HTTP、页面错误和横向溢出均为 `0`；证据 `docs/UAT_ALL_STATIC_PAGES_POST_DFC76D0.json`。
