@@ -20,7 +20,9 @@ const writes = [];
 let detailRequests = 0;
 let taxRateRequests = 0;
 let releaseInitialTax;
+let releaseRetryTax;
 const initialTaxGate = new Promise((resolve) => { releaseInitialTax = resolve; });
+const retryTaxGate = new Promise((resolve) => { releaseRetryTax = resolve; });
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password, subdomain: process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "demo" },
@@ -50,11 +52,11 @@ try {
       await initialTaxGate;
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected tax rate failure" }) });
     }
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await retryTaxGate;
     return route.continue();
   });
 
-  await page.goto(`${base}/products/1/view`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.goto(`${base}/products/1/view?__uat_probe=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("button", { name: "Retry" }).waitFor({ timeout: 30000 });
   await page.getByRole("button", { name: "Retry" }).click();
   await page.getByRole("heading", { name: "Product Report" }).waitFor({ timeout: 30000 });
@@ -64,25 +66,39 @@ try {
   releaseInitialTax();
   const dependencyAlert = page.getByRole("alert").filter({ hasText: "Tax rates:" });
   await dependencyAlert.waitFor({ timeout: 15000 });
+  const retryRequestPending = page.waitForRequest((request) =>
+    new URL(request.url()).pathname === "/api/tax-rates" && request.method() === "GET",
+    { timeout: 15000 },
+  );
   await dependencyAlert.getByRole("button", { name: "Retry" }).click();
+  await retryRequestPending;
   const retryingButton = dependencyAlert.getByRole("button", { name: "Retrying…" });
   let retryDisabledWhileLoading = false;
+  let retryAlertBusy = false;
   try {
     await retryingButton.waitFor({ timeout: 4000 });
     retryDisabledWhileLoading = await retryingButton.isDisabled();
+    retryAlertBusy = await dependencyAlert.getAttribute("aria-busy") === "true";
   } catch {
     // Preserve failure evidence when the deployed UI does not expose retry progress.
   }
+  const retryResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/tax-rates" && response.status() === 200,
+    { timeout: 30000 },
+  );
+  releaseRetryTax();
+  await retryResponse;
   await dependencyAlert.waitFor({ state: "detached", timeout: 30000 });
 
   const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
   checks.push({
     name: "Product detail lookup read failure recovers in place",
-    status: detailRequests >= 2 && taxRateRequests >= 2 && !initialLookupNoticeVisible && retryDisabledWhileLoading && dimensions.document <= dimensions.viewport && pageErrors.length === 0 ? "PASS" : "FAIL",
-    evidence: { detailRequests, taxRateRequests, initialLookupNoticeVisible, retryDisabledWhileLoading, viewport: dimensions, pageErrors },
+    status: detailRequests >= 2 && taxRateRequests >= 2 && !initialLookupNoticeVisible && retryDisabledWhileLoading && retryAlertBusy && dimensions.document <= dimensions.viewport && pageErrors.length === 0 ? "PASS" : "FAIL",
+    evidence: { detailRequests, taxRateRequests, initialLookupNoticeVisible, retryRequestPending: true, retryDisabledWhileLoading, retryAlertBusy, viewport: dimensions, pageErrors },
   });
 } finally {
   releaseInitialTax();
+  releaseRetryTax();
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
   await browser.close();
 }

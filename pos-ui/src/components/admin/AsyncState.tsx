@@ -53,9 +53,10 @@ export function AsyncDependencyNotice({
 }) {
   const active = dependencies.filter((dependency) => dependency.error);
   if (active.length === 0) return null;
+  const retrying = active.some((dependency) => dependency.loading);
 
   return (
-    <div role="alert" aria-live="assertive" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+    <div role="alert" aria-live="assertive" aria-busy={retrying} className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
       <p className="font-semibold">Some lookup options could not be loaded.</p>
       <div className="mt-2 space-y-2">
         {active.map((dependency) => (

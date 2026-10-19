@@ -1,6 +1,6 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-18（当前代码基线 `b4cc0d9`，文档基线待本次提交更新；代码已推送，Dokploy webhook 返回 `Branch Not Match`，待控制台确认部署）
+**Last updated:** 2026-10-19（用户确认 Dokploy 已部署；公网回归已重跑，运行 SHA 未从控制台核验）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
@@ -11,6 +11,22 @@ Statuses:
 | **Accepted** | Implemented against Odoo and suitable for pilot acceptance testing |
 | **In progress** | Code present; needs field validation or incomplete edge cases |
 | **Planned** | Documented product intent; not a pilot commitment |
+
+## 2026-10-19 最新验证
+
+- 当前 `main` 与 `origin/main` 均为 `2a2d9ab`；提交包含 Retry 错误状态修复及 Gift Cards Outlet 进度锁。`d801440` 统一了多数 UAT 的 source/deployment SHA 记录方式。
+- 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_1cde2cb.json` 为 131 路由 × 390/1440，`262/262 PASS`；它验证的是先前 `1cde2cb` 公网版本，不覆盖 `2a2d9ab`。
+- 用户确认 Dokploy 已部署后重跑了线上只读 UAT；实际运行 SHA 未从控制台回读，不能绑定到 `2a2d9ab`。全站矩阵 `262/262 PASS` 与认证重放旧证据 `2/2 PASS` 都来自之前的公网版本。
+- 最新商品详情 UAT：确认第二次 Tax rates GET 已到达并保持 pending，Retry 进度锁与提示 `aria-busy` 未出现；首次误提示消失，390px 无溢出、页面错误和业务写入均为 `0`。Gift Cards UAT：确认第二次 Outlet GET pending，提示与 Retry 按钮仍消失，筛选器保持禁用；`503 → 200` 和搜索竞态通过，无溢出、页面错误或业务写入。部署身份均未核验。
+- 最新认证重放 UAT：GET 401 后刷新一次；DELETE 请求一次且被浏览器拦截，无真实业务写入，`2/2 PASS`。部署 SHA 未核验。
+- 当前发布判定：**NO-GO，商品详情和 Gift Cards Retry 进度锁回归仍未通过；部署身份待 Dokploy 控制台确认。**
+
+## 本地待部署批次
+
+- `useApi` 增加请求序号保护；查询切换、组件卸载或新一轮 Retry 后，旧请求不能覆盖新数据/错误/loading 状态。
+- 共享依赖错误提示增加 `aria-busy`，为 Retry 进行状态提供可访问的忙碌语义。
+- 商品详情与 Gift Cards Retry UAT 用 Promise gate 控制待处理 GET，在放行响应前检查按钮禁用和提示忙碌状态，避免依赖固定延迟造成竞态误判。
+- 本地 `npm run typecheck`、目标 ESLint、两份 UAT `node --check`、`git diff --check` 通过；未运行 build，以上改动尚无线上验证。
 
 ## 当前迭代快照：`3b408d4` / `2012146`
 

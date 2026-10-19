@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-19T01:01:54.244Z",
+  "sourceCommit": "2a2d9aba758494fdfa0176e41ed7cf7044c1d514",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only gift card outlet lookup failure injection; one GET returns 503; Retry progress and outlet filter lock are verified; no business writes",
+  "checks": [
+    {
+      "name": "Gift card outlet Retry remains visible and locks repeated actions",
+      "status": "FAIL",
+      "evidence": {
+        "outletRequests": 2,
+        "outletStatuses": [
+          503,
+          200
+        ],
+        "retryRequestPending": true,
+        "retryDisabledWhileLoading": false,
+        "retryAlertBusy": false,
+        "retryState": {
+          "alerts": [],
+          "retryButtons": []
+        },
+        "outletFilterDisabledWhileLoading": true,
+        "viewport": {
+          "viewport": 390,
+          "document": 390
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "name": "Gift card search ignores a stale response after newer filters load",
+      "status": "PASS",
+      "evidence": {
+        "raceARequests": 1,
+        "raceBRequests": 1,
+        "raceAResponseReceived": true,
+        "latestSearchRemainsVisible": true,
+        "staleSearchIsHidden": true
+      }
+    }
+  ],
+  "writes": []
+}

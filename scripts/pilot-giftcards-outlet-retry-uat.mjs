@@ -19,6 +19,9 @@ const context = await browser.newContext({ viewport: { width: 390, height: 844 }
 const checks = [];
 const writes = [];
 let outletRequests = 0;
+const outletStatuses = [];
+let releaseOutletRetry;
+const outletRetryGate = new Promise((resolve) => { releaseOutletRetry = resolve; });
 let releaseRaceA;
 const raceAGate = new Promise((resolve) => { releaseRaceA = resolve; });
 let completeRaceA;
@@ -39,6 +42,9 @@ try {
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("response", (response) => {
+    if (new URL(response.url()).pathname === "/api/outlets") outletStatuses.push(response.status());
+  });
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(`${request.method()} ${url.pathname}`);
@@ -49,7 +55,7 @@ try {
     if (outletRequests === 1) {
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected outlet lookup failure" }) });
     }
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await outletRetryGate;
     return route.continue();
   });
   await page.route("**/api/gift-cards**", async (route) => {
@@ -70,26 +76,41 @@ try {
     return route.continue();
   });
 
-  await page.goto(`${base}/giftcards`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.goto(`${base}/giftcards?__uat_probe=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
   const notice = page.getByRole("alert").filter({ hasText: "Outlets:" });
   await notice.waitFor({ timeout: 30000 });
+  const retryResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/outlets" && response.status() === 200,
+  { timeout: 30000 });
+  const retryRequestPending = page.waitForRequest((request) =>
+    new URL(request.url()).pathname === "/api/outlets" && request.method() === "GET",
+    { timeout: 15000 },
+  );
   await notice.getByRole("button", { name: "Retry" }).click();
+  await retryRequestPending;
   const retryingButton = notice.getByRole("button", { name: "Retrying…" });
   let retryDisabledWhileLoading = false;
   try {
-    await retryingButton.waitFor({ timeout: 4000 });
+    await retryingButton.waitFor({ timeout: 1500 });
     retryDisabledWhileLoading = await retryingButton.isDisabled();
   } catch {
     // Preserve failure evidence if the deployed UI loses the dependency notice during Retry.
   }
+  const retryState = await page.evaluate(() => ({
+    alerts: [...document.querySelectorAll('[role="alert"]')].map((element) => ({ text: element.textContent?.trim() ?? "", busy: element.getAttribute("aria-busy") === "true" })),
+    retryButtons: [...document.querySelectorAll('button')].filter((button) => /retry/i.test(button.textContent ?? "")).map((button) => ({ text: button.textContent?.trim(), disabled: button.disabled })),
+  }));
+  const retryAlertBusy = retryState.alerts.some((alert) => alert.text.includes("Outlets:") && alert.busy);
   const outletFilterDisabledWhileLoading = await page.getByRole("combobox", { name: "Filter by outlet" }).isDisabled();
+  releaseOutletRetry();
+  await retryResponse;
   await notice.waitFor({ state: "detached", timeout: 30000 });
 
   const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
   checks.push({
     name: "Gift card outlet Retry remains visible and locks repeated actions",
-    status: outletRequests >= 2 && retryDisabledWhileLoading && outletFilterDisabledWhileLoading && dimensions.document <= dimensions.viewport && pageErrors.length === 0 ? "PASS" : "FAIL",
-    evidence: { outletRequests, retryDisabledWhileLoading, outletFilterDisabledWhileLoading, viewport: dimensions, pageErrors },
+    status: outletRequests >= 2 && retryDisabledWhileLoading && retryAlertBusy && outletFilterDisabledWhileLoading && dimensions.document <= dimensions.viewport && pageErrors.length === 0 ? "PASS" : "FAIL",
+    evidence: { outletRequests, outletStatuses, retryRequestPending: true, retryDisabledWhileLoading, retryAlertBusy, retryState, outletFilterDisabledWhileLoading, viewport: dimensions, pageErrors },
   });
 
   const search = page.getByRole("textbox", { name: "Search gift card codes" });
@@ -119,6 +140,7 @@ try {
     evidence: { raceARequests, raceBRequests, raceAResponseReceived, latestSearchRemainsVisible, staleSearchIsHidden },
   });
 } finally {
+  releaseOutletRetry();
   releaseRaceA();
   try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
   await browser.close();
