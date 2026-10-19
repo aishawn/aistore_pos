@@ -4,7 +4,7 @@
 仓库：`aishawn/aistore_pos`
 本地仓库：`C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`
 分支：`main`
-当前 GitHub `main` / 本地 `HEAD`：`caf386c`（最新 stocktake 只读 UAT 证据）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
+当前 GitHub `main` / 本地 `HEAD`：`5bcfb72`（最新交接记录）；盘点数量边界保护为 `0a337c7`，页面内 Retry 为 `14a052a`，来源提示部署为 `3cd5be0`，location fallback 为 `5afab93`，AI 修复为 `56cd7c1`。
 
 ## 本轮继续：Odoo 盘点 P0
 
@@ -18,6 +18,7 @@
 - 本地 fixture 首次 503 后点击 Retry 恢复，390/768/1440 三视口及原有确认/取消写保护均通过。
 - `0a337c7` 将数量上限（1,000,000）和最多 40 行限制前移到 Review 按钮；超限数量时 Review 保持禁用。本地 390/768/1440 fixture 通过，证据 `docs/UAT_ODOO_STOCKTAKE_LOCAL_2026-10-19_LATEST.json`。
 - 最新线上只读回归 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-19_LATEST.json` 通过：管理员登录、Odoo session 恢复、binding/location 读取、390/1440 页面均 PASS；`locationSource=single-warehouse-fallback`、`writeEnabled=false`、非 GET 盘点请求为 0。该证据不覆盖数量写入、库存回读或 Dokploy 容器 SHA。
+- 最新 AI 线上只读回归：surface `11/11 PASS`、UI `2/2 PASS`。证据 `docs/UAT_AI_SURFACE_2026-10-19_LATEST.json`、`docs/UAT_AI_UI_2026-10-19_LATEST.json`；生产 AI、语音和酒标识别仍关闭，匿名受保护路由均返回 `401`。
 
 ## 当前结论
 
@@ -86,7 +87,7 @@
 
 ## 当前问题与工作区状态
 
-- `main` 与 `origin/main` 当前为 `caf386c`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
+- `main` 与 `origin/main` 当前为 `5bcfb72`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
 - 工作区仍有大量未提交变更，当前可见包括能力状态/旧交接文档、平台租户生命周期后端代码与测试、平台店铺详情前端、多个 UAT JSON/截图以及 `tsconfig.json`。Odoo stocktake 页面/API 已提交；其本地 UAT 证据和截图目前仍未提交。AI 修复源码和 Odoo stocktake 实现均已提交，不应再按未提交代码处理。接手时检查实际 diff 和归属。
 - 不要运行 `git add -A`，不要清理、重置或覆盖这些改动。新增交接文件应单独处理。
