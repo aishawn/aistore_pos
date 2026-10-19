@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前运行时代码：`c91043a`；当前仓库/`origin/main`：`c91043a`
+当前运行时代码：`74e9412`；当前仓库/`origin/main`：`9395a72`（后续为文档证据更新）
 本轮 Dokploy webhook：HTTP `200`，返回 `Compose deployed successfully`；控制台运行容器 SHA 仍未独立回读。
 
 ## 结论
@@ -11,6 +11,12 @@
 当前整体放行状态：**NO-GO**。
 
 核心租户、POS、库存、退款、现金、采购收货和多租户隔离已有隔离租户证据；近期 AI、价格表和移动端回归也已通过。NO-GO 的原因是部署运行身份仍缺独立证明，部分 AI、硬件和运营能力仍未完成，且当前工作区还有未提交改动，不能宣称全量生产验收完成。
+
+## 最新增量
+
+- `74e9412` 增强 AI Metrics 表格可访问性：caption、列头 `scope` 和刷新 `aria-busy`。
+- Dokploy 接受该提交后，AI Metrics 线上回归 `9/9 PASS`，覆盖管理员/匿名鉴权、assistant intent 指标、390/1440 UI 和可访问性断言；证据 `docs/UAT_AI_METRICS_ONLINE_74E9412.json`。
+- 本轮未运行本地 build；TypeScript、目标 ESLint、脚本语法检查通过。Dokploy 容器 SHA、构建日志和健康状态仍需控制台独立回读。
 
 ## 已完成
 
