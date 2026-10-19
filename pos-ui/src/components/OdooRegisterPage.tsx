@@ -1154,7 +1154,7 @@ export function OdooRegisterPage() {
                 )}
               </div>
             )}
-            <div className="px-4 py-3">
+            <div className="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
               <div className="flex items-end justify-between gap-3">
                 <div className={cn("oh-type-label", lines.length ? "text-[var(--oh-text-secondary)]" : "text-[var(--oh-placeholder)]")}>
                   <p className="oh-type-body font-semibold text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>

@@ -9,6 +9,7 @@
 - 线上只读矩阵按根 `pos-ui/app` 收集到 `134` 路由 × `390/1440` = `268/268 PASS`；HTTP、页面错误和横向溢出均为 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ROOT_APP_ONLINE_2026-10-20.json`。该证据对应运行时旧镜像，不能替代 Dokploy SHA 核验。
 - `AdminPageLayout` 的移动底部空间和 `AdminActionFooter` 的表单底栏加入 `safe-area-inset-bottom`，覆盖订单、采购、客户、库存等共享管理页面，减少手势条/浮动 AI 按钮遮挡。
 - Media Centre 的文件搜索框补齐可访问名称，媒体目录补齐 `nav` 标签；媒体存储仍未接入，未新增虚假上传功能。
+- POS 收银台底部支付/Finalize 区域也加入手机安全区；线上只读 POS 对话框回归 `2/2 PASS`（390/1440，帮助弹层、Escape、Sales Keys/Parked 键盘切换），证据：`docs/UAT_POS_DIALOG_2026-10-17.json`。该证据仍对应已部署旧镜像。
 - 本地 `npm run typecheck`、目标 ESLint、UAT 脚本 `node --check` 和 `git diff --check` 通过；未运行 build。Dokploy 部署和变更后的线上 DOM 复验待分支修复后执行。
 - 推送后手动调用 Dokploy webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建；需控制台修正 Compose 分支为 `main` 后再手动 Deploy `7ca5607`。
 
