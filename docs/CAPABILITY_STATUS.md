@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 `dfc76d0` 部署后全站回归
+
+- Dokploy webhook 接受 `dfc76d0`，公网根 `app` 矩阵 `268/268 PASS`（134 路由、390/1440），HTTP、页面错误和横向溢出均为 `0`；证据 `docs/UAT_ALL_STATIC_PAGES_POST_DFC76D0.json`。
+- Stocktake、发票预览、表格/表单和 AI availability 专项均通过：分别见 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_POST-DFC76D0.json`、`docs/UAT_INVOICE_SCAN_MOCK_2026-10-20_POST-DFC76D0.json`、`docs/UAT_TABLE_A11Y_POST_DFC76D0.json`、`docs/UAT_AI_AVAILABILITY_POST_DFC76D0.json`。
+- 表格专项拦截的 4 个 Odoo records POST 是只读 RPC，未发现业务写入；AI 本轮仅验证 capability/composer，没有提交模型请求。
+- Dokploy 容器 SHA、构建日志和健康状态仍未独立核验；生产 AI 质量、硬件、隔离 Odoo 写入和正式财务流程仍未完成，整体状态 **NO-GO**。
+
 ### 2026-10-20 发票扫描预览移动安全区批次（工作区）
 
 - `ScanInvoicePage` 的上传区域和 OCR loading 状态补齐可访问状态语义；底部 Odoo Purchases/Replenishment 操作预留手机安全区。

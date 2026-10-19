@@ -8,6 +8,16 @@
 - 已有真实 provider 只读证据 `docs/UAT_INVOICE_OCR_PREVIEW_ONLINE_39E0DC8.json` 仍显示供应商、发票号、日期、行项目和总额提取通过；真实收货写入仍未验收。
 - 本批次需与后续修改集中部署后，在 390/1440 重新验证上传、错误、预览和底部操作；Demo 禁止业务写入。
 
+## 2026-10-20 `dfc76d0` 部署后全站回归
+
+- Dokploy webhook 对集中提交 `dfc76d0` 返回 `HTTP 200 Compose deployed successfully`；公网页面已呈现 stocktake ARIA 与发票 safe-area 代码。
+- 根 `pos-ui/app` 全站只读矩阵：`134` 路由 × `390/1440` = `268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_POST_DFC76D0.json`。
+- Stocktake：`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_2026-10-20_POST-DFC76D0.json`，管理员/Odoo 会话、库位、combobox/listbox 语义和 390/1440 均 PASS，非 GET stocktake 请求 `0`。
+- 发票预览 mock：`docs/UAT_INVOICE_SCAN_MOCK_2026-10-20_POST-DFC76D0.json`，预览无收货保存按钮、行项目可编辑、导航链接存在，未产生供应商/采购/收货写入。
+- 表格/表单可访问性：`docs/UAT_TABLE_A11Y_POST_DFC76D0.json` 为 `14/14 PASS`；4 个被拦截的 `/api/odoo/records` 是只读 RPC，`unexpectedWrites=0`。
+- AI capability：`docs/UAT_AI_AVAILABILITY_POST_DFC76D0.json` 为 `3/3 PASS`；AI composer 可用但本轮未提交提示词。
+- Dokploy frontend/backend 容器 SHA、完整构建日志、健康状态和部署完成时间仍未从控制台独立回读；整体发布继续 **NO-GO**，真实 AI 质量、硬件和隔离写入验收仍未完成。
+
 ## 2026-10-20 Odoo Stocktake 搜索可访问性批次（当前工作区）
 
 - `pos-ui/app/stock/stocktake/page.tsx` 的真实生产入口已补齐搜索 `combobox`、`aria-controls`、`aria-expanded`、`aria-busy`，产品结果使用 `listbox/option` 语义，空结果和搜索状态可被读屏器识别。
