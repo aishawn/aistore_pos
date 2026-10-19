@@ -145,6 +145,7 @@ export function SellAiPanel({
   const [busy, setBusy] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingEntityDelete, setPendingEntityDelete] = useState<PendingEntityDelete | null>(null);
   const [entityDeleteBusy, setEntityDeleteBusy] = useState(false);
@@ -368,6 +369,9 @@ export function SellAiPanel({
         // Chat needs the graph bean, not only AI_ENABLED. Older backends omit assistantAvailable.
         const chatOn = config.assistantAvailable ?? config.enabled;
         setAiEnabled(chatOn);
+        // Voice has its own provider capability. Do not expose a microphone when chat works
+        // but transcription is unavailable or misconfigured.
+        setTranscriptionAvailable(config.transcriptionAvailable ?? config.enabled);
         setMessages((prev) => {
           if (prev.length !== 1 || prev[0]?.role !== "assistant" || !isStockGreeting(prev[0].text)) {
             return prev;
@@ -667,8 +671,12 @@ export function SellAiPanel({
   /** Cloud-only STT via DashScope; no browser Web Speech fallback. */
   async function startVoice() {
     if (busy || listening) return;
-    if (aiEnabled !== true) {
-      setVoiceAlert("AI voice transcription is not enabled for this store. Type your request instead.");
+    if (transcriptionAvailable !== true) {
+      setVoiceAlert(
+        aiEnabled === false
+          ? "AI voice transcription is not enabled for this store. Type your request instead."
+          : "AI voice transcription is unavailable for this store. Type your request instead.",
+      );
       return;
     }
     const session = ++voiceSessionRef.current;
@@ -804,8 +812,14 @@ export function SellAiPanel({
         type="button"
         onClick={toggleVoice}
         aria-label={listening ? "Stop voice input" : "Voice input"}
-        title={aiEnabled === false ? "Voice input is disabled for this store" : undefined}
-        disabled={busy || aiEnabled !== true}
+        title={
+          aiEnabled === false
+            ? "Voice input is disabled for this store"
+            : transcriptionAvailable === false
+              ? "Voice transcription is unavailable for this store"
+              : undefined
+        }
+        disabled={busy || transcriptionAvailable !== true}
         className={cn(
           "flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white transition-colors disabled:opacity-50",
           listening
