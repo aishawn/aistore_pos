@@ -14,6 +14,11 @@
 - 全站静态矩阵 `268/268 PASS`（134 路由 × 390/1440），证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-20_PRE-DEPLOY.json`。
 - 这批源码尚未被 Dokploy 运行镜像确认；webhook 仍返回 `301 Branch Not Match`，整体保持 **NO-GO**。
 
+### 2026-10-20 工具列表第二批（工作区）
+
+- Mail Log、Trashed Items 移动列表补齐 `list/listitem` 语义，加载 skeleton 增加 `aria-busy`；不改变邮件日志、回收项读取或筛选行为。
+- typecheck、目标 ESLint、UAT 脚本语法和 diff check 通过；源码待下一次可审计 Dokploy 部署后复跑线上 DOM 回归。
+
 ### 2026-10-20 `b058ef3` AI capability 与表单回归
 
 - voice capability gate、AI Features `14/14`、AI Metrics `9/9`、AI UI `2/2` 和表格/表单 DOM `14/14` 均通过，业务/配置写入为 `0`。
