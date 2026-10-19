@@ -65,6 +65,19 @@ try {
         response = await page.goto(`${base}${route.path}`, { waitUntil: "domcontentloaded", timeout: 90000 });
       }
       await page.waitForTimeout(2500);
+      let unnamedControls = 0;
+      if (route.path === "/orders/new") {
+        const settingsButton = page.getByRole("button", { name: "Rules & prices", exact: true });
+        if (await settingsButton.isVisible().catch(() => false)) {
+          await settingsButton.click();
+          await page.waitForTimeout(1500);
+          unnamedControls = await page.locator("input:not([type='hidden']), select, textarea").evaluateAll((controls) => controls.filter((control) => {
+            const labelled = control.getAttribute("aria-label") || control.getAttribute("aria-labelledby");
+            const label = control.id ? document.querySelector(`label[for='${CSS.escape(control.id)}']`) : control.closest("label");
+            return !labelled && !label && !control.getAttribute("placeholder");
+          }).length);
+        }
+      }
       const result = await page.locator("table").evaluateAll((tables) => tables.map((table) => ({
         name: table.getAttribute("aria-label") || table.querySelector("caption")?.textContent?.trim() || "",
         headers: [...(table.querySelectorAll("thead th").length
@@ -73,11 +86,11 @@ try {
       })));
       const named = result.every((table) => table.name.length > 0);
       const scoped = result.every((table) => table.headers.every((scope) => scope === "col"));
-      const pass = response?.status() === 200 && named && scoped && pageErrors.length === 0;
+      const pass = response?.status() === 200 && named && scoped && unnamedControls === 0 && pageErrors.length === 0;
       checks.push({
         name: `${route.label} ${viewport.width}px`,
         status: pass ? "PASS" : "FAIL",
-        detail: `http=${response?.status() ?? 0} tables=${result.length} named=${named} scoped=${scoped} pageErrors=${pageErrors.length}`,
+        detail: `http=${response?.status() ?? 0} tables=${result.length} named=${named} scoped=${scoped} unnamedControls=${unnamedControls} pageErrors=${pageErrors.length}`,
         tables: result,
       });
     }

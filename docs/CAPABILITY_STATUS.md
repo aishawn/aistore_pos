@@ -7,6 +7,7 @@
 - 线上 DOM 审计 `14/14 PASS`：设置用户、角色管理、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描页面在 390/1440 视口的表格名称和列头语义均通过。
 - 发现并修复实际生效的旧 `app/settings/users` 表格缺少 `aria-label`；4 个被拦截的 Odoo records POST 均为只读请求，业务写入为 `0`。
 - 证据：`docs/UAT_TABLE_A11Y_ONLINE_A533496_FINAL.json`。
+- Supply Chain Rules & prices 面板的所有可见输入控件均有可访问名称，`unnamedControls=0`；最新证据：`docs/UAT_TABLE_A11Y_ONLINE_6EC5DC3.json`。
 
 ### `0f9faab` 部署后 AI 回归
 
