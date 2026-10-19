@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-19（`b2e0b1a` 表格可访问性批次已部署并完成线上回归）
 
+### 2026-10-20 实际路由只读页面对齐（`dc77293`）
+
+- Promotions、Favourite Reports、Media Centre 的 `src/app` 入口已移除误导性的静态创建/筛选/上传控件，改为真实读取或明确未接入状态，并补齐移动布局和可访问语义。
+- 登录态本地全站矩阵 `134 × 2 = 268/268 PASS`，无 HTTP 失败、页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_PROMOTIONS-MEDIA.json`，源码提交 `dc77293`。
+- 目标 typecheck、ESLint 和 diff check 通过；未运行 build。线上 Dokploy 与公网回归待本批次部署后补充。
+
 ### 2026-10-20 Dokploy #38 构建失败诊断
 
 - 构建日志中的两个 `AiProviderConfig` 编译错误来自旧源码快照：当前 `main`/`origin/main` 为 `2434f27`，且已包含 `ea8f1b6` 的显式 import 修复及 `AiProviderConfig.java`。

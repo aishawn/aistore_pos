@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 实际路由只读页面对齐（`dc77293`）
+
+- 对齐 `src/app` 实际生效入口：Promotions 移除不会工作的创建/筛选占位控件，保留真实 API 读取、搜索、分页、刷新和移动列表；Favourite Reports 明确当前 pilot 未接入收藏/邮件调度，并提供真实 Reports Dashboard 入口；Media Centre 明确媒体存储未接入，上传、建文件夹、搜索和文件操作全部禁用，三栏布局在移动端改为纵向。
+- 本地登录态浏览器矩阵覆盖 `134 路由 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_PROMOTIONS-MEDIA.json`，`sourceCommit=dc77293`。
+- `npm run typecheck`、三页目标 ESLint 和 `git diff --check` 通过；本地未运行 build。
+- 待把 `dc77293` 推送并触发 Dokploy 后，重新执行公网只读回归；不能用本地矩阵替代线上镜像身份或构建日志。
+
 ## 2026-10-20 Dokploy #38 后端构建诊断
 
 - Dokploy #38 在 `AiConfigController.java:78` 和 `SommelierController.java:65` 报 `cannot find symbol: variable AiProviderConfig`；`SqlAst.java` 的 `Parenthesis` 仅为弃用警告，不是失败原因。
