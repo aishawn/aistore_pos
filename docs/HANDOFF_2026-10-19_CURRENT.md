@@ -6,7 +6,7 @@
 - Bulk Price Edit 路由增加 Suspense 边界，避免 `useSearchParams` 在静态渲染阶段缺少 boundary。
 - 本地 fixture UAT `16/16 PASS`：搜索、状态筛选、CSV、SKU 深链、Bulk 页面预填、SKU query 和非 GET 写请求 `0` 均通过。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_DEEP-LINK.json`。
 - 本地 `npm run typecheck`、Bulk/Price 目标 ESLint、`node --check scripts/pilot-price-suggestions-local-uat.mjs`、`git diff --check` 均通过；未运行 build。
-- 该代码批次尚未重新触发 Dokploy；应与后续集中改动一起部署，再重跑价格建议和 Bulk Price Edit 公网 UAT。
+- `228fa6f` 已触发 Dokploy；线上价格建议/Bulk 只读回归通过，后续 `7a87dd7` 又补上了 Bulk 保存失败保护并完成线上 fixture 复验。
 
 ## 2026-10-19 当前公网汇总
 
@@ -70,7 +70,7 @@
 
 ### 已实现但证据不足，不能标记为完成
 
-- Smart Pricing `/stock/price-suggestions`：本地页面、筛选、CSV、写保护和 Bulk Price Edit SKU 预填通过；线上当前部署身份及部署后 Bulk 页面只读回归仍需确认。
+- Smart Pricing `/stock/price-suggestions`：本地与线上页面、筛选、CSV、写保护和 Bulk Price Edit SKU 预填通过；Dokploy 容器运行身份仍需控制台独立确认。
 - Invoice OCR：当前探针仅证明 provider 可达，返回 `50212`；使用的不是包含真实发票字段的图片，尚未证明 supplier、invoice number、日期、行项目和合计字段提取成功。
 - 采购/收货：已有历史隔离租户证据，但尚未绑定到用户所称 `7544d03` 或 Dokploy 当前容器后重跑。
 - Stocktake：管理员只读页面、权限保护和 location fallback 有证据；真实隔离 Odoo 盘点写入、取消不改库存、重复确认只生效一次、quant reference 和跨租户拒绝尚未验收。生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false`。
@@ -88,7 +88,7 @@
 
 ## 当前问题与风险
 
-- 用户给出的 `7544d03` 与仓库当前 `761e078` 不一致；不能假定线上运行的是哪一个。
+- 用户给出的 `7544d03` 与仓库当前 `d0c5d8f` 不一致；不能假定线上运行的是哪一个。
 - Dokploy webhook 历史上出现过 `301 Branch Not Match`；即使 webhook 返回 `200 Compose deployed successfully`，也不等于容器已切换，必须回读控制台证据。
 - 历史 UAT JSON 同时包含旧版本、`unverified-after-deploy` 和已接受部署目标，阅读时必须按时间和 deployment 字段区分。
 - 工作区有大量历史 UAT、截图和用户未提交改动。禁止 `git add -A`、reset、clean 或覆盖无关文件；只提交明确纳入交接的文件。
