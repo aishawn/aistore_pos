@@ -39,6 +39,13 @@
 - Dokploy 尚未提供 `0ceb21f` 的可审计构建完成记录。需在控制台确认 Compose 分支为 `main` 并部署该提交，再回读 backend/frontend 容器 SHA、构建日志和健康状态。发布状态继续为 **NO-GO**。
 - 对现有 webhook 发送包含 `ref=refs/heads/main` 的完整 push payload 返回 `HTTP 301 Branch Not Match`，本次没有启动新的构建；此前的 `HTTP 200` 记录不能替代当前 SHA 的控制台证据。
 
+### 2026-10-20 响应式库存与供应商连接批次（本地）
+
+- `StockListPage` 在 390px 改为可完整编辑的产品卡片，保留产品名、分类、价格集、库存、价格数量、成本、售价和利润字段；桌面端继续使用原十列表格。保存、blur 校验和错误提示逻辑不变。
+- Vendor Connections 在 390px 增加移动卡片，保留 sender code、customer ID、Connected 状态以及 Edit/Delete 操作；1440px 继续使用桌面表格。
+- 本地验证：`npm run typecheck`、目标 ESLint、两个 UAT 脚本 `node --check`、`git diff --check` 均通过；Stock List/Capped Pricing/Bulk Price Edit `6/6 PASS`，Vendor Connections `2/2 PASS`，页面错误 `0`，拦截业务写入 `0`。证据：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20.json`、`docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-20.json`。
+- 该批次尚未由 Dokploy 运行镜像验证；部署前继续保持 **NO-GO**，部署后需回归 `/stock/list`、`/stock/capped-pricing`、`/stock/bulk-price-edit` 和 `/utilities/vendor-connections` 的 390/1440 只读布局及操作可见性。
+
 ### 2026-10-20 `854bf6a` 后线上只读复核
 
 - 表格/表单 DOM 审计 `14/14 PASS`，覆盖用户、角色、AI Metrics、Odoo 产品、Stocktake、供应链和发票扫描的 390/1440 视口；页面错误和意外业务写入均为 `0`。证据：`docs/UAT_TABLE_A11Y_ONLINE_2026-10-20_POST-854BF6A.json`。

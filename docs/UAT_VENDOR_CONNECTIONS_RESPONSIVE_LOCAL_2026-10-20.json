@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-19T20:41:26.749Z",
+  "sourceCommit": "c99f166eb272a8e996ed8f50c6d6a580fc2eb7cd",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "Vendor Connections responsive list; API requests intercepted; no business writes",
+  "status": "PASS",
+  "passed": 2,
+  "failed": 0,
+  "checks": [
+    {
+      "viewport": 390,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "vendorVisible": true,
+      "mobileListVisible": true,
+      "mobileActionsVisible": true,
+      "desktopTableVisible": null,
+      "pageNoOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "httpStatus": 200,
+      "headingVisible": true,
+      "vendorVisible": true,
+      "mobileListVisible": null,
+      "mobileActionsVisible": null,
+      "desktopTableVisible": true,
+      "pageNoOverflow": true,
+      "pageErrors": []
+    }
+  ],
+  "blockedWrites": []
+}

@@ -65,18 +65,42 @@ export default function VendorConnectionsPage() {
       ) : vendors.length === 0 ? (
         <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No vendor connections have been configured yet.</p>
       ) : (
-        <ListTable
-          columns={[
-            { label: "Vendor" },
-            { label: "Status", width: "w-[200px]" },
-            { label: "Actions", align: "right", width: "w-[300px]" },
-          ]}
-          rows={vendors.map((v) => [
-            <span key="n" className="flex items-center gap-2"><CableIcon size={18} /> {v.name ?? ""}</span>,
-            <span key="s" className="text-[var(--oh-success)]">Connected</span>,
-            <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => { setActionError(null); setDeleting(v); }} />,
-          ])}
-        />
+        <>
+          <div className="hidden md:block">
+            <ListTable
+              columns={[
+                { label: "Vendor" },
+                { label: "Status", width: "w-[200px]" },
+                { label: "Actions", align: "right", width: "w-[300px]" },
+              ]}
+              rows={vendors.map((v) => [
+                <span key="n" className="flex items-center gap-2"><CableIcon size={18} aria-hidden="true" /> {v.name ?? ""}</span>,
+                <span key="s" className="text-[var(--oh-success)]">Connected</span>,
+                <RowActions key="a" onEdit={() => setEditing(v)} onDelete={() => { setActionError(null); setDeleting(v); }} />,
+              ])}
+            />
+          </div>
+          <ul role="list" aria-label="Vendor connections list" className="space-y-2 md:hidden">
+            {vendors.map((vendor) => (
+              <li key={vendor.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-sm">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CableIcon size={18} className="shrink-0 text-[var(--oh-primary)]" aria-hidden="true" />
+                    <h2 className="min-w-0 break-words text-sm font-semibold text-[var(--oh-text)]">{vendor.name || "Unnamed vendor"}</h2>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Connected</span>
+                </div>
+                <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-[var(--oh-border)] pt-3 text-xs">
+                  <div><dt className="text-[var(--oh-muted)]">Sender code</dt><dd className="mt-0.5 break-all text-[var(--oh-text-secondary)]">{vendor.senderCode || "—"}</dd></div>
+                  <div><dt className="text-[var(--oh-muted)]">Customer ID</dt><dd className="mt-0.5 break-all text-[var(--oh-text-secondary)]">{vendor.customerId || "—"}</dd></div>
+                </dl>
+                <div className="mt-3 border-t border-[var(--oh-border)] pt-2">
+                  <RowActions justify="end" onEdit={() => setEditing(vendor)} onDelete={() => { setActionError(null); setDeleting(vendor); }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {creating && (

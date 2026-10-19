@@ -15,7 +15,9 @@ const routes = [
   { path: "/stock/bulk-price-edit", heading: "Bulk Price Edit", api: "/api/bulk-price-edit", testId: "bulk-price-edit-table", screenshot: "bulk-price-edit" },
 ];
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
-const outputDir = path.join(root, "docs", "screenshots", "2026-10-19-stock-tables-local");
+const outputDir = process.env.PILOT_SCREENSHOT_DIR
+  ? path.resolve(root, process.env.PILOT_SCREENSHOT_DIR)
+  : path.join(root, "docs", "screenshots", "2026-10-19-stock-tables-local");
 fs.mkdirSync(outputDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const checks = [];
@@ -82,6 +84,18 @@ try {
           && await page.getByRole("textbox", { name: "New quantity" }).isVisible()
         : null;
       const table = page.getByTestId(route.testId);
+      const mobileCardFieldResults = route.path === "/stock/list" && viewport.width === 390
+        ? await Promise.all([
+          page.getByRole("textbox", { name: "Product name for DEMO Shiraz" }).isVisible(),
+          table.locator("dl dt", { hasText: "Category" }).last().isVisible(),
+          table.locator("dl dt", { hasText: "Stock on hand" }).last().isVisible(),
+          page.getByLabel("Price quantity for DEMO Shiraz", { exact: true }).last().isVisible(),
+          page.getByLabel("Cost for DEMO Shiraz", { exact: true }).last().isVisible(),
+          page.getByLabel("Price for DEMO Shiraz", { exact: true }).last().isVisible(),
+          page.getByLabel("Profit margin for DEMO Shiraz", { exact: true }).last().isVisible(),
+        ])
+        : null;
+      const mobileCardFields = mobileCardFieldResults ? mobileCardFieldResults.every(Boolean) : null;
       const layout = await table.evaluate((element) => {
         const scroller = element.parentElement;
         const header = element.querySelector(".sticky");
@@ -126,8 +140,10 @@ try {
         productCountText,
         controlsAccessible,
         sampleRowVisible: await sampleRow.isVisible(),
+        mobileCardFields,
+        mobileCardFieldResults,
         pageNoOverflow: dimensions.width <= dimensions.viewport + 1,
-        internalHorizontalScroll: viewport.width === 390 ? horizontallyScrollable : null,
+        internalHorizontalScroll: viewport.width === 390 && route.path !== "/stock/list" ? horizontallyScrollable : null,
         columnsDoNotOverlap: layout.columnsDoNotOverlap,
         columnsAlignWithFirstRow: layout.columnsAlignWithFirstRow,
         headerTextFits: layout.headerTextFits,
@@ -151,11 +167,12 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || (check.productCountText != null && !check.productCountText.endsWith("1 Product"))
   || check.controlsAccessible === false
   || check.sampleRowVisible === false
+  || check.mobileCardFields === false
   || check.pageNoOverflow === false
-  || check.internalHorizontalScroll === false
-  || check.columnsDoNotOverlap === false
-  || check.columnsAlignWithFirstRow === false
-  || check.headerTextFits === false
+  || (check.internalHorizontalScroll === false && check.route !== "/stock/list")
+  || (check.viewport !== 390 || check.route !== "/stock/list") && check.columnsDoNotOverlap === false
+  || (check.viewport !== 390 || check.route !== "/stock/list") && check.columnsAlignWithFirstRow === false
+  || (check.viewport !== 390 || check.route !== "/stock/list") && check.headerTextFits === false
   || (check.pageErrors?.length ?? 0) > 0);
 const output = {
   generatedAt: new Date().toISOString(),

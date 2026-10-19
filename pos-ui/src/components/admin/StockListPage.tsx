@@ -155,7 +155,7 @@ function StockListRowEditor({
 
   return (
     <>
-    <div className="flex items-center border-b border-[var(--oh-border)] bg-white py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]/60">
+    <div className="hidden items-center border-b border-[var(--oh-border)] bg-white py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]/60 md:flex">
       <div className="w-[22%] shrink-0 px-2">
         <input
           className={cellInput()}
@@ -249,6 +249,34 @@ function StockListRowEditor({
         </div>
       </div>
     </div>
+    <article className="grid gap-3 border-b border-[var(--oh-border)] bg-white p-3 text-[13px] text-[var(--oh-text)] md:hidden">
+      <div>
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]" htmlFor={`stock-name-${row.id}`}>Product</label>
+        <input
+          id={`stock-name-${row.id}`}
+          className={cellInput()}
+          aria-label={`Product name for ${row.name}`}
+          aria-busy={saving}
+          aria-invalid={saveError ? true : undefined}
+          disabled={saving}
+          value={name}
+          onChange={(e) => { setName(e.target.value); if (saveError) setSaveError(null); }}
+          onBlur={() => void save()}
+        />
+      </div>
+      <dl className="grid grid-cols-2 gap-3 rounded-md bg-[var(--oh-surface)] p-3">
+        <div><dt className="text-xs text-[var(--oh-muted)]">Category</dt><dd className="mt-1 break-words font-medium">{row.categoryName ?? "—"}</dd></div>
+        <div><dt className="text-xs text-[var(--oh-muted)]">Price set</dt><dd className="mt-1 break-words font-medium">{row.priceSetName ?? "—"}</dd></div>
+        <div><dt className="text-xs text-[var(--oh-muted)]">Case quantity</dt><dd className="mt-1 tabular-nums font-medium">{num(row.caseQuantity) || "—"}</dd></div>
+        <div><dt className="text-xs text-[var(--oh-muted)]">Stock on hand</dt><dd className={`mt-1 tabular-nums font-medium ${hasStock ? "text-[var(--oh-text)]" : "text-[var(--oh-danger)]"}`}>{num(row.casesOnHand) || "0"} cases · {num(row.itemsOnHand) || "0"} items</dd></div>
+      </dl>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-quantity-${row.id}`}>Price quantity</label><input id={`stock-quantity-${row.id}`} type="number" min="1" step="1" className={cellInput("text-center")} aria-label={`Price quantity for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={quantity} onChange={(e) => { setQuantity(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-cost-${row.id}`} className={cellInput("pl-5")} aria-label={`Cost for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-price-${row.id}`}>Price</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-price-${row.id}`} className={cellInput("pl-5")} aria-label={`Price for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={price} onChange={(e) => { setPrice(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-profit-${row.id}`}>Profit %</label><div className="relative"><input id={`stock-profit-${row.id}`} className={cn(cellInput("pr-6 text-right"), Number(profit) < 0 ? "border-red-200 bg-red-50 font-semibold text-[var(--oh-danger)]" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]")} aria-label={`Profit margin for ${row.name}`} value={profit} readOnly /><span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500">%</span></div></div>
+      </div>
+    </article>
     {saveError && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-800">{saveError}</p>}
     </>
   );
@@ -378,8 +406,8 @@ function StockListPageInner() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-3 pb-5 sm:px-4 md:px-6">
-        <div data-testid="stock-list-table" className="min-w-[1100px]">
-          <div className="sticky top-0 z-10 flex items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)]">
+        <div data-testid="stock-list-table" className="md:min-w-[1100px]">
+          <div className="sticky top-0 z-10 hidden items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)] md:flex">
             <div className="w-[22%] shrink-0 px-2">Product</div>
             <div className="w-[10%] shrink-0 px-2">Category</div>
             <div className="w-[8%] shrink-0 px-2">Price Set</div>

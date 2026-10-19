@@ -609,6 +609,13 @@
 - 使用现有 compose webhook 发送 `ref=refs/heads/main`、`after=0ceb21ff2cd89caf4b6897bc8a93091f90ce0938` 的 push payload，返回 `HTTP 301 {"message":"Branch Not Match"}`。本次没有启动新的 Dokploy 构建，不能把该响应记为部署成功。
 - 下一步应在 Dokploy 控制台确认 Compose 的 Git 分支设置；手动 Deploy 必须选择包含 `ea8f1b6` 的 `0ceb21f`（或更晚提交），并回读 backend 的 Maven 日志。`Parenthesis` 仅为弃用警告，不是失败原因。
 
+### 2026-10-20 响应式库存与供应商连接批次
+
+- `pos-ui/src/components/admin/StockListPage.tsx`：移动端由十列固定表格改为产品编辑卡片，避免价格和操作字段被裁切；桌面表格和原有 blur 保存逻辑保留。
+- `pos-ui/app/utilities/vendor-connections/page.tsx`：新增移动供应商卡片，保留连接信息和 Edit/Delete 操作；桌面端保持 `ListTable`。
+- 新增/更新 UAT：`scripts/pilot-stock-tables-responsive-local-uat.mjs`、`scripts/pilot-vendor-connections-responsive-local-uat.mjs`；本地证据为 Stock 三页 `6/6 PASS`、Vendor `2/2 PASS`，页面错误和业务写入均为 `0`。结果文件：`docs/UAT_STOCK_LIST_MOBILE_LOCAL_2026-10-20.json`、`docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-20.json`。
+- 当前只完成本地静态检查和 fixture 浏览器验证，未运行本地 build；需集中提交后推送，再从 Dokploy 控制台核对构建日志、容器 SHA 和健康状态，最后执行公网只读回归。
+
 - `main` 与 `origin/main` 当前为 `5bcfb72`；stocktake location fallback 代码部署提交为 `5afab93`，来源提示部署提交为 `3cd5be0`，Retry 修复为 `14a052a`，数量边界保护为 `0a337c7`。
 - 完整 push payload 返回 HTTP 200，随后线上只读 UAT 记录 deployment `5afab93`。Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态仍未回读；不得把旧的 `7544d03` 当作当前版本。
 - 工作区仍有大量未提交变更，当前可见包括能力状态/旧交接文档、平台租户生命周期后端代码与测试、平台店铺详情前端、多个 UAT JSON/截图以及 `tsconfig.json`。Odoo stocktake 页面/API 已提交；其本地 UAT 证据和截图目前仍未提交。AI 修复源码和 Odoo stocktake 实现均已提交，不应再按未提交代码处理。接手时检查实际 diff 和归属。
