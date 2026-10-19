@@ -693,6 +693,7 @@ function SettingsPanel() {
   const [productQuery, setProductQuery] = useState("");
   const debounced = useDebouncedValue(productQuery, 300);
   const [products, setProducts] = useState<Array<{ id: number; name: string }>>([]);
+  const visibleProducts = debounced.trim() ? products : [];
   const productRequestRef = useRef(0);
   const [pref, setPref] = useState({ supplierId: "", priority: "1", threshold: "", channel: "API" });
   const [price, setPrice] = useState({ productId: "", supplierId: "", sku: "", basePrice: "", caseSize: "6" });
@@ -717,13 +718,14 @@ function SettingsPanel() {
   }
 
   useEffect(() => {
+    // This effect hydrates the settings panel from the remote store once it opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load().catch((e) => setError(apiFailureMessage(e, "Could not load rules.", "Please sign in again.")));
   }, []);
 
   useEffect(() => {
     const requestId = ++productRequestRef.current;
     if (!debounced.trim()) {
-      setProducts([]);
       return;
     }
     void api
@@ -806,9 +808,9 @@ function SettingsPanel() {
         >
           <h3 className="text-[14px] font-semibold">Supplier case price</h3>
           <input aria-label="Search products for supplier pricing" className={`${field} mt-3`} value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search product" />
-          {products.length > 0 && (
+          {visibleProducts.length > 0 && (
             <div className="mt-1 max-h-28 overflow-auto rounded border border-[var(--oh-border)]">
-              {products.map((product) => (
+              {visibleProducts.map((product) => (
                 <button
                   key={product.id}
                   type="button"
