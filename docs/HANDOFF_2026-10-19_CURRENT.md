@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Stock List 移动右侧安全区（待部署）
+
+- `pos-ui/src/components/admin/StockListPage.tsx` 的移动滚动容器增加右侧 `safe-area-inset-right` 预留，避免固定 AI 助手覆盖产品卡片内容；桌面端在 `md` 断点恢复原有左右间距。
+- 部署前线上只读回归 `docs/UAT_PRICING_PREDEPLOY_C73B324.json`：4 页面 × 390/1440，`8/8 PASS`，新增 `assistantCardOverlap=true`，`blockedWrites=0`。该证据仍对应旧线上镜像。
+- 本地 `npm run typecheck`、目标 ESLint、UAT 脚本语法检查和 `git diff --check` 通过；未运行本地 build。
+- 下一步集中部署后重跑 pricing、表格可访问性和全站根 `app` 矩阵；Demo 继续只读，禁止业务写入。
+
 ## 2026-10-20 当前构建诊断与移动遮挡断言
 
 - 当前 `main`/`origin/main` 为 `91ddfb9`；`AiProviderConfig.java` 已被 Git 跟踪，`AiConfigController` 与 `SommelierController` 均包含 `import com.orithos.modules.ai.AiProviderConfig;`。因此 Dokploy #38 的两个 `cannot find symbol` 不是当前源码缺陷，应视为旧快照或 Compose 分支/提交配置错误。

@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Stock List 移动右侧安全区（待部署）
+
+- 移动 Stock List 内容区增加右侧安全区，降低固定 AI 助手遮挡产品卡片的风险；桌面布局不变。
+- 部署前只读 pricing 回归 `docs/UAT_PRICING_PREDEPLOY_C73B324.json` 为 `8/8 PASS`，新增卡片/FAB 相交断言通过，`blockedWrites=0`；仍需部署后复验。
+
 ### 2026-10-20 当前构建诊断与 Stock List 遮挡检测
 
 - 当前 `main`/`origin/main` 为 `91ddfb9`；两个控制器的 `AiProviderConfig` 显式 import 和 `AiProviderConfig.java` 均已存在。Dokploy #38 的 `cannot find symbol` 属于旧源码快照或错误 Compose 分支，不需要重复修改 Java。
