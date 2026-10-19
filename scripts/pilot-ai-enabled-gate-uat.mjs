@@ -118,6 +118,13 @@ try {
               "FAIL",
               "AI_ENABLED=true but graph assistant unavailable (50301) — check DashScope key and PosAssistantGraphService registration",
             );
+            record(
+              "provider readiness guard",
+              assistantAvailable === false ? "PASS" : "FAIL",
+              assistantAvailable === false
+                ? "Provider is advertised as unavailable before model request."
+                : "AI request was blocked but client still advertised assistantAvailable=true.",
+            );
           } else {
             const message = String(assistantBody.message || "");
             record("enabled NLQ API", "FAIL", `status=${assistant.status()} code=${assistantBody.code} ${message}`);

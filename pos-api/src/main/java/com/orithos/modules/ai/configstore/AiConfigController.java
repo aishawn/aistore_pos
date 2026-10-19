@@ -32,6 +32,8 @@ public class AiConfigController {
     private final ObjectProvider<WineLabelVisionService> labelVisionService;
     private final ObjectProvider<InvoiceVisionService> invoiceVisionService;
     private final boolean aiEnabled;
+    @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
+    private String dashScopeBaseUrl;
 
     public AiConfigController(AiIntentMapper intentMapper,
                               AiSlotMapper slotMapper,
@@ -73,10 +75,11 @@ public class AiConfigController {
         IntentConfigService.Snapshot snap = configService.getSnapshot();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("enabled", aiEnabled);
-        data.put("assistantAvailable", graphService.getIfAvailable() != null);
-        data.put("transcriptionAvailable", transcriptionService.getIfAvailable() != null);
-        data.put("labelVisionAvailable", labelVisionService.getIfAvailable() != null);
-        data.put("invoiceVisionAvailable", invoiceVisionService.getIfAvailable() != null);
+        boolean providerReady = AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl);
+        data.put("assistantAvailable", aiEnabled && providerReady && graphService.getIfAvailable() != null);
+        data.put("transcriptionAvailable", aiEnabled && providerReady && transcriptionService.getIfAvailable() != null);
+        data.put("labelVisionAvailable", aiEnabled && providerReady && labelVisionService.getIfAvailable() != null);
+        data.put("invoiceVisionAvailable", aiEnabled && providerReady && invoiceVisionService.getIfAvailable() != null);
         data.put("aiTriggerKeywords", snap.aiTriggerKeywords());
         return ApiResult.ok(data);
     }

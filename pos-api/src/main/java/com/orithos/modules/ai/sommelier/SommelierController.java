@@ -37,6 +37,8 @@ public class SommelierController {
     private final ObjectProvider<WineLabelVisionService> visionService;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
+    @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
+    private String dashScopeBaseUrl;
 
     public SommelierController(
             SommelierService sommelierService,
@@ -60,7 +62,7 @@ public class SommelierController {
     @PostMapping(value = "/identify-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResult<IdentifyImageResponse> identifyImage(@RequestParam("file") MultipartFile file) {
         WineLabelVisionService vision = visionService.getIfAvailable();
-        if (!aiEnabled || vision == null) {
+        if (!aiEnabled || vision == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
             throw new BusinessException(50301,
                     "Label recognition is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }

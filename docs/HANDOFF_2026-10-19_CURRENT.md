@@ -56,6 +56,11 @@
 - DashScope URL 配置仍失败；assistant 返回 `50210` 安全提示，原始 provider 错误不再泄漏。
 - 视觉服务的非空图片 provider 回归和 Java 21 单测仍待完成；当前真实 AI 继续 `NO-GO`。
 
+## 下一批候选：provider URL readiness guard
+
+- 新增统一 URL readiness 检查，拒绝带 API path/query 的 DashScope base URL；配置无效时 assistant、voice、label、invoice capability 均标为不可用，接口返回 `50301`，避免外部请求。
+- 新增 Java 单测和线上 gate readiness 断言；本地不运行 Maven/build，需 Java 21 CI/部署后验证。
+
 > **当前有效结论（2026-10-19，交接优先阅读）**
 >
 > 用户反馈已部署提交 `7544d03`。目前只有该反馈，没有从 Dokploy 控制台独立回读 frontend/backend 容器 SHA、构建日志、健康状态和部署时间，因此不能把 `7544d03` 作为已审计的运行版本。最新本地/远端交接提交为 `404600c`；价格建议部署验证目标为 `b34c9d0`，代码部署身份仍需在 Dokploy 控制台确认。
@@ -319,3 +324,12 @@
 | 生产 AI、实体硬件、SMTP、正式财务流程 | 未验收 |
 | 分单/多支付、离线 POS | 未实现或未验收 |
 | 整体放行 | **NO-GO** |
+
+## 2026-10-19 AI 持续回归（bc9c7df）
+
+- 线上只读 AI 全功能脚本结果：`13 PASS / 1 FAIL / 1 INFO`，证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19_CONTINUE-3.json`。
+- 已通过：管理员登录、AI capability flags、ASR 空音频边界、Sommelier 文本识别/推荐/话术/问答/相似、酒标空图边界、Price Suggestions API（1000 商品且 `writeEnabled=false`）、Price Suggestions 页面、Replenishment 页面和匿名 assistant `401`。
+- 失败：NLQ assistant 返回安全业务码 `50210`；Invoice OCR 对可解码 PNG 返回 `50213` provider/model 配置错误。供应商原始 URL、request id 和错误内容没有泄漏。
+- 生产 AI 当前仍未达到可用验收。只读比较表明本地 key 对 `https://dashscope.aliyuncs.com` 可返回 HTTP 200，对国际域名返回 HTTP 401；因此应在 Dokploy 核对 `AI_DASHSCOPE_BASE_URL` 与 key 的 region，并使用 region 根地址，不要填 `/compatible-mode/v1` 路径。
+- `scripts/pilot-ai-features-verify-uat.mjs` 已改为使用可解码 PNG 探针：`50213` 现在计为硬失败，`50212` 仅表示 provider 可达但图片没有发票字段；这仍不替代真实发票照片的字段提取验收。
+- 本轮本地只执行 `node --check scripts/pilot-ai-features-verify-uat.mjs` 与 `git diff --check`，没有运行 build；部署和配置修复后需等待 Dokploy 完成，再重新执行同一脚本。

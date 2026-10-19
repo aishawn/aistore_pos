@@ -60,6 +60,12 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 视觉 OCR 的 Java 脱敏单测尚未在 Java 21 执行；真实非空图片 provider 回归待 DashScope 配置修正后进行。
 - 证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-BC9C7DF.json`。
 
+### Provider URL readiness guard candidate
+
+- 新增 `AiProviderConfig.isValidBaseUrl`：仅接受 HTTPS provider host（本地测试允许 localhost），拒绝 `/api/v1` 等路径、query、fragment 和不安全 HTTP。
+- AI client capability flags、assistant、语音和视觉接口共用该 readiness guard；配置无效时不发起模型请求，返回 `50301` 并将 capability 标为不可用。
+- 新增 `AiProviderConfigTest` 和 gate 的 readiness 断言；本机未运行 Maven/build，需 Java 21/线上验证。
+
 Statuses:
 
 | Status | Meaning |

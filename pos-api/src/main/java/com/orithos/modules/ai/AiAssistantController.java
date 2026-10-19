@@ -32,6 +32,8 @@ public class AiAssistantController {
     private final AiReportSnapshotService snapshotService;
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
+    @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
+    private String dashScopeBaseUrl;
 
     public AiAssistantController(
             ObjectProvider<PosAssistantGraphService> graphService,
@@ -48,7 +50,7 @@ public class AiAssistantController {
     @PostMapping("/assistant")
     public ApiResult<AssistantResponse> assistant(@Valid @RequestBody AssistantRequest request) {
         PosAssistantGraphService service = graphService.getIfAvailable();
-        if (service == null) {
+        if (service == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
             throw new BusinessException(50301,
                     "AI assistant is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
@@ -95,7 +97,7 @@ public class AiAssistantController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "lang", required = false) String lang) {
         AiTranscriptionService service = transcriptionService.getIfAvailable();
-        if (!aiEnabled || service == null) {
+        if (!aiEnabled || service == null || !AiProviderConfig.isValidBaseUrl(dashScopeBaseUrl)) {
             throw new BusinessException(50301,
                     "AI transcription is disabled. Set app.ai.enabled=true and AI_DASHSCOPE_API_KEY.");
         }
