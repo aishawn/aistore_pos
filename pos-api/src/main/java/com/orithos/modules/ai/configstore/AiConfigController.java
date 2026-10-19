@@ -2,6 +2,7 @@ package com.orithos.modules.ai.configstore;
 
 import com.orithos.common.ApiResult;
 import com.orithos.common.BusinessException;
+import com.orithos.security.AdminAccess;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +39,7 @@ public class AiConfigController {
 
     @PostMapping("/reload")
     public ApiResult<Map<String, Object>> reload() {
+        AdminAccess.requireAdmin();
         IntentConfigService.Snapshot snap = configService.reload();
         return ApiResult.ok(Map.of(
                 "intents", snap.intents().size(),
@@ -66,6 +68,7 @@ public class AiConfigController {
 
     @PostMapping("/intents")
     public ApiResult<AiIntent> createIntent(@RequestBody AiIntent body) {
+        AdminAccess.requireAdmin();
         requireCode(body.getCode());
         if (intentMapper.findByCode(body.getCode()) != null) {
             throw new BusinessException(40001, "Intent code already exists: " + body.getCode());
@@ -79,6 +82,7 @@ public class AiConfigController {
 
     @PutMapping("/intents/{id}")
     public ApiResult<AiIntent> updateIntent(@PathVariable Long id, @RequestBody AiIntent body) {
+        AdminAccess.requireAdmin();
         AiIntent existing = intentMapper.findById(id);
         if (existing == null) throw new BusinessException(40401, "Intent not found");
         body.setId(id);
@@ -89,6 +93,7 @@ public class AiConfigController {
 
     @DeleteMapping("/intents/{id}")
     public ApiResult<Void> deleteIntent(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
         intentMapper.delete(id);
         configService.invalidate();
         return ApiResult.ok();
@@ -103,6 +108,7 @@ public class AiConfigController {
 
     @PostMapping("/slots")
     public ApiResult<AiSlot> createSlot(@RequestBody AiSlot body) {
+        AdminAccess.requireAdmin();
         requireCode(body.getCode());
         if (slotMapper.findByCode(body.getCode()) != null) {
             throw new BusinessException(40001, "Slot code already exists: " + body.getCode());
@@ -118,6 +124,7 @@ public class AiConfigController {
 
     @PutMapping("/slots/{id}")
     public ApiResult<AiSlot> updateSlot(@PathVariable Long id, @RequestBody AiSlot body) {
+        AdminAccess.requireAdmin();
         if (slotMapper.findById(id) == null) throw new BusinessException(40401, "Slot not found");
         body.setId(id);
         slotMapper.update(body);
@@ -127,6 +134,7 @@ public class AiConfigController {
 
     @DeleteMapping("/slots/{id}")
     public ApiResult<Void> deleteSlot(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
         slotMapper.delete(id);
         configService.invalidate();
         return ApiResult.ok();
@@ -144,6 +152,7 @@ public class AiConfigController {
 
     @PostMapping("/slot-values")
     public ApiResult<AiSlotValue> createSlotValue(@RequestBody AiSlotValue body) {
+        AdminAccess.requireAdmin();
         requireCode(body.getSlotCode());
         requireCode(body.getValueKey());
         if (body.getValue() == null || body.getValue().isBlank()) {
@@ -158,6 +167,7 @@ public class AiConfigController {
 
     @PutMapping("/slot-values/{id}")
     public ApiResult<AiSlotValue> updateSlotValue(@PathVariable Long id, @RequestBody AiSlotValue body) {
+        AdminAccess.requireAdmin();
         if (slotValueMapper.findById(id) == null) throw new BusinessException(40401, "Slot value not found");
         body.setId(id);
         slotValueMapper.update(body);
@@ -167,6 +177,7 @@ public class AiConfigController {
 
     @DeleteMapping("/slot-values/{id}")
     public ApiResult<Void> deleteSlotValue(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
         slotValueMapper.delete(id);
         configService.invalidate();
         return ApiResult.ok();
@@ -181,6 +192,7 @@ public class AiConfigController {
 
     @PostMapping("/prompts")
     public ApiResult<AiPrompt> createPrompt(@RequestBody AiPrompt body) {
+        AdminAccess.requireAdmin();
         requireCode(body.getCode());
         if (body.getContent() == null || body.getContent().isBlank()) {
             throw new BusinessException(40001, "content is required");
@@ -197,6 +209,7 @@ public class AiConfigController {
 
     @PutMapping("/prompts/{id}")
     public ApiResult<AiPrompt> updatePrompt(@PathVariable Long id, @RequestBody AiPrompt body) {
+        AdminAccess.requireAdmin();
         if (promptMapper.findById(id) == null) throw new BusinessException(40401, "Prompt not found");
         body.setId(id);
         promptMapper.update(body);
@@ -206,6 +219,7 @@ public class AiConfigController {
 
     @DeleteMapping("/prompts/{id}")
     public ApiResult<Void> deletePrompt(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
         promptMapper.delete(id);
         configService.invalidate();
         return ApiResult.ok();

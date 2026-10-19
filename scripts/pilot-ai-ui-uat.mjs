@@ -28,6 +28,12 @@ async function runViewport(viewport) {
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${viewport.width}`);
+  const accessCookie = (await context.cookies(base)).find((cookie) => cookie.name === "orithos_access_token");
+  if (!accessCookie || !loginBody.data?.user) throw new Error(`LOGIN_SESSION_NOT_AVAILABLE_TO_BROWSER_${viewport.width}`);
+  await context.addInitScript(({ token, user }) => {
+    localStorage.setItem("sf_token", token);
+    localStorage.setItem("sf_user", JSON.stringify(user));
+  }, { token: accessCookie.value, user: loginBody.data.user });
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -85,10 +91,33 @@ async function runViewport(viewport) {
   await fab.click();
   const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await assistant.waitFor({ state: "visible", timeout: 10000 });
+  if (await assistant.getAttribute("aria-modal") !== "true") {
+    throw new Error(`AI_DIALOG_NOT_MODAL_${viewport.width}`);
+  }
+  if (await assistant.getByRole("button", { name: "Voice input" }).isEnabled()) {
+    throw new Error(`AI_VOICE_ENABLED_WHILE_STORE_AI_DISABLED_${viewport.width}`);
+  }
+  const composer = assistant.getByPlaceholder("Ask Orithos AI…");
+  await composer.waitFor({ state: "visible", timeout: 10000 });
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("placeholder") === "Ask Orithos AI…",
+    undefined,
+    { timeout: 5000 },
+  );
   for (let index = 0; index < 6; index += 1) {
     await page.keyboard.press("Tab");
     const trapped = await assistant.evaluate((element) => element.contains(document.activeElement));
-    if (!trapped) throw new Error(`AI_FOCUS_ESCAPED_TAB_${index + 1}_${viewport.width}`);
+    if (!trapped) {
+      const focusState = await page.evaluate(() => ({
+        active: document.activeElement instanceof HTMLElement
+          ? { tag: document.activeElement.tagName, label: document.activeElement.getAttribute("aria-label"), text: document.activeElement.textContent?.trim().slice(0, 80) }
+          : null,
+        dialogs: [...document.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')]
+          .filter((dialog) => dialog.getClientRects().length > 0)
+          .map((dialog) => ({ label: dialog.getAttribute("aria-label"), hidden: dialog.getAttribute("aria-hidden"), active: dialog.contains(document.activeElement), focusables: [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')].filter((element) => element.getClientRects().length > 0).map((element) => element.getAttribute("aria-label") || element.textContent?.trim().slice(0, 40)) })),
+      }));
+      throw new Error("AI_FOCUS_ESCAPED_TAB_" + (index + 1) + "_" + viewport.width + "_" + JSON.stringify(focusState));
+    }
   }
   await page.keyboard.press("Escape");
   await assistant.waitFor({ state: "hidden", timeout: 10000 });
@@ -99,7 +128,6 @@ async function runViewport(viewport) {
     { timeout: 1500 },
   ).catch(() => { throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`); });
   await restoredFab.click();
-  const composer = page.getByPlaceholder("Ask Orithos AI…");
   await composer.fill("look up product DEMO");
   await composer.press("Enter");
   await page.getByText(/AI assistant is not enabled|could not connect/i).waitFor({ timeout: 60000 });
@@ -120,8 +148,10 @@ try {
 const failures = results.filter((result) => result.failure || result.pageErrors?.length);
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-webhook",
+  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   scope: "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
   checks: results.length,
   passed: results.length - failures.length,
@@ -129,7 +159,10 @@ const output = {
   failures,
   results,
 };
-const outputPath = path.join(root, "docs", "UAT_AI_UI_2026-10-18.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_AI_UI_2026-10-19_AUTHFIX.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, checks: output.checks, passed: output.passed, failed: output.failed, failures }));
 if (output.failed) process.exitCode = 1;

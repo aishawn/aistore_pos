@@ -123,12 +123,17 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-deploy",
+  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   scope: "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
   checks,
 };
-const outputPath = path.join(root, "docs", "UAT_SOMMELIER_REGRESSION_2026-10-13.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_SOMMELIER_REGRESSION_2026-10-13.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: checks.filter((check) => check.status === "PASS").length, failed: checks.filter((check) => check.status === "FAIL").length, checks }));
 if (checks.some((check) => check.status === "FAIL")) process.exitCode = 2;

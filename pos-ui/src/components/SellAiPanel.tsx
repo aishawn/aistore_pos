@@ -624,6 +624,10 @@ export function SellAiPanel({
   /** Cloud-only STT via DashScope; no browser Web Speech fallback. */
   async function startVoice() {
     if (busy || listening) return;
+    if (aiEnabled !== true) {
+      setVoiceAlert("AI voice transcription is not enabled for this store. Type your request instead.");
+      return;
+    }
     const session = ++voiceSessionRef.current;
 
     if (!canUseMediaRecorder()) {
@@ -752,7 +756,8 @@ export function SellAiPanel({
         type="button"
         onClick={toggleVoice}
         aria-label={listening ? "Stop voice input" : "Voice input"}
-        disabled={busy}
+        title={aiEnabled === false ? "Voice input is disabled for this store" : undefined}
+        disabled={busy || aiEnabled !== true}
         className={cn(
           "flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white transition-colors disabled:opacity-50",
           listening
@@ -822,12 +827,15 @@ export function SellAiPanel({
       }}
     >
       {expanded && (
-        <div className="pointer-events-auto flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5">
+        <div
+          role="dialog"
+          aria-label="Orithos AI assistant"
+          aria-modal="true"
+          className="pointer-events-auto flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5"
+        >
           <div
             className="flex max-h-[min(72vh,620px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--oh-border)] bg-white"
             style={{ boxShadow: FLOAT_SHADOW }}
-            role="dialog"
-            aria-label="Orithos AI assistant"
           >
             <div
               className={cn(

@@ -42,6 +42,9 @@ try {
   if (!config.response.ok() || config.body.code !== 0 || !Array.isArray(config.body.data?.aiTriggerKeywords)) {
     throw new Error(`AI_CLIENT_CONFIG_FAILED_${config.response.status()}`);
   }
+  if (config.body.data.enabled !== false) {
+    throw new Error("PRODUCTION_AI_IS_ENABLED_ABORTING_MODEL_REQUESTS");
+  }
   record("AI client config", "PASS", `Loaded ${config.body.data.aiTriggerKeywords.length} trigger keywords.`);
 
   for (const endpoint of ["/api/ai/config/intents", "/api/ai/config/slots", "/api/ai/config/slot-values", "/api/ai/config/prompts"]) {
@@ -98,6 +101,46 @@ try {
   const deniedReport = await context.request.get(`${base}/api/ai/reports/1`, { headers: { Origin: base } });
   if (deniedReport.status() !== 401) throw new Error(`ANONYMOUS_REPORT_${deniedReport.status()}`);
   record("Anonymous AI report guard", "PASS", "Report snapshot API returns HTTP 401 after logout.");
+  const anonymousAiRoutes = [
+    ["GET", "/api/ai/config/client"],
+    ["GET", "/api/ai/config/intents"],
+    ["GET", "/api/ai/config/slots"],
+    ["GET", "/api/ai/config/slot-values"],
+    ["GET", "/api/ai/config/prompts"],
+    ["POST", "/api/ai/config/reload"],
+    ["POST", "/api/ai/config/intents"],
+    ["PUT", "/api/ai/config/intents/1"],
+    ["DELETE", "/api/ai/config/intents/1"],
+    ["POST", "/api/ai/config/slots"],
+    ["PUT", "/api/ai/config/slots/1"],
+    ["DELETE", "/api/ai/config/slots/1"],
+    ["POST", "/api/ai/config/slot-values"],
+    ["PUT", "/api/ai/config/slot-values/1"],
+    ["DELETE", "/api/ai/config/slot-values/1"],
+    ["POST", "/api/ai/config/prompts"],
+    ["PUT", "/api/ai/config/prompts/1"],
+    ["DELETE", "/api/ai/config/prompts/1"],
+    ["POST", "/api/ai/transcribe"],
+    ["POST", "/api/ai/sommelier/recommend"],
+    ["GET", "/api/ai/sommelier/identify?q=DEMO"],
+    ["POST", "/api/ai/sommelier/identify-image"],
+    ["GET", "/api/ai/sommelier/wines/1"],
+    ["POST", "/api/ai/sommelier/pitch"],
+    ["POST", "/api/ai/sommelier/similar"],
+    ["POST", "/api/ai/sommelier/ask"],
+    ["POST", "/api/ai/sommelier/feedback"],
+  ];
+  for (const [method, route] of anonymousAiRoutes) {
+    const response = await context.request.fetch(`${base}${route}`, {
+      method,
+      headers: { Origin: base },
+      ...(method === "GET" || method === "DELETE" ? {} : { data: {} }),
+    });
+    if (response.status() !== 401) {
+      throw new Error(`ANONYMOUS_AI_ROUTE_${method}_${route.replaceAll("/", "_")}_${response.status()}`);
+    }
+  }
+  record("Anonymous AI route matrix", "PASS", `${anonymousAiRoutes.length} protected config, voice, label, and Sommelier routes returned HTTP 401; assistant and report were checked separately.`);
 } catch (error) {
   record("AI surface regression", "FAIL", error instanceof Error ? error.message : "Unexpected failure");
 } finally {
@@ -107,14 +150,19 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA ?? "unverified-after-webhook",
+  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   scope: "authenticated AI surface regression; no business, feedback, or AI configuration writes",
   checks,
   passed: checks.filter((check) => check.status === "PASS").length,
   failed: checks.filter((check) => check.status === "FAIL").length,
 };
-const outputPath = path.join(root, "docs", "UAT_AI_SURFACE_2026-10-18.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_AI_SURFACE_2026-10-19_AUTHFIX.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: output.passed, failed: output.failed, checks }));
 if (output.failed) process.exitCode = 2;
