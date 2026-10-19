@@ -53,6 +53,13 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - Wine label vision 和 invoice vision 现在对 `InvalidParameter`、URL、request id、DashScope 原始错误统一返回安全提示；普通异常也不再把 `Exception.getMessage()` 返回给店员。
 - 新增 `WineLabelVisionServiceTest` / `InvoiceVisionServiceTest` 脱敏断言；当前未在本机 Java 8 执行 Maven，需 Java 21 CI/部署验证。
 
+### `bc9c7df` 部署后验证
+
+- 价格建议页面和只读 gate 继续通过。
+- assistant provider 错误仍可复现，但响应为 `50210` 安全提示，gate 的原始供应商错误泄漏检查通过。
+- 视觉 OCR 的 Java 脱敏单测尚未在 Java 21 执行；真实非空图片 provider 回归待 DashScope 配置修正后进行。
+- 证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-BC9C7DF.json`。
+
 Statuses:
 
 | Status | Meaning |
