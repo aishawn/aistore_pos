@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-19T09:00:42.479Z",
+  "sourceCommit": "a0acb7d64a26a6cca9d83add70245bccd70d180f",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "assistant response diagnostics UI; AI request intercepted; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "assistant diagnostics visible",
+      "status": "PASS",
+      "evidence": "AI · report_sales · 16ms"
+    },
+    {
+      "name": "no business writes",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "writes": []
+}

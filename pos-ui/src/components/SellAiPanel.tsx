@@ -71,6 +71,11 @@ interface ChatMessage {
   text: string;
   table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
   reportId?: number | null;
+  diagnostics?: {
+    intent: string;
+    latencyMs: number;
+    status: "ok" | "error";
+  };
 }
 
 const ENABLED_GREETING =
@@ -468,6 +473,7 @@ export function SellAiPanel({
       setBusy(false);
       return;
     }
+    const startedAt = performance.now();
     try {
       const result = await askAssistant(text, threadId);
       setThreadId(result.threadId);
@@ -480,6 +486,11 @@ export function SellAiPanel({
             text: result.answer || "",
             table: result.table ?? null,
             reportId: result.reportId ?? null,
+            diagnostics: {
+              intent: result.intent || "unknown",
+              latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+              status: "ok",
+            },
           },
         ]);
       }
@@ -489,7 +500,15 @@ export function SellAiPanel({
       }
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", text: aiFailureMessage(e, "chat") },
+        {
+          role: "assistant",
+          text: aiFailureMessage(e, "chat"),
+          diagnostics: {
+            intent: "unavailable",
+            latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+            status: "error",
+          },
+        },
       ]);
     } finally {
       busyRef.current = false;
@@ -1077,6 +1096,14 @@ function DialogueView({
                 )}
               </div>
             )}
+            {msg.role === "assistant" && msg.diagnostics ? (
+              <span className={cn(
+                "mt-2 block text-[11px] tabular-nums",
+                msg.diagnostics.status === "ok" ? "text-[var(--oh-muted)]" : "text-rose-600",
+              )}>
+                {msg.diagnostics.status === "ok" ? "AI" : "AI error"} · {msg.diagnostics.intent} · {msg.diagnostics.latencyMs}ms
+              </span>
+            ) : null}
           </div>
         ))}
         {busy && (
