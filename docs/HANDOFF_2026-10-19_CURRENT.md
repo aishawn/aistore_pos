@@ -8,6 +8,7 @@
 - Local Maven verification is unavailable in this workspace because only JDK 8 is installed while the project requires Java 21; the attempted compile also reports unrelated UTF-8 source decoding errors under the Windows JDK. Verify with the Docker/Maven Java 21 build.
 - The deprecation warning for `net.sf.jsqlparser.expression.Parenthesis` remains non-blocking and is separate cleanup work.
 - Next step: commit and push the import fix, trigger the provided Dokploy webhook once, then confirm build success and rerun AI UAT. Until that succeeds, production AI remains **NO-GO**.
+- The fix was committed as `ea8f1b6ed16dc5399a319671c152cbd825a40200` and pushed to `origin/main`. Both a minimal payload and a complete GitHub-style push payload returned `HTTP 301 {"message":"Branch Not Match"}` from the provided webhook, so no Dokploy build was started. The Dokploy Compose service branch/watch configuration must be corrected to `main`, or a normal Deploy must be run from the dashboard, before online verification.
 
 ## 2026-10-19 本轮新增：价格建议 CSV 导出
 
