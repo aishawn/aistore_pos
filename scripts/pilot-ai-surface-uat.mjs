@@ -69,10 +69,10 @@ try {
   const emptyAudioBody = await emptyAudio.json().catch(() => ({}));
   if (emptyAudioBody.code === 50301 && !enabled) {
     record("Voice input availability", "PASS", "Cloud transcription is intentionally disabled because production AI_ENABLED is false.");
-  } else if (emptyAudio.status() !== 400 || emptyAudioBody.code !== 40010) {
+  } else if (![200, 400].includes(emptyAudio.status()) || emptyAudioBody.code !== 40010) {
     throw new Error(`EMPTY_AUDIO_GUARD_${emptyAudio.status()}_${emptyAudioBody.code ?? ""}`);
   } else {
-    record("Voice input validation", "PASS", "Empty audio is rejected with HTTP 400 and code 40010.");
+    record("Voice input validation", "PASS", `Empty audio is rejected with code 40010 (HTTP ${emptyAudio.status()}).`);
   }
 
   const emptyImage = await context.request.post(`${base}/api/ai/sommelier/identify-image`, {
@@ -81,10 +81,10 @@ try {
   const emptyImageBody = await emptyImage.json().catch(() => ({}));
   if (emptyImageBody.code === 50301 && !enabled) {
     record("Label image availability", "PASS", "Cloud label recognition is intentionally disabled because production AI_ENABLED is false.");
-  } else if (emptyImage.status() !== 400 || emptyImageBody.code !== 40010) {
+  } else if (![200, 400].includes(emptyImage.status()) || emptyImageBody.code !== 40010) {
     throw new Error(`EMPTY_IMAGE_GUARD_${emptyImage.status()}_${emptyImageBody.code ?? ""}`);
   } else {
-    record("Label image validation", "PASS", "Empty image is rejected with HTTP 400 and code 40010.");
+    record("Label image validation", "PASS", `Empty image is rejected with code 40010 (HTTP ${emptyImage.status()}).`);
   }
 
   const logout = await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });

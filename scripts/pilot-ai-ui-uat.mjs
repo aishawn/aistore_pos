@@ -83,6 +83,9 @@ async function runViewport(viewport) {
 
   // Every signed-in store page, including overview, exposes the floating assistant.
   await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
+  const aiConfigResponse = await context.request.get(`${base}/api/ai/config/client`);
+  const aiConfigBody = await aiConfigResponse.json().catch(() => ({}));
+  const storeAiEnabled = Boolean(aiConfigBody?.data?.enabled);
   const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
   await fab.waitFor({ state: "visible", timeout: 30000 }).catch(async () => {
     throw new Error(`AI_FAB_MISSING_${viewport.width}_${(await page.locator("body").innerText()).replace(/\\s+/g, " ").slice(0, 600)}`);
@@ -93,16 +96,25 @@ async function runViewport(viewport) {
   if (await assistant.getAttribute("aria-modal") !== "true") {
     throw new Error(`AI_DIALOG_NOT_MODAL_${viewport.width}`);
   }
-  if (await assistant.getByRole("button", { name: "Voice input" }).isEnabled()) {
+  const voiceButton = assistant.getByRole("button", { name: "Voice input" });
+  if (storeAiEnabled && !(await voiceButton.isEnabled())) {
+    throw new Error(`AI_VOICE_DISABLED_WHILE_STORE_AI_ENABLED_${viewport.width}`);
+  }
+  if (!storeAiEnabled && (await voiceButton.isEnabled())) {
     throw new Error(`AI_VOICE_ENABLED_WHILE_STORE_AI_DISABLED_${viewport.width}`);
   }
-  const composer = assistant.getByPlaceholder("AI chat is off for this store");
+  const composer = assistant.getByPlaceholder(/Ask Orithos AI|AI chat is off for this store/);
   await composer.waitFor({ state: "visible", timeout: 10000 });
-  if (await composer.isEnabled()) {
+  if (storeAiEnabled && (await composer.isDisabled())) {
+    throw new Error(`AI_COMPOSER_DISABLED_WHILE_STORE_AI_ENABLED_${viewport.width}`);
+  }
+  if (!storeAiEnabled && (await composer.isEnabled())) {
     throw new Error(`AI_COMPOSER_ENABLED_WHILE_STORE_AI_DISABLED_${viewport.width}`);
   }
-  await assistant.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
-  await assistant.getByText("Shortcuts still work without AI chat").waitFor({ timeout: 10000 });
+  if (!storeAiEnabled) {
+    await assistant.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
+    await assistant.getByText("Shortcuts still work without AI chat").waitFor({ timeout: 10000 });
+  }
   for (let index = 0; index < 6; index += 1) {
     await page.keyboard.press("Tab");
     const trapped = await assistant.evaluate((element) => element.contains(document.activeElement));
@@ -128,7 +140,10 @@ async function runViewport(viewport) {
   ).catch(() => { throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}`); });
   await restoredFab.click();
   await assistant.waitFor({ state: "visible", timeout: 10000 });
-  if (await composer.isEnabled()) {
+  if (storeAiEnabled && (await composer.isDisabled())) {
+    throw new Error(`AI_COMPOSER_STILL_DISABLED_${viewport.width}`);
+  }
+  if (!storeAiEnabled && (await composer.isEnabled())) {
     throw new Error(`AI_COMPOSER_STILL_ENABLED_${viewport.width}`);
   }
   results.push({ viewport: viewport.width, recommendationCards, identifyItems, pageErrors });

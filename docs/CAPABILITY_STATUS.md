@@ -19,6 +19,7 @@ Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from side
 - 本地 Playwright fixture `docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_SEARCH.json`：搜索命中、无匹配、状态筛选、CSV 导出和非 GET 请求 `0` 均 PASS。
 - 本批变更尚未部署；需和 `ea8f1b6` AI 编译修复一起通过 Dokploy Java 21 构建后，再做线上价格建议 gate 与全站矩阵。
 - 公网只读 gate 后续观察到 `/stock/price-suggestions` 已显示商品/SKU搜索和状态筛选，AI assistant、Sommelier 页面及价格无写入断言也通过；证据 `docs/UAT_AI_ENABLED_GATE_2026-10-19_POST-D9089BB_ONLINE-PRICE-FILTER.json`。该行为证据不替代 Dokploy 容器 SHA、构建日志和健康状态取证。
+- 启用态公网回归补充通过：AI surface `11/11`、AI UI `2/2`；空音频/空图片均返回业务码 `40010`，匿名 AI 路由矩阵 `27` 条全部 `401`，UI 正确显示启用态聊天/语音控件。证据：`docs/UAT_AI_SURFACE_2026-10-19_POST-9B01128_ENABLED-AWARE-RETRY2.json`、`docs/UAT_AI_UI_2026-10-19_POST-9B01128_ENABLED-AWARE-RETRY.json`。UAT 已按 `AI_ENABLED` 动态区分启用/关闭态，避免旧断言误报。
 
 ### 2026-10-19 `26f1d47` 部署后回归
 
