@@ -82,8 +82,9 @@ try {
 
   await input.fill("13.50");
   await page.getByRole("heading", { name: "Bulk Price Edit" }).click();
-  await page.getByRole("alert").waitFor({ state: "visible", timeout: 10000 });
-  record("failed save is announced", await page.getByRole("alert").getByText("Price update rejected").count() === 1, "cell-level alert contains safe API message");
+  const saveAlert = page.getByText("Price update rejected", { exact: true });
+  await saveAlert.waitFor({ state: "visible", timeout: 10000 });
+  record("failed save is announced", await saveAlert.getAttribute("role") === "alert", "cell-level alert contains safe API message");
   record("failed save rolls back", await input.inputValue() === "12", await input.inputValue());
   record("input is not left busy", (await input.getAttribute("aria-busy")) !== "true", await input.getAttribute("aria-busy") ?? "unset");
 

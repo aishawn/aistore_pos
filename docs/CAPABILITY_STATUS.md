@@ -1,17 +1,23 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-19（Retry/Auth 与 131 路由全站矩阵通过；Dokploy 运行 SHA 未核验）
+**Last updated:** 2026-10-19（行内价格保存失败保护本地通过，待集中部署线上复验）
 **Source of truth for business data:** Odoo (via `pos-ui` `/api/odoo/*`).  
 Classic Spring/MySQL POS remains in-repo as **reference only** (hidden from sidebar unless `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`).
 
 ### 2026-10-19 当前公网回归汇总
-
 - 线上 AI 已启用：availability `3/3 PASS`、surface `11/11 PASS`、UI `2/2 PASS`；AI 全功能只读矩阵 `14 PASS / 0 FAIL / 1 INFO`。Invoice OCR 的 `INFO` 仅表示探针图片没有发票字段，不代表真实发票字段提取已验收。
 - 价格建议页的商品/SKU搜索、状态筛选、CSV导出和 `writeEnabled=false` 保护已在公网观察到；未产生价格写入。
 - 全站静态矩阵更新为 `133 路由 × 390/1440 = 266/266 PASS`，独立证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-19_POST-4487A12.json`。
 - 视觉 AI 已按模型路由 native multimodal / compatible chat；真实酒标和发票照片的业务字段提取仍需专门验收。
 - 以上公网行为不替代 Dokploy 控制台的 frontend/backend 容器 SHA、构建日志和健康状态取证。
 - 价格建议现在可将单个 SKU 深链到 Bulk Price Edit，Bulk Price Edit 会预填 SKU 并发送同一搜索条件；本地 `16` 项 fixture UAT 全部通过，仍保持无自动价格写入。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_DEEP-LINK.json`。
+
+### 2026-10-19 行内价格保存可靠性
+
+- Stock List、Capped Pricing、Bulk Price Edit 的行内编辑在提交失败时提供错误提示；Stock List/Capped Pricing 保留用户编辑值供修正或重试，Bulk Price Edit 失败回滚到服务端值。提交期间输入禁用并标记 `aria-busy`，Stock List/Capped Pricing 使用同步锁抑制重复 blur PATCH。
+- Stock List 与 Capped Pricing 本地 Playwright 故障注入 `8/8 PASS`：两处首次 PATCH 503 后错误可见、编辑值保留、重试成功；Stock List 重叠 blur 只产生一次并发 PATCH。所有 PATCH 均由 fixture 截获。证据：`docs/UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`。
+- Bulk Price Edit 本地故障注入 `7/7 PASS`：失败提示、回滚、busy 清除和后续重试通过；证据：`docs/UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`。
+- 本地 TypeScript、三个目标组件 ESLint 和相关 UAT 脚本语法检查通过。未运行本地 build；这批变更待 Dokploy 部署后做线上只读与容器构建回归。
 
 ### 2026-10-19 价格建议运营补强
 

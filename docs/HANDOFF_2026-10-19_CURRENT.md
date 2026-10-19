@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 当前批次：价格编辑可靠性
+
+- Stock List 与 Capped Pricing 现在防止同一行重复 blur 提交；提交中锁定该行输入。失败时显示单元格/行错误，保留用户输入供修正或重试。
+- Bulk Price Edit 已有相同保存失败保护：失败显示错误并回滚到已保存价格；busy 状态清除后可继续编辑。
+- 本地 fixture 结果：Stock List + Capped Pricing `8/8 PASS`；Bulk Price Edit `7/7 PASS`；Price Suggestions 深链 `16/16 PASS`；AI capability gate `2/2 PASS`（390/1440）。所有业务请求在浏览器 fixture 中拦截，真实业务写请求 `0`。证据分别见 `UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`、`UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-19_POST-1C4A7B1.json`、`UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_POST-1C4A7B1.json`、`UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-19_POST-1C4A7B1.json`。
+- TypeScript、目标 ESLint、测试脚本语法与 `git diff --check` 通过。按约束未运行本地 build。
+- 源码提交 `1c4a7b1`；该批次尚未部署。下一步将本批代码、UAT 证据与功能清单一起推送，并只触发一次 Dokploy；部署后检查 Stock List、Capped Pricing、Bulk Price Edit 和 AI 能力状态，再回读容器 SHA/构建/健康信息。
+
 ## 2026-10-19 Smart Pricing 到 Bulk Price Edit 闭环
 
 - 价格建议每行新增 `Bulk edit this product`，携带 SKU 进入 `/stock/bulk-price-edit?search=...`；Bulk Price Edit 使用 `useSearchParams` 预填搜索并请求相同 SKU。
@@ -56,7 +64,7 @@
 
 > **当前有效摘要（2026-10-19）**
 >
-> 用户反馈线上已部署 `7544d03`，但目前没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。因此 `7544d03` 只能作为待核对的部署声明，不能作为审计后的运行版本。仓库 `main` 和 `origin/main` 当前为 `d0c5d8f`；接手时先确认线上实际运行提交。
+> 用户此前反馈线上已部署 `7544d03`，但没有从 Dokploy 控制台独立回读该 SHA 对应的 frontend/backend 容器、构建日志、健康状态和部署时间。当前仓库源码已推进至 `1c4a7b1`；本交接顶部列出的新批次尚未部署。不要把历史部署声明或公网页面行为当作当前容器 SHA 的证明。
 
 ## 交接结论
 
