@@ -68,24 +68,43 @@ function CappedPriceRowEditor({
 }) {
   const [current, setCurrent] = useState(row.currentPrice != null ? String(row.currentPrice) : "");
   const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     setCurrent(row.currentPrice != null ? String(row.currentPrice) : "");
     setDirty(false);
+    setSaveError(null);
   }, [row]);
 
   const save = useCallback(async () => {
+    if (savingRef.current) return;
     const priceNum = current === "" ? null : Number(current);
     if (priceNum === row.currentPrice || !row.priceId || priceNum == null || Number.isNaN(priceNum)) {
       setDirty(false);
       return;
     }
-    await api.patch("/api/capped-pricing/current-price", {
-      priceId: row.priceId,
-      price: priceNum,
-    });
-    setDirty(false);
-    onSaved();
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      setSaveError("Enter a valid price of zero or more.");
+      return;
+    }
+    setSaveError(null);
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await api.patch("/api/capped-pricing/current-price", {
+        priceId: row.priceId,
+        price: priceNum,
+      });
+      setDirty(false);
+      onSaved();
+    } catch (cause) {
+      setSaveError(cause instanceof Error ? cause.message : "Could not save the current price.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   }, [current, onSaved, row.currentPrice, row.priceId]);
 
   const currentNum = current === "" ? null : Number(current);
@@ -110,15 +129,28 @@ function CappedPriceRowEditor({
         <div className="relative">
           <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
           <input
+            type="number"
+            min="0"
+            step="0.01"
             className={cellInput(cn("pl-5", overCap && "text-[#e2231a]"))}
             value={current}
+            aria-busy={saving}
+            aria-invalid={saveError ? true : undefined}
+            title={saveError ?? undefined}
+            disabled={saving}
             onChange={(e) => {
               setCurrent(e.target.value);
+              setSaveError(null);
               setDirty(true);
               onDirty();
             }}
             onBlur={() => void save()}
           />
+          {saveError ? (
+            <span role="alert" className="absolute left-1 top-full z-20 mt-1 w-48 rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] leading-4 text-red-800 shadow-sm">
+              {saveError}
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="min-w-0 flex-1 px-3 pt-1.5">{marginPct(row.cost, currentNum)}</div>
@@ -260,11 +292,6 @@ export function CappedPricingPage() {
     { sourceType: listSourceType, page, size: PAGE_SIZE },
   );
 
-  useEffect(() => {
-    setHasChanges(false);
-    setPage(1);
-  }, [tab]);
-
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
       <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-neutral-200 px-6 py-4">
@@ -288,7 +315,11 @@ export function CappedPricingPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => setTab(key)}
+                onClick={() => {
+                  setTab(key);
+                  setHasChanges(false);
+                  setPage(1);
+                }}
                 className={cn(
                   "flex items-center gap-2 px-5 py-2.5 text-[14px] font-medium transition-colors",
                   active ? "bg-[#b8d9eb] text-black" : "bg-white text-neutral-600 hover:bg-neutral-50",

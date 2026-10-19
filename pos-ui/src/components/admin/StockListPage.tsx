@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ExportIcon } from "@/components/icons";
 import { RefreshCw } from "lucide-react";
@@ -93,15 +93,19 @@ function StockListRowEditor({
   const [cost, setCost] = useState(num(row.cost));
   const [price, setPrice] = useState(num(row.price));
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     setName(row.name);
     setQuantity(num(row.priceQuantity));
     setCost(num(row.cost));
     setPrice(num(row.price));
+    setSaveError(null);
   }, [row]);
 
   const save = useCallback(async () => {
+    if (savingRef.current) return;
     setSaveError(null);
     const body: Record<string, unknown> = {};
     if (name.trim() !== row.name) body.name = name.trim();
@@ -133,11 +137,16 @@ function StockListRowEditor({
       body.priceQuantity = qtyNum ?? row.priceQuantity ?? 1;
     }
     if (Object.keys(body).length === 0) return;
+    savingRef.current = true;
+    setSaving(true);
     try {
       await api.patch(`/api/stock-list/${row.id}`, body);
       onSaved();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save row");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }, [cost, name, onSaved, price, quantity, row]);
 
@@ -151,8 +160,14 @@ function StockListRowEditor({
         <input
           className={cellInput()}
           aria-label={`Product name for ${row.name}`}
+          aria-busy={saving}
+          aria-invalid={saveError ? true : undefined}
+          disabled={saving}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (saveError) setSaveError(null);
+          }}
           onBlur={() => void save()}
         />
       </div>
@@ -168,6 +183,9 @@ function StockListRowEditor({
           step="1"
           className={cellInput("text-center")}
           aria-label={`Price quantity for ${row.name}`}
+          aria-busy={saving}
+          aria-invalid={saveError ? true : undefined}
+          disabled={saving}
           value={quantity}
           onChange={(e) => {
             setQuantity(e.target.value);
@@ -183,8 +201,14 @@ function StockListRowEditor({
           <input
             className={cellInput("pl-5")}
             aria-label={`Cost for ${row.name}`}
+            aria-busy={saving}
+            aria-invalid={saveError ? true : undefined}
+            disabled={saving}
             value={cost}
-            onChange={(e) => setCost(e.target.value)}
+            onChange={(e) => {
+              setCost(e.target.value);
+              if (saveError) setSaveError(null);
+            }}
             onBlur={() => void save()}
           />
         </div>
@@ -195,8 +219,14 @@ function StockListRowEditor({
           <input
             className={cellInput("pl-5")}
             aria-label={`Price for ${row.name}`}
+            aria-busy={saving}
+            aria-invalid={saveError ? true : undefined}
+            disabled={saving}
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              if (saveError) setSaveError(null);
+            }}
             onBlur={() => void save()}
           />
         </div>
