@@ -92,6 +92,10 @@ try {
     await page.getByRole("heading", { name: "AI query metrics" }).waitFor({ timeout: 60000 });
     const table = await page.getByRole("heading", { name: "By AI path" }).isVisible().catch(() => false);
     record(`metrics UI ${viewport.width}px`, pageErrors.length === 0 && table ? "PASS" : "FAIL", `table=${table} pageErrors=${pageErrors.length}`);
+    const tableSemantics = await page.locator("table caption").count() === 1
+      && await page.locator("table thead th[scope=col]").count() === 6
+      && await page.locator("main[aria-busy]").count() === 1;
+    record(`metrics accessibility ${viewport.width}px`, pageErrors.length === 0 && tableSemantics ? "PASS" : "FAIL", `caption=${await page.locator("table caption").count()} scopedHeaders=${await page.locator("table thead th[scope=col]").count()} busy=${await page.locator("main[aria-busy]").count()}`);
     await page.close();
   }
 

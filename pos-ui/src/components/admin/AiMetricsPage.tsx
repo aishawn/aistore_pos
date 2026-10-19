@@ -38,7 +38,7 @@ export function AiMetricsPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+    <main aria-busy={loading || refreshing} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Orithos AI · Admin</p>
@@ -63,15 +63,15 @@ export function AiMetricsPage() {
           <Metric title="AI requests" value={data.summary.requests.toLocaleString()} detail={`${data.summary.allowed} allowed · ${data.summary.rejected} rejected`} />
           <Metric title="Allowed rate" value={`${data.summary.allowedRate.toFixed(1)}%`} detail="AI guard passed" />
           <Metric title="Average latency" value={`${Math.round(data.summary.averageLatencyMs)} ms`} detail={`p50 ${data.summary.p50LatencyMs ?? "—"} · p95 ${data.summary.p95LatencyMs ?? "—"}`} icon={<Clock3 size={17} />} />
-          <Metric title="Estimated tokens" value={data.summary.estimatedTokens.toLocaleString()} detail="Prompt/SQL estimate only" />
+          <Metric title="Estimated tokens" value={data.summary.estimatedTokens.toLocaleString()} detail="Character-based estimate only" />
           <Metric title="Tenant scope" value="Current store" detail="Vendor-scoped and admin-only" icon={<ShieldCheck size={17} />} />
         </section>
 
         <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           <div className="border-b border-[var(--oh-border)] px-4 py-4 md:px-5"><h2 className="oh-type-title text-[var(--oh-text)]">By AI path</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Assistant intents and report paths are aggregate only.</p></div>
-          {data.byPath.length ? <div className="overflow-x-auto"><table className="min-w-[720px] w-full text-left text-sm"><thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><tr><th className="px-4 py-3 font-semibold md:px-5">Path</th><th className="px-4 py-3 font-semibold">Requests</th><th className="px-4 py-3 font-semibold">Allowed</th><th className="px-4 py-3 font-semibold">Rate</th><th className="px-4 py-3 font-semibold">Avg latency</th><th className="px-4 py-3 font-semibold">Est. tokens</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{data.byPath.map((item) => <tr key={item.path}><td className="px-4 py-3 font-medium text-[var(--oh-text)] md:px-5">{item.path}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.requests}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowed}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowedRate.toFixed(1)}%</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{Math.round(item.averageLatencyMs)} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.estimatedTokens.toLocaleString()}</td></tr>)}</tbody></table></div> : <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No AI audit events in this period.</p>}
+          {data.byPath.length ? <div className="overflow-x-auto"><table className="min-w-[720px] w-full text-left text-sm"><caption className="sr-only">AI requests grouped by assistant intent and report path</caption><thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3 font-semibold md:px-5">Path</th><th scope="col" className="px-4 py-3 font-semibold">Requests</th><th scope="col" className="px-4 py-3 font-semibold">Allowed</th><th scope="col" className="px-4 py-3 font-semibold">Rate</th><th scope="col" className="px-4 py-3 font-semibold">Avg latency</th><th scope="col" className="px-4 py-3 font-semibold">Est. tokens</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{data.byPath.map((item) => <tr key={item.path}><td className="px-4 py-3 font-medium text-[var(--oh-text)] md:px-5">{item.path}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.requests}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowed}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowedRate.toFixed(1)}%</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{Math.round(item.averageLatencyMs)} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.estimatedTokens.toLocaleString()}</td></tr>)}</tbody></table></div> : <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No AI audit events in this period.</p>}
         </section>
-        <p className="oh-type-meta inline-flex items-start gap-2 text-[var(--oh-muted)]"><ShieldCheck size={14} className="mt-0.5 shrink-0" />Generated {new Date(data.generatedAt).toLocaleString()} · Estimated tokens are calculated from stored prompt/SQL character counts and are not provider billing usage.</p>
+        <p className="oh-type-meta inline-flex items-start gap-2 text-[var(--oh-muted)]"><ShieldCheck size={14} className="mt-0.5 shrink-0" />Generated {new Date(data.generatedAt).toLocaleString()} · Estimated tokens use character counts and are not provider billing usage.</p>
       </> : null}
     </main>
   );
