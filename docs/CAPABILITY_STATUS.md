@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-19（行内价格保存保护与 Stock/Capped Pricing 响应式表格本地通过；响应式改动待部署）
 
+### AI Metrics UI 语义增强（`74e9412`）
+
+- AI Metrics 表格增加可访问 caption 和列头 `scope`，页面根节点在刷新期间暴露 `aria-busy`。
+- Dokploy 部署后线上 UAT `9/9 PASS`，覆盖管理员/匿名鉴权、assistant intent 指标、390/1440 UI 和新增语义断言；证据 `docs/UAT_AI_METRICS_ONLINE_74E9412.json`。
+
 ### 最新专项回归（2026-10-19）
 
 - Sommelier `10/10`、Legacy Retry `5/5`、Closure、Overview、Reporting、权限、采购移动端和发票 mock 均通过，均未写入 Demo 业务数据。

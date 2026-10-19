@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-19 AI Metrics 可访问性迭代
+
+- `74e9412` 为 AI Metrics 页面增加表格 caption、6 个列头 `scope="col"` 和刷新期间的 `aria-busy` 状态；这些语义不改变业务数据或 AI 请求行为。
+- UAT 脚本增加 390/1440 可访问性断言。Dokploy 接受 `74e9412` 后，线上 AI Metrics `9/9 PASS`：管理员指标读取、assistant intent 统计、匿名 `401`、两种视口 UI、caption、列头 scope 和 busy 状态均通过；非 GET 业务/配置写入 `0`。
+- 证据：`docs/UAT_AI_METRICS_ONLINE_74E9412.json`。该文件的 deployment 字段为目标提交短 SHA，Dokploy 控制台完整构建日志、容器 SHA 和健康状态仍待独立回读。
+
 ## 2026-10-19 最新专项回归汇总
 
 - 主店只读专项全部通过：Sommelier `10/10`、Legacy Retry `5/5`、Closure Recovery、Overview Race、Reporting Race、Role Permission Retry、Purchase Mobile Mock、Invoice Scan Mock 均 PASS；没有产生业务写入。
