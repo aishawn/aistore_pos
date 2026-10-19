@@ -64,7 +64,8 @@ try {
     && Array.isArray(metricsBody?.data?.byPath);
   record("admin metrics response", valid ? "PASS" : "FAIL", valid ? `status=${metrics.status()} paths=${metricsBody.data.byPath.length}` : `status=${metrics.status()} code=${metricsBody?.code ?? "missing"}`);
 
-  const assistantPath = metricsBody?.data?.byPath?.find((item) => typeof item?.path === "string" && item.path.startsWith("assistant:"));
+  const expectedAssistantPath = assistantOk ? `assistant:${assistantIntent}` : "";
+  const assistantPath = metricsBody?.data?.byPath?.find((item) => item?.path === expectedAssistantPath);
   const assistantPathValid = assistantOk
     && assistantPath
     && Number(assistantPath.requests) > 0
@@ -72,7 +73,7 @@ try {
     && Number(assistantPath.estimatedTokens) > 0;
   record("assistant intent metrics coverage", assistantPathValid ? "PASS" : "FAIL", assistantPathValid
     ? `${assistantPath.path} requests=${assistantPath.requests} allowed=${assistantPath.allowed} estimatedTokens=${assistantPath.estimatedTokens}`
-    : "assistant path or estimated tokens missing");
+    : `expected ${expectedAssistantPath || "assistant:<intent>"} path or estimated tokens missing`);
 
   const anonymousContext = await browser.newContext();
   const anonymous = await anonymousContext.request.get(`${base}/api/ai/metrics?hours=24`, { headers: { Origin: base }, timeout: 60000 });

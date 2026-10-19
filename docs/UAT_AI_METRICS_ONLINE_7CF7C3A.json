@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-19T14:04:17.455Z",
+  "sourceCommit": "7cf7c3a",
+  "target": "https://demo.orithos.com.au",
+  "scope": "admin-only AI report metrics read-only regression; no business or configuration writes",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "assistant audit seed",
+      "status": "PASS",
+      "detail": "intent=search_product"
+    },
+    {
+      "name": "admin metrics response",
+      "status": "PASS",
+      "detail": "status=200 paths=2"
+    },
+    {
+      "name": "assistant intent metrics coverage",
+      "status": "PASS",
+      "detail": "assistant:search_product requests=3 allowed=3 estimatedTokens=33"
+    },
+    {
+      "name": "anonymous metrics guard",
+      "status": "PASS",
+      "detail": "status=401"
+    },
+    {
+      "name": "metrics UI 390px",
+      "status": "PASS",
+      "detail": "table=true pageErrors=0"
+    },
+    {
+      "name": "metrics UI 1440px",
+      "status": "PASS",
+      "detail": "table=true pageErrors=0"
+    }
+  ],
+  "writes": [],
+  "status": "PASS"
+}

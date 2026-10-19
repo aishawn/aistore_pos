@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前运行时代码：`6aa867c`；当前仓库/`origin/main`：`e69eba9`（仅 UAT 脚本与文档更新）
+当前运行时代码：`7cf7c3a`；当前仓库/`origin/main`：`7cf7c3a`
 本轮 Dokploy webhook：HTTP `200`，返回 `Compose deployed successfully`；控制台运行容器 SHA 仍未独立回读。
 
 ## 结论
@@ -52,7 +52,7 @@
 | 项目 | 状态 |
 |---|---|
 | Dokploy 运行身份 | webhook 已返回成功，线上功能回归证明新 assistant metrics 行为可用；仍缺控制台独立回读 frontend/backend SHA、构建日志、健康状态和部署完成时间。 |
-| AI metrics 的 assistant 覆盖 | 已提交并部署到 `6aa867c`；真实 assistant 请求返回 `entity_action`，metrics `byPath` 出现 `assistant:entity_action`（2 requests，32 estimated tokens）。估算 token 仍不是 provider billing usage。 |
+| AI metrics 的 assistant 覆盖 | 已提交并部署到 `7cf7c3a`；真实 assistant 请求返回 `search_product`，metrics `byPath` 严格匹配对应 assistant intent，管理员 `200`、匿名 `401`。估算 token 仍不是 provider billing usage。 |
 | 真实发票 OCR | 当前为 preview-only；没有真实供应商发票图片字段提取的完整证据。不得据此创建供应商、采购单、收货单或库存。 |
 | Stocktake 写入 | 管理员只读和前置保护已完成；隔离公司中的确认、取消、库存回读和幂等写入尚未验收，生产写入开关保持关闭。 |
 | 实体支付和设备 | 实体刷卡机、打印机、钱箱、终端断网和硬件对账未接入/未验收。 |
@@ -61,7 +61,7 @@
 
 ## 当前问题和风险
 
-1. **版本证据断链**：当前 `origin/main` 为 `6aa867c`，历史证据仍包含旧 deployment 字段；公网返回 200 和 webhook 成功不能替代 Dokploy 控制台运行 SHA、构建日志和健康状态证据。
+1. **版本证据断链**：当前 `origin/main` 为 `7cf7c3a`，历史证据仍包含旧 deployment 字段；公网返回 200 和 webhook 成功不能替代 Dokploy 控制台运行 SHA、构建日志和健康状态证据。
 2. **AI 环境记录不一致**：历史批次曾记录 `AI_ENABLED=false`，最新批次记录 `enabled=true`。必须以 Dokploy 当前容器环境和真实请求结果为准。
 3. **证据类型混杂**：`docs/` 同时包含真实隔离租户、只读、fixture、mock 和旧版本证据；阅读时必须检查 `generatedAt`、`sourceCommit`、`deployment` 和是否产生写入。
 4. **生产写入风险**：后续销售、退款、采购、收货、现金、关班和 Stocktake 只能使用一次性隔离租户，禁止写入 Demo 公司。
@@ -77,14 +77,16 @@
 - 线上证据：`docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`；部署后复验：`docs/UAT_AI_METRICS_ONLINE_2275378.json`。两次均为管理员 `200`、匿名 `401`、UI `2/2 PASS`、页面错误 `0`、业务/配置写入 `0`。
 - 同批线上 AI 复验：功能 `14 PASS / 0 FAIL / 1 INFO`、AI UI `2/2 PASS`、Sommelier `10/10 PASS`。发票 OCR 仍为 `50212 INFO`，需要真实发票图片才能继续验收。
 
-## 已部署 AI 指标扩展（`02faa09`，线上行为在 `6aa867c` 验证）
+## 已部署 AI 指标扩展（`02faa09` + `7cf7c3a`，线上行为在 `7cf7c3a` 验证）
 
 - assistant 请求记录 `path=assistant:<intent>`、允许/拒绝、耗时和估算 token。
 - 指标表新增持久化 `estimated_tokens`，旧数据继续使用字符数 fallback。
 - assistant 审计不保存原问题、答案或 SQL；失败请求记录统一的 `ASSISTANT_FAILED` 原因。
+- AI 关闭、provider 未配置或 base URL 无效时，认证 assistant 请求也会写入 rejected audit，避免失败率漏统计。
 - 管理页面和 UAT 定位文案已从 report metrics 更新为 AI metrics。
 - 已通过本地 `pos-ui` typecheck、目标 ESLint、UAT 脚本语法和 `git diff --check`。
 - 线上验证：assistant `entity_action` 成功；`byPath` 出现 `assistant:entity_action`，requests `2`，allowed `2`，estimatedTokens `32`；metrics 管理员 `200`、匿名 `401`，390/1440 页面均无 JS 错误。
+- 最新线上验证：assistant `search_product` 成功；metrics UAT 严格检查 `assistant:search_product`，并通过管理员 `200`、匿名 `401`、390/1440 页面无 JS 错误。
 
 ## 本轮视觉能力位修复（`39e0dc8`）
 
@@ -111,6 +113,7 @@
 - `docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`
 - `docs/UAT_AI_METRICS_ONLINE_2275378.json`
 - `docs/UAT_AI_METRICS_ONLINE_6AA867C.json`
+- `docs/UAT_AI_METRICS_ONLINE_7CF7C3A.json`
 
 这些证据未保存密码、JWT、cookie、API key 或 provider 原始错误。
 
