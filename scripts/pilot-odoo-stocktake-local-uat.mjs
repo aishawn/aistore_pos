@@ -102,6 +102,12 @@ async function runViewport(viewport) {
     await page.screenshot({ path: screenshotPath, fullPage: true });
 
     const reviewButton = page.getByRole("button", { name: "Review and apply" });
+    let invalidQuantityGuard = true;
+    if (writeEnabled) {
+      await page.locator('input[aria-label="Counted quantity for Demo Chardonnay"]:visible').fill("1000001");
+      invalidQuantityGuard = await reviewButton.isDisabled();
+      await page.locator('input[aria-label="Counted quantity for Demo Chardonnay"]:visible').fill("4");
+    }
     let cancelKeptNoWrite = false;
     if (writeEnabled) {
       if (await reviewButton.isDisabled()) {
@@ -151,6 +157,7 @@ async function runViewport(viewport) {
       horizontalOverflow,
       pageErrors,
       locationRetryRecovered,
+      invalidQuantityGuard,
       screenshotPath,
     });
   } finally {
@@ -171,6 +178,7 @@ const failures = results.filter((result) => !result.cancelKeptNoWrite
   || !result.confirmationPayloadValid
   || result.horizontalOverflow
   || !result.locationRetryRecovered
+  || !result.invalidQuantityGuard
   || result.pageErrors.length > 0);
 const output = {
   generatedAt: new Date().toISOString(),

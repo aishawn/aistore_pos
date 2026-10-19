@@ -27,6 +27,8 @@ type StocktakeResponse = {
   products: StocktakeProduct[];
 };
 type CountLine = StocktakeProduct & { countedQty: string };
+const MAX_COUNT_LINES = 40;
+const MAX_COUNTED_QUANTITY = 1_000_000;
 
 function quantity(value: number) {
   return new Intl.NumberFormat("en-AU", { maximumFractionDigits: 3 }).format(value);
@@ -108,12 +110,15 @@ export default function OdooStocktakePage() {
 
   const selectedLocation = locations.find((location) => String(location.id) === locationId);
   const eligibleProducts = products.filter((product) => product.eligible);
-  const incompleteCount = countLines.filter((line) => !line.countedQty.trim() || !Number.isFinite(Number(line.countedQty)) || Number(line.countedQty) < 0).length;
+  const invalidCount = countLines.filter((line) => !line.countedQty.trim()
+    || !Number.isFinite(Number(line.countedQty))
+    || Number(line.countedQty) < 0
+    || Number(line.countedQty) > MAX_COUNTED_QUANTITY).length;
   const changedLines = countLines.filter((line) => {
     const amount = delta(line.expectedQty, line.countedQty);
     return amount !== null && Math.abs(amount) > 0.000001;
   });
-  const canReview = writeEnabled && countLines.length > 0 && incompleteCount === 0 && changedLines.length > 0 && !applying;
+  const canReview = writeEnabled && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying;
   const totalIncrease = changedLines.reduce((sum, line) => sum + Math.max(0, Number(line.countedQty) - line.expectedQty), 0);
   const totalDecrease = changedLines.reduce((sum, line) => sum + Math.max(0, line.expectedQty - Number(line.countedQty)), 0);
 
@@ -244,10 +249,10 @@ export default function OdooStocktakePage() {
                       <button
                         type="button"
                         onClick={() => addProduct(product)}
-                        disabled={!product.eligible || countLines.some((line) => line.id === product.id)}
+                        disabled={!product.eligible || countLines.some((line) => line.id === product.id) || countLines.length >= MAX_COUNT_LINES}
                         className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        <Plus size={15} aria-hidden="true" />{countLines.some((line) => line.id === product.id) ? "Added" : "Add to count"}
+                        <Plus size={15} aria-hidden="true" />{countLines.some((line) => line.id === product.id) ? "Added" : countLines.length >= MAX_COUNT_LINES ? "Limit reached" : "Add to count"}
                       </button>
                     </div>
                   ))}
@@ -296,7 +301,7 @@ export default function OdooStocktakePage() {
                   })}
                 </div>
                 <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3">
-                  <p className="text-xs text-[var(--oh-muted)]">{!writeEnabled ? "Stock adjustments are not enabled for this store." : incompleteCount ? "Enter a counted quantity for each product." : changedLines.length ? `${changedLines.length} variance${changedLines.length === 1 ? "" : "s"} to apply.` : "No stock differences to apply."}</p>
+                  <p className="text-xs text-[var(--oh-muted)]">{!writeEnabled ? "Stock adjustments are not enabled for this store." : invalidCount ? `Enter quantities from 0 to ${MAX_COUNTED_QUANTITY.toLocaleString("en-AU")} for every product.` : changedLines.length ? `${changedLines.length} variance${changedLines.length === 1 ? "" : "s"} to apply.` : "No stock differences to apply."}</p>
                   <button type="button" onClick={() => { setApplyError(null); setReviewOpen(true); }} disabled={!canReview} className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50">Review and apply</button>
                 </footer>
               </>
