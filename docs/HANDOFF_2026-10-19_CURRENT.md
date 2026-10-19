@@ -719,4 +719,5 @@
 - 手机端新会话默认将浮动助手上移到底部安全区，避免覆盖分页和底部操作；用户已保存的拖动位置仍保持。
 - 本地验证：`npm run typecheck`、`SellAiPanel` ESLint、AI UAT `node --check`、`git diff --check` 通过；未运行 build。两个本地 AI fixture 因 `demo.localhost:3035` 页面加载超时，未形成通过证据。
 - 公网验证：AI UI `2/2 PASS`（390/1440，焦点循环/恢复、发送按钮、ARIA、FAB 安全距离）；价格/库存 `8/8 PASS`；表格/表单 `14/14 PASS`；页面错误 0，意外业务写入 0。证据：`docs/UAT_AI_UI_POST_E9D9D69_RETRY.json`、`docs/UAT_PRICING_POST_E9D9D69.json`、`docs/UAT_TABLE_A11Y_POST_E9D9D69.json`。
+- 全站只读矩阵复测 `134 路由 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出；证据：`docs/UAT_ALL_STATIC_PAGES_POST_351C02F.json`。
 - `e9d9d69` 已推送并由 webhook 接受；Dokploy 容器 SHA、完整构建日志和健康状态仍需控制台回读，整体发布保持 **NO-GO**。
