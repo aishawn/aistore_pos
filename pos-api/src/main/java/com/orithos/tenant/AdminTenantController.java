@@ -180,7 +180,8 @@ public class AdminTenantController {
         forbidOperatorLifecycle(vendor);
         forbidDeleted(vendor);
         LocalDateTime ends = LocalDateTime.now().plusDays(body.days());
-        String status = "expired".equalsIgnoreCase(vendor.getStatus()) ? "trial" : vendor.getStatus();
+        String currentStatus = vendor.getStatus() == null ? "" : vendor.getStatus().trim().toLowerCase(Locale.ROOT);
+        String status = "expired".equalsIgnoreCase(currentStatus) ? "trial" : vendor.getStatus();
         if (status == null || status.isBlank()) status = "trial";
         if ("suspended".equalsIgnoreCase(status)) {
             // keep suspended but still extend trial clock for when reactivated
