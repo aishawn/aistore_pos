@@ -1,57 +1,19 @@
+import Link from "next/link";
+import { ArrowRight, Info, ShieldCheck } from "lucide-react";
+import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { ShieldCheckIcon, SelectChevronIcon } from "@/components/icons";
+const links = [
+  { href: "/settings/users", label: "Manage users" },
+  { href: "/settings/roles", label: "Manage roles" },
+  { href: "/settings/integrations", label: "Review integrations" },
+];
 
 export default function SecurityCentrePage() {
-  return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[34px] font-bold text-black">Security Centre</h1>
-        <span className="flex h-[46px] items-center rounded border border-neutral-300 px-4 text-[16px] text-black">
-          29/06/2026 00:00:00&nbsp;&nbsp;—&nbsp;&nbsp;29/06/2026 23:59:59
-        </span>
-      </div>
-
-      {/* Pie panel */}
-      <div className="mt-4 flex items-center justify-center gap-16 rounded-lg bg-[#f4f4f4] py-10">
-        <div className="flex flex-col gap-2 text-[16px]">
-          <span className="flex items-center gap-2"><span className="h-4 w-4 bg-[#3aa0e3]" /> Login</span>
-          <span className="flex items-center gap-2"><span className="h-4 w-4 bg-[#ef476f]" /> Location Change</span>
-        </div>
-        <svg width="240" height="240" viewBox="0 0 32 32" className="-rotate-90">
-          <circle r="16" cx="16" cy="16" fill="#3aa0e3" />
-          <path d="M16 16 L16 0 A16 16 0 0 0 4 22 Z" fill="#ef476f" />
-        </svg>
-        <div className="text-[16px]">
-          <div className="font-bold text-black">Raw Events</div>
-          <div className="mb-3 text-black">9</div>
-          <div className="font-bold text-black">Patterns Detected</div>
-          <div className="text-black">0</div>
-        </div>
-      </div>
-
-      {/* Shield empty */}
-      <div className="my-10 flex items-center justify-center gap-10">
-        <ShieldCheckIcon size={150} strokeWidth={1.5} className="text-black" />
-        <div>
-          <h2 className="text-[28px] font-bold text-black">No Patterns Found</h2>
-          <p className="mt-2 text-[18px] text-black">No abnormal patterns detected!</p>
-        </div>
-      </div>
-
-      {/* Events */}
-      <div className="flex items-end justify-between">
-        <h2 className="text-[22px] font-bold text-black">Events</h2>
-        <label className="flex flex-col text-[14px] text-neutral-600">Filters
-          <span className="mt-1 flex h-[46px] w-[300px] items-center justify-between rounded-lg border border-neutral-300 px-3 text-neutral-400">Select... <SelectChevronIcon size={18} /></span>
-        </label>
-      </div>
-      <div className="mt-3 flex bg-[#5cb3e0] font-bold text-white">
-        {["Timestamp", "Event", "User", "Outlet", "Register", "Device"].map((c) => (
-          <div key={c} className="flex-1 px-4 py-4 text-center">{c}</div>
-        ))}
-      </div>
-    </div>
-  );
+  return <AdminPageLayout title="Security Centre" subtitle="Monitor login events and security patterns">
+    <section role="status" className="rounded-lg border border-sky-200 bg-sky-50 p-5 text-sky-950"><div className="flex items-start gap-3"><Info size={20} className="mt-0.5 shrink-0" aria-hidden="true" /><div><h2 className="font-semibold">Security event monitoring is not connected</h2><p className="mt-1 max-w-2xl text-sm leading-6">This pilot does not currently load login events or pattern analysis from a security provider. Event counts, charts, and date filters will appear here once that connection is available.</p></div></div></section>
+    <section className="mt-6 rounded-lg border border-[var(--oh-border)] bg-white p-5"><div className="flex items-start gap-3"><ShieldCheck size={20} className="mt-0.5 shrink-0 text-[var(--oh-orange)]" aria-hidden="true" /><div><h2 className="font-semibold text-[var(--oh-text)]">Available security controls</h2><p className="mt-1 text-sm leading-6 text-[var(--oh-text-secondary)]">Use the connected account and setup areas to review access configuration while monitoring is being integrated.</p><div className="mt-4 flex flex-wrap gap-3">{links.map((link) => <Link key={link.href} href={link.href} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]">{link.label}<ArrowRight size={15} aria-hidden="true" /></Link>)}</div></div></div></section>
+  </AdminPageLayout>;
 }
