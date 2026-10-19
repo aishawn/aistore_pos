@@ -3,7 +3,7 @@
 更新时间：2026-10-19（Asia/Shanghai）  
 仓库：`aishawn/aistore_pos`  
 线上站点：<https://demo.orithos.com.au/>  
-当前本地与 `origin/main`：`e128a6c`  
+当前本地与 `origin/main`：`e0a6741`  
 用户确认已部署：`7544d03`
 
 ## 结论
@@ -72,7 +72,7 @@
 - 指标按当前 vendor 隔离，返回请求数、允许/拒绝、允许率、平均/p50/p95 延迟、按 report path 聚合和估算 token 数。
 - 接口不返回原始问题、生成 SQL、JWT、API key 或 provider 错误；估算 token 明确不是真实 provider billing usage。
 - 新增 `/reports/ai/metrics` 管理页面，支持 390/1440 视口、窗口切换和重试。
-- 线上证据：`docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`，管理员 `200`、匿名 `401`、UI `2/2 PASS`、页面错误 `0`、业务/配置写入 `0`。
+- 线上证据：`docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`；部署后复验：`docs/UAT_AI_METRICS_ONLINE_2275378.json`。两次均为管理员 `200`、匿名 `401`、UI `2/2 PASS`、页面错误 `0`、业务/配置写入 `0`。
 - 同批线上 AI 复验：功能 `14 PASS / 0 FAIL / 1 INFO`、AI UI `2/2 PASS`、Sommelier `10/10 PASS`。发票 OCR 仍为 `50212 INFO`，需要真实发票图片才能继续验收。
 
 ## 关键证据
