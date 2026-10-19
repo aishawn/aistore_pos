@@ -2,13 +2,13 @@
 
 ## 2026-10-20 根路由测试与移动安全区批次（当前工作区）
 
-- 批次已提交并推送为 `7ca5607`。
+- 批次已提交并推送为 `ca0041b`。
 - 发现全站矩阵脚本扫描 `pos-ui/src/app`，而 Next.js 实际使用根 `pos-ui/app`；两套路由有 96 个文件差异。已将 `scripts/pilot-all-static-pages-uat.mjs` 改为扫描根 `app`，避免把旧副本当成线上验证对象。
 - 根 `app` 线上只读矩阵：`134` 路由 × `390/1440` = `268/268 PASS`，HTTP、页面错误、横向溢出均为 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ROOT_APP_ONLINE_2026-10-20.json`，运行时身份仍未从 Dokploy 控制台核验。
 - 共享 `AdminPageLayout` 增加手机底部安全区，`AdminActionFooter` 增加表单底栏安全区；订单、采购、客户、库存等共享表单页面会继承该修复。Media Centre 搜索框补齐可访问名称，文件夹导航补齐 `nav` 标签。
 - POS 收银台支付/Finalize 区域同步加入手机安全区；现有线上 POS 对话框回归 `2/2 PASS`（390/1440，帮助弹层、Escape、Sales Keys/Parked 键盘切换），证据 `docs/UAT_POS_DIALOG_2026-10-17.json`，变更后的镜像尚未部署。
 - 已通过 `npm run typecheck`、`npx eslint src/components/admin/AdminPageLayout.tsx app/media/page.tsx`、`node --check scripts/pilot-all-static-pages-uat.mjs` 和目标 `git diff --check`；未运行本地 build。线上变更后的专门 UI 验证待 Dokploy 分支配置修复后重跑。
-- 推送后手动 webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，没有新的 Dokploy 构建；控制台修正 Compose 分支后手动部署 `7ca5607`，再回读 frontend/backend SHA、构建日志、健康状态并重跑受影响页面。
+- 推送后手动 webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，没有新的 Dokploy 构建；控制台修正 Compose 分支后手动部署 `ca0041b`，再回读 frontend/backend SHA、构建日志、健康状态并重跑受影响页面。
 
 ## 2026-10-20 Dokploy #38 复核（当前）
 
