@@ -250,11 +250,11 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
 
       <div className="mt-4 overflow-x-auto">
         <div className="overflow-hidden rounded-md">
-        <table className="w-full table-fixed border-collapse font-sans text-[13px]">
+        <table aria-label="AI report results" className="w-full table-fixed border-collapse font-sans text-[13px]">
           <thead>
             <tr className="bg-black text-[13px] font-bold text-white">
               {columns.map((col, i) => (
-                <th key={col} className="px-2 py-2 text-center">
+                <th key={col} scope="col" className="px-2 py-2 text-center">
                   <span className="inline-flex items-center justify-center gap-1">
                     {formatReportColumnHeader(col)}
                     {i > 0 && <SortArrowsIcon size={12} className="shrink-0 opacity-70" />}

@@ -301,13 +301,13 @@ export default function UsersSettingsPage() {
 
       <AsyncState loading={loading} error={error} empty={sortedUsers.length === 0} onRetry={reload}>
         <div className="overflow-hidden rounded-lg border border-neutral-200">
-          <table className="w-full border-collapse text-left text-[15px]">
+          <table aria-label="Store users" className="w-full border-collapse text-left text-[15px]">
             <thead className="bg-neutral-50 text-[13px] uppercase tracking-wide text-neutral-500">
               <tr>
-                <th className="px-4 py-3 font-semibold">Name</th>
-                <th className="px-4 py-3 font-semibold">Username</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
-                <th className="px-4 py-3 font-semibold">Role</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Name</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Username</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Email</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Role</th>
               </tr>
             </thead>
             <tbody>

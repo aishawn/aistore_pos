@@ -371,15 +371,15 @@ export function SupplyChainPage() {
             ) : (
               <>
               <div className="hidden overflow-x-auto lg:block">
-                <table className="w-full min-w-[760px] text-left text-[13px]">
+                <table aria-label="Supply chain recommendations" className="w-full min-w-[760px] text-left text-[13px]">
                   <thead className="text-[13px] uppercase tracking-wide text-[var(--oh-muted)]">
                     <tr className="border-b border-[var(--oh-border)]">
-                      <th className="px-4 py-2 font-semibold">Product</th>
-                      <th className="px-3 py-2 font-semibold">Qty</th>
-                      <th className="px-3 py-2 font-semibold">Effective</th>
-                      <th className="px-3 py-2 font-semibold">Reason</th>
-                      <th className="px-3 py-2 font-semibold">Confidence</th>
-                      <th className="px-4 py-2 text-right font-semibold">Actions</th>
+                      <th scope="col" className="px-4 py-2 font-semibold">Product</th>
+                      <th scope="col" className="px-3 py-2 font-semibold">Qty</th>
+                      <th scope="col" className="px-3 py-2 font-semibold">Effective</th>
+                      <th scope="col" className="px-3 py-2 font-semibold">Reason</th>
+                      <th scope="col" className="px-3 py-2 font-semibold">Confidence</th>
+                      <th scope="col" className="px-4 py-2 text-right font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>

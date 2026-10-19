@@ -1098,12 +1098,13 @@ function DialogueView({
             )}
             {msg.role === "assistant" && !msg.reportId && msg.table && msg.table.rows.length > 0 && (
               <div className="mt-2 overflow-x-auto">
-                <table className="w-full border-collapse text-[13px]">
+                <table aria-label="Assistant result table" className="w-full border-collapse text-[13px]">
                   <thead>
                     <tr>
                       {msg.table.columns.map((col) => (
                         <th
                           key={col}
+                          scope="col"
                           className="border-b border-[var(--oh-border)] px-1.5 py-1 text-left font-semibold text-[var(--oh-text-secondary)]"
                         >
                           {formatReportColumnHeader(col)}

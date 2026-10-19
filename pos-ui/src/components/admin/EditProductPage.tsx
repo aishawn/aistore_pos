@@ -1366,14 +1366,14 @@ export function EditProductPage({ productId }: { productId: string }) {
                     </div>
                     {(form.prices?.length ?? 0) > 0 && (
                       <div className="mt-4 overflow-x-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)]">
-                        <table className="min-w-full text-[13px]">
+                        <table aria-label="Product price breaks" className="min-w-full text-[13px]">
                           <thead>
                             <tr className="border-b border-[var(--oh-border)] bg-[var(--oh-surface)] text-left text-[var(--oh-muted)]">
-                              <th className="px-3 py-2 font-medium">Quantity</th>
-                              <th className="px-3 py-2 font-medium">Price</th>
-                              <th className="px-3 py-2 font-medium">Cost</th>
-                              <th className="px-3 py-2 font-medium">%</th>
-                              <th className="px-3 py-2 font-medium" />
+                              <th scope="col" className="px-3 py-2 font-medium">Quantity</th>
+                              <th scope="col" className="px-3 py-2 font-medium">Price</th>
+                              <th scope="col" className="px-3 py-2 font-medium">Cost</th>
+                              <th scope="col" className="px-3 py-2 font-medium">%</th>
+                              <th scope="col" className="px-3 py-2 font-medium" />
                             </tr>
                           </thead>
                           <tbody>
