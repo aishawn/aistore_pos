@@ -5,6 +5,8 @@
 - Barcodes、Customer Utilities、Product Utilities、Transfer List 的 `src/app` 入口移除硬编码示例、静态筛选器和无行为批量操作，改为明确未接入状态，并链接到真实 Odoo 目录、调拨流程或集成状态。
 - 本地登录态全站矩阵：`134 路由 × 390/1440 = 268/268 PASS`，无 HTTP 失败、页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_THIRD-BATCH.json`，`sourceCommit=e506619`。
 - typecheck、目标 ESLint、diff check 和专项脚本语法通过；本地未运行 build。待本批次部署后补充公网专项。
+- `9028419` 批次公网回归完成：全站矩阵 `268/268 PASS`；九页内容/控件专项 `18/18 PASS`（前两批 5 页 + 本批 4 页，均覆盖 390/1440）。证据：`docs/UAT_ALL_STATIC_PAGES_ONLINE_2026-10-20_THIRD-BATCH.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-20_9028419_FINAL.json`。
+- 业务写请求为 `0`；Registers 的 Odoo records POST 属于只读 RPC，已从写入断言中单独分类。两种视口均无页面错误或横向溢出；公网证据仍为 `deploymentShaVerified=false`。
 
 ## 2026-10-20 第二批假数据清理（`0a06dec`）
 

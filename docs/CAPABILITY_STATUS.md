@@ -7,6 +7,8 @@
 - Barcodes、Customer Utilities、Product Utilities、Transfer List 不再展示伪造产品/客户/位置或假操作按钮；页面明确未接入边界，并提供真实导航入口。
 - 本地登录态全站矩阵 `268/268 PASS`，证据：`docs/UAT_ALL_STATIC_PAGES_LOCAL_2026-10-20_THIRD-BATCH.json`，源码提交 `e506619`。
 - 公网回归和 Dokploy 构建身份待本批次部署后补充，发布继续 **NO-GO**。
+- `9028419` 公网验证：全站 `268/268 PASS`，九页实际内容/控件专项 `18/18 PASS`，业务写请求 `0`。证据：`docs/UAT_ALL_STATIC_PAGES_ONLINE_2026-10-20_THIRD-BATCH.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-20_9028419_FINAL.json`。
+- 公网行为通过不等于 Dokploy 容器身份已核验；`deploymentShaVerified=false`，发布继续 **NO-GO**。
 
 ### 2026-10-20 第二批假数据清理（`0a06dec`）
 

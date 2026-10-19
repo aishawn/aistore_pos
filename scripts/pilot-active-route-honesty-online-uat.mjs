@@ -15,6 +15,10 @@ const cases = [
   { route: "/media", name: "media", required: ["Media storage is not connected", "No files found"], forbidden: [] },
   { route: "/settings/registers-outlets", name: "registers-outlets", required: ["Live from Odoo", "Stores / companies", "POS registers"], forbidden: ["New Outlet", "New Register", "11 Example St"] },
   { route: "/security", name: "security", required: ["Security event monitoring is not connected", "Available security controls"], forbidden: ["Raw Events", "29/06/2026"] },
+  { route: "/utilities/barcodes", name: "barcodes", required: ["Barcode label printing is not connected"], forbidden: [] },
+  { route: "/utilities/customers", name: "customer-utilities", required: ["Customer utilities are not connected to Odoo"], forbidden: ["Aliyah Roberts", "Delete Customers"] },
+  { route: "/utilities/products", name: "product-utilities", required: ["Product utilities are not connected to Odoo"], forbidden: ["Absolut Vodka", "Delete Products"] },
+  { route: "/settings/transferees", name: "transferees", required: ["Transfer locations are not loaded from Odoo"], forbidden: ["Main Warehouse", "City Store"] },
 ];
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -31,11 +35,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
   page.on("request", (request) => { const pathname = new URL(request.url()).pathname; const readRpc = pathname === "/api/odoo/records"; if (!["GET", "HEAD", "OPTIONS"].includes(request.method()) && pathname !== "/cdn-cgi/rum" && !readRpc) writes.push(`${request.method()} ${pathname}`); });
   for (const item of cases) {
     const response = await page.goto(`${base}${item.route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForTimeout(item.name === "registers-outlets" ? 2200 : 800);
+    await page.waitForTimeout(item.name === "registers-outlets" ? 4000 : 800);
     const text = await page.locator("body").innerText();
     const requiredMissing = item.required.filter((value) => !text.includes(value));
     if (item.name === "promotions" && !(await page.locator('input[aria-label="Search promotions by name"]').count())) requiredMissing.push("Search promotions by name");
     const forbiddenFound = item.forbidden.filter((value) => text.includes(value));
+    if (item.name === "barcodes" && await page.getByRole("button", { name: /Generate & Print/i }).count()) forbiddenFound.push("Generate & Print button");
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     const disabledControls = item.name === "media" ? await page.locator("button:disabled, input:disabled").count() : null;
     const pass = response?.status() === 200 && !requiredMissing.length && !forbiddenFound.length && !overflow && !pageErrors.length && !writes.length && (item.name !== "media" || (disabledControls ?? 0) >= 2);
