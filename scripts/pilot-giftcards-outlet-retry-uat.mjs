@@ -12,7 +12,8 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
 const base = process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au";
 const subdomain = process.env.PILOT_SUBDOMAIN ?? env.PILOT_SUBDOMAIN ?? "demo";
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
-if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+const localMockMode = process.env.PILOT_LOCAL_MOCKS === "true";
+if (!localMockMode && !password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -32,18 +33,26 @@ let raceBRequests = 0;
 const giftCard = (code) => ({ id: `uat-${code.toLowerCase()}`, clientId: "uat", outletId: "uat", code, originalAmount: 10, currentAmount: 10, expiry: "", status: "Active" });
 
 try {
-  const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password, subdomain },
-    headers: { Origin: base, "X-Orithos-Tenant-Slug": subdomain },
-  });
-  const loginBody = await login.json().catch(() => ({}));
-  if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
-  const accessCookie = (await context.cookies(base)).find((cookie) => cookie.name === "orithos_access_token");
-  if (!accessCookie || !loginBody.data?.user) throw new Error("LOGIN_SESSION_NOT_AVAILABLE_TO_BROWSER");
-  await context.addInitScript(({ token, user }) => {
-    localStorage.setItem("sf_token", token);
-    localStorage.setItem("sf_user", JSON.stringify(user));
-  }, { token: accessCookie.value, user: loginBody.data.user });
+  if (localMockMode) {
+    await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
+    await context.addInitScript(() => {
+      localStorage.setItem("sf_token", "local-uat-session");
+      localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true }));
+    });
+  } else {
+    const login = await context.request.post(`${base}/api/auth/login`, {
+      data: { username: "admin", password, subdomain },
+      headers: { Origin: base, "X-Orithos-Tenant-Slug": subdomain },
+    });
+    const loginBody = await login.json().catch(() => ({}));
+    if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
+    const accessCookie = (await context.cookies(base)).find((cookie) => cookie.name === "orithos_access_token");
+    if (!accessCookie || !loginBody.data?.user) throw new Error("LOGIN_SESSION_NOT_AVAILABLE_TO_BROWSER");
+    await context.addInitScript(({ token, user }) => {
+      localStorage.setItem("sf_token", token);
+      localStorage.setItem("sf_user", JSON.stringify(user));
+    }, { token: accessCookie.value, user: loginBody.data.user });
+  }
 
   const page = await context.newPage();
   const pageErrors = [];
@@ -55,17 +64,30 @@ try {
     const url = new URL(request.url());
     if (url.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(`${request.method()} ${url.pathname}`);
   });
+  if (localMockMode) {
+    await page.route("**/api/**", async (route) => {
+      if (route.request().method() !== "GET") {
+        return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: 40500, message: "Local UAT blocks API writes", data: null }) });
+      }
+      const url = new URL(route.request().url());
+      const data = url.pathname === "/api/gift-cards"
+        ? { items: [], total: 0, page: 1, size: 25 }
+        : [];
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data }) });
+    });
+  }
   await page.route("**/api/outlets", async (route) => {
-    if (route.request().method() !== "GET") return route.continue();
+    if (route.request().method() !== "GET") return localMockMode ? route.fallback() : route.continue();
     outletRequests += 1;
     if (outletRequests === 1) {
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Injected outlet lookup failure" }) });
     }
     await outletRetryGate;
+    if (localMockMode) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data: [] }) });
     return route.continue();
   });
   await page.route("**/api/gift-cards**", async (route) => {
-    if (route.request().method() !== "GET") return route.continue();
+    if (route.request().method() !== "GET") return localMockMode ? route.fallback() : route.continue();
     const code = new URL(route.request().url()).searchParams.get("code");
     if (code === "RACE-A") {
       raceARequests += 1;
@@ -79,7 +101,7 @@ try {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, data: { items: [giftCard("RACE-B")], total: 1 } }) });
       return;
     }
-    return route.continue();
+    return localMockMode ? route.fallback() : route.continue();
   });
 
   await page.goto(`${base}/giftcards?__uat_probe=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -148,14 +170,19 @@ try {
 } finally {
   releaseOutletRetry();
   releaseRaceA();
-  try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
+  if (!localMockMode) {
+    try { await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }); } catch { /* Session expires normally. */ }
+  }
   await browser.close();
 }
 
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+  environment: localMockMode ? "local-dev-fixtures" : "live-read-only-injected",
+  deployment: localMockMode
+    ? "not-applicable-local-dev"
+    : process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
   target: base,

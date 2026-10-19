@@ -19,7 +19,9 @@ Statuses:
 - 根因：`useApi` 在任何 GET 开始时立即清空错误；`AsyncDependencyNotice` 仅在 `error` 非空时渲染，因此 Retry 请求还在 pending 时错误条和按钮先被卸载。线上 Product Detail 与 Gift Cards UAT 已确定复现该行为。
 - 修复：相同 path/query 的手动 Retry 保留上一次错误，直到 GET 成功后清除；path/query 改变时仍立即清理旧错误。共享依赖提示因此在 pending 窗口继续渲染，并使用既有 `disabled` 与 `aria-busy` 状态。
 - 两个 Retry UAT 脚本新增 `PILOT_UAT_OUTPUT_PATH`，允许把新运行证据写到独立文件，避免覆盖既有用户/历史 JSON。默认路径保持兼容。
-- 验证：`npm run typecheck`、目标 ESLint、两个 UAT 的 `node --check`、`git diff --check` 通过；未运行 build。线上 UAT 尚待本批部署后重跑。
+- 两个脚本新增 local mock 模式：测试请求只由 Playwright fixture 响应，非 GET 请求统一拦截为 `405`，不需要登录、后端或真实业务数据；本地结果使用 `not-applicable-local-dev`，不冒充部署验证。
+- 本地 Playwright UAT：Product Detail `1/1 PASS`；Gift Cards Retry 与搜索竞态 `2/2 PASS`。两项都验证 pending 时 Retry 按钮 disabled、alert `aria-busy=true`、390px 无溢出、page errors `0`、写请求 `0`。证据：`docs/UAT_PRODUCT_VIEW_RETRY_LOCAL_9f15b70.json`、`docs/UAT_GIFTCARDS_OUTLET_RETRY_LOCAL_9f15b70.json`。
+- 验证：`npm run typecheck`、目标 ESLint、两个 UAT 的 `node --check`、`git diff --check` 通过；未运行 build。公网 UAT 尚待本批部署后重跑。
 - 这次修复覆盖所有使用 `useApi` 的手动重试。旧错误会在新 path/query 发起请求时清除，且迟到请求仍受现有 sequence 保护。
 
 ### Store Ops 源码与验收边界复核
