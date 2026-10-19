@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -177,6 +178,18 @@ class AdminTenantLifecycleTest {
     @Test
     void deletedStoreIsUnavailableOnItsSubdomain() {
         assertTrue(TenantResolverFilter.isUnavailable(vendor("uat-store", "deleted")));
+    }
+
+    @Test
+    void suspendedAndExpiredStoresAreUnavailableOnTheirSubdomains() {
+        assertTrue(TenantResolverFilter.isUnavailable(vendor("suspended-store", "suspended")));
+        assertTrue(TenantResolverFilter.isUnavailable(vendor("expired-store", "expired")));
+    }
+
+    @Test
+    void activeAndTrialStoresRemainAvailableBeforeTrialExpiry() {
+        assertFalse(TenantResolverFilter.isUnavailable(vendor("active-store", "active")));
+        assertFalse(TenantResolverFilter.isUnavailable(vendor("trial-store", "trial")));
     }
 
     @Test
