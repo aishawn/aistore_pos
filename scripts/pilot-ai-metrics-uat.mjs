@@ -41,6 +41,16 @@ try {
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
   record("admin login", "PASS", `status=${login.status()}`);
 
+  const assistant = await context.request.post(`${base}/api/ai/assistant`, {
+    data: { question: "look up products" },
+    headers: { Origin: base },
+    timeout: 120000,
+  });
+  const assistantBody = await assistant.json().catch(() => ({}));
+  const assistantIntent = assistantBody?.data?.intent;
+  const assistantOk = assistant.ok() && assistantBody?.code === 0 && typeof assistantIntent === "string" && assistantIntent.length > 0;
+  record("assistant audit seed", assistantOk ? "PASS" : "FAIL", assistantOk ? `intent=${assistantIntent}` : `status=${assistant.status()} code=${assistantBody?.code ?? "missing"}`);
+
   const metrics = await context.request.get(`${base}/api/ai/metrics?hours=24`, { headers: { Origin: base }, timeout: 60000 });
   const metricsBody = await metrics.json().catch(() => ({}));
   const summary = metricsBody?.data?.summary;
@@ -53,6 +63,16 @@ try {
     && summary?.estimatedTokensOnly === true
     && Array.isArray(metricsBody?.data?.byPath);
   record("admin metrics response", valid ? "PASS" : "FAIL", valid ? `status=${metrics.status()} paths=${metricsBody.data.byPath.length}` : `status=${metrics.status()} code=${metricsBody?.code ?? "missing"}`);
+
+  const assistantPath = metricsBody?.data?.byPath?.find((item) => typeof item?.path === "string" && item.path.startsWith("assistant:"));
+  const assistantPathValid = assistantOk
+    && assistantPath
+    && Number(assistantPath.requests) > 0
+    && Number(assistantPath.allowed) > 0
+    && Number(assistantPath.estimatedTokens) > 0;
+  record("assistant intent metrics coverage", assistantPathValid ? "PASS" : "FAIL", assistantPathValid
+    ? `${assistantPath.path} requests=${assistantPath.requests} allowed=${assistantPath.allowed} estimatedTokens=${assistantPath.estimatedTokens}`
+    : "assistant path or estimated tokens missing");
 
   const anonymousContext = await browser.newContext();
   const anonymous = await anonymousContext.request.get(`${base}/api/ai/metrics?hours=24`, { headers: { Origin: base }, timeout: 60000 });

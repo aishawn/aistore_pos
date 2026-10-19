@@ -51,7 +51,6 @@
 
 | 项目 | 状态 |
 |---|---|
-| Dokploy 运行身份 | 未从控制台独立回读 frontend/backend SHA、构建日志、健康状态和部署完成时间。 |
 | Dokploy 运行身份 | webhook 已返回成功，线上功能回归证明新 assistant metrics 行为可用；仍缺控制台独立回读 frontend/backend SHA、构建日志、健康状态和部署完成时间。 |
 | AI metrics 的 assistant 覆盖 | 已提交并部署到 `6aa867c`；真实 assistant 请求返回 `entity_action`，metrics `byPath` 出现 `assistant:entity_action`（2 requests，32 estimated tokens）。估算 token 仍不是 provider billing usage。 |
 | 真实发票 OCR | 当前为 preview-only；没有真实供应商发票图片字段提取的完整证据。不得据此创建供应商、采购单、收货单或库存。 |
