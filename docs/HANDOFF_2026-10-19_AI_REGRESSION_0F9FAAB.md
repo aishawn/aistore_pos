@@ -55,3 +55,5 @@ HTTP 301
 定价页面首轮回归出现一次 `/stock/bulk-price-edit` 在 1440px 返回 `504`，其余 `7/8` 通过；立即重试后 `8/8 PASS`、无页面错误、无阻塞写入。该问题目前判定为瞬态线上响应，不是稳定 UI 缺陷；证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_RETRY_2026-10-20.json`。
 
 在上述检查后重新执行 AI 全量回归：功能 `14/14 PASS`、metrics `9/9 PASS`、能力位 `PASS`、AI UI `2/2 PASS`，assistant intent 为 `search_product` 且 metrics path 严格匹配，业务或配置写入 `0`。证据：`docs/UAT_AI_REGRESSION_ONLINE_4D97862.json`。
+
+提交 `6ec5dc3` 为供应链 Rules & prices 设置控件补充可访问标签。线上打开该折叠面板后，27 个输入、选择和操作控件均有明确 `aria-label`，HTTP `200`、页面错误 `0`、非预期写入 `0`。证据：`docs/UAT_SUPPLY_CHAIN_CONTROLS_A11Y_ONLINE_6EC5DC3.json`。

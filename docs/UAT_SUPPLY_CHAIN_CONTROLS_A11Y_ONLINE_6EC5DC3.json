@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-10-19T16:49:50.000Z",
+  "sourceCommit": "6ec5dc3",
+  "target": "https://demo.orithos.com.au/orders/new",
+  "scope": "authenticated read-only supply chain settings accessibility check; non-GET API calls blocked",
+  "interaction": "opened Rules & prices panel",
+  "checks": {
+    "httpStatus": 200,
+    "ariaLabelledControls": 27,
+    "pageErrors": 0,
+    "unexpectedWrites": 0
+  },
+  "status": "PASS"
+}
