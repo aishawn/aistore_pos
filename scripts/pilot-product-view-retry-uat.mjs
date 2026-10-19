@@ -58,6 +58,7 @@ try {
   await page.getByRole("button", { name: "Retry" }).waitFor({ timeout: 30000 });
   await page.getByRole("button", { name: "Retry" }).click();
   await page.getByRole("heading", { name: "Product Report" }).waitFor({ timeout: 30000 });
+  await page.getByText("Product Information", { exact: true }).waitFor({ timeout: 30000 });
   await page.waitForTimeout(250);
   const initialLookupNoticeVisible = await page.getByText("Refreshing lookup options…", { exact: true }).isVisible().catch(() => false);
   releaseInitialTax();

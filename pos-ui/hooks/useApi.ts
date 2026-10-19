@@ -31,13 +31,17 @@ export function useApi<T>(path: string | null, query?: Record<string, unknown>):
   const run = useCallback(() => {
     if (!path) {
       setLoading(false);
+      setError(null);
       return;
     }
     setLoading(true);
-    setError(null);
+    // Keep the last error until success so dependent Retry notices stay mounted.
     api
       .get<T>(path, query as Record<string, string | number | boolean | null | undefined>)
-      .then((d) => setData(d))
+      .then((d) => {
+        setData(d);
+        setError(null);
+      })
       .catch((e: unknown) => setError(e instanceof ApiError ? e.message : "Failed to load data"))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

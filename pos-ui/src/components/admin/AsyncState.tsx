@@ -51,13 +51,12 @@ export function AsyncDependencyNotice({
 }: {
   dependencies: Array<{ label: string; error: string | null; loading?: boolean; onRetry: () => void }>;
 }) {
-  const active = dependencies.filter((dependency) => dependency.error || dependency.loading);
+  const active = dependencies.filter((dependency) => dependency.error);
   if (active.length === 0) return null;
-  const hasErrors = active.some((dependency) => dependency.error);
 
   return (
     <div role="alert" aria-live="assertive" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-      <p className="font-semibold">{hasErrors ? "Some lookup options could not be loaded." : "Refreshing lookup options…"}</p>
+      <p className="font-semibold">Some lookup options could not be loaded.</p>
       <div className="mt-2 space-y-2">
         {active.map((dependency) => (
           <div key={dependency.label} className="flex flex-wrap items-center justify-between gap-2">

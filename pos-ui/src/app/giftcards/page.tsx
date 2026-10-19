@@ -128,7 +128,7 @@ export default function GiftCardsPage() {
       </div>
 
       <AsyncDependencyNotice
-        dependencies={[{ label: "Outlets", error: outlets.error, onRetry: outlets.reload }]}
+        dependencies={[{ label: "Outlets", error: outlets.error, loading: outlets.loading, onRetry: outlets.reload }]}
       />
       {exportError && <p role="alert" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{exportError}</p>}
 
