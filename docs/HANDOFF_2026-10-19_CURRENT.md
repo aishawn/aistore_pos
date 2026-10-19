@@ -6,6 +6,14 @@
 分支：`main`
 本轮迭代开始时的 GitHub `main` / 本地 `HEAD` 基线：`94ccc320643ddf2dfb682bf4fca9c4abe1796e5e`（`94ccc32`）
 
+## 本轮继续：Odoo 盘点 P0
+
+- 新增 `/stock/stocktake` 页面和 `/api/odoo/stocktake` BFF：商品搜索/条码选择、数量填写、差异预览、人工确认；API 限定租户 company 与绑定库位下的内部叶子库位，拒绝追踪商品、包装/寄售库存、待盘记录，并在提交前重读商品和库存、应用后回读核对。
+- 本轮补上 Orithos 服务端角色门槛：对 `/api/auth/me` 做实时管理员核验；普通用户返回 403，身份服务不可用时 fail-closed。由于后端还没有 `stock.adjust` 授权模型，目前是 admin-only。
+- `ODOO_STOCKTAKE_WRITE_ENABLED=false` 默认关闭；Demo 的 `aipos` 不做写入。Odoo 19 字段/API 能力只读探测已完成，但 Demo 库位树核实和隔离 Odoo 写入验收仍未完成。
+- 本地 fixture 浏览器 UAT 390/1440/768 共 3 个视口通过：取消不触发写请求、确认恰好调用一次且 payload 正确、关闭开关时按钮禁用；无横向溢出或页面错误。证据 `docs/UAT_ODOO_STOCKTAKE_LOCAL_ITERATION_2026-10-19.json`，截图 `docs/screenshots/2026-10-19-stocktake/`。所有 API 均被 fixture 拦截，不连接或写入 Odoo。
+- 本地 typecheck、相关 ESLint 和 UAT 已通过（具体复核结果见本轮末尾）；没有运行 build。尚未把该功能提交/部署，也未做线上管理员/普通用户权限回归。
+
 ## 当前结论
 
 产品主流程和大量前端稳定性回归已有通过记录；隔离租户 POS/采购能力也有既有业务证据。最近一轮线上只读 Retry、AI 配置面和匿名鉴权回归通过，但生产部署的实际运行 SHA 尚未从 Dokploy 独立核实。AI 对话框、语音入口和 AI 配置权限修复仍在工作区、尚未提交或线上验证。因此当前发布/运营放行结论仍为 **NO-GO**，不能把本地验证或公网行为直接等同于当前生产镜像的验证。
@@ -18,6 +26,13 @@
 - `/api/ai/config` 的 reload 和 intents/slots/slot-values/prompts 写接口原先仅要求登录，缺少管理员检查。源码已增加 `AdminAccess.requireAdmin()` 并添加非管理员返回 `40300` 的控制器单测。未运行 Maven 测试；部署后仍需非管理员线上验证。
 - 本地检查：前端 `npm run typecheck`、`SellAiPanel.tsx` 目标 ESLint、AI UAT 脚本 `node --check` 和 `git diff --check` 均通过。本仓库未运行 build。
 - 公网脚本证据的 `deployment` 仍是 `unverified-after-deploy`；本轮线上结果用于确认问题和记录当前只读行为，不能作为修复后线上验收。
+
+### `56cd7c1` 推送后线上回归
+
+- GitHub `main` 已推送到 `56cd7c136eb84a89b5e5b028ed89c02f48bc52b5`。
+- 用户提供的 Dokploy compose webhook 在本轮仍返回 HTTP `301` / `{"message":"Branch Not Match"}`，因此没有可审计的 Dokploy 部署任务、构建日志或容器运行 SHA。
+- 推送后等待部署窗口并复测公网：AI UI `2/2 PASS`（390/1440）、AI availability `3/3 PASS`、AI surface `11/11 PASS`、Sommelier `10/10 PASS`、发票扫描 mock `PASS`。证据：`UAT_AI_UI_2026-10-19_POST-PUSH-CHECK.json`、`UAT_AI_AVAILABILITY_2026-10-19_POST-DEPLOY.json`、`UAT_AI_SURFACE_2026-10-19_POST-DEPLOY.json`、`UAT_SOMMELIER_READONLY_2026-10-19_POST-DEPLOY.json`、`UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-DEPLOY.json`。
+- 这些公网结果证明修复后的行为在当前站点可观察到，但由于 deployment 字段仍为 `unverified-after-deploy`，不能据此确认 Dokploy 使用的镜像就是 `56cd7c1`。后端 AI 配置管理员保护尚未有非管理员线上证据，且本地 Maven 单测未运行。
 
 ## 已完成且有证据
 
@@ -53,6 +68,7 @@
 - **采购回归需重绑定当前版本**：隔离租户完整收货已有旧版本证据；尚未在已核实的当前生产版本上回归。
 - **构建证据不足**：本地没有运行 build；生产构建结果需以 Dokploy 完整构建日志为准。
 - **平台店铺状态转换改动待验证**：工作区对状态按钮和 API 增加允许转换矩阵，并新增 `suspended → expired` 拒绝单测；前端 typecheck/目标 ESLint 已通过，但后端测试未运行，当前环境仅有 JDK 8，项目要求 Java 21。该改动未提交，不能算已部署或已验收。
+- **Odoo 盘点隔离验收未完成**：本地页面/API fixture 通过不验证 Odoo 字段权限、库位实际绑定、库存应用或审计记录。需在获批隔离 DB/company 验证取消不改库存、确认只应用一次、数量回读一致、跨租户/非管理员拒绝，再考虑启用环境开关；Demo `aipos` 禁止写入。
 
 ## 当前问题与工作区状态
 
@@ -71,6 +87,7 @@
 4. AI dialog/语音入口与 AI 配置管理员保护等工作区代码仍未提交。先逐项审阅 diff；本地 fixture 结果不能代替线上回归，Java 单测需 CI/受控 Java 21 环境运行。只提交明确纳入的文件，不要提交整批 UAT/截图或租户生命周期改动。
 5. 再运行受影响路由的只读冒烟。若要进行业务写入，使用一次性隔离租户，并在结束后删除租户及验证认证拒绝。
 6. 生产 AI、硬件、多支付、离线 POS 和正式财务/邮件流程仍单独跟踪，不得由 UI 或 mock 测试标记为通过。
+7. Odoo stocktake 先核实 Demo 绑定库位树（只读），再预约/准备获批隔离 Odoo 写入验收；保持生产 `ODOO_STOCKTAKE_WRITE_ENABLED=false`，直到完整验收完成。
 
 ## 放行矩阵
 
@@ -81,6 +98,7 @@
 | Retry、Auth replay、AI surface 最近专项 | 通过只读线上回归；部署 SHA 未核验 |
 | AI dialog/语音禁用修复 | 本地 390/1440 PASS；未提交、未线上复测 |
 | AI 配置管理员保护 | 源码和单测已补；未运行后端测试、未线上复测 |
+| Odoo stocktake | 本地 fixture 3 视口通过；服务端 admin-only；隔离 Odoo 写入和线上权限未验收 |
 | Dokploy 当前运行版本及完整构建 | 未核验 |
 | 生产 AI、实体硬件、SMTP、正式财务流程 | 未验收 |
 | 分单/多支付、离线 POS | 未实现或未验收 |
