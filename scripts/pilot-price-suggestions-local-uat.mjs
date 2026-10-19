@@ -94,7 +94,9 @@ try {
   });
 
   const page = await context.newPage();
-  await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const pageResponse = await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const cacheControl = pageResponse?.headers()["cache-control"] ?? "";
+  record("live pricing page is not cached", /no-store|no-cache/i.test(cacheControl), cacheControl || "missing Cache-Control header");
   await page.getByRole("heading", { name: "Price suggestions", exact: true }).waitFor({ timeout: 30000 });
   await page.getByText("Suggestions only").waitFor({ timeout: 10000 });
   await page.getByText("DEMO Shiraz").waitFor({ timeout: 10000 });

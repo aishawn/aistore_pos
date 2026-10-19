@@ -45,6 +45,7 @@ const liveStatusPages = [
   "/reports/this-month-sales",
   "/reports/weekly-sales",
   "/stock/replenishment",
+  "/stock/price-suggestions",
   "/customers/odoo",
   "/suppliers/odoo",
 ];

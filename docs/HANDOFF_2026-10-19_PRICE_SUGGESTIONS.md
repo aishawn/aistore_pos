@@ -7,6 +7,7 @@
 - 新增 Odoo 价格建议页：`/stock/price-suggestions`。
 - 只读读取近 28 天 POS 销售、成本、现价和库存，按 GST-inclusive shelf price 与目标 margin 生成建议。
 - 页面明确显示 `writeEnabled=false`，没有 list price 写入接口；变更需进入 Products 或 Bulk Price Edit 人工执行。
+- 页面和 `/api/odoo/price-suggestions` 响应均使用 no-store 缓存策略，避免成本/库存建议跨请求复用。
 - 新增 AI enablement checklist，明确 AI 关闭时 POS 继续可用，生产开关和 DashScope secrets 不写入仓库。
 
 ## 已验证
@@ -14,6 +15,7 @@
 - `npm run typecheck`：通过。
 - 本地 fixture 价格建议：通过；建议行、Raise price、Open product、AI 悬浮入口均出现，API 写请求 `0`。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_CURRENT.json`。
 - AI gate：脚本执行无 hard fail，生产 `AI_ENABLED=false`，没有模型调用或价格写入。证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_CURRENT.json`。
+- 缓存回归：本地 fixture 检查页面缓存头为 `no-cache`/`no-store`，写请求 `0`。证据：`docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19_CACHE-API.json`。
 - Gate 已加强：当价格建议页在目标部署中缺失时现在记为 `FAIL`，不再以 `BLOCKED` 掩盖发布缺口。当前线上复测明确失败（认证访问页面返回 `404`），证据：`docs/UAT_AI_ENABLED_GATE_2026-10-19_404-FAIL.json`。
 
 ## 线上状态

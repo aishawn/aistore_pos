@@ -43,6 +43,17 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 
 class PriceSuggestionSessionExpiredError extends Error {}
 
+function noStoreJson(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
+    },
+  });
+}
+
 function parseMarginTarget(raw: string | null): number {
   const value = Number(raw ?? DEFAULT_MARGIN);
   if (!Number.isFinite(value)) return DEFAULT_MARGIN;
@@ -63,9 +74,9 @@ function suggestShelfPrice(cost: number, marginTarget: number): number {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return noStoreJson({ message: "Odoo session expired" }, 401);
 
   const marginTarget = parseMarginTarget(request.nextUrl.searchParams.get("marginTarget"));
   const now = Date.now();
@@ -84,9 +95,9 @@ export async function GET(request: NextRequest) {
     if (session.error || !session.result?.uid) throw new PriceSuggestionSessionExpiredError();
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
-    if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
+    if (forced.error) return noStoreJson({ message: forced.error }, forced.status);
     const companyId = forced.companyIds[0];
-    if (!companyId) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
+    if (!companyId) return noStoreJson({ message: "No Odoo companies are available to this user." }, 403);
 
     const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
@@ -192,7 +203,7 @@ export async function GET(request: NextRequest) {
       return rank(a.status) - rank(b.status) || b.soldUnits - a.soldUnits || a.name.localeCompare(b.name);
     });
 
-    return NextResponse.json({
+    return noStoreJson({
       company: companies?.[0]?.name ?? "Current company",
       historyDays: HISTORY_DAYS,
       marginTarget,
@@ -200,15 +211,15 @@ export async function GET(request: NextRequest) {
       truncated: (products?.length ?? 0) >= MAX_PRODUCTS,
       generatedAt: new Date().toISOString(),
       writeEnabled: false,
-    }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    });
   } catch (error) {
     if (error instanceof PriceSuggestionSessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = noStoreJson({ message: "Odoo session expired" }, 401);
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
-    return NextResponse.json({ message }, { status });
+    return noStoreJson({ message }, status);
   }
 }
