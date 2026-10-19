@@ -677,3 +677,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - `faecf07` 已推送到 GitHub `main`；完整 push payload 触发 Dokploy 返回 `HTTP 200 Compose deployed successfully`。
 - 等待部署后 `/overview` 返回 `200`；未认证 API 返回 `401`。这些结果不证明构建完成或镜像身份。
 - Dokploy frontend/backend 容器 SHA、完整构建日志和健康状态仍待控制台回读，整体发布保持 **NO-GO**。
+
+### 2026-10-20 浮动 AI 助手交互与可访问性批次（`e9d9d69`）
+
+- AI composer 已有可访问发送按钮、表单提交、空值/忙状态禁用；对话框标题与动态消息补齐 ARIA 语义，关闭后焦点恢复逻辑已修复。
+- 手机端浮动助手默认位置预留底部安全区。公网 AI UI `2/2 PASS`，价格/库存 `8/8 PASS`，表格/表单 `14/14 PASS`；页面错误 0，意外业务写入 0。
+- 证据：`docs/UAT_AI_UI_POST_E9D9D69_RETRY.json`、`docs/UAT_PRICING_POST_E9D9D69.json`、`docs/UAT_TABLE_A11Y_POST_E9D9D69.json`。
+- 本地未运行 build；Dokploy 容器 SHA、构建日志和健康状态仍未独立核验，发布保持 **NO-GO**。

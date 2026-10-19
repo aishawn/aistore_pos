@@ -173,6 +173,11 @@ async function runViewport(viewport) {
     }));
     throw new Error(`AI_FOCUS_NOT_RESTORED_${viewport.width}_${JSON.stringify(focusState)}`);
   });
+  const fabRect = await restoredFab.boundingBox();
+  const fabSafeBottom = viewport.width > 767 || !fabRect || fabRect.y >= 72;
+  if (!fabSafeBottom) {
+    throw new Error(`AI_FAB_TOO_CLOSE_TO_BOTTOM_${viewport.width}_${JSON.stringify(fabRect)}`);
+  }
   await restoredFab.click();
   await assistant.waitFor({ state: "visible", timeout: 10000 });
   if (assistantAvailable && (await composer.isDisabled())) {
@@ -180,11 +185,6 @@ async function runViewport(viewport) {
   }
   if (!assistantAvailable && (await composer.isEnabled())) {
     throw new Error(`AI_COMPOSER_STILL_ENABLED_${viewport.width}`);
-  }
-  const fabRect = await restoredFab.boundingBox();
-  const fabSafeBottom = viewport.width > 767 || !fabRect || fabRect.y >= 72;
-  if (!fabSafeBottom) {
-    throw new Error(`AI_FAB_TOO_CLOSE_TO_BOTTOM_${viewport.width}_${JSON.stringify(fabRect)}`);
   }
   results.push({ viewport: viewport.width, recommendationCards, identifyItems, assistantAvailable, transcriptionAvailable, sendButton: true, fabSafeBottom, pageErrors });
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });

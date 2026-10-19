@@ -711,3 +711,12 @@
 - 使用完整 GitHub push payload（`ref=refs/heads/main`、`after=faecf07`）调用 Dokploy compose webhook，返回 `HTTP 200 {"message":"Compose deployed successfully"}`。这只证明 Dokploy 接受触发，不能替代构建完成证据。
 - 等待部署窗口后，公开入口 `/overview` 返回 `200`；未认证 `/api/health` 与 `/api/ai/config/client` 返回 `401`，符合鉴权边界。尚未从 Dokploy 控制台取得 frontend/backend 容器 SHA、完整 Maven/Next 构建日志、健康状态和完成时间。
 - 发布结论保持 **NO-GO**，直到控制台确认构建通过且运行容器 SHA 与 `faecf07`（或其后提交）一致。
+
+## 2026-10-20 浮动 AI 助手交互与可访问性批次（`e9d9d69`）
+
+- `SellAiPanel` 增加可见发送按钮和表单提交语义；空输入、AI 关闭、请求进行中均禁用，输入框增加稳定的 `aria-label`。
+- 对话框改用 `aria-labelledby` + 隐藏完整标题，消息区域增加 `aria-live="polite"`；同步修复关闭后焦点恢复判断，兼容新 ARIA 命名。
+- 手机端新会话默认将浮动助手上移到底部安全区，避免覆盖分页和底部操作；用户已保存的拖动位置仍保持。
+- 本地验证：`npm run typecheck`、`SellAiPanel` ESLint、AI UAT `node --check`、`git diff --check` 通过；未运行 build。两个本地 AI fixture 因 `demo.localhost:3035` 页面加载超时，未形成通过证据。
+- 公网验证：AI UI `2/2 PASS`（390/1440，焦点循环/恢复、发送按钮、ARIA、FAB 安全距离）；价格/库存 `8/8 PASS`；表格/表单 `14/14 PASS`；页面错误 0，意外业务写入 0。证据：`docs/UAT_AI_UI_POST_E9D9D69_RETRY.json`、`docs/UAT_PRICING_POST_E9D9D69.json`、`docs/UAT_TABLE_A11Y_POST_E9D9D69.json`。
+- `e9d9d69` 已推送并由 webhook 接受；Dokploy 容器 SHA、完整构建日志和健康状态仍需控制台回读，整体发布保持 **NO-GO**。
