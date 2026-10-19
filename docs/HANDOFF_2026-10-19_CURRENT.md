@@ -600,3 +600,10 @@
 - 生产 AI 当前仍未达到可用验收。只读比较表明本地 key 对 `https://dashscope.aliyuncs.com` 可返回 HTTP 200，对国际域名返回 HTTP 401；因此应在 Dokploy 核对 `AI_DASHSCOPE_BASE_URL` 与 key 的 region，并使用 region 根地址，不要填 `/compatible-mode/v1` 路径。
 - `scripts/pilot-ai-features-verify-uat.mjs` 已改为使用可解码 PNG 探针：`50213` 现在计为硬失败，`50212` 仅表示 provider 可达但图片没有发票字段；这仍不替代真实发票照片的字段提取验收。
 - 本轮本地只执行 `node --check scripts/pilot-ai-features-verify-uat.mjs` 与 `git diff --check`，没有运行 build；部署和配置修复后需等待 Dokploy 完成，再重新执行同一脚本。
+
+## Dokploy #38 后端编译故障（2026-10-20）
+
+- Dokploy #38 的 Maven 错误为 `AiConfigController.java:78` 和 `SommelierController.java:65` 找不到 `AiProviderConfig`。对应源码快照在两个控制器使用 `AiProviderConfig.isValidBaseUrl(...)` 时缺少显式 import；`AiProviderConfig.java` 类本身已经存在。
+- `ea8f1b6` 已在两个控制器补齐 `import com.orithos.modules.ai.AiProviderConfig;`。该修复已包含在当前 `main`/`origin/main=feef55e`，因此 #38 不能作为当前提交仍然无法编译的证据，应视为旧源码快照的构建失败。
+- `Parenthesis` deprecated warning 不是本次失败原因；真正导致退出的是上述两个 Java 编译错误。
+- 当前工作区未运行本地 Maven build，仍以 Dokploy Java 21 构建日志和控制台容器 SHA 作为最终构建证据。触发后续部署时必须确认目标 SHA 为 `feef55e`（或其后包含该 import 修复的提交），并回读 frontend/backend 构建完成、健康状态和运行 SHA。
