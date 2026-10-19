@@ -25,9 +25,11 @@ Do **not** put API keys or passwords in this file.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| Assistant `InvalidParameter: url error` with `AI_DASHSCOPE_MODEL=qwen3.8-flash` | Spring AI default path is **text-generation**; `qwen3.8-flash` only accepts **multimodal-generation**. This is not a bad `AI_DASHSCOPE_BASE_URL` when the host is correct. | Keep `AI_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com` (host only). Deploy build that auto-sets `multi-model` / completions-path from the model id. Or set `AI_DASHSCOPE_MULTI_MODEL=true`. Or switch model to `qwen-plus` / `qwen-flash`. |
+| `AI_DASHSCOPE_BASE_URL` includes `/api/v1` or `/compatible-mode/v1` | SDK appends its own path → double path / url error | Host only: `https://dashscope.aliyuncs.com` or `https://dashscope-intl.aliyuncs.com` |
 | `/api/ai/config/client` `enabled=true` but `/api/ai/assistant` returns `50301` | `PosAssistantGraphService` skipped by `@ConditionalOnBean(CompiledGraph)` timing | Use `@ConditionalOnProperty(app.ai.enabled=true)` (shipped); redeploy backend |
 | Pitch/ask work, chat does not | Same as above — `ChatClient` bean exists, graph service did not | Redeploy backend after the registration fix |
-| Invoice / label OCR `model_not_found` / `access_denied` | DashScope key has chat but not VL entitlement, or wrong `AI_VISION_MODEL` / region | Enable VL in Model Studio; set `AI_VISION_MODEL` to an entitled id; keep `AI_DASHSCOPE_BASE_URL` on the key’s region (CN vs intl) |
+| Invoice / label OCR `model_not_found` / `access_denied` | DashScope key has chat but not VL entitlement, or wrong `AI_VISION_MODEL` / region | Enable VL in Model Studio; set `AI_VISION_MODEL` to an entitled id (not the chat model); keep `AI_DASHSCOPE_BASE_URL` on the key’s region (CN vs intl) |
 | Price suggestions `Odoo session expired` on bare API call | Odoo cookie is minted after store shell load, not on JWT login alone | Open any store page first, or call after overview bootstrap |
 
 ## Verify script

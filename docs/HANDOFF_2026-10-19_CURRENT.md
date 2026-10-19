@@ -56,6 +56,15 @@
 - DashScope URL 配置仍失败；assistant 返回 `50210` 安全提示，原始 provider 错误不再泄漏。
 - 视觉服务的非空图片 provider 回归和 Java 21 单测仍待完成；当前真实 AI 继续 `NO-GO`。
 
+## 2026-10-19 DashScope `url error` 根因与修复
+
+- 本地 `.env` key 实测：`AI_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com` **有效**。
+- `qwen3.8-flash` 走 Spring AI 默认 `text-generation` → `InvalidParameter: url error`；同一 key 走 `multimodal-generation` 或 OpenAI compatible → `200 OK`。
+- `qwen-plus` 相反：text-generation 通过，multimodal 报 url error。
+- 因此不是 Dokploy host URL 配错，而是 **模型与 generation 路径不匹配**。
+- 代码：`DashScopeEnvironmentPostProcessor` 按 `AI_DASHSCOPE_MODEL` 自动设置 `spring.ai.dashscope.chat.options.multi-model` 与 `completions-path`。证据：`docs/UAT_AI_DASHSCOPE_PROBE_2026-10-19.json`。
+- Dokploy 保持：`AI_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com`（不要加 `/api/v1`）、`AI_DASHSCOPE_MODEL=qwen3.8-flash` 即可；部署本修复后重跑 assistant。
+
 ## 下一批候选：provider URL readiness guard
 
 - 新增统一 URL readiness 检查，拒绝带 API path/query 的 DashScope base URL；配置无效时 assistant、voice、label、invoice capability 均标为不可用，接口返回 `50301`，避免外部请求。

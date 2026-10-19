@@ -58,14 +58,19 @@ spring:
       mode: ${SQL_INIT_MODE:never}
       schema-locations: classpath:db/schema.sql
   # 阿里云百炼 DashScope（Spring AI 模型）
-  # 澳洲/国际区 Key 可设：AI_DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com
+  # AI_DASHSCOPE_BASE_URL = host only（https://dashscope.aliyuncs.com）。不要加 /api/v1 或 /compatible-mode/v1。
+  # 国际区 Key：https://dashscope-intl.aliyuncs.com
+  # qwen3.8-flash 等模型不能走 text-generation（会 InvalidParameter url error）；
+  # DashScopeEnvironmentPostProcessor 会按模型自动设 chat.options.multi-model + completions-path。
   ai:
     dashscope:
       api-key: ${AI_DASHSCOPE_API_KEY:}
       base-url: ${AI_DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com}
       chat:
         options:
-          # 文本对话请用 qwen-plus / qwen-turbo 等；qwen3.7-plus 走多模态接口，ChatClient 会报 M not exist
+          # qwen-plus / qwen-flash = text-generation；qwen3.8-flash = multimodal-generation
+          # multi-model + completions-path are set by DashScopeEnvironmentPostProcessor
+          # (override with AI_DASHSCOPE_MULTI_MODEL / AI_DASHSCOPE_COMPLETIONS_PATH if needed)
           model: ${AI_DASHSCOPE_MODEL:qwen-plus}
       audio:
         transcription:

@@ -84,7 +84,10 @@ services:
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_DASHSCOPE_API_KEY: ${AI_DASHSCOPE_API_KEY:-}
       AI_DASHSCOPE_MODEL: ${AI_DASHSCOPE_MODEL:-qwen-plus}
+      # Host only (no /api/v1). qwen3.8-flash auto-routes to multimodal-generation.
       AI_DASHSCOPE_BASE_URL: ${AI_DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
+      AI_DASHSCOPE_MULTI_MODEL: ${AI_DASHSCOPE_MULTI_MODEL:-}
+      AI_DASHSCOPE_COMPLETIONS_PATH: ${AI_DASHSCOPE_COMPLETIONS_PATH:-}
       AI_TRANSCRIPTION_MODEL: ${AI_TRANSCRIPTION_MODEL:-qwen3-asr-flash}
       AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen-vl-plus}
       AI_REPORT_RO_USER: ${AI_REPORT_RO_USER:-orithos_ai_ro}
