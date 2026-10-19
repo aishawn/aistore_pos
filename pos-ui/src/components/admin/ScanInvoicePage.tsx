@@ -45,6 +45,7 @@ export function ScanInvoicePage() {
   const [error, setError] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [invoiceVisionAvailable, setInvoiceVisionAvailable] = useState<boolean | null>(null);
+  const [capabilityError, setCapabilityError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,10 +54,11 @@ export function ScanInvoicePage() {
         if (!cancelled) {
           setAiEnabled(config.enabled);
           setInvoiceVisionAvailable(config.invoiceVisionAvailable ?? config.enabled);
+          setCapabilityError(false);
         }
       })
       .catch(() => {
-        if (!cancelled) setAiEnabled(null);
+        if (!cancelled) setCapabilityError(true);
       });
     return () => {
       cancelled = true;
@@ -127,7 +129,11 @@ export function ScanInvoicePage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
           <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
             OCR is preview-only. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.
-            {aiEnabled === false
+            {capabilityError
+              ? " Could not check invoice AI availability — refresh and try again."
+              : aiEnabled === null || invoiceVisionAvailable === null
+                ? " Checking invoice AI availability…"
+                : aiEnabled === false
               ? " Store AI is off — upload is unavailable."
               : invoiceVisionAvailable === false
                 ? " Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead."
@@ -162,7 +168,7 @@ export function ScanInvoicePage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                disabled={loading || aiEnabled === false || invoiceVisionAvailable === false}
+                disabled={loading || capabilityError || aiEnabled === null || invoiceVisionAvailable === null || aiEnabled === false || invoiceVisionAvailable === false}
                 className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               >
                 {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}

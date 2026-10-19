@@ -25,6 +25,7 @@ export function SommelierIdentifyPage() {
   const [extracted, setExtracted] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [labelVisionAvailable, setLabelVisionAvailable] = useState<boolean | null>(null);
+  const [capabilityError, setCapabilityError] = useState(false);
   const lastQueryRef = useRef("");
 
   useEffect(() => {
@@ -34,10 +35,11 @@ export function SommelierIdentifyPage() {
         if (!cancelled) {
           setAiEnabled(config.enabled);
           setLabelVisionAvailable(config.labelVisionAvailable ?? config.enabled);
+          setCapabilityError(false);
         }
       })
       .catch(() => {
-        if (!cancelled) setAiEnabled(null);
+        if (!cancelled) setCapabilityError(true);
       });
     return () => {
       cancelled = true;
@@ -141,13 +143,21 @@ export function SommelierIdentifyPage() {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={loading || aiEnabled === false || labelVisionAvailable === false}
+          disabled={loading || capabilityError || aiEnabled === null || labelVisionAvailable === null || aiEnabled === false || labelVisionAvailable === false}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[14px] font-medium text-[var(--oh-text)] hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Camera size={16} />
           Photograph label
         </button>
-        {aiEnabled === false ? (
+        {capabilityError ? (
+          <p className="mt-2 text-[13px] leading-5 text-[var(--oh-muted)]">
+            Could not check label photo availability. Refresh and try again; name and barcode search still work.
+          </p>
+        ) : aiEnabled === null || labelVisionAvailable === null ? (
+          <p role="status" className="mt-2 text-[13px] leading-5 text-[var(--oh-muted)]">
+            Checking label photo availability…
+          </p>
+        ) : aiEnabled === false ? (
           <p className="mt-2 text-[13px] leading-5 text-[var(--oh-muted)]">
             Label photos need AI turned on. Name and barcode search still work.
           </p>
