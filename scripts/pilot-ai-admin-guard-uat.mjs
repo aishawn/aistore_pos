@@ -116,7 +116,9 @@ try {
   let denied = 0;
   for (const [name, method, pathname, data] of writeCases) {
     const result = await jsonRequest(pathname, method, data);
-    const passed = result.response.status() === 403 && result.body.code === 40300;
+    // This API uses the project's uniform business envelope: authorization failures
+    // are HTTP 200 with business code 40300, rather than an HTTP 403 response.
+    const passed = result.response.ok() && result.body.code === 40300;
     if (passed) denied += 1;
     record(`clerk ${name}`, passed ? "PASS" : "FAIL", `HTTP ${result.response.status()} code ${result.body.code ?? ""}`);
   }
