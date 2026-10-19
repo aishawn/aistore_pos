@@ -37,6 +37,11 @@
 - 该修复尚未部署后单独验证；下一轮需确认启用态上传正常，并用能力位 fixture/线上配置确认关闭态按钮禁用。
 - Bulk Price Edit 保存失败保护也已完成本地验证：失败 PATCH 回滚输入并显示错误，输入不会保持 busy，随后重试可继续，fixture 共 2 次 PATCH 且没有真实业务写入。证据：`docs/UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-19.json`。该改动待与 Invoice guard 一起部署。
 
+### `7a87dd7` 部署后复验
+
+- Bulk Price Edit 在线上壳中完成失败保存/重试 fixture：首次 PATCH 503 后输入回滚并显示错误，第二次 PATCH 成功，`2` 次 PATCH 均由浏览器 fixture 截获，没有真实价格写入。证据：`docs/UAT_BULK_PRICE_EDIT_SAVE_GUARD_ONLINE_2026-10-19_POST-7A87DD7_RETRY.json`。
+- 同一部署后的 AI 全功能只读回归 `14 PASS / 0 FAIL / 1 INFO`，Invoice OCR 仍为无字段探针的 `50212 INFO`。证据：`docs/UAT_AI_FEATURES_VERIFY_2026-10-19_POST-7A87DD7.json`。
+
 ### `911ad11` 部署后复验
 
 - Invoice Scan mock `PASS`：预览、详情、行编辑、Odoo 下一步链接通过，未产生供应商/采购/收货写入。证据：`docs/UAT_INVOICE_SCAN_MOCK_2026-10-19_POST-911AD11.json`。

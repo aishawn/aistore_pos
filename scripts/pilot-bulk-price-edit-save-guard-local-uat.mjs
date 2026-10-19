@@ -77,7 +77,7 @@ try {
   record("bulk page loads", response?.ok() ?? false, String(response?.status() ?? "no response"));
   const input = page.locator('input[type="number"]').first();
   await input.waitFor({ state: "visible", timeout: 30000 });
-  const searchInput = page.getByPlaceholder("Search for Product or Classification...");
+  const searchInput = page.getByPlaceholder("Search for Product or Classification...").first();
   record("deep-link search is usable", await searchInput.inputValue() === "DEMO-SHIRAZ", await searchInput.inputValue());
 
   await input.fill("13.50");

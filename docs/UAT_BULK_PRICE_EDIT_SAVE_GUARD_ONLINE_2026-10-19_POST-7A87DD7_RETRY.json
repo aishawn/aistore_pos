@@ -1,0 +1,60 @@
+{
+  "generatedAt": "2026-10-19T08:33:30.568Z",
+  "sourceCommit": "7a87dd792b072e458ea1bfb50787af748f8677e1",
+  "environment": "local-dev-fixtures",
+  "target": "https://demo.orithos.com.au",
+  "scope": "bulk price edit save error containment; PATCH intercepted; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "bulk page loads",
+      "status": "PASS",
+      "evidence": "200"
+    },
+    {
+      "name": "deep-link search is usable",
+      "status": "PASS",
+      "evidence": "DEMO-SHIRAZ"
+    },
+    {
+      "name": "failed save is announced",
+      "status": "PASS",
+      "evidence": "cell-level alert contains safe API message"
+    },
+    {
+      "name": "failed save rolls back",
+      "status": "PASS",
+      "evidence": "12"
+    },
+    {
+      "name": "input is not left busy",
+      "status": "PASS",
+      "evidence": "false"
+    },
+    {
+      "name": "retry save can proceed",
+      "status": "PASS",
+      "evidence": "[{\"productId\":\"101\",\"priceId\":\"p1\",\"quantity\":1,\"price\":13.5},{\"productId\":\"101\",\"priceId\":\"p1\",\"quantity\":1,\"price\":13.5}]"
+    },
+    {
+      "name": "no page errors",
+      "status": "PASS",
+      "evidence": "fixture run completed without navigation or render error"
+    }
+  ],
+  "patchAttempts": 2,
+  "patches": [
+    {
+      "productId": "101",
+      "priceId": "p1",
+      "quantity": 1,
+      "price": 13.5
+    },
+    {
+      "productId": "101",
+      "priceId": "p1",
+      "quantity": 1,
+      "price": 13.5
+    }
+  ]
+}
