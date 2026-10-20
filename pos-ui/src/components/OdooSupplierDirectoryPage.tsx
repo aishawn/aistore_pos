@@ -153,7 +153,7 @@ export function OdooSupplierDirectoryPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-4 md:p-6">
       <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Suppliers</h1>
