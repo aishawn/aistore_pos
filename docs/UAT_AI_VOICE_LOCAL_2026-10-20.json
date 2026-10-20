@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-20T06:18:10.347Z",
+  "sourceCommit": "0299872b399a07ed697c0cae49a5e0be43a3b86f",
+  "worktreeChangesIncluded": true,
+  "target": "http://demo.localhost:3000",
+  "scope": "fixture microphone; release transcribes once; pointercancel cancels without ASR or assistant submit; all APIs intercepted",
+  "status": "PASS",
+  "result": {
+    "releasedTranscribesOnce": true,
+    "transcriptIsNotAutoSubmitted": true,
+    "cancelDoesNotTranscribe": true,
+    "cancelLeavesComposerEmpty": true,
+    "bothStreamsStopped": true,
+    "assistantRequests": 0,
+    "transcriptions": [
+      {
+        "method": "POST",
+        "path": "/api/ai/transcribe"
+      }
+    ],
+    "unexpectedWrites": [],
+    "pageErrors": []
+  }
+}
