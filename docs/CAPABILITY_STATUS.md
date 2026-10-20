@@ -6,6 +6,7 @@
 
 - AI 报表改为绑定租户 Odoo company 的只读查询，补充服务层/日期解析测试和 `AI_ASSISTANT_TEST_MATRIX.md`；不允许写入 Odoo。
 - 脚本语法检查通过，但未运行 Maven；线上报告对账尚未验证。已知边界：当前日期解析与 Odoo context 使用 `Australia/Sydney`，Demo company 为 `Australia/Adelaide`，需完成 company timezone 对齐。
+- `4748590` 已推送，但 webhook 仍返回 `HTTP 301 Branch Not Match`，Odoo 报表改造尚未获得线上镜像验证。
 
 ### 2026-10-20 AI 麦克风策略回归补充
 

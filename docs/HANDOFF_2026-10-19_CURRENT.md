@@ -5,6 +5,7 @@
 - AI 报表路径已从 Classic/NL2SQL 查询改为绑定租户 Odoo company 的只读 JSON-RPC：销售、数量、AOV、库存和滞销查询均带 company、warehouse、时间窗口和 Demo seed 过滤；新增 `OdooReportQueryServiceTest`、`ReportPeriodResolverTest` 扩展及 `scripts/pilot-ai-report-readonly-uat.mjs`。
 - 新增矩阵文档：[AI_ASSISTANT_TEST_MATRIX.md](AI_ASSISTANT_TEST_MATRIX.md)，明确报告日期、Odoo 对账、租户隔离、无写入和 AI/语音验收门槛。
 - 当前仍未完成线上验收：本地按约束未运行 Maven/build；脚本语法通过。时间区仍使用 `Australia/Sydney`，而 Demo 公司记录为 `Australia/Adelaide`，需后续从 Odoo company timezone 读取后再宣称日期边界完全正确。
+- 集中批次提交 `4748590` 已推送 `origin/main`；Compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，未启动构建。
 
 ## 2026-10-20 AI 麦克风策略回归补充
 
