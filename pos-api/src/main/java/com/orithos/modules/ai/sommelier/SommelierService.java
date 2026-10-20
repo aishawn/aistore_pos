@@ -49,7 +49,7 @@ public class SommelierService {
 
     public RecommendResponse recommend(RecommendRequest request, TenantContext tenant) {
         CustomerWineProfile profile = toProfile(request);
-        List<WineCandidate> wines = catalog.listWines(tenant.requireOutletId());
+        List<WineCandidate> wines = catalog.listWines(tenant);
         List<WineMatcher.ScoredWine> scored = matcher.match(wines, profile);
         if (scored.isEmpty()) {
             String reason = wines.isEmpty()
@@ -66,7 +66,7 @@ public class SommelierService {
     }
 
     public IdentifyResponse identify(String q, TenantContext tenant) {
-        List<WineCandidate> hits = catalog.search(tenant.requireOutletId(), q);
+        List<WineCandidate> hits = catalog.search(tenant, q);
         List<WineAssistantResponse> items = new ArrayList<>();
         for (WineCandidate wine : hits) {
             items.add(toAssistant(wine, null, true));
@@ -75,19 +75,18 @@ public class SommelierService {
     }
 
     public IdentifyImageResponse identifyFromLabel(WineLabelRead read, TenantContext tenant) {
-        Long outletId = tenant.requireOutletId();
         LinkedHashMap<Long, WineCandidate> unique = new LinkedHashMap<>();
         if (read.barcode() != null) {
-            for (WineCandidate hit : catalog.search(outletId, read.barcode())) {
+            for (WineCandidate hit : catalog.search(tenant, read.barcode())) {
                 unique.put(hit.productId(), hit);
             }
         }
-        for (WineCandidate hit : LabelCatalogMatcher.rank(catalog.listWines(outletId), read, 8)) {
+        for (WineCandidate hit : LabelCatalogMatcher.rank(catalog.listWines(tenant), read, 8)) {
             unique.putIfAbsent(hit.productId(), hit);
         }
         if (unique.size() < 3) {
             for (String q : read.searchQueries()) {
-                for (WineCandidate hit : catalog.search(outletId, q)) {
+                for (WineCandidate hit : catalog.search(tenant, q)) {
                     unique.putIfAbsent(hit.productId(), hit);
                     if (unique.size() >= 8) break;
                 }
@@ -132,7 +131,7 @@ public class SommelierService {
         if (!direction.equals("cheaper") && !direction.equals("upgrade")) {
             throw new BusinessException(40000, "direction must be cheaper or upgrade");
         }
-        List<WineCandidate> wines = catalog.listWines(tenant.requireOutletId());
+        List<WineCandidate> wines = catalog.listWines(tenant);
         List<WineMatcher.ScoredWine> scored = matcher.similar(wines, current, direction);
         List<RecommendCard> cards = new ArrayList<>();
         String badge = direction.equals("cheaper") ? "Similar, cheaper" : "Upgrade";
@@ -150,7 +149,7 @@ public class SommelierService {
                 : ((q.contains("better") || q.contains("upgrade") || q.contains("premium")) ? "upgrade" : null);
         List<WineMatcher.ScoredWine> alts = List.of();
         if (direction != null) {
-            alts = matcher.similar(catalog.listWines(tenant.requireOutletId()), wine, direction);
+            alts = matcher.similar(catalog.listWines(tenant), wine, direction);
         }
         String answer = pitchService.answer(wine, request.question(), alts);
         List<RecommendCard> cards = new ArrayList<>();
@@ -256,7 +255,7 @@ public class SommelierService {
     }
 
     private WineCandidate requireWine(Long id, TenantContext tenant) {
-        WineCandidate wine = catalog.findById(id, tenant.requireOutletId());
+        WineCandidate wine = catalog.findById(id, tenant);
         if (wine == null) {
             throw new BusinessException(40400, "Product not found");
         }

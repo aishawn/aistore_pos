@@ -2,6 +2,7 @@ package com.orithos.modules.ai.sommelier;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper;
 import com.orithos.modules.ai.sommelier.mapper.SommelierProductMapper.CatalogRow;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,15 @@ public class SommelierCatalogService {
         return toCandidates(mapper.listCatalog(outletId), true);
     }
 
+    public List<WineCandidate> listWines(TenantContext tenant) {
+        Long outletId = tenant == null ? null : tenant.requireOutletId();
+        if (odooWineCatalogClient.isConfigured()) {
+            long vendorId = tenant == null ? 0L : tenant.vendorId();
+            return deduplicateDisplayProducts(odooWineCatalogClient.listWines(vendorId));
+        }
+        return toCandidates(mapper.listCatalog(outletId), true);
+    }
+
     public List<WineCandidate> search(Long outletId, String q) {
         if (q == null || q.isBlank()) return List.of();
         if (odooWineCatalogClient.isConfigured()) {
@@ -51,6 +61,16 @@ public class SommelierCatalogService {
         return toCandidates(mapper.searchCatalog(outletId, q.trim()), false);
     }
 
+    public List<WineCandidate> search(TenantContext tenant, String q) {
+        if (q == null || q.isBlank()) return List.of();
+        if (odooWineCatalogClient.isConfigured()) {
+            return listWines(tenant).stream()
+                    .filter(w -> w.name() != null && w.name().toLowerCase(Locale.ROOT).contains(q.trim().toLowerCase(Locale.ROOT)))
+                    .toList();
+        }
+        return search(tenant == null ? null : tenant.requireOutletId(), q);
+    }
+
     public WineCandidate findById(Long id, Long outletId) {
         if (id == null) return null;
         if (odooWineCatalogClient.isConfigured()) {
@@ -59,6 +79,14 @@ public class SommelierCatalogService {
         }
         List<WineCandidate> found = toCandidates(listOf(mapper.findById(id, outletId)), false);
         return found.isEmpty() ? null : found.get(0);
+    }
+
+    public WineCandidate findById(Long id, TenantContext tenant) {
+        if (id == null) return null;
+        if (odooWineCatalogClient.isConfigured()) {
+            return listWines(tenant).stream().filter(w -> id.equals(w.productId())).findFirst().orElse(null);
+        }
+        return findById(id, tenant == null ? null : tenant.requireOutletId());
     }
 
     private List<WineCandidate> odooCatalog() {

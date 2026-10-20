@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.orithos.modules.vendor.Vendor;
+import com.orithos.modules.vendor.VendorMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,7 @@ public class OdooWineCatalogClient {
     private static final Logger log = LoggerFactory.getLogger(OdooWineCatalogClient.class);
 
     private final ObjectMapper objectMapper;
+    private final VendorMapper vendorMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(8))
             .build();
@@ -37,17 +41,26 @@ public class OdooWineCatalogClient {
     private final String username;
     private final String password;
 
+    @Autowired
     public OdooWineCatalogClient(
             ObjectMapper objectMapper,
+            VendorMapper vendorMapper,
             @Value("${ODOO_BASE_URL:}") String baseUrl,
             @Value("${ODOO_DATABASE:aipos}") String database,
             @Value("${ODOO_SERVICE_USERNAME:}") String username,
             @Value("${ODOO_SERVICE_PASSWORD:}") String password) {
         this.objectMapper = objectMapper;
+        this.vendorMapper = vendorMapper;
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
         this.database = database == null ? "" : database.trim();
         this.username = username == null ? "" : username.trim();
         this.password = password == null ? "" : password;
+    }
+
+    /** Lightweight constructor used by pure parsing tests. */
+    OdooWineCatalogClient(ObjectMapper objectMapper, String baseUrl, String database,
+                          String username, String password) {
+        this(objectMapper, null, baseUrl, database, username, password);
     }
 
     public boolean isConfigured() {
@@ -55,10 +68,16 @@ public class OdooWineCatalogClient {
     }
 
     public List<WineCandidate> listWines() {
+        return listWines(null);
+    }
+
+    public List<WineCandidate> listWines(Long vendorId) {
         if (!isConfigured()) return List.of();
         try {
+            Map<String, Object> context = contextFor(vendorId);
+            if (vendorId != null && context == null) return List.of();
             String sessionId = authenticate();
-            ArrayNode records = searchRead(sessionId);
+            ArrayNode records = searchRead(sessionId, context);
             List<WineCandidate> out = new ArrayList<>();
             for (JsonNode row : records) {
                 WineCandidate candidate = toCandidate(row);
@@ -103,7 +122,7 @@ public class OdooWineCatalogClient {
         throw new IllegalStateException("Odoo did not return a session cookie");
     }
 
-    private ArrayNode searchRead(String sessionId) throws Exception {
+    private ArrayNode searchRead(String sessionId, Map<String, Object> context) throws Exception {
         ObjectNode params = objectMapper.createObjectNode();
         params.put("model", "product.product");
         params.put("method", "search_read");
@@ -114,6 +133,10 @@ public class OdooWineCatalogClient {
         avail.add("=");
         avail.add(true);
         ObjectNode kwargs = params.putObject("kwargs");
+        if (context != null && !context.isEmpty()) {
+            JsonNode contextNode = objectMapper.valueToTree(context);
+            kwargs.set("context", contextNode);
+        }
         ArrayNode fields = kwargs.putArray("fields");
         fields.add("id");
         fields.add("name");
@@ -135,6 +158,22 @@ public class OdooWineCatalogClient {
         JsonNode result = root.path("result");
         if (!result.isArray()) return objectMapper.createArrayNode();
         return (ArrayNode) result;
+    }
+
+    Map<String, Object> contextFor(Long vendorId) {
+        if (vendorId == null || vendorMapper == null) return null;
+        Vendor vendor = vendorMapper.findById(vendorId);
+        if (vendor == null || vendor.getOdooCompanyId() == null || vendor.getOdooCompanyId() <= 0
+                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+            return null;
+        }
+        Map<String, Object> context = new java.util.LinkedHashMap<>();
+        context.put("allowed_company_ids", List.of(vendor.getOdooCompanyId()));
+        context.put("force_company", vendor.getOdooCompanyId());
+        if (vendor.getOdooWarehouseId() != null && vendor.getOdooWarehouseId() > 0) {
+            context.put("warehouse", vendor.getOdooWarehouseId());
+        }
+        return context;
     }
 
     WineCandidate toCandidate(JsonNode row) {

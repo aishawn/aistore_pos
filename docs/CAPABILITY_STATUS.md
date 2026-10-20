@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Sommelier Odoo 租户上下文批次（工作区）
+
+- Sommelier 的 Odoo 目录读取现在按租户 vendor 绑定传递 company/warehouse context；未 ready 或未绑定时 fail-closed，避免跨店目录/库存混入。未配置 Odoo 时保持只读 legacy fallback。
+- 新增 Odoo context 和 tenant-aware catalog 测试；前端 typecheck、AI UAT 脚本语法、diff check 通过。Java 21/Maven、线上多店隔离和实际 warehouse 数量仍未验收。
+
 ### 2026-10-20 AI 日志与错误码脱敏批次（工作区）
 
 - AI 分类、NL2SQL、报表查询、配额、Odoo catalog、快照和 sommelier fallback 日志移除原始问题、SQL、参数、provider/DB 异常文本，只保留异常类型及必要的 outlet/intent/fallback 信息。

@@ -2,12 +2,17 @@ package com.orithos.modules.ai.sommelier;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.modules.vendor.Vendor;
+import com.orithos.modules.vendor.VendorMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class OdooWineCatalogClientTest {
 
@@ -57,5 +62,24 @@ class OdooWineCatalogClientTest {
 
         assertEquals(0, candidate.stockQuantity().compareTo(BigDecimal.ZERO));
         assertFalse(candidate.inStock());
+    }
+
+    @Test
+    void tenantContextIncludesCompanyAndWarehouseAndFailsClosedWhenUnbound() {
+        VendorMapper vendors = mock(VendorMapper.class);
+        Vendor vendor = new Vendor();
+        vendor.setId(42L);
+        vendor.setOdooCompanyId(7L);
+        vendor.setOdooWarehouseId(11L);
+        vendor.setOdooProvisionStatus("ready");
+        when(vendors.findById(42L)).thenReturn(vendor);
+        OdooWineCatalogClient scoped = new OdooWineCatalogClient(
+                objectMapper, vendors, "https://odoo.example", "aipos", "service", "secret");
+
+        assertEquals(java.util.List.of(7L), scoped.contextFor(42L).get("allowed_company_ids"));
+        assertEquals(7L, scoped.contextFor(42L).get("force_company"));
+        assertEquals(11L, scoped.contextFor(42L).get("warehouse"));
+        when(vendors.findById(99L)).thenReturn(null);
+        assertNull(scoped.contextFor(99L));
     }
 }

@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Sommelier Odoo 租户上下文批次（工作区）
+
+- 配置 Odoo service account 时，Sommelier 的 recommend/identify/label/similar/ask/wine 路径现在传递 `TenantContext` 的 vendor ID；Odoo `search_read` 使用绑定的 `allowed_company_ids`、`force_company` 和 `warehouse`。
+- vendor 未绑定、Odoo provisioning 非 `ready` 或绑定不存在时，酒商目录 fail-closed 返回空结果，不再从全局 Odoo 目录猜测其他店库存；未配置 Odoo 时保留原本的只读 MySQL fallback。
+- 新增 Odoo context 与 tenant-aware catalog 单测；本地 `npm run typecheck`、AI UAT 脚本语法检查和 `git diff --check` 通过。按约束未运行 Maven/Next/Docker build，Java 21 编译、线上多店隔离和真实库存上下文仍待 Dokploy 验证。
+
 ## 2026-10-20 AI 问法覆盖与报表空结果提示（`e9222da`）
 
 - AI 报表日期解析新增 `前天/day before yesterday`、`past/previous/recent N days`、英文日期区间、中文数字日期区间；新增 [AI_ASSISTANT_UTTERANCE_CATALOG.md](AI_ASSISTANT_UTTERANCE_CATALOG.md) 覆盖销售、数量、客单价、库存、滞销、导航、实体操作、问答、拒绝和语音问法。
