@@ -14,6 +14,11 @@
 
 - `pilot-settings-mobile-uat.mjs` 支持 `PILOT_UAT_OUTPUT_PATH`，默认行为保持兼容；后续复测可写入带日期的新证据文件，不再覆盖历史 UAT。
 
+### 2026-10-21 Java 21 后端门禁复核
+
+- 当前工作树执行 `mvn -B clean verify`（`JAVA_HOME=jdk-21.0.12.1+1`）通过：**247 tests, 0 failures, 0 errors**，构建成功。
+- 仅剩 JSqlParser `Parenthesis` deprecated warnings；不影响编译或测试，不作为部署失败原因。
+
 ### 2026-10-21 AI stock report 字段权限降级（待部署）
 
 - 库存报表在 `free_qty` 字段权限失败时降级读取 `qty_available`，仍使用绑定 company/warehouse context 和只读 `search_read`。
