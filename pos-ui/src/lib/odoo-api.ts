@@ -260,7 +260,12 @@ export class OdooApiError extends Error {
     message: string,
     public readonly status: number,
   ) {
-    super(message);
+    // Gateway pages and connection failures often arrive without a JSON
+    // payload. Replace only our generic status-suffixed fallbacks; preserve
+    // actionable backend messages and validation errors.
+    const gatewayFailure = [502, 503, 504].includes(status)
+      && /\((?:502|503|504)\)$/.test(message);
+    super(gatewayFailure ? "Odoo is temporarily unavailable. Try again shortly." : message);
     this.name = "OdooApiError";
   }
 }

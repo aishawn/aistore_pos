@@ -49,6 +49,12 @@ function aiGatewayFailureMessage(subject: string, status: number, fallback: stri
     : fallback;
 }
 
+function gatewayFailureMessage(status: number, fallback: string): string {
+  return status === 502 || status === 503 || status === 504
+    ? "The service is temporarily unavailable. Try again shortly."
+    : fallback;
+}
+
 // ---- token helpers (cookie-based so it survives reloads) ----
 export function getToken(): string | null {
   // Expire the legacy JavaScript-readable token left by older releases.
@@ -193,7 +199,11 @@ async function request<T>(
 
   if (!res.ok || !json) {
     handleAuthFailure(path, res.status, json?.code ?? -1);
-    throw new ApiError(json?.message ?? `Request failed (${res.status})`, json?.code ?? -1, res.status);
+    throw new ApiError(
+      json?.message ?? gatewayFailureMessage(res.status, `Request failed (${res.status})`),
+      json?.code ?? -1,
+      res.status,
+    );
   }
   if (json.code !== 0) {
     handleAuthFailure(path, res.status, json.code);
