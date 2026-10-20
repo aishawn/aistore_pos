@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 管理页共享移动安全区批次（`d34fa45`，待部署）
+
+- `AdminPageLayout` 统一为手机管理页预留右侧 `6rem + safe-area-inset-right`，覆盖订单、报表、设置、工具和平台列表等标准页面，避免固定 Orithos AI 助手遮挡首屏或操作内容；桌面端恢复原有右间距。
+- `ListTable` 的表头和数据行补齐稳定 `aria-rowindex`，不改变分页、读取和写入行为。
+- 本地 `npm run typecheck`、目标 ESLint（`AdminPageLayout.tsx`、`ListTable.tsx`）和 `git diff --check` 通过；未运行 build。
+- 推送后调用 Dokploy compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建，故本批次仍未完成公网验收。需在 Dokploy 控制台把 Compose 分支核对为 `main`，部署 `d34fa45`，再复跑根 `app` 全站矩阵和表格可访问性专项。
+
 ## 2026-10-20 `2b5afbd` Supplier Directory 移动安全区与部署后回归
 
 - `pos-ui/src/components/OdooSupplierDirectoryPage.tsx` 的移动主内容区预留固定 AI 助手和系统安全区右侧空间；桌面端布局保持不变，供应商读取、Retry 和错误语义不变。

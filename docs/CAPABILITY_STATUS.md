@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 管理页共享移动安全区批次（`d34fa45`，待部署）
+
+- 标准 `AdminPageLayout` 在手机端统一为固定 AI 助手预留右侧安全区；`ListTable` 补齐表头/数据行 `aria-rowindex`。
+- 本地 typecheck、目标 ESLint 和 diff check 通过，未运行 build。
+- Dokploy webhook 返回 `HTTP 301 Branch Not Match`，未产生构建任务；公网效果必须在控制台修正 Compose 分支并部署 `d34fa45` 后验证。
+
 ### 2026-10-20 `2b5afbd` Supplier Directory 移动安全区与最终矩阵
 
 - Odoo Supplier Directory 移动主内容区为固定 AI 助手和系统安全区预留右侧空间；桌面端保持原布局，读取与 Retry 行为不变。
