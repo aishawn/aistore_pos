@@ -33,6 +33,10 @@ public class AiTranscriptionService {
     private static final Logger log = LoggerFactory.getLogger(AiTranscriptionService.class);
 
     static final long MAX_BYTES = 5L * 1024 * 1024;
+    private static final Set<String> AUDIO_MIME_TYPES = Set.of(
+            "audio/webm", "audio/mp4", "audio/ogg", "audio/mpeg", "audio/mp3",
+            "audio/wav", "audio/x-wav", "audio/aac", "audio/flac", "audio/x-flac",
+            "audio/3gpp", "audio/3gpp2", "audio/amr");
 
     private static final Set<String> ASR_LANGS = Set.of(
             "zh", "en", "yue", "ja", "de", "ko", "ru", "fr", "pt", "ar", "it", "es",
@@ -47,12 +51,16 @@ public class AiTranscriptionService {
             AiProperties properties,
             @Value("${spring.ai.dashscope.api-key:}") String apiKey,
             @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}") String baseUrl) {
+        this(properties, apiKey, baseUrl, RestClient.builder());
+    }
+
+    AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl, RestClient.Builder builder) {
         this.properties = properties;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
                 ? "https://dashscope.aliyuncs.com"
                 : baseUrl.trim());
-        this.restClient = RestClient.builder().baseUrl(this.baseUrl).build();
+        this.restClient = builder.baseUrl(this.baseUrl).build();
     }
 
     /**
@@ -69,6 +77,7 @@ public class AiTranscriptionService {
         if (file.getSize() > MAX_BYTES) {
             throw new BusinessException(40011, "Audio file is too large (max 5 MB).");
         }
+        String mime = resolveMime(file.getContentType());
 
         byte[] bytes;
         try {
@@ -80,7 +89,6 @@ public class AiTranscriptionService {
             throw new BusinessException(40010, "Audio file is empty.");
         }
 
-        String mime = resolveMime(file.getContentType());
         String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
         String asrLang = normalizeLang(lang);
 
@@ -115,8 +123,7 @@ public class AiTranscriptionService {
 
             String text = extractText(root);
             if (!StringUtils.hasText(text)) {
-                log.warn("Qwen-ASR empty text; bytes={} mime={} lang={} raw={}",
-                        bytes.length, mime, asrLang, summarize(root));
+                log.warn("Qwen-ASR empty text; bytes={} mime={} lang={}", bytes.length, mime, asrLang);
                 throw new BusinessException(50210,
                         "Transcription returned empty text. Speak clearly and try again.");
             }
@@ -124,13 +131,16 @@ public class AiTranscriptionService {
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientResponseException e) {
-            String detail = e.getResponseBodyAsString();
-            log.warn("DashScope ASR HTTP {}: {}", e.getStatusCode().value(), detail);
-            throw new BusinessException(50211, "Cloud transcription failed: " + shorten(detail, e.getMessage()));
+            log.warn("DashScope ASR HTTP {}", e.getStatusCode().value());
+            throw providerFailure();
         } catch (Exception e) {
-            log.warn("DashScope transcription failed: {}", e.getMessage());
-            throw new BusinessException(50211, "Cloud transcription failed: " + e.getMessage());
+            log.warn("DashScope transcription failed: {}", e.getClass().getSimpleName());
+            throw providerFailure();
         }
+    }
+
+    private static BusinessException providerFailure() {
+        return new BusinessException(50211, "Cloud transcription failed. Please try again.");
     }
 
     /** Pull transcript from OpenAI-compatible or DashScope-native response shapes. */
@@ -217,12 +227,18 @@ public class AiTranscriptionService {
         return ASR_LANGS.contains(primary) ? primary : null;
     }
 
-    private static String resolveMime(String contentType) {
+    static String resolveMime(String contentType) {
         if (!StringUtils.hasText(contentType)) {
             return "audio/webm";
         }
         String mime = contentType.split(";")[0].trim().toLowerCase(Locale.ROOT);
-        return mime.isBlank() ? "audio/webm" : mime;
+        if (mime.isBlank()) {
+            return "audio/webm";
+        }
+        if (!AUDIO_MIME_TYPES.contains(mime)) {
+            throw new BusinessException(40013, "Unsupported audio format.");
+        }
+        return mime;
     }
 
     private static String trimTrailingSlash(String url) {
@@ -232,19 +248,4 @@ public class AiTranscriptionService {
         return url;
     }
 
-    private static String summarize(JsonNode root) {
-        if (root == null) {
-            return "null";
-        }
-        String s = root.toString();
-        return s.length() > 500 ? s.substring(0, 500) + "…" : s;
-    }
-
-    private static String shorten(String body, String fallback) {
-        if (!StringUtils.hasText(body)) {
-            return fallback;
-        }
-        String t = body.replaceAll("\\s+", " ").trim();
-        return t.length() > 240 ? t.substring(0, 240) + "…" : t;
-    }
 }

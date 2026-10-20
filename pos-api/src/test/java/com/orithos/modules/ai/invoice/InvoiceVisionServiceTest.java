@@ -8,6 +8,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InvoiceVisionServiceTest {
 
@@ -57,9 +58,31 @@ class InvoiceVisionServiceTest {
     @Test
     void providerConfigurationDetailsAreNotShownToStaff() {
         String message = InvoiceVisionService.visionFailureMessage(
-                "Invoice recognition failed", "qwen-vl-plus",
-                "{\"code\":\"InvalidParameter\",\"message\":\"url error\",\"request_id\":\"secret\"}",
-                "fallback");
+                "Invoice recognition failed", "qwen-vl-plus", "InvalidParameter");
         assertEquals("Invoice recognition failed: AI provider configuration is invalid. Check the AI configuration and try again.", message);
+    }
+
+    @Test
+    void arbitraryProviderDetailsAreReplacedWithSafeRetryGuidance() {
+        String message = InvoiceVisionService.visionFailureMessage(
+                "Invoice recognition failed", "qwen-vl-plus", "unknown_error");
+
+        assertEquals("Invoice recognition failed: The AI provider could not process this image. Try again or contact your administrator.", message);
+    }
+
+    @Test
+    void providerErrorParserReadsOnlyStructuredErrorCode() throws Exception {
+        String payload = "{\"code\":\"InvalidParameter\",\"message\":\"private supplier data\",\"request_id\":\"private-id\"}";
+
+        assertEquals("InvalidParameter", InvoiceVisionService.providerErrorCode(mapper.readTree(payload)));
+    }
+
+    @Test
+    void missingVisionModelKeepsActionableConfigurationGuidance() {
+        String message = InvoiceVisionService.visionFailureMessage(
+                "Invoice recognition failed", "qwen-vl-plus", "model_not_found");
+
+        assertTrue(message.contains("qwen-vl-plus"));
+        assertTrue(message.contains("AI_DASHSCOPE_BASE_URL"));
     }
 }

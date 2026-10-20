@@ -122,6 +122,19 @@ const QUICK_ACTIONS = [
 ];
 
 const SELL_VIEWS = new Set<LeftView>(["keys", "parked", "customers", "promotions", "products"]);
+const DISPATCHABLE_AI_INTENTS = new Set([
+  "navigate",
+  "sale_action",
+  "search_customer",
+  "search_product",
+  "entity_action",
+  "report_sales",
+  "report_qty",
+  "report_aov",
+  "report_stock",
+  "report_dead_stock",
+  "report_adhoc",
+]);
 
 interface SellAiPanelProps {
   expanded: boolean;
@@ -559,6 +572,8 @@ export function SellAiPanel({
     const ui = result.ui ?? {};
     const slots = result.slots ?? {};
     const intent = result.intent;
+
+    if (!DISPATCHABLE_AI_INTENTS.has(intent)) return;
 
     if (intent === "search_customer") {
       openCustomerLookup(slots.query ?? "");

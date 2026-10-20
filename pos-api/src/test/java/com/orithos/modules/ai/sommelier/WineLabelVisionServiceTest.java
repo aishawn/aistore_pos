@@ -51,9 +51,31 @@ class WineLabelVisionServiceTest {
     @Test
     void providerConfigurationDetailsAreNotShownToStaff() {
         String message = WineLabelVisionService.visionFailureMessage(
-                "Label recognition failed", "qwen-vl-plus",
-                "{\"code\":\"InvalidParameter\",\"message\":\"url error\",\"request_id\":\"secret\"}",
-                "fallback");
+                "Label recognition failed", "qwen-vl-plus", "InvalidParameter");
         assertEquals("Label recognition failed: AI provider configuration is invalid. Check the AI configuration and try again.", message);
+    }
+
+    @Test
+    void arbitraryProviderDetailsAreReplacedWithSafeRetryGuidance() {
+        String message = WineLabelVisionService.visionFailureMessage(
+                "Label recognition failed", "qwen-vl-plus", "unknown_error");
+
+        assertEquals("Label recognition failed: The AI provider could not process this image. Try again or contact your administrator.", message);
+    }
+
+    @Test
+    void providerErrorParserReadsOnlyStructuredErrorCode() throws Exception {
+        String payload = "{\"error\":{\"code\":\"model_not_found\",\"message\":\"private invoice data\",\"request_id\":\"private-id\"}}";
+
+        assertEquals("model_not_found", WineLabelVisionService.providerErrorCode(mapper.readTree(payload)));
+    }
+
+    @Test
+    void missingVisionModelKeepsActionableConfigurationGuidance() {
+        String message = WineLabelVisionService.visionFailureMessage(
+                "Label recognition failed", "qwen-vl-plus", "model_not_found");
+
+        assertTrue(message.contains("qwen-vl-plus"));
+        assertTrue(message.contains("AI_DASHSCOPE_BASE_URL"));
     }
 }

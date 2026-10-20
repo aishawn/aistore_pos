@@ -56,6 +56,26 @@ class IntentSanitizeServiceTest {
     }
 
     @Test
+    void unsupportedEntityOperationDoesNotFallThroughToDefaultListAction() {
+        IntentSanitizeService.SanitizedIntent result = service.sanitize(raw("entity_action", "Run customer action",
+                "/customers", null, null, null, "customer", "archive"));
+
+        assertEquals("unknown", result.intent());
+        assertTrue(result.slots().isEmpty());
+        assertNull(result.route());
+    }
+
+    @Test
+    void missingEntityOperationCanStillOpenTheEntityList() {
+        IntentSanitizeService.SanitizedIntent result = service.sanitize(raw("entity_action", "Open customers",
+                null, null, null, null, "customer", null));
+
+        assertEquals("entity_action", result.intent());
+        assertEquals("customer", result.slots().get("entity"));
+        assertFalse(result.slots().containsKey("op"));
+    }
+
+    @Test
     void freeTextQueryIsTrimmedAndCappedToConfiguredLength() {
         IntentSanitizeService.SanitizedIntent result = service.sanitize(
                 raw("search_product", "", null, null, null, null, null, null, "  Sauvignon Blanc Reserve  "));

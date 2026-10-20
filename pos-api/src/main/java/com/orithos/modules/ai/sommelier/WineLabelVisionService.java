@@ -134,11 +134,11 @@ public class WineLabelVisionService {
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientResponseException e) {
-            log.warn("DashScope VL HTTP {}: {}", e.getStatusCode().value(), e.getResponseBodyAsString());
+            log.warn("DashScope label vision HTTP {}", e.getStatusCode().value());
             throw new BusinessException(50213, visionFailureMessage(
-                    "Label recognition failed", properties.visionModel(), e.getResponseBodyAsString(), e.getMessage()));
+                    "Label recognition failed", properties.visionModel(), providerErrorCode(e)));
         } catch (Exception e) {
-            log.warn("DashScope VL failed: {}", e.getMessage());
+            log.warn("DashScope label vision failed: {}", e.getClass().getSimpleName());
             throw new BusinessException(50213, "Label recognition failed. Check the AI configuration and try again.");
         }
     }
@@ -228,21 +228,33 @@ public class WineLabelVisionService {
         return url;
     }
 
-    private static String shorten(String body, String fallback) {
-        if (!StringUtils.hasText(body)) return fallback;
-        String t = body.replaceAll("\\s+", " ").trim();
-        return t.length() > 240 ? t.substring(0, 240) + "…" : t;
+    private String providerErrorCode(RestClientResponseException error) {
+        try {
+            return providerErrorCode(objectMapper.readTree(error.getResponseBodyAsByteArray()));
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
-    static String visionFailureMessage(String prefix, String model, String body, String fallback) {
-        String detail = shorten(body, fallback);
-        if (detail != null && detail.toLowerCase(Locale.ROOT).matches("(?s).*(model_not_found|model not exist).*")) {
+    static String providerErrorCode(JsonNode root) {
+        if (root == null) return "";
+        JsonNode error = root.path("error");
+        String code = root.path("code").asText("");
+        if (!StringUtils.hasText(code)) code = error.path("code").asText("");
+        if (!StringUtils.hasText(code)) code = root.path("type").asText("");
+        if (!StringUtils.hasText(code)) code = error.path("type").asText("");
+        return code;
+    }
+
+    static String visionFailureMessage(String prefix, String model, String providerCode) {
+        String normalized = providerCode == null ? "" : providerCode.toLowerCase(Locale.ROOT);
+        if (normalized.equals("model_not_found") || normalized.equals("modelnotexist")) {
             return prefix + ": vision model \"" + model + "\" is not available for this DashScope key/region. "
                     + "Set AI_VISION_MODEL (for example qwen-vl-max or qwen3-vl-plus) and confirm AI_DASHSCOPE_BASE_URL matches the key region.";
         }
-        if (detail != null && detail.toLowerCase(Locale.ROOT).matches("(?s).*(invalidparameter|url error|request_id|dashscope).*")) {
+        if (normalized.equals("invalidparameter") || normalized.equals("invalid_parameter")) {
             return prefix + ": AI provider configuration is invalid. Check the AI configuration and try again.";
         }
-        return prefix + ": " + detail;
+        return prefix + ": The AI provider could not process this image. Try again or contact your administrator.";
     }
 }

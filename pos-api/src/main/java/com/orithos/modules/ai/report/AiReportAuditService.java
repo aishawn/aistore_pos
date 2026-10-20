@@ -56,11 +56,12 @@ public class AiReportAuditService {
                     latency,
                     AiReportQuotaService.estimateTokens(question, sql)
             );
-            log.info("AI report audit path={} allowed={} sql={}", path, allowed, sql);
+            log.info("AI report audit path={} allowed={} rows={} latencyMs={}",
+                    path, allowed, allowed ? rowCount : null, latency);
         } catch (DataAccessException e) {
-            log.warn("AI report audit insert skipped: {}", e.getMessage());
+            log.warn("AI report audit insert skipped: {}", e.getClass().getSimpleName());
         } catch (Exception e) {
-            log.warn("AI report audit skipped: {}", e.getMessage());
+            log.warn("AI report audit skipped: {}", e.getClass().getSimpleName());
         }
     }
 
@@ -92,7 +93,7 @@ public class AiReportAuditService {
                     AiReportQuotaService.estimateTokens(question, answer)
             );
         } catch (Exception e) {
-            log.warn("AI assistant audit skipped: {}", e.getMessage());
+            log.warn("AI assistant audit skipped: {}", e.getClass().getSimpleName());
         }
     }
 

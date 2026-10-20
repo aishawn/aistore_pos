@@ -45,6 +45,17 @@ public class IntentSanitizeService {
         putSlot(snap, slots, "days", raw.days());
         putSlot(snap, slots, "category", raw.category());
 
+        // A missing entity operation can mean "open the list" in the UI, but an
+        // explicitly supplied operation that fails the enum whitelist is a bad
+        // model result and must not silently become a list action.
+        if ("entity_action".equals(intentCode)
+                && raw.op() != null
+                && !raw.op().isBlank()
+                && !slots.containsKey("op")) {
+            return new SanitizedIntent(UNKNOWN, "Unrecognized", Map.of(),
+                    null, null, null, null);
+        }
+
         String panel = firstNonBlank(slots.get("panel"), def != null ? def.getDefaultPanel() : null);
         String view = firstNonBlank(slots.get("view"), def != null ? def.getDefaultView() : null);
         String route = slots.get("route");
