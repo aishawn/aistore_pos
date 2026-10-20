@@ -11,7 +11,6 @@ import {
   isControlPlaneHost,
   parseTenantSlugFromHost,
   storeLandingPath,
-  storeOrigin,
   tenantBaseDomain,
 } from "@/lib/tenant-host";
 
@@ -112,7 +111,8 @@ export default function LoginPage() {
     await doLogin("web");
   }
 
-  const demoStoreLogin = `${storeOrigin("demo")}/login`;
+  // Keep the SSR and browser markup identical across local HTTP and production HTTPS.
+  const demoStoreLogin = `//demo.${tenantBaseDomain()}/login`;
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-[var(--oh-surface)] px-4 py-8 font-sans text-[var(--oh-text)]">

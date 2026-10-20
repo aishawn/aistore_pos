@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 登录页 SSR hydration 修复（待部署）
+
+- `pos-ui/app/login/page.tsx` 的示例门店链接改为协议相对 URL（`//demo.<tenant-domain>/login`），避免服务端默认 HTTPS 与本地/代理 HTTP 首帧不一致造成 hydration mismatch。
+- 本地 Next dev 浏览器检查：登录页 `hydrationErrors=0`，示例链接为 `//demo.localhost/login`；同一 dev 服务下价格建议和库存响应式 fixture 分别通过 `15/15`、`6/6`，业务写入均为 `0`。
+- 本地 typecheck、目标 ESLint 和 diff check 通过；未运行 build。该修复尚未进入 Dokploy 镜像。
+
 ## 2026-10-20 表单 Modal 防误关闭（待部署）
 
 - `pos-ui/src/components/admin/Modal.tsx` 新增 `closeOnOverlayClick`，默认关闭遮罩点击关闭；价格集、角色等编辑表单必须通过显式关闭按钮或 Escape 退出，避免误触遮罩丢失未保存输入。
