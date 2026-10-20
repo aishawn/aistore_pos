@@ -142,7 +142,7 @@ export default function SettingsDataPage() {
             Demo seed orders stay in Odoo but are excluded from live Overview metrics after removal.
           </p>
           {loading ? (
-            <p className="mt-4 inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]">
+              <p role="status" aria-live="polite" aria-busy="true" className="mt-4 inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]">
               <LoaderCircle size={16} className="animate-spin" /> Checking sample data…
             </p>
           ) : status ? (

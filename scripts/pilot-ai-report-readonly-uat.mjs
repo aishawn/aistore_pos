@@ -35,6 +35,22 @@ async function getJson(response, label) {
   return body.data ?? body;
 }
 
+function isoDate(value) {
+  const text = String(value ?? "").trim();
+  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(text);
+  if (iso) return iso[1];
+  const localized = /^(\d{1,2})\s+([A-Za-z]{3})\.?\s+(\d{4})$/.exec(text);
+  if (!localized) return null;
+  const month = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+    .indexOf(localized[2].toLowerCase());
+  if (month < 0) return null;
+  const day = Number(localized[1]);
+  const year = Number(localized[3]);
+  const date = new Date(Date.UTC(year, month, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month || date.getUTCDate() !== day) return null;
+  return `${String(year).padStart(4, "0")}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password },
@@ -107,11 +123,22 @@ try {
     && JSON.stringify(compactDate.table?.rows ?? []) === JSON.stringify(explicitDate.table?.rows ?? []),
   `compact=${compactDate.answer}; explicit=${explicitDate.answer}`);
 
-  const dashboardOct14 = dashboard30d.trend?.find((row) => new Date(row.label).toISOString().slice(0, 10) === expectedDate);
-  const aiOct14 = compactDate.table?.rows?.find((row) => String(row.date) === expectedDate);
+  const dashboardOct14 = dashboard30d.trend?.find((row) => isoDate(row.label) === expectedDate);
+  const aiRows = compactDate.table?.rows ?? [];
+  const aiOct14 = aiRows.find((row) => isoDate(row.date) === expectedDate);
   check("14 October reconciles with overview", Boolean(dashboardOct14 && aiOct14)
     && Math.abs(Number(aiOct14.sales) - Number(dashboardOct14.revenue)) < 0.01,
-  `overview=${dashboardOct14?.revenue ?? "missing"}; assistant=${aiOct14?.sales ?? "missing"}`);
+  `overview=${dashboardOct14?.revenue ?? "missing"}; assistant=${aiOct14?.sales ?? "missing"}; rows=${JSON.stringify(aiRows)}`);
+
+  const overviewByDate = new Map((dashboard30d.trend ?? []).map((row) => [isoDate(row.label), Number(row.revenue)]));
+  const dailyComparisons = (last30.table?.rows ?? []).map((row) => ({
+    date: isoDate(row.date),
+    assistant: Number(row.sales),
+    overview: overviewByDate.get(isoDate(row.date)),
+  })).filter((row) => row.date && Number.isFinite(row.overview));
+  const dailyMismatches = dailyComparisons.filter((row) => Math.abs(row.assistant - row.overview) >= 0.01);
+  check("AI daily sales rows reconcile with overview trend", dailyComparisons.length > 0 && dailyMismatches.length === 0,
+    `compared=${dailyComparisons.length}; mismatches=${JSON.stringify(dailyMismatches)}`);
 
   const metrics = await getJson(
     await context.request.get(`${base}/api/ai/metrics?hours=1`), "AI_REPORT_METRICS",

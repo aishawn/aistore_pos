@@ -4,8 +4,12 @@ import com.orithos.common.AustraliaTime;
 import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Month;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -52,6 +56,20 @@ class ReportPeriodResolverTest {
     }
 
     @Test
+    void relativeTodayUsesTheBoundStoresTimezoneAtMidnight() {
+        Clock clock = Clock.fixed(Instant.parse("2026-10-13T13:15:00Z"), ZoneOffset.UTC);
+        ReportPeriodResolver boundaryResolver = new ReportPeriodResolver(clock);
+
+        ReportPeriodResolver.Window adelaide = boundaryResolver.resolve(
+                Map.of(), "today's sales", 1, ZoneId.of("Australia/Adelaide"));
+        ReportPeriodResolver.Window sydney = boundaryResolver.resolve(
+                Map.of(), "today's sales", 1, ZoneId.of("Australia/Sydney"));
+
+        assertEquals(LocalDate.of(2026, 10, 13), adelaide.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 14), sydney.from().toLocalDate());
+    }
+
+    @Test
     void dayMonthQuestionUsesCurrentYearInsteadOfWrongModelYear() {
         LocalDate expected = LocalDate.of(AustraliaTime.today().getYear(), 10, 14);
         ReportPeriodResolver.Window w = resolver.resolve(
@@ -68,6 +86,22 @@ class ReportPeriodResolverTest {
 
         ReportPeriodResolver.Window explicitYear = resolver.resolve(Map.of(), "sales on 14 October 2024");
         assertEquals(LocalDate.of(2024, 10, 14), explicitYear.from().toLocalDate());
+    }
+
+    @Test
+    void lowerCaseAndFullMonthNamesAreCaseInsensitive() {
+        int year = AustraliaTime.today().getYear();
+        assertEquals(LocalDate.of(year, 10, 14),
+                resolver.resolve(Map.of(), "sales on 14,oct").from().toLocalDate());
+        assertEquals(LocalDate.of(year, 10, 14),
+                resolver.resolve(Map.of(), "sales on 14 OCTOBER").from().toLocalDate());
+    }
+
+    @Test
+    void invalidNamedDateFallsBackToSlotsInsteadOfThrowing() {
+        ReportPeriodResolver.Window w = resolver.resolve(
+                Map.of("from", "2026-10-14", "to", "2026-10-14"), "sales on 31 february");
+        assertEquals(LocalDate.of(2026, 10, 14), w.from().toLocalDate());
     }
 
     @Test

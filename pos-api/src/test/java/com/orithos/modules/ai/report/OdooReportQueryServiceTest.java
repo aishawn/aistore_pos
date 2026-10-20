@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -95,6 +96,35 @@ class OdooReportQueryServiceTest {
     }
 
     @Test
+    void boundCompanyTimezoneControlsReportDayBoundariesAndGroupingContext() throws Exception {
+        List<JsonNode> requests = startTimezoneServer();
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        ZoneId timezone = service.businessTimezone(tenant);
+        assertEquals(ZoneId.of("Australia/Adelaide"), timezone);
+        LocalDate day = LocalDate.of(2026, 10, 14);
+        OdooReportQueryService.Result result = service.query(tenant, "report_sales", Map.of(),
+                new ReportPeriodResolver.Window(day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1));
+
+        assertNull(result.error());
+        JsonNode reportRequest = requests.stream()
+                .filter(request -> "pos.order".equals(request.path("params").path("model").asText()))
+                .findFirst().orElseThrow();
+        JsonNode params = reportRequest.path("params");
+        assertEquals("Australia/Adelaide", params.path("kwargs").path("context").path("tz").asText());
+        String domain = params.path("args").get(0).toString();
+        String fromUtc = day.atStartOfDay().atZone(timezone).withZoneSameInstant(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        String toUtc = day.plusDays(1).atStartOfDay().atZone(timezone).withZoneSameInstant(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        assertTrue(domain.contains(fromUtc));
+        assertTrue(domain.contains(toUtc));
+    }
+
+    @Test
     void unlinkedStoreAndAdhocIntentFailWithoutCallingOdoo() throws Exception {
         List<JsonNode> requests = startServer("[]");
         VendorMapper vendors = mock(VendorMapper.class);
@@ -123,6 +153,31 @@ class OdooReportQueryServiceTest {
         server.createContext("/web/dataset/call_kw", exchange -> {
             requests.add(MAPPER.readTree(exchange.getRequestBody()));
             respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":" + groupedRowsJson + "}");
+        });
+        server.start();
+        return requests;
+    }
+
+    private List<JsonNode> startTimezoneServer() throws Exception {
+        List<JsonNode> requests = new CopyOnWriteArrayList<>();
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/web/session/authenticate", exchange -> {
+            requests.add(MAPPER.readTree(exchange.getRequestBody()));
+            exchange.getResponseHeaders().add("Set-Cookie", "session_id=test-session; Path=/; HttpOnly");
+            respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":{\"uid\":5}}");
+        });
+        server.createContext("/web/dataset/call_kw", exchange -> {
+            JsonNode request = MAPPER.readTree(exchange.getRequestBody());
+            requests.add(request);
+            String model = request.path("params").path("model").asText();
+            String response = switch (model) {
+                case "res.company" -> "[{\"id\":77,\"partner_id\":[100,\"Demo Company\"]}]";
+                case "res.partner" -> "[{\"id\":100,\"country_id\":[13,\"Australia\"],"
+                        + "\"state_id\":[5,\"South Australia\"]}]";
+                case "pos.order" -> "[{\"date_order:day\":\"14 Oct 2026\",\"amount_total\":125.50,\"__count\":2}]";
+                default -> "[]";
+            };
+            respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":" + response + "}");
         });
         server.start();
         return requests;

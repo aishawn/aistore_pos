@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -27,6 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /** Read-only reporting against the Odoo company bound to the authenticated vendor. */
 @Component
@@ -38,6 +41,7 @@ public class OdooReportQueryService {
     private static final List<String> PAID_STATES = List.of("paid", "done", "invoiced");
     private static final int MAX_GROUPS = 1000;
     private static final int MAX_LIST_ROWS = 50;
+    private static final long TIMEZONE_CACHE_MILLIS = Duration.ofMinutes(30).toMillis();
 
     private final ObjectMapper objectMapper;
     private final VendorMapper vendorMapper;
@@ -46,6 +50,7 @@ public class OdooReportQueryService {
     private final String database;
     private final String username;
     private final String password;
+    private final ConcurrentMap<Long, CachedTimezone> timezoneCache = new ConcurrentHashMap<>();
 
     public OdooReportQueryService(
             ObjectMapper objectMapper,
@@ -86,7 +91,8 @@ public class OdooReportQueryService {
         try {
             long companyId = vendor.getOdooCompanyId();
             String sessionId = authenticate();
-            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId());
+            ZoneId timezone = cachedTimezone(companyId);
+            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
             List<Map<String, Object>> rows = switch (intent == null ? "" : intent) {
                 case "report_sales" -> sales(sessionId, companyId, vendor, slots, window, context);
                 case "report_qty" -> quantities(sessionId, companyId, vendor, slots, window, context);
@@ -103,6 +109,40 @@ public class OdooReportQueryService {
         }
     }
 
+    public ZoneId businessTimezone(TenantContext tenant) {
+        if (tenant == null || !tenant.canQueryReport() || !configured()) return AustraliaTime.ZONE;
+        Vendor vendor = vendorMapper.findById(tenant.vendorId());
+        if (vendor == null || vendor.getOdooCompanyId() == null || vendor.getOdooCompanyId() <= 0
+                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+            return AustraliaTime.ZONE;
+        }
+        long companyId = vendor.getOdooCompanyId();
+        CachedTimezone cached = timezoneCache.get(companyId);
+        if (cached != null && cached.expiresAtMillis() > System.currentTimeMillis()) return cached.zone();
+
+        try {
+            String sessionId = authenticate();
+            Map<String, Object> lookupContext = context(companyId, vendor.getOdooWarehouseId(), ZoneOffset.UTC);
+            List<Map<String, Object>> companies = searchRead(sessionId, "res.company",
+                    List.of(List.of("id", "=", companyId)), List.of("partner_id"), lookupContext, 1, "id asc");
+            Object partnerRelation = companies.isEmpty() ? null : companies.get(0).get("partner_id");
+            Long partnerId = relationId(partnerRelation);
+            if (partnerId == null) return AustraliaTime.ZONE;
+            List<Map<String, Object>> partners = searchRead(sessionId, "res.partner",
+                    List.of(List.of("id", "=", partnerId)), List.of("country_id", "state_id"), lookupContext, 1, "id asc");
+            Map<String, Object> partner = partners.isEmpty() ? Map.of() : partners.get(0);
+            ZoneId zone = timezoneForAddress(relationName(partner.get("country_id")),
+                    relationName(partner.get("state_id")));
+            timezoneCache.put(companyId, new CachedTimezone(zone,
+                    System.currentTimeMillis() + TIMEZONE_CACHE_MILLIS));
+            return zone;
+        } catch (Exception e) {
+            log.warn("AI report timezone lookup failed vendorId={} cause={}", tenant.vendorId(),
+                    e.getClass().getSimpleName());
+            return AustraliaTime.ZONE;
+        }
+    }
+
     private List<Map<String, Object>> sales(String session, long companyId, Vendor vendor,
                                              Map<String, String> slots,
                                              ReportPeriodResolver.Window window,
@@ -110,7 +150,7 @@ public class OdooReportQueryService {
         String category = ReportTemplateRegistry.sanitizeCategory(slots == null ? null : slots.get("category"));
         if (category == null) {
             List<Map<String, Object>> grouped = readGroup(session, "pos.order",
-                    orderDomain(companyId, vendor, window),
+                    orderDomain(companyId, vendor, window, timezone(context)),
                     List.of("amount_total:sum"), List.of("date_order:day"), context, 367);
             if (grouped.size() > 366) return null;
             List<Map<String, Object>> rows = new ArrayList<>();
@@ -138,7 +178,7 @@ public class OdooReportQueryService {
                                                                String category, String field, String outputField,
                                                                Map<String, Object> context) throws Exception {
         List<Map<String, Object>> perOrder = readGroup(session, "pos.order.line",
-                lineDomain(companyId, vendor, window, category), List.of(field + ":sum"),
+                lineDomain(companyId, vendor, window, category, timezone(context)), List.of(field + ":sum"),
                 List.of("order_id"), context, MAX_GROUPS + 1);
         if (perOrder.size() > MAX_GROUPS) return null;
         List<Long> orderIds = new ArrayList<>();
@@ -162,7 +202,7 @@ public class OdooReportQueryService {
             if (rawId instanceof Number id && rawDate != null) {
                 LocalDateTime utc = LocalDateTime.parse(rawDate.toString(), ODOO_DATETIME);
                 dateByOrder.put(id.longValue(), utc.atZone(ZoneOffset.UTC)
-                        .withZoneSameInstant(AustraliaTime.ZONE).toLocalDate());
+                        .withZoneSameInstant(timezone(context)).toLocalDate());
             }
         }
         if (dateByOrder.size() != orderIds.size()) return null;
@@ -184,7 +224,8 @@ public class OdooReportQueryService {
                                                      ReportPeriodResolver.Window window,
                                                      Map<String, Object> context) throws Exception {
         List<Map<String, Object>> grouped = readGroup(session, "pos.order",
-                orderDomain(companyId, vendor, window), List.of("amount_total:sum"), List.of(), context, 1);
+                orderDomain(companyId, vendor, window, timezone(context)),
+                List.of("amount_total:sum"), List.of(), context, 1);
         Map<String, Object> row = grouped.isEmpty() ? Map.of() : grouped.get(0);
         BigDecimal sales = decimal(row.get("amount_total"));
         BigDecimal tickets = decimal(row.get("__count"));
@@ -223,7 +264,7 @@ public class OdooReportQueryService {
         if (products.size() > MAX_GROUPS) return null;
 
         List<Map<String, Object>> sold = readGroup(session, "pos.order.line",
-                lineDomain(companyId, vendor, window, null), List.of("qty:sum"),
+                lineDomain(companyId, vendor, window, null, timezone(context)), List.of("qty:sum"),
                 List.of("product_id"), context, MAX_GROUPS + 1);
         if (sold.size() > MAX_GROUPS) return null;
         Map<Long, BigDecimal> soldByProduct = new LinkedHashMap<>();
@@ -249,11 +290,11 @@ public class OdooReportQueryService {
     }
 
     private List<Object> orderDomain(long companyId, Vendor vendor,
-                                    ReportPeriodResolver.Window window) {
+                                    ReportPeriodResolver.Window window, ZoneId timezone) {
         List<Object> domain = new ArrayList<>();
         domain.add(List.of("company_id", "=", companyId));
-        domain.add(List.of("date_order", ">=", utc(window.from())));
-        domain.add(List.of("date_order", "<", utc(window.toExclusive())));
+        domain.add(List.of("date_order", ">=", utc(window.from(), timezone)));
+        domain.add(List.of("date_order", "<", utc(window.toExclusive(), timezone)));
         domain.add(List.of("state", "in", PAID_STATES));
         domain.add(List.of("amount_total", ">", 0));
         excludeClearedDemoSeed(domain, companyId, vendor, "uuid");
@@ -261,11 +302,11 @@ public class OdooReportQueryService {
     }
 
     private List<Object> lineDomain(long companyId, Vendor vendor,
-                                   ReportPeriodResolver.Window window, String category) {
+                                   ReportPeriodResolver.Window window, String category, ZoneId timezone) {
         List<Object> domain = new ArrayList<>();
         domain.add(List.of("order_id.company_id", "=", companyId));
-        domain.add(List.of("order_id.date_order", ">=", utc(window.from())));
-        domain.add(List.of("order_id.date_order", "<", utc(window.toExclusive())));
+        domain.add(List.of("order_id.date_order", ">=", utc(window.from(), timezone)));
+        domain.add(List.of("order_id.date_order", "<", utc(window.toExclusive(), timezone)));
         domain.add(List.of("order_id.state", "in", PAID_STATES));
         domain.add(List.of("order_id.amount_total", ">", 0));
         excludeClearedDemoSeed(domain, companyId, vendor, "order_id.uuid");
@@ -376,18 +417,65 @@ public class OdooReportQueryService {
         return response;
     }
 
-    private Map<String, Object> context(long companyId, Long warehouseId) {
+    private Map<String, Object> context(long companyId, Long warehouseId, ZoneId timezone) {
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("allowed_company_ids", List.of(companyId));
         context.put("force_company", companyId);
-        context.put("tz", AustraliaTime.ZONE.getId());
+        context.put("tz", timezone.getId());
         if (warehouseId != null && warehouseId > 0) context.put("warehouse", warehouseId);
         return context;
     }
 
-    private String utc(LocalDateTime local) {
-        return local.atZone(AustraliaTime.ZONE).withZoneSameInstant(ZoneOffset.UTC).format(ODOO_UTC);
+    private ZoneId cachedTimezone(long companyId) {
+        CachedTimezone cached = timezoneCache.get(companyId);
+        if (cached == null || cached.expiresAtMillis() <= System.currentTimeMillis()) return AustraliaTime.ZONE;
+        return cached.zone();
     }
+
+    private static ZoneId timezone(Map<String, Object> context) {
+        try {
+            return ZoneId.of(String.valueOf(context.get("tz")));
+        } catch (RuntimeException e) {
+            return AustraliaTime.ZONE;
+        }
+    }
+
+    private String utc(LocalDateTime local, ZoneId timezone) {
+        return local.atZone(timezone).withZoneSameInstant(ZoneOffset.UTC).format(ODOO_UTC);
+    }
+
+    private static Long relationId(Object relation) {
+        if (relation instanceof List<?> pair && !pair.isEmpty() && pair.get(0) instanceof Number id) {
+            return id.longValue();
+        }
+        return null;
+    }
+
+    private static String relationName(Object relation) {
+        if (relation instanceof List<?> pair && pair.size() > 1 && pair.get(1) != null) {
+            return pair.get(1).toString().trim();
+        }
+        return "";
+    }
+
+    private static ZoneId timezoneForAddress(String countryName, String stateName) {
+        String country = countryName == null ? "" : countryName.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!country.equals("australia") && !country.equals("au")) return ZoneOffset.UTC;
+        String state = stateName == null ? "" : stateName.trim().toLowerCase(java.util.Locale.ROOT);
+        if (state.equals("nsw") || state.startsWith("new south wales")
+                || state.equals("vic") || state.equals("victoria")
+                || state.equals("tas") || state.equals("tasmania")
+                || state.equals("act") || state.startsWith("australian capital territory")) {
+            return ZoneId.of("Australia/Sydney");
+        }
+        if (state.equals("qld") || state.equals("queensland")) return ZoneId.of("Australia/Brisbane");
+        if (state.equals("sa") || state.startsWith("south australia")) return ZoneId.of("Australia/Adelaide");
+        if (state.equals("wa") || state.startsWith("western australia")) return ZoneId.of("Australia/Perth");
+        if (state.equals("nt") || state.startsWith("northern territory")) return ZoneId.of("Australia/Darwin");
+        return ZoneId.of("Australia/Adelaide");
+    }
+
+    private record CachedTimezone(ZoneId zone, long expiresAtMillis) {}
 
     private boolean configured() {
         if (baseUrl.isBlank() || database.isBlank() || username.isBlank() || password.isBlank()) return false;

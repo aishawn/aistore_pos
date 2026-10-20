@@ -234,7 +234,7 @@ export function OdooReportingDashboard() {
 
 function DashboardSkeleton() {
   return (
-    <main aria-label="Loading reporting dashboard" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+    <main aria-label="Loading reporting dashboard" aria-live="polite" aria-busy="true" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div className="grid gap-2"><span className="h-3 w-32 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-64 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-96 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
         <div className="h-11 w-44 animate-pulse rounded-md bg-[var(--oh-border)]" />

@@ -4,9 +4,11 @@ import com.orithos.common.AustraliaTime;
 import org.springframework.stereotype.Component;
 
 import java.time.DayOfWeek;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
@@ -24,6 +26,16 @@ import java.util.regex.Pattern;
 public class ReportPeriodResolver {
 
     public record Window(LocalDateTime from, LocalDateTime toExclusive, int days) {}
+
+    private final Clock clock;
+
+    public ReportPeriodResolver() {
+        this(Clock.systemUTC());
+    }
+
+    ReportPeriodResolver(Clock clock) {
+        this.clock = clock;
+    }
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter MONTH_ABBR = new DateTimeFormatterBuilder()
@@ -45,7 +57,12 @@ public class ReportPeriodResolver {
     }
 
     public Window resolve(Map<String, String> slots, String question, int defaultDays) {
-        LocalDate today = AustraliaTime.today();
+        return resolve(slots, question, defaultDays, AustraliaTime.ZONE);
+    }
+
+    public Window resolve(Map<String, String> slots, String question, int defaultDays, ZoneId timezone) {
+        ZoneId zone = timezone == null ? AustraliaTime.ZONE : timezone;
+        LocalDate today = LocalDate.now(clock.withZone(zone));
         String fromRaw = slot(slots, "from");
         String toRaw = slot(slots, "to");
         Integer days = parseDays(slot(slots, "days"));

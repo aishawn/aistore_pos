@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.graph.action.NodeAction;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,10 +15,14 @@ public class FillReportSlotsNode implements NodeAction {
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final ReportPeriodResolver periodResolver;
+    private final OdooReportQueryService odooReportQueryService;
     private final AiReportQuotaService quotaService;
 
-    public FillReportSlotsNode(ReportPeriodResolver periodResolver, AiReportQuotaService quotaService) {
+    public FillReportSlotsNode(ReportPeriodResolver periodResolver,
+                               OdooReportQueryService odooReportQueryService,
+                               AiReportQuotaService quotaService) {
         this.periodResolver = periodResolver;
+        this.odooReportQueryService = odooReportQueryService;
         this.quotaService = quotaService;
     }
 
@@ -33,7 +38,9 @@ public class FillReportSlotsNode implements NodeAction {
             slots.put("category", category);
         }
         int defaultDays = "report_dead_stock".equals(intent) ? 30 : 1;
-        ReportPeriodResolver.Window window = periodResolver.resolve(slots, question, defaultDays);
+        TenantContext tenant = ReportGraphState.tenant(state);
+        ZoneId timezone = odooReportQueryService.businessTimezone(tenant);
+        ReportPeriodResolver.Window window = periodResolver.resolve(slots, question, defaultDays, timezone);
         slots.put("from", window.from().toLocalDate().format(ISO));
         slots.put("to", window.toExclusive().minusSeconds(1).toLocalDate().format(ISO));
         if ("report_dead_stock".equals(intent)) {
@@ -50,7 +57,7 @@ public class FillReportSlotsNode implements NodeAction {
         out.put("report_to", window.toExclusive());
         out.put("report_t0", System.currentTimeMillis());
         out.put("sql_error", "");
-        Long outletId = ReportGraphState.tenant(state).requireOutletId();
+        Long outletId = tenant.requireOutletId();
         if (outletId != null) {
             try {
                 quotaService.acquire(outletId, 1, AiReportQuotaService.estimateTokens(question));
