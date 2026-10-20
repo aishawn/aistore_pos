@@ -140,13 +140,14 @@ public class ReportPeriodResolver {
             LocalDate start = today.with(DayOfWeek.MONDAY);
             return new Window(start.atStartOfDay(), today.plusDays(1).atStartOfDay(), 0);
         }
-        if (contains(q, "昨天", "昨日", "yesterday")) {
-            LocalDate d = today.minusDays(1);
-            return new Window(d.atStartOfDay(), today.atStartOfDay(), 1);
-        }
+        // Before "昨天"/"yesterday": "day before yesterday" contains "yesterday".
         if (contains(q, "前天", "day before yesterday")) {
             LocalDate d = today.minusDays(2);
             return new Window(d.atStartOfDay(), d.plusDays(1).atStartOfDay(), 1);
+        }
+        if (contains(q, "昨天", "昨日", "yesterday")) {
+            LocalDate d = today.minusDays(1);
+            return new Window(d.atStartOfDay(), today.atStartOfDay(), 1);
         }
         if (contains(q, "今天", "today")) {
             return new Window(today.atStartOfDay(), today.plusDays(1).atStartOfDay(), 1);
