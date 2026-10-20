@@ -12,7 +12,7 @@
 - 条码工具页补齐真实 Odoo 产品目录与集成设置入口；仍明确不生成或发送虚假的标签打印任务。
 - 最新功能批次 `dd5253d` 已推送；Dokploy webhook 仍为 `HTTP 301 Branch Not Match`，未生成新镜像，线上状态继续按旧镜像基线记录。
 - 价格建议页刷新错误状态现在具备 44px Retry 触控目标、忙状态反馈和结果区 `aria-busy`；搜索清除按钮扩大到 44px，待新镜像验证。
-- 当前后端 AI 多轮记忆、工具调用、报告路由和提示配置改动已在 Java 21 `mvn -B clean verify` 中通过：226 tests、0 failures；仍需 Dokploy 构建与公网回归确认。
+- 当前后端 AI 多轮记忆、工具调用、报告路由、提示配置、cashier history 和平台 AI usage 改动已在 Java 21 `mvn -B clean verify` 中通过：228 tests、0 failures；仍需 Dokploy 构建与公网回归确认。
 - 公网旧镜像 AI 工作流自然语言回归 `17/17 PASS`；证据 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`，结果仅作为旧运行版本基线。
 - 批次提交 `52c8f58` 已推送；Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，因此没有产生新的线上验证证据，状态保持“待部署”。
 

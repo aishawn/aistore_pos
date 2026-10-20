@@ -1056,3 +1056,10 @@
 - 这些改动仍未进入 Dokploy 镜像；下一次推送前必须保持 Java 21 全量门禁通过，部署后重跑 AI、价格/库存、全站矩阵并回读运行 SHA。
 - 公网旧镜像工作流自然语言回归 `17/17 PASS`，证据为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`；不能作为 `1b7cee5` 的 post-deploy 证据。
 - 针对 `1b7cee5` 的 webhook 于 2026-10-20 17:20（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。
+
+## 2026-10-20 当前 HEAD Java 21 门禁复核
+
+- `main` 当前为 `24f9e44`，包含 cashier chat history、platform AI usage 和 invoice assistant coverage。
+- 使用 JDK `21.0.12.1` 执行 `mvn -B clean verify`：`228 tests, 0 failures`，仅有 JSqlParser `Parenthesis` deprecated warnings。
+- 前端 `npm run typecheck`、目标 ESLint、AI UAT 脚本语法检查通过；未运行 Next build。
+- 当前 HEAD 尚未获得 Dokploy 构建/运行证据，下一步以 `24f9e44` 触发部署并回读构建日志、健康状态和运行 SHA。
