@@ -93,6 +93,7 @@ Changing `INITIAL_ADMIN_PASSWORD` in env does **not** reset an existing `admin` 
 | Dokploy / smoke | [DEPLOYMENT.md](DEPLOYMENT.md) |
 | app vs demo hosts | [docs/TENANT_SUBDOMAIN.md](docs/TENANT_SUBDOMAIN.md) |
 | What works / gaps | [docs/CAPABILITY_STATUS.md](docs/CAPABILITY_STATUS.md) |
+| Function checklist / test status | [docs/FUNCTIONALITY_CHECKLIST.md](docs/FUNCTIONALITY_CHECKLIST.md) |
 | Pilot GO / NO-GO | [docs/PILOT_RELEASE_READINESS.md](docs/PILOT_RELEASE_READINESS.md) |
 | Latest session handoff | The newest `docs/HANDOFF_*.md` by date; currently [docs/HANDOFF_2026-10-13.md](docs/HANDOFF_2026-10-13.md) is the durable handoff file, but trust its “当前交接快照” section over the filename. |
 | Isolation write UAT | [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md) |
