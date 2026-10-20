@@ -12,6 +12,7 @@
 - Stock List 移动右侧安全区已在公网截图中生效；pricing/stock 只读专项 `8/8 PASS`，`assistantCardOverlap=true`，业务写入 `0`。
 - 表格/表单 `14/14 PASS`、根 `app` 全站 `268/268 PASS`、AI availability `3/3 PASS`；证据分别为 `docs/UAT_TABLE_A11Y_POST_3DA583E.json`、`docs/UAT_ALL_STATIC_PAGES_POST_3DA583E.json`、`docs/UAT_AI_AVAILABILITY_POST_3DA583E.json`。
 - 仍未从 Dokploy 控制台独立核验实际构建日志、运行容器 SHA 和健康状态；生产发布继续 **NO-GO**。
+- 同批次盘点只读专项 `docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_POST_3DA583E.json` 通过 `10/10`，非 GET 请求 `0`；发票扫描 preview-only mock `docs/UAT_INVOICE_SCAN_MOCK_POST_3DA583E.json` 为 `4/4 PASS`，未产生采购/收货写入。
 
 ### 2026-10-20 当前构建诊断与 Stock List 遮挡检测
 

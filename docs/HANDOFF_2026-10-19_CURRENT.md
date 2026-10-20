@@ -16,6 +16,8 @@
 - AI capability `docs/UAT_AI_AVAILABILITY_POST_3DA583E.json`：`3/3 PASS`；仅验证配置、composer 和本地快捷入口，未提交模型提示词。
 - 这些证据的 Dokploy 容器 SHA/完整构建日志/健康状态仍未从控制台独立回读，整体发布状态继续 **NO-GO**。
 
+- 同一线上镜像补充专项：`docs/UAT_ODOO_STOCKTAKE_ONLINE_READONLY_POST_3DA583E.json` 盘点只读 `10/10` 检查通过，`nonGetStocktakeRequests=0`，`writeEnabled=false`；`docs/UAT_INVOICE_SCAN_MOCK_POST_3DA583E.json` 发票 preview-only `4/4 PASS`，无供应商/采购/收货写入。
+
 ## 2026-10-20 当前构建诊断与移动遮挡断言
 
 - 当前 `main`/`origin/main` 为 `91ddfb9`；`AiProviderConfig.java` 已被 Git 跟踪，`AiConfigController` 与 `SommelierController` 均包含 `import com.orithos.modules.ai.AiProviderConfig;`。因此 Dokploy #38 的两个 `cannot find symbol` 不是当前源码缺陷，应视为旧快照或 Compose 分支/提交配置错误。
