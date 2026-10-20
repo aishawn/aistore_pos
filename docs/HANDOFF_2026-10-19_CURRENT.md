@@ -1209,9 +1209,22 @@
 - 新增字段权限失败后的降级单测；Java 21 `mvn -B clean verify`：`245 tests, 0 failures, 0 errors`。
 - 该修复尚未进入 Dokploy 镜像。分支绑定修复后部署当前提交，再重跑 `UAT_AI_REPORTS_READONLY`；只有 stock report 从 `BLOCKED` 变为 `PASS` 且运行 SHA 匹配时，才确认线上修复。
 
+## 2026-10-20 AI 助手问法与视觉模型配置继续迭代（待部署）
+
+- Demo 只读问法回归发现 `帮我看看哪些商品需要调价` 被旧运行版本误判为 `report_stock`；`AssistantFastPathRouter` 已收紧中文 `看看...` 库存表达，要求明确的库存/剩余数量信号，并新增调价、补货不误截获的单测。
+- Demo 发票 OCR 探针返回 HTTP 200、业务码 `50213`，诊断证据已补充 HTTP 状态、Content-Type 和业务码，避免把网关/非 JSON 响应误报为模型故障。当前线上结果指向 provider/model 配置问题。
+- 本地 provider 对比：配置凭据下 `qwen3.8-flash` native multimodal 请求返回 200；`qwen-vl-plus` 返回 InvalidParameter。`application.yml` 现默认视觉模型跟随 `AI_DASHSCOPE_MODEL`，未设置时使用 `qwen3.8-flash`，仍可用 `AI_VISION_MODEL` 显式覆盖。
+- Java 21 `mvn -B clean verify` 通过 **246 tests, 0 failures, 0 errors**；未运行前端 build。上述改动尚未部署，不能把 Demo 旧运行版本的结果当成修复后验收。
+
 ## 2026-10-21 库存错误提示与问法回归修复
 
 - 库存数据源不可用、未配置或门店未绑定时，AI 响应现在提供库存列表/重试指引，不再使用容易误解的通用销售报表提示。
 - 新增库存问法回归发现并修复了宽泛正则抢先捕获命令前缀的问题；`帮我看看 VB Cans 还剩多少` 现在只把 `VB Cans` 传入查询槽位。
 - Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`；JSqlParser 弃用警告仍仅为 warning。
 - 改动已完成本地门禁，尚未部署；待 Dokploy 分支绑定修正后再验证真实线上库存结果和错误提示。
+
+## 2026-10-21 公网 AI features 只读复测
+
+- `scripts/pilot-ai-features-verify-uat.mjs` 完成 `14/14 PASS`，没有失败或业务写入。证据：`docs/UAT_AI_FEATURES_VERIFY_ONLINE_DF015FD.json`。
+- 发票 OCR 探针返回 `HTTP 200`、业务码 `50212`，表示 provider 可达但探针图片没有发票字段；该结果不等同于真实发票字段提取验收。
+- `sourceCommit` 记录为当前测试脚本提交，Dokploy runtime SHA 仍未核对，因此结果属于公网旧运行基线，不标记为 `post-deploy`。
