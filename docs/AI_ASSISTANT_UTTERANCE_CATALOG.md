@@ -74,6 +74,9 @@ classifier is trusted:
 | Can you review prices? / What should I charge for Shiraz? | `/stock/capped-pricing` | Show a review list; never save a price automatically |
 | Suggest a wine for dinner / What wine goes with steak? | `/sommelier` | Match catalogue and current stock; no invented products |
 | Upload this supplier bill / 上传供应商发票 | `/invoices/scan` | Keep OCR and catalogue matches as a draft |
+| Can you read this bill? / 帮我读一下这张供应商单据 | `/invoices/scan` | Require an image; show retry guidance for blank, blurry or oversized uploads |
+| Match this invoice to products / 把发票商品和目录匹配起来 | `/invoices/scan` | Keep unmatched lines for staff review; never create products or receive stock automatically |
+| The photo is blurry / 图片看不清 | `/invoices/scan` | Ask for a flatter, closer image; do not invent supplier, totals or line items |
 
 The negative cases are equally important: `How much red wine sold this week?`,
 `What was our wine revenue yesterday?`, `How many invoices did we receive?`, and
