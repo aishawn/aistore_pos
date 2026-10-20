@@ -967,3 +967,9 @@
 - 报表只读 UAT 增加逐日 AI/Overview 对账，而不是只比较单日；所有报告请求仍禁止 Odoo 写方法。`OdooReportingDashboard` 与 Settings/Data loading 状态补齐 `aria-live`/`aria-busy`。
 - 本地验证：`pos-ui` `npm run typecheck`、目标 ESLint、AI 报表/OCR UAT `node --check`、目标 `git diff --check` 通过；遵守约束未运行 Maven、Next build 或 Docker build。
 - 提交已推送前的下一步：集中推送 `73ba45c` 后，在 Dokploy 修正 Compose 分支绑定再部署；部署后必须执行 `pilot-ai-report-readonly-uat.mjs`、全站矩阵、表格/表单和 AI availability。当前线上仍不能标记为该提交，发布保持 **NO-GO**。
+
+## 2026-10-20 当前线上基线与部署阻断
+
+- 当前公网旧运行版本只读基线：AI 报表 `9/9 PASS`（逐日 Overview 对账 7 天、Odoo source path、`14,oct` 年份）；表格/表单 `14/14 PASS`、价格/库存 `8/8 PASS`、全站根 `app` `268/268 PASS`，均无意外业务写入。AI 报表证据：`docs/UAT_AI_REPORTS_READONLY_ONLINE.json`。
+- 这些结果的运行提交为 `d48a374` 或脚本未核验版本，不能证明 `73ba45c`/`5bc65cc` 已上线；部署后必须重跑同一套脚本并记录运行身份。
+- 针对 `5bc65cc` 的 compose webhook 于 2026-10-20 返回 `HTTP 301 {"message":"Branch Not Match"}`，构建未启动。Dokploy 分支绑定仍是当前外部阻断；在控制台修正前不重复触发 webhook。
