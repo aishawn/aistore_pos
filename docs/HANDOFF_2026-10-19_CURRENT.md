@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-23 AI UI 识别结果竞态复测
+
+- UI UAT 现在等待识别请求返回后的结果列表首项可见，修复网络延迟导致的空列表误报。
+- 最新 `UAT_AI_UI_2026-10-23_RECHECK.json`：390/1440 `2/2 PASS`，识别结果各 `48` 条、推荐各 `3` 张、页面错误 `0`。
+- 该改动只调整测试等待条件；运行版本身份仍未核验，不能把它当作最新代码的 post-deploy 证明。
+
 ## 2026-10-21 Dokploy 部署尝试（`4aacb74`）
 
 - 在完成本轮 AI/UI 回归并推送 `4aacb74` 后，Compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务。

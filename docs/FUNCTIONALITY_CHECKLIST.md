@@ -1,6 +1,6 @@
 # Orithos 功能清单与验证状态
 
-更新时间：2026-10-21
+更新时间：2026-10-23
 
 ## 状态说明
 
@@ -44,6 +44,7 @@
 - 公网只读基线：AI UI `2/2`、价格/库存 `8/8`、表格/表单 `14/14`、全站 `268/268`；意外业务写入 `0`。
 - 2026-10-21 当前公网只读复测：全站 `270/270`、AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`；意外业务写入 `0`。这组结果是较早运行版本基线。
 - 2026-10-22 最新报表复测为 `13 PASS / 1 BLOCKED`，唯一阻断为 AI stock report；独立 Odoo stock RPC 为 `7 PASS / 1 INFO`，不能证明 warehouse 配置是根因。
+- 2026-10-23 AI UI 识别结果竞态复测为 `2/2 PASS`；测试脚本等待识别列表首项可见后，390/1440 均得到 48 条识别结果、3 张推荐卡、零页面错误。
 - AI natural-language workflow `49/49 PASS`、管理员配置保护 `15/15 PASS`、availability `3/3 PASS`、surface/auth guard `11/11 PASS`；metrics `9 PASS / 2 BLOCKED`，跨店 metrics 需要 platform-operator 凭据才能完成。
 - 本轮公网只读复测：AI UI `2/2`、未接入页面诚实边界 `18/18`、表格/表单 `16/16`、POS help/keyboard `2/2`；意外业务写入 `0`。
 - Sell 刷新竞态修复后：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check` 通过；未运行 Next/Docker build。
