@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
-import { PackageSearch, Printer, Ruler, ScanLine, TriangleAlert, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, PackageSearch, Printer, Ruler, ScanLine, TriangleAlert, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 
 const barcodeSteps: {
@@ -44,6 +45,14 @@ export default function BarcodesPage() {
           <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-900/80">
             The selectors and “Generate &amp; Print” button previously shown here were visual placeholders. This page does not load products, create labels, or send print jobs.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/products/odoo" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">
+              Open Odoo product catalogue <ArrowUpRight size={15} aria-hidden="true" />
+            </Link>
+            <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-4 text-sm font-medium text-amber-950 hover:bg-amber-100">
+              Integration status
+            </Link>
+          </div>
         </div>
       </section>
 
