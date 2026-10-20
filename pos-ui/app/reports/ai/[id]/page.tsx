@@ -8,5 +8,5 @@ export default async function AiReportPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <AiReportResultPage reportId={id} />;
+  return <AiReportResultPage key={id} reportId={id} />;
 }

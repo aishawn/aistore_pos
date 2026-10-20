@@ -1036,6 +1036,7 @@
 - `AiReportResultPage` 的 Columns 控件已从禁用占位改为可访问列选择菜单；支持逐列隐藏/恢复，至少保留一列，表格合计、空结果列数和 CSV 导出均跟随当前可见列。菜单支持点击外部或 Escape 收起，结果搜索框补齐稳定的可访问名称。
 - 本地 `pos-ui` `npm run typecheck`、目标 ESLint 和 `git diff --check` 通过；未运行 Next build。
 - 该 UI 改动尚未进入可核验 Dokploy 镜像；部署后需在 AI 报表详情页验证菜单键盘操作、移动端不溢出、列切换、合计和导出结果，并重跑 AI UI/报表只读专项。
+- 报表详情路由现在以 `reportId` 作为 React key，切换不同报告时会重置搜索和列隐藏状态，避免上一个报告的 UI 偏好污染新报告；本地 typecheck、目标 ESLint 和 diff check 通过。
 - 2026-10-20 18:53（UTC+8）以 `after=641eaee` 触发 Compose webhook，仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务；该 UI 批次线上验证保持待部署。
 - 2026-10-20 18:59（UTC+8）以最新 `after=2d3641f` 再次触发，仍返回 `HTTP 301 {"message":"Branch Not Match"}`；没有创建构建任务，线上验证继续等待 Dokploy 修正分支绑定。
 
