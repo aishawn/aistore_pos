@@ -53,6 +53,7 @@ export function ListTable({
         )}
         style={gridStyle}
         role="row"
+        aria-rowindex={1}
       >
         {columns.map((c, i) => (
           <div key={i} role="columnheader" aria-colindex={i + 1} className={cn("px-1.5", c.width ?? "min-w-0", !equalColumns && !c.width && "flex-1 basis-0", align(c.align))}>
@@ -80,6 +81,7 @@ export function ListTable({
             )}
             style={gridStyle}
             role="row"
+            aria-rowindex={r + 2}
           >
             {row.map((cell, c) => (
               <div
