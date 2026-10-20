@@ -42,21 +42,21 @@ must remain drafts until a staff member confirms the related action.
 
 | Example | Expected intent | Expected result |
 |---|---|---|
-| What should I reorder today? | `replenishment` | Show suggested purchase lines with sales, stock and a reason |
-| Which products are running low? | `replenishment` | Rank low-stock items; do not create a purchase order |
-| 给我今天的补货建议 | `replenishment` | Display draft quantities and the source window |
-| Which prices should I review? | `pricing` | Show price suggestions with current price and evidence |
-| Should I raise the price on Shiraz? | `pricing` | Explain the suggestion; never change a price automatically |
-| 帮我看看哪些商品需要调价 | `pricing` | Return reviewable recommendations, not saved changes |
-| Recommend a red wine under $30 | `recommendation` | Match catalogue and current stock to type and budget |
-| What goes well with steak? | `recommendation` | Return in-stock food-pairing options or a clear empty state |
-| 推荐适合聚会的白葡萄酒 | `recommendation` | Use occasion and catalogue filters; do not invent products |
-| What did we sell most this week? | `store_question` | Answer from the selected store and date range |
-| Why are sales down today? | `store_question` | Show available signals and state when evidence is insufficient |
-| 本周哪类商品卖得最好 | `store_question` | Return a store-scoped category summary |
-| Scan this supplier invoice | `invoice_capture` | Preview extracted supplier, lines and totals only |
-| Read the invoice and match the products | `invoice_capture` | Show catalogue matches and uncertain lines for checking |
-| 识别这张发票 | `invoice_capture` | Keep the result as a draft; never receive stock automatically |
+| What should I reorder today? | `navigate` → `/stock/replenishment` | Open suggested purchase lines with sales, stock and a reason |
+| Which products are running low? | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
+| 给我今天的补货建议 | `navigate` → `/stock/replenishment` | Open draft quantities and the source window |
+| Which prices should I review? | `navigate` → `/stock/capped-pricing` | Open price suggestions with current price and evidence |
+| Should I raise the price on Shiraz? | `navigate` → `/stock/capped-pricing` | Open review flow; never change a price automatically |
+| 帮我看看哪些商品需要调价 | `navigate` → `/stock/capped-pricing` | Open reviewable recommendations, not saved changes |
+| Recommend a red wine under $30 | `navigate` → `/sommelier` | Open catalogue and current-stock recommendation flow |
+| What goes well with steak? | `navigate` → `/sommelier` | Open food-pairing flow; show an empty state if needed |
+| 推荐适合聚会的白葡萄酒 | `navigate` → `/sommelier` | Open occasion and catalogue filters; do not invent products |
+| What did we sell most this week? | `report_adhoc` | Answer from the selected store and date range |
+| Why are sales down today? | `report_adhoc` | Show available signals and state when evidence is insufficient |
+| 本周哪类商品卖得最好 | `report_adhoc` | Return a store-scoped category summary |
+| Scan this supplier invoice | `navigate` → `/invoices/scan` | Open invoice preview for supplier, lines and totals only |
+| Read the invoice and match the products | `navigate` → `/invoices/scan` | Open catalogue matching and uncertain-line checking |
+| 识别这张发票 | `navigate` → `/invoices/scan` | Keep the result as a draft; never receive stock automatically |
 
 For each workflow, repeat the prompt with an empty catalogue, unavailable provider,
 missing store binding and restricted role. The response must identify the source

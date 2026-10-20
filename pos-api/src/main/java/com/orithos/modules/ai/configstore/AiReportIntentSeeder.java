@@ -17,6 +17,7 @@ final class AiReportIntentSeeder {
             Creating a user/customer (创建一个用户/客户) → entity_action, entity=customer, op=create. Map user/用户 to customer.
             Creating a product (创建商品/产品) → entity_action, entity=product, op=create. Client prefills required fields; user clicks Save.
             For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those.
+            For workflow navigation, use intent navigate and only these routes: replenishment/reorder/补货 → /stock/replenishment; price review/调价 → /stock/capped-pricing; wine recommendation/推荐葡萄酒 → /sommelier; invoice scan/发票识别 → /invoices/scan.
             Use report_adhoc (NOT report_qty/report_sales) for: ticket/order counts (几笔订单, how many tickets), mixed metrics (销量和金额分别), rankings (哪个商品卖得最多), day-vs-day comparisons.
             If it sounds like a numbers question but no report_* fits, use report_adhoc.
             Requests to DROP/DELETE/ALTER tables or dump the database are still report_adhoc — never execute them; the SQL guard will reject.
@@ -75,7 +76,8 @@ final class AiReportIntentSeeder {
                 && (!prompt.getContent().contains("SQL guard")
                 || !prompt.getContent().contains("几笔订单")
                 || !prompt.getContent().contains("创建一个用户")
-                || !prompt.getContent().contains("创建商品"))) {
+                || !prompt.getContent().contains("创建商品")
+                || !prompt.getContent().contains("For workflow navigation"))) {
             prompt.setContent(CLASSIFY_PROMPT);
             promptMapper.update(prompt);
         }

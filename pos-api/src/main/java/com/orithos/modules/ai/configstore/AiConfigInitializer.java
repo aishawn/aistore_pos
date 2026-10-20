@@ -119,6 +119,10 @@ public class AiConfigInitializer implements ApplicationRunner {
         insertValue("route", "giftcards", "/giftcards", "Gift cards", 80);
         insertValue("route", "promotions", "/promotions", "Promotions", 90);
         insertValue("route", "close", "/close", "Close register", 100);
+        insertValue("route", "replenishment", "/stock/replenishment", "Replenishment", 110);
+        insertValue("route", "capped_pricing", "/stock/capped-pricing", "AI price review", 111);
+        insertValue("route", "sommelier", "/sommelier", "Wine recommendations", 112);
+        insertValue("route", "invoice_scan", "/invoices/scan", "Invoice capture", 113);
 
         // sale actions (frontend confirms)
         insertValue("action", "price_check", "Price Check", "Price Check", 10);

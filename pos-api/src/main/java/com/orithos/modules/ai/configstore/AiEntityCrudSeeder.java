@@ -34,6 +34,10 @@ final class AiEntityCrudSeeder {
         ensureValue(slotValueMapper, "route", "stock_bulk_price", "/stock/bulk-price-edit", "Bulk price edit", 66);
         ensureValue(slotValueMapper, "route", "stock_import_sup", "/stock/import-supplier-products", "Import supplier products", 67);
         ensureValue(slotValueMapper, "route", "stock_buying", "/stock/buying-periods", "Buying periods", 68);
+        ensureValue(slotValueMapper, "route", "replenishment", "/stock/replenishment", "Replenishment", 69);
+        ensureValue(slotValueMapper, "route", "capped_pricing_ai", "/stock/capped-pricing", "AI price review", 70);
+        ensureValue(slotValueMapper, "route", "sommelier", "/sommelier", "Wine recommendations", 71);
+        ensureValue(slotValueMapper, "route", "invoice_scan", "/invoices/scan", "Invoice capture", 72);
         ensureValue(slotValueMapper, "route", "products_new", "/products/new", "New product", 30);
         ensureValue(slotValueMapper, "route", "customers_new", "/customers/new", "New customer", 81);
         ensureValue(slotValueMapper, "route", "customers_merge", "/customers/merge", "Merge customers", 82);

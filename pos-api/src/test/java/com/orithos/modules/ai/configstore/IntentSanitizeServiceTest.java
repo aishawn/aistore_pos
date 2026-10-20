@@ -46,6 +46,18 @@ class IntentSanitizeServiceTest {
     }
 
     @Test
+    void aiWorkflowRoutesAreAllowedForNaturalLanguageNavigation() {
+        assertEquals("/stock/replenishment", service.sanitize(raw("navigate", "Replenishment",
+                "/stock/replenishment", null, null, null, null, null)).route());
+        assertEquals("/stock/capped-pricing", service.sanitize(raw("navigate", "Price review",
+                "/stock/capped-pricing", null, null, null, null, null)).route());
+        assertEquals("/sommelier", service.sanitize(raw("navigate", "Wine recommendations",
+                "/sommelier", null, null, null, null, null)).route());
+        assertEquals("/invoices/scan", service.sanitize(raw("navigate", "Invoice capture",
+                "/invoices/scan", null, null, null, null, null)).route());
+    }
+
+    @Test
     void customerCreateActionKeepsOnlyWhitelistedEntityAndOperation() {
         IntentSanitizeService.SanitizedIntent result = service.sanitize(raw("entity_action", "Create customer",
                 null, null, null, null, "customer", "create"));
@@ -114,6 +126,10 @@ class IntentSanitizeServiceTest {
                 slot("op", "enum", 32)));
         when(values.findEnabled()).thenReturn(List.of(
                 value("route", "products", "/products"), value("route", "orders", "/orders"),
+                value("route", "replenishment", "/stock/replenishment"),
+                value("route", "capped_pricing", "/stock/capped-pricing"),
+                value("route", "sommelier", "/sommelier"),
+                value("route", "invoice_scan", "/invoices/scan"),
                 value("view", "list", "list"), value("panel", "inventory", "inventory"),
                 value("action", "open", "open"), value("entity", "customer", "customer"),
                 value("entity", "product", "product"), value("op", "create", "create"),
