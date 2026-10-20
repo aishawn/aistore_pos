@@ -14,6 +14,12 @@
 - Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`。
 - 仍需 Dokploy 部署后验证服务账号实际字段权限和线上 stock report 结果。
 
+### 2026-10-21 DashScope 多模态模型默认值（待部署）
+
+- 视觉模型默认值现在跟随 `AI_DASHSCOPE_MODEL`，`AI_VISION_MODEL` 仍可显式覆盖；适配 `qwen3.8-flash` 的多模态请求路径。
+- Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`。
+- 真实酒标/发票图片 provider 验收仍需部署后完成。
+
 ### 2026-10-20 AI 报表快捷问法与 #38 构建复核（`fe4d978`）
 
 - `AssistantFastPathRouter` 增加常见中英文“今天/昨天销售额”和“还剩多少库存”问法，商品名继续作为查询槽位传递，不生成库存数。

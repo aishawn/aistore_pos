@@ -1228,3 +1228,9 @@
 - `scripts/pilot-ai-features-verify-uat.mjs` 完成 `14/14 PASS`，没有失败或业务写入。证据：`docs/UAT_AI_FEATURES_VERIFY_ONLINE_DF015FD.json`。
 - 发票 OCR 探针返回 `HTTP 200`、业务码 `50212`，表示 provider 可达但探针图片没有发票字段；该结果不等同于真实发票字段提取验收。
 - `sourceCommit` 记录为当前测试脚本提交，Dokploy runtime SHA 仍未核对，因此结果属于公网旧运行基线，不标记为 `post-deploy`。
+
+## 2026-10-21 DashScope 多模态默认模型配置
+
+- `spring.ai.dashscope.chat.options.vision-model` 现在默认跟随 `AI_DASHSCOPE_MODEL`，仍可通过 `AI_VISION_MODEL` 单独覆盖；这与 `qwen3.8-flash` 的多模态路径配置一致。
+- Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`，仅有既有 JSqlParser 弃用警告。
+- 配置尚未进入 Dokploy 镜像；部署后需用已配置的 DashScope key 验证酒标识别/发票 OCR 的真实多模态请求路径，并核对运行 SHA。
