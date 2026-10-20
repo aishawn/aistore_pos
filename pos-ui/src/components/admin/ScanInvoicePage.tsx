@@ -287,9 +287,10 @@ export function ScanInvoicePage() {
                     </div>
                   </label>
                 </div>
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <label className="flex flex-col"><span className={labelClass}>Invoice number</span><input value={scan.invoiceNumber ?? ""} onChange={(e) => patch({ invoiceNumber: e.target.value })} className={fieldClass} /></label>
                   <label className="flex flex-col"><span className={labelClass}>Invoice date</span><input type="date" value={toIsoDate(scan.invoiceDate)} onChange={(e) => patch({ invoiceDate: e.target.value })} className={fieldClass} /></label>
+                  <label className="flex flex-col"><span className={labelClass}>Due date</span><input type="date" value={toIsoDate(scan.dueDate)} onChange={(e) => patch({ dueDate: e.target.value })} className={fieldClass} /></label>
                   <label className="flex flex-col"><span className={labelClass}>Total payable</span><input readOnly value={money(scan.totalPayable)} className={`${fieldClass} bg-[var(--oh-surface)] font-semibold tabular-nums`} /></label>
                 </div>
               </section>
