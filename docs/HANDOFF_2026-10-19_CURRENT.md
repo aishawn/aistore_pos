@@ -1048,3 +1048,9 @@
 - 条码工具页增加 Odoo 产品目录和集成设置的真实导航入口，保留未接入打印能力的明确说明。
 - 本批次已提交并推送为 `52c8f58`；compose webhook 于 2026-10-20 16:17（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。分支绑定修复后应以 `52c8f58` 或其后提交重新部署。
 - 后续产品边界校验与条码导航批次已推送至 `dd5253d`；2026-10-20 16:49（UTC+8）再次触发 webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，未创建构建任务。当前线上回归证据仍是旧镜像基线。
+
+## 2026-10-20 Java 21 后端门禁与价格建议 UI
+
+- 当前后端 AI 多轮记忆、工具调用、报告路由和提示配置改动已用 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1` 执行 `mvn -B clean verify`：`226 tests, 0 failures`，仅保留 JSqlParser `Parenthesis` deprecated warnings。
+- 价格建议页的错误 Retry、刷新 busy 状态和搜索清除触控区域已优化；本地 typecheck、目标 ESLint、UAT 脚本语法和 diff check 通过。
+- 这些改动仍未进入 Dokploy 镜像；下一次推送前必须保持 Java 21 全量门禁通过，部署后重跑 AI、价格/库存、全站矩阵并回读运行 SHA。

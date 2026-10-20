@@ -233,7 +233,9 @@ export function OdooPriceSuggestionsPage() {
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
           <span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span>
-          <button type="button" onClick={() => void load(true)} className="font-semibold underline">Retry</button>
+          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold underline-offset-2 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60">
+            {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry
+          </button>
         </div>
       )}
 
@@ -245,7 +247,7 @@ export function OdooPriceSuggestionsPage() {
         </div>
       )}
 
-      <section className="rounded-xl border border-[var(--oh-border)] bg-white">
+      <section aria-busy={refreshing} className="rounded-xl border border-[var(--oh-border)] bg-white">
         <div className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Suggested price changes"}</h2>
@@ -288,7 +290,7 @@ export function OdooPriceSuggestionsPage() {
               className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white pl-9 pr-9 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
             />
             {query ? (
-              <button type="button" onClick={() => setQuery("")} aria-label="Clear product search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[var(--oh-muted)] hover:text-[var(--oh-text)]">
+              <button type="button" onClick={() => setQuery("")} aria-label="Clear product search" className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center text-[var(--oh-muted)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]">
                 <X size={16} aria-hidden="true" />
               </button>
             ) : null}
