@@ -5,6 +5,7 @@
 - 报表 `/reports/daily-sales`、`last-month-sales`、`last-week-sales`、`this-month-sales`、`weekly-sales`，以及 `/settings/payment`、`/settings/tax` 的 skeleton loading 状态统一补齐 `aria-live="polite"` 与 `aria-busy="true"`。
 - 只改变异步状态的可访问表达，不改变数据请求、报表计算、设置读取或任何写入行为；Future Costs/Prices 的同类修复已在前一批完成。
 - 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；尚未运行 build 或线上验证，待集中部署后复跑报表/设置专项与全站矩阵。
+- 集中批次提交 `8758235` 已推送 `origin/main`；Compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，未启动构建。
 
 ## 2026-10-20 Future Costs/Prices 状态可访问性批次（工作区）
 

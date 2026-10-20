@@ -6,6 +6,7 @@
 
 - 报表 5 页和 Payment/Tax 设置页的异步 skeleton 状态已统一补齐 live-region 与 busy 语义，不改变读取和业务行为。
 - 本地 typecheck、目标 ESLint、diff check 通过；与 Future Costs/Prices 修复合并等待下一次 Dokploy 部署后验证。
+- 合并批次 `8758235` 已推送，但 webhook 仍为 `HTTP 301 Branch Not Match`，因此报表/设置新语义尚未完成线上验证。
 
 ### 2026-10-20 Future Costs/Prices 状态可访问性批次（工作区）
 
