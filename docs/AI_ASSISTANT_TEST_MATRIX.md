@@ -2,6 +2,8 @@
 
 Scope: cashier assistant, voice input, reporting, wine assistant, invoice OCR, configuration and saved reports. All live checks must be read-only unless they use an approved isolated Odoo test database. Fixture-based checks prove UI behavior only, not provider quality or production data correctness.
 
+**Master execution plan (how to run, gates, P0 checklists):** [`AI_ASSISTANT_TEST_PLAN.md`](AI_ASSISTANT_TEST_PLAN.md).
+
 Natural-language coverage catalog: [`AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md). Use it as the seed list for manual, API and fixture-based regression runs.
 
 ## Regression cases

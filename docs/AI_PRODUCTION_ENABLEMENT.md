@@ -22,7 +22,7 @@ Do **not** put API keys or passwords in this file.
 - [ ] Dokploy: `AI_REPORT_RO_USER` / `AI_REPORT_RO_PASSWORD` for read-only report SQL (no default password in git).
 - [ ] Connectivity probe PASS for chat, ASR, and vision (no store PII) — attach `docs/UAT_AI_DASHSCOPE_PROBE_*.json`.
 - [ ] Isolation UAT PASS for NLQ, voice, Find, Identify (photo), pitch/ask, invoice preview, price suggestions (0 price writes) — attach `docs/UAT_AI_ENABLED_ISOLATION_*.json`.
-- [ ] Utterance regression from [`docs/AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md): at least Today's sales, Open sell, Look up products, Check stock, one `report_adhoc` guided refusal, one follow-up (“and yesterday?”), History reopen of prior thread.
+- [ ] Utterance regression from [`docs/AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md): at least Today's sales, Open sell, Look up products, Check stock, one `report_adhoc` guided refusal, one follow-up (“and yesterday?”), History reopen of prior thread. Full procedure: [`docs/AI_ASSISTANT_TEST_PLAN.md`](AI_ASSISTANT_TEST_PLAN.md) §11 P0 + §9 L4.
 - [ ] Store admin `/reports/ai/metrics` shows last-24h + top intents after smoke — no Q/A text in payloads.
 - [ ] Platform `app.*` `/platform/usage` shows cross-store aggregates; store detail shows 24h AI KPI — no chat transcripts.
 - [ ] Operator confirmation timestamp recorded in the current `docs/HANDOFF_*.md` snapshot.
