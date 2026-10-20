@@ -6,6 +6,7 @@
 
 - Future Costs/Prices 的异步 loading 与错误 Retry 状态已统一补齐 live-region、busy、图标隐藏和键盘焦点语义；不改变只读接口和页面行为。
 - 本地 typecheck、目标 ESLint、diff check 通过；尚未进入 Dokploy 镜像，需部署后补跑工具页与全站矩阵。
+- `e291e61` 已推送，但 Compose webhook 仍返回 `HTTP 301 Branch Not Match`，因此线上仍未验证该批次。
 
 ### 2026-10-20 管理列表回归状态
 
