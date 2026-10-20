@@ -4,6 +4,7 @@
 
 - `pos-ui/src/components/admin/Modal.tsx` 新增 `closeOnOverlayClick`，默认关闭遮罩点击关闭；价格集、角色等编辑表单必须通过显式关闭按钮或 Escape 退出，避免误触遮罩丢失未保存输入。
 - 本地 `npm run typecheck`、目标 ESLint 和 `git diff --check` 通过；现有平台恢复 fixture `5/5 PASS`，但该新 Modal 行为尚未进入公网镜像，需部署后补充表单遮罩回归。
+- 最新集中提交为 `a145131`；完整 push payload 触发 Dokploy 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。
 
 ## 2026-10-20 测试基础设施校正与定价/库存回归（`816c13b`）
 

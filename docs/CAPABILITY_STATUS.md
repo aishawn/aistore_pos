@@ -6,6 +6,7 @@
 
 - 通用 `Modal` 默认不再因点击遮罩关闭，避免创建/编辑表单误触导致输入丢失；显式关闭按钮和 Escape 仍可用。
 - typecheck、目标 ESLint、diff check 通过；需要在 Dokploy 修正分支后部署并补充遮罩点击/显式关闭回归。
+- 集中提交为 `a145131`；Dokploy webhook 仍返回 `301 Branch Not Match`，当前没有新构建。
 
 ### 2026-10-20 定价/库存回归与路由脚本校正（`816c13b`）
 
