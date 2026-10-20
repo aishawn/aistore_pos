@@ -112,6 +112,13 @@ try {
   check("14 October reconciles with overview", Boolean(dashboardOct14 && aiOct14)
     && Math.abs(Number(aiOct14.sales) - Number(dashboardOct14.revenue)) < 0.01,
   `overview=${dashboardOct14?.revenue ?? "missing"}; assistant=${aiOct14?.sales ?? "missing"}`);
+
+  const metrics = await getJson(
+    await context.request.get(`${base}/api/ai/metrics?hours=1`), "AI_REPORT_METRICS",
+  );
+  const pathCounts = Object.fromEntries((metrics.byPath ?? []).map((item) => [item.path, item.requests]));
+  check("report execution uses Odoo source", Number(pathCounts.odoo ?? 0) > 0,
+    `requestsByPath=${JSON.stringify(pathCounts)}`);
 } catch (error) {
   failures.push(error instanceof Error ? error.message : "UNEXPECTED_FAILURE");
 } finally {
