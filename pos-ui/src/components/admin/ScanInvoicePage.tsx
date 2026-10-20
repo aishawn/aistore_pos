@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, FileImage, LoaderCircle, ReceiptText } from "lucide-react";
@@ -47,25 +47,26 @@ export function ScanInvoicePage() {
   const [assistantAvailable, setAssistantAvailable] = useState<boolean | null>(null);
   const [invoiceVisionAvailable, setInvoiceVisionAvailable] = useState<boolean | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
+  const [capabilityLoading, setCapabilityLoading] = useState(true);
+
+  const loadCapabilities = useCallback(async () => {
+    setCapabilityLoading(true);
+    setCapabilityError(false);
+    try {
+      const config = await fetchAiClientConfig();
+      setAiEnabled(config.enabled);
+      setAssistantAvailable(config.assistantAvailable ?? config.enabled);
+      setInvoiceVisionAvailable(config.invoiceVisionAvailable ?? config.enabled);
+    } catch {
+      setCapabilityError(true);
+    } finally {
+      setCapabilityLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void fetchAiClientConfig()
-      .then((config) => {
-        if (!cancelled) {
-          setAiEnabled(config.enabled);
-          setAssistantAvailable(config.assistantAvailable ?? config.enabled);
-          setInvoiceVisionAvailable(config.invoiceVisionAvailable ?? config.enabled);
-          setCapabilityError(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setCapabilityError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void loadCapabilities();
+  }, [loadCapabilities]);
 
   const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
   const outlets = useApi<Named[]>("/api/outlets");
@@ -129,7 +130,7 @@ export function ScanInvoicePage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Purchasing · Documents</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
             OCR is preview-only. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.
             {capabilityError
               ? " Could not check invoice AI availability — refresh and try again."
@@ -142,7 +143,17 @@ export function ScanInvoicePage() {
                 : aiEnabled === true
                   ? " Store AI is on — photos are read for preview only."
                   : ""}
-          </p>
+            {capabilityError && (
+              <button
+                type="button"
+                onClick={() => void loadCapabilities()}
+                disabled={capabilityLoading}
+                className="ml-2 inline-flex min-h-8 items-center rounded-md border border-amber-300 bg-white px-2.5 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60"
+              >
+                {capabilityLoading ? "Checking…" : "Retry availability"}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

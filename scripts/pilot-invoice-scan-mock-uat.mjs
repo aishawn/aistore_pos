@@ -17,6 +17,7 @@ const context = await browser.newContext({ viewport: { width: 390, height: 844 }
 const page = await context.newPage();
 const businessWrites = [];
 let scanCalls = 0;
+let capabilityCalls = 0;
 page.on("request", (request) => {
   const url = new URL(request.url());
   if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/") && request.method() !== "GET") {
@@ -48,11 +49,22 @@ try {
       } }),
     });
   });
+  await page.route("**/api/ai/config/client", async (route) => {
+    capabilityCalls += 1;
+    if (capabilityCalls === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: 50301, message: "temporary capability probe failure", data: null }) });
+    }
+    return route.continue();
+  });
 
   await page.goto(`${base}/invoices/scan`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Scan supplier invoice" }).waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "Photograph or upload" }).waitFor({ timeout: 20000 });
   await page.waitForTimeout(1000);
+  const retryAvailability = page.getByRole("button", { name: "Retry availability" });
+  await retryAvailability.waitFor({ state: "visible", timeout: 10000 });
+  await retryAvailability.click();
+  await page.getByRole("button", { name: "Photograph or upload" }).waitFor({ state: "enabled", timeout: 20000 });
   const save = page.getByRole("button", { name: "Save as received order" });
   if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button");
   const upload = page.locator('input[type="file"][aria-label="Choose or photograph a supplier invoice"]');
@@ -95,8 +107,9 @@ try {
     status: "PASS",
     fixture: "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
     viewport: 390,
-    checks: ["invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
+    checks: ["invoice AI availability retry recovers after a transient failure", "invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
     scanCalls,
+    capabilityCalls,
     businessWrites,
   };
   const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
