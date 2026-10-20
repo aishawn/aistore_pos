@@ -808,7 +808,7 @@ export interface TranscriptionResponse {
   lang: string;
 }
 
-/** Cloud STT via DashScope (POST multipart). Caller should fall back to Web Speech on failure. */
+/** Cloud STT via DashScope (POST multipart). The caller shows a retry/type message on failure. */
 export async function transcribeAudio(
   blob: Blob,
   lang?: string | null,

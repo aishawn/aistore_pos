@@ -23,13 +23,24 @@ class ReportRespondNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("No data found for 2026-10-20.", result.get("answer"));
+        assertEquals("No completed sales found for 2026-10-20. Try a wider range, for example: sales last 7 days.", result.get("answer"));
         verify(auditService).record(state);
     }
 
     @Test
     void unavailableOdooIsNotReportedAsAnEmptyDay() {
         assertError("ODOO_REPORT_UNAVAILABLE", "Live Odoo reporting is temporarily unavailable. Please try again.");
+    }
+
+    @Test
+    void emptyStockAndDeadStockUseDomainSpecificGuidance() {
+        OverAllState stock = state("", List.of());
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        assertEquals("No matching stock found. Check the product name or catalogue spelling.", node.apply(stock).get("answer"));
+
+        OverAllState deadStock = state("", List.of());
+        when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
+        assertEquals("No dead-stock items found for the selected period.", node.apply(deadStock).get("answer"));
     }
 
     @Test

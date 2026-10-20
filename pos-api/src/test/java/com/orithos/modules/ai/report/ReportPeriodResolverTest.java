@@ -140,6 +140,47 @@ class ReportPeriodResolverTest {
     }
 
     @Test
+    void supportsPastAndRecentEnglishAliases() {
+        LocalDate today = AustraliaTime.today();
+        for (String question : List.of("sales past 7 days", "sales previous 7 days", "最近7天销售额", "过去 7 天销量")) {
+            ReportPeriodResolver.Window w = resolver.resolve(Map.of(), question);
+            assertEquals(today.minusDays(6), w.from().toLocalDate(), question);
+            assertEquals(today.plusDays(1), w.toExclusive().toLocalDate(), question);
+            assertEquals(7, w.days(), question);
+        }
+    }
+
+    @Test
+    void supportsDayBeforeYesterdayAliases() {
+        LocalDate date = AustraliaTime.today().minusDays(2);
+        for (String question : List.of("前天销售额", "day before yesterday sales")) {
+            ReportPeriodResolver.Window w = resolver.resolve(Map.of(), question);
+            assertEquals(date, w.from().toLocalDate(), question);
+            assertEquals(date.plusDays(1), w.toExclusive().toLocalDate(), question);
+        }
+    }
+
+    @Test
+    void supportsExplicitDateRanges() {
+        ReportPeriodResolver.Window english = resolver.resolve(Map.of(), "sales from 14 Oct 2026 to 16 Oct 2026");
+        assertEquals(LocalDate.of(2026, 10, 14), english.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 17), english.toExclusive().toLocalDate());
+        assertEquals(3, english.days());
+
+        ReportPeriodResolver.Window numeric = resolver.resolve(Map.of(), "销售额从 14/10/2026 到 16/10/2026");
+        assertEquals(LocalDate.of(2026, 10, 14), numeric.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 17), numeric.toExclusive().toLocalDate());
+
+        ReportPeriodResolver.Window monthDay = resolver.resolve(Map.of(), "sales from Oct 14 to Oct 16");
+        assertEquals(LocalDate.of(2026, 10, 14), monthDay.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 17), monthDay.toExclusive().toLocalDate());
+
+        ReportPeriodResolver.Window chinese = resolver.resolve(Map.of(), "销售额从10月14日到10月16日");
+        assertEquals(LocalDate.of(2026, 10, 14), chinese.from().toLocalDate());
+        assertEquals(LocalDate.of(2026, 10, 17), chinese.toExclusive().toLocalDate());
+    }
+
+    @Test
     void zuoriIsYesterday() {
         ReportPeriodResolver.Window w = resolver.resolve(Map.of(), "昨日销量");
         assertEquals(AustraliaTime.today().minusDays(1), w.from().toLocalDate());

@@ -45,7 +45,12 @@ public class ReportRespondNode implements NodeAction {
     private String format(String intent, List<Map<String, Object>> rows, String from, String to,
                           Map<String, String> slots) {
         if (rows == null || rows.isEmpty()) {
-            return "No data found for " + rangeText(from, to) + ".";
+            return switch (intent == null ? "" : intent) {
+                case "report_stock" -> "No matching stock found. Check the product name or catalogue spelling.";
+                case "report_dead_stock" -> "No dead-stock items found for the selected period.";
+                default -> "No completed sales found for " + rangeText(from, to)
+                        + ". Try a wider range, for example: sales last 7 days.";
+            };
         }
         return switch (intent == null ? "" : intent) {
             case "report_aov" -> formatAov(rows.get(0), from, to);

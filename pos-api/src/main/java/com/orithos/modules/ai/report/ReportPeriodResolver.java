@@ -51,6 +51,16 @@ public class ReportPeriodResolver {
             "(?i)\\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
                     + "jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
                     + "[\\s,./-]+(\\d{1,2})(?:st|nd|rd|th)?(?:[\\s,./-]+(\\d{4}))?\\b");
+    private static final Pattern ENGLISH_RANGE = Pattern.compile(
+            "(?i)\\bfrom\\s+(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}/\\d{1,2}/\\d{4}|\\d{1,2}(?:st|nd|rd|th)?[\\s,.-]+[a-z]+(?:[\\s,.-]+\\d{4})?)"
+                    + "\\s+to\\s+(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}/\\d{1,2}/\\d{4}|\\d{1,2}(?:st|nd|rd|th)?[\\s,.-]+[a-z]+(?:[\\s,.-]+\\d{4})?)\\b");
+    private static final Pattern CHINESE_RANGE = Pattern.compile(
+            "(?i)(?:从|自)\\s*(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}/\\d{1,2}/\\d{4})\\s*(?:到|至)\\s*(\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}|\\d{1,2}/\\d{1,2}/\\d{4})");
+    private static final Pattern ENGLISH_MONTH_DAY_RANGE = Pattern.compile(
+            "(?i)\\bfrom\\s+([a-z]+[\\s,.-]+\\d{1,2}(?:st|nd|rd|th)?(?:[\\s,.-]+\\d{4})?)"
+                    + "\\s+to\\s+([a-z]+[\\s,.-]+\\d{1,2}(?:st|nd|rd|th)?(?:[\\s,.-]+\\d{4})?)\\b");
+    private static final Pattern CHINESE_MONTH_DAY_RANGE = Pattern.compile(
+            "(?:从|自)\\s*(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})日\\s*(?:到|至)\\s*(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})日");
 
     public Window resolve(Map<String, String> slots, String question) {
         return resolve(slots, question, 1);
@@ -134,20 +144,91 @@ public class ReportPeriodResolver {
             LocalDate d = today.minusDays(1);
             return new Window(d.atStartOfDay(), today.atStartOfDay(), 1);
         }
+        if (contains(q, "前天", "day before yesterday")) {
+            LocalDate d = today.minusDays(2);
+            return new Window(d.atStartOfDay(), d.plusDays(1).atStartOfDay(), 1);
+        }
         if (contains(q, "今天", "today")) {
             return new Window(today.atStartOfDay(), today.plusDays(1).atStartOfDay(), 1);
+        }
+        Window range = explicitRange(q, today);
+        if (range != null) {
+            return range;
         }
         Window explicitDate = explicitDate(q, today);
         if (explicitDate != null) {
             return explicitDate;
         }
-        Matcher m = Pattern.compile("近\\s*(\\d+)\\s*天|last\\s+(\\d+)\\s+days?").matcher(q);
+        Matcher m = Pattern.compile("(?:近|最近|过去)\\s*(\\d+)\\s*天|(?:last|past|previous)\\s+(\\d+)\\s+days?").matcher(q);
         if (m.find()) {
             int n = Integer.parseInt(m.group(1) != null ? m.group(1) : m.group(2));
             if (n > 0) {
                 return new Window(today.minusDays(n - 1L).atStartOfDay(), today.plusDays(1).atStartOfDay(), n);
             }
         }
+        return null;
+    }
+
+    private Window explicitRange(String question, LocalDate today) {
+        Matcher english = ENGLISH_RANGE.matcher(question);
+        if (english.find()) {
+            LocalDate from = parseFlexibleDate(english.group(1), today);
+            LocalDate to = parseFlexibleDate(english.group(2), today);
+            return range(from, to);
+        }
+        Matcher englishMonthDay = ENGLISH_MONTH_DAY_RANGE.matcher(question);
+        if (englishMonthDay.find()) {
+            LocalDate from = parseFlexibleDate(englishMonthDay.group(1), today);
+            LocalDate to = parseFlexibleDate(englishMonthDay.group(2), today);
+            return range(from, to);
+        }
+        Matcher chinese = CHINESE_RANGE.matcher(question);
+        if (chinese.find()) {
+            LocalDate from = parseFlexibleDate(chinese.group(1), today);
+            LocalDate to = parseFlexibleDate(chinese.group(2), today);
+            return range(from, to);
+        }
+        Matcher chineseMonthDay = CHINESE_MONTH_DAY_RANGE.matcher(question);
+        if (chineseMonthDay.find()) {
+            int fromYear = chineseMonthDay.group(1) == null ? today.getYear() : Integer.parseInt(chineseMonthDay.group(1));
+            int toYear = chineseMonthDay.group(4) == null ? fromYear : Integer.parseInt(chineseMonthDay.group(4));
+            LocalDate from = safeDate(fromYear, Integer.parseInt(chineseMonthDay.group(2)), Integer.parseInt(chineseMonthDay.group(3)));
+            LocalDate to = safeDate(toYear, Integer.parseInt(chineseMonthDay.group(5)), Integer.parseInt(chineseMonthDay.group(6)));
+            return range(from, to);
+        }
+        return null;
+    }
+
+    private static LocalDate safeDate(int year, int month, int day) {
+        try {
+            return LocalDate.of(year, month, day);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static Window range(LocalDate from, LocalDate to) {
+        if (from == null || to == null) return null;
+        if (to.isBefore(from)) {
+            LocalDate tmp = from;
+            from = to;
+            to = tmp;
+        }
+        return new Window(from.atStartOfDay(), to.plusDays(1).atStartOfDay(),
+                (int) (to.toEpochDay() - from.toEpochDay() + 1));
+    }
+
+    private static LocalDate parseFlexibleDate(String raw, LocalDate today) {
+        if (raw == null || raw.isBlank()) return null;
+        String value = raw.trim();
+        Matcher iso = Pattern.compile("(\\d{4})[-/.](\\d{1,2})[-/.](\\d{1,2})").matcher(value);
+        if (iso.matches()) return parseDate(iso.group(1) + "-" + iso.group(2) + "-" + iso.group(3));
+        Matcher au = Pattern.compile("(\\d{1,2})/(\\d{1,2})/(\\d{4})").matcher(value);
+        if (au.matches()) return parseDate(au.group(3) + "-" + au.group(2) + "-" + au.group(1));
+        Matcher dayMonth = DAY_MONTH.matcher(value);
+        if (dayMonth.matches()) return parseNamedDate(dayMonth.group(2), dayMonth.group(1), dayMonth.group(3), today);
+        Matcher monthDay = MONTH_DAY.matcher(value);
+        if (monthDay.matches()) return parseNamedDate(monthDay.group(1), monthDay.group(2), monthDay.group(3), today);
         return null;
     }
 
