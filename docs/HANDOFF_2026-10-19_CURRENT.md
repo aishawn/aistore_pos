@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-24 AI 助手问法扩展与 Demo 只读回归
+
+- 工作区新增销售、库存、补货、侍酒和供应商账单的自然口语路由；测试目录、线上 utterance 脚本和误路由边界已同步。改动尚未提交/部署，不能宣称线上已具备这些新增别名。
+- Demo 扩展问法矩阵：`51 PASS / 8 BLOCKED / 0 FAIL`；阻塞均为旧运行版本对新增问法返回 `50210`。旁路 surface `11/11`、UI `2/2`、route `9/9`、availability `3/3`、admin guard `15/15`、metrics `9/9` 通过。
+- 报表 `13 PASS / 1 BLOCKED`：库存报表仍返回安全 unavailable 提示；features `14 PASS / 1 BLOCKED`：发票 OCR 探针收到非 JSON HTTP 502。两项均不是功能断言 FAIL。
+- 运行身份仍未核验（`deploymentShaVerified=false`）；Dokploy 之前的 `Branch Not Match` 阻断没有改变。继续停止重复 webhook，先修 Source/Git 的 `main` 分支绑定，再以含 Java 21 门禁的提交部署并重跑完整 P0。
+
 ## 2026-10-23 AI UI 识别结果竞态复测
 
 - UI UAT 现在等待识别请求返回后的结果列表首项可见，修复网络延迟导致的空列表误报。
@@ -1280,3 +1287,10 @@
 - 使用 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1` 执行 `pos-api` 的 `mvn -B clean verify`：`247 tests, 0 failures, 0 errors`，构建成功。JSqlParser `Parenthesis` deprecated 仍仅为 warning。
 - `HEAD == origin/main == 01c14fb`。下一次 Dokploy 部署必须确认 Source/Git 为 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、compose=`docker-compose.yml`，并在日志中确认 checkout/build commit 与 `01c14fb` 一致。
 - 在读取完整 frontend/backend 构建日志、健康状态、镜像 SHA 和运行 commit 前，线上仍保持 **NO-GO**；不要把这次 #38 的失败日志归因于当前源码，也不要仅凭 webhook HTTP 200 判定部署成功。
+
+## 2026-10-21 只读回归与工作流路由增量（文档提交 `435ec47`）
+
+- 公网只读：设置 `28/28 PASS`、表格/表单 `14/14 PASS`、未接入页面诚实边界 `16/16 PASS`，无意外业务写入；证据文件以 `UAT_*_2026-10-21_CURRENT.json` 保存。
+- 自然语言工作流为 `51 PASS / 8 BLOCKED / 0 FAIL`。8 项阻断均返回 `HTTP 200 / code 50210`，集中在补货、酒款配对、账单中文问法、直接库存问法和销售口语问法。当前工作区的 `AssistantFastPathRouter`、`WorkflowRouteRouter` 和对应 UAT 已覆盖这些表达，但公网旧镜像尚未包含它们。
+- `pos-ui npm run typecheck`、工作流脚本 `node --check`、`git diff --check` 通过；没有运行 Next/Docker build。工作流证据副本为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`。
+- 当前 `HEAD/origin/main` 为 `435ec47`，但该提交只包含交接文档；后端路由改动仍在工作区，未推送，原因是 Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，无法满足 Java 21 远程门禁。不得把这些改动称为已部署。

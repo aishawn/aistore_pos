@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-23（AI UI 识别结果竞态复测与 Dokploy #38 复核）
 
+### 2026-10-24 AI 助手问法扩展与只读复测
+
+- 当前工作区扩展了销售、库存、补货、侍酒和供应商账单的口语问法，并加入确定性路由与误路由排除测试；相关改动尚未部署。
+- Demo 扩展问法矩阵为 `51 PASS / 8 BLOCKED / 0 FAIL`。8 个 BLOCKED 都是新增问法在旧运行版本返回 `50210`，不是断言 FAIL；证据：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT.json`。
+- 同日只读旁路复测：surface `11/11`、UI `2/2`、route `9/9`、availability `3/3`、admin guard `15/15`、metrics `9/9` 全部通过；报表 `13 PASS / 1 BLOCKED`（库存数据源不可用），features `14 PASS / 1 BLOCKED`（发票 OCR 探针 HTTP 502）。
+- 所有请求均未写入销售、退款、采购、收货、库存、现金或关班数据。`deploymentShaVerified=false`，不能把这些结果标记为当前工作区改动的 post-deploy 验收。
+
 ### 2026-10-23 AI UI 识别结果竞态复测
 
 - `pilot-ai-ui-uat.mjs` 在识别请求完成后等待结果列表首项可见，避免网络延迟把已有结果误判为空。
@@ -1036,3 +1043,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Tax Rates 页新增页面级 Refresh，成功加载后也能主动重新读取 Odoo；Payment Methods、Registers & Outlets 桌面表格补齐稳定 `aria-label`。
 - 本地 `npm run typecheck`、目标 ESLint 通过；公网未接入边界 `18/18 PASS`、表格/表单 `14/14 PASS`，`unexpectedWrites=0`。
 - 改动尚未进入可核验 Dokploy 镜像；部署后需复测 Tax Refresh、设置页移动/桌面布局和错误 Retry。整体发布继续 **NO-GO**。
+
+### 2026-10-21 当前只读复测与工作流路由批次
+
+- 公网只读复测：设置页 `28/28 PASS`、表格/表单 `14/14 PASS`、活动/收藏/媒体/安全等未接入边界 `16/16 PASS`；无意外业务写入。独立证据：`docs/UAT_SETTINGS_MOBILE_2026-10-21_CURRENT.json`、`docs/UAT_TABLE_A11Y_ONLINE_2026-10-21_CURRENT.json`、`docs/UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-21_CURRENT.json`、`docs/UAT_ADMIN_LIST_BATCH_2026-10-21_CURRENT.json`。
+- 自然语言工作流复测为 `51 PASS / 8 BLOCKED / 0 FAIL`。阻断问法包括 `What needs ordering?`、`Pair a wine with lamb`、`上传这张账单`、`Do we have VB Cans?`、`Any VB Cans in stock?` 和两个销售口语问法；线上返回 `50210`，说明当前公网仍是旧运行版本。
+- 当前工作区的确定性路由已覆盖上述问法，相关 Java/test/script 改动仍待 Dokploy Java 21 门禁和运行 SHA 验证。证据副本：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`。
+- `npm run typecheck`、`node --check scripts/pilot-ai-workflow-utterances-online-uat.mjs`、`git diff --check` 通过；按约束未运行 Next/Docker build。Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，整体发布继续 **NO-GO**。

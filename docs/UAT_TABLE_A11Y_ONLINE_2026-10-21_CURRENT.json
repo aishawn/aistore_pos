@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T16:13:38.220Z",
-  "sourceCommit": "c0785501a986e53bb8d7374b2d86279d7a07dd87",
+  "generatedAt": "2026-10-20T17:25:47.741Z",
+  "sourceCommit": "435ec476e5dd6ed1408b462eee88c7bf6b7718c5",
   "target": "https://demo.orithos.com.au",
   "scope": "authenticated read-only table accessibility regression; non-GET API calls blocked",
   "checks": [
@@ -51,8 +51,21 @@
     {
       "name": "Odoo products 390px",
       "status": "PASS",
-      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
-      "tables": []
+      "detail": "http=200 tables=1 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": [
+        {
+          "name": "Odoo product catalogue",
+          "headers": [
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col"
+          ]
+        }
+      ]
     },
     {
       "name": "stocktake 390px",
@@ -75,8 +88,20 @@
     {
       "name": "store users 1440px",
       "status": "PASS",
-      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
-      "tables": []
+      "detail": "http=200 tables=1 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": [
+        {
+          "name": "Store users",
+          "headers": [
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col"
+          ]
+        }
+      ]
     },
     {
       "name": "store roles 1440px",
@@ -143,7 +168,8 @@
     }
   ],
   "blockedNonGet": [
-    "POST /api/auth/refresh",
+    "POST /api/odoo/records",
+    "POST /api/odoo/records",
     "POST /api/odoo/records",
     "POST /api/odoo/records"
   ],

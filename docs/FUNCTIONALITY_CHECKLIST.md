@@ -65,3 +65,15 @@
 2. 部署当前 `main`（`24f9e44` 或其后提交），并回读 frontend/backend 构建日志、健康状态、运行 SHA。
 3. 重跑 AI UI、AI features、Sommelier、AI reports、产品/价格、表格/表单和全站矩阵。
 4. 只把运行 SHA 与目标提交一致的结果标为 post-deploy；写入类 UAT 继续使用隔离 Odoo 数据库。
+
+## 2026-10-21 增量复测（源码 `435ec47`，公网运行 SHA 未核验）
+
+| 范围 | 结果 | 证据/限制 |
+| --- | --- | --- |
+| 设置页（390/1440） | `28/28 PASS` | `UAT_SETTINGS_MOBILE_2026-10-21_CURRENT.json`；只读、无写入 |
+| 表格/表单语义 | `14/14 PASS` | `UAT_TABLE_A11Y_ONLINE_2026-10-21_CURRENT.json`；拦截非 GET 请求 |
+| 未接入能力诚实边界 | `16/16 PASS` | `UAT_ACTIVE_ROUTE_HONESTY_ONLINE_2026-10-21_CURRENT.json`、`UAT_ADMIN_LIST_BATCH_2026-10-21_CURRENT.json` |
+| AI 自然语言工作流 | `51 PASS / 8 BLOCKED / 0 FAIL` | `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`；8 项为旧镜像返回 `50210`，不能代表当前源码修复失败 |
+| UI 静态类型 | `PASS` | `pos-ui npm run typecheck`；未运行 Next build |
+
+当前源码已增加 8 个阻断问法的确定性路由；必须在 Dokploy 分支绑定修正后，用 Java 21 构建并核对运行 SHA，再将这些项重新标为线上通过。
