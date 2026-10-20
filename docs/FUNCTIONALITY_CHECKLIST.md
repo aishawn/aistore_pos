@@ -76,4 +76,6 @@
 | AI 自然语言工作流 | `51 PASS / 8 BLOCKED / 0 FAIL` | `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`；8 项为旧镜像返回 `50210`，不能代表当前源码修复失败 |
 | UI 静态类型 | `PASS` | `pos-ui npm run typecheck`；未运行 Next build |
 
+全站只读页面矩阵复核：`135 routes x 390/1440 = 270/270 PASS`，无页面错误或横向溢出。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-21_CURRENT_RECHECK.json`。该结果验证的是当前公网运行版本，未验证最新源码已部署。
+
 当前源码已增加 8 个阻断问法的确定性路由；必须在 Dokploy 分支绑定修正后，用 Java 21 构建并核对运行 SHA，再将这些项重新标为线上通过。

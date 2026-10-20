@@ -1293,4 +1293,5 @@
 - 公网只读：设置 `28/28 PASS`、表格/表单 `14/14 PASS`、未接入页面诚实边界 `16/16 PASS`，无意外业务写入；证据文件以 `UAT_*_2026-10-21_CURRENT.json` 保存。
 - 自然语言工作流为 `51 PASS / 8 BLOCKED / 0 FAIL`。8 项阻断均返回 `HTTP 200 / code 50210`，集中在补货、酒款配对、账单中文问法、直接库存问法和销售口语问法。当前工作区的 `AssistantFastPathRouter`、`WorkflowRouteRouter` 和对应 UAT 已覆盖这些表达，但公网旧镜像尚未包含它们。
 - `pos-ui npm run typecheck`、工作流脚本 `node --check`、`git diff --check` 通过；没有运行 Next/Docker build。工作流证据副本为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`。
+- 全站只读矩阵复核 `135 routes x 390/1440 = 270/270 PASS`，无页面错误或横向溢出；证据为 `docs/UAT_ALL_STATIC_PAGES_2026-10-21_CURRENT_RECHECK.json`。这仍是公网旧运行版本行为，不是最新源码的 post-deploy 证明。
 - 当前 `HEAD/origin/main` 为 `435ec47`，但该提交只包含交接文档；后端路由改动仍在工作区，未推送，原因是 Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，无法满足 Java 21 远程门禁。不得把这些改动称为已部署。
