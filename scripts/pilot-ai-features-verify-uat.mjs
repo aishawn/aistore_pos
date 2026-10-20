@@ -155,19 +155,32 @@ try {
       },
       timeout: 120000,
     });
-    const invoiceBody = await invoice.json().catch(() => ({}));
-    if (invoiceBody.code === 0) record("Invoice OCR probe", "PASS", "parsed");
-    else if (invoiceBody.code === 50301) record("Invoice OCR probe", "BLOCKED", invoiceBody.message || "disabled");
+    const invoiceContentType = invoice.headers()["content-type"] ?? "unknown";
+    const invoiceBody = await invoice.json().catch(() => null);
+    const invoiceCode = Number.isInteger(invoiceBody?.code) ? invoiceBody.code : null;
+    const invoiceEvidence = (detail) => JSON.stringify({
+      httpStatus: invoice.status(),
+      contentType: invoiceContentType,
+      apiCode: invoiceCode,
+      detail,
+    });
+    if (!invoiceBody || typeof invoiceBody !== "object" || invoiceCode === null) {
+      const isServerFailure = invoice.status() >= 500;
+      record("Invoice OCR probe", isServerFailure ? "BLOCKED" : "FAIL", invoiceEvidence(
+        invoiceBody ? "response did not contain a numeric business code" : "response was not JSON",
+      ));
+    } else if (invoiceCode === 0) record("Invoice OCR probe", "PASS", invoiceEvidence("parsed"));
+    else if (invoiceCode === 50301) record("Invoice OCR probe", "BLOCKED", invoiceEvidence("vision disabled"));
     else if (String(invoiceBody.message || "").toLowerCase().includes("model")) {
-      record("Invoice OCR probe", "FAIL", invoiceBody.message || `code=${invoiceBody.code}`);
-    } else if (invoiceBody.code === 50212) {
-      record("Invoice OCR probe", "INFO", `provider reachable; image has no invoice fields code=${invoiceBody.code}`);
-    } else if (invoiceBody.code === 40010) {
-      record("Invoice OCR probe", "FAIL", `valid image was rejected as empty code=${invoiceBody.code}`);
-    } else if (invoiceBody.code === 50213) {
-      record("Invoice OCR probe", "FAIL", `provider/model configuration failure code=${invoiceBody.code} ${(invoiceBody.message || "").slice(0, 160)}`);
+      record("Invoice OCR probe", "FAIL", invoiceEvidence("provider model/configuration error"));
+    } else if (invoiceCode === 50212) {
+      record("Invoice OCR probe", "INFO", invoiceEvidence("provider reachable; probe image has no invoice fields"));
+    } else if (invoiceCode === 40010) {
+      record("Invoice OCR probe", "FAIL", invoiceEvidence("valid image was rejected as empty"));
+    } else if (invoiceCode === 50213) {
+      record("Invoice OCR probe", "FAIL", invoiceEvidence("provider/model configuration failure"));
     } else {
-      record("Invoice OCR probe", "FAIL", `code=${invoiceBody.code} ${(invoiceBody.message || "").slice(0, 160)}`);
+      record("Invoice OCR probe", "FAIL", invoiceEvidence("unexpected invoice OCR response"));
     }
 
     const page = await context.newPage();
