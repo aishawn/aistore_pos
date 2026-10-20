@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.orithos.common.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
@@ -47,6 +48,12 @@ public class AiTranscriptionService {
     private final String baseUrl;
     private final RestClient restClient;
 
+    /**
+     * Primary Spring constructor. A second package-private overload exists for tests;
+     * without {@code @Autowired} Spring cannot choose between them and fails with
+     * "No default constructor found" (backend crash-loop → login 502).
+     */
+    @Autowired
     public AiTranscriptionService(
             AiProperties properties,
             @Value("${spring.ai.dashscope.api-key:}") String apiKey,
@@ -54,6 +61,7 @@ public class AiTranscriptionService {
         this(properties, apiKey, baseUrl, RestClient.builder());
     }
 
+    /** Test-only: inject a mockable {@link RestClient.Builder}. */
     AiTranscriptionService(AiProperties properties, String apiKey, String baseUrl, RestClient.Builder builder) {
         this.properties = properties;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
