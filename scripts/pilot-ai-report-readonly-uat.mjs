@@ -98,9 +98,11 @@ try {
   check("today uses store business date", todayReport.intent === "report_sales"
     && todayReport.slots?.from === today && todayReport.slots?.to === today,
   `timezone=${timezone}; expected=${today}; actual=${todayReport.slots?.from ?? "missing"}`);
+  const emptySalesCopy = /no data found|no completed sales found/i.test(todayReport.answer);
+  const widerRangeGuidance = /sales last 7 days/i.test(todayReport.answer);
   check("empty today agrees with 24-hour overview", dashboard24h.transactions === 0
-    ? /no data found/i.test(todayReport.answer)
-    : !/no data found/i.test(todayReport.answer),
+    ? emptySalesCopy && widerRangeGuidance
+    : !emptySalesCopy,
   `overview24hTransactions=${dashboard24h.transactions}; assistant=${todayReport.answer}`);
 
   const last7 = await ask("sales last 7 days");
