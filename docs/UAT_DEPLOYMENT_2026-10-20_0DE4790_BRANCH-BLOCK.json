@@ -1,0 +1,13 @@
+{
+  "suite": "DOKPLOY_DEPLOYMENT_TRIGGER",
+  "date": "2026-10-20",
+  "sourceCommit": "0de4790",
+  "target": "https://demo.orithos.com.au",
+  "webhookStatus": 301,
+  "webhookBody": "{\"message\":\"Branch Not Match\"}",
+  "buildStarted": false,
+  "deploymentShaVerified": false,
+  "writeBusinessData": false,
+  "status": "BLOCKED",
+  "notes": "Dokploy rejected the deployment request before a build started. Runtime behavior cannot be attributed to this commit until the Compose Source/Git branch is corrected and the container SHA/build health are read back."
+}
