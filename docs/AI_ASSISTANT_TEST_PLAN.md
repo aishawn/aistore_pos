@@ -1,5 +1,11 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-21 回归结果
+
+Demo 只读回归已执行：自然语言工作流 **49/49 PASS**，报表与 Overview 对账 **14/14 PASS**，AI features **14/14 PASS**，route matrix **9/9 PASS**，surface **11/11 PASS**，Admin guard **15/15 PASS**，availability **3/3 PASS**。新增口语问法已进入线上矩阵，证据为 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CURRENT.json`。History/platform 为 **9 PASS / 2 BLOCKED / 0 FAIL**，阻塞项是缺少第二门店用户和 platform-operator 凭据，不是功能失败。
+
+本轮公网检查全部只读；未执行销售、退款、采购、收货、库存调整、现金、关班或配置写入。公网运行 SHA 仍未从 Dokploy 回读，因此结果只能标记为当前 runtime 基线，不能标记为目标提交的 post-deploy 验证。
+
 **版本：** 2026-10-20  
 **适用范围：** 收银浮标助手（NLQ / 语音）、模板报表、工作流导航、实体引导动作、History、门店/平台 AI 运营看板、侍酒 / 发票 OCR / 价格建议相关面。  
 **关联文档：**
@@ -197,6 +203,10 @@ npm run typecheck
 | RPT-T06 | How many tickets yesterday? / 几笔订单 | `report_aov`（含票数），非 adhoc 死胡同 |
 | RPT-T07 | units sold / 销量 | `report_qty` |
 | RPT-T08 | 某品库存 / dead stock | `report_stock` / `report_dead_stock`；无编造 SKU |
+| RPT-T08a | `How many [product] are left?` / `Have we got [product] in the shop?` / `店里还有 [product] 吗？` / `帮我查下 [product] 还剩几件` | 确定性命中 `report_stock`；保留商品名；分类模型不可用时仍可查询 |
+| RPT-T08b | 商品名无目录匹配 / 商品库存为 0 | 无匹配给出商品名或目录拼写建议；零库存显示匹配商品及 `0`，不能误称商品不存在 |
+| RPT-T08c | 门店未绑定、库存 RPC 权限/上下文错误、Odoo 超时 | 区分门店绑定错误与数据源不可用；不能返回空库存或编造数量 |
+| RPT-T08d | AI 库存 RPC 与门店商品目录读取相同商品/公司/仓库上下文 | AI 数量与只读 Odoo 商品库存字段一致；确认公司和仓库隔离，无业务写请求 |
 | RPT-T09 | 利润 / margin / why sales down / top seller | `report_adhoc` **引导拒答或改问**；不编利润 |
 | RPT-T09a | `Compare sales on 14 Oct with 15 Oct` / `比较10月14日和10月15日销售额` | `report_adhoc` 引导拒答；不得误判为单日销售 |
 | RPT-T10 | 无报表权限用户 | 明确拒绝；无数据行 |

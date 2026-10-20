@@ -6,6 +6,14 @@ Scope: cashier assistant, voice input, reporting, wine assistant, invoice OCR, c
 
 Natural-language coverage catalog: [`AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md). Use it as the seed list for manual, API and fixture-based regression runs.
 
+## Current execution snapshot (2026-10-21)
+
+- Demo read-only natural-language matrix: **49/49 PASS**, including `Show me today's sales`, `How did we do today?`, `Is VB Cans in stock?`, `What is the inventory level for VB Cans?`, `Which products need reordering?`, `哪些商品库存低`, and `Find me a wine for steak`. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CURRENT.json`.
+- Demo report reconciliation: **14/14 PASS**. Store timezone, empty-day semantics, 7/30-day rows, explicit dates, Overview reconciliation, named catalogue stock fields and aggregate metrics all passed. Evidence: `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-21_CURRENT.json`.
+- Demo AI feature matrix: **14/14 PASS**; route matrix **9/9 PASS**; surface **11/11 PASS**; Admin guard **15/15 PASS**; availability **3/3 PASS**. Evidence: `UAT_AI_FEATURES_VERIFY_2026-10-21_CURRENT.json`, `UAT_AI_ROUTE_MATRIX_2026-10-19.json`, `UAT_AI_SURFACE_ONLINE_2026-10-21_CURRENT.json`, `UAT_AI_ADMIN_GUARD_ONLINE_2026-10-21_CURRENT.json`, `UAT_AI_AVAILABILITY_ONLINE_2026-10-21_CURRENT.json`.
+- Demo History/platform suite: **9 PASS / 2 BLOCKED / 0 FAIL**. Cross-user isolation and platform-operator usage remain unexercised because those credentials were not available. Evidence: `UAT_AI_FOLLOWUP_HISTORY_PLATFORM_2026-10-21_CURRENT.json`.
+- Deployment identity remains unverified: these are current public runtime results, not proof that Demo runs the latest `main` SHA. No sales, refund, purchase, receiving, inventory, cash or register-close writes were made.
+
 ## Current execution snapshot (2026-10-20)
 
 - Local backend: Java 21 `mvn -B clean verify` → **238 tests, 0 failures, 0 errors** (2026-10-20, including Chinese explicit-date parsing).
