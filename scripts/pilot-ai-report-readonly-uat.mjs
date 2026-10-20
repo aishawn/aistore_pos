@@ -83,8 +83,10 @@ try {
   const catalogueBody = await catalogueResponse.json().catch(() => ({}));
   const catalogueItems = Array.isArray(catalogueBody.items) ? catalogueBody.items : [];
   const catalogueHasStockFields = catalogueItems.length > 0
-    && catalogueItems.every((item) => Number.isFinite(Number(item.qty_available))
-      && Number.isFinite(Number(item.free_qty)));
+    && catalogueItems.every((item) => typeof item.qty_available === "number"
+      && Number.isFinite(item.qty_available)
+      && typeof item.free_qty === "number"
+      && Number.isFinite(item.free_qty));
   checks.push({
     name: "store-scoped catalogue reads product stock fields",
     status: catalogueResponse.ok() && catalogueHasStockFields

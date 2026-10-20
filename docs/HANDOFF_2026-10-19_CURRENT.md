@@ -1208,3 +1208,10 @@
 - `OdooReportQueryService` 的库存查询现在先读取 `free_qty` 与 `qty_available`；若服务账号无权读取 `free_qty`，会在同一公司/仓库上下文下只读降级到 `qty_available`，不放宽公司域、不执行写方法。
 - 新增字段权限失败后的降级单测；Java 21 `mvn -B clean verify`：`245 tests, 0 failures, 0 errors`。
 - 该修复尚未进入 Dokploy 镜像。分支绑定修复后部署当前提交，再重跑 `UAT_AI_REPORTS_READONLY`；只有 stock report 从 `BLOCKED` 变为 `PASS` 且运行 SHA 匹配时，才确认线上修复。
+
+## 2026-10-21 库存错误提示与问法回归修复
+
+- 库存数据源不可用、未配置或门店未绑定时，AI 响应现在提供库存列表/重试指引，不再使用容易误解的通用销售报表提示。
+- 新增库存问法回归发现并修复了宽泛正则抢先捕获命令前缀的问题；`帮我看看 VB Cans 还剩多少` 现在只把 `VB Cans` 传入查询槽位。
+- Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`；JSqlParser 弃用警告仍仅为 warning。
+- 改动已完成本地门禁，尚未部署；待 Dokploy 分支绑定修正后再验证真实线上库存结果和错误提示。

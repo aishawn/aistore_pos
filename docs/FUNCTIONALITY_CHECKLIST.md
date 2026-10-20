@@ -20,7 +20,7 @@
 | 供应商与采购 | Odoo 供应商、采购单详情、收货边界 | 旧线上基线 | `UAT_SUPPLIER_*`、`UAT_PURCHASE_*` |
 | 库存与补货 | 库存列表、价格建议、补货建议、盘点只读 | 旧线上基线 | `UAT_PRICING_PAGES_ONLINE_READONLY_*`、`UAT_ODOO_STOCKTAKE_*` |
 | 报表 | Overview、销售/库存/采购报表、Odoo 绑定时区 | 待部署验证 | `UAT_AI_REPORTS_READONLY_ONLINE*`；新时区代码未核验运行 SHA |
-| AI 助手 | 语音按住说话、意图路由、实体操作 allowlist、错误脱敏、多轮记忆/工具调用、cashier history、平台 AI usage、常见报表/工作流确定性快捷路由、库存字段权限降级 | 待部署验证 | `UAT_AI_UI_*`、`UAT_AI_FEATURES_VERIFY_*`；当前源码 Java 21 `245 tests, 0 failures`，最新改动待镜像 |
+| AI 助手 | 语音按住说话、意图路由、实体操作 allowlist、错误脱敏、多轮记忆/工具调用、cashier history、平台 AI usage、常见报表/工作流确定性快捷路由、库存字段权限降级和错误指引 | 待部署验证 | `UAT_AI_UI_*`、`UAT_AI_FEATURES_VERIFY_*`；当前源码 Java 21 `246 tests, 0 failures`，最新改动待镜像 |
 | AI Sommelier | 商品识别、酒标识别、推荐、相似酒款 | 旧线上基线 | `UAT_SOMMELIER_*`；租户 Odoo context 待部署验证 |
 | 发票 OCR | 预览识别，禁止预览阶段写供应商/采购/收货；图片类型/10 MB 边界、连续换图竞态保护 | 待部署验证 | `UAT_INVOICE_SCAN_MOCK_*`、`UAT_INVOICE_OCR_PREVIEW_*`；本地 typecheck/ESLint/node check 通过 |
 | 账户与设置 | 公司、门店、用户、角色、税务、支付设置页面；Tax Rates 主动刷新；设置表格可访问名称；现金进出金额前端边界与忙状态 | 待部署验证 | `UAT_SETTINGS_MOBILE_*`、全站矩阵；本轮 typecheck/目标 ESLint 通过 |

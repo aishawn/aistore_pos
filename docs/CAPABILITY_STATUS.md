@@ -8,6 +8,12 @@
 - Java 21 `mvn -B clean verify`：`245 tests, 0 failures, 0 errors`。
 - 公网当前证据仍为 `13/14 PASS, 1 BLOCKED`；修复需部署后重跑并核对 runtime SHA。
 
+### 2026-10-21 库存错误提示与问法回归修复（待部署）
+
+- AI stock report 的不可用/未绑定提示现在给出库存列表和重试指引；库存问法正则回归覆盖命令前缀，避免把“帮我看看”混入商品名。
+- Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`。
+- 仍需 Dokploy 部署后验证服务账号实际字段权限和线上 stock report 结果。
+
 ### 2026-10-20 AI 报表快捷问法与 #38 构建复核（`fe4d978`）
 
 - `AssistantFastPathRouter` 增加常见中英文“今天/昨天销售额”和“还剩多少库存”问法，商品名继续作为查询槽位传递，不生成库存数。

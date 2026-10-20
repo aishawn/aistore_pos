@@ -33,6 +33,15 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void unavailableStockSourceOffersAReadOnlyFallbackInsteadOfSayingTheProductIsMissing() {
+        OverAllState state = state("ODOO_REPORT_UNAVAILABLE", List.of());
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+
+        assertEquals("I could not read live stock data right now. Open the stock list to check manually, or try again shortly.",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
     void emptyStockAndDeadStockUseDomainSpecificGuidance() {
         OverAllState stock = state("", List.of());
         when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
@@ -47,6 +56,10 @@ class ReportRespondNodeTest {
     void unlinkedStoreAndMissingPermissionHaveDistinctGuidance() {
         assertError("ODOO_REPORT_STORE_UNLINKED",
                 "This store is not linked to an Odoo company for live reporting. Contact your administrator.");
+        OverAllState stock = state("ODOO_REPORT_STORE_UNLINKED", List.of());
+        when(stock.value("intent", String.class)).thenReturn(Optional.of("report_stock"));
+        assertEquals("This store is not linked to an Odoo company for live stock lookup. Contact your administrator.",
+                node.apply(stock).get("answer"));
         assertError("NO_PERMISSION", "You do not have permission to query reports.");
     }
 

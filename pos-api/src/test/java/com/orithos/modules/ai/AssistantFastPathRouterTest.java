@@ -110,6 +110,17 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void doesNotCaptureWorkflowRequestsAsStockLookups() {
+        assertNull(AssistantFastPathRouter.maybeMatch("帮我看看哪些商品需要调价"));
+        assertNull(AssistantFastPathRouter.maybeMatch("帮我看看哪些商品需要补货"));
+
+        AssistantFastPathRouter.Match stock = AssistantFastPathRouter.maybeMatch("帮我看看 VB Cans 还剩多少");
+        assertNotNull(stock);
+        assertEquals("report_stock", stock.intent());
+        assertEquals("VB Cans", stock.slots().get("query"));
+    }
+
+    @Test
     void matchesNavigationShortcuts() {
         assertEquals("navigate", AssistantFastPathRouter.maybeMatch("Open sell").intent());
         assertEquals("/", AssistantFastPathRouter.maybeMatch("Open sell").route());

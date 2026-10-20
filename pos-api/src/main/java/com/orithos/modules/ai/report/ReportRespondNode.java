@@ -30,7 +30,7 @@ public class ReportRespondNode implements NodeAction {
         String error = ReportGraphState.string(state, "sql_error");
         if (error != null && !error.isBlank()) {
             auditService.record(state);
-            return Map.of("answer", messageForError(error));
+            return Map.of("answer", messageForError(error, intent));
         }
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) state.value("report_rows").orElse(List.of());
@@ -114,7 +114,7 @@ public class ReportRespondNode implements NodeAction {
         return range + ": " + rows.size() + " row(s).";
     }
 
-    private String messageForError(String error) {
+    private String messageForError(String error, String intent) {
         if (error.startsWith("GUARD:") || error.startsWith("NL2SQL_")
                 || "SQL_GUARD_REJECTED".equals(error)) {
             return "That question cannot be queried (security check failed).";
@@ -124,21 +124,28 @@ public class ReportRespondNode implements NodeAction {
             case "NO_OUTLET" -> "Your account is not bound to a store.";
             case "NEED_PRODUCT" ->
                     "Please tell me the product name, for example: how much Coca Cola is in stock.";
-            case "ODOO_REPORT_NOT_CONFIGURED" ->
-                    "Live sales reporting is not configured for this store. Contact your administrator.";
-            case "ODOO_REPORT_STORE_UNLINKED" ->
-                    "This store is not linked to an Odoo company for live reporting. Contact your administrator.";
+            case "ODOO_REPORT_NOT_CONFIGURED" -> isStockIntent(intent)
+                    ? "Live stock lookup is not configured for this store. Contact your administrator."
+                    : "Live sales reporting is not configured for this store. Contact your administrator.";
+            case "ODOO_REPORT_STORE_UNLINKED" -> isStockIntent(intent)
+                    ? "This store is not linked to an Odoo company for live stock lookup. Contact your administrator."
+                    : "This store is not linked to an Odoo company for live reporting. Contact your administrator.";
             case "ODOO_REPORT_UNSUPPORTED" ->
                     "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
                             + "how much [product] is in stock, or dead stock last 30 days.";
-            case "ODOO_REPORT_UNAVAILABLE" ->
-                    "Live Odoo reporting is temporarily unavailable. Please try again.";
+            case "ODOO_REPORT_UNAVAILABLE" -> isStockIntent(intent)
+                    ? "I could not read live stock data right now. Open the stock list to check manually, or try again shortly."
+                    : "Live Odoo reporting is temporarily unavailable. Please try again.";
             case "ODOO_REPORT_TOO_LARGE" ->
                     "That report is too large to summarize safely. Add a product filter or narrow the date range.";
             case "QUOTA_EXCEEDED" ->
                     "This store has reached its hourly report quota. Try again later.";
             default -> "The query failed. Please try again.";
         };
+    }
+
+    private static boolean isStockIntent(String intent) {
+        return "report_stock".equals(intent);
     }
 
     private static String rangeText(String from, String to) {
