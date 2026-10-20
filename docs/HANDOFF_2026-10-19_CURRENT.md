@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 补货 RFQ 边界与请求竞态（工作区）
+
+- RFQ 弹窗供应商加载使用请求 revision，旧请求不会覆盖快速重新打开后的供应商/错误状态。
+- 创建 draft RFQ 在提交时再次校验数量 `0..100,000`，不依赖浏览器 input `max`；仍是人工确认的 Odoo draft，不自动发送或确认采购单。
+- 本地验证：前端 typecheck、目标 ESLint、补货 race/audit UAT 脚本 `node --check`、目标 diff check 通过；未运行 Next/Docker build，未执行真实 RFQ 写入。
+- 本批次待与前端其他改动集中部署；Dokploy 仍需先修正 Compose `main` 分支绑定。
+
 ## 2026-10-20 继续迭代：盘点键盘操作与现金边界
 
 - 盘点搜索结果支持键盘 Enter/Space 添加可盘商品，并保留重复、不可盘商品和数量上限保护。

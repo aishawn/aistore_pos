@@ -42,6 +42,7 @@ type ReplenishmentData = {
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
+const MAX_RFQ_QUANTITY = 100_000;
 
 type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string };
 
@@ -66,6 +67,7 @@ export function OdooReplenishmentPage() {
   const [expandedReasonId, setExpandedReasonId] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const requestRevision = useRef(0);
+  const rfqSupplierRevision = useRef(0);
   const rfqSupplierRef = useRef<HTMLSelectElement>(null);
 
   useDialogFocus(rfqOpen, () => {
@@ -124,6 +126,7 @@ export function OdooReplenishmentPage() {
   const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
 
   async function openRfqDialog() {
+    const revision = ++rfqSupplierRevision.current;
     setRfqLines(suggestedItems.slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
       name: product.name,
@@ -139,12 +142,15 @@ export function OdooReplenishmentPage() {
     setRfqLoadingSuppliers(true);
     try {
       const suppliers = await getOdooSuppliers();
+      if (revision !== rfqSupplierRevision.current) return;
       setRfqSuppliers(suppliers);
       if (suppliers.length === 1) setRfqSupplierId(String(suppliers[0].id));
     } catch (cause) {
-      setRfqError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
+      if (revision === rfqSupplierRevision.current) {
+        setRfqError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
+      }
     } finally {
-      setRfqLoadingSuppliers(false);
+      if (revision === rfqSupplierRevision.current) setRfqLoadingSuppliers(false);
     }
   }
 
@@ -158,6 +164,10 @@ export function OdooReplenishmentPage() {
     }
     if (!selectedRfqLines.length) {
       setRfqError("Keep at least one product with a quantity above zero.");
+      return;
+    }
+    if (rfqLines.some((line) => !Number.isFinite(line.quantity) || line.quantity < 0 || line.quantity > MAX_RFQ_QUANTITY)) {
+      setRfqError(`Enter quantities from 0 to ${MAX_RFQ_QUANTITY.toLocaleString("en-AU")} for every product.`);
       return;
     }
     setRfqSubmitting(true);
@@ -366,7 +376,7 @@ export function OdooReplenishmentPage() {
                   {rfqLines.map((line) => <div key={line.productId} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(96px,120px)] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
                     <div className="min-w-0"><p className="break-words text-sm font-medium text-[var(--oh-text)]">{line.name}</p><p className="text-xs text-[var(--oh-muted)]">Suggested {number.format(line.suggestedQuantity)} {line.unit}</p></div>
                     <label className="grid gap-1 text-[13px] font-medium text-[var(--oh-muted)] sm:col-auto">Order quantity
-                      <input type="number" min="0" max="100000" step="0.01" value={line.quantity} onChange={(event) => { const value = Number(event.target.value); setRfqLines((current) => current.map((item) => item.productId === line.productId ? { ...item, quantity: Number.isFinite(value) ? value : 0 } : item)); }} disabled={rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] px-2 text-sm font-semibold tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030] disabled:opacity-60" />
+                    <input type="number" min="0" max={MAX_RFQ_QUANTITY} step="0.01" value={line.quantity} onChange={(event) => { const value = Number(event.target.value); setRfqLines((current) => current.map((item) => item.productId === line.productId ? { ...item, quantity: Number.isFinite(value) ? value : 0 } : item)); }} disabled={rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] px-2 text-sm font-semibold tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[#f3920030] disabled:opacity-60" />
                     </label>
                     <p className="hidden text-right text-sm text-[var(--oh-muted)] sm:block">{line.unit}</p>
                   </div>)}

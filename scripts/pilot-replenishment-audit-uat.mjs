@@ -44,6 +44,10 @@ try {
   await page.getByRole("button", { name: /Create draft RFQ/ }).click();
   const dialog = page.getByRole("dialog", { name: "Review draft RFQ" });
   await dialog.waitFor({ timeout: 10000 });
+  await dialog.getByLabel("Order quantity").nth(0).fill("100001");
+  await dialog.getByRole("button", { name: "Create draft RFQ" }).click();
+  await dialog.getByRole("alert").filter({ hasText: "100,000" }).waitFor({ timeout: 5000 });
+  if (submittedAudit) throw new Error("Over-limit RFQ quantity unexpectedly submitted");
   await dialog.getByLabel("Order quantity").nth(0).fill("7");
   await dialog.getByLabel("Order quantity").nth(1).fill("0");
   await dialog.getByRole("button", { name: "Create draft RFQ" }).click();

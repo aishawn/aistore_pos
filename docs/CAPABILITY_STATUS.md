@@ -11,6 +11,12 @@
 - 盘点搜索结果的 `option` 现在支持键盘 Enter/Space 添加，且保持重复、不可盘商品和数量上限保护；相关只读 UAT 脚本语法检查通过。
 - Manage Cash 现在在浏览器端同步限制现金进出金额为 `0 < amount <= 1,000,000`，输入控件与提交校验一致；仍要求打开 Odoo session，业务写入契约未改变。
 
+### 2026-10-20 补货 RFQ 边界与请求竞态批次（工作区）
+
+- RFQ 弹窗供应商加载增加请求 revision，快速关闭/重新打开时旧响应不会覆盖新弹窗状态。
+- RFQ 创建增加提交级数量校验，所有数量必须在 `0..100,000`；现有 draft-only、人工确认和 Odoo 审计流程保持不变。
+- 补货 race/audit UAT 脚本 `node --check`、前端 typecheck、目标 ESLint 和 diff check 通过；尚未运行 Next/Docker build 或真实 RFQ 写入。
+
 ### 2026-10-20 AI Assistant 问法回归与确定性路由（最新）
 
 - `origin/main` 最新提交为 `0592351`（包含 `789bdad`）。`ClassifyQueryNode` 现在会在分类模型前安全处理明确的 `report_adhoc` 拒答；`AssistantFastPathRouter` 支持带类别的本周/上周销量，例如 `How much red wine sold this week?`；`ReportAdhocRouter` 也覆盖中文“卖得最好”排名问法。
