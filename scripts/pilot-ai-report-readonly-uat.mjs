@@ -156,8 +156,10 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  testHarnessCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   target: base,
+  deploymentShaVerified: false,
+  runtimeCommit: null,
   scope: "read-only AI sales report and Odoo overview reconciliation; no business writes",
   checksPassed: checks.filter((item) => item.status === "PASS").length,
   checksTotal: checks.length,

@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-10-20T05:30:44.140Z",
+  "testHarnessCommit": "d48a37462201a30c83d9597325c095a26c1be1cc",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 9,
+  "checksTotal": 9,
+  "checks": [
+    {
+      "name": "today uses store business date",
+      "status": "PASS",
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-20; actual=2026-10-20"
+    },
+    {
+      "name": "empty today agrees with 24-hour overview",
+      "status": "PASS",
+      "evidence": "overview24hTransactions=0; assistant=No data found for 2026-10-20."
+    },
+    {
+      "name": "7-day sales report returns rows",
+      "status": "PASS",
+      "evidence": "answer=Sales for 2026-10-14 to 2026-10-20 total 6342.52 (3 day(s)).; rows=3"
+    },
+    {
+      "name": "30-day sales report returns rows",
+      "status": "PASS",
+      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-21 to 2026-10-20 total 16536.98 (7 day(s)).; rows=7"
+    },
+    {
+      "name": "day-month date uses current year",
+      "status": "PASS",
+      "evidence": "expected=2026-10-14; actual=2026-10-14"
+    },
+    {
+      "name": "compact and explicit dates return the same report",
+      "status": "PASS",
+      "evidence": "compact=Sales for 2026-10-14 total 4014.36 (1 day(s)).; explicit=Sales for 2026-10-14 total 4014.36 (1 day(s))."
+    },
+    {
+      "name": "14 October reconciles with overview",
+      "status": "PASS",
+      "evidence": "overview=4014.36; assistant=4014.36; rows=[{\"date\":\"14 Oct 2026\",\"sales\":4014.36}]"
+    },
+    {
+      "name": "AI daily sales rows reconcile with overview trend",
+      "status": "PASS",
+      "evidence": "compared=7; mismatches=[]"
+    },
+    {
+      "name": "report execution uses Odoo source",
+      "status": "PASS",
+      "evidence": "requestsByPath={\"assistant:report_sales\":82,\"odoo\":50,\"template\":32,\"assistant:search_product\":2}"
+    }
+  ],
+  "failures": [],
+  "result": "PASS"
+}

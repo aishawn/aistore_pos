@@ -3,6 +3,7 @@ package com.orithos.modules.ai.configstore;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -23,13 +24,10 @@ public class IntentSanitizeService {
     public SanitizedIntent sanitize(RawIntent raw) {
         IntentConfigService.Snapshot snap = configService.getSnapshot();
 
-        String intentCode = raw.intent() == null ? UNKNOWN : raw.intent().trim().toLowerCase();
+        String intentCode = raw.intent() == null ? UNKNOWN : raw.intent().trim().toLowerCase(Locale.ROOT);
         if (!snap.isKnownIntent(intentCode) || UNKNOWN.equals(intentCode)) {
-            intentCode = snap.isKnownIntent(UNKNOWN) ? UNKNOWN : UNKNOWN;
-            if (!snap.isKnownIntent(intentCode)) {
-                return new SanitizedIntent(UNKNOWN, blankToDefault(raw.summary(), "Unrecognized"), Map.of(),
-                        null, null, null, null);
-            }
+            return new SanitizedIntent(UNKNOWN, blankToDefault(raw.summary(), "Unrecognized"), Map.of(),
+                    null, null, null, null);
         }
 
         AiIntent def = snap.intent(intentCode);

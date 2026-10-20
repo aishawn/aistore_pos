@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -114,7 +115,7 @@ public class IntentConfigService {
 
     static String normalizeKey(String raw) {
         if (raw == null) return "";
-        return raw.trim().toLowerCase();
+        return raw.trim().toLowerCase(Locale.ROOT);
     }
 
     public record Snapshot(
