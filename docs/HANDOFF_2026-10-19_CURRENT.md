@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 OCR 扫描失败重试（`87338a8`）
+
+- `ScanInvoicePage` 保存最近一次选择的文件；OCR 临时失败时显示 `Retry scan`，重试复用同一文件和预览，不要求用户再次选择文件。
+- 线上 mock 证据 `docs/UAT_INVOICE_SCAN_MOCK_POST_87338A8.json`：`6/6 PASS`，第一次扫描故障、第二次扫描成功，`businessWrites=[]`。
+- `87338a8` 已通过 Dokploy webhook 接受并完成公网行为验证；本地 typecheck、目标 ESLint、脚本语法和 diff check 均通过，未运行 build。
+
 ## 2026-10-20 发票 AI 能力探测重试（`08b8e83`）
 
 - `ScanInvoicePage` 在 AI 能力探测临时失败时提供页面内 `Retry availability`，成功重试后恢复上传按钮；preview-only、Odoo 跳转和禁止业务写入边界不变。
