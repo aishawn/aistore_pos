@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ColumnsIcon,
   ExportIcon,
@@ -120,6 +120,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
   const [search, setSearch] = useState("");
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
   const [columnMenuOpen, setColumnMenuOpen] = useState(false);
+  const columnMenuRef = useRef<HTMLDivElement>(null);
 
   const columns = data?.table?.columns ?? EMPTY_COLUMNS;
   const allRows = data?.table?.rows ?? EMPTY_ROWS;
@@ -140,6 +141,24 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
     () => visibleColumns.map((col) => columnTotal(rows, col)),
     [rows, visibleColumns],
   );
+
+  useEffect(() => {
+    if (!columnMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!columnMenuRef.current?.contains(event.target as Node)) {
+        setColumnMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setColumnMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [columnMenuOpen]);
 
   function toggleColumn(column: string) {
     setHiddenColumns((current) => {
@@ -220,6 +239,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
 
       <div className="mt-4 flex items-stretch gap-px border border-neutral-300">
         <input
+          aria-label="Search report results"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search for anything"
@@ -257,7 +277,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
             <SaveIcon size={18} /> Save
           </button>
         </div>
-        <div className="relative">
+        <div ref={columnMenuRef} className="relative">
           <button
             type="button"
             aria-expanded={columnMenuOpen}
