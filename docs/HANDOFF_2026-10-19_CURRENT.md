@@ -1041,6 +1041,7 @@
 - 2026-10-20 18:53（UTC+8）以 `after=641eaee` 触发 Compose webhook，仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务；该 UI 批次线上验证保持待部署。
 - 2026-10-20 18:59（UTC+8）以最新 `after=2d3641f` 再次触发，仍返回 `HTTP 301 {"message":"Branch Not Match"}`；没有创建构建任务，线上验证继续等待 Dokploy 修正分支绑定。
 - 2026-10-20 19:07（UTC+8）以最新 `after=5457dfb` 触发，仍返回 `HTTP 301 {"message":"Branch Not Match"}`；本批次没有创建构建任务。
+- 2026-10-20 19:16（UTC+8）以最新 `after=c2360aa` 触发，仍返回 `HTTP 301 {"message":"Branch Not Match"}`；没有创建构建任务。
 
 ## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
 
