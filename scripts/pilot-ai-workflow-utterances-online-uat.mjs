@@ -37,6 +37,17 @@ const cases = [
   { id: "store-question-zh", question: "本周哪类商品卖得最好", intent: "report_adhoc" },
   { id: "report-negative-wine", question: "How much red wine sold this week?", intent: "report_qty" },
   { id: "report-negative-invoice", question: "How many invoices did we receive?", intent: "report_adhoc" },
+  { id: "product-lookup-en", question: "look up product DEMO", intent: "search_product", route: "/products", query: "DEMO" },
+  { id: "product-lookup-natural-en", question: "Search for the product VB Cans", intent: "search_product", route: "/products", query: "VB Cans" },
+  { id: "product-lookup-zh", question: "帮我搜一下 Shiraz", intent: "search_product", route: "/products", query: "Shiraz" },
+  { id: "stock-lookup-en", question: "How much Carlton Draught is in stock?", intent: "report_stock", query: "Carlton Draught" },
+  { id: "stock-lookup-natural-en", question: "What's the stock level for VB Cans?", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-lookup-zh", question: "VB Cans库存还有多少？", intent: "report_stock", query: "VB Cans" },
+  { id: "stock-list-zh-no-product", question: "查询库存", intent: "navigate", route: "/stock/list" },
+  { id: "date-sales-zh", question: "10月14日销售额", intent: "report_sales" },
+  { id: "date-sales-en", question: "sales on 14 October 2026", intent: "report_sales" },
+  { id: "date-compare-en-guided-refusal", question: "Compare sales on 14 Oct with 15 Oct", intent: "report_adhoc" },
+  { id: "date-compare-zh-guided-refusal", question: "比较10月14日和10月15日销售额", intent: "report_adhoc" },
 ];
 
 const browser = await chromium.launch({ headless: true });
@@ -66,15 +77,17 @@ try {
     const body = await response.json().catch(() => ({}));
     const data = body.data ?? {};
     const route = data.ui?.route ?? null;
+    const query = data.slots?.query ?? null;
     const passed = response.ok()
       && body.code === 0
       && data.intent === item.intent
-      && (item.route ? route === item.route : true);
+      && (item.route ? route === item.route : true)
+      && (item.query ? query === item.query : true);
     checks.push({
       id: item.id,
       question: item.question,
       status: passed ? "PASS" : "FAIL",
-      evidence: { httpStatus: response.status(), code: body.code, intent: data.intent ?? null, route },
+      evidence: { httpStatus: response.status(), code: body.code, intent: data.intent ?? null, route, ...(item.query ? { query } : {}) },
     });
   }
 

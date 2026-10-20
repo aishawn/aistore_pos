@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -16,12 +17,17 @@ const env = Object.fromEntries(
 );
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
-const deployment = process.env.PILOT_DEPLOYMENT_SHA ?? "e8e6c69";
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const deploymentVerified = process.env.PILOT_DEPLOYMENT_VERIFIED === "true"
+  && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "");
+const runtimeCommit = deploymentVerified ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase() : null;
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const evidence = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: deployment,
+  sourceCommit,
+  deploymentShaVerified: deploymentVerified,
+  runtimeCommit,
   target: base,
   scope: "admin-only AI report metrics read-only regression; no business or configuration writes",
   checks: [],
@@ -108,7 +114,10 @@ try {
   await browser.close();
 }
 
-const output = path.join(root, "docs", `UAT_AI_METRICS_ONLINE_${deployment.toUpperCase()}.json`);
+const output = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", `UAT_AI_METRICS_ONLINE_${new Date().toISOString().replaceAll(/[:.]/g, "-")}.json`);
+fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify(evidence, null, 2));
 if (evidence.status !== "PASS") process.exitCode = 1;

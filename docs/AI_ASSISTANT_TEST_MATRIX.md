@@ -8,9 +8,10 @@ Natural-language coverage catalog: [`AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSI
 
 ## Current execution snapshot (2026-10-20)
 
-- Local backend: Java 21 `mvn -B clean verify` → **238 tests, 0 failures, 0 errors** (2026-10-20, after utterance routing updates).
-- Online read-only baseline: workflow utterances `17/17`, features `14/14`, route matrix `9/9`, metrics `9/9`, Sommelier `10/10` passed. Reports `4/5` and assistant surface `5/6` were blocked by AI provider `50210`; the sales data reconciliation itself passed. Latest evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`, `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-20_RECHECK-A6AFED7.json`, `UAT_AI_SURFACE_ONLINE_2026-10-20_RECHECK-A6AFED7.json`.
-- Deployment identity: current runtime SHA and Dokploy build result remain unverified; recent deploy webhook returned HTTP 301 `Branch Not Match`. Online evidence is for the runtime that served the Demo at test time and does not include the current uncommitted source changes.
+- Local backend: Java 21 `mvn -B clean verify` → **238 tests, 0 failures, 0 errors** (2026-10-20, including Chinese explicit-date parsing).
+- Online read-only baseline: workflow utterances `28/28` passed, including English/Chinese product search, named stock questions, explicit-date sales routing, and unsupported date comparisons. Report checks were `10/12` on the unverified runtime: a Chinese single-date question used today's date, and the comparison-refusal assertion initially failed to recognize the valid “can't run that custom comparison yet” copy. The date parser has since been fixed locally and the refusal assertion corrected; those fixes still require a runtime with the current backend SHA. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20_FULL-055468B.json`, `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-20_FULL-055468B.json`.
+- Data source availability: sales reconciliation matched Odoo Overview across seven daily rows. The named stock question extracted `VB Cans` correctly, but the live Odoo report source returned its temporary-unavailable message; do not claim the stock quantity query passed end-to-end.
+- Deployment identity: current runtime SHA and Dokploy build result remain unverified; webhook for `055468b` returned HTTP 301 `Branch Not Match`. Online evidence is for the runtime that served Demo at test time, not proof of the current backend source.
 - Read-only scope: no sales, purchase, receiving, inventory, cash or register-close data was written during online checks.
 
 ## Regression cases

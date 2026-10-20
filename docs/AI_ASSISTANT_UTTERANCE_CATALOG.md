@@ -11,6 +11,8 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 | How much did we take yesterday? | `report_sales` | yesterday |
 | 16 Oct 2026 sales | `report_sales` | 2026-10-16 |
 | Sales on 14/10/2026 | `report_sales` | 2026-10-14 (AU day first) |
+| 10月14日销售额 | `report_sales` | 14 October in the current store business year |
+| 查询2025年10月14号销售额 | `report_sales` | 2025-10-14; explicit year overrides model slots |
 | Revenue from 14 Oct 2026 to 16 Oct 2026 | `report_sales` | inclusive three-day range |
 | Sales from Oct 14 to Oct 16 | `report_sales` | current-year inclusive range |
 | 销售额从10月14日到10月16日 | `report_sales` | current-year inclusive range |

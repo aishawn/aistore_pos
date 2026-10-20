@@ -192,7 +192,7 @@ npm run typecheck
 | RPT-T02 | yesterday / 昨天销售额 | 昨日区间；不误用今日数 |
 | RPT-T03 | 多轮：先今日再 “and yesterday?” | 同一 thread；昨日数正确 |
 | RPT-T04 | `14,oct` / `14/10/2026` / `2026-10-14` | 解析为同一业务日（当年或显式年） |
-| RPT-T04a | `14 Oct sales` / `sales on 14 October 2026` / `10月14日销售额` | 日期销售走模板报表；显式日期优先，按门店业务时区 |
+| RPT-T04a | `14 Oct sales` / `sales on 14 October 2026` / `10月14日销售额` / `查询2025年10月14号销售额` | 日期销售走模板报表；省略年份时用门店当前年，显式年份优先 |
 | RPT-T05 | 最近 7 天 / 本月销售额 | 区间与 Overview 对齐 |
 | RPT-T06 | How many tickets yesterday? / 几笔订单 | `report_aov`（含票数），非 adhoc 死胡同 |
 | RPT-T07 | units sold / 销量 | `report_qty` |

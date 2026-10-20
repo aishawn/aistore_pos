@@ -121,6 +121,7 @@ try {
 
   const compactDate = await ask("14,oct sales");
   const explicitDate = await ask("sales on 14 October 2026");
+  const chineseDate = await ask("10月14日销售额");
   const expectedDate = `${today.slice(0, 4)}-10-14`;
   check("day-month date uses current year", compactDate.intent === "report_sales"
     && compactDate.slots?.from === expectedDate && compactDate.slots?.to === expectedDate,
@@ -128,6 +129,19 @@ try {
   check("compact and explicit dates return the same report", compactDate.answer === explicitDate.answer
     && JSON.stringify(compactDate.table?.rows ?? []) === JSON.stringify(explicitDate.table?.rows ?? []),
   `compact=${compactDate.answer}; explicit=${explicitDate.answer}`);
+  check("Chinese explicit date resolves to the same business day", chineseDate.intent === "report_sales"
+    && chineseDate.slots?.from === expectedDate && chineseDate.slots?.to === expectedDate,
+  `expected=${expectedDate}; actual=${chineseDate.slots?.from ?? "missing"}`);
+
+  const comparison = await ask("Compare sales on 14 Oct with 15 Oct");
+  check("unsupported date comparison stays a guided refusal", comparison.intent === "report_adhoc"
+    && /not available|unsupported|cannot compare|custom report|can't run/i.test(comparison.answer ?? ""),
+  `intent=${comparison.intent}; answer=${comparison.answer ?? "missing"}`);
+
+  const stockQuestion = await ask("What's the stock level for VB Cans?");
+  check("named stock question preserves product query", stockQuestion.intent === "report_stock"
+    && stockQuestion.slots?.query === "VB Cans",
+  `intent=${stockQuestion.intent}; query=${stockQuestion.slots?.query ?? "missing"}; answer=${stockQuestion.answer ?? "missing"}`);
 
   const dashboardOct14 = dashboard30d.trend?.find((row) => isoDate(row.label) === expectedDate);
   const aiRows = compactDate.table?.rows ?? [];

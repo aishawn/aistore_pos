@@ -86,6 +86,13 @@ class ReportPeriodResolverTest {
 
         ReportPeriodResolver.Window explicitYear = resolver.resolve(Map.of(), "sales on 14 October 2024");
         assertEquals(LocalDate.of(2024, 10, 14), explicitYear.from().toLocalDate());
+
+        ReportPeriodResolver.Window chineseCurrentYear = resolver.resolve(
+                Map.of("from", "2020-01-01", "to", "2020-01-01"), "10月14日销售额");
+        assertEquals(LocalDate.of(AustraliaTime.today().getYear(), 10, 14), chineseCurrentYear.from().toLocalDate());
+
+        ReportPeriodResolver.Window chineseExplicitYear = resolver.resolve(Map.of(), "查询2025年10月14号销售额");
+        assertEquals(LocalDate.of(2025, 10, 14), chineseExplicitYear.from().toLocalDate());
     }
 
     @Test

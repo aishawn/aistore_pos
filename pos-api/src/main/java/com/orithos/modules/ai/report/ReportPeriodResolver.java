@@ -61,6 +61,8 @@ public class ReportPeriodResolver {
                     + "\\s+to\\s+([a-z]+[\\s,.-]+\\d{1,2}(?:st|nd|rd|th)?(?:[\\s,.-]+\\d{4})?)\\b");
     private static final Pattern CHINESE_MONTH_DAY_RANGE = Pattern.compile(
             "(?:从|自)\\s*(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})日\\s*(?:到|至)\\s*(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})日");
+    private static final Pattern CHINESE_SINGLE_DATE = Pattern.compile(
+            "(?:(\\d{4})年)?(\\d{1,2})月(\\d{1,2})[日号]?");
 
     public Window resolve(Map<String, String> slots, String question) {
         return resolve(slots, question, 1);
@@ -234,6 +236,11 @@ public class ReportPeriodResolver {
     }
 
     private Window explicitDate(String question, LocalDate today) {
+        Matcher chinese = CHINESE_SINGLE_DATE.matcher(question);
+        if (chinese.find()) {
+            int year = chinese.group(1) == null ? today.getYear() : Integer.parseInt(chinese.group(1));
+            return singleDate(safeDate(year, Integer.parseInt(chinese.group(2)), Integer.parseInt(chinese.group(3))));
+        }
         Matcher dayMonth = DAY_MONTH.matcher(question);
         if (dayMonth.find()) {
             return singleDate(parseNamedDate(dayMonth.group(2), dayMonth.group(1), dayMonth.group(3), today));

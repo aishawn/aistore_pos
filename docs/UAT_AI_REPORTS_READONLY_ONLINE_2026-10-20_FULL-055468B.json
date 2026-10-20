@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-10-20T12:43:12.986Z",
+  "testHarnessCommit": "993b38af4540122d8ca0eb4a39bd51941a4cb115",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 10,
+  "checksTotal": 12,
+  "checks": [
+    {
+      "name": "today uses store business date",
+      "status": "PASS",
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-20; actual=2026-10-20"
+    },
+    {
+      "name": "empty today agrees with 24-hour overview",
+      "status": "PASS",
+      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-20. Try a wider range, for example: sales last 7 days."
+    },
+    {
+      "name": "7-day sales report returns rows",
+      "status": "PASS",
+      "evidence": "answer=Sales for 2026-10-14 to 2026-10-20 total 6342.52 (3 day(s)).; rows=3"
+    },
+    {
+      "name": "30-day sales report returns rows",
+      "status": "PASS",
+      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-21 to 2026-10-20 total 16536.98 (7 day(s)).; rows=7"
+    },
+    {
+      "name": "day-month date uses current year",
+      "status": "PASS",
+      "evidence": "expected=2026-10-14; actual=2026-10-14"
+    },
+    {
+      "name": "compact and explicit dates return the same report",
+      "status": "PASS",
+      "evidence": "compact=Sales for 2026-10-14 total 4014.36 (1 day(s)).; explicit=Sales for 2026-10-14 total 4014.36 (1 day(s))."
+    },
+    {
+      "name": "Chinese explicit date resolves to the same business day",
+      "status": "FAIL",
+      "evidence": "expected=2026-10-14; actual=2026-10-20"
+    },
+    {
+      "name": "unsupported date comparison stays a guided refusal",
+      "status": "FAIL",
+      "evidence": "intent=report_adhoc; answer=I can't run that custom comparison yet. Try: Today's sales, average ticket this week, how much [product] is in stock, or dead stock last 30 days."
+    },
+    {
+      "name": "named stock question preserves product query",
+      "status": "PASS",
+      "evidence": "intent=report_stock; query=VB Cans; answer=Live Odoo reporting is temporarily unavailable. Please try again."
+    },
+    {
+      "name": "14 October reconciles with overview",
+      "status": "PASS",
+      "evidence": "overview=4014.36; assistant=4014.36; rows=[{\"date\":\"14 Oct 2026\",\"sales\":4014.36}]"
+    },
+    {
+      "name": "AI daily sales rows reconcile with overview trend",
+      "status": "PASS",
+      "evidence": "compared=7; mismatches=[]"
+    },
+    {
+      "name": "report execution uses Odoo source",
+      "status": "PASS",
+      "evidence": "requestsByPath={\"assistant:navigate\":40,\"odoo\":23,\"assistant:report_sales\":16,\"assistant:report_adhoc\":12,\"unsupported\":12,\"assistant:search_product\":5,\"assistant:report_stock\":4,\"assistant:unknown\":4,\"assistant:report_qty\":3}"
+    }
+  ],
+  "failures": [
+    "Chinese explicit date resolves to the same business day",
+    "unsupported date comparison stays a guided refusal"
+  ],
+  "result": "FAIL"
+}
