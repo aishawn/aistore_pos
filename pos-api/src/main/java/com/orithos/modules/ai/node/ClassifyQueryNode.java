@@ -8,6 +8,7 @@ import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.RawIntent;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
+import com.orithos.modules.ai.WorkflowRouteRouter;
 import com.orithos.modules.ai.report.ReportAdhocRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,9 +56,13 @@ public class ClassifyQueryNode implements NodeAction {
 
         RawIntent raw = callModel(system, userPrompt);
         SanitizedIntent result = sanitizeService.sanitize(raw);
-        String intent = ReportAdhocRouter.maybeOverride(question, result.intent());
+        WorkflowRouteRouter.Override workflow = WorkflowRouteRouter.maybeOverride(question);
+        String intent = workflow == null
+                ? ReportAdhocRouter.maybeOverride(question, result.intent())
+                : workflow.intent();
+        String route = workflow == null ? nullToEmpty(result.route()) : workflow.route();
         if (intent != null && !intent.equals(result.intent())) {
-            log.info("Forced intent {} -> {} for NL2SQL", result.intent(), intent);
+            log.info("Forced intent {} -> {} for explicit workflow request", result.intent(), intent);
         }
 
         log.debug("Classified intent={}", intent);
@@ -68,7 +73,7 @@ public class ClassifyQueryNode implements NodeAction {
         out.put("slots", result.slots());
         out.put("ui_panel", nullToEmpty(result.panel()));
         out.put("ui_view", nullToEmpty(result.view()));
-        out.put("ui_route", nullToEmpty(result.route()));
+        out.put("ui_route", route);
         out.put("ui_action", nullToEmpty(result.action()));
         return out;
     }
