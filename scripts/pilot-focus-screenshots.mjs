@@ -11,7 +11,9 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const routes = ["/reports/closures", "/platform/stores", "/utilities/future-costs", "/utilities/future-prices"];
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
-const outputDir = path.join(root, "docs", "screenshots", "2026-10-17-report-batch");
+const outputDir = process.env.PILOT_SCREENSHOT_DIR
+  ? path.resolve(root, process.env.PILOT_SCREENSHOT_DIR)
+  : path.join(root, "docs", "screenshots", "2026-10-17-report-batch");
 fs.mkdirSync(outputDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
@@ -32,13 +34,16 @@ for (const viewport of viewports) {
     const slug = route.slice(1).replaceAll("/", "-");
     const file = `${slug || "home"}-${viewport.width}.png`;
     await page.screenshot({ path: path.join(outputDir, file), fullPage: true });
-    captures.push({ route, target, viewport: viewport.width, status: response?.status() ?? 0, title: await page.title(), heading: await page.locator("h1").first().textContent().catch(() => null), screenshot: `docs/screenshots/2026-10-17-report-batch/${file}` });
+    captures.push({ route, target, viewport: viewport.width, status: response?.status() ?? 0, title: await page.title(), heading: await page.locator("h1").first().textContent().catch(() => null), screenshot: path.relative(root, path.join(outputDir, file)).replaceAll(path.sep, "/") });
   }
   await page.close();
   await context.close();
 }
 await browser.close();
 const output = { generatedAt: new Date().toISOString(), target: base, routes, viewports: viewports.map(({ width }) => width), captures };
-const outputPath = path.join(root, "docs", "UAT_FOCUS_SCREENSHOTS_2026-10-17.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_FOCUS_SCREENSHOTS_2026-10-17.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, captures: captures.length }));
