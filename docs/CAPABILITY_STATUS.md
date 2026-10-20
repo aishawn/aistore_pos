@@ -1,6 +1,13 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
+**Last updated:** 2026-10-20（`fe4d978` AI 报表快捷问法与 UAT gate 批次）
+
+### 2026-10-20 AI 报表快捷问法与 #38 构建复核（`fe4d978`）
+
+- `AssistantFastPathRouter` 增加常见中英文“今天/昨天销售额”和“还剩多少库存”问法，商品名继续作为查询槽位传递，不生成库存数。
+- Odoo 库存只读测试覆盖绑定 company/warehouse context、空结果和 RPC 错误安全返回；capability UAT 覆盖 AI 开关关闭及 capability 加载中的按钮状态。
+- Java 21 `mvn -B clean verify`：`243 tests, 0 failures, 0 errors`；仅有 JSqlParser `Parenthesis` deprecated warnings。
+- Dokploy #38 的 `AiProviderConfig` 错误仍不能在当前源码复现；当前发布保持 **NO-GO**，需修正 Compose 分支绑定并核对运行 SHA 后再做线上回归。
 
 ### 2026-10-20 AI 助手确定性问法扩展（待部署）
 
