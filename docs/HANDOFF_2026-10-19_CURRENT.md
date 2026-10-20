@@ -1273,3 +1273,10 @@
 - `spring.ai.dashscope.chat.options.vision-model` 现在默认跟随 `AI_DASHSCOPE_MODEL`，仍可通过 `AI_VISION_MODEL` 单独覆盖；这与 `qwen3.8-flash` 的多模态路径配置一致。
 - Java 21 `mvn -B clean verify`：`246 tests, 0 failures, 0 errors`，仅有既有 JSqlParser 弃用警告。
 - 配置尚未进入 Dokploy 镜像；部署后需用已配置的 DashScope key 验证酒标识别/发票 OCR 的真实多模态请求路径，并核对运行 SHA。
+
+## 2026-10-21 Dokploy #38 编译日志复核（当前 `main` `01c14fb`）
+
+- Dokploy #38 报告 `AiConfigController` 与 `SommelierController` 找不到 `AiProviderConfig`。当前 `main` 已包含 `AiProviderConfig.java` 及两个控制器的显式 import；该错误不能在当前源码复现，应按旧源码快照、错误分支或不完整构建上下文排查。
+- 使用 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1` 执行 `pos-api` 的 `mvn -B clean verify`：`247 tests, 0 failures, 0 errors`，构建成功。JSqlParser `Parenthesis` deprecated 仍仅为 warning。
+- `HEAD == origin/main == 01c14fb`。下一次 Dokploy 部署必须确认 Source/Git 为 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、compose=`docker-compose.yml`，并在日志中确认 checkout/build commit 与 `01c14fb` 一致。
+- 在读取完整 frontend/backend 构建日志、健康状态、镜像 SHA 和运行 commit 前，线上仍保持 **NO-GO**；不要把这次 #38 的失败日志归因于当前源码，也不要仅凭 webhook HTTP 200 判定部署成功。
