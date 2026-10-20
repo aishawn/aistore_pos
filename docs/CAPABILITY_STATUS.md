@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 发票 AI 能力探测重试（`08b8e83`）
+
+- 发票扫描页新增页面内 `Retry availability`，能力探测临时失败后可恢复上传；仍不创建供应商、采购单或收货。
+- 线上 mock 回归 `docs/UAT_INVOICE_SCAN_MOCK_POST_08B8E83_FINAL.json` 为 `5/5 PASS`，业务写入 `0`。
+
 ### 2026-10-20 Stock List 移动右侧安全区（待部署）
 
 - 移动 Stock List 内容区增加右侧安全区，降低固定 AI 助手遮挡产品卡片的风险；桌面布局不变。

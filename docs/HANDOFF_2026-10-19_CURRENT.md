@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 发票 AI 能力探测重试（`08b8e83`）
+
+- `ScanInvoicePage` 在 AI 能力探测临时失败时提供页面内 `Retry availability`，成功重试后恢复上传按钮；preview-only、Odoo 跳转和禁止业务写入边界不变。
+- `scripts/pilot-invoice-scan-mock-uat.mjs` 增加首次 503 → Retry → 能力恢复的 mock 回归。
+- 线上 mock 证据 `docs/UAT_INVOICE_SCAN_MOCK_POST_08B8E83_FINAL.json`：`5/5 PASS`，扫描接口仅被拦截 1 次，未提交供应商/采购/收货写入。
+- 本地 `npm run typecheck`、目标 ESLint、脚本语法和 `git diff --check` 通过；未运行 build。
+
 ## 2026-10-20 Stock List 移动右侧安全区（待部署）
 
 - `pos-ui/src/components/admin/StockListPage.tsx` 的移动滚动容器增加右侧 `safe-area-inset-right` 预留，避免固定 AI 助手覆盖产品卡片内容；桌面端在 `md` 断点恢复原有左右间距。

@@ -54,7 +54,15 @@ try {
     if (capabilityCalls === 1) {
       return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: 50301, message: "temporary capability probe failure", data: null }) });
     }
-    return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ code: 0, message: "ok", data: {
+        enabled: true,
+        assistantAvailable: true,
+        invoiceVisionAvailable: true,
+      } }),
+    });
   });
 
   await page.goto(`${base}/invoices/scan`, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -64,7 +72,8 @@ try {
   const retryAvailability = page.getByRole("button", { name: "Retry availability" });
   await retryAvailability.waitFor({ state: "visible", timeout: 10000 });
   await retryAvailability.click();
-  await page.getByRole("button", { name: "Photograph or upload" }).waitFor({ state: "enabled", timeout: 20000 });
+  const uploadAction = page.getByRole("button", { name: "Photograph or upload" });
+  await page.waitForFunction((button) => button instanceof HTMLButtonElement && !button.disabled, await uploadAction.elementHandle(), { timeout: 20000 });
   const save = page.getByRole("button", { name: "Save as received order" });
   if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button");
   const upload = page.locator('input[type="file"][aria-label="Choose or photograph a supplier invoice"]');
