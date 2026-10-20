@@ -21,6 +21,7 @@ class ReportAdhocRouterTest {
     void mixedAndRankForceAdhoc() {
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("上周五啤酒的销量和金额分别是多少"));
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("上周哪个商品卖得最多"));
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("本周哪类商品卖得最好"));
         assertEquals("report_adhoc",
                 ReportAdhocRouter.maybeOverride("What did we sell most this week?", "report_qty"));
     }
