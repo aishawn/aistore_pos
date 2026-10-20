@@ -8,6 +8,8 @@ import {
 } from "@/components/admin/AdminPageLayout";
 import { getOdooPosBootstrap, postOdooSessionCash, type OdooPosBootstrap } from "@/lib/odoo-api";
 
+const MAX_CASH_ADJUSTMENT = 1_000_000;
+
 export default function ManageCashPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,8 +50,8 @@ export default function ManageCashPage() {
   async function submit() {
     if (!configId || busy) return;
     const value = Number(amount);
-    if (!Number.isFinite(value) || value <= 0) {
-      setError("Enter an amount greater than zero.");
+    if (!Number.isFinite(value) || value <= 0 || value > MAX_CASH_ADJUSTMENT) {
+      setError(`Enter an amount greater than zero and no more than $${MAX_CASH_ADJUSTMENT.toLocaleString("en-AU")}.`);
       return;
     }
     setBusy(true);
@@ -144,6 +146,7 @@ export default function ManageCashPage() {
                     <input
                       type="number"
                       min={0.01}
+                      max={MAX_CASH_ADJUSTMENT}
                       step="0.01"
                       value={amount}
                       onChange={(event) => setAmount(event.target.value)}
