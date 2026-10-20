@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Dokploy 分支阻断排查
+
+- 仓库远端当前仅有 `main`；控制台未认证时只能返回登录壳，无法独立读取 Compose Source/Git 设置。
+- `DEPLOYMENT.md` 已补充 `HTTP 301 Branch Not Match` 的排查、普通 Deploy 和运行 SHA/日志/健康证据要求；线上发布仍保持 **NO-GO**。
+
 ### 2026-10-20 AI 语音键盘交互批次（工作区）
 
 - Hold to speak 支持键盘按下/释放和失焦停止，按钮状态补齐 `aria-pressed`；AI UI UAT 脚本兼容新旧按钮文案且不启用真实麦克风。

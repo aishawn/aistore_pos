@@ -33,6 +33,16 @@ This repository deploys the Spring Boot + MySQL + Redis services and the Next.js
 
 After a change is pushed to `main`, Dokploy should deploy the Compose services if auto-deploy is enabled for this application. Check the Dokploy deployment log and verify the frontend domain, Orithos login, Odoo connection, product/customer pages, sales history, replenishment plan and reporting dashboard. Use an Odoo test database and test POS session for checkout verification; do not create test sales in the live store.
 
+### Troubleshooting `Branch Not Match`
+
+If the Compose webhook returns `HTTP 301` with `{"message":"Branch Not Match"}`, Dokploy rejected the request before a build started. Treat this as a deployment configuration failure, not a successful deploy or a cache issue.
+
+1. Open the Compose service's **Source/Git** settings and set the repository to `aishawn/aistore_pos`, branch/ref to `main`, repository root to `/`, and Compose file to `docker-compose.yml`.
+2. Save the source settings, then use the service's normal **Deploy** action once. Do not use **Fresh Volumes**.
+3. In the deployment details, save the frontend and backend image/container commit SHAs, the complete frontend/backend build logs, deployment timestamp, and health status. A webhook response or public HTTP 200 alone is not sufficient evidence.
+4. If the service is intentionally bound to another branch, either change it to `main` or create that exact branch in GitHub before sending another webhook. This repository currently publishes only `main`.
+5. After the build is healthy, run the read-only smoke matrix and record its `sourceCommit` together with the Dokploy runtime SHA. Never label a UAT result as post-deploy until those identities match.
+
 ### Smoke checklist after every Deploy
 
 1. Dokploy deployment status is **Done** and the commit SHA matches `origin/main` (or contains at least the intended fix commit).

@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Dokploy 分支阻断排查文档
+
+- 远端当前只有 `main` 分支；Dokploy 控制台页面可访问但未认证，无法从本会话读取 Compose 服务的实际 Source/Git 配置。
+- `DEPLOYMENT.md` 新增 `Branch Not Match` 处理步骤：核对仓库、`main` 分支、根目录、`docker-compose.yml`，使用普通 Deploy，并保存 frontend/backend SHA、完整构建日志、时间和健康状态。
+- 在这些证据补齐前，任何 webhook `301` 或公网 `200` 都不能算新批次已部署；当前发布状态继续 **NO-GO**。
+
 ## 2026-10-20 AI 语音键盘交互批次（工作区）
 
 - `SellAiPanel` 的 Hold to speak 按钮现在支持键盘 Space/Enter 按下与释放、失焦自动停止，并暴露 `aria-pressed`；删除并行提交遗留的未使用 `applyTranscript`，目标 ESLint 已无警告。
