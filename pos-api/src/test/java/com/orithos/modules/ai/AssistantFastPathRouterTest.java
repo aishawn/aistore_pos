@@ -17,6 +17,14 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesCategoryQuantityQuestionsWithTheirCategorySlot() {
+        assertEquals("red wine",
+                AssistantFastPathRouter.maybeMatch("How much red wine sold this week?").slots().get("category"));
+        assertEquals("啤酒",
+                AssistantFastPathRouter.maybeMatch("本周啤酒卖了多少").slots().get("category"));
+    }
+
+    @Test
     void matchesTodaySalesWithoutLlm() {
         AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch("Today's sales");
         assertNotNull(match);
@@ -34,8 +42,10 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
-    void leavesComplexQuestionsForClassifier() {
-        assertNull(AssistantFastPathRouter.maybeMatch("How much red wine sold this week?"));
+    void leavesUnsupportedQuestionsForClassifier() {
+        assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("How much red wine sold this week?").intent());
+        assertEquals("red wine", AssistantFastPathRouter.maybeMatch("How much red wine sold this week?").slots().get("category"));
+        assertNull(AssistantFastPathRouter.maybeMatch("Why are sales down today?"));
         assertNull(AssistantFastPathRouter.maybeMatch(null));
     }
 }

@@ -22,6 +22,9 @@ public final class AssistantFastPathRouter {
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
             "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销量|销售数量))$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
+            "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern OPEN_SELL = Pattern.compile(
             "^(open\\s*(the\\s*)?(sell|cashier|register)(\\s*screen)?|进入收银界面|进入收银|打开收银|收银界面)$",
             Pattern.CASE_INSENSITIVE);
@@ -75,6 +78,20 @@ public final class AssistantFastPathRouter {
                     "report_qty",
                     "Quantity report",
                     Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        var categoryQuantity = CATEGORY_QUANTITY.matcher(normalized);
+        if (categoryQuantity.matches()) {
+            String category = categoryQuantity.group(1) != null
+                    ? categoryQuantity.group(1).trim()
+                    : categoryQuantity.group(2).trim();
+            return new Match(
+                    "report_qty",
+                    "Quantity report",
+                    Map.of("category", category),
                     "",
                     "",
                     "",
