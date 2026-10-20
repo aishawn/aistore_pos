@@ -5,6 +5,7 @@
 ### 2026-10-20 产品目录与 Sell AI 批次（工作区，待线上验证）
 
 - Odoo 产品目录分类失败后的 `Retry categories` 现在会真正重新请求分类；分类下拉补齐 `aria-busy`，避免错误提示可见但重试无效。
+- 产品创建会拒绝空白名称，产品编辑和创建都在客户端拒绝负数或超过 `1,000,000` 的售价，避免表单约束被脚本绕过。
 - Sell AI 的语音指针取消会立即停止录音；非法实体操作不会再默认为 `list`，而是返回可操作提示，避免误导航或误操作。
 - 本地验证：`npm run typecheck`、目标 ESLint（`OdooProductCataloguePage`、`SellAiPanel`、`ai-entity-actions`）、相关 UAT 脚本 `node --check` 和 `git diff --check` 通过；按约束未运行 build。
 - 这些改动尚未进入线上镜像。集中部署后需重跑 AI UI、AI entity guard、产品/价格只读页面和全站静态矩阵，并确认 Dokploy 构建日志、健康状态及运行 SHA。

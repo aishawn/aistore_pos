@@ -213,8 +213,8 @@ export function OdooProductCataloguePage() {
     if (!editingProduct || savingProduct) return;
     const form = new FormData(event.currentTarget);
     const price = Number(form.get("list_price"));
-    if (!Number.isFinite(price) || price < 0) {
-      setEditError("Enter a valid price greater than or equal to zero.");
+    if (!Number.isFinite(price) || price < 0 || price > 1_000_000) {
+      setEditError("Enter a sale price between 0 and 1,000,000.");
       return;
     }
     const formElement = event.currentTarget;
@@ -248,6 +248,10 @@ export function OdooProductCataloguePage() {
     const form = new FormData(event.currentTarget);
     const name = String(form.get("name") ?? "").trim();
     const price = Number(form.get("list_price"));
+    if (!name) {
+      setCreateError("Enter a product name.");
+      return;
+    }
     if (!Number.isFinite(price) || price < 0 || price > 1_000_000) {
       setCreateError("Enter a sale price between 0 and 1,000,000.");
       return;
