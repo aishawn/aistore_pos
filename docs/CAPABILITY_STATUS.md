@@ -6,6 +6,7 @@
 
 - Hold to speak 支持键盘按下/释放和失焦停止，按钮状态补齐 `aria-pressed`；AI UI UAT 脚本兼容新旧按钮文案且不启用真实麦克风。
 - 本地 typecheck、目标 ESLint、脚本语法检查通过；本次公网 AI UI 尝试因登录失败未产生有效线上证据，待 Dokploy 分支修正和认证恢复后复测。
+- `72d56da` 已推送，但 webhook 仍返回 `HTTP 301 Branch Not Match`，语音键盘交互尚未获得线上镜像验证。
 
 ### 2026-10-20 全站 Loading 状态语义批次（工作区）
 
