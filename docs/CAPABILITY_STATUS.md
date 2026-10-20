@@ -19,6 +19,12 @@
 - 当前工作树执行 `mvn -B clean verify`（`JAVA_HOME=jdk-21.0.12.1+1`）通过：**247 tests, 0 failures, 0 errors**，构建成功。
 - 仅剩 JSqlParser `Parenthesis` deprecated warnings；不影响编译或测试，不作为部署失败原因。
 
+### 2026-10-22 AI stock report 最新诊断（运行身份未核验）
+
+- 最新报表复测为 `13 PASS / 1 BLOCKED`：销售、日期、Overview 对账和 Odoo source path 均通过，AI stock report 仍返回安全的暂时不可用提示。
+- 独立只读 RPC 诊断为 `7 PASS / 1 INFO`：无 warehouse context、company context 和唯一 warehouse context 下，`product.product` 的库存字段均可读；因此不能把 warehouse 缺失单独认定为根因。
+- 当前结论是“公网 AI report 运行版本仍不可用，根因待运行日志/正确部署身份确认”，不做猜测性放宽权限或跨租户 fallback。证据：`UAT_AI_REPORTS_READONLY_ONLINE_2026-10-22_CURRENT_RECHECK.json`、`UAT_AI_STOCK_RPC_READONLY_2026-10-22_CURRENT.json`。
+
 ### 2026-10-21 AI stock report 字段权限降级（待部署）
 
 - 库存报表在 `free_qty` 字段权限失败时降级读取 `qty_available`，仍使用绑定 company/warehouse context 和只读 `search_read`。

@@ -11,6 +11,12 @@
 - 针对当前包含 `9c437c7` AI 路由改动的工作树，执行 `mvn -B clean verify`（Java 21）成功：**247 tests, 0 failures, 0 errors**。
 - 这次只验证后端 Maven，不运行本地 Next/Docker build；JSqlParser `Parenthesis` 弃用提示仍是非阻断 warning。
 
+## 2026-10-22 AI stock report 诊断结论
+
+- 最新只读报表复测为 `13 PASS / 1 BLOCKED`，唯一阻断是 AI stock report 的安全 unavailable 响应；运行 SHA 仍未核验。
+- 独立 Odoo RPC 诊断在无 warehouse、company 和唯一 warehouse 三种上下文均能读取库存字段（`7 PASS / 1 INFO`），所以不能仅凭当前证据修改租户隔离或放宽字段权限。
+- 需要先让 Dokploy 使用正确 `main` 分支完成构建，并回读 backend 日志/运行 SHA，再定位 AI graph 与 Odoo service account 的实际异常。
+
 ## 2026-10-21 公网只读复测（运行身份未核验）
 
 - 当前公网基线通过：全站实际 `135` 路由 × `390/1440`，`270/270 PASS`；AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、AI UI `2/2`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`。
