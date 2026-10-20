@@ -1,0 +1,1005 @@
+{
+  "generatedAt": "2026-10-20T01:02:40.322Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": null,
+  "staticRoutes": 134,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 158,
+  "checksTotal": 268,
+  "failures": [
+    {
+      "route": "/orders",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: net::ERR_NETWORK_CHANGED at https://demo.orithos.com.au/orders\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/orders/credit/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/orders/credit/new\" is interrupted by another navigation to \"chrome-error://chromewebdata/\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders/credit/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/orders/manual",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/orders/manual\" is interrupted by another navigation to \"https://demo.orithos.com.au/orders/credit/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders/manual\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/orders/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/orders/new\" is interrupted by another navigation to \"https://demo.orithos.com.au/orders/manual\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/orders/receive/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/orders/receive/new\" is interrupted by another navigation to \"https://demo.orithos.com.au/orders/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders/receive/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/orders/return/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/orders/return/new\" is interrupted by another navigation to \"https://demo.orithos.com.au/orders/receive/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders/return/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/orders/transfer/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/orders/transfer/new\" is interrupted by another navigation to \"https://demo.orithos.com.au/orders/return/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/orders/transfer/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/overview",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/overview\" is interrupted by another navigation to \"https://demo.orithos.com.au/orders/transfer/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/overview\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/platform",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/platform\" is interrupted by another navigation to \"https://demo.orithos.com.au/overview\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/platform\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/platform/stores",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/platform/stores\" is interrupted by another navigation to \"https://demo.orithos.com.au/platform\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/platform/stores\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/pricelists",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/pricelists\" is interrupted by another navigation to \"https://demo.orithos.com.au/platform/stores\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/pricelists\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/products",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/products\" is interrupted by another navigation to \"https://demo.orithos.com.au/pricelists\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/products\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/products/merge",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/products/merge\" is interrupted by another navigation to \"https://demo.orithos.com.au/products\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/products/merge\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/products/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/products/new\" is interrupted by another navigation to \"https://demo.orithos.com.au/products/merge\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/products/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/products/odoo",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/products/odoo\" is interrupted by another navigation to \"https://demo.orithos.com.au/products/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/products/odoo\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/promotion/categories",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/promotion/categories\" is interrupted by another navigation to \"https://demo.orithos.com.au/products/odoo\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/promotion/categories\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/promotions",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/promotions\" is interrupted by another navigation to \"https://demo.orithos.com.au/promotion/categories\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/promotions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/purchases/odoo",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/purchases/odoo\" is interrupted by another navigation to \"https://demo.orithos.com.au/promotions\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/purchases/odoo\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/register/classic",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/register/classic\" is interrupted by another navigation to \"https://demo.orithos.com.au/purchases/odoo\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/register/classic\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/register/odoo",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/register/odoo\" is interrupted by another navigation to \"https://demo.orithos.com.au/register/classic\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/register/odoo\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/actions",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/actions\" is interrupted by another navigation to \"https://demo.orithos.com.au/register/odoo\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/actions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/advanced",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/advanced\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/actions\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/advanced\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/ai/metrics",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/ai/metrics\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/advanced\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/ai/metrics\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/closures",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/closures\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/ai/metrics\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/closures\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/daily-sales",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/daily-sales\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/closures\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/daily-sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/dashboard",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/dashboard\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/daily-sales\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/dashboard\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/favourites",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/favourites\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/dashboard\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/favourites\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/inventory",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/inventory\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/favourites\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/inventory\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/last-month-sales",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/last-month-sales\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/inventory\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/last-month-sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/last-week-sales",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/last-week-sales\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/last-month-sales\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/last-week-sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/misc",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/misc\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/last-week-sales\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/misc\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/purchase",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/purchase\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/misc\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/purchase\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/sales",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/sales\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/purchase\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/this-month-sales",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/this-month-sales\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/sales\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/this-month-sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/transfer",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/transfer\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/this-month-sales\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/transfer\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reports/weekly-sales",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reports/weekly-sales\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/transfer\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reports/weekly-sales\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/reset-password",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/reset-password\" is interrupted by another navigation to \"https://demo.orithos.com.au/reports/weekly-sales\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/reset-password\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/security",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/security\" is interrupted by another navigation to \"https://demo.orithos.com.au/reset-password\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/security\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings\" is interrupted by another navigation to \"https://demo.orithos.com.au/security\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/account\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/general\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/account\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/additional-information",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/additional-information\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/account\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/additional-information\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/barcodes",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/barcodes\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/additional-information\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/barcodes\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/currency",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/currency\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/barcodes\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/currency\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/date-time",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/date-time\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/currency\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/date-time\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/general",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/general\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/date-time\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/general\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/general-display",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/general-display\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/general\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/general-display\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/integrations",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/integrations\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/general-display\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/integrations\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/login-after-sale",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/login-after-sale\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/integrations\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/login-after-sale\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/miscellaneous",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/miscellaneous\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/login-after-sale\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/miscellaneous\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/outlets",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/outlets\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/miscellaneous\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/outlets\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/search",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/search\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/outlets\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/search\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/company/sell-screen",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/company/sell-screen\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/search\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/company/sell-screen\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/customerdisplay",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/customerdisplay\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/company/sell-screen\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/customerdisplay\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/data",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/data\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/customerdisplay\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/data\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/hardware",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/hardware\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/data\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/hardware\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/integrations",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/integrations\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/hardware\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/integrations\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/keys",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/keys\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/integrations\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/keys\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/loyalty",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/loyalty\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/keys\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/loyalty\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/outlets",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/outlets\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/loyalty\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/outlets\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/outlets/gift-cards",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/outlets/gift-cards\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/outlets/integrations\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/outlets/gift-cards\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/outlets/integrations",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/outlets/integrations\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/outlets/gift-cards\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/outlets/integrations\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/outlets/miscellaneous",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/outlets/miscellaneous\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/outlets/integrations\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/outlets/miscellaneous\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/outlets/transfers",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/outlets/transfers\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/outlets/miscellaneous\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/outlets/transfers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/payment",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/payment\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/outlets/transfers\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/payment\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/pricesets",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/pricesets\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/payment\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/pricesets\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/push",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/push\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/pricesets\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/push\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/receipts",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/receipts\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/push\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/receipts\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/receipts\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers-outlets",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers-outlets\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/registers/general\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers-outlets\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers/customer-display",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers/customer-display\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/registers-outlets\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers/customer-display\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers/general",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers/general\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/customerdisplay\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers/general\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers/invoices",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers/invoices\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/registers/general\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers/invoices\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers/miscellaneous",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers/miscellaneous\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/registers/invoices\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers/miscellaneous\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/registers/sell-screen",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/registers/sell-screen\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/registers/miscellaneous\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/registers/sell-screen\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/roles",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/roles\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/registers/sell-screen\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/roles\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/rules",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/rules\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/roles\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/rules\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/statements",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/statements\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/rules\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/statements\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/surcharging",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/surcharging\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/statements\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/surcharging\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/tax",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/tax\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/surcharging\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/tax\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/transferees",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/transferees\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/tax\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/transferees\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/settings/users",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/settings/users\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/transferees\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/settings/users\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/signup",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/signup\" is interrupted by another navigation to \"https://demo.orithos.com.au/settings/users\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/signup\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/sommelier",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/sommelier\" is interrupted by another navigation to \"https://demo.orithos.com.au/signup\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/sommelier\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/sommelier/find",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/sommelier/find\" is interrupted by another navigation to \"https://demo.orithos.com.au/sommelier\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/sommelier/find\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/sommelier/identify",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/sommelier/identify\" is interrupted by another navigation to \"https://demo.orithos.com.au/sommelier/find\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/sommelier/identify\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/bulk-price-edit",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/bulk-price-edit\" is interrupted by another navigation to \"https://demo.orithos.com.au/sommelier/identify\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/bulk-price-edit\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/buying-periods",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/buying-periods\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/bulk-price-edit\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/buying-periods\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/capped-pricing",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/capped-pricing\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/buying-periods\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/capped-pricing\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/external-stocktake",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/external-stocktake\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/capped-pricing\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/external-stocktake\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/import-supplier-products",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/import-supplier-products\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/external-stocktake\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/import-supplier-products\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/list\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/import-supplier-products\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/list\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/more",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/more\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/list\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/more\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/price-suggestions",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/price-suggestions\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/more\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/price-suggestions\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/replenishment",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/replenishment\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/price-suggestions\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/replenishment\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stock/stocktake",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stock/stocktake\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/replenishment\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stock/stocktake\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stocktake",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stocktake\" is interrupted by another navigation to \"https://demo.orithos.com.au/stock/stocktake\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stocktake\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stocktake/express",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stocktake/express\" is interrupted by another navigation to \"https://demo.orithos.com.au/stocktake\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stocktake/express\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/stocktake/external",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/stocktake/external\" is interrupted by another navigation to \"https://demo.orithos.com.au/stocktake/express\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/stocktake/external\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/suppliers",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/suppliers\" is interrupted by another navigation to \"https://demo.orithos.com.au/stocktake/external\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/suppliers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/suppliers/new",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/suppliers/new\" is interrupted by another navigation to \"https://demo.orithos.com.au/suppliers\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/suppliers/new\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/suppliers/odoo",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/suppliers/odoo\" is interrupted by another navigation to \"https://demo.orithos.com.au/suppliers/new\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/suppliers/odoo\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/tickets",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/tickets\" is interrupted by another navigation to \"https://demo.orithos.com.au/suppliers/odoo\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/tickets\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/barcodes",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/barcodes\" is interrupted by another navigation to \"https://demo.orithos.com.au/tickets\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/barcodes\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/customers",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/customers\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/barcodes\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/customers\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/future-costs",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/future-costs\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/customers\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/future-costs\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/future-prices",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/future-prices\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/future-costs\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/future-prices\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/mail-log",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/mail-log\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/future-prices\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/mail-log\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/products",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/products\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/mail-log\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/products\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/trashed-items",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/trashed-items\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/products\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/trashed-items\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    },
+    {
+      "route": "/utilities/vendor-connections",
+      "viewport": 1440,
+      "status": 0,
+      "overflow": null,
+      "pageErrors": [
+        "page.goto: Navigation to \"https://demo.orithos.com.au/utilities/vendor-connections\" is interrupted by another navigation to \"https://demo.orithos.com.au/utilities/trashed-items\"\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/utilities/vendor-connections\", waiting until \"domcontentloaded\"\u001b[22m\n"
+      ]
+    }
+  ],
+  "result": "FAIL"
+}

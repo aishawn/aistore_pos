@@ -1,5 +1,18 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 `2b5afbd` Supplier Directory 移动安全区与部署后回归
+
+- `pos-ui/src/components/OdooSupplierDirectoryPage.tsx` 的移动主内容区预留固定 AI 助手和系统安全区右侧空间；桌面端布局保持不变，供应商读取、Retry 和错误语义不变。
+- 表格/表单可访问性专项 `docs/UAT_TABLE_A11Y_POST_2B5AFBD.json`：`14/14 PASS`，`unexpectedWrites=0`；其中被拦截的非 GET 请求均为受控只读检查路径。
+- 根 `app` 全站只读矩阵 `docs/UAT_ALL_STATIC_PAGES_POST_2B5AFBD_RETRY.json`：`134` 路由 × `390/1440` = `268/268 PASS`，HTTP 全部 200，无页面错误和横向溢出。首次矩阵结果的 1440px 网络切换失败已通过串行重试排除，不作为代码失败。
+- `2b5afbd` 已推送并由 Dokploy webhook 接受；但 frontend/backend 实际容器 SHA、完整构建日志、健康状态和完成时间仍未从控制台独立回读，整体发布继续 **NO-GO**。
+
+## 2026-10-20 Dokploy #38 编译错误交接结论
+
+- 日志中两个 `cannot find symbol AiProviderConfig` 是 `AiConfigController.java` 与 `SommelierController.java` 的阻断错误；`SqlAst.java` 的 `Parenthesis` 弃用信息只是 warning。
+- 当前 `main` 最新提交为 `2b5afbd`，两个控制器均已显式导入 `com.orithos.modules.ai.AiProviderConfig`，且 `AiProviderConfig.java` 已被 Git 跟踪；因此 #38 使用的是旧源码快照或错误 Compose 分支，当前源码无需重复改 Java 控制器。
+- 未运行本地 Maven/Next/Docker build，遵循项目约束。Dokploy 控制台仍需确认 Compose 分支为 `main`，并回读成功构建对应的 backend/frontend SHA、完整日志和健康状态。
+
 ## 2026-10-20 Supplier Import 可访问性与移动安全区（`ba7a947`）
 
 - Supplier Import 的真实 Supplier 标题现在绑定到 select；产品代码 textarea 增加稳定 `aria-label`；错误使用 `role=alert`，导入结果使用 `role=status`/`aria-live`。

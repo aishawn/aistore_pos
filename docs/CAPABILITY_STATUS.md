@@ -2,6 +2,19 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 `2b5afbd` Supplier Directory 移动安全区与最终矩阵
+
+- Odoo Supplier Directory 移动主内容区为固定 AI 助手和系统安全区预留右侧空间；桌面端保持原布局，读取与 Retry 行为不变。
+- `docs/UAT_TABLE_A11Y_POST_2B5AFBD.json`：表格/表单 `14/14 PASS`，`unexpectedWrites=0`。
+- `docs/UAT_ALL_STATIC_PAGES_POST_2B5AFBD_RETRY.json`：根 `app` 的 `134` 路由 × `390/1440` 为 `268/268 PASS`，HTTP、页面错误和横向溢出均为 `0`。
+- `2b5afbd` 已推送并触发 Dokploy webhook；容器 SHA、完整构建日志、健康状态和完成时间尚未从控制台独立核验，发布仍为 **NO-GO**。
+
+### 2026-10-20 Dokploy #38 编译错误结论
+
+- 两个 `AiProviderConfig` 找不到符号是旧构建快照或错误 Compose 分支问题；当前 `main` 的两个控制器已有显式 import，类文件已跟踪。
+- `Parenthesis` deprecation 只是 warning，不是失败原因。应在 Dokploy 控制台部署 `main` 的 `2b5afbd`（或更晚提交），并核验 backend/frontend SHA、完整构建日志和健康状态。
+- 本地未运行 Maven/Next/Docker build；生产 AI 真实质量、硬件、隔离写入和正式财务流程仍未完成。
+
 ### 2026-10-20 Supplier Import 可访问性与移动安全区（`ba7a947`）
 
 - Supplier Import 补齐 Supplier select、产品代码 textarea、错误和结果状态语义，并预留移动端 AI 助手右侧空间。
