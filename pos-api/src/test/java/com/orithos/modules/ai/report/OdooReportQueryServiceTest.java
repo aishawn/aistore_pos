@@ -215,6 +215,29 @@ class OdooReportQueryServiceTest {
         assertTrue(result.rows().isEmpty());
     }
 
+    @Test
+    void stockQueryFallsBackToStandardQuantityWhenFreeQuantityIsForbidden() throws Exception {
+        List<JsonNode> requests = startStockFallbackServer();
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        OdooReportQueryService.Result result = service.query(
+                tenant, "report_stock", Map.of("query", "VB Cans"), window);
+
+        assertNull(result.error());
+        assertEquals(1, result.rows().size());
+        assertEquals(0, new BigDecimal("15.0").compareTo((BigDecimal) result.rows().get(0).get("quantity")));
+        assertEquals(3, requests.size());
+        assertEquals(List.of("id", "display_name", "qty_available"),
+                MAPPER.convertValue(requests.get(2).path("params").path("kwargs").path("fields"),
+                        MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+    }
+
     private List<JsonNode> startServer(String groupedRowsJson) throws Exception {
         List<JsonNode> requests = new CopyOnWriteArrayList<>();
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
@@ -244,6 +267,27 @@ class OdooReportQueryServiceTest {
             String response = rpcResponseJson.startsWith("{\"error\"")
                     ? "{\"jsonrpc\":\"2.0\"," + rpcResponseJson + "}"
                     : "{\"jsonrpc\":\"2.0\",\"result\":" + rpcResponseJson + "}";
+            respond(exchange, response);
+        });
+        server.start();
+        return requests;
+    }
+
+    private List<JsonNode> startStockFallbackServer() throws Exception {
+        List<JsonNode> requests = new CopyOnWriteArrayList<>();
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/web/session/authenticate", exchange -> {
+            requests.add(MAPPER.readTree(exchange.getRequestBody()));
+            exchange.getResponseHeaders().add("Set-Cookie", "session_id=test-session; Path=/; HttpOnly");
+            respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":{\"uid\":5}}");
+        });
+        server.createContext("/web/dataset/call_kw", exchange -> {
+            JsonNode request = MAPPER.readTree(exchange.getRequestBody());
+            requests.add(request);
+            JsonNode fields = request.path("params").path("kwargs").path("fields");
+            String response = fields.toString().contains("free_qty")
+                    ? "{\"jsonrpc\":\"2.0\",\"error\":{\"message\":\"AccessError\"}}"
+                    : "{\"jsonrpc\":\"2.0\",\"result\":[{\"id\":501,\"display_name\":\"VB Cans\",\"qty_available\":15.0}]}";
             respond(exchange, response);
         });
         server.start();

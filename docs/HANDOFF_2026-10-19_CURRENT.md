@@ -1202,3 +1202,9 @@
 - 门店 Odoo 商品目录读取 `VB Cans` 的库存字段返回 `HTTP 200`，证明产品库存字段可读；AI stock report 仍返回固定的“Live Odoo reporting is temporarily unavailable”提示，因此阻断范围是 AI stock report 数据源/路径。
 - 销售报表的今日业务日、7/30 天、英文/中文日期解析、14 Oct 与 Overview 对账、逐日趋势对账和 Odoo source path 全部通过。
 - 该结果是公网当前运行版本的只读证据，runtime SHA 尚未从 Dokploy 控制台核验，不能标记为 `post-deploy`。
+
+## 2026-10-21 AI stock report 字段降级修复（待部署）
+
+- `OdooReportQueryService` 的库存查询现在先读取 `free_qty` 与 `qty_available`；若服务账号无权读取 `free_qty`，会在同一公司/仓库上下文下只读降级到 `qty_available`，不放宽公司域、不执行写方法。
+- 新增字段权限失败后的降级单测；Java 21 `mvn -B clean verify`：`245 tests, 0 failures, 0 errors`。
+- 该修复尚未进入 Dokploy 镜像。分支绑定修复后部署当前提交，再重跑 `UAT_AI_REPORTS_READONLY`；只有 stock report 从 `BLOCKED` 变为 `PASS` 且运行 SHA 匹配时，才确认线上修复。

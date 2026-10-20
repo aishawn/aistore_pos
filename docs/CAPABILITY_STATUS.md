@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-10-20（`fe4d978` AI 报表快捷问法与 UAT gate 批次）
 
+### 2026-10-21 AI stock report 字段权限降级（待部署）
+
+- 库存报表在 `free_qty` 字段权限失败时降级读取 `qty_available`，仍使用绑定 company/warehouse context 和只读 `search_read`。
+- Java 21 `mvn -B clean verify`：`245 tests, 0 failures, 0 errors`。
+- 公网当前证据仍为 `13/14 PASS, 1 BLOCKED`；修复需部署后重跑并核对 runtime SHA。
+
 ### 2026-10-20 AI 报表快捷问法与 #38 构建复核（`fe4d978`）
 
 - `AssistantFastPathRouter` 增加常见中英文“今天/昨天销售额”和“还剩多少库存”问法，商品名继续作为查询槽位传递，不生成库存数。
