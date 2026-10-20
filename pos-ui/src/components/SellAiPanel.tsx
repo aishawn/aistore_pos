@@ -442,12 +442,6 @@ export function SellAiPanel({
     router.push("/");
   }
 
-  async function applyTranscript(text: string) {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    await runIntent(trimmed);
-  }
-
   function clearChat() {
     if (busy || busyRef.current) return;
     setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
@@ -845,7 +839,23 @@ export function SellAiPanel({
         onPointerLeave={() => {
           if (voicePressedRef.current) endVoicePress();
         }}
+        onKeyDown={(event) => {
+          if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+            event.preventDefault();
+            beginVoicePress();
+          }
+        }}
+        onKeyUp={(event) => {
+          if (event.key === " " || event.key === "Enter") {
+            event.preventDefault();
+            endVoicePress();
+          }
+        }}
+        onBlur={() => {
+          if (voicePressedRef.current) endVoicePress();
+        }}
         aria-label={listening ? "Release to stop voice input" : "Hold to speak"}
+        aria-pressed={listening}
         title={
           aiEnabled === false
             ? "Voice input is disabled for this store"
