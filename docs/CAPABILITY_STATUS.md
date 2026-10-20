@@ -16,6 +16,7 @@
 - 公网旧镜像 AI 工作流自然语言回归 `17/17 PASS`；证据 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`，结果仅作为旧运行版本基线。
 - 公网旧镜像 AI metrics 只读回归 `9/9 PASS`：管理员鉴权、指标接口、匿名 `401`、390/1440 UI 与表格可访问性均通过，业务写入 `0`；证据 `docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`。
 - `db8f02e` 的 Dokploy webhook 于 2026-10-20 17:41（UTC+8）仍返回 `HTTP 301 Branch Not Match`，因此上述结果不能标记为新提交 post-deploy。
+- Sommelier 只读 UAT 探针已改为稳定的 `Shiraz` 查询，提交 `dbfb55b`；其 webhook 于 17:46（UTC+8）仍返回 `HTTP 301 Branch Not Match`，尚未进入线上镜像。
 - 批次提交 `52c8f58` 已推送；Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，因此没有产生新的线上验证证据，状态保持“待部署”。
 
 ### 2026-10-20 公网只读基线复测（运行提交未核验）
