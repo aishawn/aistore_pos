@@ -10,6 +10,12 @@
 - 这些改动尚未进入线上镜像。集中部署后需重跑 AI UI、AI entity guard、产品/价格只读页面和全站静态矩阵，并确认 Dokploy 构建日志、健康状态及运行 SHA。
 - 批次提交 `52c8f58` 已推送；Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，因此没有产生新的线上验证证据，状态保持“待部署”。
 
+### 2026-10-20 公网只读基线复测（运行提交未核验）
+
+- AI UI `2/2 PASS`；价格/库存 `8/8 PASS`；表格/表单 `14/14 PASS`，拦截的非 GET 请求 `4`、意外业务写入 `0`。
+- 证据文件：`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json`、`docs/UAT_TABLE_A11Y_ONLINE_CURRENT.json`。
+- 这是旧公网镜像的回归基线，不证明 `52c8f58` 已上线；待 Dokploy 分支绑定修复后，必须用同一套脚本对新运行 SHA 重测。
+
 ### 2026-10-20 集中部署后只读回归（运行身份未核验）
 
 - Dokploy webhook 接受 `d76e786`；Demo 只读回归通过：AI `9/9` route、`14/14` features、报表 `9/9`、Sommelier `10/10`、AI UI `2/2`、表格/表单 `14/14`、价格/库存 `8/8`，全站 `268/268`。
