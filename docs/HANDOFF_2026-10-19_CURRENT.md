@@ -1036,3 +1036,4 @@
 - `ea8f1b6` 已补齐 `AiConfigController` 与 `SommelierController` 的 `import com.orithos.modules.ai.AiProviderConfig;`。当前 `main`/`origin/main` 为 `ffdfdfa`，且 `ea8f1b6` 是其祖先；`AiProviderConfig.java`、两个 import 和调用均存在于当前 Git 树。
 - 因此 #38 日志对应旧源码快照或 Dokploy 分支绑定错位，不能作为当前 HEAD 的编译结果。工作区本机 Maven 使用 Java 8，无法替代项目要求的 Java 21 构建验证；未将本地失败误报为 Java 21 编译失败。
 - 下一次部署前必须在 Dokploy 确认 Compose 仓库/分支指向 `main`，目标 commit 至少为 `ffdfdfa`，并回读 Maven/Next 完整日志、backend/frontend 健康状态和运行容器 SHA。确认这些证据前，发布状态继续 **NO-GO**。
+- 该说明提交为 `8785e78` 并已推送；随后调用 compose webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。先修正 Dokploy 分支绑定，再以 `8785e78` 或其后提交部署。
