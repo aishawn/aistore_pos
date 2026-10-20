@@ -3,7 +3,7 @@
 ## 2026-10-20 Dokploy #38 编译错误最终复核
 
 - 失败原因不是 `SqlAst.java` 的 `Parenthesis` 弃用警告；真正失败是旧源码快照中 `AiConfigController` 和 `SommelierController` 调用了 `AiProviderConfig.isValidBaseUrl(...)`，但缺少 `import com.orithos.modules.ai.AiProviderConfig;`。
-- 当前 `main` 与 `origin/main` 已同步到 `3f049db`。`pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含显式 import；在当前工作树用 Java 21 执行 `mvn -B clean verify` 已通过 **247 tests, 0 failures, 0 errors**。剩余 JSqlParser `Parenthesis` 仅为非阻断 deprecated warning。
+- 代码验证提交为 `3f049db`，当前 `main` 已包含该提交并更新到文档提交 `5411800`。`pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含显式 import；在当前工作树用 Java 21 执行 `mvn -B clean verify` 已通过 **247 tests, 0 failures, 0 errors**。剩余 JSqlParser `Parenthesis` 仅为非阻断 deprecated warning。
 - #38 因此应视为旧提交或错误 Compose 分支/构建上下文，不需要用业务代码绕过。Dokploy 必须确认仓库 `aishawn/aistore_pos`、分支 `main`、根目录 `/`、Compose `docker-compose.yml`，并从 `3f049db` 或更晚提交重新构建。
 - 部署验收仍未完成：需要从 Dokploy 回读 backend/frontend 完整构建日志、最终运行 commit/SHA、容器健康状态和完成时间；只有运行 SHA 与目标提交一致后，才可把公网 UAT 标记为 post-deploy。此前 `HTTP 301 Branch Not Match` 时不要重复触发 webhook。
 
