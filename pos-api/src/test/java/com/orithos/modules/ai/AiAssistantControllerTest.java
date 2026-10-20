@@ -1,7 +1,9 @@
 package com.orithos.modules.ai;
 
 import com.orithos.common.BusinessException;
+import com.orithos.common.ApiResult;
 import com.orithos.modules.ai.dto.AssistantRequest;
+import com.orithos.modules.ai.dto.AiReportSnapshotResponse;
 import com.orithos.modules.ai.report.AiReportAuditService;
 import com.orithos.modules.ai.report.AiReportMetricsService;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -13,6 +15,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -70,6 +73,29 @@ class AiAssistantControllerTest {
         assertTrue(error.getMessage().contains("temporarily unavailable"));
         verify(audit).recordAssistant(eq(tenant), eq("unknown"), eq(false), anyInt(),
                 eq("What should I reorder?"), isNull());
+    }
+
+    @Test
+    void reportSnapshotPassesCurrentTenantToOwnerScopedService() {
+        ObjectProvider<PosAssistantGraphService> graph = mock(ObjectProvider.class);
+        ObjectProvider<AiTranscriptionService> transcription = mock(ObjectProvider.class);
+        TenantContextFactory tenants = mock(TenantContextFactory.class);
+        AiReportSnapshotService snapshots = mock(AiReportSnapshotService.class);
+        AiReportMetricsService metrics = mock(AiReportMetricsService.class);
+        AiReportAuditService audit = mock(AiReportAuditService.class);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, java.util.List.of(3L),
+                java.util.Set.of(TenantContext.PERM_QUERY));
+        AiReportSnapshotResponse expected = new AiReportSnapshotResponse(
+                91L, "report_sales", "sales today", "Sales today", null, java.util.Map.of(), null);
+        when(tenants.fromSecurity()).thenReturn(tenant);
+        when(snapshots.getOwned(91L, tenant)).thenReturn(expected);
+        AiAssistantController controller = new AiAssistantController(
+                graph, transcription, tenants, snapshots, metrics, audit);
+
+        ApiResult<AiReportSnapshotResponse> result = controller.reportSnapshot(91L);
+
+        assertSame(expected, result.data());
+        verify(snapshots).getOwned(91L, tenant);
     }
 
     @SuppressWarnings("unchecked")
