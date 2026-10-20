@@ -19,7 +19,7 @@ if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 const checks = [];
 const record = (name, status, evidence) => checks.push({ name, status, evidence });
 const WINE_TERMS = /wine|shiraz|syrah|cabernet|pinot|chardonnay|merlot|sauvignon|prosecco|champagne|riesling|malbec|grenache|tempranillo|moscato|sparkling|brut|ros[eé]/i;
-const NON_WINE_TERMS = /water|cola|chips|nuts|vodka|whisky|whiskey|gin|beer|lager|ale|cider|juice|soft drink/i;
+const NON_WINE_TERMS = /\b(?:water|cola|chips|nuts|vodka|whisky|whiskey|gin|beer|lager|ale|cider|juice|soft drink)\b/i;
 
 function looksLikeWine(item) {
   const text = `${item.name || ""} ${item.categoryName || ""}`;
@@ -48,14 +48,16 @@ try {
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error("Production Sommelier UAT login failed");
 
-  const identify = await request("/api/ai/sommelier/identify?q=DEMO");
+  // Use a catalogue term present in the current Odoo-backed demo fixture.
+  // Generic DEMO labels are not guaranteed to be wine records.
+  const identify = await request("/api/ai/sommelier/identify?q=Shiraz");
   const catalogItems = (identify.items || []).filter((item) => Number(item.stockQuantity) > 0);
-  if (!catalogItems.length) throw new Error("Odoo DEMO catalog did not return an in-stock wine");
+  if (!catalogItems.length) throw new Error("Odoo Shiraz catalog did not return an in-stock wine");
   const nonWineItems = (identify.items || []).filter((item) => !looksLikeWine(item));
   if (nonWineItems.length) {
     throw new Error(`Sommelier catalog included non-wine products: ${nonWineItems.map((item) => item.name).join(", ")}`);
   }
-  record("Odoo catalog identify", "PASS", `Found ${identify.items.length} wine products; ${catalogItems.length} have free stock and all pass the wine filter.`);
+  record("Odoo catalog identify", "PASS", `Search=Shiraz; found ${identify.items.length} wine products; ${catalogItems.length} have free stock and all pass the wine filter.`);
 
   const recommendation = await request("/api/ai/sommelier/recommend", "POST", {
     wineType: "red",
@@ -74,7 +76,7 @@ try {
   if (cards.some((item) => Number(item.stockQuantity) <= 0)) throw new Error("Recommendation included a wine with no free stock");
   const shiraz = catalogItems.find((item) => cards.some((card) => card.productId === item.productId));
   const recommendedShiraz = shiraz && cards.find((item) => item.productId === shiraz.productId);
-  if (!shiraz || !recommendedShiraz) throw new Error("Red wine recommendation did not overlap the in-stock DEMO catalog");
+  if (!shiraz || !recommendedShiraz) throw new Error("Red wine recommendation did not overlap the in-stock Shiraz catalog");
   if (Number(recommendedShiraz.sellPrice) !== Number(shiraz.sellPrice)) throw new Error("Recommendation price differs from Odoo catalog sell price");
   if (Number(recommendedShiraz.stockQuantity) !== Number(shiraz.stockQuantity)) throw new Error("Recommendation stock differs from Odoo catalog free stock");
   record("Recommendation price and free-stock parity", "PASS", `Product ${shiraz.productId}: AUD ${recommendedShiraz.sellPrice}; free stock ${recommendedShiraz.stockQuantity}; recommendation agrees with Odoo identify data.`);
