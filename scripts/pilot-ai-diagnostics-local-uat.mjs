@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3000";
 const user = { id: 1, name: "Admin", username: "admin", isAdmin: true, outletId: 1, vendorId: 1 };
 const writes = [];
 const checks = [];
@@ -18,7 +18,9 @@ const record = (name, ok, evidence = "") => checks.push({ name, status: ok ? "PA
 const browser = await chromium.launch({ headless: true });
 let page;
 try {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+  });
   await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
   await context.addInitScript((fixtureUser) => localStorage.setItem("sf_user", JSON.stringify(fixtureUser)), user);
   await context.route("**/api/**", async (route) => {

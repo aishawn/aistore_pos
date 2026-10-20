@@ -5,12 +5,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const base = process.env.PILOT_BASE_URL ?? "http://demo.orithos.com.au:3000";
-const browser = await chromium.launch({
-  headless: true,
-  args: ["--host-resolver-rules=MAP demo.orithos.com.au 127.0.0.1"],
+const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3000";
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
 });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const transcriptions = [];
 let assistantRequests = 0;
 const unexpectedWrites = [];
@@ -18,7 +17,7 @@ const unexpectedWrites = [];
 await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
 await context.addInitScript(() => {
   localStorage.setItem("sf_token", "local-uat-session");
-  localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true }));
+  localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }));
   if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: {} });
 
   window.__uatStoppedTracks = 0;
@@ -93,7 +92,9 @@ await page.route("**/api/**", async (route) => {
     unexpectedWrites.push(`${request.method()} ${url.pathname}`);
     return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: 40500, message: "Voice UAT blocked unexpected write" }) });
   }
-  const data = url.pathname === "/api/ai/config/client"
+  const data = url.pathname === "/api/auth/me"
+    ? { id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }
+    : url.pathname === "/api/ai/config/client"
     ? { enabled: true, assistantAvailable: true, transcriptionAvailable: true, aiTriggerKeywords: [] }
     : [];
   return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data }) });

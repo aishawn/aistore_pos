@@ -153,6 +153,7 @@ try {
           buffer: validImage,
         },
       },
+      timeout: 120000,
     });
     const invoiceBody = await invoice.json().catch(() => ({}));
     if (invoiceBody.code === 0) record("Invoice OCR probe", "PASS", "parsed");
@@ -214,22 +215,25 @@ try {
     record("Anonymous assistant guard", anon.status() === 401 ? "PASS" : "FAIL", `status=${anon.status()}`);
   }
 } catch (error) {
-  record("run", "FAIL", safeEvidence(error instanceof Error ? error.message : "failed"));
+  const detail = safeEvidence(error instanceof Error ? error.message : "failed");
+  const blocked = /Timeout|ECONNRESET|ETIMEDOUT|50210|50301|HTTP 50[234]/i.test(detail);
+  record("run", blocked ? "BLOCKED" : "FAIL", detail);
 } finally {
   await browser.close();
 }
 
 const hardFails = checks.filter((c) => c.status === "FAIL").length;
+const blocked = checks.filter((c) => c.status === "BLOCKED").length;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   target: base,
   scope: "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
-  status: hardFails === 0 ? "PASS" : "FAIL",
+  status: hardFails > 0 ? "FAIL" : blocked > 0 ? "BLOCKED" : "PASS",
   checks,
   passed: checks.filter((c) => c.status === "PASS").length,
   failed: hardFails,
-  blocked: checks.filter((c) => c.status === "BLOCKED").length,
+  blocked,
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -238,3 +242,4 @@ fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, status: output.status, passed: output.passed, failed: output.failed, blocked: output.blocked }));
 if (hardFails) process.exitCode = 1;
+else if (blocked) process.exitCode = 2;

@@ -171,6 +171,7 @@ export function SellAiPanel({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingEntityDelete, setPendingEntityDelete] = useState<PendingEntityDelete | null>(null);
   const [entityDeleteBusy, setEntityDeleteBusy] = useState(false);
+  const entityDeleteBusyRef = useRef(false);
   const [voiceAlert, setVoiceAlert] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -741,7 +742,8 @@ export function SellAiPanel({
   }
 
   async function confirmEntityDelete() {
-    if (!pendingEntityDelete) return;
+    if (!pendingEntityDelete || entityDeleteBusyRef.current) return;
+    entityDeleteBusyRef.current = true;
     setEntityDeleteBusy(true);
     try {
       await executeEntityDelete(pendingEntityDelete);
@@ -753,6 +755,7 @@ export function SellAiPanel({
       const msg = e instanceof Error ? e.message : "Delete failed";
       pushAssistantNote(msg);
     } finally {
+      entityDeleteBusyRef.current = false;
       setEntityDeleteBusy(false);
     }
   }

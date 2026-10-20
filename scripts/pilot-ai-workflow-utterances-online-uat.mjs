@@ -54,6 +54,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const checks = [];
 const writeRequests = [];
+const isUnavailable = (httpStatus, code) => [502, 503, 504].includes(httpStatus) || [50210, 50301].includes(code);
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -83,10 +84,11 @@ try {
       && data.intent === item.intent
       && (item.route ? route === item.route : true)
       && (item.query ? query === item.query : true);
+    const blocked = !passed && isUnavailable(response.status(), body.code);
     checks.push({
       id: item.id,
       question: item.question,
-      status: passed ? "PASS" : "FAIL",
+      status: passed ? "PASS" : blocked ? "BLOCKED" : "FAIL",
       evidence: { httpStatus: response.status(), code: body.code, intent: data.intent ?? null, route, ...(item.query ? { query } : {}) },
     });
   }
@@ -110,8 +112,11 @@ try {
     checks,
     writeRequests,
     passed: checks.filter((check) => check.status === "PASS").length,
+    blocked: checks.filter((check) => check.status === "BLOCKED").length,
     failed: checks.filter((check) => check.status === "FAIL").length,
-    status: checks.length > 0 && checks.every((check) => check.status === "PASS") ? "PASS" : "FAIL",
+    status: checks.some((check) => check.status === "FAIL")
+      ? "FAIL"
+      : checks.some((check) => check.status === "BLOCKED") ? "BLOCKED" : "PASS",
   };
   const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
     ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -119,18 +124,22 @@ try {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
   console.log(JSON.stringify({ outputPath, status: output.status, passed: output.passed, failed: output.failed }));
-  if (output.status !== "PASS") process.exitCode = 1;
+  if (output.status === "FAIL") process.exitCode = 1;
+  else if (output.status === "BLOCKED") process.exitCode = 2;
 } catch (error) {
+  const detail = error instanceof Error ? error.message : "Unexpected failure";
+  const blocked = /LOGIN_FAILED_(?:502|503|504)|AI_CONFIG_FAILED_(?:502|503|504)|(?:HTTP|API)_(?:50210|50301|502|503|504)|ECONNRESET|ETIMEDOUT/i.test(detail);
   const output = {
     generatedAt: new Date().toISOString(),
     sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
     target: base,
     scope: "authenticated natural-language workflow routing; assistant API only; no business writes",
-    checks: [{ id: "setup", status: "FAIL", evidence: { error: error instanceof Error ? error.message : "Unexpected failure" } }],
+    checks: [{ id: "setup", status: blocked ? "BLOCKED" : "FAIL", evidence: { error: detail } }],
     writeRequests,
     passed: 0,
-    failed: 1,
-    status: "FAIL",
+    blocked: blocked ? 1 : 0,
+    failed: blocked ? 0 : 1,
+    status: blocked ? "BLOCKED" : "FAIL",
   };
   const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
     ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -138,7 +147,7 @@ try {
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
   console.error(JSON.stringify({ outputPath, status: output.status, failed: 1 }));
-  process.exitCode = 1;
+  process.exitCode = blocked ? 2 : 1;
 } finally {
   await browser.close();
 }

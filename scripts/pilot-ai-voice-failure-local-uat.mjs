@@ -5,16 +5,15 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const base = process.env.PILOT_BASE_URL ?? "http://demo.orithos.com.au:3000";
-const browser = await chromium.launch({
-  headless: true,
-  args: ["--host-resolver-rules=MAP demo.orithos.com.au 127.0.0.1"],
+const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3000";
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  viewport: { width: 390, height: 844 },
 });
-const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
 await context.addInitScript(() => {
   localStorage.setItem("sf_token", "local-uat-session");
-  localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true }));
+  localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }));
   if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: {} });
   class FixtureMediaRecorder {
     static isTypeSupported() { return true; }
@@ -48,13 +47,15 @@ await page.route("**/api/**", async (route) => {
   const url = new URL(request.url());
   if (request.method() === "POST" && url.pathname === "/api/ai/transcribe") {
     transcribeRequests += 1;
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 50210, message: "provider unavailable", data: null }) });
+    return route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ code: 50211, message: "Cloud transcription failed. Please try again.", data: null }) });
   }
   if (request.method() === "POST" && url.pathname === "/api/ai/assistant") {
     assistantRequests += 1;
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data: { threadId: "voice-failure-fixture", intent: "unknown", answer: "No action", slots: {}, ui: null } }) });
   }
-  const data = url.pathname === "/api/ai/config/client"
+  const data = url.pathname === "/api/auth/me"
+    ? { id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }
+    : url.pathname === "/api/ai/config/client"
     ? { enabled: true, assistantAvailable: true, transcriptionAvailable: true, aiTriggerKeywords: [] }
     : [];
   return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data }) });

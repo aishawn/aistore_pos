@@ -338,7 +338,7 @@ npm run typecheck
 | Workflow utterances | `pilot-ai-workflow-utterances-online-uat.mjs` | `UAT_AI_WORKFLOW_UTTERANCES_*.json` |
 | Reports reconcile | `pilot-ai-report-readonly-uat.mjs` | `UAT_AI_REPORTS_READONLY_*.json` |
 | Metrics | `pilot-ai-metrics-uat.mjs` | `UAT_AI_METRICS_*.json` |
-| History + platform | 手工 + API（可后续脚本化） | `UAT_AI_FOLLOWUP_HISTORY_PLATFORM_*.json` |
+| History + platform | `pilot-ai-history-platform-uat.mjs`（当前账号、权限边界、匿名访问与指标 payload）；跨用户与平台 Operator 视图另需对应账号 | `UAT_AI_FOLLOWUP_HISTORY_PLATFORM_*.json` |
 | Voice / entity local | `pilot-ai-voice-*-uat.mjs`、`pilot-ai-entity-invalid-op-local-uat.mjs` | 对应 `UAT_AI_*_LOCAL_*.json` |
 
 证据 JSON 最低字段：

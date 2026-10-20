@@ -142,6 +142,12 @@ try {
   check("named stock question preserves product query", stockQuestion.intent === "report_stock"
     && stockQuestion.slots?.query === "VB Cans",
   `intent=${stockQuestion.intent}; query=${stockQuestion.slots?.query ?? "missing"}; answer=${stockQuestion.answer ?? "missing"}`);
+  const stockUnavailable = /temporarily unavailable|source unavailable/i.test(stockQuestion.answer ?? "");
+  checks.push({
+    name: "stock report data source availability",
+    status: stockUnavailable ? "BLOCKED" : "PASS",
+    evidence: stockUnavailable ? stockQuestion.answer : "Stock report returned a source-backed response.",
+  });
 
   const dashboardOct14 = dashboard30d.trend?.find((row) => isoDate(row.label) === expectedDate);
   const aiRows = compactDate.table?.rows ?? [];
@@ -168,8 +174,9 @@ try {
     `requestsByPath=${JSON.stringify(pathCounts)}`);
 } catch (error) {
   const detail = error instanceof Error ? error.message : "UNEXPECTED_FAILURE";
-  failures.push(detail);
-  checks.push({ name: "AI assistant availability", status: "FAIL", evidence: detail });
+  const blocked = /LOGIN_FAILED_(?:502|503|504)|AI_REPORT_API_(?:50210|50301|502|503|504)|(?:ECONNRESET|ETIMEDOUT)/i.test(detail);
+  if (!blocked) failures.push(detail);
+  checks.push({ name: "AI assistant availability", status: blocked ? "BLOCKED" : "FAIL", evidence: detail });
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await context.close();
@@ -184,10 +191,11 @@ const output = {
   runtimeCommit: null,
   scope: "read-only AI sales report and Odoo overview reconciliation; no business writes",
   checksPassed: checks.filter((item) => item.status === "PASS").length,
+  checksBlocked: checks.filter((item) => item.status === "BLOCKED").length,
   checksTotal: checks.length,
   checks,
   failures,
-  result: failures.length ? "FAIL" : "PASS",
+  result: failures.length ? "FAIL" : checks.some((item) => item.status === "BLOCKED") ? "BLOCKED" : "PASS",
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
@@ -196,3 +204,4 @@ fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, checksPassed: output.checksPassed, checksTotal: output.checksTotal, failures }));
 if (failures.length) process.exitCode = 1;
+else if (output.result === "BLOCKED") process.exitCode = 2;

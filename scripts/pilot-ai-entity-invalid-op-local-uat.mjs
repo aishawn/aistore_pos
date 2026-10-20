@@ -6,11 +6,10 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3000";
-const browser = await chromium.launch({
-  headless: true,
-  args: ["--host-resolver-rules=MAP demo.localhost 127.0.0.1"],
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
 });
-const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const blockedBusinessWrites = [];
 const deleteRequests = [];
 let assistantRequests = 0;
@@ -18,7 +17,7 @@ let assistantRequests = 0;
 await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
 await context.addInitScript(() => {
   localStorage.setItem("sf_token", "local-uat-session");
-  localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true }));
+  localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }));
 });
 
 const page = await context.newPage();
@@ -58,7 +57,9 @@ await page.route("**/api/**", async (route) => {
     blockedBusinessWrites.push(`${request.method()} ${url.pathname}`);
     return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: 40500, message: "UAT blocked API write" }) });
   }
-  const data = url.pathname === "/api/ai/config/client"
+  const data = url.pathname === "/api/auth/me"
+    ? { id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true, vendorId: 1, outletId: 1, platformOperator: false }
+    : url.pathname === "/api/ai/config/client"
     ? { enabled: true, assistantAvailable: true, aiTriggerKeywords: [] }
     : url.pathname === "/api/customers"
       ? { items: [{ id: "777", name: "Alex Example", customerGroupName: "Default" }] }
@@ -74,21 +75,22 @@ try {
   await trigger.click();
   const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await dialog.waitFor({ state: "visible", timeout: 10000 });
-  await dialog.getByRole("textbox", { name: "Ask Orithos AI" }).fill("archive customer Alex Example");
-  await dialog.getByRole("button", { name: "Send message" }).click();
+  const composer = dialog.getByRole("textbox", { name: "Ask Orithos AI" });
+  await composer.fill("archive customer Alex Example");
+  await composer.press("Enter");
   await dialog.getByText("That action is not supported. Try listing or searching for the item instead.", { exact: true }).waitFor({ timeout: 10000 });
   const routeUnchangedAfterInvalidOp = new URL(page.url()).pathname === "/overview";
 
-  await dialog.getByRole("textbox", { name: "Ask Orithos AI" }).fill("delete customer Alex Example");
-  await dialog.getByRole("button", { name: "Send message" }).click();
+  await composer.fill("delete customer Alex Example");
+  await composer.press("Enter");
   const confirm = page.getByRole("alertdialog", { name: "Confirm Delete" });
   await confirm.waitFor({ state: "visible", timeout: 10000 });
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
   await confirm.waitFor({ state: "hidden", timeout: 10000 });
   const cancelSentNoDelete = deleteRequests.length === 0;
 
-  await dialog.getByRole("textbox", { name: "Ask Orithos AI" }).fill("delete customer Alex Example");
-  await dialog.getByRole("button", { name: "Send message" }).click();
+  await composer.fill("delete customer Alex Example");
+  await composer.press("Enter");
   const secondConfirm = page.getByRole("alertdialog", { name: "Confirm Delete" });
   await secondConfirm.waitFor({ state: "visible", timeout: 10000 });
   await secondConfirm.getByRole("button", { name: "Delete", exact: true }).evaluate((element) => {
@@ -97,6 +99,7 @@ try {
   });
   await dialog.getByText("UAT delete fixture failure", { exact: true }).waitFor({ timeout: 10000 });
   const failureKeptConfirmationOpen = await secondConfirm.isVisible();
+  const duplicateConfirmGuarded = deleteRequests.length === 1;
   await secondConfirm.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByText("Deleted customer “Alex Example”.", { exact: true }).waitFor({ timeout: 10000 });
   result = {
@@ -106,6 +109,7 @@ try {
     cancelDismissedConfirmation: true,
     cancelSentNoDelete,
     failureKeptConfirmationOpen,
+    duplicateConfirmGuarded,
     retryCompletedDelete: deleteRequests.length === 2
       && deleteRequests.every((request) => request === "DELETE /api/customers/777"),
     assistantRequests,
@@ -139,6 +143,7 @@ const passed = result.routeUnchanged
   && result.cancelDismissedConfirmation
   && result.cancelSentNoDelete
   && result.failureKeptConfirmationOpen
+  && result.duplicateConfirmGuarded
   && result.retryCompletedDelete
   && result.assistantRequests === 3
   && result.blockedBusinessWrites.length === 0
