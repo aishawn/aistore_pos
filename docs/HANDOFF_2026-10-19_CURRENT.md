@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 AI 问法覆盖与报表空结果提示（`e9222da`）
+
+- AI 报表日期解析新增 `前天/day before yesterday`、`past/previous/recent N days`、英文日期区间、中文数字日期区间；新增 [AI_ASSISTANT_UTTERANCE_CATALOG.md](AI_ASSISTANT_UTTERANCE_CATALOG.md) 覆盖销售、数量、客单价、库存、滞销、导航、实体操作、问答、拒绝和语音问法。
+- 空销售结果改为可行动提示：明确所选营业日没有已完成销售，并建议使用 `sales last 7 days`；库存和滞销空结果使用领域对应提示。语音 API 注释与实际云端 ASR 失败行为一致。
+- 只读线上报表续测 `UAT_AI_REPORTS_READONLY_CONTINUATION_2026-10-20.json` 为 `9/9 PASS`：`Australia/Adelaide` 日期边界、14 Oct `$4,014.36` 对账、7/30 天汇总和 Odoo 路径均通过；线上仍显示旧的 `No data found...` 文案，说明新提示尚未部署。
+- 本地语音 fixture 已覆盖松开/取消和 ASR 失败；本轮未将本地登录重定向误报为产品通过。脚本语法与 diff check 通过，未运行 build/Maven。
+- `e9222da` 已推送 `origin/main`；Dokploy webhook 返回 `HTTP 301 Branch Not Match`，没有启动构建。必须修正 Compose 分支绑定后再部署，并重新验证新空结果文案、日期区间和语音失败提示。
+
 ## 2026-10-20 AI 日志与错误码脱敏批次（工作区）
 
 - 分类器日志不再写入原始问题或 slot 值；NL2SQL 日志只保留 outletId 与参数数量，不记录 SQL、参数、provider 或数据库异常文本。
@@ -10,8 +18,8 @@
 ## 2026-10-20 Dokploy #38 编译错误复核（当前状态）
 
 - #38 的 Maven 失败点是 `AiConfigController.java` 与 `SommelierController.java` 调用 `AiProviderConfig.isValidBaseUrl(...)` 时解析不到该类型；`Parenthesis` deprecated 只是警告，不是失败原因。
-- 当前 `main`/`origin/main` 为 `4ff57aa`，运行时代码批次为 `a5c8523`。源码静态核对确认 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`，所以 #38 对应的是旧源码快照，不能作为当前提交仍无法编译的证据。
-- 遵守本项目验证约束，本地未运行 Maven、Next 或 Docker build；当前没有新的编译通过证据。应在 Dokploy 控制台确认目标构建至少使用 `a5c8523`（或其后提交），再读取完整 backend/frontend 日志、容器 SHA、健康状态和完成时间。
+- 当前 `main`/`origin/main` 为 `1c01b35`，最近运行时代码批次为 `e9222da`（包含日志安全批次 `a5c8523`）。源码静态核对确认 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`，所以 #38 对应的是旧源码快照，不能作为当前提交仍无法编译的证据。
+- 遵守本项目验证约束，本地未运行 Maven、Next 或 Docker build；当前没有新的编译通过证据。应在 Dokploy 控制台确认目标构建至少使用 `e9222da`（或其后提交），再读取完整 backend/frontend 日志、容器 SHA、健康状态和完成时间。
 - Dokploy Compose 分支绑定此前反复返回 `HTTP 301 {"message":"Branch Not Match"}`；在 Source/Git 设置修正为 `aishawn/aistore_pos`、`main`、仓库根目录和 `docker-compose.yml` 前，不再重复 webhook。发布状态保持 **NO-GO**。
 
 ## 2026-10-20 Odoo 报表数据源改造（并行提交 `1ea5e18`）
