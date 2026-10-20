@@ -19,7 +19,7 @@
 | 客户目录 | Odoo 客户查询、分页、创建、编辑、移动端卡片 | 旧线上基线 | `UAT_TABLE_A11Y_ONLINE_CURRENT.json` |
 | 供应商与采购 | Odoo 供应商、采购单详情、收货边界 | 旧线上基线 | `UAT_SUPPLIER_*`、`UAT_PURCHASE_*` |
 | 库存与补货 | 库存列表、价格建议、补货建议、盘点只读 | 旧线上基线 | `UAT_PRICING_PAGES_ONLINE_READONLY_*`、`UAT_ODOO_STOCKTAKE_*` |
-| 报表 | Overview、销售/库存/采购报表、Odoo 绑定时区 | 待部署验证 | `UAT_AI_REPORTS_READONLY_ONLINE*`；新时区代码未核验运行 SHA |
+| 报表 | Overview、销售/库存/采购报表、Odoo 绑定时区 | 部分通过，库存 AI 报告阻断 | 最新 `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-22_CURRENT_RECHECK.json` 为 `13/14`；独立 Odoo stock RPC `7/7 PASS`，运行 SHA 未核验 |
 | AI 助手 | 语音按住说话、意图路由、实体操作 allowlist、错误脱敏、多轮记忆/工具调用、cashier history、平台 AI usage、常见报表/工作流确定性快捷路由、库存字段权限降级和错误指引 | 待部署验证 | `UAT_AI_UI_*`、`UAT_AI_FEATURES_VERIFY_*`；当前源码 Java 21 `246 tests, 0 failures`，最新改动待镜像 |
 | AI Sommelier | 商品识别、酒标识别、推荐、相似酒款 | 旧线上基线 | `UAT_SOMMELIER_*`；租户 Odoo context 待部署验证 |
 | 发票 OCR | 预览识别，禁止预览阶段写供应商/采购/收货；图片类型/10 MB 边界、连续换图竞态保护 | 待部署验证 | `UAT_INVOICE_SCAN_MOCK_*`、`UAT_INVOICE_OCR_PREVIEW_*`；本地 typecheck/ESLint/node check 通过 |
@@ -42,7 +42,8 @@
 - `pos-api` Java 21 `mvn -B clean verify`：通过，当前批次 243 tests、0 failures。
 - 发票 OCR mock/线上脚本、价格建议、盘点脚本 `node --check`：通过；本批次未运行 Next/Docker build。
 - 公网只读基线：AI UI `2/2`、价格/库存 `8/8`、表格/表单 `14/14`、全站 `268/268`；意外业务写入 `0`。
-- 2026-10-21 当前公网只读复测：全站 `270/270`、AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`；意外业务写入 `0`。
+- 2026-10-21 当前公网只读复测：全站 `270/270`、AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`；意外业务写入 `0`。这组结果是较早运行版本基线。
+- 2026-10-22 最新报表复测为 `13 PASS / 1 BLOCKED`，唯一阻断为 AI stock report；独立 Odoo stock RPC 为 `7 PASS / 1 INFO`，不能证明 warehouse 配置是根因。
 - AI natural-language workflow `49/49 PASS`、管理员配置保护 `15/15 PASS`、availability `3/3 PASS`、surface/auth guard `11/11 PASS`；metrics `9 PASS / 2 BLOCKED`，跨店 metrics 需要 platform-operator 凭据才能完成。
 - 本轮公网只读复测：AI UI `2/2`、未接入页面诚实边界 `18/18`、表格/表单 `16/16`、POS help/keyboard `2/2`；意外业务写入 `0`。
 - Sell 刷新竞态修复后：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check` 通过；未运行 Next/Docker build。
