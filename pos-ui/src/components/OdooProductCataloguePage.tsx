@@ -201,7 +201,7 @@ export function OdooProductCataloguePage() {
       .catch((cause) => { if (!cancelled) setCategoryError(cause instanceof Error ? cause.message : "Product categories are unavailable."); })
       .finally(() => { if (!cancelled) setCategoryLoading(false); });
     return () => { cancelled = true; };
-  }, [connected]);
+  }, [categoryRetryKey, connected]);
 
   function selectCategory(value: string) {
     setCategoryId(value ? Number(value) : null);
@@ -360,7 +360,7 @@ export function OdooProductCataloguePage() {
             </label>
             <label className="oh-type-label grid w-full min-w-0 gap-1 text-[var(--oh-muted)] sm:w-[220px] sm:flex-none">
               POS category
-              <select value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60">
+              <select aria-busy={categoryLoading} value={categoryId ?? ""} onChange={(event) => selectCategory(event.target.value)} disabled={categoryLoading} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none transition-colors focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:opacity-60">
                 <option value="">All categories</option>
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.parent_id ? `${category.parent_id[1]} / ` : ""}{category.name}</option>)}
               </select>

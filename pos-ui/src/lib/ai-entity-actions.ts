@@ -403,13 +403,17 @@ export async function resolveEntityAction(
   queryRaw: string | undefined,
 ): Promise<EntityActionResult> {
   const entity = asEntity(entityRaw);
-  const op = asOp(opRaw) ?? "list";
+  const parsedOp = asOp(opRaw);
   const query = queryRaw?.trim() ?? "";
 
   if (!entity) {
     return { kind: "message", text: "I could not tell which Inventory/Customer item to manage. Try e.g. “delete customer xiaoli”." };
   }
+  if (opRaw?.trim() && !parsedOp) {
+    return { kind: "message", text: "That action is not supported. Try listing or searching for the item instead." };
+  }
 
+  const op = parsedOp ?? "list";
   const list = LIST_ROUTE[entity];
 
   switch (op) {

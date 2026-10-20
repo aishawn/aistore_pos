@@ -1037,3 +1037,10 @@
 - 因此 #38 日志对应旧源码快照或 Dokploy 分支绑定错位，不能作为当前 HEAD 的编译结果。工作区本机 Maven 使用 Java 8，无法替代项目要求的 Java 21 构建验证；未将本地失败误报为 Java 21 编译失败。
 - 下一次部署前必须在 Dokploy 确认 Compose 仓库/分支指向 `main`，目标 commit 至少为 `ffdfdfa`，并回读 Maven/Next 完整日志、backend/frontend 健康状态和运行容器 SHA。确认这些证据前，发布状态继续 **NO-GO**。
 - 该说明提交为 `8785e78` 并已推送；随后调用 compose webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。先修正 Dokploy 分支绑定，再以 `8785e78` 或其后提交部署。
+
+## 2026-10-20 产品目录与 Sell AI 批次（待部署）
+
+- 修复 Odoo 产品目录分类失败后的 `Retry categories` 不重新请求的问题，并为分类下拉补齐 `aria-busy`。
+- Sell AI 的语音指针取消现在会立即停止录音；非法实体操作不再默认为 `list`，而是返回安全提示。
+- 本地完成 typecheck、目标 ESLint、相关 UAT 脚本语法和 diff check；未运行本地 build。改动尚未线上验证。
+- 下一次集中部署后运行 AI UI、AI entity guard、产品/价格只读页面、表格/表单和全站矩阵；必须回读 Dokploy 构建日志、健康状态和运行 SHA。

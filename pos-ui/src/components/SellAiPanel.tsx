@@ -787,6 +787,11 @@ export function SellAiPanel({
     voiceStopRef.current = null;
   }
 
+  function cancelVoicePress() {
+    voicePressedRef.current = false;
+    stopVoiceCapture();
+  }
+
   function runQuickAction(action: string) {
     if (action === "Create Customer") {
       applySellView("customers");
@@ -859,7 +864,7 @@ export function SellAiPanel({
           beginVoicePress();
         }}
         onPointerUp={endVoicePress}
-        onPointerCancel={endVoicePress}
+        onPointerCancel={cancelVoicePress}
         onPointerLeave={() => {
           if (voicePressedRef.current) endVoicePress();
         }}
