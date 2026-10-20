@@ -15,7 +15,7 @@
 
 ### 2026-10-20 Dokploy #38 编译错误复核
 
-- #38 的后端失败来自旧源码快照：两个控制器调用 `AiProviderConfig.isValidBaseUrl(...)` 时缺少显式 import。当前 `main`/`origin/main` 为 `c559db2`（最近运行时代码 `c559db2`，包含 `a5c8523`），类文件已被 Git 跟踪且两个 import 均存在。
+- #38 的后端失败来自旧源码快照：两个控制器调用 `AiProviderConfig.isValidBaseUrl(...)` 时缺少显式 import。当前 `main`/`origin/main` 为 `252a08e`（最近运行时代码 `c559db2`，包含 `a5c8523`），类文件已被 Git 跟踪且两个 import 均存在。
 - `Parenthesis` deprecated 只是非阻断警告。遵守验证约束，本地未运行 Maven、Next 或 Docker build，因此当前提交仍没有新的构建通过证据。
 - 发布保持 **NO-GO**，直到 Dokploy 控制台确认使用当前提交构建成功、frontend/backend 健康并回读运行 SHA。此前 webhook 的 `HTTP 301 Branch Not Match` 仍需先通过 Source/Git 分支绑定修复。
 

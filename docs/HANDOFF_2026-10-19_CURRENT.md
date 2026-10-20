@@ -24,7 +24,7 @@
 ## 2026-10-20 Dokploy #38 编译错误复核（当前状态）
 
 - #38 的 Maven 失败点是 `AiConfigController.java` 与 `SommelierController.java` 调用 `AiProviderConfig.isValidBaseUrl(...)` 时解析不到该类型；`Parenthesis` deprecated 只是警告，不是失败原因。
-- 当前 `main`/`origin/main` 为 `c559db2`，最近运行时代码批次为 `c559db2`（包含日志安全批次 `a5c8523`）。源码静态核对确认 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`，所以 #38 对应的是旧源码快照，不能作为当前提交仍无法编译的证据。
+- 当前 `main`/`origin/main` 为 `252a08e`，最近运行时代码批次为 `c559db2`（包含日志安全批次 `a5c8523`）。源码静态核对确认 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`，所以 #38 对应的是旧源码快照，不能作为当前提交仍无法编译的证据。
 - 遵守本项目验证约束，本地未运行 Maven、Next 或 Docker build；当前没有新的编译通过证据。应在 Dokploy 控制台确认目标构建至少使用 `c559db2`（或其后提交），再读取完整 backend/frontend 日志、容器 SHA、健康状态和完成时间。
 - Dokploy Compose 分支绑定此前反复返回 `HTTP 301 {"message":"Branch Not Match"}`；在 Source/Git 设置修正为 `aishawn/aistore_pos`、`main`、仓库根目录和 `docker-compose.yml` 前，不再重复 webhook。发布状态保持 **NO-GO**。
 
