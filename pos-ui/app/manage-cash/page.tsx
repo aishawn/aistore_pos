@@ -78,7 +78,7 @@ export default function ManageCashPage() {
       subtitle="Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register."
     >
       {loading ? (
-        <div role="status" aria-label="Loading cash register" aria-busy="true" className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+      <div role="status" aria-live="polite" aria-label="Loading cash register" aria-busy="true" className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start gap-3"><div className="h-11 w-11 animate-pulse rounded-full bg-[var(--oh-border)]" /><div className="flex-1"><div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-[var(--oh-border)]" /></div></div>
           <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
           <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />

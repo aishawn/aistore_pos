@@ -119,7 +119,7 @@ export default function PlatformStoresPage() {
       }
     >
       {loading ? (
-        <div role="status" aria-label="Loading stores" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading stores" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
           <div className="grid grid-cols-7 gap-3 bg-[var(--oh-surface)] px-4 py-3">{Array.from({ length: 7 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-border)]" />)}</div>
           {Array.from({ length: 6 }, (_, row) => <div key={row} className="grid grid-cols-7 gap-3 border-t border-[var(--oh-border)] px-4 py-4">{Array.from({ length: 7 }, (_, cell) => <div key={cell} className="h-4 animate-pulse rounded bg-[var(--oh-surface)]" />)}</div>)}
         </div>

@@ -198,7 +198,7 @@ export default function OdooStocktakePage() {
               <button type="button" onClick={() => setLocationRetryKey((value) => value + 1)} disabled={locationLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
             </div>
           ) : locationLoading ? (
-            <div role="status" aria-label="Loading stock locations" className="h-12 animate-pulse rounded-md bg-[var(--oh-border)]" />
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading stock locations" className="h-12 animate-pulse rounded-md bg-[var(--oh-border)]" />
           ) : null}
 
           {locations.length > 1 && !locationId && !locationLoading && (

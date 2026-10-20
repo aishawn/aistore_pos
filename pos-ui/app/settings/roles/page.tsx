@@ -227,7 +227,7 @@ export default function RolesPage() {
         {pageError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{pageError}</p>}
 
         {pageLoading ? (
-          <div role="status" aria-label="Loading roles and permissions" className="grid gap-3">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading roles and permissions" className="grid gap-3">
             {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)]" />)}
           </div>
         ) : loadError ? (

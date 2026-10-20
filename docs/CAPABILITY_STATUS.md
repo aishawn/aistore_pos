@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 全站 Loading 状态语义批次（工作区）
+
+- 平台、促销、关班、设置、盘点、供应商连接和现金管理页面的 loading status 已统一补齐 live-region/busy 语义；静态扫描无遗漏。
+- 本地 typecheck、目标 ESLint、diff check 通过；与前两批工具/报表修复合并，待下一次 Dokploy 部署后验证真实 DOM。
+
 ### 2026-10-20 报表/设置 loading 状态语义批次（工作区）
 
 - 报表 5 页和 Payment/Tax 设置页的异步 skeleton 状态已统一补齐 live-region 与 busy 语义，不改变读取和业务行为。

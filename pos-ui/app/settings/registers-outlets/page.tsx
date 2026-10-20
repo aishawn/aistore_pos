@@ -80,7 +80,7 @@ export default function RegistersOutletsPage() {
           </div>
         </div>
       ) : loading ? (
-        <div role="status" aria-label="Loading Odoo stores and registers" className="grid gap-5">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Odoo stores and registers" className="grid gap-5">
           {Array.from({ length: 2 }, (_, section) => <section key={section} className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
             <div className="h-5 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
             <div className="mt-4 grid gap-3 sm:grid-cols-2">

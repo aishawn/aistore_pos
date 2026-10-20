@@ -50,7 +50,7 @@ export default function RegisterClosuresPage() {
           ))}
         </div>
         {loading ? (
-          <div role="status" aria-label="Loading register closures" className="grid gap-0">
+          <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading register closures" className="grid gap-0">
             {Array.from({ length: 5 }, (_, index) => <div key={index} className="flex border-b border-[var(--oh-border)] py-4"><div className="flex-1 px-4"><div className="h-4 w-24 animate-pulse rounded bg-[var(--oh-surface)]" /></div><div className="flex-1 border-l border-[var(--oh-border)] px-4"><div className="h-4 w-28 animate-pulse rounded bg-[var(--oh-surface)]" /></div><div className="flex-1 border-l border-[var(--oh-border)] px-4"><div className="h-4 w-28 animate-pulse rounded bg-[var(--oh-surface)]" /></div><div className="flex-1 border-l border-[var(--oh-border)] px-4"><div className="mx-auto h-4 w-16 animate-pulse rounded bg-[var(--oh-surface)]" /></div><div className="flex-1 border-l border-[var(--oh-border)] px-4"><div className="mx-auto h-4 w-16 animate-pulse rounded bg-[var(--oh-surface)]" /></div><div className="w-[120px] border-l border-[var(--oh-border)] px-4"><div className="mx-auto h-4 w-12 animate-pulse rounded bg-[var(--oh-surface)]" /></div></div>)}
           </div>
         ) : error ? (
@@ -63,7 +63,7 @@ export default function RegisterClosuresPage() {
       </div>
       <div className="space-y-2 md:hidden">
         {loading ? (
-          <div role="status" aria-label="Loading register closures" className="space-y-2">
+          <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading register closures" className="space-y-2">
             {Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-lg border border-[var(--oh-border)] bg-white p-4"><div className="h-4 w-32 animate-pulse rounded bg-[var(--oh-surface)]" /><div className="mt-3 grid grid-cols-2 gap-3"><div className="h-3 animate-pulse rounded bg-[var(--oh-surface)]" /><div className="h-3 animate-pulse rounded bg-[var(--oh-surface)]" /></div></div>)}
           </div>
         ) : error ? (

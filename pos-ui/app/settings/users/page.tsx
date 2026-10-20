@@ -290,7 +290,7 @@ export default function UsersSettingsPage() {
 
           <div className="mt-5 border-t border-[var(--oh-border)]">
             {loading && !data ? (
-              <div role="status" aria-label="Loading store users" className="py-4">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading store users" className="py-4">
                 <div className="hidden gap-3 xl:grid xl:grid-cols-6 xl:border-b xl:border-[var(--oh-border)] xl:px-2 xl:py-3">
                   {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-surface)]" />)}
                 </div>

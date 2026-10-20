@@ -57,7 +57,7 @@ export default function PromotionCategoriesPage() {
       {actionError && <p role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{actionError}</p>}
 
       {loading ? (
-        <div role="status" aria-label="Loading promotion categories" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading promotion categories" className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
           <div className="hidden h-12 animate-pulse bg-[var(--oh-surface)] md:block" />
           <div className="divide-y divide-[var(--oh-border)]">
             {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 md:grid-cols-2">
