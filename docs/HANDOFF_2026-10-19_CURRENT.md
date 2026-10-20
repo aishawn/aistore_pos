@@ -951,3 +951,10 @@
 - 公网验证：AI UI `2/2 PASS`（390/1440，焦点循环/恢复、发送按钮、ARIA、FAB 安全距离）；价格/库存 `8/8 PASS`；表格/表单 `14/14 PASS`；页面错误 0，意外业务写入 0。证据：`docs/UAT_AI_UI_POST_E9D9D69_RETRY.json`、`docs/UAT_PRICING_POST_E9D9D69.json`、`docs/UAT_TABLE_A11Y_POST_E9D9D69.json`。
 - 全站只读矩阵复测 `134 路由 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出；证据：`docs/UAT_ALL_STATIC_PAGES_POST_351C02F.json`。
 - `e9d9d69` 已推送并由 webhook 接受；Dokploy 容器 SHA、完整构建日志和健康状态仍需控制台回读，整体发布保持 **NO-GO**。
+
+## 2026-10-20 Dokploy #38 编译错误复核
+
+- #38 后端失败点是 `AiConfigController.java:78` 与 `SommelierController.java:65` 使用 `AiProviderConfig.isValidBaseUrl(...)` 时缺少显式 import；`AiProviderConfig.java` 类本身已存在。`Parenthesis` deprecated 只是 warning，不是退出原因。
+- 修复已在 `ea8f1b6` 完成：两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`；当前 `main`/`origin/main` 为 `a57d0c8`，并包含该修复。
+- 当前源码静态核对结果：`AiProviderConfig.java` 被 Git 跟踪，两个控制器的 import 与调用均存在。该日志不能证明当前 `a57d0c8` 仍有同一编译错误，应按 Dokploy 使用旧源码快照或分支错位处理。
+- 本地遵守约束未运行 Maven、Next 或 Docker build；未把 #38 标为成功或已部署。下一次部署必须在 Dokploy 控制台确认目标 commit 至少为 `a57d0c8`（或其后提交）、Maven/Next 构建完成、frontend/backend 健康且运行 SHA 与目标一致。
