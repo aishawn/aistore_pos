@@ -72,10 +72,49 @@ Changing `INITIAL_ADMIN_PASSWORD` in env does **not** reset an existing `admin` 
 4. **Do not invent GST, prices, ABN, or stock.** Missing source price/tax → keep product unsaleable; leave for owner/accountant.
 5. **AI** (`AI_ENABLED`) stays false in production until DashScope is configured and budgeted.
 6. **Pages:** change UI under `pos-ui/app` (not a duplicate tree under `pos-ui/src/app` if both exist). API client: `pos-ui/src/lib/api.ts`.
-7. **Backend verify:** production image builds with **Java 21**. A machine with only Java 8 cannot run the full Maven suite.
+7. **Backend verify (hard gate):** see [pos-api pre-push gate](#pos-api-pre-push-gate-dokploy). Do **not** push `pos-api` changes until `mvn clean verify` passes on **Java 21**. Default Windows `JAVA_HOME` is often Java 8 — that does **not** count.
 8. **Writes need an explicit environment gate:** read-only browser/UAT checks may target production; sell, refund, receive, stock, cash, register-close, role, supplier, or import writes must target an approved isolated Odoo database/test company unless the user explicitly approves production. Keep `ODOO_DATABASE` equal to `ISOLATION_ODOO_DATABASE`; use [docs/ISOLATION_ODOO_UAT_RUNBOOK.md](docs/ISOLATION_ODOO_UAT_RUNBOOK.md).
 9. **Do not infer acceptance from mocks or page reachability:** fixture/intercepted-request UAT proves UI behavior only. For pilot claims, cite the relevant `docs/UAT_*.json`, deployment SHA, and whether the action was read-only or wrote business data.
 10. **Git:** do not force-push `main`/`master`; do not commit secrets. This repo’s Cursor rule defaults to commit + push when a change set is finished (unless the user says keep local-only).
+11. **Do not switch the backend language/stack** to “fix” Dokploy test failures. Repeated red builds have been compile/test hygiene and pre-push skips, not a Spring Boot problem. Keep Java 21 / Spring Boot 3.3.
+
+## pos-api pre-push gate (Dokploy)
+
+Dokploy builds `pos-api` with `mvn -B clean verify` inside `maven:3.9-eclipse-temurin-21`. Any compile error or Surefire failure aborts the whole Compose deploy (frontend is canceled too). **Pushing green without this gate wastes a full image build.**
+
+**Before every commit that touches `pos-api/` (main or test sources, `pom.xml`, or `src/main/resources`):**
+
+1. Point the shell at a real JDK 21 (example on this workstation):
+   ```powershell
+   $env:JAVA_HOME = "C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1"
+   $env:PATH = "$env:JAVA_HOME\bin;C:\Users\ai_sh\AppData\Local\apache-maven-3.9.6\bin;" + $env:PATH
+   java -version   # must show 21.x
+   ```
+2. From `pos-api/`:
+   ```powershell
+   mvn -B clean verify
+   ```
+3. Only push when that command exits 0. If JDK 21 or Maven is missing, **stop and install/fix the toolchain** — do not push and hope Dokploy will catch it.
+
+**Do not:**
+
+- Treat `javac` on Java 8, IDE “compile only”, or a single `-Dtest=…` green run as enough for a deploy push.
+- Commit or push a new/changed `*Test.java` until it passes against the code in the **same** commit (no “test first, fix later on main”).
+- Leave unfinished WIP Java sources in the tree while running verify for an unrelated fix — park/stash them; they can break compile for everyone.
+- “Fix” red deploys by rewriting the backend in another language.
+
+**Recurring failure classes to check before push (seen 2026-10-20):**
+
+| Class | What to verify |
+|-------|----------------|
+| Missing imports / wrong package | New types (`Map`, mappers under `….mapper.…`) compile in **main and test** |
+| Phrase / substring order | Longer aliases before shorter ones (e.g. `day before yesterday` before `yesterday`) |
+| Regex intent routing | Both word orders (`supplier…pay` and `pay…supplier`) if both are in tests |
+| Percentile / numeric helpers | Test expectations match the actual algorithm (nearest-rank vs interpolate) |
+| AI fail-closed | Disabled AI must throw **before** `ObjectProvider.getIfAvailable()` / tenant catalogue access |
+| Mockito `verify` counts | If the SUT calls a collaborator N times, asserts use `times(N)` |
+
+Narrow re-runs after a fix are fine for iteration (`mvn -B "-Dtest=SomeTest" test`), but the **last** command before `git push` for `pos-api` must still be full `mvn -B clean verify` on Java 21.
 
 ## Domain constraints (product)
 
@@ -107,7 +146,8 @@ UAT evidence lives as `docs/UAT_*.json` — prefer those over chat recall for �
 
 1. Read the relevant status/runbook docs before changing production-facing behavior.
 2. Prefer small, reviewable diffs; match existing style and keep Odoo as the live business source.
-3. Run the narrowest applicable checks, then report command, environment, result, and limitations. Do not call a mock or read-only pass a business acceptance.
-4. Update the relevant handoff / capability / readiness doc if behavior or pilot status changed.
-5. Push to `origin` when the change set is done so Dokploy can deploy (unless asked to keep local-only).
-6. Confirm commit SHA, deployment SHA when known, and that secrets were not staged.
+3. Run the narrowest applicable checks while iterating, then report command, environment, result, and limitations. Do not call a mock or read-only pass a business acceptance.
+4. If `pos-api/` changed: **full** `mvn -B clean verify` on **Java 21** must be green before push (see [pos-api pre-push gate](#pos-api-pre-push-gate-dokploy)). If `pos-ui/` changed: prefer `npm run typecheck` (and `lint` / `build` when the change is UI-heavy).
+5. Update the relevant handoff / capability / readiness doc if behavior or pilot status changed.
+6. Push to `origin` when the change set is done so Dokploy can deploy (unless asked to keep local-only).
+7. Confirm commit SHA, deployment SHA when known, and that secrets were not staged.

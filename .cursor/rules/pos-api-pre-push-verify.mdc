@@ -1,0 +1,15 @@
+---
+description: Require Java 21 mvn clean verify before pushing pos-api changes
+alwaysApply: true
+---
+
+# pos-api pre-push verify
+
+When any change under `pos-api/` will be committed or pushed:
+
+1. Use **Java 21** (not the default Windows Java 8). Example:
+   `$env:JAVA_HOME = "C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1"`
+2. From `pos-api/`, run `mvn -B clean verify` and wait for exit 0.
+3. Do not push if verify fails. Do not rely on Dokploy to discover compile/test errors.
+4. Keep new/changed tests green in the **same** commit as the implementation.
+5. Full rules and failure checklist: [AGENTS.md](../../AGENTS.md) § “pos-api pre-push gate (Dokploy)”.
