@@ -15,6 +15,7 @@ await context.addCookies([{ name: "orithos_access_token", value: "local-uat-sess
 await context.addInitScript(() => {
   localStorage.setItem("sf_token", "local-uat-session");
   localStorage.setItem("sf_user", JSON.stringify({ id: "uat-admin", name: "UAT Admin", username: "admin", isAdmin: true }));
+  if (!navigator.mediaDevices) Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: {} });
   class FixtureMediaRecorder {
     static isTypeSupported() { return true; }
     constructor(_stream, options) { this.mimeType = options?.mimeType ?? "audio/webm"; this.state = "inactive"; }
