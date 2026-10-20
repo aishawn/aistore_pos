@@ -51,6 +51,7 @@ must remain drafts until a staff member confirms the related action.
 | Recommend a red wine under $30 | `navigate` → `/sommelier` | Open catalogue and current-stock recommendation flow |
 | What goes well with steak? | `navigate` → `/sommelier` | Open food-pairing flow; show an empty state if needed |
 | 推荐适合聚会的白葡萄酒 | `navigate` → `/sommelier` | Open occasion and catalogue filters; do not invent products |
+| How much red wine sold this week? | `report_qty` or `report_adhoc` | Keep the sales question in reporting; do not open recommendations |
 | What did we sell most this week? | `report_adhoc` | Answer from the selected store and date range |
 | Why are sales down today? | `report_adhoc` | Show available signals and state when evidence is insufficient |
 | 本周哪类商品卖得最好 | `report_adhoc` | Return a store-scoped category summary |
