@@ -55,6 +55,16 @@ public final class AssistantFastPathRouter {
     private static final Pattern CHECK_STOCK = Pattern.compile(
             "^(check\\s*(stock|inventory)|stock\\s*list|查询库存|查看库存|库存查询)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern CLOSE_REGISTER_HELP = Pattern.compile(
+            "^(?:how do i|how can i|where do i)\\s+(?:close|shut)\\s+(?:the\\s+)?register[?.!]*$|"
+                    + "^(?:怎么|如何|怎样)(?:关闭|关掉|结算)收银台[？?。！!]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern FORGED_ROUTE = Pattern.compile(
+            "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/admin/|admin/secret|后台秘密)|"
+                    + "(?:/admin/secret|后台秘密)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern GIBBERISH = Pattern.compile("^(?:asdfghjkl|qwertyuiop|啊啊啊+)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_QUERY = Pattern.compile(
             "^how much\\s+(.+?)\\s+(?:is|are)\\s+in\\s+stock[?.!]*$|"
                     + "^(?:stock (?:level|quantity) of)\\s+(.+?)[?.!]*$|"
@@ -182,6 +192,36 @@ public final class AssistantFastPathRouter {
                     "Opened stock list.",
                     Map.of(),
                     "/stock/list",
+                    "",
+                    "",
+                    "");
+        }
+        if (FORGED_ROUTE.matcher(question.trim()).find()) {
+            return new Match(
+                    "unknown",
+                    "I can only help with supported store tasks. I cannot open that route.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (CLOSE_REGISTER_HELP.matcher(normalized).matches()) {
+            return new Match(
+                    "qa",
+                    "To close the register, open the register screen, count the cash, and submit the closing count for review.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (GIBBERISH.matcher(normalized).matches()) {
+            return new Match(
+                    "unknown",
+                    "I did not understand that. Try asking about sales, stock, products, replenishment, pricing, wine, or invoices.",
+                    Map.of(),
+                    "",
                     "",
                     "",
                     "");
