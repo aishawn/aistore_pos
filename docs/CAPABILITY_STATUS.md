@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Future Costs/Prices 状态可访问性批次（工作区）
+
+- Future Costs/Prices 的异步 loading 与错误 Retry 状态已统一补齐 live-region、busy、图标隐藏和键盘焦点语义；不改变只读接口和页面行为。
+- 本地 typecheck、目标 ESLint、diff check 通过；尚未进入 Dokploy 镜像，需部署后补跑工具页与全站矩阵。
+
 ### 2026-10-20 管理列表回归状态
 
 - 管理列表只读专项已修正测试等待和 Platform Stores 创建入口断言：`docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json` 当前为 `8/8 PASS`（390/1440，4 路由），业务写入 `0`。

@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Future Costs/Prices 状态可访问性批次（工作区）
+
+- `pos-ui/app/utilities/future-costs/client-page.tsx` 与 `future-prices/client-page.tsx` 的 loading 状态补齐 `aria-live="polite"`、`aria-busy="true"`，让读屏器能识别异步读取过程。
+- 两个页面的错误 Retry 状态补齐 `aria-live="assertive"`、图标 `aria-hidden` 和键盘 `focus-visible` 样式；不改变 API、分页、只读边界或数据展示。
+- 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；按约束未运行 build。新代码待 Dokploy 分支修正并部署后，用全站矩阵和工具页专项复验。
+
 ## 2026-10-20 管理列表 UAT 断言修正（当前工作区）
 
 - `scripts/pilot-admin-list-batch-uat.mjs` 已按页面真实 loading 状态等待 Mail Log、Trashed Items、Platform Stores 完成读取，并在清空筛选后再次等待。
