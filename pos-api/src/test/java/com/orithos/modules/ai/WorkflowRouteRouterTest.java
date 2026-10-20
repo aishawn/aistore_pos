@@ -11,6 +11,8 @@ class WorkflowRouteRouterTest {
     void routesExplicitWorkflowRequestsWithoutDependingOnModelIntent() {
         assertRoute("What should I reorder today?", "/stock/replenishment");
         assertRoute("What should we buy before the weekend?", "/stock/replenishment");
+        assertRoute("Which products need reordering?", "/stock/replenishment");
+        assertRoute("哪些商品库存低", "/stock/replenishment");
         assertRoute("Show me the suggested purchase lines", "/stock/replenishment");
         assertRoute("库存预警有哪些", "/stock/replenishment");
         assertRoute("帮我看看哪些商品需要调价", "/stock/capped-pricing");
@@ -18,6 +20,7 @@ class WorkflowRouteRouterTest {
         assertRoute("What should I charge for Shiraz?", "/stock/capped-pricing");
         assertRoute("Recommend a red wine under $30", "/sommelier");
         assertRoute("Suggest a wine for dinner", "/sommelier");
+        assertRoute("Find me a wine for steak", "/sommelier");
         assertRoute("What wine goes with steak?", "/sommelier");
         assertRoute("识别这张发票", "/invoices/scan");
         assertRoute("Upload this supplier bill", "/invoices/scan");

@@ -7,8 +7,12 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 | Example | Expected intent | Expected period |
 |---|---|---|
 | Today's sales | `report_sales` | today in store timezone |
+| Show me today's sales / What were today's sales? / How did we do today? | `report_sales` | today in store timezone |
+| How much did we make / sell today? | `report_sales` | today in store timezone |
+| What's our revenue / takings today? | `report_sales` | today in store timezone |
 | And yesterday? *(after a sales question in the same thread)* | `report_sales` | resolve the follow-up period from conversation context; never reuse yesterday's total as today's value |
 | How much did we take yesterday? | `report_sales` | yesterday |
+| How much did we make yesterday? / What's our takings yesterday? | `report_sales` | yesterday |
 | 16 Oct 2026 sales | `report_sales` | 2026-10-16 |
 | Sales on 14/10/2026 | `report_sales` | 2026-10-14 (AU day first) |
 | 10月14日销售额 | `report_sales` | 14 October in the current store business year |
@@ -38,9 +42,12 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 |---|---|---|
 | How much Carlton Draught is in stock? | `report_stock` | matching catalogue stock rows |
 | What's the stock level for VB Cans? | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
+| Is VB Cans in stock? / What is the inventory level for VB Cans? | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
+| Do we have any VB Cans left? / How many VB Cans are left? / Have we got VB Cans in the shop? | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
 | How many Carlton Draught do we have in stock? | `report_stock` | matching catalogue stock rows; query is `Carlton Draught` |
 | 查一下 VB Cans 库存 | `report_stock` | matching catalogue stock rows |
-| VB Cans库存还有多少？ | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
+| VB Cans库存还有多少？/ 店里还有 VB Cans 吗？/ 帮我查下 VB Cans 还剩几件 | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
+| VB Cans还剩多少？ | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
 | What is dead stock? | `report_dead_stock` | default 30-day window |
 | Products with no sales in the last 90 days | `report_dead_stock` | 90-day window |
 
@@ -53,6 +60,7 @@ must remain drafts until a staff member confirms the related action.
 | Example | Expected intent | Expected result |
 |---|---|---|
 | What should I reorder today? | `navigate` → `/stock/replenishment` | Open suggested purchase lines with sales, stock and a reason |
+| Which products need reordering? / 哪些商品库存低 | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
 | Which products are running low? | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
 | 给我今天的补货建议 | `navigate` → `/stock/replenishment` | Open draft quantities and the source window |
 | Which prices should I review? | `navigate` → `/stock/capped-pricing` | Open price suggestions with current price and evidence |
@@ -81,6 +89,7 @@ classifier is trusted:
 | Show me the suggested purchase lines / 库存预警有哪些 | `/stock/replenishment` | Use current store stock and sales only |
 | Can you review prices? / What should I charge for Shiraz? | `/stock/capped-pricing` | Show a review list; never save a price automatically |
 | Suggest a wine for dinner / What wine goes with steak? | `/sommelier` | Match catalogue and current stock; no invented products |
+| Find me a wine for steak | `/sommelier` | Match catalogue and current stock; no invented products |
 | Upload this supplier bill / 上传供应商发票 | `/invoices/scan` | Keep OCR and catalogue matches as a draft |
 | Can you read this bill? / 帮我读一下这张供应商单据 | `/invoices/scan` | Require an image; show retry guidance for blank, blurry or oversized uploads |
 | Match this invoice to products / 把发票商品和目录匹配起来 | `/invoices/scan` | Keep unmatched lines for staff review; never create products or receive stock automatically |

@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 public final class WorkflowRouteRouter {
 
     private static final Pattern REPLENISHMENT = Pattern.compile(
-            "reorder|replenish|restock|stock up|what should (?:i|we) buy|what to order|purchase suggestion|suggested purchase|running low|low stock|out of stock|stock alert|补货|缺货|库存不足|库存预警|该进货|建议进货|采购建议",
+            "reorder|replenish|restock|stock up|what should (?:i|we) buy|what to order|purchase suggestion|suggested purchase|running low|low stock|out of stock|stock alert|which products? (?:need|should) (?:reordering|restocking)|what needs restocking|补货|缺货|库存不足|库存预警|库存低|哪些商品需要补货|哪些商品要进货|该进货|建议进货|采购建议",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PRICING = Pattern.compile(
             "which prices|price review|pricing|reprice|raise the price|lower the price|price suggestion|pricing suggestion|pricing recommendations|what should (?:i|we) charge|review prices|调价|定价|价格建议|改价|价格调整",
@@ -21,7 +21,7 @@ public final class WorkflowRouteRouter {
             "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine|"
                     + "what wine|wine recommendation|food pairing|"
                     + "wine for (?:a|an)? ?(?:dinner|party|steak|occasion)|"
-                    + "suggest a wine|recommend a wine|"
+                    + "suggest a wine|recommend a wine|find me (?:a )?wine|"
                     + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|"
                     + "配餐|适合.*酒|红酒推荐|白葡萄酒推荐",
             Pattern.CASE_INSENSITIVE);

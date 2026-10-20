@@ -81,9 +81,12 @@ class AssistantFastPathRouterTest {
                 "How much did we make today?",
                 "How much did we sell today?",
                 "What's our revenue today?",
+                "Show me today's sales",
+                "How did we do today?",
                 "今天营业额",
                 "How much did we make yesterday?",
                 "What's our takings yesterday?",
+                "What were yesterday's sales?",
                 "昨天营业额"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
@@ -101,6 +104,16 @@ class AssistantFastPathRouterTest {
                 "Have we got VB Cans in the shop?",
                 "店里还有 VB Cans 吗？",
                 "帮我查下 VB Cans 还剩几件"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_stock", match.intent(), question);
+            assertEquals("VB Cans", match.slots().get("query"), question);
+        }
+
+        for (String question : new String[]{
+                "Is VB Cans in stock?",
+                "What is the inventory level for VB Cans?"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);

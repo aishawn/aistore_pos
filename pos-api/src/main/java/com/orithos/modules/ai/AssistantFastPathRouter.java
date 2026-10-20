@@ -11,12 +11,16 @@ import java.util.regex.Pattern;
 public final class AssistantFastPathRouter {
 
     private static final Pattern TODAY_SALES = Pattern.compile(
-            "^(?:today'?s?\\s+sales|sales\\s+today|how much did we (?:make|take|sell) today|"
+            "^(?:today'?s?\\s+sales|sales\\s+today|show(?:\\s+me)?\\s+today'?s?\\s+sales|"
+                    + "what were today'?s?\\s+sales|today'?s?\\s+takings|how did we do today|"
+                    + "how much did we (?:make|take|sell) today|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) today|"
                     + "今日销售额?|今天销售额?|今天卖了多少|今天营业额?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_SALES = Pattern.compile(
-            "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|how much did we (?:make|take|sell) yesterday|"
+            "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|show(?:\\s+me)?\\s+yesterday'?s?\\s+sales|"
+                    + "what were yesterday'?s?\\s+sales|yesterday'?s?\\s+takings|"
+                    + "how much did we (?:make|take|sell) yesterday|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
                     + "昨天销售额?|昨天卖了多少|昨天营业额?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
@@ -69,6 +73,8 @@ public final class AssistantFastPathRouter {
             "^how much\\s+(.+?)\\s+(?:is|are)\\s+in\\s+stock[?.!]*$|"
                     + "^(?:stock (?:level|quantity) of)\\s+(.+?)[?.!]*$|"
                     + "^what(?:'s| is)\\s+the\\s+stock(?:\\s+level)?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^(?:what(?:'s| is)\\s+the\\s+)?inventory(?:\\s+level)?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^is\\s+(.+?)\\s+in\\s+stock[?.!]*$|"
                     + "^how many\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$|"
                     + "^do we have (?:any )?(.+?)\\s+(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
                     + "^how many\\s+(.+?)\\s+(?:are )?(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
@@ -231,7 +237,8 @@ public final class AssistantFastPathRouter {
             String query = cleanQuery(firstNonNull(
                     stockQuery.group(1), stockQuery.group(2), stockQuery.group(3), stockQuery.group(4),
                     stockQuery.group(5), stockQuery.group(6), stockQuery.group(7), stockQuery.group(8),
-                    stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12)));
+                    stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12),
+                    stockQuery.group(13), stockQuery.group(14)));
             if (query != null) {
                 return new Match(
                         "report_stock",
