@@ -46,7 +46,7 @@ export function SupplierImportPage() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-white p-6 font-sans md:p-8">
+    <div className="h-full overflow-auto bg-white pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-6 font-sans md:p-8">
       <div className="mx-auto max-w-3xl">
         <h1 className="text-[28px] font-bold text-black">Supplier Import</h1>
         <p className="mt-3 text-[14px] leading-relaxed text-neutral-700">
@@ -56,9 +56,8 @@ export function SupplierImportPage() {
 
         <div className="mt-8 space-y-6">
           <div>
-            <span className="mb-1 block text-[14px] font-bold text-black">Supplier</span>
             <FilterSelect
-              label=""
+              label="Supplier"
               value={supplierId}
               onChange={setSupplierId}
               options={supplierOptions}
@@ -69,6 +68,7 @@ export function SupplierImportPage() {
           <label className="block">
             <span className="mb-1 block text-[14px] font-bold text-black">Product List</span>
             <textarea
+              aria-label="Product codes to import"
               value={productList}
               onChange={(e) => setProductList(e.target.value)}
               rows={12}
@@ -77,13 +77,13 @@ export function SupplierImportPage() {
           </label>
 
           {error && (
-            <div className="rounded border border-[#e2231a]/30 bg-[#fff5f5] px-4 py-3 text-[14px] text-[#e2231a]">
+            <div role="alert" className="rounded border border-[#e2231a]/30 bg-[#fff5f5] px-4 py-3 text-[14px] text-[#e2231a]">
               {error}
             </div>
           )}
 
           {result && (
-            <div className="rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-[14px] text-neutral-800">
+            <div role="status" aria-live="polite" className="rounded border border-neutral-200 bg-neutral-50 px-4 py-3 text-[14px] text-neutral-800">
               Imported {result.imported} product{result.imported === 1 ? "" : "s"}, skipped {result.skipped}.
               {result.errors.length > 0 && (
                 <ul className="mt-2 list-disc pl-5 text-[#e2231a]">
