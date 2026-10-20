@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
@@ -25,6 +26,10 @@ public class ReportPeriodResolver {
     public record Window(LocalDateTime from, LocalDateTime toExclusive, int days) {}
 
     private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final DateTimeFormatter MONTH_ABBR = new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendPattern("MMM")
+            .toFormatter(Locale.ENGLISH);
     private static final Pattern DAY_MONTH = Pattern.compile(
             "(?i)\\b(\\d{1,2})(?:st|nd|rd|th)?[\\s,./-]+"
                     + "(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
@@ -151,7 +156,8 @@ public class ReportPeriodResolver {
 
     private static LocalDate parseNamedDate(String monthText, String dayText, String yearText, LocalDate today) {
         try {
-            Month month = Month.valueOf(monthText.substring(0, 3).toUpperCase(Locale.ROOT));
+            // Month.valueOf("OCT") fails; English MMM abbreviations must go through a formatter.
+            Month month = Month.from(MONTH_ABBR.parse(monthText.substring(0, 3)));
             int year = yearText == null ? today.getYear() : Integer.parseInt(yearText);
             return LocalDate.of(year, month, Integer.parseInt(dayText));
         } catch (RuntimeException e) {

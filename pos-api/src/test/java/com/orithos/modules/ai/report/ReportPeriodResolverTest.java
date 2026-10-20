@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -66,6 +68,16 @@ class ReportPeriodResolverTest {
 
         ReportPeriodResolver.Window explicitYear = resolver.resolve(Map.of(), "sales on 14 October 2024");
         assertEquals(LocalDate.of(2024, 10, 14), explicitYear.from().toLocalDate());
+    }
+
+    @Test
+    void lowerCaseEnglishMonthAbbreviationsResolveToTheCurrentYear() {
+        int year = AustraliaTime.today().getYear();
+        for (Month month : Month.values()) {
+            String abbreviation = month.name().substring(0, 3).toLowerCase(Locale.ROOT);
+            ReportPeriodResolver.Window window = resolver.resolve(Map.of(), "14," + abbreviation + " sales");
+            assertEquals(LocalDate.of(year, month, 14), window.from().toLocalDate(), abbreviation);
+        }
     }
 
     @Test

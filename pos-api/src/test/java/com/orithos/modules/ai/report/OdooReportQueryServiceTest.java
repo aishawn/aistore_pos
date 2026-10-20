@@ -57,7 +57,7 @@ class OdooReportQueryServiceTest {
         assertEquals("2026-10-14", result.rows().get(0).get("date"));
         assertEquals(0, new BigDecimal("125.50").compareTo((BigDecimal) result.rows().get(0).get("sales")));
         assertEquals(2, requests.size());
-        assertEquals("authenticate", requests.get(0).path("params").path("login").asText());
+        assertEquals("service", requests.get(0).path("params").path("login").asText());
         JsonNode query = requests.get(1).path("params");
         assertEquals("pos.order", query.path("model").asText());
         assertEquals("read_group", query.path("method").asText());
