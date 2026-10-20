@@ -44,6 +44,7 @@ try {
     throw new Error(`AI_CONFIG_FAILED_${configResponse.status()}`);
   }
   const aiEnabled = configBody.data.enabled;
+  const labelVisionAvailable = configBody.data.labelVisionAvailable ?? aiEnabled;
 
   for (const pathname of routes) {
     const page = await context.newPage();
@@ -57,20 +58,33 @@ try {
       const result = { pathname, httpStatus: response?.status() ?? 0, aiFab: true, horizontalOverflow: layout.scrollWidth > layout.width, pageErrors };
       if (pathname === "/sommelier/identify") {
         const camera = page.getByRole("button", { name: "Photograph label", exact: true });
-        if (aiEnabled) {
+        // The identify page renders the camera control before its client capability
+        // request resolves. Wait for the loading status to settle before asserting
+        // the final enabled/disabled state.
+        await page.waitForFunction(
+          () => !document.body.innerText.includes("Checking label photo availability…"),
+          undefined,
+          { timeout: 15000 },
+        );
+        if (labelVisionAvailable) {
           await camera.waitFor({ state: "visible", timeout: 15000 });
           result.labelPhotoButtonDisabled = await camera.isDisabled();
           result.disabledCopy = false;
         } else {
-          await page.getByText("Label photos need AI turned on. Name and barcode search still work.", { exact: true })
+          await page.getByText(
+            aiEnabled
+              ? /Label photo recognition is unavailable for this store\./
+              : "Label photos need AI turned on. Name and barcode search still work.",
+          )
             .waitFor({ state: "visible", timeout: 15000 });
           result.labelPhotoButtonDisabled = await camera.isDisabled();
           result.disabledCopy = true;
         }
         result.aiEnabled = aiEnabled;
+        result.labelVisionAvailable = labelVisionAvailable;
       }
       checks.push({ name: pathname, status: result.aiFab && !result.horizontalOverflow && result.pageErrors.length === 0
-        && (pathname !== "/sommelier/identify" || (aiEnabled ? !result.labelPhotoButtonDisabled : (result.labelPhotoButtonDisabled && result.disabledCopy))) ? "PASS" : "FAIL", evidence: result });
+        && (pathname !== "/sommelier/identify" || (labelVisionAvailable ? !result.labelPhotoButtonDisabled : (result.labelPhotoButtonDisabled && result.disabledCopy))) ? "PASS" : "FAIL", evidence: result });
     } catch (error) {
       checks.push({ name: pathname, status: "FAIL", evidence: { error: error instanceof Error ? error.message : "Unexpected failure", pageErrors } });
     } finally {
