@@ -1,0 +1,9 @@
+{
+  "generatedAt": "2026-10-20T15:39:00Z",
+  "sourceCommit": "3f049db",
+  "target": "https://demo.orithos.com.au",
+  "webhookStatus": 301,
+  "buildCreated": false,
+  "runtimeShaVerified": false,
+  "note": "Dokploy compose webhook returned a redirect without a build identity; source/branch binding remains unresolved."
+}
