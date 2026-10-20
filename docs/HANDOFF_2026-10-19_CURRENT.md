@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Price Suggestions 移动安全区与语义（`1181f30`）
+
+- Price Suggestions 页面移动端增加右侧 `safe-area-inset-right` 预留，避免固定 AI 助手覆盖首屏内容；桌面间距保持不变。
+- `Explain suggestion` 按钮补齐 `aria-expanded` 和 `aria-controls`，展开解释区域使用稳定 id。
+- Post-deploy pricing 证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_POST_1181F30_FINAL.json`：4 页面 × 390/1440，`8/8 PASS`，无页面错误、无横向溢出、`blockedWrites=0`；截图目录 `docs/screenshots/2026-10-20-pricing-post-1181f30/`。
+- 首次回归因 `/stock/list` 390px 短暂 HTTP 502 得到 `7/8`，串行重试后通过；该瞬态结果已保留为诊断，不作为最终验收结论。
+
 ## 2026-10-20 OCR 扫描失败重试（`87338a8`）
 
 - `ScanInvoicePage` 保存最近一次选择的文件；OCR 临时失败时显示 `Retry scan`，重试复用同一文件和预览，不要求用户再次选择文件。

@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Price Suggestions 移动安全区与语义（`1181f30`）
+
+- Price Suggestions 移动内容为固定 AI 助手预留右侧空间，解释按钮补齐展开语义。
+- 公网 pricing 矩阵 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_POST_1181F30_FINAL.json` 为 `8/8 PASS`，`blockedWrites=0`；390px 截图确认首屏内容与 FAB 不相交。
+
 ### 2026-10-20 OCR 扫描失败重试（`87338a8`）
 
 - 发票 OCR 失败后可直接重试同一文件，保留预览和编辑上下文；仍是 preview-only，不写入采购或收货。
