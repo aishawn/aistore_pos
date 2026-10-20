@@ -15,6 +15,7 @@
 - AI UI `2/2 PASS`；价格/库存 `8/8 PASS`；表格/表单 `14/14 PASS`，拦截的非 GET 请求 `4`、意外业务写入 `0`。
 - 证据文件：`docs/UAT_AI_UI_2026-10-19_AUTHFIX.json`、`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json`、`docs/UAT_TABLE_A11Y_ONLINE_CURRENT.json`。
 - 这是旧公网镜像的回归基线，不证明 `52c8f58` 已上线；待 Dokploy 分支绑定修复后，必须用同一套脚本对新运行 SHA 重测。
+- 全站只读矩阵重试完成 `134 路由 × 390/1440 = 268/268 PASS`，HTTP 全部 200；首轮的 390px 代理瞬态未复现。证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`（运行提交未核验）。
 
 ### 2026-10-20 集中部署后只读回归（运行身份未核验）
 
