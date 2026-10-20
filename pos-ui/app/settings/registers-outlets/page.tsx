@@ -101,7 +101,7 @@ export default function RegistersOutletsPage() {
                   </article>)}
                 </div>
                 <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] xl:block">
-                  <table className="w-full border-collapse text-left text-sm">
+            <table aria-label="Odoo stores and registers" className="w-full border-collapse text-left text-sm">
                     <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Store</th><th scope="col" className="px-4 py-3">Currency</th></tr></thead>
                     <tbody className="divide-y divide-[var(--oh-border)]">{outlets.map((outlet) => <tr key={outlet.id} className="hover:bg-sky-50/40"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{outlet.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(outlet.currency_id) ? outlet.currency_id[1] : "—"}</td></tr>)}</tbody>
                   </table>

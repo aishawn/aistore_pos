@@ -23,7 +23,7 @@
 | AI 助手 | 语音按住说话、意图路由、实体操作 allowlist、错误脱敏、多轮记忆/工具调用、cashier history、平台 AI usage、常见报表/工作流确定性快捷路由 | 待部署验证 | `UAT_AI_UI_*`、`UAT_AI_FEATURES_VERIFY_*`；当前源码 Java 21 `233 tests, 0 failures`，最新改动待镜像 |
 | AI Sommelier | 商品识别、酒标识别、推荐、相似酒款 | 旧线上基线 | `UAT_SOMMELIER_*`；租户 Odoo context 待部署验证 |
 | 发票 OCR | 预览识别，禁止预览阶段写供应商/采购/收货；图片类型/10 MB 边界、连续换图竞态保护 | 待部署验证 | `UAT_INVOICE_SCAN_MOCK_*`、`UAT_INVOICE_OCR_PREVIEW_*`；本地 typecheck/ESLint/node check 通过 |
-| 账户与设置 | 公司、门店、用户、角色、税务、支付设置页面；现金进出金额前端边界与忙状态 | 待部署验证 | `UAT_SETTINGS_MOBILE_*`、全站矩阵；Manage Cash typecheck/ESLint 通过 |
+| 账户与设置 | 公司、门店、用户、角色、税务、支付设置页面；Tax Rates 主动刷新；设置表格可访问名称；现金进出金额前端边界与忙状态 | 待部署验证 | `UAT_SETTINGS_MOBILE_*`、全站矩阵；本轮 typecheck/目标 ESLint 通过 |
 | 全站页面 | 134 路由在 390/1440 下 HTTP 200、无页面错误 | 旧线上基线 | `UAT_ALL_STATIC_PAGES_2026-10-15.json`，重试 `268/268 PASS` |
 | 条码工具 | 明确未连接打印；提供真实 Odoo 商品和集成状态入口 | 明确未接入/待部署 UI | 当前提交 `dd5253d` |
 | 旧版 Utilities 假列表 | 不展示假商品、假客户或假库存；引导到 Odoo 页面 | 明确未接入 | `/utilities/products`、`/utilities/customers` |
@@ -47,6 +47,7 @@
 - 真实 DashScope 质量、真实麦克风、真实酒标照片和真实发票照片：不能用 mock 或页面可达性替代。
 - Dokploy #38 的 `AiProviderConfig` 错误未在当前源码复现；当前 Java 21 编译通过，部署前需核对 Dokploy 分支绑定和运行 SHA。
 - 本轮 `OdooRegisterPage` 刷新竞态修复尚未进入可核验 Dokploy 镜像；需部署后在 demo 的 Sell 页面验证切换 register、刷新、断网恢复和草稿保留。
+- Tax Rates、Payment Methods、Registers & Outlets 的设置页改动尚未进入可核验 Dokploy 镜像；需部署后验证主动刷新、移动/桌面布局和 Odoo 读取失败 Retry。
 
 ## 下一次部署后
 

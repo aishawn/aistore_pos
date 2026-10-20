@@ -976,3 +976,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 无 Odoo 会话时会清理 register/payment 状态，避免注销后残留旧配置；销售、报价、付款和写入边界未改变。
 - `npm run typecheck`、目标 ESLint、`git diff --check` 通过；POS help/keyboard `2/2 PASS`，同轮 AI UI `2/2`、未接入边界 `18/18`、表格/表单 `16/16`，无意外业务写入。
 - 尚未取得本轮源码对应的 Dokploy runtime SHA；部署并回读构建日志、健康状态、容器 SHA 后，才能将 Sell 刷新行为标为 post-deploy。整体发布继续 **NO-GO**。
+
+### 2026-10-20 设置只读页刷新与表格语义批次（工作区，待部署）
+
+- Tax Rates 页新增页面级 Refresh，成功加载后也能主动重新读取 Odoo；Payment Methods、Registers & Outlets 桌面表格补齐稳定 `aria-label`。
+- 本地 `npm run typecheck`、目标 ESLint 通过；公网未接入边界 `18/18 PASS`、表格/表单 `14/14 PASS`，`unexpectedWrites=0`。
+- 改动尚未进入可核验 Dokploy 镜像；部署后需复测 Tax Refresh、设置页移动/桌面布局和错误 Retry。整体发布继续 **NO-GO**。

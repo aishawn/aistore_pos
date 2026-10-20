@@ -120,7 +120,7 @@ export default function PaymentMethodsPage() {
             </article>)}
           </div>
           <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white xl:block">
-            <table className="w-full border-collapse text-left text-sm">
+            <table aria-label="Odoo payment methods" className="w-full border-collapse text-left text-sm">
               <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr><th scope="col" className="px-4 py-3">Payment method</th><th scope="col" className="px-4 py-3">Type</th><th scope="col" className="px-4 py-3">Odoo register</th></tr>
               </thead>

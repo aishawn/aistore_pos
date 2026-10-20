@@ -1159,3 +1159,16 @@
 - 本地验证：`pos-ui` `npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check`；公网 POS help/keyboard 只读回归 `2/2 PASS`。未运行 Next/Docker build。
 - 同一轮公网只读回归：AI UI `2/2`、未接入页面 `18/18`、表格/表单 `16/16`，无意外业务写入；这些结果是当前公网行为基线，不能证明本轮源码已部署。
 - 发布前需推送本批次后正常部署，回读 Dokploy frontend/backend 构建日志、健康状态和运行 SHA，再在 demo Sell 页面执行只读 register 切换/刷新/断网恢复验证；整体发布继续 **NO-GO**。
+
+## 2026-10-20 `bd0981f` 推送与公网 AI 复测
+
+- `bd0981f` 已推送到 `origin/main`，包含 Sell register/payment 刷新竞态修复及功能清单、能力状态、交接文档更新。
+- 对 Compose webhook 的单次触发仍返回 `HTTP 301 Branch Not Match`，没有创建构建任务；因此本批次没有可核验的 Dokploy frontend/backend 镜像或 runtime SHA。
+- 当前公网只读复测（运行身份未核验）：AI UI `2/2 PASS`、AI features `14/14 PASS`、自然语言工作流 `28/28 PASS`、未接入边界 `18/18 PASS`、表格/表单 `16/16 PASS`、POS help/keyboard `2/2 PASS`。
+- AI 报表专项为 `12 PASS / 1 BLOCKED`：命名商品库存问法路由正确，但线上 Odoo stock report 数据源暂时不可用，返回安全的“暂时不可用”提示；其余日期解析、Overview 对账、Odoo source path 均通过。证据文件已由脚本生成，不能标为本轮 post-deploy。
+
+## 2026-10-20 设置只读页刷新与表格语义批次（工作区，待部署）
+
+- Tax Rates 页新增成功加载后的页面级 Refresh；Payment Methods、Registers & Outlets 的桌面表格补齐稳定 `aria-label`，移动布局和只读边界不变。
+- 本地 `pos-ui` typecheck、四个目标页面 ESLint、`git diff --check` 通过；公网未接入边界 `18/18 PASS`、表格/表单 `14/14 PASS`，无意外写入。
+- 这些改动与 `bd0981f` 同一待部署批次；Dokploy 仍因 `HTTP 301 Branch Not Match` 未创建构建任务。部署后重跑设置页、全站矩阵和表格专项，并记录 runtime SHA。

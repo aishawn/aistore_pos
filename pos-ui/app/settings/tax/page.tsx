@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
-import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { getOdooSession, searchOdooRecords, type OdooTaxRecord } from "@/lib/odoo-api";
 
 function formatRate(tax: OdooTaxRecord) {
@@ -44,6 +44,12 @@ export default function TaxRatesPage() {
       subtitle="Active sales taxes visible to your Odoo account"
       count={loading || error ? undefined : taxes.length}
       countLabel="Rates"
+      actions={
+        <AdminSecondaryButton onClick={() => setRetryKey((value) => value + 1)} disabled={loading}>
+          <RefreshCw size={15} className={loading ? "animate-spin" : undefined} aria-hidden="true" />
+          Refresh
+        </AdminSecondaryButton>
+      }
     >
       <section aria-label="Tax rate source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />
@@ -89,7 +95,7 @@ export default function TaxRatesPage() {
             </article>)}
           </div>
           <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white xl:block">
-            <table className="w-full border-collapse text-left text-sm">
+            <table aria-label="Odoo tax rates" className="w-full border-collapse text-left text-sm">
               <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr><th scope="col" className="px-4 py-3">Tax</th><th scope="col" className="px-4 py-3">Rate</th><th scope="col" className="px-4 py-3">Calculation</th><th scope="col" className="px-4 py-3">Company</th></tr>
               </thead>
