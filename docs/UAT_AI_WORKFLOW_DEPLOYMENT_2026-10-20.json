@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-20T07:56:00Z",
+  "sourceCommit": "4dedccd",
+  "target": "demo.orithos.com.au",
+  "webhookStatus": 301,
+  "webhookBody": {
+    "message": "Branch Not Match"
+  },
+  "status": "BLOCKED",
+  "meaning": "Dokploy did not accept the deployment because the compose source is not bound to the pushed main branch. Online workflow evidence remains pre-deploy evidence.",
+  "scope": "deployment control-plane only; no store business writes"
+}
