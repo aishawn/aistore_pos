@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-21 公网只读复测（运行身份未核验）
+
+- 当前公网基线通过：全站实际 `135` 路由 × `390/1440`，`270/270 PASS`；AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、AI UI `2/2`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`。
+- 本轮浏览器/API 探针均为只读，意外业务写入 `0`。证据文件均为 `docs/*_2026-10-21_CURRENT.json`。
+- 这些结果没有 Dokploy 运行 SHA 证据，只能作为当前公网运行版本基线；不能证明 `c078550` 或其之前本地代码已部署。真实酒标/发票图片、麦克风、隔离环境销售/采购/收货/关班仍未验收。
+- `pilot-settings-mobile-uat.mjs` 已支持 `PILOT_UAT_OUTPUT_PATH`，设置专项本次写入独立文件，避免覆盖历史证据。
+
 ## 2026-10-20 Dokploy #38 编译错误最终复核
 
 - 失败原因不是 `SqlAst.java` 的 `Parenthesis` 弃用警告；真正失败是旧源码快照中 `AiConfigController` 和 `SommelierController` 调用了 `AiProviderConfig.isValidBaseUrl(...)`，但缺少 `import com.orithos.modules.ai.AiProviderConfig;`。

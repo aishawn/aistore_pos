@@ -186,6 +186,9 @@ const output = {
   viewports: [390, 1440],
   checks,
 };
-const outputPath = path.join(root, "docs", "UAT_SETTINGS_MOBILE_2026-10-14.json");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_SETTINGS_MOBILE_2026-10-14.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, ...output }));

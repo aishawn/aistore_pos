@@ -1,6 +1,6 @@
 # Orithos 功能清单与验证状态
 
-更新时间：2026-10-20
+更新时间：2026-10-21
 
 ## 状态说明
 
@@ -28,6 +28,12 @@
 | 条码工具 | 明确未连接打印；提供真实 Odoo 商品和集成状态入口 | 明确未接入/待部署 UI | 当前提交 `dd5253d` |
 | 旧版 Utilities 假列表 | 不展示假商品、假客户或假库存；引导到 Odoo 页面 | 明确未接入 | `/utilities/products`、`/utilities/customers` |
 
+## 2026-10-21 当前公网只读复测
+
+- 全站实际扫描 `135` 路由 × `390/1440`，共 `270/270 PASS`；AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、AI UI `2/2`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14` 均通过。
+- 所有本轮专项均只读，意外业务写入为 `0`；证据使用 `docs/UAT_*_2026-10-21_CURRENT.json` 文件。
+- 以上只证明当前公网运行版本的页面/API行为，尚未核对 Dokploy 运行 SHA；不能把它当作最新代码的 post-deploy 证据。
+
 ## 当前已验证
 
 - `npm run typecheck`：通过。
@@ -36,6 +42,7 @@
 - `pos-api` Java 21 `mvn -B clean verify`：通过，当前批次 243 tests、0 failures。
 - 发票 OCR mock/线上脚本、价格建议、盘点脚本 `node --check`：通过；本批次未运行 Next/Docker build。
 - 公网只读基线：AI UI `2/2`、价格/库存 `8/8`、表格/表单 `14/14`、全站 `268/268`；意外业务写入 `0`。
+- 2026-10-21 当前公网只读复测：全站 `270/270`、AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`；意外业务写入 `0`。
 - 本轮公网只读复测：AI UI `2/2`、未接入页面诚实边界 `18/18`、表格/表单 `16/16`、POS help/keyboard `2/2`；意外业务写入 `0`。
 - Sell 刷新竞态修复后：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check` 通过；未运行 Next/Docker build。
 

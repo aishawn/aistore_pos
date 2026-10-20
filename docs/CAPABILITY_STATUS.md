@@ -1,6 +1,17 @@
 # Orithos POS — capability status
 
-**Last updated:** 2026-10-20（`fe4d978` AI 报表快捷问法与 UAT gate 批次）
+**Last updated:** 2026-10-21（线上只读矩阵复测与 Dokploy #38 复核）
+
+### 2026-10-21 公网只读矩阵复测（运行身份未核验）
+
+- 全站静态页面扫描实际发现 `135` 个路由，390/1440 两个视口共 `270/270 PASS`，HTTP 全部 200，无页面错误或横向溢出。
+- AI features `14/14 PASS`、AI reports `14/14 PASS`、Sommelier `10/10 PASS`、AI UI `2/2 PASS`、设置 `28/28 PASS`、价格/库存 `8/8 PASS`、表格/表单 `14/14 PASS`；所有专项均为只读，意外业务写入 `0`。
+- 证据文件：`UAT_ALL_STATIC_PAGES_2026-10-21_CURRENT.json`、`UAT_AI_FEATURES_VERIFY_2026-10-21_CURRENT.json`、`UAT_AI_REPORTS_READONLY_ONLINE_2026-10-21_CURRENT.json`、`UAT_SOMMELIER_READONLY_ONLINE_2026-10-21_CURRENT.json`、`UAT_AI_UI_2026-10-21_CURRENT.json`、`UAT_SETTINGS_MOBILE_2026-10-21_CURRENT.json`、`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-21_CURRENT.json`、`UAT_TABLE_A11Y_ONLINE_2026-10-21_CURRENT.json`。
+- 这些是当前公网运行版本的只读基线，尚未从 Dokploy 回读运行 SHA，不能证明 `c078550` 或更早本地改动已经上线；真实 DashScope 图片质量、真实麦克风、生产写入流程仍未验收。
+
+### 2026-10-21 UAT 证据归档修复
+
+- `pilot-settings-mobile-uat.mjs` 支持 `PILOT_UAT_OUTPUT_PATH`，默认行为保持兼容；后续复测可写入带日期的新证据文件，不再覆盖历史 UAT。
 
 ### 2026-10-21 AI stock report 字段权限降级（待部署）
 
