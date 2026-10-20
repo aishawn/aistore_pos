@@ -871,7 +871,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 | Capability | Status | Notes |
 |---|---|---|
 | Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; 2026-10-16 refinements add a layout-preserving skeleton, retryable first-load and refresh failure states, explicit data-through vs loaded timestamps, and hide comparisons on low prior-period baselines. Commit `83815f2` is deployed and authenticated read-only smoke passed. |
-| Cashier assistant / NL reports | In progress | Spring Graph NLQ is live in the latest public read-only matrix: assistant product lookup and chat composer passed; deterministic report/workflow fast paths now cover common sales and quantity ranges without the classifier. Provider routing for `qwen3.8-flash` is covered by `10facb6`. Report RO password and formal report SQL acceptance remain outstanding. Java 21 gate currently passes 230 tests. |
+| Cashier assistant / NL reports | In progress | Spring Graph NLQ is live in the latest public read-only matrix: assistant product lookup and chat composer passed; deterministic report/workflow fast paths now cover common sales and quantity ranges without the classifier, including Chinese best-selling rankings. Provider routing for `qwen3.8-flash` is covered by `10facb6`. Report RO password and formal report SQL acceptance remain outstanding. Java 21 gate currently passes 233 tests. |
 | Wine / sommelier assistant | In progress | Odoo remains authoritative; public read-only matrix passed identify, recommend, pitch, ask and similar flows. Register-specific warehouse context, tax/pricelist customer totals and real label photo extraction remain unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |
 

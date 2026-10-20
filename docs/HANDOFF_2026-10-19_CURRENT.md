@@ -1023,6 +1023,14 @@
 - 2026-10-20 18:08（UTC+8）使用 `refs/heads/main` 和 `after=4c5541a` 调用 Compose webhook，返回 `HTTP 301 {"message":"Branch Not Match"}`；没有创建构建任务。
 - 因此当前阻塞仍是 Dokploy Compose 仓库/分支绑定，不是本地 Java 编译错误。修正绑定后应以 `4c5541a` 或其后提交重新部署，并回读两端构建日志、健康状态和运行 SHA。
 
+## 2026-10-20 AI 报表线上复测与排名路由批次
+
+- 公网只读回归：诚实边界页 `18/18 PASS`、定价/库存 `8/8 PASS`、表格/表单 `14/14 PASS`、设置页 `PASS`、订单页 `16/16 PASS`、礼品卡 Retry/race `PASS`，均未产生意外业务写入。
+- AI 功能静态/接口能力 `14/14 PASS`、AI UI `2/2 PASS`；自然语言工作流 `15/17 PASS`，失败为中文“本周哪类商品卖得最好”和“How much red wine sold this week?”，运行证据仍标记 `deployment=unverified-after-deploy`。
+- AI 报表只读 `4/5 PASS`：Overview/7 天/30 天对账通过，AI availability 请求返回 `50210` provider unavailable。该结果说明当前公网运行配置/镜像仍不可确认，不能用来宣称真实模型验收。
+- 当前源码补齐 `卖得最好`、`best-performing` 等排名词的安全 `report_adhoc` 路由，并新增分类节点绕过 provider 的单测；Java 21 `mvn -B clean verify` 通过，`233 tests, 0 failures`，仅有既存 JSqlParser 弃用警告。
+- 本批次仍未运行本地 Next/Docker build；最新代码需与 Dokploy 分支绑定修复一起部署后，再重跑同一组 AI 工作流和报表脚本，确认运行 SHA 后才能判断线上失败是否消失。
+
 ## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
 
 - 未知意图现在返回空的 UI/导航/动作/slot 指令；非法 route/action、未配置的实体操作和伪造动作不会降级成默认列表导航。

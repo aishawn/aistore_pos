@@ -52,4 +52,21 @@ class ClassifyQueryNodeTest {
         assertEquals("", result.get("ui_route"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
+
+    @Test
+    void unsupportedRankingSkipsClassifierWithSafeAdhocIntent() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("本周哪类商品卖得最好"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("report_adhoc", result.get("intent"));
+        assertEquals("", result.get("ui_route"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
 }
