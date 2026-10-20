@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 集中部署后只读回归（运行身份未核验）
+
+- Dokploy webhook 接受 `d76e786`；Demo 只读回归通过：AI `9/9` route、`14/14` features、报表 `9/9`、Sommelier `10/10`、AI UI `2/2`、表格/表单 `14/14`、价格/库存 `8/8`，全站 `268/268`。
+- 未产生业务写入。Dokploy 构建日志、容器 SHA、健康状态仍未从控制台独立回读，真实 AI 质量和生产放行条件未完成，状态保持 **NO-GO**。详见 `docs/UAT_DEPLOYMENT_BATCH_2026-10-20_D76E786.json`。
+
 ### 2026-10-20 Sommelier Odoo 租户上下文批次（工作区）
 
 - Sommelier 的 Odoo 目录读取现在按租户 vendor 绑定传递 company/warehouse context；未 ready 或未绑定时 fail-closed，避免跨店目录/库存混入。未配置 Odoo 时保持只读 legacy fallback。

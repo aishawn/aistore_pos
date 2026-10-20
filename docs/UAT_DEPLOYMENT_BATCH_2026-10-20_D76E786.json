@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-10-20T07:35:19Z",
+  "target": "https://demo.orithos.com.au",
+  "requestedCommit": "d76e786",
+  "runtimeCommitVerified": false,
+  "dokployWebhook": {
+    "status": 200,
+    "message": "Compose deployed successfully",
+    "buildLogsReadBack": false,
+    "containerShaReadBack": false,
+    "healthReadBack": false
+  },
+  "readOnlyChecks": {
+    "aiRouteMatrix": "9/9 PASS",
+    "aiFeatures": "14/14 PASS, 0 blocked",
+    "aiReports": "9/9 PASS",
+    "sommelier": "10/10 PASS",
+    "aiUi": "2/2 PASS",
+    "tablesAndForms": "14/14 PASS, unexpectedWrites=0",
+    "pricingAndStock": "8/8 PASS, blockedWrites=0",
+    "staticPages": "268/268 PASS, 134 routes x 390/1440"
+  },
+  "businessWrites": 0,
+  "release": "NO-GO",
+  "limitations": [
+    "Dokploy console build logs, health and frontend/backend runtime SHAs remain unverified.",
+    "AI feature evidence proves endpoint behavior, not model quality or production business write approval.",
+    "The invoice probe returned provider-reachable code 50212 for an image without invoice fields."
+  ]
+}

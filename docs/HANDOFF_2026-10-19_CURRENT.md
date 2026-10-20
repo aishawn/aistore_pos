@@ -1,5 +1,12 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 集中部署后只读回归（`d76e786`，运行身份未核验）
+
+- Dokploy webhook 返回 `HTTP 200 Compose deployed successfully`；这只证明请求被接受，尚未从控制台回读 frontend/backend 构建日志、容器 SHA 或健康状态。
+- Demo 只读回归通过：AI route matrix `9/9`、AI features `14/14`、AI reports `9/9`、Sommelier `10/10`、AI UI `2/2`、表格/表单 `14/14`、价格/库存 `8/8`，全站静态矩阵 `134 路由 × 390/1440 = 268/268`。
+- 所有专项均无业务写入；table UAT 的非 GET 请求是被拦截的 Odoo 只读 RPC，`unexpectedWrites=0`；pricing UAT `blockedWrites=0`。
+- 证据汇总：[UAT_DEPLOYMENT_BATCH_2026-10-20_D76E786.json](UAT_DEPLOYMENT_BATCH_2026-10-20_D76E786.json)。真实模型质量、发票字段探针和容器身份仍未达到放行条件，发布继续 **NO-GO**。
+
 ## 2026-10-20 Sommelier Odoo 租户上下文批次（工作区）
 
 - 配置 Odoo service account 时，Sommelier 的 recommend/identify/label/similar/ask/wine 路径现在传递 `TenantContext` 的 vendor ID；Odoo `search_read` 使用绑定的 `allowed_company_ids`、`force_company` 和 `warehouse`。
