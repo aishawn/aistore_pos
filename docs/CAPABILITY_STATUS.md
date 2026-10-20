@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 AI Assistant 问法回归与确定性路由（最新）
+
+- `origin/main` 最新提交为 `789bdad`。`ClassifyQueryNode` 现在会在分类模型前安全处理明确的 `report_adhoc` 拒答；`AssistantFastPathRouter` 支持带类别的本周/上周销量，例如 `How much red wine sold this week?`，并将类别写入只读报表 slot。
+- Java 21 `mvn -B clean verify`：**232 tests，0 failures，0 errors**。新增覆盖 provider 不可用时的 ad-hoc 拒答、类别销量路由和中英文类别问法。
+- Demo 只读回归：availability `3/3`、features `14/14`、route matrix `9/9`、metrics `9/9`；workflow 旧运行时为 `13/17`，补货/定价/推荐/发票均通过，4 个报表负面问法仍因旧 runtime 的 `50210` 失败。证据见 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20_POST-2380226.json`。
+- 已尝试为 `789bdad` 触发 Dokploy Compose webhook，但返回 `HTTP 301 Branch Not Match`，构建未开始，runtime SHA 未核验。证据见 `docs/UAT_DEPLOYMENT_2026-10-20_1861FA5_BRANCH-BLOCK.json`；整体发布继续 **NO-GO**，需先修正 Dokploy Source/Git 分支为 `main` 后再部署并重跑线上问法。
+
 ### 2026-10-20 产品目录与 Sell AI 批次（工作区，待线上验证）
 
 - Odoo 产品目录分类失败后的 `Retry categories` 现在会真正重新请求分类；分类下拉补齐 `aria-busy`，避免错误提示可见但重试无效。
