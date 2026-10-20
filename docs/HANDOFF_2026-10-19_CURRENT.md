@@ -1096,6 +1096,14 @@
 - 公网旧镜像工作流自然语言回归 `17/17 PASS`，证据为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`；不能作为 `1b7cee5` 的 post-deploy 证据。
 - 针对 `1b7cee5` 的 webhook 于 2026-10-20 17:20（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。
 
+## 2026-10-20 Dokploy #38 当前提交复核 (`d9e5c8c`)
+
+- #38 的两个 `cannot find symbol: variable AiProviderConfig` 来自缺少 import 的旧源码快照。修复提交 `ea8f1b6` 已为两个 Controller 增加显式 import，`AiProviderConfig.java` 也已被 Git 跟踪。
+- 当前 `main` 与 `origin/main` 均为 `d9e5c8c`，包含该修复。使用 JDK `21.0.12.1` 执行 `mvn -B clean verify`，结果为 `233 tests, 0 failures, 0 errors`。
+- JSqlParser `Parenthesis` deprecated 仅是 warning，不是失败原因。
+- Dokploy #38 不能作为当前提交的构建证据。此前 Compose webhook 持续返回 `HTTP 301 {"message":"Branch Not Match"}`，需在 Source/Git 修正 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、Compose=`docker-compose.yml` 后再执行普通 Deploy。
+- 在回读 frontend/backend 完整日志、健康状态、容器运行 SHA 和目标 commit 前，发布状态保持 **NO-GO**。
+
 ## 2026-10-20 当前 HEAD Java 21 门禁复核
 
 - `main` 当前为 `24f9e44`，包含 cashier chat history、platform AI usage 和 invoice assistant coverage。
