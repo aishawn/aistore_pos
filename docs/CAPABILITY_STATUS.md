@@ -14,6 +14,8 @@
 - 价格建议页刷新错误状态现在具备 44px Retry 触控目标、忙状态反馈和结果区 `aria-busy`；搜索清除按钮扩大到 44px，待新镜像验证。
 - 当前后端 AI 多轮记忆、工具调用、报告路由、提示配置、cashier history 和平台 AI usage 改动已在 Java 21 `mvn -B clean verify` 中通过：228 tests、0 failures；仍需 Dokploy 构建与公网回归确认。
 - 公网旧镜像 AI 工作流自然语言回归 `17/17 PASS`；证据 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`，结果仅作为旧运行版本基线。
+- 公网旧镜像 AI metrics 只读回归 `9/9 PASS`：管理员鉴权、指标接口、匿名 `401`、390/1440 UI 与表格可访问性均通过，业务写入 `0`；证据 `docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`。
+- `db8f02e` 的 Dokploy webhook 于 2026-10-20 17:41（UTC+8）仍返回 `HTTP 301 Branch Not Match`，因此上述结果不能标记为新提交 post-deploy。
 - 批次提交 `52c8f58` 已推送；Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，因此没有产生新的线上验证证据，状态保持“待部署”。
 
 ### 2026-10-20 公网只读基线复测（运行提交未核验）

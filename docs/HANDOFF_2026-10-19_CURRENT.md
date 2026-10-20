@@ -1063,3 +1063,5 @@
 - 使用 JDK `21.0.12.1` 执行 `mvn -B clean verify`：`228 tests, 0 failures`，仅有 JSqlParser `Parenthesis` deprecated warnings。
 - 前端 `npm run typecheck`、目标 ESLint、AI UAT 脚本语法检查通过；未运行 Next build。
 - 当前 HEAD 尚未获得 Dokploy 构建/运行证据，下一步以 `24f9e44` 触发部署并回读构建日志、健康状态和运行 SHA。
+- 公网旧镜像 AI metrics 只读回归 `9/9 PASS`（390/1440、匿名 `401`、无业务写入），证据 `docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`。
+- `db8f02e` 的 compose webhook 于 2026-10-20 17:41（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，尚未启动构建。
