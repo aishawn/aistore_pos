@@ -1,0 +1,66 @@
+{
+  "suite": "AI_FOLLOWUP_HISTORY_PLATFORM",
+  "date": "2026-10-20",
+  "deploymentSha": "unverified",
+  "sourceCommit": "553f6e286b1381451737f255fb448ecd8fdf2a22",
+  "target": "https://demo.orithos.com.au",
+  "writeBusinessData": false,
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true,
+    "runtimeIdentityVerified": false
+  },
+  "summary": {
+    "pass": 6,
+    "fail": 0,
+    "blocked": 2
+  },
+  "cases": [
+    {
+      "id": "HIST-01",
+      "status": "PASS",
+      "evidence": "GET /api/ai/threads returned 8 threads scoped to admin user/vendor; titles and session keys present."
+    },
+    {
+      "id": "HIST-02",
+      "status": "PASS",
+      "evidence": "GET /api/ai/threads/8 returned 2 messages and the same sessionKey; no business write."
+    },
+    {
+      "id": "HIST-03",
+      "status": "BLOCKED",
+      "evidence": "No second store user credential was provided for a cross-user listing check."
+    },
+    {
+      "id": "HIST-04",
+      "status": "BLOCKED",
+      "evidence": "Creating a new successful AI turn requires provider availability; current assistant requests return 50210."
+    },
+    {
+      "id": "MET-S01",
+      "status": "PASS",
+      "evidence": "GET /api/ai/metrics?hours=24 returned windowHours, summary, byPath and highlights."
+    },
+    {
+      "id": "MET-S02",
+      "status": "PASS",
+      "evidence": "Metrics payload contains aggregate fields only; no question, answer or SQL text."
+    },
+    {
+      "id": "MET-S03",
+      "status": "PASS",
+      "evidence": "Store admin access to /api/platform/metrics/ai and /stores/1 returns application code 40300."
+    },
+    {
+      "id": "MET-P01",
+      "status": "BLOCKED",
+      "evidence": "Platform operator credentials are not available in this run; no platform login was attempted."
+    },
+    {
+      "id": "MET-P02",
+      "status": "PASS",
+      "evidence": "Platform endpoints reject the store admin before returning cross-store data; no write request sent."
+    }
+  ],
+  "notes": "Runtime SHA remains unverified. Provider outage and missing platform operator credentials are recorded as BLOCKED per AI_ASSISTANT_TEST_PLAN.md."
+}

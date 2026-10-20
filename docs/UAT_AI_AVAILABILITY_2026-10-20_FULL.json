@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-10-20T09:52:41.168Z",
+  "sourceCommit": "553f6e286b1381451737f255fb448ecd8fdf2a22",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI availability UI and local shortcut; no business writes",
+  "checks": [
+    {
+      "name": "AI availability config",
+      "status": "PASS",
+      "evidence": "Authenticated client config reports enabled=true."
+    },
+    {
+      "name": "Enabled AI composer",
+      "status": "PASS",
+      "evidence": "Assistant composer is enabled while store AI is on; no prompt was submitted by this check."
+    },
+    {
+      "name": "Local sell shortcut remains available",
+      "status": "PASS",
+      "evidence": "The local open-sell command navigated without an AI or business write request."
+    }
+  ],
+  "passed": 3,
+  "failed": 0
+}

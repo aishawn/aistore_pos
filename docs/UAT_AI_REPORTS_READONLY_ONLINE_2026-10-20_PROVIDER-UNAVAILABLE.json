@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-20T09:46:04.055Z",
+  "testHarnessCommit": "dbfb55bea70bb9a01445d31cbe3065483a9aa484",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 2,
+  "checksTotal": 3,
+  "checks": [
+    {
+      "name": "today uses store business date",
+      "status": "PASS",
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-20; actual=2026-10-20"
+    },
+    {
+      "name": "empty today agrees with 24-hour overview",
+      "status": "PASS",
+      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-20. Try a wider range, for example: sales last 7 days."
+    },
+    {
+      "name": "AI assistant availability",
+      "status": "FAIL",
+      "evidence": "AI_REPORT_API_50210_AI assistant is temporarily unavailable. Check the AI configuration and try again."
+    }
+  ],
+  "failures": [
+    "AI_REPORT_API_50210_AI assistant is temporarily unavailable. Check the AI configuration and try again."
+  ],
+  "result": "FAIL"
+}

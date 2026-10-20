@@ -15,6 +15,9 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 | Sales from Oct 14 to Oct 16 | `report_sales` | current-year inclusive range |
 | 销售额从10月14日到10月16日 | `report_sales` | current-year inclusive range |
 | 最近7天销售额 | `report_sales` | today and previous six days |
+| Sales last 7 days / revenue past 30 days | `report_sales` | deterministic read-only report path; use store business timezone |
+| Yesterday's sales / 昨天销售额 | `report_sales` | previous store business day |
+| Units sold past 30 days / 最近7天销量 | `report_qty` | quantity series; do not open replenishment |
 | 上周五啤酒销售额 | `report_sales` | previous Friday, with category `啤酒` |
 
 ## Quantity and Average Ticket

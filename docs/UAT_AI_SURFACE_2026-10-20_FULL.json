@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-10-20T09:52:36.687Z",
+  "sourceCommit": "553f6e286b1381451737f255fb448ecd8fdf2a22",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "Loaded 44 trigger keywords; enabled=true."
+    },
+    {
+      "name": "AI config intents",
+      "status": "PASS",
+      "evidence": "Loaded 13 records."
+    },
+    {
+      "name": "AI config slots",
+      "status": "PASS",
+      "evidence": "Loaded 12 records."
+    },
+    {
+      "name": "AI config slot-values",
+      "status": "PASS",
+      "evidence": "Loaded 123 records."
+    },
+    {
+      "name": "AI config prompts",
+      "status": "PASS",
+      "evidence": "Loaded 3 records."
+    },
+    {
+      "name": "AI surface regression",
+      "status": "FAIL",
+      "evidence": "AI_ASSISTANT_FAILED_200_AI assistant is temporarily unavailable. Check the AI configuration and try again."
+    }
+  ],
+  "passed": 5,
+  "failed": 1
+}
