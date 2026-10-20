@@ -14,6 +14,12 @@ Natural-language coverage catalog: [`AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSI
 - Demo History/platform suite: **9 PASS / 2 BLOCKED / 0 FAIL**. Cross-user isolation and platform-operator usage remain unexercised because those credentials were not available. Evidence: `UAT_AI_FOLLOWUP_HISTORY_PLATFORM_2026-10-21_CURRENT.json`.
 - Deployment identity remains unverified: these are current public runtime results, not proof that Demo runs the latest `main` SHA. No sales, refund, purchase, receiving, inventory, cash or register-close writes were made.
 
+## Follow-up snapshot (2026-10-22)
+
+- Repeated Demo report check is **13 PASS / 1 BLOCKED / 0 FAIL**. Sales/date/timezone/Overview reconciliation still passes; the named stock question returns the safe message `I could not read live stock data right now...`, so it is correctly classified as unavailable rather than an empty result. Evidence: `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-22_CURRENT_RECHECK.json`.
+- Direct read-only Odoo stock diagnostic is **7 PASS / 1 INFO / 0 BLOCKED**. The service account can read the same company/product/stock fields and the single warehouse context; the remaining INFO is that the vendor binding has no explicit warehouse id. Evidence: `UAT_AI_STOCK_RPC_READONLY_2026-10-22_CURRENT.json`.
+- This isolates the remaining stock issue to the AI report runtime path or its deployed configuration, not the Odoo account or catalogue RPC. Dokploy runtime SHA is still unverified, so do not mark the fix as deployed.
+
 ## Current execution snapshot (2026-10-20)
 
 - Local backend: Java 21 `mvn -B clean verify` → **238 tests, 0 failures, 0 errors** (2026-10-20, including Chinese explicit-date parsing).

@@ -170,7 +170,7 @@ try {
   check("named stock question preserves product query", stockQuestion.intent === "report_stock"
     && stockQuestion.slots?.query === "VB Cans",
   `intent=${stockQuestion.intent}; query=${stockQuestion.slots?.query ?? "missing"}; answer=${stockQuestion.answer ?? "missing"}`);
-  const stockUnavailable = /temporarily unavailable|source unavailable/i.test(stockQuestion.answer ?? "");
+  const stockUnavailable = /temporarily unavailable|source unavailable|could not read live stock data|open the stock list|try again shortly/i.test(stockQuestion.answer ?? "");
   checks.push({
     name: "stock report data source availability",
     status: stockUnavailable ? "BLOCKED" : "PASS",
