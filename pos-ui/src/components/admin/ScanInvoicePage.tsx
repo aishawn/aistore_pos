@@ -39,6 +39,7 @@ function toIsoDate(raw?: string | null): string {
 
 export function ScanInvoicePage() {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scan, setScan] = useState<InvoiceScanPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -90,10 +91,9 @@ export function ScanInvoicePage() {
     return () => URL.revokeObjectURL(preview);
   }, [preview]);
 
-  async function onPhoto(file: File) {
+  async function scanFile(file: File) {
     setError(null);
     setScan(null);
-    setPreview(URL.createObjectURL(file));
     setLoading(true);
     try {
       const prepared = await compressInvoicePhoto(file);
@@ -108,6 +108,12 @@ export function ScanInvoicePage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function onPhoto(file: File) {
+    setSelectedFile(file);
+    setPreview(URL.createObjectURL(file));
+    await scanFile(file);
   }
 
   function patch(update: Partial<InvoiceScanPayload>) {
@@ -211,7 +217,19 @@ export function ScanInvoicePage() {
           />
 
           {loading && <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"><LoaderCircle size={17} className="animate-spin" />Reading the invoice and extracting line items…</div>}
-          {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800">{error}</p>}
+          {error && (
+            <div role="alert" className="flex flex-col gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={() => selectedFile && void scanFile(selectedFile)}
+                disabled={loading || !selectedFile}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
+              >
+                {loading ? "Reading invoice…" : "Retry scan"}
+              </button>
+            </div>
+          )}
 
           {scan && (
             <>

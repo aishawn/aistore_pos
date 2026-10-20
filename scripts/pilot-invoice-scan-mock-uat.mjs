@@ -35,6 +35,9 @@ try {
   await page.route("**/api/orders/receives/scan", async (route) => {
     if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Unexpected method" });
     scanCalls += 1;
+    if (scanCalls === 1) {
+      return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ code: 50212, message: "temporary OCR provider failure", data: null }) });
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -88,7 +91,8 @@ try {
   });
   const alertText = (await page.getByRole("alert").allInnerTexts()).map((text) => text.trim()).find(Boolean);
   if (alertText) {
-    throw new Error(`Invoice scan failed before review (intercepted calls=${scanCalls}): ${alertText.slice(0, 240)}`);
+    await page.getByRole("button", { name: "Retry scan" }).click();
+    await page.getByRole("heading", { name: "Invoice details" }).waitFor({ timeout: 30000 });
   }
   await page.getByRole("heading", { name: "Invoice details" }).waitFor({ timeout: 15000 });
   await page.getByRole("heading", { name: "Invoice line items" }).waitFor({ timeout: 10000 });
@@ -106,7 +110,7 @@ try {
   if (businessWrites.some((entry) => entry.includes("from-scan") || entry.includes("supplier") || entry.includes("purchase"))) {
     throw new Error(`Unexpected business write request: ${businessWrites.join(", ")}`);
   }
-  if (scanCalls !== 1) throw new Error(`Expected one intercepted scan call, got ${scanCalls}`);
+  if (scanCalls !== 2) throw new Error(`Expected one failed and one successful intercepted scan call, got ${scanCalls}`);
 
   const output = {
     generatedAt: new Date().toISOString(),
@@ -116,7 +120,7 @@ try {
     status: "PASS",
     fixture: "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
     viewport: 390,
-    checks: ["invoice AI availability retry recovers after a transient failure", "invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
+    checks: ["invoice AI availability retry recovers after a transient failure", "invoice scan retry reuses the selected file after a transient OCR failure", "invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
     scanCalls,
     capabilityCalls,
     businessWrites,
