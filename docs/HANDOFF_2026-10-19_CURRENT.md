@@ -1031,6 +1031,12 @@
 - 当前源码补齐 `卖得最好`、`best-performing` 等排名词的安全 `report_adhoc` 路由，并新增分类节点绕过 provider 的单测；Java 21 `mvn -B clean verify` 通过，`233 tests, 0 failures`，仅有既存 JSqlParser 弃用警告。
 - 本批次仍未运行本地 Next/Docker build；最新代码需与 Dokploy 分支绑定修复一起部署后，再重跑同一组 AI 工作流和报表脚本，确认运行 SHA 后才能判断线上失败是否消失。
 
+## 2026-10-20 AI 报表结果页列选择批次（待部署）
+
+- `AiReportResultPage` 的 Columns 控件已从禁用占位改为可访问列选择菜单；支持逐列隐藏/恢复，至少保留一列，表格合计、空结果列数和 CSV 导出均跟随当前可见列。
+- 本地 `pos-ui` `npm run typecheck`、目标 ESLint 和 `git diff --check` 通过；未运行 Next build。
+- 该 UI 改动尚未进入可核验 Dokploy 镜像；部署后需在 AI 报表详情页验证菜单键盘操作、移动端不溢出、列切换、合计和导出结果，并重跑 AI UI/报表只读专项。
+
 ## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
 
 - 未知意图现在返回空的 UI/导航/动作/slot 指令；非法 route/action、未配置的实体操作和伪造动作不会降级成默认列表导航。

@@ -118,9 +118,15 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
     reportId ? `/api/ai/reports/${reportId}` : null,
   );
   const [search, setSearch] = useState("");
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => new Set());
+  const [columnMenuOpen, setColumnMenuOpen] = useState(false);
 
   const columns = data?.table?.columns ?? EMPTY_COLUMNS;
   const allRows = data?.table?.rows ?? EMPTY_ROWS;
+  const visibleColumns = useMemo(
+    () => columns.filter((column) => !hiddenColumns.has(column)),
+    [columns, hiddenColumns],
+  );
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -131,9 +137,21 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
   }, [allRows, columns, search]);
 
   const totals = useMemo(
-    () => columns.map((col) => columnTotal(rows, col)),
-    [columns, rows],
+    () => visibleColumns.map((col) => columnTotal(rows, col)),
+    [rows, visibleColumns],
   );
+
+  function toggleColumn(column: string) {
+    setHiddenColumns((current) => {
+      const next = new Set(current);
+      if (next.has(column)) {
+        next.delete(column);
+      } else if (visibleColumns.length > 1) {
+        next.add(column);
+      }
+      return next;
+    });
+  }
 
   if (loading) {
     return (
@@ -216,7 +234,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
             onClick={() =>
               downloadCsv(
                 `orithos-ai-report-${data.id}.csv`,
-                columns,
+                visibleColumns,
                 rows,
               )
             }
@@ -239,13 +257,44 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
             <SaveIcon size={18} /> Save
           </button>
         </div>
-        <button
-          type="button"
-          disabled
-          className="flex items-center gap-2 rounded-md border border-neutral-200 px-5 py-2.5 font-semibold text-neutral-400"
-        >
-          <ColumnsIcon size={18} /> Columns
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            aria-expanded={columnMenuOpen}
+            aria-controls="ai-report-columns-menu"
+            onClick={() => setColumnMenuOpen((open) => !open)}
+            className="flex min-h-11 items-center gap-2 rounded-md border border-[#5cb3e0] px-5 py-2.5 font-semibold text-[var(--sf-tab-blue)] hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <ColumnsIcon size={18} /> Columns
+          </button>
+          {columnMenuOpen && (
+            <div
+              id="ai-report-columns-menu"
+              role="group"
+              aria-label="Visible report columns"
+              className="absolute right-0 top-full z-20 mt-2 w-64 rounded-md border border-neutral-300 bg-white p-3 shadow-lg"
+            >
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Visible columns</p>
+              <div className="space-y-2">
+                {columns.map((column) => {
+                  const checked = !hiddenColumns.has(column);
+                  return (
+                    <label key={column} className="flex min-h-11 items-center gap-3 rounded px-2 text-sm text-neutral-800 hover:bg-neutral-50">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={checked && visibleColumns.length === 1}
+                        onChange={() => toggleColumn(column)}
+                        className="h-4 w-4 accent-[var(--oh-primary)]"
+                      />
+                      <span className="min-w-0 break-words">{formatReportColumnHeader(column)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 overflow-x-auto">
@@ -253,7 +302,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
         <table aria-label="AI report results" className="w-full table-fixed border-collapse font-sans text-[13px]">
           <thead>
             <tr className="bg-black text-[13px] font-bold text-white">
-              {columns.map((col, i) => (
+              {visibleColumns.map((col, i) => (
                 <th key={col} scope="col" className="px-2 py-2 text-center">
                   <span className="inline-flex items-center justify-center gap-1">
                     {formatReportColumnHeader(col)}
@@ -264,7 +313,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
             </tr>
             <tr className="bg-[var(--oh-primary)] text-[13px] font-bold text-white">
               {totals.map((t, i) => (
-                <td key={columns[i] ?? i} className="px-2 py-2 text-center">
+                <td key={visibleColumns[i] ?? i} className="px-2 py-2 text-center">
                   {t ?? ""}
                 </td>
               ))}
@@ -274,7 +323,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={Math.max(columns.length, 1)}
+                  colSpan={Math.max(visibleColumns.length, 1)}
                   className="px-3 py-8 text-center text-[13px] text-neutral-500"
                 >
                   No matching rows.
@@ -286,7 +335,7 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
                   key={ri}
                   className={ri % 2 === 0 ? "bg-white" : "bg-[#f3f3f3]"}
                 >
-                  {columns.map((col) => (
+                  {visibleColumns.map((col) => (
                     <td key={col} className="px-2 py-2 text-center text-[13px] text-black">
                       {cellText(row[col])}
                     </td>
