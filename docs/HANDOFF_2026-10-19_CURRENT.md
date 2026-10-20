@@ -5,6 +5,7 @@
 - 平台 Stores、Promotions/Categories、Promotions、Register Closures、Price Sets、Registers/Outlets、Roles、Users、Stocktake 库位、Vendor Connections 和 Manage Cash 的 loading skeleton 全部补齐 `aria-live="polite"` 与 `aria-busy="true"`。
 - 静态扫描确认 `pos-ui/app` 中没有缺少这两个状态语义的 `Loading` status；不改变读取、Retry、分页或业务写入行为。
 - 本地 `npm run typecheck`、目标 ESLint、`git diff --check` 通过；按约束未运行 build。待集中部署后复跑全站矩阵、设置/盘点/平台专项。
+- 集中提交 `3367c52` 已推送 `origin/main`；Compose webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`，未启动构建。
 
 ## 2026-10-20 报表/设置 loading 状态语义批次（工作区）
 

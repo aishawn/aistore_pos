@@ -6,6 +6,7 @@
 
 - 平台、促销、关班、设置、盘点、供应商连接和现金管理页面的 loading status 已统一补齐 live-region/busy 语义；静态扫描无遗漏。
 - 本地 typecheck、目标 ESLint、diff check 通过；与前两批工具/报表修复合并，待下一次 Dokploy 部署后验证真实 DOM。
+- `3367c52` 已推送，但 webhook 仍返回 `HTTP 301 Branch Not Match`，全站 loading 语义尚未获得线上镜像验证。
 
 ### 2026-10-20 报表/设置 loading 状态语义批次（工作区）
 
