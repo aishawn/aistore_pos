@@ -43,6 +43,12 @@ export function apiFailureMessage(e: unknown, fallback: string, unauthorized: st
   return fallback;
 }
 
+function aiGatewayFailureMessage(subject: string, status: number, fallback: string): string {
+  return status === 502 || status === 503 || status === 504
+    ? `${subject} is temporarily unavailable. Try again shortly.`
+    : fallback;
+}
+
 // ---- token helpers (cookie-based so it survives reloads) ----
 export function getToken(): string | null {
   // Expire the legacy JavaScript-readable token left by older releases.
@@ -940,7 +946,7 @@ export async function transcribeAudio(
   if (!res.ok || !json) {
     handleAuthFailure("/api/ai/transcribe", res.status, json?.code ?? -1);
     throw new ApiError(
-      json?.message ?? `Transcription failed (${res.status})`,
+      json?.message ?? aiGatewayFailureMessage("Voice transcription", res.status, `Transcription failed (${res.status})`),
       json?.code ?? -1,
       res.status,
     );
@@ -1153,7 +1159,7 @@ export async function sommelierIdentifyImage(file: Blob, filename = "label.jpg")
   if (!res.ok || !json) {
     handleAuthFailure("/api/ai/sommelier/identify-image", res.status, json?.code ?? -1);
     throw new ApiError(
-      json?.message ?? `Label recognition failed (${res.status})`,
+      json?.message ?? aiGatewayFailureMessage("Label recognition", res.status, `Label recognition failed (${res.status})`),
       json?.code ?? -1,
       res.status,
     );
@@ -1221,10 +1227,10 @@ export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Pr
 
   if (!res.ok || !json) {
     handleAuthFailure("/api/orders/receives/scan", res.status, json?.code ?? -1);
-    const message = json?.message
-      ?? (res.status === 502 || res.status === 503 || res.status === 504
-        ? "Invoice scanning is temporarily unavailable. Try again shortly or open Odoo Purchases."
-        : `Invoice scan failed (${res.status})`);
+    const message = json?.message ?? (
+      aiGatewayFailureMessage("Invoice scanning", res.status, `Invoice scan failed (${res.status})`)
+      + (res.status === 502 || res.status === 503 || res.status === 504 ? " Open Odoo Purchases if you need to continue now." : "")
+    );
     throw new ApiError(
       message,
       json?.code ?? -1,

@@ -1296,5 +1296,5 @@
 - `pos-ui npm run typecheck`、工作流脚本 `node --check`、`git diff --check` 通过；没有运行 Next/Docker build。工作流证据副本为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`。
 - 全站只读矩阵复核 `135 routes x 390/1440 = 270/270 PASS`，无页面错误或横向溢出；证据为 `docs/UAT_ALL_STATIC_PAGES_2026-10-21_CURRENT_RECHECK.json`。这仍是公网旧运行版本行为，不是最新源码的 post-deploy 证明。
 - 真实只读交互复核 `14/14 PASS`，运营安全只读 `3/3 PASS`；移动导航/焦点、商品搜索编辑、表单/CSV 预览、客户/历史销售、补货/报表筛选、现金关班门禁和采购状态筛选均通过。证据为 `docs/UAT_INTERACTION_2026-10-21_CURRENT.json`、`docs/UAT_OPS_READONLY_2026-10-21_CURRENT.json`；无业务写入，POS session `00004` 保持 opened。
-- 发票 OCR 前端现在将非 JSON 的 `502/503/504` 映射为可操作的暂时不可用提示，避免把上游 HTML 网关页直接显示为 `Invoice scan failed (502)`；`pos-ui` typecheck 和目标 ESLint 通过。该修复尚未部署，真实 provider/网关问题仍需线上日志确认。
+- AI 多媒体前端现在将发票 OCR、语音转写和酒标识别的非 JSON `502/503/504` 映射为可操作的暂时不可用提示，避免把上游 HTML 网关页直接显示为技术错误；发票页额外提供 Odoo Purchases 继续处理入口。`pos-ui` typecheck 和目标 ESLint 通过。该修复尚未部署，真实 provider/网关问题仍需线上日志确认。
 - 当前 `HEAD/origin/main` 为 `435ec47`，但该提交只包含交接文档；后端路由改动仍在工作区，未推送，原因是 Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，无法满足 Java 21 远程门禁。不得把这些改动称为已部署。
