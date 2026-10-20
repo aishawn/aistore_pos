@@ -8,6 +8,7 @@
 - 连续选择图片时使用请求版本保护，旧 OCR 响应不会覆盖当前图片；旧请求的 loading/error 状态也不会污染新选择。
 - 本地 `npm run typecheck`、目标 ESLint、发票 OCR/价格建议/盘点 UAT `node --check` 和 `git diff --check` 通过；按约束未运行 Next/Docker build。
 - 改动尚未进入 Dokploy 镜像。部署后需重跑发票 OCR mock/线上预览、价格建议、盘点只读和全站矩阵，并核对运行 SHA。
+- 盘点搜索结果的 `option` 现在支持键盘 Enter/Space 添加，且保持重复、不可盘商品和数量上限保护；相关只读 UAT 脚本语法检查通过。
 
 ### 2026-10-20 AI Assistant 问法回归与确定性路由（最新）
 

@@ -245,7 +245,21 @@ export default function OdooStocktakePage() {
                   {products.length === 0 ? (
                     <p role="status" className="px-4 py-6 text-center text-sm text-[var(--oh-muted)]">No matching products.</p>
                   ) : products.map((product) => (
-                    <div key={product.id} role="option" aria-selected={countLines.some((line) => line.id === product.id)} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div
+                      key={product.id}
+                      role="option"
+                      tabIndex={product.eligible && !countLines.some((line) => line.id === product.id) ? 0 : -1}
+                      aria-selected={countLines.some((line) => line.id === product.id)}
+                      aria-disabled={!product.eligible || countLines.some((line) => line.id === product.id) || countLines.length >= MAX_COUNT_LINES}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget || !product.eligible || countLines.some((line) => line.id === product.id) || countLines.length >= MAX_COUNT_LINES) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          addProduct(product);
+                        }
+                      }}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]"
+                    >
                       <div className="min-w-0">
                         <p className="break-words text-sm font-medium text-[var(--oh-text)]">{product.name}</p>
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{product.sku || product.barcode || product.uom} · On hand {quantity(product.expectedQty)} {product.uom}</p>
