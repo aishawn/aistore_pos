@@ -53,9 +53,28 @@ try {
   const result = await response.json().catch(() => ({}));
   const data = result.data ?? {};
   if (result.code === 0) {
-    const line = data.lines?.[0] ?? {};
+    const lines = Array.isArray(data.lines) ? data.lines : [];
+    const line = lines[0] ?? {};
     record("provider OCR response", "PASS", `supplier=${Boolean(data.supplierName)} invoice=${data.invoiceNumber ?? ""} date=${data.invoiceDate ?? ""} lines=${data.lines?.length ?? 0} total=${data.totalPayable ?? ""}`);
-    record("required invoice fields", data.supplierName && data.invoiceNumber && data.invoiceDate && data.lines?.length && data.totalPayable ? "PASS" : "FAIL", `supplier=${data.supplierName ?? ""} invoice=${data.invoiceNumber ?? ""} date=${data.invoiceDate ?? ""} line=${line.description ?? ""}`);
+    const headerCorrect = data.supplierName === "Harbour Wine Co"
+      && data.invoiceNumber === "HW-2026-1042"
+      && data.invoiceDate === "2026-10-19";
+    record("invoice supplier, number, and date accuracy", headerCorrect ? "PASS" : "FAIL",
+      `supplier=${data.supplierName ?? ""}; invoice=${data.invoiceNumber ?? ""}; date=${data.invoiceDate ?? ""}`);
+
+    const closeAmount = (actual, expected) => Math.abs(Number(actual) - expected) < 0.01;
+    const shiraz = lines.find((item) => /Harbour Shiraz 2024/i.test(item.description ?? ""));
+    const sauvignon = lines.find((item) => /Coastal Sauvignon Blanc 2025/i.test(item.description ?? ""));
+    const lineItemsCorrect = lines.length === 2
+      && shiraz && closeAmount(shiraz.qtyCases, 12) && closeAmount(shiraz.unitPrice, 18)
+      && closeAmount(shiraz.lineTotal, 216)
+      && sauvignon && closeAmount(sauvignon.qtyCases, 6) && closeAmount(sauvignon.unitPrice, 22)
+      && closeAmount(sauvignon.lineTotal, 132);
+    const totalsCorrect = closeAmount(data.gstIncluded, 34.8) && closeAmount(data.totalPayable, 382.8);
+    record("invoice line item accuracy", lineItemsCorrect ? "PASS" : "FAIL",
+      `lines=${JSON.stringify(lines.map(({ description, qtyCases, unitPrice, lineTotal }) => ({ description, qtyCases, unitPrice, lineTotal })))}`);
+    record("GST and payable total accuracy", totalsCorrect ? "PASS" : "FAIL",
+      `gst=${data.gstIncluded ?? "missing"}; total=${data.totalPayable ?? "missing"}`);
   } else {
     record("provider OCR response", result.code === 50212 ? "INFO" : "FAIL", `code=${result.code ?? ""} message=${String(result.message ?? "").slice(0, 160)}`);
   }
@@ -69,7 +88,10 @@ try {
   await browser.close();
 }
 
-const outputPath = path.join(root, "docs", `UAT_INVOICE_OCR_PREVIEW_ONLINE_${sourceCommit.toUpperCase()}.json`);
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", `UAT_INVOICE_OCR_PREVIEW_ONLINE_${sourceCommit.toUpperCase()}.json`);
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify(evidence, null, 2));
 if (evidence.status === "FAIL") process.exitCode = 1;
