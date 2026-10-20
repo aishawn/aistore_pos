@@ -93,13 +93,13 @@ public class Nl2SqlGenerateNode implements NodeAction {
                 quotaService.acquire(outletId, 0, AiReportQuotaService.estimateTokens(system, user, raw));
             }
         } catch (SqlGuardException e) {
-            out.put("sql_error", e.getMessage());
+            out.put("sql_error", "SQL_GUARD_REJECTED");
             out.put("sql_raw", "");
             out.put("sql", "");
             out.put("sql_params", List.of());
             return out;
         } catch (Exception e) {
-            log.warn("NL2SQL generate failed: {}", e.getMessage());
+            log.warn("NL2SQL generate failed type={}", e.getClass().getSimpleName());
             out.put("sql_error", "NL2SQL_FAILED");
             out.put("sql_raw", "");
             out.put("sql", "");
@@ -120,10 +120,11 @@ public class Nl2SqlGenerateNode implements NodeAction {
             out.put("sql", bound.sql());
             out.put("sql_params", bound.params());
             out.put("sql_error", "");
-            log.info("NL2SQL generated sql={} params={}", bound.sql(), bound.params());
+            log.info("NL2SQL query accepted outletId={} paramsCount={}",
+                    tenant.requireOutletId(), bound.params().size());
             return out;
         } catch (SqlGuardException e) {
-            out.put("sql_error", "GUARD:" + e.getMessage());
+            out.put("sql_error", "SQL_GUARD_REJECTED");
             out.put("sql", "");
             out.put("sql_params", List.of());
             return out;

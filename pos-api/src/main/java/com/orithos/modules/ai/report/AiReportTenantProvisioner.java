@@ -58,7 +58,7 @@ public class AiReportTenantProvisioner {
                 }
             }
         } catch (Exception e) {
-            log.warn("Could not list outlets for AI report schemas: {}", e.getMessage());
+            log.warn("Could not list outlets for AI report schemas type={}", e.getClass().getSimpleName());
         }
         return ids;
     }
@@ -94,7 +94,7 @@ public class AiReportTenantProvisioner {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Could not provision AI report schema for outlet " + outletId
-                    + ": " + e.getMessage(), e);
+                    + " type=" + e.getClass().getSimpleName());
         }
     }
 

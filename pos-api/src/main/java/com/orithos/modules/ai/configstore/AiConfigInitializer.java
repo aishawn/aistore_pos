@@ -54,8 +54,8 @@ public class AiConfigInitializer implements ApplicationRunner {
             AiReportIntentSeeder.ensure(intentMapper, slotMapper, slotValueMapper, promptMapper);
             configService.reload();
         } catch (DataAccessException e) {
-            System.out.println("[AiConfigInitializer] Skipped (run migration_ai_intent.sql first): "
-                    + e.getMessage());
+            System.out.println("[AiConfigInitializer] Skipped (run migration_ai_intent.sql first), type="
+                    + e.getClass().getSimpleName());
         }
     }
 

@@ -174,7 +174,7 @@ public class SommelierService {
                 json = objectMapper.writeValueAsString(request.profile());
             }
         } catch (Exception e) {
-            log.debug("Could not serialize sommelier profile: {}", e.getMessage());
+            log.debug("Could not serialize sommelier profile type={}", e.getClass().getSimpleName());
         }
         mapper.insertFeedback(tenant.requireOutletId(), tenant.userId(), request.productId(), reaction, json);
     }

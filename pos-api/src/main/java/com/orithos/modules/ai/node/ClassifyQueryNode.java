@@ -57,10 +57,10 @@ public class ClassifyQueryNode implements NodeAction {
         SanitizedIntent result = sanitizeService.sanitize(raw);
         String intent = ReportAdhocRouter.maybeOverride(question, result.intent());
         if (intent != null && !intent.equals(result.intent())) {
-            log.info("Forced intent {} → {} for NL2SQL: {}", result.intent(), intent, question);
+            log.info("Forced intent {} -> {} for NL2SQL", result.intent(), intent);
         }
 
-        log.debug("Classified intent={} slots={}", intent, result.slots());
+        log.debug("Classified intent={}", intent);
 
         Map<String, Object> out = new HashMap<>();
         out.put("intent", intent);
@@ -86,7 +86,7 @@ public class ClassifyQueryNode implements NodeAction {
                 return parsed;
             }
         } catch (Exception e) {
-            log.warn("Intent classify call failed: {}", e.getMessage());
+            log.warn("Intent classify call failed type={}", e.getClass().getSimpleName());
             throw e;
         }
 
@@ -114,7 +114,7 @@ public class ClassifyQueryNode implements NodeAction {
                 );
             }
         } catch (Exception e) {
-            log.warn("Structured intent parse failed: {}", e.getMessage());
+            log.warn("Structured intent parse failed type={}", e.getClass().getSimpleName());
         }
 
         return new RawIntent("unknown", "model returned empty intent",

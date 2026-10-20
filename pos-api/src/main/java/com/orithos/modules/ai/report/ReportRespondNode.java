@@ -110,7 +110,8 @@ public class ReportRespondNode implements NodeAction {
     }
 
     private String messageForError(String error) {
-        if (error.startsWith("GUARD:") || error.startsWith("NL2SQL_")) {
+        if (error.startsWith("GUARD:") || error.startsWith("NL2SQL_")
+                || "SQL_GUARD_REJECTED".equals(error)) {
             return "That question cannot be queried (security check failed).";
         }
         return switch (error) {

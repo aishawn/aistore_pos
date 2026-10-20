@@ -29,7 +29,7 @@ public class SqlGuardNode implements NodeAction {
             sqlGuard.validate(sql, ReportGraphState.tenant(state), params);
             return Map.of();
         } catch (SqlGuardException e) {
-            return Map.of("sql_error", "GUARD:" + e.getMessage());
+            return Map.of("sql_error", "SQL_GUARD_REJECTED");
         }
     }
 }

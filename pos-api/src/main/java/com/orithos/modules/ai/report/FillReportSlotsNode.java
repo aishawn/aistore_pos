@@ -62,7 +62,7 @@ public class FillReportSlotsNode implements NodeAction {
             try {
                 quotaService.acquire(outletId, 1, AiReportQuotaService.estimateTokens(question));
             } catch (SqlGuardException e) {
-                out.put("sql_error", e.getMessage());
+                out.put("sql_error", "QUOTA_EXCEEDED");
             }
         }
         return out;

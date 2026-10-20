@@ -66,7 +66,7 @@ public class OdooWineCatalogClient {
             }
             return out;
         } catch (Exception e) {
-            log.warn("Odoo wine catalog unavailable: {}", e.getMessage());
+            log.warn("Odoo wine catalog unavailable type={}", e.getClass().getSimpleName());
             return List.of();
         }
     }

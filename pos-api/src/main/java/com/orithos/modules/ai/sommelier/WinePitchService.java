@@ -39,7 +39,7 @@ public class WinePitchService {
             if (raw == null || raw.isBlank()) return templated;
             return raw.replace('"', ' ').replace('\n', ' ').trim();
         } catch (Exception e) {
-            log.debug("Pitch LLM fallback: {}", e.getMessage());
+            log.debug("Pitch LLM fallback type={}", e.getClass().getSimpleName());
             return templated;
         }
     }
@@ -61,7 +61,7 @@ public class WinePitchService {
             if (raw == null || raw.isBlank()) return fallback;
             return raw.trim();
         } catch (Exception e) {
-            log.debug("Ask LLM fallback: {}", e.getMessage());
+            log.debug("Ask LLM fallback type={}", e.getClass().getSimpleName());
             return fallback;
         }
     }

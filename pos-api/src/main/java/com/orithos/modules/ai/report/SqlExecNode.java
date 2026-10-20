@@ -57,16 +57,18 @@ public class SqlExecNode implements NodeAction {
             return result(rows);
         } catch (Exception e) {
             if (!properties.isFallbackToPrimary()) {
-                log.warn("AI report tenant RO query failed outletId={}: {}", outletId, e.getMessage());
-                return errorResult("EXEC:" + e.getMessage());
+                log.warn("AI report tenant RO query failed outletId={} type={}", outletId,
+                        e.getClass().getSimpleName());
+                return errorResult("EXEC_QUERY_FAILED");
             }
             try {
-                log.warn("AI report RO query failed, falling back to primary DS: {}", e.getMessage());
+                log.warn("AI report RO query failed, falling back to primary DS type={}",
+                        e.getClass().getSimpleName());
                 List<Map<String, Object>> rows = query(primaryJdbc, sql, args);
                 return result(rows);
             } catch (Exception e2) {
-                log.warn("AI report primary fallback failed: {}", e2.getMessage());
-                return errorResult("EXEC:" + e2.getMessage());
+                log.warn("AI report primary fallback failed type={}", e2.getClass().getSimpleName());
+                return errorResult("EXEC_QUERY_FAILED");
             }
         }
     }

@@ -46,10 +46,10 @@ public class AiReportSnapshotService {
             mapper.insert(row);
             return row.getId();
         } catch (JsonProcessingException | DataAccessException e) {
-            log.warn("AI report snapshot save skipped: {}", e.getMessage());
+            log.warn("AI report snapshot save skipped type={}", e.getClass().getSimpleName());
             return null;
         } catch (Exception e) {
-            log.warn("AI report snapshot save skipped: {}", e.getMessage());
+            log.warn("AI report snapshot save skipped type={}", e.getClass().getSimpleName());
             return null;
         }
     }

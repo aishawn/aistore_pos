@@ -69,7 +69,8 @@ public class AiReportQuotaService {
             }
             return n == null ? delta : n;
         } catch (Exception e) {
-            log.warn("AI report quota Redis unavailable, using process memory: {}", e.getMessage());
+            log.warn("AI report quota Redis unavailable, using process memory type={}",
+                    e.getClass().getSimpleName());
             return memory.computeIfAbsent(key, k -> new AtomicLong()).addAndGet(delta);
         }
     }

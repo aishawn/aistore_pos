@@ -47,6 +47,13 @@ class ReportRespondNodeTest {
                 "That report is too large to summarize safely. Add a product filter or narrow the date range.");
     }
 
+    @Test
+    void internalQueryFailureCodesNeverReachTheEmployee() {
+        assertError("SQL_GUARD_REJECTED", "That question cannot be queried (security check failed).");
+        assertError("EXEC_QUERY_FAILED", "The query failed. Please try again.");
+        assertError("QUOTA_EXCEEDED", "This store has reached its hourly report quota. Try again later.");
+    }
+
     private void assertError(String code, String expected) {
         OverAllState state = state(code, List.of());
 
