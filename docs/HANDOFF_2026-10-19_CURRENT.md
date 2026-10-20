@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 管理列表 UAT 断言修正（当前工作区）
+
+- `scripts/pilot-admin-list-batch-uat.mjs` 已按页面真实 loading 状态等待 Mail Log、Trashed Items、Platform Stores 完成读取，并在清空筛选后再次等待。
+- Platform Stores 的 `Create store` 只在未筛选空状态显示；脚本现在在输入无匹配搜索前检查创建入口，再检查筛选空状态的清空入口，避免把正确产品状态误报为失败。
+- 公网只读复测：4 路由 × 390/1440，共 `8/8 PASS`；无业务写入。证据：`docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json`（本次运行时间 `2026-10-20T03:05:24.020Z`）。
+- 本次只修正测试等待与断言，没有改变产品代码。Dokploy #38 的 `AiProviderConfig` 错误仍应按旧快照/错误 Compose 分支处理：当前 `main` 已跟踪该类且两个控制器都有显式 import；需在控制台核对分支为 `main` 后部署并回读构建日志、运行 SHA 和健康状态。
+- 本批次提交 `d8ed163` 已推送到 `origin/main`；触发 Compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，未启动构建，故不能宣称该批次已上线。
+
 ## 2026-10-20 AI、报表与基础交互回归补充
 
 - 现网只读/fixture 回归通过：AI 管理员保护 `15/15`、AI 功能 `14/14`、设置移动/桌面检查通过、订单页 `16/16`、POS 对话框 `2/2`、Odoo stocktake 只读 `10/10`、报表读取通过、Overview 竞态通过、Legacy Retry `5/5`；业务写入均为 `0` 或由 fixture 拦截。
