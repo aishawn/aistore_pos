@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 AI 麦克风策略回归补充
+
+- 并行提交 `caccb74` 将前端 `Permissions-Policy` 从完全禁用麦克风改为仅允许当前 origin：`camera=(), microphone=(self), geolocation=()`。
+- `scripts/pilot-ai-ui-uat.mjs` 现在在检测到新 Hold to speak 按钮时，同时断言响应头包含 `microphone=(self)`，避免 UI 能力与浏览器安全策略不一致。
+- 脚本 `node --check`、`git diff --check` 通过；公网登录当前失败，尚未形成新的线上 AI 证据。
+
 ## 2026-10-20 Dokploy 分支阻断排查文档
 
 - 远端当前只有 `main` 分支；Dokploy 控制台页面可访问但未认证，无法从本会话读取 Compose 服务的实际 Source/Git 配置。

@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 AI 麦克风策略回归补充
+
+- Hold to speak 的同源麦克风策略已在 `caccb74` 放开；AI UI UAT 增加 `Permissions-Policy` 响应头断言。
+- 本地脚本语法和 diff check 通过；线上登录失败，待 Dokploy 正常部署后复测真实响应头和语音状态。
+
 ### 2026-10-20 Dokploy 分支阻断排查
 
 - 仓库远端当前仅有 `main`；控制台未认证时只能返回登录壳，无法独立读取 Compose Source/Git 设置。

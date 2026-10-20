@@ -84,7 +84,8 @@ async function runViewport(viewport) {
   await page.getByText(/cheaper|No cheaper/i).first().waitFor({ timeout: 60000 });
 
   // Every signed-in store page, including overview, exposes the floating assistant.
-  await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
+  const overviewResponse = await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
+  const permissionsPolicy = overviewResponse?.headers()["permissions-policy"] ?? "";
   const aiConfigResponse = await context.request.get(`${base}/api/ai/config/client`);
   const aiConfigBody = await aiConfigResponse.json().catch(() => ({}));
   const storeAiEnabled = Boolean(aiConfigBody?.data?.enabled);
@@ -117,6 +118,9 @@ async function runViewport(viewport) {
   // idle state contract here; keyboard press/release is covered by the local
   // media fixture where getUserMedia is safely mocked.
   const voiceLabel = await voiceButton.getAttribute("aria-label");
+  if (/Hold to speak|Release to stop voice input/.test(voiceLabel ?? "") && !permissionsPolicy.includes("microphone=(self)")) {
+    throw new Error(`AI_VOICE_MICROPHONE_POLICY_MISSING_${viewport.width}`);
+  }
   if (/Hold to speak|Release to stop voice input/.test(voiceLabel ?? "") && await voiceButton.getAttribute("aria-pressed") !== "false") {
     throw new Error(`AI_VOICE_IDLE_STATE_UNNAMED_${viewport.width}`);
   }
