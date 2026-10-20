@@ -1144,3 +1144,10 @@
 - 公网旧镜像 AI metrics 只读回归 `9/9 PASS`（390/1440、匿名 `401`、无业务写入），证据 `docs/UAT_AI_METRICS_ONLINE_E8E6C69.json`。
 - `db8f02e` 的 compose webhook 于 2026-10-20 17:41（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，尚未启动构建。
 - Sommelier 只读 UAT 已将目录探针改为稳定的 `Shiraz` 查询并收紧非酒品词边界，提交 `dbfb55b`；该提交 webhook 于 2026-10-20 17:46（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`。
+
+## 2026-10-20 Dokploy #38 编译错误复核（当前 `main` `993b38a`）
+
+- #38 日志中的两个 `cannot find symbol: variable AiProviderConfig` 来自 `AiConfigController` 和 `SommelierController` 的旧源码快照；当前 Git 树已包含 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java`，且两个控制器均有显式 `import com.orithos.modules.ai.AiProviderConfig;`。修复提交 `ea8f1b6` 已是当前 `main` 的祖先。
+- 使用 JDK `21.0.12.1` 执行 `pos-api` 的 `mvn -B clean verify`：`238 tests, 0 failures, 0 errors`，构建成功。`SqlAst`/`SqlGuard` 的 JSqlParser `Parenthesis` deprecated 仅为 warning，不是失败原因。
+- 因此本次错误不能通过修改当前源码复现；优先检查 Dokploy Compose 的仓库、分支和构建上下文是否仍指向旧快照或错误分支。Source/Git 应为 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、Compose=`docker-compose.yml`。
+- 在 Dokploy 回读新的 frontend/backend 完整构建日志、健康状态、容器 SHA 和运行 commit 前，线上发布仍保持 **NO-GO**；不要把 HTTP 200 或 webhook 响应单独作为构建成功证据。
