@@ -59,6 +59,26 @@ must remain drafts until a staff member confirms the related action.
 | Read the invoice and match the products | `navigate` → `/invoices/scan` | Open catalogue matching and uncertain-line checking |
 | 识别这张发票 | `navigate` → `/invoices/scan` | Keep the result as a draft; never receive stock automatically |
 
+### Natural phrasing coverage
+
+The same workflows are commonly requested without the product terms used in the
+navigation labels. These variants must resolve deterministically before the LLM
+classifier is trusted:
+
+| User phrasing | Expected route | Safety check |
+|---|---|---|
+| What should we buy before the weekend? / 建议进货 | `/stock/replenishment` | Show draft lines and reasons; never create an order |
+| Show me the suggested purchase lines / 库存预警有哪些 | `/stock/replenishment` | Use current store stock and sales only |
+| Can you review prices? / What should I charge for Shiraz? | `/stock/capped-pricing` | Show a review list; never save a price automatically |
+| Suggest a wine for dinner / What wine goes with steak? | `/sommelier` | Match catalogue and current stock; no invented products |
+| Upload this supplier bill / 上传供应商发票 | `/invoices/scan` | Keep OCR and catalogue matches as a draft |
+
+The negative cases are equally important: `How much red wine sold this week?`,
+`What was our wine revenue yesterday?`, `How many invoices did we receive?`, and
+`How much did we pay suppliers this month?` are report questions. They must stay
+in reporting and must not navigate to a workflow page merely because they contain
+`wine`, `invoice`, or a supplier term.
+
 For each workflow, repeat the prompt with an empty catalogue, unavailable provider,
 missing store binding and restricted role. The response must identify the source
 problem and offer a next step instead of fabricating a recommendation.

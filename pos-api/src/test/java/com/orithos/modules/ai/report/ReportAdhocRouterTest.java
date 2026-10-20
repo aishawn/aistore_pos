@@ -28,4 +28,14 @@ class ReportAdhocRouterTest {
         assertEquals("report_qty",
                 ReportAdhocRouter.maybeOverride("上周五啤酒类卖了多少", "report_qty"));
     }
+
+    @Test
+    void invoiceAndSupplierSpendQuestionsStayInReporting() {
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How many invoices did we receive?"));
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How much did we pay suppliers this month?"));
+        assertEquals("report_adhoc",
+                ReportAdhocRouter.maybeOverride("How many invoices did we receive?", "navigate"));
+        assertEquals("report_adhoc",
+                ReportAdhocRouter.maybeOverride("供应商付款总额是多少", "navigate"));
+    }
 }

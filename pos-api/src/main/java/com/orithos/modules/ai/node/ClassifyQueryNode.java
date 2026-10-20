@@ -60,7 +60,11 @@ public class ClassifyQueryNode implements NodeAction {
         String intent = workflow == null
                 ? ReportAdhocRouter.maybeOverride(question, result.intent())
                 : workflow.intent();
-        String route = workflow == null ? nullToEmpty(result.route()) : workflow.route();
+        // A report override must discard any model-supplied workflow route. This
+        // keeps report wording from opening a page that the classifier guessed.
+        String route = workflow == null
+                ? (intent != null && intent.equals(result.intent()) ? nullToEmpty(result.route()) : "")
+                : workflow.route();
         if (intent != null && !intent.equals(result.intent())) {
             log.info("Forced intent {} -> {} for explicit workflow request", result.intent(), intent);
         }

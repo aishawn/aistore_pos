@@ -21,15 +21,22 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const cases = [
   { id: "replenishment-en", question: "What should I reorder today?", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-colloquial-en", question: "What should we buy before the weekend?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-zh", question: "给我今天的补货建议", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-alert-zh", question: "库存预警有哪些", intent: "navigate", route: "/stock/replenishment" },
   { id: "pricing-en", question: "Which prices should I review?", intent: "navigate", route: "/stock/capped-pricing" },
+  { id: "pricing-colloquial-en", question: "What should I charge for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-zh", question: "帮我看看哪些商品需要调价", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "recommendation-en", question: "Recommend a red wine under $30", intent: "navigate", route: "/sommelier" },
+  { id: "recommendation-colloquial-en", question: "What wine goes with steak?", intent: "navigate", route: "/sommelier" },
   { id: "recommendation-zh", question: "推荐适合聚会的白葡萄酒", intent: "navigate", route: "/sommelier" },
   { id: "invoice-en", question: "Scan this supplier invoice", intent: "navigate", route: "/invoices/scan" },
+  { id: "invoice-colloquial-en", question: "Upload this supplier bill", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-zh", question: "识别这张发票", intent: "navigate", route: "/invoices/scan" },
   { id: "store-question-en", question: "What did we sell most this week?", intent: "report_adhoc" },
   { id: "store-question-zh", question: "本周哪类商品卖得最好", intent: "report_adhoc" },
+  { id: "report-negative-wine", question: "How much red wine sold this week?", intent: "report_qty" },
+  { id: "report-negative-invoice", question: "How many invoices did we receive?", intent: "report_adhoc" },
 ];
 
 const browser = await chromium.launch({ headless: true });

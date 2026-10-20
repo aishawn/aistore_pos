@@ -11,19 +11,19 @@ import java.util.regex.Pattern;
 public final class WorkflowRouteRouter {
 
     private static final Pattern REPLENISHMENT = Pattern.compile(
-            "reorder|replenish|restock|running low|low stock|out of stock|补货|缺货|库存不足|该进货",
+            "reorder|replenish|restock|stock up|what should (?:i|we) buy|what to order|purchase suggestion|suggested purchase|running low|low stock|out of stock|stock alert|补货|缺货|库存不足|库存预警|该进货|建议进货|采购建议",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PRICING = Pattern.compile(
-            "which prices|price review|pricing|reprice|raise the price|lower the price|price suggestion|调价|定价|价格建议|改价",
+            "which prices|price review|pricing|reprice|raise the price|lower the price|price suggestion|pricing suggestion|pricing recommendations|what should (?:i|we) charge|review prices|调价|定价|价格建议|改价|价格调整",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SOMMELIER = Pattern.compile(
-            "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine|wine recommendation|food pairing|red wine|white wine|葡萄酒|红酒|白葡萄酒|配餐|推荐.*酒",
+            "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine|what wine|wine recommendation|food pairing|wine for (?:a|an)? ?(?:dinner|party|steak|occasion)|red wine|white wine|葡萄酒|红酒|白葡萄酒|配餐|推荐.*酒|适合.*酒",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE = Pattern.compile(
-            "scan(?: this)? supplier invoice|read(?: this)? invoice|invoice capture|invoice photo|发票|供应商单据|识别.*发票",
+            "scan(?: this)? supplier invoice|read(?: this)? invoice|upload(?: this)? invoice|capture(?: this)? invoice|invoice capture|invoice photo|supplier bill|supplier document|发票|供应商单据|供应商账单|识别.*发票|上传.*发票",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern REPORT_CONTEXT = Pattern.compile(
-            "sales|sold|revenue|takings|units|quantity|how much .*sold|销量|销售|卖了|营业额",
+            "sales|sold|revenue|takings|units|quantity|how much .*sold|how many .*invoice|invoice.*(?:received|total|count)|supplier.*(?:paid|payment|spend)|销量|销售|卖了|营业额|发票.*(?:多少|数量|总额)|供应商.*(?:付款|支出)",
             Pattern.CASE_INSENSITIVE);
 
     private WorkflowRouteRouter() {}
@@ -31,7 +31,9 @@ public final class WorkflowRouteRouter {
     public static Override maybeOverride(String question) {
         if (question == null || question.isBlank()) return null;
         String normalized = question.trim().toLowerCase(Locale.ROOT);
-        if (INVOICE.matcher(normalized).find()) return new Override("navigate", "/invoices/scan");
+        if (INVOICE.matcher(normalized).find() && !REPORT_CONTEXT.matcher(normalized).find()) {
+            return new Override("navigate", "/invoices/scan");
+        }
         if (REPLENISHMENT.matcher(normalized).find()) return new Override("navigate", "/stock/replenishment");
         if (PRICING.matcher(normalized).find()) return new Override("navigate", "/stock/capped-pricing");
         if (SOMMELIER.matcher(normalized).find() && !REPORT_CONTEXT.matcher(normalized).find()) {
