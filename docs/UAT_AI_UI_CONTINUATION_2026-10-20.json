@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-10-20T06:56:51.187Z",
+  "sourceCommit": "c795cd5a978c0a7219992bc0cc3b68567d0fa773",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 2,
+  "passed": 2,
+  "failed": 0,
+  "failures": [],
+  "results": [
+    {
+      "viewport": 390,
+      "recommendationCards": 3,
+      "identifyItems": 4,
+      "assistantAvailable": true,
+      "transcriptionAvailable": true,
+      "sendButton": true,
+      "fabSafeBottom": true,
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "recommendationCards": 3,
+      "identifyItems": 4,
+      "assistantAvailable": true,
+      "transcriptionAvailable": true,
+      "sendButton": true,
+      "fabSafeBottom": true,
+      "pageErrors": []
+    }
+  ]
+}
