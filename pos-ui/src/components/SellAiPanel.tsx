@@ -106,7 +106,7 @@ function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
   }
   if (error instanceof ApiError && error.code === 50210) {
     return mode === "voice"
-      ? "AI voice is temporarily unavailable. Check the AI configuration or type your request instead."
+      ? "No clear speech was detected. Speak for a moment, then pause briefly and try again."
       : "The AI assistant is temporarily unavailable. Check the AI configuration and try again.";
   }
   return mode === "voice"
@@ -156,6 +156,7 @@ export function SellAiPanel({
   const busyRef = useRef(false);
   const voiceStopRef = useRef<(() => void) | null>(null);
   const voiceSessionRef = useRef(0);
+  const voicePressedRef = useRef(false);
   const floatRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -400,9 +401,8 @@ export function SellAiPanel({
     };
   }, []);
 
-  function openPanel(opts?: { voice?: boolean }) {
+  function openPanel() {
     onExpandedChange(true);
-    if (opts?.voice) void startVoice();
   }
 
   function collapsePanel() {
@@ -417,6 +417,7 @@ export function SellAiPanel({
   }
 
   function stopVoiceCapture() {
+    voicePressedRef.current = false;
     voiceSessionRef.current += 1;
     voiceStopRef.current?.();
     voiceStopRef.current = null;
@@ -717,6 +718,11 @@ export function SellAiPanel({
         return;
       }
       voiceStopRef.current = () => recording.stop();
+      // A quick press can release before getUserMedia resolves. Stop as soon
+      // as the recorder is ready instead of leaving the microphone running.
+      if (!voicePressedRef.current) {
+        recording.stop();
+      }
 
       const { blob, mimeType, hadSpeech } = await recording.done;
       voiceStopRef.current = null;
@@ -738,7 +744,8 @@ export function SellAiPanel({
       if (session !== voiceSessionRef.current) return;
       setListening(false);
       setVoiceStatus(null);
-      await applyTranscript(result.text);
+      setInput(result.text);
+      requestAnimationFrame(() => inputRef.current?.focus());
     } catch (e) {
       if (session !== voiceSessionRef.current) return;
       setListening(false);
@@ -748,17 +755,18 @@ export function SellAiPanel({
     }
   }
 
-  function toggleVoice() {
+  function beginVoicePress() {
+    voicePressedRef.current = true;
     if (!expanded) {
-      openPanel({ voice: true });
-      return;
-    }
-    if (listening) {
-      voiceStopRef.current?.();
-      voiceStopRef.current = null;
-      return;
+      openPanel();
     }
     void startVoice();
+  }
+
+  function endVoicePress() {
+    voicePressedRef.current = false;
+    voiceStopRef.current?.();
+    voiceStopRef.current = null;
   }
 
   function runQuickAction(action: string) {
@@ -828,14 +836,22 @@ export function SellAiPanel({
       </button>
       <button
         type="button"
-        onClick={toggleVoice}
-        aria-label={listening ? "Stop voice input" : "Voice input"}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          beginVoicePress();
+        }}
+        onPointerUp={endVoicePress}
+        onPointerCancel={endVoicePress}
+        onPointerLeave={() => {
+          if (voicePressedRef.current) endVoicePress();
+        }}
+        aria-label={listening ? "Release to stop voice input" : "Hold to speak"}
         title={
           aiEnabled === false
             ? "Voice input is disabled for this store"
             : transcriptionAvailable === false
               ? "Voice transcription is unavailable for this store"
-              : undefined
+              : "Hold to speak, release to add text"
         }
         disabled={busy || transcriptionAvailable !== true}
         className={cn(
