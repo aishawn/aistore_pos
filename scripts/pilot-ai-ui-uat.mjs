@@ -78,6 +78,7 @@ async function runViewport(viewport) {
   // The application shell also contains sidebar navigation lists. Scope this
   // assertion to the identify results list instead of relying on DOM order.
   const identifyList = page.locator("ul.mt-5.space-y-2").last();
+  await identifyList.locator("li").first().waitFor({ state: "visible", timeout: 60000 });
   const identifyItems = await identifyList.locator("li").count();
   if (!identifyItems) throw new Error(`IDENTIFY_EMPTY_URL_${page.url()}_results=${identifyItems}_all=${await page.locator("ul li").count()}_${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 500)}`);
   const firstIdentifyResult = identifyList.locator("li button").first();

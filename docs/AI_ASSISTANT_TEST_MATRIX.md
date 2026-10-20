@@ -20,6 +20,11 @@ Natural-language coverage catalog: [`AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSI
 - Direct read-only Odoo stock diagnostic is **7 PASS / 1 INFO / 0 BLOCKED**. The service account can read the same company/product/stock fields and the single warehouse context; the remaining INFO is that the vendor binding has no explicit warehouse id. Evidence: `UAT_AI_STOCK_RPC_READONLY_2026-10-22_CURRENT.json`.
 - This isolates the remaining stock issue to the AI report runtime path or its deployed configuration, not the Odoo account or catalogue RPC. Dokploy runtime SHA is still unverified, so do not mark the fix as deployed.
 
+## UI follow-up (2026-10-23)
+
+- Natural-language workflow matrix remains **49/49 PASS** and capability gates are **PASS**.
+- AI UI initially exposed a timing-sensitive identify assertion at 1440px (`0` observed after a fixed 500 ms wait). A direct browser diagnostic returned 48 results; the UAT now waits for the first result item to become visible before counting. Recheck: **2/2 PASS** at 390px and 1440px. Evidence: `UAT_AI_UI_2026-10-23_RECHECK.json`.
+
 ## Current execution snapshot (2026-10-20)
 
 - Local backend: Java 21 `mvn -B clean verify` → **238 tests, 0 failures, 0 errors** (2026-10-20, including Chinese explicit-date parsing).
