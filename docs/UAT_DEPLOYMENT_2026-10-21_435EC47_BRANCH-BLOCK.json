@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-21",
+  "sourceCommit": "435ec476e5dd6ed1408b462eee88c7bf6b7718c5",
+  "target": "Dokploy compose deployment",
+  "scope": "deployment trigger only; no production data writes",
+  "request": {
+    "method": "POST",
+    "status": 301,
+    "message": "Branch Not Match"
+  },
+  "buildCreated": false,
+  "backendBuildLog": null,
+  "frontendBuildLog": null,
+  "runtimeSha": null,
+  "status": "BLOCKED",
+  "nextAction": "Verify Dokploy repository, branch, repository root and compose file before retrying."
+}
