@@ -63,20 +63,26 @@ async function runViewport(viewport) {
   await page.goto(`${base}/sommelier/identify`, { waitUntil: "networkidle", timeout: 60000 });
   await page.getByPlaceholder("Penfolds Bin 28 or barcode").waitFor({ state: "visible", timeout: 30000 });
   const search = page.getByPlaceholder("Penfolds Bin 28 or barcode");
-  await search.fill("DEMO");
+  // Use a catalogue term that is present in the current Odoo-backed demo
+  // fixture; generic DEMO labels are not guaranteed to be wine records.
+  await search.fill("Shiraz");
   const identifyResponse = page.waitForResponse(
     (response) => response.request().method() === "GET"
-      && response.url().includes("/api/ai/sommelier/identify?q=DEMO"),
+      && response.url().includes("/api/ai/sommelier/identify?q=Shiraz"),
     { timeout: 60000 },
   );
   await page.getByRole("button", { name: "Search", exact: true }).click();
   const identifyHttp = await identifyResponse;
   if (!identifyHttp.ok()) throw new Error(`IDENTIFY_HTTP_${identifyHttp.status()}`);
   await page.waitForTimeout(500);
-  const identifyList = page.locator("ul:has(li button)").last();
+  // The application shell also contains sidebar navigation lists. Scope this
+  // assertion to the identify results list instead of relying on DOM order.
+  const identifyList = page.locator("ul.mt-5.space-y-2").last();
   const identifyItems = await identifyList.locator("li").count();
   if (!identifyItems) throw new Error(`IDENTIFY_EMPTY_URL_${page.url()}_results=${identifyItems}_all=${await page.locator("ul li").count()}_${(await page.locator("body").innerText()).replace(/\s+/g, " ").slice(0, 500)}`);
-  await identifyList.locator("li button").first().click();
+  const firstIdentifyResult = identifyList.locator("li button").first();
+  await firstIdentifyResult.scrollIntoViewIfNeeded();
+  await firstIdentifyResult.click();
   await page.getByRole("heading", { name: "How to sell" }).waitFor({ timeout: 60000 });
   await page.getByRole("button", { name: "10s", exact: true }).click();
   await page.waitForTimeout(500);
