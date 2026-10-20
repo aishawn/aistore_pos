@@ -97,7 +97,10 @@ class AssistantFastPathRouterTest {
         for (String question : new String[]{
                 "Do we have any VB Cans left?",
                 "How many VB Cans are left?",
-                "VB Cans还剩多少？"
+                "VB Cans还剩多少？",
+                "Have we got VB Cans in the shop?",
+                "店里还有 VB Cans 吗？",
+                "帮我查下 VB Cans 还剩几件"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);

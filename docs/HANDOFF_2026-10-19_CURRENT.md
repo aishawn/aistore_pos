@@ -1180,3 +1180,12 @@
 - 当前批次补齐英文/中文常见销售额和剩余库存问法的确定性路由，并增加 Odoo 库存查询的绑定公司/仓库、空结果、RPC 错误只读测试；capability UAT 增加 AI 开关关闭和加载中断言。改动已通过同一 Java 21 门禁。
 - 本地未运行 Next/Docker build。工作区已有大量 UAT JSON/截图生成物，未纳入提交。
 - 当前发布仍为 **NO-GO**：Dokploy 必须先确认 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、compose=`docker-compose.yml`，然后回读 frontend/backend 完整构建日志、健康状态、运行 SHA；只有运行 SHA 与本批次提交一致时，才重跑并标记 post-deploy UAT。
+
+## 2026-10-20 库存问法与报表诊断批次（待部署）
+
+- `AssistantFastPathRouter` 增加 `Have we got ... in the shop?`、`店里还有 ... 吗`、`帮我查下 ... 还剩几件` 等库存问法，并保持商品名进入 `query` 槽位。
+- 报表只读 UAT 增加门店 Odoo 商品目录库存字段对照，用于区分 AI 报表链路不可用和 Odoo 库存字段本身不可读；请求仍为只读查询。
+- Sell AI 欢迎语改为与当前可用的销售/库存查询能力一致，不再暗示未接入的客户创建功能。
+- Java 21 `mvn -B clean verify`：`243 tests, 0 failures, 0 errors`；目标 ESLint、报表 UAT `node --check`、`git diff --check` 通过。
+- `pos-ui npm run typecheck` 当前被既有 `.next/dev/types/routes.d.ts` 语法损坏阻断（TS1109/TS1160）；未运行 Next/Docker build，需清理生成目录后再复核。
+- 尚未触发 Dokploy：此前 Compose webhook 的 `HTTP 301 Branch Not Match` 仍未确认修复。部署前先修正 Source/Git 分支绑定，部署后核对运行 SHA，再执行 AI report/UI、全站和设置回归。

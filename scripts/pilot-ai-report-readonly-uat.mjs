@@ -74,6 +74,32 @@ try {
   const odooSession = await getJson(await context.request.get(`${base}/api/odoo/session`), "ODOO_SESSION");
   if (!odooSession.user) throw new Error("ODOO_SESSION_NOT_AVAILABLE");
 
+  // Compare the AI stock report with the store-scoped catalogue's read-only
+  // stock fields to isolate an Odoo-wide access issue from the AI service path.
+  const catalogueResponse = await context.request.post(`${base}/api/odoo/records`, {
+    data: { type: "products", query: "VB Cans", limit: 5 },
+    headers: { Origin: base },
+  });
+  const catalogueBody = await catalogueResponse.json().catch(() => ({}));
+  const catalogueItems = Array.isArray(catalogueBody.items) ? catalogueBody.items : [];
+  const catalogueHasStockFields = catalogueItems.length > 0
+    && catalogueItems.every((item) => Number.isFinite(Number(item.qty_available))
+      && Number.isFinite(Number(item.free_qty)));
+  checks.push({
+    name: "store-scoped catalogue reads product stock fields",
+    status: catalogueResponse.ok() && catalogueHasStockFields
+      ? "PASS"
+      : [401, 403, 502, 503, 504].includes(catalogueResponse.status()) || catalogueItems.length === 0
+        ? "BLOCKED"
+        : "FAIL",
+    evidence: {
+      httpStatus: catalogueResponse.status(),
+      matchingProducts: catalogueItems.length,
+      stockFieldsReadable: catalogueHasStockFields,
+      source: "read-only /api/odoo/records; product names and quantities omitted",
+    },
+  });
+
   const dashboard24h = await getJson(
     await context.request.get(`${base}/api/odoo/reporting-dashboard?hours=24`), "DASHBOARD_24H",
   );

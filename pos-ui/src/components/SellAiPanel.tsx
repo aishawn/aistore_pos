@@ -83,7 +83,7 @@ interface ChatMessage {
 }
 
 const ENABLED_GREETING =
-  "Hi, I'm the Orithos AI assistant. Ask me to create customers, look up products, or check sales.";
+  "Hi, I'm the Orithos AI assistant. Ask about sales, or type a product name to check its current stock.";
 const DISABLED_GREETING =
   "AI chat is off for this store. The shortcuts below still open the right page.";
 

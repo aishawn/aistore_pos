@@ -62,9 +62,12 @@ public final class AssistantFastPathRouter {
                     + "^how many\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$|"
                     + "^do we have (?:any )?(.+?)\\s+(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
                     + "^how many\\s+(.+?)\\s+(?:are )?(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
+                    + "^have we got\\s+(?:any\\s+)?(.+?)(?:\\s+in (?:the )?(?:shop|store))?[?.!]*$|"
                     + "^(?:查一下|查询|查看)\\s*(.+?)(?:还有多少|有多少)?库存[？?。]*$|"
                     + "^(.+?)库存(?:还有多少|有多少)[？?。]*$|"
-                    + "^(.+?)(?:还剩多少|剩多少)(?:库存)?[？?。]*$",
+                    + "^(.+?)(?:还剩多少|剩多少)(?:库存)?[？?。]*$|"
+                    + "^(?:店里|我们店里|门店)还有\\s*(.+?)(?:\\s*(?:吗|没有|没了))?[？?。]*$|"
+                    + "^(?:帮我)?(?:查下|查一下|看看|看下)\\s*(.+?)\\s*(?:还剩几件|还剩多少|剩下多少|还有多少|库存)?[？?。]*$",
             Pattern.CASE_INSENSITIVE);
 
     private AssistantFastPathRouter() {}
@@ -188,7 +191,7 @@ public final class AssistantFastPathRouter {
             String query = cleanQuery(firstNonNull(
                     stockQuery.group(1), stockQuery.group(2), stockQuery.group(3), stockQuery.group(4),
                     stockQuery.group(5), stockQuery.group(6), stockQuery.group(7), stockQuery.group(8),
-                    stockQuery.group(9)));
+                    stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12)));
             if (query != null) {
                 return new Match(
                         "report_stock",
