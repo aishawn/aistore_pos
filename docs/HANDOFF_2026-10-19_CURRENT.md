@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Bulk/Capped Pricing 输入可访问性（`f07d251`）
+
+- Bulk Price Edit 移除 `label` 包裹交互式 switch 的结构；价格输入增加产品名和数量级别的稳定 `aria-label`。
+- Capped Pricing 当前价输入增加产品名 `aria-label`，不改变保存、校验或写入逻辑。
+- Post-deploy pricing `docs/UAT_PRICING_PAGES_ONLINE_READONLY_POST_F07D251.json`：`8/8 PASS`，`blockedWrites=0`。
+- 表格/表单专项 `docs/UAT_TABLE_A11Y_POST_F07D251.json`：`14/14 PASS`，`unnamedControls=0`，`unexpectedWrites=0`。
+- 本地 typecheck、目标 ESLint 和 diff check 通过；未运行 build。
+
 ## 2026-10-20 Price Suggestions 移动安全区与语义（`1181f30`）
 
 - Price Suggestions 页面移动端增加右侧 `safe-area-inset-right` 预留，避免固定 AI 助手覆盖首屏内容；桌面间距保持不变。

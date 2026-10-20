@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Bulk/Capped Pricing 输入可访问性（`f07d251`）
+
+- Bulk Price Edit switch 结构和价格输入名称已修复；Capped Pricing 当前价输入补齐产品名称。
+- 公网 pricing `8/8 PASS`，表格/表单 `14/14 PASS`，`unnamedControls=0`、`unexpectedWrites=0`；证据见对应 `POST_F07D251` 文件。
+
 ### 2026-10-20 Price Suggestions 移动安全区与语义（`1181f30`）
 
 - Price Suggestions 移动内容为固定 AI 助手预留右侧空间，解释按钮补齐展开语义。
