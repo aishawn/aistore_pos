@@ -1,5 +1,10 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 表单 Modal 防误关闭（待部署）
+
+- `pos-ui/src/components/admin/Modal.tsx` 新增 `closeOnOverlayClick`，默认关闭遮罩点击关闭；价格集、角色等编辑表单必须通过显式关闭按钮或 Escape 退出，避免误触遮罩丢失未保存输入。
+- 本地 `npm run typecheck`、目标 ESLint 和 `git diff --check` 通过；现有平台恢复 fixture `5/5 PASS`，但该新 Modal 行为尚未进入公网镜像，需部署后补充表单遮罩回归。
+
 ## 2026-10-20 测试基础设施校正与定价/库存回归（`816c13b`）
 
 - `scripts/pilot-price-suggestions-local-uat.mjs` 已改为检查实际生产入口 `pos-ui/app`，不再把历史重复树 `pos-ui/src/app` 当作生产路由证据。

@@ -10,11 +10,13 @@ export function Modal({
   onClose,
   children,
   footer,
+  closeOnOverlayClick = false,
 }: {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  closeOnOverlayClick?: boolean;
 }) {
   const titleId = useId();
   useDialogFocus(true, onClose);
@@ -22,7 +24,9 @@ export function Modal({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/40 p-4 font-sans"
-      onClick={onClose}
+      onClick={() => {
+        if (closeOnOverlayClick) onClose();
+      }}
     >
       <div
         role="dialog"
