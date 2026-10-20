@@ -1031,6 +1031,11 @@
 - 当前源码补齐 `卖得最好`、`best-performing` 等排名词的安全 `report_adhoc` 路由，并新增分类节点绕过 provider 的单测；Java 21 `mvn -B clean verify` 通过，`233 tests, 0 failures`，仅有既存 JSqlParser 弃用警告。
 - 本批次仍未运行本地 Next/Docker build；最新代码需与 Dokploy 分支绑定修复一起部署后，再重跑同一组 AI 工作流和报表脚本，确认运行 SHA 后才能判断线上失败是否消失。
 
+## 2026-10-20 全站只读矩阵复测
+
+- 公网全站矩阵完成 `134 路由 × 390/1440 = 268/268 PASS`；HTTP 全部 200，未报告页面级失败。证据文件：`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`（脚本沿用历史文件名）。
+- 该矩阵验证的是当前公网可访问性和响应稳定性，不包含最新提交运行 SHA 证明，也不替代业务写入、真实 AI provider、Odoo 隔离写入和硬件验收。
+
 ## 2026-10-20 AI 报表结果页列选择批次（待部署）
 
 - `AiReportResultPage` 的 Columns 控件已从禁用占位改为可访问列选择菜单；支持逐列隐藏/恢复，至少保留一列，表格合计、空结果列数和 CSV 导出均跟随当前可见列。菜单支持点击外部或 Escape 收起，结果搜索框补齐稳定的可访问名称。
