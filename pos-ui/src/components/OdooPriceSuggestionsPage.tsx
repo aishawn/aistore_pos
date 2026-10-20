@@ -188,7 +188,7 @@ export function OdooPriceSuggestionsPage() {
   }
 
   return (
-    <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7">
+    <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-5 sm:px-6 sm:py-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Pricing</p>
@@ -349,6 +349,8 @@ export function OdooPriceSuggestionsPage() {
                     <button
                       type="button"
                       onClick={() => setExpandedId((current) => (current === product.id ? null : product.id))}
+                      aria-expanded={expandedId === product.id}
+                      aria-controls={`price-suggestion-explanation-${product.id}`}
                       className="min-h-11 text-sm font-semibold text-[var(--oh-orange-dark)]"
                     >
                       {expandedId === product.id ? "Hide explanation" : "Explain suggestion"}
@@ -356,7 +358,7 @@ export function OdooPriceSuggestionsPage() {
                   </div>
                 </div>
                 {expandedId === product.id && (
-                  <p className="mt-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm leading-5 text-[var(--oh-text-secondary)]">
+                  <p id={`price-suggestion-explanation-${product.id}`} className="mt-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm leading-5 text-[var(--oh-text-secondary)]">
                     {product.reason}
                   </p>
                 )}
