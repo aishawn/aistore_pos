@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.orithos.common.BusinessException;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,7 +88,11 @@ public class OdooWineCatalogClient {
             return out;
         } catch (Exception e) {
             log.warn("Odoo wine catalog unavailable type={}", e.getClass().getSimpleName());
-            return List.of();
+            // Keep a genuine empty catalogue distinct from an unavailable source.
+            // Callers can render a retryable service state without exposing the
+            // provider URL, response body or credentials.
+            throw new BusinessException(50312,
+                    "Wine catalogue is temporarily unavailable. Try again in a moment.");
         }
     }
 

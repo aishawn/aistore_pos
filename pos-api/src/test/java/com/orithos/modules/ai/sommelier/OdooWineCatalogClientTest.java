@@ -2,15 +2,20 @@ package com.orithos.modules.ai.sommelier;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.common.BusinessException;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -81,5 +86,32 @@ class OdooWineCatalogClientTest {
         assertEquals(11L, scoped.contextFor(42L).get("warehouse"));
         when(vendors.findById(99L)).thenReturn(null);
         assertNull(scoped.contextFor(99L));
+    }
+
+    @Test
+    void rpcFailureReturnsSafeRetryableBusinessError() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/web/session/authenticate", exchange -> {
+            byte[] body = "upstream unavailable".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(502, body.length);
+            try (var output = exchange.getResponseBody()) {
+                output.write(body);
+            }
+        });
+        server.start();
+        try {
+            OdooWineCatalogClient failing = new OdooWineCatalogClient(
+                    objectMapper,
+                    "http://127.0.0.1:" + server.getAddress().getPort(),
+                    "aipos",
+                    "service",
+                    "secret");
+
+            BusinessException error = assertThrows(BusinessException.class, failing::listWines);
+            assertEquals(50312, error.getCode());
+            assertEquals("Wine catalogue is temporarily unavailable. Try again in a moment.", error.getMessage());
+        } finally {
+            server.stop(0);
+        }
     }
 }
