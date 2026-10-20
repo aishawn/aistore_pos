@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-19T20:41:26.749Z",
-  "sourceCommit": "c99f166eb272a8e996ed8f50c6d6a580fc2eb7cd",
+  "generatedAt": "2026-10-20T01:48:50.970Z",
+  "sourceCommit": "4a35df73d88b869b8aeaf5b827a99df364463970",
   "environment": "local-dev-fixtures",
-  "target": "http://demo.localhost:3035",
+  "target": "https://demo.orithos.com.au",
   "scope": "Vendor Connections responsive list; API requests intercepted; no business writes",
   "status": "PASS",
   "passed": 2,

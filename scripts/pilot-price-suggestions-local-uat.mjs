@@ -53,13 +53,13 @@ const writes = [];
 const bulkPriceQueries = [];
 const checks = [];
 const record = (name, ok, evidence = "") => checks.push({ name, status: ok ? "PASS" : "FAIL", evidence });
-const srcRoute = path.join(root, "pos-ui", "src", "app", "stock", "price-suggestions", "page.tsx");
-const srcStockHub = path.join(root, "pos-ui", "src", "app", "stock", "more", "page.tsx");
-record("production app route wrapper", fs.existsSync(srcRoute), srcRoute);
+const appRoute = path.join(root, "pos-ui", "app", "stock", "price-suggestions", "page.tsx");
+const appStockHub = path.join(root, "pos-ui", "app", "stock", "more", "page.tsx");
+record("production app route wrapper", fs.existsSync(appRoute), appRoute);
 record(
   "production stock hub links pricing",
-  fs.existsSync(srcStockHub) && fs.readFileSync(srcStockHub, "utf8").includes("/stock/price-suggestions"),
-  srcStockHub,
+  fs.existsSync(appStockHub) && fs.readFileSync(appStockHub, "utf8").includes("/stock/price-suggestions"),
+  appStockHub,
 );
 
 try {

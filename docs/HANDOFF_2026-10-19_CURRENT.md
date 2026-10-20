@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 测试基础设施校正与定价/库存回归
+
+- `scripts/pilot-price-suggestions-local-uat.mjs` 已改为检查实际生产入口 `pos-ui/app`，不再把历史重复树 `pos-ui/src/app` 当作生产路由证据。
+- 使用公网页面、浏览器 fixture 拦截 API 的只读回归通过：价格建议 `15/15 PASS`、Stock List/Capped Pricing/Bulk Price Edit `6/6 PASS`、Vendor Connections `2/2 PASS`；三项业务写入均为 `0`。证据分别写入 `docs/UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json`、`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json`、`docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-20.json`。
+- 发票扫描 mock 仍通过，覆盖能力探测重试、扫描失败重试、预览编辑和 Odoo 下一步链接，未产生业务写入。
+- 首次使用默认 `demo.localhost:3035` 的价格/库存/供应商 fixture 失败原因是本地 Next 服务未启动；切换到公网目标后重跑通过，不作为产品失败。
+- 以上是当前线上基线/fixture 证据，不能替代 `d34fa45` 的部署后验证；Dokploy webhook 仍返回 `301 Branch Not Match`。
+
 ## 2026-10-20 管理页共享移动安全区批次（`d34fa45`，待部署）
 
 - `AdminPageLayout` 统一为手机管理页预留右侧 `6rem + safe-area-inset-right`，覆盖订单、报表、设置、工具和平台列表等标准页面，避免固定 Orithos AI 助手遮挡首屏或操作内容；桌面端恢复原有右间距。

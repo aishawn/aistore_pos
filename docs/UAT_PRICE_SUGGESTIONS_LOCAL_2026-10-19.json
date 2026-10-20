@@ -1,25 +1,25 @@
 {
-  "generatedAt": "2026-10-19T10:48:08.935Z",
-  "sourceCommit": "1639c44c8284d3c99c78e8c4832765222a08b62b",
+  "generatedAt": "2026-10-20T01:47:51.960Z",
+  "sourceCommit": "4a35df73d88b869b8aeaf5b827a99df364463970",
   "environment": "local-dev-fixtures",
-  "target": "http://demo.localhost:3035",
+  "target": "https://demo.orithos.com.au",
   "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
   "status": "PASS",
   "checks": [
     {
       "name": "production app route wrapper",
       "status": "PASS",
-      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\src\\app\\stock\\price-suggestions\\page.tsx"
+      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\app\\stock\\price-suggestions\\page.tsx"
     },
     {
       "name": "production stock hub links pricing",
       "status": "PASS",
-      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\src\\app\\stock\\more\\page.tsx"
+      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\app\\stock\\more\\page.tsx"
     },
     {
       "name": "live pricing page is not cached",
       "status": "PASS",
-      "evidence": "no-cache, must-revalidate"
+      "evidence": "no-store, max-age=0"
     },
     {
       "name": "price suggestions page",
@@ -59,7 +59,7 @@
     {
       "name": "read-only CSV export",
       "status": "PASS",
-      "evidence": "orithos-price-suggestions-2026-10-19.csv ﻿\"Product\",\"SKU\",\"Status\",\"Cost (AUD)\",\"Current price (AUD)\",\"Suggested price (AUD)\",\"Current margin\",\"Suggested margin\",\"Sold units (28d)\",\"On hand\",\"Reason\"\r\n\"DEMO Shiraz\",\"DEMO-"
+      "evidence": "orithos-price-suggestions-2026-10-20.csv ﻿\"Product\",\"SKU\",\"Status\",\"Cost (AUD)\",\"Current price (AUD)\",\"Suggested price (AUD)\",\"Current margin\",\"Suggested margin\",\"Sold units (28d)\",\"On hand\",\"Reason\"\r\n\"DEMO Shiraz\",\"DEMO-"
     },
     {
       "name": "bulk edit pre-fills SKU",
@@ -69,7 +69,7 @@
     {
       "name": "bulk edit requests SKU query",
       "status": "PASS",
-      "evidence": "[\"DEMO-SHIRAZ\",\"DEMO-SHIRAZ\"]"
+      "evidence": "[\"DEMO-SHIRAZ\"]"
     },
     {
       "name": "ai fab on price page",
