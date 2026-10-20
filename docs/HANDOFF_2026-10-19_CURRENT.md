@@ -4,6 +4,7 @@
 
 - 当前公网基线通过：全站实际 `135` 路由 × `390/1440`，`270/270 PASS`；AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、AI UI `2/2`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`。
 - 本轮浏览器/API 探针均为只读，意外业务写入 `0`。证据文件均为 `docs/*_2026-10-21_CURRENT.json`。
+- AI natural-language workflow `49/49 PASS`、AI config admin guard `15/15 PASS`、availability `3/3 PASS`、surface/auth guard `11/11 PASS`；metrics 为 `9 PASS / 2 BLOCKED`，仅因缺少 platform-operator 跨店凭据未完成。
 - 这些结果没有 Dokploy 运行 SHA 证据，只能作为当前公网运行版本基线；不能证明 `c078550` 或其之前本地代码已部署。真实酒标/发票图片、麦克风、隔离环境销售/采购/收货/关班仍未验收。
 - `pilot-settings-mobile-uat.mjs` 已支持 `PILOT_UAT_OUTPUT_PATH`，设置专项本次写入独立文件，避免覆盖历史证据。
 

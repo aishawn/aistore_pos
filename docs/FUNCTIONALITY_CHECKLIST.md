@@ -43,6 +43,7 @@
 - 发票 OCR mock/线上脚本、价格建议、盘点脚本 `node --check`：通过；本批次未运行 Next/Docker build。
 - 公网只读基线：AI UI `2/2`、价格/库存 `8/8`、表格/表单 `14/14`、全站 `268/268`；意外业务写入 `0`。
 - 2026-10-21 当前公网只读复测：全站 `270/270`、AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`；意外业务写入 `0`。
+- AI natural-language workflow `49/49 PASS`、管理员配置保护 `15/15 PASS`、availability `3/3 PASS`、surface/auth guard `11/11 PASS`；metrics `9 PASS / 2 BLOCKED`，跨店 metrics 需要 platform-operator 凭据才能完成。
 - 本轮公网只读复测：AI UI `2/2`、未接入页面诚实边界 `18/18`、表格/表单 `16/16`、POS help/keyboard `2/2`；意外业务写入 `0`。
 - Sell 刷新竞态修复后：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check` 通过；未运行 Next/Docker build。
 

@@ -6,6 +6,7 @@
 
 - 全站静态页面扫描实际发现 `135` 个路由，390/1440 两个视口共 `270/270 PASS`，HTTP 全部 200，无页面错误或横向溢出。
 - AI features `14/14 PASS`、AI reports `14/14 PASS`、Sommelier `10/10 PASS`、AI UI `2/2 PASS`、设置 `28/28 PASS`、价格/库存 `8/8 PASS`、表格/表单 `14/14 PASS`；所有专项均为只读，意外业务写入 `0`。
+- AI natural-language workflow `49/49 PASS`、AI config admin guard `15/15 PASS`、AI availability `3/3 PASS`、AI surface/auth guard `11/11 PASS`；AI metrics `9 PASS / 2 BLOCKED`，阻断项仅是未提供 platform-operator 跨店凭据，不是产品失败。
 - 证据文件：`UAT_ALL_STATIC_PAGES_2026-10-21_CURRENT.json`、`UAT_AI_FEATURES_VERIFY_2026-10-21_CURRENT.json`、`UAT_AI_REPORTS_READONLY_ONLINE_2026-10-21_CURRENT.json`、`UAT_SOMMELIER_READONLY_ONLINE_2026-10-21_CURRENT.json`、`UAT_AI_UI_2026-10-21_CURRENT.json`、`UAT_SETTINGS_MOBILE_2026-10-21_CURRENT.json`、`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-21_CURRENT.json`、`UAT_TABLE_A11Y_ONLINE_2026-10-21_CURRENT.json`。
 - 这些是当前公网运行版本的只读基线，尚未从 Dokploy 回读运行 SHA，不能证明 `c078550` 或更早本地改动已经上线；真实 DashScope 图片质量、真实麦克风、生产写入流程仍未验收。
 
