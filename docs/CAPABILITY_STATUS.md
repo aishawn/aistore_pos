@@ -2,6 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 Supplier Import 可访问性与移动安全区（`ba7a947`）
+
+- Supplier Import 补齐 Supplier select、产品代码 textarea、错误和结果状态语义，并预留移动端 AI 助手右侧空间。
+- 部署后全站 `268/268 PASS`，表格/表单 `14/14 PASS`，`unexpectedWrites=0`；部署切换窗口的短暂登录 404 在等待后恢复。
+
 ### 2026-10-20 Bulk/Capped Pricing 输入可访问性（`f07d251`）
 
 - Bulk Price Edit switch 结构和价格输入名称已修复；Capped Pricing 当前价输入补齐产品名称。

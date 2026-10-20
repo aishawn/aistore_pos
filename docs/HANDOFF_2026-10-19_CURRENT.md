@@ -1,5 +1,13 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Supplier Import 可访问性与移动安全区（`ba7a947`）
+
+- Supplier Import 的真实 Supplier 标题现在绑定到 select；产品代码 textarea 增加稳定 `aria-label`；错误使用 `role=alert`，导入结果使用 `role=status`/`aria-live`。
+- 移动内容区预留固定 AI 助手右侧安全区，不改变导入接口或提交条件。
+- Post-deploy 根 `app` 全站矩阵 `docs/UAT_ALL_STATIC_PAGES_POST_BA7A947_RETRY.json`：`134 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出。
+- 表格/表单专项 `docs/UAT_TABLE_A11Y_POST_BA7A947_RETRY.json`：`14/14 PASS`，`unexpectedWrites=0`。
+- 部署切换初期两个脚本曾收到登录 HTTP 404；等待服务就绪后串行重跑通过，已作为部署时序记录，不作为功能失败。
+
 ## 2026-10-20 Bulk/Capped Pricing 输入可访问性（`f07d251`）
 
 - Bulk Price Edit 移除 `label` 包裹交互式 switch 的结构；价格输入增加产品名和数量级别的稳定 `aria-label`。
