@@ -1037,6 +1037,7 @@
 - 本地 `pos-ui` `npm run typecheck`、目标 ESLint 和 `git diff --check` 通过；未运行 Next build。
 - 该 UI 改动尚未进入可核验 Dokploy 镜像；部署后需在 AI 报表详情页验证菜单键盘操作、移动端不溢出、列切换、合计和导出结果，并重跑 AI UI/报表只读专项。
 - 2026-10-20 18:53（UTC+8）以 `after=641eaee` 触发 Compose webhook，仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务；该 UI 批次线上验证保持待部署。
+- 2026-10-20 18:59（UTC+8）以最新 `after=2d3641f` 再次触发，仍返回 `HTTP 301 {"message":"Branch Not Match"}`；没有创建构建任务，线上验证继续等待 Dokploy 修正分支绑定。
 
 ## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
 
