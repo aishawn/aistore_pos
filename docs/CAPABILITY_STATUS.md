@@ -969,3 +969,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Invoice Vision、Wine Label Vision、ASR 和 AI report audit 均移除 provider body、request id、SQL 和数据库异常 message 的日志/用户响应泄露路径。
 - Sell AI 前后端均对 intent、route、action 和 entity operation 做 allowlist/fail-closed 处理；未知响应不会触发导航或业务动作。
 - 新增 Java 21 目标单测；本地只完成源码审查、前端 typecheck/ESLint 和脚本语法检查，未运行 Maven/Next/Docker build。线上 provider failure、真实麦克风交互和运行 SHA 仍待部署验证。
+
+### 2026-10-20 Sell register 刷新竞态批次（工作区，待部署）
+
+- `OdooRegisterPage` 现在用 request revision 忽略过期 session/bootstrap 响应；刷新不会把员工刚选的 register 改回默认值，也不会让旧请求错误地结束新请求的 loading 状态。
+- 无 Odoo 会话时会清理 register/payment 状态，避免注销后残留旧配置；销售、报价、付款和写入边界未改变。
+- `npm run typecheck`、目标 ESLint、`git diff --check` 通过；POS help/keyboard `2/2 PASS`，同轮 AI UI `2/2`、未接入边界 `18/18`、表格/表单 `16/16`，无意外业务写入。
+- 尚未取得本轮源码对应的 Dokploy runtime SHA；部署并回读构建日志、健康状态、容器 SHA 后，才能将 Sell 刷新行为标为 post-deploy。整体发布继续 **NO-GO**。

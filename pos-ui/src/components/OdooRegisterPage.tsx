@@ -160,48 +160,66 @@ export function OdooRegisterPage() {
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
   const quoteRevision = useRef(0);
+  const loadRevision = useRef(0);
   const searchRevision = useRef(0);
   const customerSearchRevision = useRef(0);
   const barcodeLookupBusy = useRef(false);
   const restoredDraftKey = useRef<string | null>(null);
   const registerSelectRef = useRef<HTMLSelectElement | null>(null);
+  const selectedConfigIdRef = useRef<number | null>(null);
+  const selectedPaymentMethodIdRef = useRef<number | null>(null);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
 
   const loadPos = useCallback(async (initial = false) => {
+    const revision = ++loadRevision.current;
     if (initial) setLoading(true);
     else setRefreshing(true);
     setError(null);
     try {
       const user = await getOdooSession();
+      if (revision !== loadRevision.current) return;
       setConnected(Boolean(user));
       setOdooUserId(user?.id ?? null);
       if (!user) {
         setBootstrap(null);
+        selectedConfigIdRef.current = null;
+        selectedPaymentMethodIdRef.current = null;
+        setConfigId(null);
+        setPaymentMethodId(null);
         return;
       }
       const data = await getOdooPosBootstrap();
+      if (revision !== loadRevision.current) return;
       setBootstrap(data);
       let rememberedId: number | null = null;
       try {
         const stored = Number(localStorage.getItem(`${REGISTER_SELECTION_KEY}:${user.id}`));
         if (Number.isSafeInteger(stored) && stored > 0) rememberedId = stored;
       } catch { /* Register selection remains available for this session. */ }
-      const active = data.configs.find((item) => item.id === rememberedId)
+      const active = data.configs.find((item) => item.id === selectedConfigIdRef.current)
+        ?? data.configs.find((item) => item.id === rememberedId)
         ?? data.configs.find((item) => item.session)
         ?? data.configs[0];
+      selectedConfigIdRef.current = active?.id ?? null;
       setConfigId(active?.id ?? null);
       if (active) {
         try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${user.id}`, String(active.id)); } catch { /* Register selection remains available for this session. */ }
       }
-      const selected = active?.paymentMethods[0]?.id ?? null;
+      const selected = active?.paymentMethods.some((method) => method.id === selectedPaymentMethodIdRef.current)
+        ? selectedPaymentMethodIdRef.current
+        : active?.paymentMethods[0]?.id ?? null;
+      selectedPaymentMethodIdRef.current = selected;
       setPaymentMethodId(selected);
       if (data.message) setError(data.message);
     } catch (cause) {
+      if (revision !== loadRevision.current) return;
       if (initial) setConnected(null);
       setError(cause instanceof Error ? cause.message : "Could not load the Odoo register.");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (revision === loadRevision.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -269,7 +287,10 @@ export function OdooRegisterPage() {
       } : null);
       setCashTendered(parsed.cashTendered);
       const config = bootstrap?.configs.find((item) => item.id === configId);
-      if (parsed.paymentMethodId && config?.paymentMethods.some((method) => method.id === parsed.paymentMethodId)) setPaymentMethodId(parsed.paymentMethodId);
+      if (parsed.paymentMethodId && config?.paymentMethods.some((method) => method.id === parsed.paymentMethodId)) {
+        selectedPaymentMethodIdRef.current = parsed.paymentMethodId;
+        setPaymentMethodId(parsed.paymentMethodId);
+      }
       setSaleView("sell");
       setDraftNotice("Draft restored from this device. Odoo will recheck stock and tax before finalising.");
     } catch {
@@ -642,6 +663,7 @@ export function OdooRegisterPage() {
     setCustomerQuery("");
     setCashTendered("");
     if (sale.paymentMethodId && paymentMethods.some((method) => method.id === sale.paymentMethodId)) {
+      selectedPaymentMethodIdRef.current = sale.paymentMethodId;
       setPaymentMethodId(sale.paymentMethodId);
     }
     setSaleView("sell");
@@ -775,6 +797,7 @@ export function OdooRegisterPage() {
     : "No open session";
 
   function selectRegister(id: number) {
+    selectedConfigIdRef.current = id;
     setConfigId(id);
     setCashTendered("");
     setCustomer(null);
@@ -783,7 +806,9 @@ export function OdooRegisterPage() {
     setError(null);
     setDraftNotice(null);
     const config = bootstrap?.configs.find((item) => item.id === id);
-    setPaymentMethodId(config?.paymentMethods[0]?.id ?? null);
+    const nextPaymentMethodId = config?.paymentMethods[0]?.id ?? null;
+    selectedPaymentMethodIdRef.current = nextPaymentMethodId;
+    setPaymentMethodId(nextPaymentMethodId);
     setSaleView("sell");
     setPendingRegisterId(null);
     if (odooUserId) {
@@ -1141,7 +1166,7 @@ export function OdooRegisterPage() {
             {(isCashPayment || paymentMethods.length > 1) && (
               <div className="border-b border-[var(--oh-border)] px-4 py-3">
                 <label className="oh-type-label grid gap-1.5 font-semibold text-[var(--oh-text-secondary)]">Payment
-                  <select value={paymentMethodId ?? ""} onChange={(event) => { setPaymentMethodId(Number(event.target.value) || null); setCashTendered(""); }} disabled={!paymentMethods.length} className="oh-type-body h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-medium text-[var(--oh-text)]">
+                <select value={paymentMethodId ?? ""} onChange={(event) => { const nextPaymentMethodId = Number(event.target.value) || null; selectedPaymentMethodIdRef.current = nextPaymentMethodId; setPaymentMethodId(nextPaymentMethodId); setCashTendered(""); }} disabled={!paymentMethods.length} className="oh-type-body h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-medium text-[var(--oh-text)]">
                     {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
                   </select>
                 </label>

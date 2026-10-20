@@ -1151,3 +1151,11 @@
 - 使用 JDK `21.0.12.1` 执行 `pos-api` 的 `mvn -B clean verify`：`238 tests, 0 failures, 0 errors`，构建成功。`SqlAst`/`SqlGuard` 的 JSqlParser `Parenthesis` deprecated 仅为 warning，不是失败原因。
 - 因此本次错误不能通过修改当前源码复现；优先检查 Dokploy Compose 的仓库、分支和构建上下文是否仍指向旧快照或错误分支。Source/Git 应为 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、Compose=`docker-compose.yml`。
 - 在 Dokploy 回读新的 frontend/backend 完整构建日志、健康状态、容器 SHA 和运行 commit 前，线上发布仍保持 **NO-GO**；不要把 HTTP 200 或 webhook 响应单独作为构建成功证据。
+
+## 2026-10-20 Sell register 刷新竞态批次（工作区，待部署）
+
+- `OdooRegisterPage` 的 session/bootstrap 加载增加 request revision；旧响应不能再清掉新请求的 loading/refreshing 状态、覆盖新错误，或在员工已切换 register 后把选择改回默认 register。刷新时若当前支付方式仍可用，也会保留它；不可用才回退到新 register 的第一种方式。
+- 刷新时优先保留当前 register；无 Odoo 会话时清理 register/payment 状态，避免注销后残留旧配置。销售、报价、付款和 Odoo 写入路径未改动。
+- 本地验证：`pos-ui` `npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check`；公网 POS help/keyboard 只读回归 `2/2 PASS`。未运行 Next/Docker build。
+- 同一轮公网只读回归：AI UI `2/2`、未接入页面 `18/18`、表格/表单 `16/16`，无意外业务写入；这些结果是当前公网行为基线，不能证明本轮源码已部署。
+- 发布前需推送本批次后正常部署，回读 Dokploy frontend/backend 构建日志、健康状态和运行 SHA，再在 demo Sell 页面执行只读 register 切换/刷新/断网恢复验证；整体发布继续 **NO-GO**。

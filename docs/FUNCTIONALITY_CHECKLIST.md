@@ -14,7 +14,7 @@
 | 模块 | 当前能力 | 状态 | 主要证据 |
 | --- | --- | --- | --- |
 | 登录与租户路由 | 管理员登录、host 到 tenant、未认证 API 拒绝 | 旧线上基线 | `UAT_AUTH_REPLAY_*.json`、匿名 `401` |
-| POS 销售 | Odoo 商品搜索、客户、报价、税额、支付前锁定 | 旧线上基线 | `UAT_POS_DIALOG_*`、`UAT_ORDER_PAGES_*` |
+| POS 销售 | Odoo 商品搜索、客户、报价、税额、支付前锁定；刷新时保留当前 register/支付方式并忽略过期 bootstrap 响应 | 待部署验证 | `UAT_POS_DIALOG_*`、`UAT_ORDER_PAGES_*`；本地 typecheck/ESLint 通过 |
 | 商品目录 | Odoo 商品分页、搜索、分类、编辑、创建、CSV 导入/导出 | 待部署验证 | 当前提交 `dd5253d`；typecheck/ESLint 通过 |
 | 客户目录 | Odoo 客户查询、分页、创建、编辑、移动端卡片 | 旧线上基线 | `UAT_TABLE_A11Y_ONLINE_CURRENT.json` |
 | 供应商与采购 | Odoo 供应商、采购单详情、收货边界 | 旧线上基线 | `UAT_SUPPLIER_*`、`UAT_PURCHASE_*` |
@@ -36,6 +36,8 @@
 - `pos-api` Java 21 `mvn -B clean verify`：通过，233 tests、0 failures。
 - 发票 OCR mock/线上脚本、价格建议、盘点脚本 `node --check`：通过；本批次未运行 Next/Docker build。
 - 公网只读基线：AI UI `2/2`、价格/库存 `8/8`、表格/表单 `14/14`、全站 `268/268`；意外业务写入 `0`。
+- 本轮公网只读复测：AI UI `2/2`、未接入页面诚实边界 `18/18`、表格/表单 `16/16`、POS help/keyboard `2/2`；意外业务写入 `0`。
+- Sell 刷新竞态修复后：`npm run typecheck`、`npx eslint src/components/OdooRegisterPage.tsx`、`git diff --check` 通过；未运行 Next/Docker build。
 
 ## 尚未验证
 
@@ -44,6 +46,7 @@
 - Dokploy backend/frontend 构建日志、健康状态和运行容器 SHA：尚未取得。
 - 真实 DashScope 质量、真实麦克风、真实酒标照片和真实发票照片：不能用 mock 或页面可达性替代。
 - Dokploy #38 的 `AiProviderConfig` 错误未在当前源码复现；当前 Java 21 编译通过，部署前需核对 Dokploy 分支绑定和运行 SHA。
+- 本轮 `OdooRegisterPage` 刷新竞态修复尚未进入可核验 Dokploy 镜像；需部署后在 demo 的 Sell 页面验证切换 register、刷新、断网恢复和草稿保留。
 
 ## 下一次部署后
 
