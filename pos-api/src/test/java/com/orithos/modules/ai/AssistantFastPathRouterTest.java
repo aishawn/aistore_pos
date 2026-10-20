@@ -76,6 +76,37 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesCommonSalesParaphrasesToTheCorrectBusinessDay() {
+        for (String question : new String[]{
+                "How much did we make today?",
+                "How much did we sell today?",
+                "What's our revenue today?",
+                "今天营业额",
+                "How much did we make yesterday?",
+                "What's our takings yesterday?",
+                "昨天营业额"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_sales", match.intent(), question);
+        }
+    }
+
+    @Test
+    void routesNaturalRemainingStockQuestionsAndPreservesTheProductName() {
+        for (String question : new String[]{
+                "Do we have any VB Cans left?",
+                "How many VB Cans are left?",
+                "VB Cans还剩多少？"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_stock", match.intent(), question);
+            assertEquals("VB Cans", match.slots().get("query"), question);
+        }
+    }
+
+    @Test
     void matchesNavigationShortcuts() {
         assertEquals("navigate", AssistantFastPathRouter.maybeMatch("Open sell").intent());
         assertEquals("/", AssistantFastPathRouter.maybeMatch("Open sell").route());

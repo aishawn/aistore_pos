@@ -1172,3 +1172,11 @@
 - Tax Rates 页新增成功加载后的页面级 Refresh；Payment Methods、Registers & Outlets 的桌面表格补齐稳定 `aria-label`，移动布局和只读边界不变。
 - 本地 `pos-ui` typecheck、四个目标页面 ESLint、`git diff --check` 通过；公网未接入边界 `18/18 PASS`、表格/表单 `14/14 PASS`，无意外写入。
 - 这些改动与 `bd0981f` 同一待部署批次；Dokploy 仍因 `HTTP 301 Branch Not Match` 未创建构建任务。部署后重跑设置页、全站矩阵和表格专项，并记录 runtime SHA。
+
+## 2026-10-20 #38 编译错误复核与 AI 报表快捷路由批次
+
+- Dokploy #38 日志中的 `AiProviderConfig` 两个 `cannot find symbol` 不能在当前源码复现：`AiProviderConfig.java` 已被 Git 跟踪，`AiConfigController` 与 `SommelierController` 均有显式 import 和调用。
+- 使用 `C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1` 执行 `pos-api` 的 `mvn -B clean verify`：`243 tests, 0 failures, 0 errors`，仅有 JSqlParser `Parenthesis` deprecated warnings。该日志应继续按 Dokploy 旧源码快照或错误分支绑定处理。
+- 当前批次补齐英文/中文常见销售额和剩余库存问法的确定性路由，并增加 Odoo 库存查询的绑定公司/仓库、空结果、RPC 错误只读测试；capability UAT 增加 AI 开关关闭和加载中断言。改动已通过同一 Java 21 门禁。
+- 本地未运行 Next/Docker build。工作区已有大量 UAT JSON/截图生成物，未纳入提交。
+- 当前发布仍为 **NO-GO**：Dokploy 必须先确认 repo=`aishawn/aistore_pos`、branch=`main`、root=`/`、compose=`docker-compose.yml`，然后回读 frontend/backend 完整构建日志、健康状态、运行 SHA；只有运行 SHA 与本批次提交一致时，才重跑并标记 post-deploy UAT。

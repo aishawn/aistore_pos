@@ -14,9 +14,10 @@ const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
 const browser = await chromium.launch({ headless: true });
 const results = [];
 let transcriptionRequests = 0;
+let assistantRequests = 0;
 const interceptedWrites = [];
 
-async function runViewport(viewport) {
+async function runViewport(viewport, assistantAvailable) {
   const context = await browser.newContext({ viewport });
   await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
   await context.addInitScript(() => {
@@ -29,6 +30,7 @@ async function runViewport(viewport) {
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (url.pathname === "/api/ai/transcribe") transcriptionRequests += 1;
+    if (url.pathname === "/api/ai/assistant") assistantRequests += 1;
     if (url.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method())) {
       interceptedWrites.push(request.method() + " " + url.pathname);
     }
@@ -42,7 +44,7 @@ async function runViewport(viewport) {
     const data = url.pathname === "/api/ai/config/client"
       ? {
         enabled: true,
-        assistantAvailable: true,
+        assistantAvailable,
         transcriptionAvailable: false,
         labelVisionAvailable: true,
         invoiceVisionAvailable: true,
@@ -59,14 +61,25 @@ async function runViewport(viewport) {
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
     await dialog.waitFor({ state: "visible", timeout: 10000 });
-    const composer = dialog.getByPlaceholder("Ask Orithos AI…");
+    const composer = dialog.getByPlaceholder(/Ask Orithos AI|AI chat is off for this store/);
     await composer.waitFor({ state: "visible", timeout: 10000 });
+    const chatDisabled = await composer.isDisabled();
     const voice = dialog.getByRole("button", { name: "Voice input" });
     const voiceDisabled = await voice.isDisabled();
     const voiceTitle = await voice.getAttribute("title");
+    if (assistantAvailable) {
+      await composer.fill("Today's sales");
+      await composer.fill("");
+    } else {
+      await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
+    }
     results.push({
       viewport: viewport.width,
-      chatEnabled: !(await composer.isDisabled()),
+      expectedChatAvailable: assistantAvailable,
+      expectedVoiceTitle: assistantAvailable
+        ? "Voice transcription is unavailable for this store"
+        : "Voice input is disabled for this store",
+      chatDisabled,
       voiceDisabled,
       voiceTitle,
       pageErrors,
@@ -77,16 +90,18 @@ async function runViewport(viewport) {
 }
 
 try {
-  await runViewport({ width: 390, height: 844 });
-  await runViewport({ width: 1440, height: 900 });
+  await runViewport({ width: 390, height: 844 }, true);
+  await runViewport({ width: 390, height: 844 }, false);
+  await runViewport({ width: 1440, height: 900 }, true);
+  await runViewport({ width: 1440, height: 900 }, false);
 } finally {
   await browser.close();
 }
 
 const failures = results.filter((result) =>
-  !result.chatEnabled
+  result.chatDisabled === result.expectedChatAvailable
   || !result.voiceDisabled
-  || result.voiceTitle !== "Voice transcription is unavailable for this store"
+  || result.voiceTitle !== result.expectedVoiceTitle
   || result.pageErrors.length > 0,
 );
 const output = {
@@ -94,9 +109,10 @@ const output = {
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   environment: "local-dev-fixtures",
   target: base,
-  scope: "AI capability gate UI; chat enabled while transcription is unavailable; no model or business writes",
-  status: failures.length === 0 && transcriptionRequests === 0 && interceptedWrites.length === 0 ? "PASS" : "FAIL",
+  scope: "AI capability gate UI; chat on/off and voice unavailable at 390/1440; all API writes intercepted",
+  status: failures.length === 0 && transcriptionRequests === 0 && assistantRequests === 0 && interceptedWrites.length === 0 ? "PASS" : "FAIL",
   checks: results,
+  assistantRequests,
   transcriptionRequests,
   interceptedWrites,
 };

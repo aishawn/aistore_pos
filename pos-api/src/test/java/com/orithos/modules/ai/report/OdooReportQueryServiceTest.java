@@ -142,6 +142,79 @@ class OdooReportQueryServiceTest {
         assertTrue(requests.isEmpty());
     }
 
+    @Test
+    void stockQueryUsesBoundCompanyWarehouseAndReturnsAvailableQuantity() throws Exception {
+        List<JsonNode> requests = startStockServer(
+                "[{\"id\":501,\"display_name\":\"VB Cans\",\"free_qty\":12.0,\"qty_available\":15.0}]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        OdooReportQueryService.Result result = service.query(
+                tenant, "report_stock", Map.of("query", "VB Cans"), window);
+
+        assertNull(result.error());
+        assertEquals(1, result.rows().size());
+        assertEquals("VB Cans", result.rows().get(0).get("name"));
+        assertEquals(0, new BigDecimal("12.0").compareTo((BigDecimal) result.rows().get(0).get("quantity")));
+        assertEquals(2, requests.size());
+        JsonNode request = requests.get(1).path("params");
+        assertEquals("product.product", request.path("model").asText());
+        assertEquals("search_read", request.path("method").asText());
+        assertEquals(List.of("id", "display_name", "free_qty", "qty_available"),
+                MAPPER.convertValue(request.path("kwargs").path("fields"),
+                        MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+        assertEquals(77, request.path("kwargs").path("context").path("force_company").asInt());
+        assertEquals(19, request.path("kwargs").path("context").path("warehouse").asInt());
+        String domain = request.path("args").get(0).toString();
+        assertTrue(domain.contains("VB Cans"));
+        assertTrue(domain.contains("company_id"));
+        assertFalse(requests.stream().anyMatch(node -> {
+            String method = node.path("params").path("method").asText();
+            return Set.of("create", "write", "unlink").contains(method);
+        }));
+    }
+
+    @Test
+    void stockQueryReturnsAnEmptyResultWhenNoProductMatches() throws Exception {
+        startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        OdooReportQueryService.Result result = service.query(
+                tenant, "report_stock", Map.of("query", "Not in catalogue"), window);
+
+        assertNull(result.error());
+        assertTrue(result.rows().isEmpty());
+    }
+
+    @Test
+    void stockQueryHidesOdooRpcErrorsAsUnavailableInsteadOfReturningInventory() throws Exception {
+        startStockServer("{\"error\":{\"message\":\"AccessError\"}}");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        OdooReportQueryService.Result result = service.query(
+                tenant, "report_stock", Map.of("query", "VB Cans"), window);
+
+        assertEquals("ODOO_REPORT_UNAVAILABLE", result.error());
+        assertTrue(result.rows().isEmpty());
+    }
+
     private List<JsonNode> startServer(String groupedRowsJson) throws Exception {
         List<JsonNode> requests = new CopyOnWriteArrayList<>();
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
@@ -153,6 +226,25 @@ class OdooReportQueryServiceTest {
         server.createContext("/web/dataset/call_kw", exchange -> {
             requests.add(MAPPER.readTree(exchange.getRequestBody()));
             respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":" + groupedRowsJson + "}");
+        });
+        server.start();
+        return requests;
+    }
+
+    private List<JsonNode> startStockServer(String rpcResponseJson) throws Exception {
+        List<JsonNode> requests = new CopyOnWriteArrayList<>();
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/web/session/authenticate", exchange -> {
+            requests.add(MAPPER.readTree(exchange.getRequestBody()));
+            exchange.getResponseHeaders().add("Set-Cookie", "session_id=test-session; Path=/; HttpOnly");
+            respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":{\"uid\":5}}");
+        });
+        server.createContext("/web/dataset/call_kw", exchange -> {
+            requests.add(MAPPER.readTree(exchange.getRequestBody()));
+            String response = rpcResponseJson.startsWith("{\"error\"")
+                    ? "{\"jsonrpc\":\"2.0\"," + rpcResponseJson + "}"
+                    : "{\"jsonrpc\":\"2.0\",\"result\":" + rpcResponseJson + "}";
+            respond(exchange, response);
         });
         server.start();
         return requests;

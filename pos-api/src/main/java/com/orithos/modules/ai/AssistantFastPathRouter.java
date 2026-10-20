@@ -11,10 +11,14 @@ import java.util.regex.Pattern;
 public final class AssistantFastPathRouter {
 
     private static final Pattern TODAY_SALES = Pattern.compile(
-            "^(today'?s?\\s+sales|sales\\s+today|今日销售额?|今天销售额?|今天卖了多少)$",
+            "^(?:today'?s?\\s+sales|sales\\s+today|how much did we (?:make|take|sell) today|"
+                    + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) today|"
+                    + "今日销售额?|今天销售额?|今天卖了多少|今天营业额?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_SALES = Pattern.compile(
-            "^(yesterday'?s?\\s+sales|sales\\s+yesterday|how much did we (?:take|sell) yesterday|昨天销售额?|昨天卖了多少)$",
+            "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|how much did we (?:make|take|sell) yesterday|"
+                    + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
+                    + "昨天销售额?|昨天卖了多少|昨天营业额?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SALES_RANGE = Pattern.compile(
             "^(?:(?:sales|revenue|takings|turnover)\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
@@ -56,8 +60,11 @@ public final class AssistantFastPathRouter {
                     + "^(?:stock (?:level|quantity) of)\\s+(.+?)[?.!]*$|"
                     + "^what(?:'s| is)\\s+the\\s+stock(?:\\s+level)?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
                     + "^how many\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$|"
+                    + "^do we have (?:any )?(.+?)\\s+(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
+                    + "^how many\\s+(.+?)\\s+(?:are )?(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
                     + "^(?:查一下|查询|查看)\\s*(.+?)(?:还有多少|有多少)?库存[？?。]*$|"
-                    + "^(.+?)库存(?:还有多少|有多少)[？?。]*$",
+                    + "^(.+?)库存(?:还有多少|有多少)[？?。]*$|"
+                    + "^(.+?)(?:还剩多少|剩多少)(?:库存)?[？?。]*$",
             Pattern.CASE_INSENSITIVE);
 
     private AssistantFastPathRouter() {}
@@ -180,7 +187,8 @@ public final class AssistantFastPathRouter {
         if (stockQuery.matches()) {
             String query = cleanQuery(firstNonNull(
                     stockQuery.group(1), stockQuery.group(2), stockQuery.group(3), stockQuery.group(4),
-                    stockQuery.group(5), stockQuery.group(6)));
+                    stockQuery.group(5), stockQuery.group(6), stockQuery.group(7), stockQuery.group(8),
+                    stockQuery.group(9)));
             if (query != null) {
                 return new Match(
                         "report_stock",
