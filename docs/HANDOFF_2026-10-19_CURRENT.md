@@ -1096,6 +1096,13 @@
 - 公网旧镜像工作流自然语言回归 `17/17 PASS`，证据为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`；不能作为 `1b7cee5` 的 post-deploy 证据。
 - 针对 `1b7cee5` 的 webhook 于 2026-10-20 17:20（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。
 
+## 2026-10-20 发票 OCR 预览可靠性批次（工作区）
+
+- `ScanInvoicePage` 现在在浏览器端拒绝非图片和超过 10 MB 的文件，错误提示可操作；OCR 仍是 preview-only，不会写入采购、收货或供应商。
+- 连续选择图片时用请求 revision 忽略旧响应，避免旧图片结果覆盖新图片，也避免旧请求清除新请求的 loading/error 状态。
+- 本地验证：`npm run typecheck`、目标 ESLint、发票 OCR/价格建议/盘点 UAT `node --check`、`git diff --check` 均通过；按用户要求未运行 Next/Docker build。
+- 改动尚未部署；下一次集中部署后重跑 `pilot-invoice-scan-mock-uat.mjs`、`pilot-invoice-ocr-preview-online.mjs`、价格建议和盘点只读专项，并核对 Dokploy runtime SHA。
+
 ## 2026-10-20 Dokploy #38 当前提交复核 (`d9e5c8c`)
 
 - #38 的两个 `cannot find symbol: variable AiProviderConfig` 来自缺少 import 的旧源码快照。修复提交 `ea8f1b6` 已为两个 Controller 增加显式 import，`AiProviderConfig.java` 也已被 Git 跟踪。

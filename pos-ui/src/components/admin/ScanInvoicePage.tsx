@@ -23,6 +23,7 @@ interface Named {
 const fieldClass =
   "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
 const labelClass = "mb-1.5 block text-sm font-medium text-[var(--oh-text)]";
+const MAX_INVOICE_BYTES = 10 * 1024 * 1024;
 
 function money(value?: number | null) {
   if (value == null || Number.isNaN(Number(value))) return "—";
@@ -49,6 +50,7 @@ export function ScanInvoicePage() {
   const [invoiceVisionAvailable, setInvoiceVisionAvailable] = useState<boolean | null>(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const [capabilityLoading, setCapabilityLoading] = useState(true);
+  const scanRevision = useRef(0);
 
   const loadCapabilities = useCallback(async () => {
     setCapabilityLoading(true);
@@ -92,26 +94,47 @@ export function ScanInvoicePage() {
   }, [preview]);
 
   async function scanFile(file: File) {
+    const revision = ++scanRevision.current;
     setError(null);
     setScan(null);
     setLoading(true);
     try {
       const prepared = await compressInvoicePhoto(file);
       const data = await scanInvoiceImage(prepared, prepared.name || "invoice.jpg");
+      if (revision !== scanRevision.current) return;
       setScan({
         ...data,
         invoiceDate: toIsoDate(data.invoiceDate),
         dueDate: toIsoDate(data.dueDate),
       });
     } catch (e) {
+      if (revision !== scanRevision.current) return;
       setError(apiFailureMessage(e, "Could not read that invoice photo.", "Please sign in again."));
     } finally {
-      setLoading(false);
+      if (revision === scanRevision.current) setLoading(false);
     }
   }
 
   async function onPhoto(file: File) {
+    ++scanRevision.current;
+    if (!file.type.startsWith("image/")) {
+      setSelectedFile(null);
+      setPreview(null);
+      setScan(null);
+      setLoading(false);
+      setError("Choose an image file such as JPG, PNG or HEIC.");
+      return;
+    }
+    if (file.size > MAX_INVOICE_BYTES) {
+      setSelectedFile(null);
+      setPreview(null);
+      setScan(null);
+      setLoading(false);
+      setError("That image is larger than 10 MB. Choose a smaller invoice photo.");
+      return;
+    }
     setSelectedFile(file);
+    setError(null);
     setPreview(URL.createObjectURL(file));
     await scanFile(file);
   }

@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 发票 OCR 预览可靠性批次（`a346fcd` 后工作区）
+
+- 发票预览页拒绝非图片文件和超过 10 MB 的图片，减少移动端无效上传；仍保持 OCR 预览只读，不创建采购、收货或供应商记录。
+- 连续选择图片时使用请求版本保护，旧 OCR 响应不会覆盖当前图片；旧请求的 loading/error 状态也不会污染新选择。
+- 本地 `npm run typecheck`、目标 ESLint、发票 OCR/价格建议/盘点 UAT `node --check` 和 `git diff --check` 通过；按约束未运行 Next/Docker build。
+- 改动尚未进入 Dokploy 镜像。部署后需重跑发票 OCR mock/线上预览、价格建议、盘点只读和全站矩阵，并核对运行 SHA。
+
 ### 2026-10-20 AI Assistant 问法回归与确定性路由（最新）
 
 - `origin/main` 最新提交为 `0592351`（包含 `789bdad`）。`ClassifyQueryNode` 现在会在分类模型前安全处理明确的 `report_adhoc` 拒答；`AssistantFastPathRouter` 支持带类别的本周/上周销量，例如 `How much red wine sold this week?`；`ReportAdhocRouter` 也覆盖中文“卖得最好”排名问法。
