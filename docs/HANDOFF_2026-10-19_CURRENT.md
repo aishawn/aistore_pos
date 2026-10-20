@@ -1,5 +1,10 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 AI、报表与基础交互回归补充
+
+- 现网只读/fixture 回归通过：AI 管理员保护 `15/15`、AI 功能 `14/14`、设置移动/桌面检查通过、订单页 `16/16`、POS 对话框 `2/2`、Odoo stocktake 只读 `10/10`、报表读取通过、Overview 竞态通过、Legacy Retry `5/5`；业务写入均为 `0` 或由 fixture 拦截。
+- 管理列表批次第一次 `6/8`、重试 `5/8`，失败集中在平台 Stores 的 `Create store` 断言和 Mail Log 1440 空状态，截图显示平台按钮实际存在，属于旧脚本等待/状态断言不稳定，暂不修改产品代码；需后续改进脚本等待条件后再复测。
+
 ## 2026-10-20 登录页 SSR hydration 修复（待部署）
 
 - `pos-ui/app/login/page.tsx` 的示例门店链接改为协议相对 URL（`//demo.<tenant-domain>/login`），避免服务端默认 HTTPS 与本地/代理 HTTP 首帧不一致造成 hydration mismatch。
