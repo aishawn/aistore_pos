@@ -1017,6 +1017,12 @@
 - #38 日志中的 `AiProviderConfig` cannot find symbol 不是当前工作树结果：类存在且两个控制器均有显式 import；当前源码已用 Java 21 编译通过。该错误应继续按 Dokploy 旧源码快照/分支绑定错位排查。
 - 本批次尚未取得 Dokploy 构建完成、frontend/backend 健康状态或运行容器 SHA；部署结论保持 **NO-GO**，只提交源码和本交接更新，不把历史 UAT 生成物带入提交。
 
+### 部署触发结果（`4c5541a`）
+
+- `4c5541a` 已推送到 GitHub `main`。
+- 2026-10-20 18:08（UTC+8）使用 `refs/heads/main` 和 `after=4c5541a` 调用 Compose webhook，返回 `HTTP 301 {"message":"Branch Not Match"}`；没有创建构建任务。
+- 因此当前阻塞仍是 Dokploy Compose 仓库/分支绑定，不是本地 Java 编译错误。修正绑定后应以 `4c5541a` 或其后提交重新部署，并回读两端构建日志、健康状态和运行 SHA。
+
 ## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
 
 - 未知意图现在返回空的 UI/导航/动作/slot 指令；非法 route/action、未配置的实体操作和伪造动作不会降级成默认列表导航。
