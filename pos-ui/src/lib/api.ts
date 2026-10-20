@@ -1221,8 +1221,12 @@ export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Pr
 
   if (!res.ok || !json) {
     handleAuthFailure("/api/orders/receives/scan", res.status, json?.code ?? -1);
+    const message = json?.message
+      ?? (res.status === 502 || res.status === 503 || res.status === 504
+        ? "Invoice scanning is temporarily unavailable. Try again shortly or open Odoo Purchases."
+        : `Invoice scan failed (${res.status})`);
     throw new ApiError(
-      json?.message ?? `Invoice scan failed (${res.status})`,
+      message,
       json?.code ?? -1,
       res.status,
     );
