@@ -973,3 +973,10 @@
 - 当前公网旧运行版本只读基线：AI 报表 `9/9 PASS`（逐日 Overview 对账 7 天、Odoo source path、`14,oct` 年份）；表格/表单 `14/14 PASS`、价格/库存 `8/8 PASS`、全站根 `app` `268/268 PASS`，均无意外业务写入。AI 报表证据：`docs/UAT_AI_REPORTS_READONLY_ONLINE.json`。
 - 这些结果的运行提交为 `d48a374` 或脚本未核验版本，不能证明 `73ba45c`/`5bc65cc` 已上线；部署后必须重跑同一套脚本并记录运行身份。
 - 针对 `5bc65cc` 的 compose webhook 于 2026-10-20 返回 `HTTP 301 {"message":"Branch Not Match"}`，构建未启动。Dokploy 分支绑定仍是当前外部阻断；在控制台修正前不重复触发 webhook。
+
+## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
+
+- 未知意图现在返回空的 UI/导航/动作/slot 指令；非法 route/action、未配置的实体操作和伪造动作不会降级成默认列表导航。
+- 保留已配置的 `navigate`、商品搜索和实体列表行为；缺少实体操作时仍可安全打开对应列表。意图 key 规范化改为 `Locale.ROOT`，避免运行环境 locale 影响。
+- 新增 `IntentSanitizeServiceTest` 的未知意图、合法导航、非法动作、合法实体操作、缺失操作和长度限制覆盖；本地未运行 Maven，Java 21 测试需 CI/部署环境执行。
+- 当前线上行为仍来自未核验运行镜像；下一次 Dokploy 部署目标为当前 `ea43033` 或其后提交，部署后补跑 AI UI、AI features 和匿名鉴权回归。
