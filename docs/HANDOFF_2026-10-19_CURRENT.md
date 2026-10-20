@@ -6,6 +6,7 @@
 - 中文商品搜索捕获组已修正；自定义中英文比较问法在日期快捷路由前保持 `report_adhoc` 引导拒答。
 - Java 21 全量门禁：`mvn -B clean verify`，`238 tests, 0 failures, 0 errors`；仅有既存 JSqlParser 弃用警告。
 - 同步更新 `AI_ASSISTANT_TEST_PLAN.md` 与 `AI_ASSISTANT_UTTERANCE_CATALOG.md`。本批次尚未进入 Dokploy，线上 AI 回归需在分支绑定修复后执行。
+- 2026-10-20 20:39（UTC+8）以 `after=055468b` 触发 Compose webhook，完整响应仍为 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务；当前线上仍不能标记为该批次。
 
 ## 2026-10-20 补货 RFQ 边界与请求竞态（工作区）
 
