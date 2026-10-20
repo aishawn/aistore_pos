@@ -8,6 +8,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InvoiceVisionServiceTest {
@@ -75,6 +76,37 @@ class InvoiceVisionServiceTest {
         String payload = "{\"code\":\"InvalidParameter\",\"message\":\"private supplier data\",\"request_id\":\"private-id\"}";
 
         assertEquals("InvalidParameter", InvoiceVisionService.providerErrorCode(mapper.readTree(payload)));
+    }
+
+    @Test
+    void malformedOrEmptyProviderOutputDoesNotBecomeAnInventedInvoice() {
+        assertNull(InvoiceVisionService.parse("", mapper));
+        assertNull(InvoiceVisionService.parse("The image is too blurry to read.", mapper));
+        assertNull(InvoiceVisionService.parse("{not-json}", mapper));
+    }
+
+    @Test
+    void malformedFieldsRemainUncertainWhileValidLinesAreKept() {
+        TaxInvoiceRead read = InvoiceVisionService.parse("""
+                {
+                  "supplierName": "Example Supplier",
+                  "invoiceDate": "not-a-date",
+                  "totalPayable": "not-a-number",
+                  "lines": [
+                    {"description": "Valid item", "qtyCases": "2", "unitPrice": "$12.50"},
+                    {"description": "", "qtyCases": 99},
+                    "not a line object"
+                  ]
+                }
+                """, mapper);
+
+        assertNotNull(read);
+        assertEquals("Example Supplier", read.supplierName());
+        assertNull(read.invoiceDate());
+        assertNull(read.totalPayable());
+        assertEquals(1, read.lines().size());
+        assertEquals(new BigDecimal("2"), read.lines().get(0).qtyCases());
+        assertEquals(new BigDecimal("12.50"), read.lines().get(0).unitPrice());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.orithos.modules.ai.report;
 
+import com.orithos.common.BusinessException;
 import com.orithos.security.AuthUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -10,11 +11,13 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class AiReportMetricsServiceTest {
@@ -22,6 +25,31 @@ class AiReportMetricsServiceTest {
     @AfterEach
     void clearSecurity() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void unauthenticatedMetricsRequestFailsBeforeReadingAuditRows() {
+        AiReportAuditMapper mapper = mock(AiReportAuditMapper.class);
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> new AiReportMetricsService(mapper).get(24));
+
+        assertEquals(40100, error.getCode());
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    void nonAdminMetricsRequestFailsBeforeReadingAuditRows() {
+        AiReportAuditMapper mapper = mock(AiReportAuditMapper.class);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        new AuthUser(8L, "cashier", false, 3L, 42L), null, Set.of()));
+
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> new AiReportMetricsService(mapper).get(24));
+
+        assertEquals(40300, error.getCode());
+        verifyNoInteractions(mapper);
     }
 
     @Test
