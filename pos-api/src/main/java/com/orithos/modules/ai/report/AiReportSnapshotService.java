@@ -55,6 +55,9 @@ public class AiReportSnapshotService {
     }
 
     public AiReportSnapshotResponse getOwned(long id, TenantContext tenant) {
+        if (tenant == null) {
+            throw new BusinessException(40100, "Unauthorized");
+        }
         AiReportSnapshot row = mapper.findByIdAndOwner(id, tenant.vendorId(), tenant.userId());
         if (row == null) {
             throw new BusinessException(40401, "Report not found");
