@@ -10,6 +10,7 @@
 - 本地验证：`npm run typecheck`、目标 ESLint（`OdooProductCataloguePage`、`SellAiPanel`、`ai-entity-actions`）、相关 UAT 脚本 `node --check` 和 `git diff --check` 通过；按约束未运行 build。
 - 这些改动尚未进入线上镜像。集中部署后需重跑 AI UI、AI entity guard、产品/价格只读页面和全站静态矩阵，并确认 Dokploy 构建日志、健康状态及运行 SHA。
 - 条码工具页补齐真实 Odoo 产品目录与集成设置入口；仍明确不生成或发送虚假的标签打印任务。
+- 最新功能批次 `dd5253d` 已推送；Dokploy webhook 仍为 `HTTP 301 Branch Not Match`，未生成新镜像，线上状态继续按旧镜像基线记录。
 - 批次提交 `52c8f58` 已推送；Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，因此没有产生新的线上验证证据，状态保持“待部署”。
 
 ### 2026-10-20 公网只读基线复测（运行提交未核验）
