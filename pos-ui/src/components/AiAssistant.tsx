@@ -142,8 +142,14 @@ export function AiAssistant() {
           type="button"
           aria-label="Voice input"
           disabled={transcriptionAvailable !== true}
-          title={transcriptionAvailable === true ? "Start voice input" : "Voice transcription is unavailable for this store"}
-          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] text-[var(--oh-muted)] outline-none hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+          title={
+            transcriptionAvailable === true
+              ? "Start voice input"
+              : transcriptionAvailable == null
+                ? "Checking voice availability…"
+                : "Voice transcription is unavailable for this store"
+          }
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--oh-border)] text-[var(--oh-muted)] outline-none hover:border-[var(--oh-orange)] hover:text-[var(--oh-orange)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Mic size={14} />
         </button>

@@ -397,7 +397,11 @@ export function SellAiPanel({
         });
       })
       .catch(() => {
-        // The assistant request still provides the authoritative error state.
+        // Config failed: do not leave voice in an ambiguous loading state that
+        // still looks clickable. Chat errors surface on the first message send.
+        if (!cancelled) {
+          setTranscriptionAvailable(false);
+        }
       });
     return () => { cancelled = true; };
   }, []);
@@ -682,6 +686,8 @@ export function SellAiPanel({
   /** Cloud-only STT via DashScope; no browser Web Speech fallback. */
   async function startVoice() {
     if (busy || listening) return;
+    // null = client config still loading — do not pop a modal on a stray press.
+    if (transcriptionAvailable == null) return;
     if (transcriptionAvailable !== true) {
       setVoiceAlert(
         aiEnabled === false
@@ -765,6 +771,9 @@ export function SellAiPanel({
   }
 
   function beginVoicePress() {
+    // Chrome still dispatches pointerdown on disabled buttons; refuse before
+    // any listening UI or alert unless transcription is confirmed available.
+    if (busy || listening || transcriptionAvailable !== true) return;
     voicePressedRef.current = true;
     if (!expanded) {
       openPanel();
@@ -869,18 +878,28 @@ export function SellAiPanel({
         onBlur={() => {
           if (voicePressedRef.current) endVoicePress();
         }}
-        aria-label={listening ? "Release to stop voice input" : "Hold to speak"}
+        aria-label={
+          listening
+            ? "Release to stop voice input"
+            : transcriptionAvailable === true
+              ? "Hold to speak"
+              : "Voice input"
+        }
         aria-pressed={listening}
         title={
           aiEnabled === false
             ? "Voice input is disabled for this store"
-            : transcriptionAvailable === false
-              ? "Voice transcription is unavailable for this store"
-              : "Hold to speak, release to add text"
+            : transcriptionAvailable == null
+              ? "Checking voice availability…"
+              : transcriptionAvailable === false
+                ? "Voice transcription is unavailable for this store"
+                : "Hold to speak, release to add text"
         }
         disabled={busy || transcriptionAvailable !== true}
         className={cn(
-          "flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white transition-colors disabled:opacity-50",
+          // disabled:pointer-events-none — Chrome still fires pointerdown on
+          // disabled buttons; without this, hold-to-speak pops the alert modal.
+          "flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white transition-colors disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
           listening
             ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
             : "text-[var(--oh-placeholder)] hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]",
