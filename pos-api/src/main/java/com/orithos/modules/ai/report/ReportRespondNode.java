@@ -118,6 +118,16 @@ public class ReportRespondNode implements NodeAction {
             case "NO_OUTLET" -> "Your account is not bound to a store.";
             case "NEED_PRODUCT" ->
                     "Please tell me the product name, for example: how much Coca Cola is in stock.";
+            case "ODOO_REPORT_NOT_CONFIGURED" ->
+                    "Live sales reporting is not configured for this store. Contact your administrator.";
+            case "ODOO_REPORT_STORE_UNLINKED" ->
+                    "This store is not linked to an Odoo company for live reporting. Contact your administrator.";
+            case "ODOO_REPORT_UNSUPPORTED" ->
+                    "That report type is not available from live Odoo data yet. Try sales, quantity, average ticket, stock, or dead stock.";
+            case "ODOO_REPORT_UNAVAILABLE" ->
+                    "Live Odoo reporting is temporarily unavailable. Please try again.";
+            case "ODOO_REPORT_TOO_LARGE" ->
+                    "That report is too large to summarize safely. Add a product filter or narrow the date range.";
             case "QUOTA_EXCEEDED" ->
                     "This store has reached its hourly report quota. Try again later.";
             default -> "The query failed. Please try again.";

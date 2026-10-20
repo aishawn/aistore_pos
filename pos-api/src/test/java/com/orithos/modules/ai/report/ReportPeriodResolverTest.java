@@ -43,9 +43,54 @@ class ReportPeriodResolverTest {
     @Test
     void todayInQuestionBeatsWrongSlotDates() {
         ReportPeriodResolver.Window w = resolver.resolve(
-                Map.of("from", "2020-01-01", "to", "2020-01-01"), "今天销量");
+                Map.of("from", "2020-01-01", "to", "2020-01-01", "days", "8"), "今天销量");
         assertEquals(AustraliaTime.today(), w.from().toLocalDate());
         assertEquals(AustraliaTime.today().plusDays(1), w.toExclusive().toLocalDate());
+        assertEquals(1, w.days());
+    }
+
+    @Test
+    void dayMonthQuestionUsesCurrentYearInsteadOfWrongModelYear() {
+        LocalDate expected = LocalDate.of(AustraliaTime.today().getYear(), 10, 14);
+        ReportPeriodResolver.Window w = resolver.resolve(
+                Map.of("from", "2023-10-14", "to", "2023-10-14"), "14,oct sales");
+        assertEquals(expected, w.from().toLocalDate());
+        assertEquals(expected.plusDays(1), w.toExclusive().toLocalDate());
+        assertEquals(1, w.days());
+    }
+
+    @Test
+    void monthDayAndExplicitYearAreReadFromQuestion() {
+        ReportPeriodResolver.Window currentYear = resolver.resolve(Map.of(), "sales on Oct 14");
+        assertEquals(LocalDate.of(AustraliaTime.today().getYear(), 10, 14), currentYear.from().toLocalDate());
+
+        ReportPeriodResolver.Window explicitYear = resolver.resolve(Map.of(), "sales on 14 October 2024");
+        assertEquals(LocalDate.of(2024, 10, 14), explicitYear.from().toLocalDate());
+    }
+
+    @Test
+    void australianNumericDateIsDayFirstAndOverridesModelSlots() {
+        ReportPeriodResolver.Window w = resolver.resolve(
+                Map.of("from", "2023-10-14", "to", "2023-10-14"), "sales on 14/10/2025");
+        assertEquals(LocalDate.of(2025, 10, 14), w.from().toLocalDate());
+    }
+
+    @Test
+    void deadStockDefaultCanUseTrailingThirtyBusinessDays() {
+        LocalDate today = AustraliaTime.today();
+        ReportPeriodResolver.Window w = resolver.resolve(Map.of(), "dead stock", 30);
+        assertEquals(today.minusDays(29), w.from().toLocalDate());
+        assertEquals(today.plusDays(1), w.toExclusive().toLocalDate());
+        assertEquals(30, w.days());
+    }
+
+    @Test
+    void lastNdaysWindowContainsExactlyTheRequestedNumberOfBusinessDays() {
+        LocalDate today = AustraliaTime.today();
+        ReportPeriodResolver.Window w = resolver.resolve(Map.of(), "sales last 7 days");
+        assertEquals(today.minusDays(6), w.from().toLocalDate());
+        assertEquals(today.plusDays(1), w.toExclusive().toLocalDate());
+        assertEquals(7, w.days());
     }
 
     @Test

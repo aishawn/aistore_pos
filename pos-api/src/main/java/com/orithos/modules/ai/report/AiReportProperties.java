@@ -19,12 +19,6 @@ public class AiReportProperties {
     private int queriesPerHour = 120;
     /** Estimated tokens per outlet per hour. 0 disables. */
     private int tokensPerHour = 200_000;
-    /**
-     * When true, every report_* intent (including templates) is rewritten to
-     * {@code report_adhoc} and routed through NL2SQL. Local testing only.
-     */
-    private boolean forceNl2sql = false;
-
     public String getUsername() {
         return username;
     }
@@ -81,11 +75,4 @@ public class AiReportProperties {
         this.tokensPerHour = tokensPerHour;
     }
 
-    public boolean isForceNl2sql() {
-        return forceNl2sql;
-    }
-
-    public void setForceNl2sql(boolean forceNl2sql) {
-        this.forceNl2sql = forceNl2sql;
-    }
 }

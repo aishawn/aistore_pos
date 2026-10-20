@@ -1,0 +1,37 @@
+# AI Assistant Test Matrix
+
+Scope: cashier assistant, voice input, reporting, wine assistant, invoice OCR, configuration and saved reports. All live checks must be read-only unless they use an approved isolated Odoo test database. Fixture-based checks prove UI behavior only, not provider quality or production data correctness.
+
+## Regression cases
+
+| ID | Area | Scenario | Expected result | Current evidence / status |
+|---|---|---|---|---|
+| RPT-01 | Report dates | Ask `14,oct sales`; classifier supplies `2023-10-14` | Use 14 October of the current store business year; user's explicit date overrides model slots | Reproduced online: returned `2023-10-14`; local resolver fix and regression test are present, pending remote deployment |
+| RPT-02 | Report dates | `Oct 14`, `14 October 2024`, `14/10/2025`, ISO date | Resolve month names, explicit year, AU day-first date and ISO date to one inclusive business day | Unit cases added; execution pending |
+| RPT-03 | Report dates | today/yesterday/week/month phrases with contradictory model slots | Text date phrase wins; boundaries use the store's Odoo company timezone and exclusive next midnight | Current code still uses Sydney; Demo company is `Australia/Adelaide`. Add company-timezone alignment before treating date boundaries as verified |
+| RPT-04 | Report data source | Overview has Odoo completed sales and assistant queries the same outlet/date | Totals reconcile to Odoo for completed orders; refunds, demo seed filtering and business-day boundaries match | Reproduced online: same vendor/company binding (`1`), Overview shows 209 / 486 transactions for 7 / 30 days, while AI reports no rows. Workspace changes route reports to Odoo; remote verification pending |
+| RPT-08 | Report data range | Compare AI `Today's sales` with Overview's selected range | Compare matching periods; empty today is valid when the 24-hour overview also has zero transactions | Online: Overview defaults to 30 days (486 tickets), 7 days has 209, 24 hours has 0; AI today correctly reports no data. A 30-day KPI is not today's count |
+| RPT-05 | Empty/error states | Empty day, unavailable source, unlinked store, unsupported ad-hoc report | Distinct, truthful response for each; never report an infrastructure failure as a valid empty result | Odoo source/config/unlinked/unsupported cases return separate messages; response-node tests still open |
+| RPT-06 | Tenant access | Query with current outlet, another outlet, no outlet and restricted report role | Only authorized outlet data is returned; missing binding/permission is explicit | Existing tenant binder, tenant context and SQL guard unit tests; integration matrix open |
+| RPT-07 | Report safety | Ask for cost/margin or inject write SQL / unsupported tables | Cost permission required; unsafe SQL rejected; no write statement reaches DB | Existing SQL guard and tenant binder tests; add route-level no-write assertion |
+| AST-01 | Intent and navigation | Product lookup, stock lookup, sell screen, create customer, unknown request | Correct intent/UI action; search/navigation stays in the frontend; no accidental business write | Open: add classifier contract and dispatcher tests |
+| AST-02 | Entity actions | Create/update/delete entity intent, missing fields, cancel confirmation | Validate required slots; destructive action requires explicit confirmation; cancel sends no mutation | Existing entity action utilities need focused tests; API isolation UAT open |
+| AST-03 | Provider behavior | Disabled, missing key, invalid base URL, timeout, provider error, retry | Availability matches configuration; staff gets a safe actionable message; secrets/provider payloads stay hidden | Existing provider/config tests; controller error-path coverage open |
+| VOI-01 | Speech input | Hold, release, cancel, empty audio, unsupported browser, ASR failure then browser fallback | Recording stops on release/cancel; transcript fills input once; fallback and retry do not submit unintended text | Existing voice utilities need interaction tests; `SellAiPanel` browser coverage open |
+| SOM-01 | Recommendations | Out-of-stock, wrong wine type, budget, food pairing, sparse catalogue | Exclude unavailable items; respect hard filters; return fewer results rather than inventing catalogue items | Existing `WineMatcherTest` covers core filters and tiers; boundary cases open |
+| SOM-02 | Odoo catalogue | Odoo configured with empty catalogue or RPC failure | Odoo stays authoritative; do not fall back to stale Classic catalogue; show clear unavailable/empty state | Existing empty-catalog test; RPC failure and controller behavior open |
+| SOM-03 | Label / explain | Clear, blurry, unrelated label; explain/pitch/similar requests | OCR uncertainty is explicit; matched product must exist in authorized catalogue and have valid current stock/price | Existing matcher/vision unit tests; end-to-end and no-hallucination checks open |
+| INV-01 | Invoice OCR | AU DD/MM/YYYY, GST/total, multiple lines, malformed JSON, unreadable photo | Parse supported fields; preserve uncertainty; reject invalid/empty extraction with retry guidance | Existing `InvoiceVisionServiceTest` covers a sample invoice and safe provider error; broader fixtures open |
+| INV-02 | Invoice safety | Preview extracted supplier/lines; retry; user leaves page | Preview only; no supplier, RFQ, purchase or receipt write until a separately authorized workflow | Service states save-to-Classic disabled; API/UI no-write integration test open |
+| CFG-01 | Availability | AI disabled, key absent, feature provider unavailable, per-capability status | UI capability flags match effective backend readiness; disabled feature cannot be invoked | Existing config access tests; add full capability matrix |
+| REP-01 | Saved reports | Save report, retrieve own report, request another user's/vendor's id | Snapshot contents match response; owner/vendor isolation enforced; empty results handled | Existing snapshot service tests; controller authorization integration open |
+| MET-01 | Metrics / audit | Unauthorized user, valid admin, range limits; provider error | Admin/vendor scope enforced; audit excludes secrets; invalid range bounded | Existing metrics/audit code only; controller tests open |
+
+## Execution gates
+
+1. Run deterministic unit tests for each changed resolver, matcher, OCR parser or guard before merging. Local builds are intentionally omitted when the task specifies no local build.
+2. Run authenticated demo checks only for reads (availability, product catalogue, sales/report reads). Do not create customers, products, sales, refunds, purchase orders, receipts, stock movements or register closes in production/demo.
+3. Use mocked provider responses for deterministic UI/error-flow tests. Label them as mock evidence; separately record real provider availability and cost when explicitly run.
+4. Do not mark the reporting assistant correct until the Odoo-source reconciliation case RPT-04 passes on the same outlet and business-date window.
+
+The read-only online report suite is `scripts/pilot-ai-report-readonly-uat.mjs`. It checks store-date resolution, empty-day semantics, 7/30-day rows, the `14,oct` year, and a day-level reconciliation against Overview.

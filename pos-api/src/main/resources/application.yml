@@ -123,8 +123,6 @@ app:
       max-rows: 500
       queries-per-hour: ${AI_REPORT_QUOTA_QUERIES:120}
       tokens-per-hour: ${AI_REPORT_QUOTA_TOKENS:200000}
-      # true 时报表问句一律走 NL2SQL（忽略销量/销售额等模板）。仅本地测试用。
-      force-nl2sql: ${AI_REPORT_FORCE_NL2SQL:false}
 
 # 日志级别
 logging:
