@@ -1,7 +1,7 @@
 {
   "suite": "AI_FOLLOWUP_HISTORY_PLATFORM",
   "date": "2026-10-20",
-  "deploymentSha": "414b660abd47a00f20013d1addd0209f5fc9d831",
+  "deploymentSha": "e874fb13348389f17e1d2a39b80af584d733f07d",
   "environment": "checklist",
   "writeBusinessData": false,
   "notes": "Regression checklist for cashier chat history + store metrics highlights + platform AI usage. Fill results after deploy; do not rewrite historical SHAs.",
