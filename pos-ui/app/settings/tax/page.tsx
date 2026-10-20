@@ -59,7 +59,7 @@ export default function TaxRatesPage() {
           </div>
         </div>
       ) : loading ? (
-        <div role="status" aria-label="Loading Odoo tax rates" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+      <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Odoo tax rates" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
           <div className="h-12 animate-pulse bg-[var(--oh-surface)]" />
           <div className="divide-y divide-[var(--oh-border)]">
             {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 sm:grid-cols-4">

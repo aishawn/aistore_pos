@@ -28,7 +28,7 @@ export default function DailySalesPage() {
   return (
     <AdminPageLayout title="Daily Sales" subtitle="Completed sales for today">
       {loading ? (
-        <div role="status" aria-label="Loading daily sales" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading daily sales" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
           <div className="grid grid-cols-6 gap-3 bg-[var(--oh-surface)] px-4 py-3">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-3 animate-pulse rounded bg-[var(--oh-border)]" />)}</div>
           <div className="grid grid-cols-6 gap-3 px-4 py-4">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-4 animate-pulse rounded bg-[var(--oh-surface)]" />)}</div>
         </div>
