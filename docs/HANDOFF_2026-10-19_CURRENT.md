@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 AI 语音键盘交互批次（工作区）
+
+- `SellAiPanel` 的 Hold to speak 按钮现在支持键盘 Space/Enter 按下与释放、失焦自动停止，并暴露 `aria-pressed`；删除并行提交遗留的未使用 `applyTranscript`，目标 ESLint 已无警告。
+- `scripts/pilot-ai-ui-uat.mjs` 兼容旧 `Voice input` 与新 `Hold to speak` 文案，并验证新按钮的 idle ARIA 状态；公网只读脚本不会调用真实麦克风，完整按键录音需在媒体 fixture 中验证。
+- 本地 typecheck、目标 ESLint、脚本 `node --check`、diff check 通过。公网脚本本次因登录接口失败而未形成有效 AI UI 证据，不能据此判断产品失败。
+
 ## 2026-10-20 全站 Loading 状态语义批次（工作区）
 
 - 平台 Stores、Promotions/Categories、Promotions、Register Closures、Price Sets、Registers/Outlets、Roles、Users、Stocktake 库位、Vendor Connections 和 Manage Cash 的 loading skeleton 全部补齐 `aria-live="polite"` 与 `aria-busy="true"`。

@@ -15,7 +15,8 @@ const env = Object.fromEntries(
     }),
 );
 const base = "https://demo.orithos.com.au";
-if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+if (!adminPassword) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
 const results = [];
@@ -23,7 +24,7 @@ const results = [];
 async function runViewport(viewport) {
   const context = await browser.newContext({ viewport });
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username: "admin", password: adminPassword },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
@@ -105,12 +106,19 @@ async function runViewport(viewport) {
   if (await assistant.locator('[aria-live="polite"]').count() !== 1) {
     throw new Error(`AI_DIALOG_LIVE_REGION_MISSING_${viewport.width}`);
   }
-  const voiceButton = assistant.getByRole("button", { name: "Voice input" });
+  const voiceButton = assistant.getByRole("button", { name: /^(Voice input|Hold to speak|Release to stop voice input)$/ });
   if (transcriptionAvailable && !(await voiceButton.isEnabled())) {
     throw new Error(`AI_VOICE_DISABLED_WHILE_TRANSCRIPTION_AVAILABLE_${viewport.width}`);
   }
   if (!transcriptionAvailable && (await voiceButton.isEnabled())) {
     throw new Error(`AI_VOICE_ENABLED_WHILE_TRANSCRIPTION_UNAVAILABLE_${viewport.width}`);
+  }
+  // Do not open a real microphone during the read-only online UAT. Verify the
+  // idle state contract here; keyboard press/release is covered by the local
+  // media fixture where getUserMedia is safely mocked.
+  const voiceLabel = await voiceButton.getAttribute("aria-label");
+  if (/Hold to speak|Release to stop voice input/.test(voiceLabel ?? "") && await voiceButton.getAttribute("aria-pressed") !== "false") {
+    throw new Error(`AI_VOICE_IDLE_STATE_UNNAMED_${viewport.width}`);
   }
   const composer = assistant.getByPlaceholder(/Ask Orithos AI|AI chat is off for this store/);
   await composer.waitFor({ state: "visible", timeout: 10000 });
