@@ -115,7 +115,9 @@ app:
     enabled: ${AI_ENABLED:false}
     graph-name: pos-assistant       # Graph 工作流名称
     transcription-model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
-    vision-model: ${AI_VISION_MODEL:qwen-vl-plus}
+    # Use the configured primary DashScope model when it supports native multimodal
+    # requests; operators can still override this explicitly with AI_VISION_MODEL.
+    vision-model: ${AI_VISION_MODEL:${AI_DASHSCOPE_MODEL:qwen3.8-flash}}
     # Faster classify-only model (default qwen-flash). Set empty to use chat model.
     classify-model: ${AI_DASHSCOPE_CLASSIFY_MODEL:qwen-flash}
     temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}

@@ -15,7 +15,7 @@ Do **not** put API keys or passwords in this file.
 ## Pre-flight
 
 - [ ] Monthly DashScope budget agreed; over-budget action is set `AI_ENABLED=false` (POS still works).
-- [ ] Dokploy Compose env: `AI_ENABLED`, `AI_DASHSCOPE_API_KEY`, `AI_DASHSCOPE_MODEL`, `AI_DASHSCOPE_BASE_URL` (intl if needed), `AI_TRANSCRIPTION_MODEL`, `AI_VISION_MODEL`.
+- [ ] Dokploy Compose env: `AI_ENABLED`, `AI_DASHSCOPE_API_KEY`, `AI_DASHSCOPE_MODEL`, `AI_DASHSCOPE_BASE_URL` (intl if needed), `AI_TRANSCRIPTION_MODEL`, `AI_VISION_MODEL`. If `AI_VISION_MODEL` is omitted, the API follows `AI_DASHSCOPE_MODEL` (default `qwen3.8-flash`) so native multimodal routing stays aligned; set it explicitly when using a separately entitled vision model.
 - [ ] Latency knobs: `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-flash` (default), `AI_DASHSCOPE_TEMPERATURE`, `AI_DASHSCOPE_MAX_TOKENS`, `AI_DASHSCOPE_TIMEOUT_SECONDS`.
 - [ ] Redis up (JWT + `AiConversationMemory` multi-turn). Optional: `AI_CONVERSATION_MEMORY_TURNS`, `AI_CONVERSATION_MEMORY_TTL_MINUTES`.
 - [ ] MySQL tables `ai_chat_thread` / `ai_chat_message` present (schema migrator on API boot).
@@ -35,7 +35,7 @@ Do **not** put API keys or passwords in this file.
 | `AI_DASHSCOPE_BASE_URL` includes `/api/v1` or `/compatible-mode/v1` | SDK appends its own path → double path / url error | Host only: `https://dashscope.aliyuncs.com` or `https://dashscope-intl.aliyuncs.com` |
 | `/api/ai/config/client` `enabled=true` but `/api/ai/assistant` returns `50301` | `PosAssistantGraphService` skipped by `@ConditionalOnBean(CompiledGraph)` timing | Use `@ConditionalOnProperty(app.ai.enabled=true)` (shipped); redeploy backend |
 | Pitch/ask work, chat does not | Same as above — `ChatClient` bean exists, graph service did not | Redeploy backend after the registration fix |
-| Invoice / label OCR `model_not_found` / `access_denied` | DashScope key has chat but not VL entitlement, or wrong `AI_VISION_MODEL` / region | Enable VL in Model Studio; set `AI_VISION_MODEL` to an entitled id (not the chat model); keep `AI_DASHSCOPE_BASE_URL` on the key’s region (CN vs intl) |
+| Invoice / label OCR `model_not_found` / `access_denied` | DashScope key lacks the selected model entitlement, or `AI_VISION_MODEL` / region is wrong | Enable the selected multimodal model in Model Studio; set `AI_VISION_MODEL` explicitly when needed; keep `AI_DASHSCOPE_BASE_URL` on the key’s region (CN vs intl) |
 | Price suggestions `Odoo session expired` on bare API call | Odoo cookie is minted after store shell load, not on JWT login alone | Open any store page first, or call after overview bootstrap |
 
 ## Verify script
