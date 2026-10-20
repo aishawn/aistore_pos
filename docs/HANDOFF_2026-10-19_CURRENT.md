@@ -1044,3 +1044,4 @@
 - Sell AI 的语音指针取消现在会立即停止录音；非法实体操作不再默认为 `list`，而是返回安全提示。
 - 本地完成 typecheck、目标 ESLint、相关 UAT 脚本语法和 diff check；未运行本地 build。改动尚未线上验证。
 - 下一次集中部署后运行 AI UI、AI entity guard、产品/价格只读页面、表格/表单和全站矩阵；必须回读 Dokploy 构建日志、健康状态和运行 SHA。
+- 本批次已提交并推送为 `52c8f58`；compose webhook 于 2026-10-20 16:17（UTC+8）仍返回 `HTTP 301 {"message":"Branch Not Match"}`，没有启动构建。分支绑定修复后应以 `52c8f58` 或其后提交重新部署。
