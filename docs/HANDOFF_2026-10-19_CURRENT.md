@@ -958,3 +958,4 @@
 - 修复已在 `ea8f1b6` 完成：两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`；当前 `main`/`origin/main` 为 `a57d0c8`，并包含该修复。
 - 当前源码静态核对结果：`AiProviderConfig.java` 被 Git 跟踪，两个控制器的 import 与调用均存在。该日志不能证明当前 `a57d0c8` 仍有同一编译错误，应按 Dokploy 使用旧源码快照或分支错位处理。
 - 本地遵守约束未运行 Maven、Next 或 Docker build；未把 #38 标为成功或已部署。下一次部署必须在 Dokploy 控制台确认目标 commit 至少为 `a57d0c8`（或其后提交）、Maven/Next 构建完成、frontend/backend 健康且运行 SHA 与目标一致。
+- 文档提交 `839e394` 推送后再次调用 compose webhook，平台仍返回 `HTTP 301 Branch Not Match`，因此本次没有启动构建；需先在 Dokploy 修正 Compose 的仓库/分支绑定，再重试。
