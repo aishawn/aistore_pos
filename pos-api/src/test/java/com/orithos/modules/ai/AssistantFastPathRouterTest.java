@@ -9,6 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class AssistantFastPathRouterTest {
 
     @Test
+    void routesCommonReadOnlyReportRangesWithoutTheClassifier() {
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales last 7 days").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("昨天销售额").intent());
+        assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("units sold past 30 days").intent());
+        assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("最近7天销量").intent());
+    }
+
+    @Test
     void matchesTodaySalesWithoutLlm() {
         AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch("Today's sales");
         assertNotNull(match);
@@ -28,7 +36,6 @@ class AssistantFastPathRouterTest {
     @Test
     void leavesComplexQuestionsForClassifier() {
         assertNull(AssistantFastPathRouter.maybeMatch("How much red wine sold this week?"));
-        assertNull(AssistantFastPathRouter.maybeMatch("Sales last 7 days"));
         assertNull(AssistantFastPathRouter.maybeMatch(null));
     }
 }

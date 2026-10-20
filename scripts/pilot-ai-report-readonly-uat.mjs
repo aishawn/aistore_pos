@@ -32,6 +32,10 @@ function check(name, passed, evidence) {
 async function getJson(response, label) {
   const body = await response.json().catch(() => null);
   if (!response.ok() || !body) throw new Error(`${label}_HTTP_${response.status()}`);
+  if (body.code !== undefined && body.code !== 0) {
+    const message = typeof body.message === "string" ? body.message.slice(0, 160) : "api error";
+    throw new Error(`${label}_API_${body.code}_${message}`);
+  }
   return body.data ?? body;
 }
 
@@ -149,7 +153,9 @@ try {
   check("report execution uses Odoo source", Number(pathCounts.odoo ?? 0) > 0,
     `requestsByPath=${JSON.stringify(pathCounts)}`);
 } catch (error) {
-  failures.push(error instanceof Error ? error.message : "UNEXPECTED_FAILURE");
+  const detail = error instanceof Error ? error.message : "UNEXPECTED_FAILURE";
+  failures.push(detail);
+  checks.push({ name: "AI assistant availability", status: "FAIL", evidence: detail });
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await context.close();

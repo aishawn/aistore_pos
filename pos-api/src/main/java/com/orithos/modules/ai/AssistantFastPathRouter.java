@@ -13,6 +13,15 @@ public final class AssistantFastPathRouter {
     private static final Pattern TODAY_SALES = Pattern.compile(
             "^(today'?s?\\s+sales|sales\\s+today|今日销售额?|今天销售额?|今天卖了多少)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern YESTERDAY_SALES = Pattern.compile(
+            "^(yesterday'?s?\\s+sales|sales\\s+yesterday|how much did we (?:take|sell) yesterday|昨天销售额?|昨天卖了多少)$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern SALES_RANGE = Pattern.compile(
+            "^(?:(?:sales|revenue|takings|turnover)\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern QUANTITY_RANGE = Pattern.compile(
+            "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销量|销售数量))$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern OPEN_SELL = Pattern.compile(
             "^(open\\s*(the\\s*)?(sell|cashier|register)(\\s*screen)?|进入收银界面|进入收银|打开收银|收银界面)$",
             Pattern.CASE_INSENSITIVE);
@@ -35,6 +44,36 @@ public final class AssistantFastPathRouter {
             return new Match(
                     "report_sales",
                     "Today's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (YESTERDAY_SALES.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Yesterday's sales",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (SALES_RANGE.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Sales report",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (QUANTITY_RANGE.matcher(normalized).matches()) {
+            return new Match(
+                    "report_qty",
+                    "Quantity report",
                     Map.of(),
                     "",
                     "",

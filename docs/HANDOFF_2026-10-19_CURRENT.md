@@ -1009,6 +1009,14 @@
 - 这些结果的运行提交为 `d48a374` 或脚本未核验版本，不能证明 `73ba45c`/`5bc65cc` 已上线；部署后必须重跑同一套脚本并记录运行身份。
 - 针对 `5bc65cc` 的 compose webhook 于 2026-10-20 返回 `HTTP 301 {"message":"Branch Not Match"}`，构建未启动。Dokploy 分支绑定仍是当前外部阻断；在控制台修正前不重复触发 webhook。
 
+## 2026-10-20 报表确定性路由与 #38 编译复核
+
+- `AssistantFastPathRouter` 新增昨日销售、销售额区间和销量区间的中英文只读快捷路由；`ClassifyQueryNode` 对明确工作流请求先走确定性导航，provider 暂时不可用时不阻塞安全的报表/补货/定价/酒侍/发票预览入口。
+- 报表只读 UAT 现在检查 API envelope 的非零 `code`，并在请求失败时明确记录 `AI assistant availability`，避免把 provider 不可用误报成业务数据失败。
+- Java 21 门禁：`C:\Users\ai_sh\.jdks\jdk-21.0.12.1+1` 执行 `mvn -B clean verify`，`230 tests, 0 failures`，仅有 JSqlParser `Parenthesis` deprecated warnings；`node --check` 与 `git diff --check` 通过。
+- #38 日志中的 `AiProviderConfig` cannot find symbol 不是当前工作树结果：类存在且两个控制器均有显式 import；当前源码已用 Java 21 编译通过。该错误应继续按 Dokploy 旧源码快照/分支绑定错位排查。
+- 本批次尚未取得 Dokploy 构建完成、frontend/backend 健康状态或运行容器 SHA；部署结论保持 **NO-GO**，只提交源码和本交接更新，不把历史 UAT 生成物带入提交。
+
 ## 2026-10-20 AI 意图安全批次（`3cbf6d0`）
 
 - 未知意图现在返回空的 UI/导航/动作/slot 指令；非法 route/action、未配置的实体操作和伪造动作不会降级成默认列表导航。

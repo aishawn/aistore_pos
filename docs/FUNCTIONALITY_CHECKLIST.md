@@ -20,7 +20,7 @@
 | 供应商与采购 | Odoo 供应商、采购单详情、收货边界 | 旧线上基线 | `UAT_SUPPLIER_*`、`UAT_PURCHASE_*` |
 | 库存与补货 | 库存列表、价格建议、补货建议、盘点只读 | 旧线上基线 | `UAT_PRICING_PAGES_ONLINE_READONLY_*`、`UAT_ODOO_STOCKTAKE_*` |
 | 报表 | Overview、销售/库存/采购报表、Odoo 绑定时区 | 待部署验证 | `UAT_AI_REPORTS_READONLY_ONLINE*`；新时区代码未核验运行 SHA |
-| AI 助手 | 语音按住说话、意图路由、实体操作 allowlist、错误脱敏、多轮记忆/工具调用、cashier history、平台 AI usage | 待部署验证 | `UAT_AI_UI_*`、`UAT_AI_FEATURES_VERIFY_*`；当前 HEAD Java 21 验证通过，最新改动待镜像 |
+| AI 助手 | 语音按住说话、意图路由、实体操作 allowlist、错误脱敏、多轮记忆/工具调用、cashier history、平台 AI usage、常见报表/工作流确定性快捷路由 | 待部署验证 | `UAT_AI_UI_*`、`UAT_AI_FEATURES_VERIFY_*`；当前源码 Java 21 `230 tests, 0 failures`，最新改动待镜像 |
 | AI Sommelier | 商品识别、酒标识别、推荐、相似酒款 | 旧线上基线 | `UAT_SOMMELIER_*`；租户 Odoo context 待部署验证 |
 | 发票 OCR | 预览识别，禁止预览阶段写供应商/采购/收货 | 旧线上基线 | `UAT_INVOICE_SCAN_MOCK_*`、`UAT_INVOICE_OCR_PREVIEW_*` |
 | 账户与设置 | 公司、门店、用户、角色、税务、支付设置页面 | 旧线上基线 | `UAT_SETTINGS_MOBILE_*`、全站矩阵 |
@@ -33,7 +33,7 @@
 - `npm run typecheck`：通过。
 - 目标 ESLint：`OdooProductCataloguePage`、`SellAiPanel`、`ai-entity-actions`、条码页通过。
 - 相关 UAT 脚本 `node --check`：通过。
-- `pos-api` Java 21 `mvn -B clean verify`：通过，228 tests、0 failures。
+- `pos-api` Java 21 `mvn -B clean verify`：通过，230 tests、0 failures。
 - 公网只读基线：AI UI `2/2`、价格/库存 `8/8`、表格/表单 `14/14`、全站 `268/268`；意外业务写入 `0`。
 
 ## 尚未验证
@@ -42,6 +42,7 @@
 - 最新提交中的产品分类重试、价格/名称边界、条码导航、价格建议交互、Sell AI 指针取消和非法操作提示：等待新镜像。
 - Dokploy backend/frontend 构建日志、健康状态和运行容器 SHA：尚未取得。
 - 真实 DashScope 质量、真实麦克风、真实酒标照片和真实发票照片：不能用 mock 或页面可达性替代。
+- Dokploy #38 的 `AiProviderConfig` 错误未在当前源码复现；当前 Java 21 编译通过，部署前需核对 Dokploy 分支绑定和运行 SHA。
 
 ## 下一次部署后
 

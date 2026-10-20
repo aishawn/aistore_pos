@@ -71,6 +71,23 @@ public class ClassifyQueryNode implements NodeAction {
             return out;
         }
 
+        // Explicit workflow requests are deterministic navigation intents. Resolve
+        // them before the classifier so a temporary provider outage cannot block
+        // safe replenishment, pricing, sommelier or invoice preview navigation.
+        WorkflowRouteRouter.Override directWorkflow = WorkflowRouteRouter.maybeOverride(question);
+        if (directWorkflow != null) {
+            log.info("Workflow fast-path route={}", directWorkflow.route());
+            Map<String, Object> out = new HashMap<>();
+            out.put("intent", directWorkflow.intent());
+            out.put("intent_summary", "Opening the requested workflow.");
+            out.put("slots", Map.of());
+            out.put("ui_panel", "");
+            out.put("ui_view", "");
+            out.put("ui_route", directWorkflow.route());
+            out.put("ui_action", "");
+            return out;
+        }
+
         IntentConfigService.Snapshot snap = configService.getSnapshot();
         String system = snap.promptContent(IntentConfigService.PROMPT_CLASSIFY, FALLBACK_CLASSIFY_PROMPT);
         String history = state.value("conversation_history", String.class).orElse("");
