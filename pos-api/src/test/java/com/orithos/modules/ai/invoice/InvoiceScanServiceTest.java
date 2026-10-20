@@ -2,7 +2,7 @@ package com.orithos.modules.ai.invoice;
 
 import com.orithos.common.BusinessException;
 import com.orithos.modules.order.OrderService;
-import com.orithos.modules.product.ProductMapper;
+import com.orithos.modules.product.mapper.ProductMapper;
 import com.orithos.modules.product.ProductService;
 import com.orithos.modules.register.OutletMapper;
 import com.orithos.modules.supplier.SupplierMapper;
