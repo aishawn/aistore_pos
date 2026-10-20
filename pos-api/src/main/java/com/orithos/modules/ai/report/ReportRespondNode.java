@@ -129,7 +129,8 @@ public class ReportRespondNode implements NodeAction {
             case "ODOO_REPORT_STORE_UNLINKED" ->
                     "This store is not linked to an Odoo company for live reporting. Contact your administrator.";
             case "ODOO_REPORT_UNSUPPORTED" ->
-                    "That report type is not available from live Odoo data yet. Try sales, quantity, average ticket, stock, or dead stock.";
+                    "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
+                            + "how much [product] is in stock, or dead stock last 30 days.";
             case "ODOO_REPORT_UNAVAILABLE" ->
                     "Live Odoo reporting is temporarily unavailable. Please try again.";
             case "ODOO_REPORT_TOO_LARGE" ->

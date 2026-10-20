@@ -20,6 +20,7 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 
 | Example | Expected intent | Expected result |
 |---|---|---|
+| How many tickets / 几笔订单 yesterday? | `report_aov` | average ticket + sale count (tickets field); not `report_adhoc` |
 | How many units sold today? | `report_qty` | quantity series for today |
 | Shiraz units last 7 days | `report_qty` | quantity series with category/product filter |
 | What was the average ticket this week? | `report_aov` | average order value for current week |

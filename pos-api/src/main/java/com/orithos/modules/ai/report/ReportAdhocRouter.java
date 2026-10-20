@@ -5,9 +5,9 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Deterministic override: questions the sales templates cannot answer
- * must go to {@code report_adhoc} / NL2SQL, even if the classifier
- * stuffed them into {@code report_qty}.
+ * Deterministic overrides for questions that templates cannot answer, plus
+ * safe remaps (ticket counts → {@code report_aov}) so cashiers avoid the
+ * unsupported {@code report_adhoc} dead end when a template fits.
  */
 public final class ReportAdhocRouter {
 
@@ -16,16 +16,22 @@ public final class ReportAdhocRouter {
             "qa", "unknown", "navigate"
     );
 
-    private static final Pattern ADHOC = Pattern.compile(
+    /** Ticket / order counts are available via average-ticket (includes tickets). */
+    private static final Pattern TICKET_COUNT = Pattern.compile(
             "几笔|笔订单|笔单|订单数|单数|多少单|"
-                    + "how many tickets|how many orders|ticket count|"
-                    + "分别|混[合问]|"
+                    + "how many tickets|how many orders|ticket count|number of (?:tickets|orders|sales)",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Pattern ADHOC = Pattern.compile(
+            "分别|混[合问]|"
                     + "哪个商品|卖得最多|销量最高|排行|top product|best seller|"
                     + "对比|差多少|compared|versus|\\bvs\\b|"
                     + "how many .*invoices|invoice.*(?:received|total|count)|"
                     + "supplier.*(?:pay|paid|payment|spend)|(?:pay|paid|payment|spend).*supplier|"
                     + "发票.*(?:多少|数量|总额)|供应商.*(?:付款|支出)|"
-                    + "\\bdrop\\b|\\balter\\b|\\btruncate\\b",
+                    + "\\bdrop\\b|\\balter\\b|\\btruncate\\b|"
+                    + "why are sales|why .*down|利润|profit|margin",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -35,7 +41,11 @@ public final class ReportAdhocRouter {
         if (question == null || question.isBlank()) {
             return false;
         }
-        return ADHOC.matcher(question.toLowerCase(Locale.ROOT)).find();
+        String q = question.toLowerCase(Locale.ROOT);
+        if (TICKET_COUNT.matcher(q).find()) {
+            return false;
+        }
+        return ADHOC.matcher(q).find();
     }
 
     public static boolean canOverride(String intent) {
@@ -43,6 +53,13 @@ public final class ReportAdhocRouter {
     }
 
     public static String maybeOverride(String question, String intent) {
+        if (question == null || question.isBlank()) {
+            return intent;
+        }
+        String q = question.toLowerCase(Locale.ROOT);
+        if (TICKET_COUNT.matcher(q).find() && canOverride(intent)) {
+            return "report_aov";
+        }
         if (shouldUseNl2Sql(question) && canOverride(intent)) {
             return "report_adhoc";
         }

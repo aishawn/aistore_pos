@@ -16,8 +16,14 @@ public final class WorkflowRouteRouter {
     private static final Pattern PRICING = Pattern.compile(
             "which prices|price review|pricing|reprice|raise the price|lower the price|price suggestion|pricing suggestion|pricing recommendations|what should (?:i|we) charge|review prices|调价|定价|价格建议|改价|价格调整",
             Pattern.CASE_INSENSITIVE);
+    /** Recommend / pair — not bare "red wine" (that often means a sales report). */
     private static final Pattern SOMMELIER = Pattern.compile(
-            "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine|what wine|wine recommendation|food pairing|wine for (?:a|an)? ?(?:dinner|party|steak|occasion)|red wine|white wine|葡萄酒|红酒|白葡萄酒|配餐|推荐.*酒|适合.*酒",
+            "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine|"
+                    + "what wine|wine recommendation|food pairing|"
+                    + "wine for (?:a|an)? ?(?:dinner|party|steak|occasion)|"
+                    + "suggest a wine|recommend a wine|"
+                    + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|"
+                    + "配餐|适合.*酒|红酒推荐|白葡萄酒推荐",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE = Pattern.compile(
             "scan(?: this)? supplier invoice|read(?: this)? invoice|upload(?: this)? invoice|capture(?: this)? invoice|invoice capture|invoice photo|supplier bill|supplier document|发票|供应商单据|供应商账单|识别.*发票|上传.*发票",

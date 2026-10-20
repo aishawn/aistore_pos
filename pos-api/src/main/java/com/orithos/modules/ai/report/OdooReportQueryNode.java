@@ -23,11 +23,21 @@ public class OdooReportQueryNode implements NodeAction {
     @Override
     public Map<String, Object> apply(OverAllState state) {
         String intent = ReportGraphState.string(state, "intent");
-        String error = "report_adhoc".equals(intent) ? "ODOO_REPORT_UNSUPPORTED" : null;
+        // Ad-hoc NL2SQL is not wired; skip Odoo entirely and surface a guided refusal.
+        if ("report_adhoc".equals(intent)) {
+            Map<String, Object> refused = new HashMap<>();
+            refused.put("sql_path", "unsupported");
+            refused.put("sql", "");
+            refused.put("sql_raw", "");
+            refused.put("sql_params", List.of());
+            refused.put("sql_error", "ODOO_REPORT_UNSUPPORTED");
+            refused.put("report_rows", List.of());
+            refused.put("report_columns", List.of());
+            return refused;
+        }
         ReportPeriodResolver.Window window = windowFromState(state);
-        OdooReportQueryService.Result result = error == null
-                ? queryService.query(ReportGraphState.tenant(state), intent, ReportGraphState.slots(state), window)
-                : OdooReportQueryService.Result.fail(error);
+        OdooReportQueryService.Result result = queryService.query(
+                ReportGraphState.tenant(state), intent, ReportGraphState.slots(state), window);
 
         Map<String, Object> out = new HashMap<>();
         out.put("sql_path", "odoo");

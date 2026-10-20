@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,14 +32,22 @@ public class PosAssistantGraphService {
 
     private final CompiledGraph posAssistantGraph;
     private final AiReportSnapshotService snapshotService;
+    private final AiConversationMemory conversationMemory;
+    private final AiProperties properties;
 
-    public PosAssistantGraphService(CompiledGraph posAssistantGraph, AiReportSnapshotService snapshotService) {
+    public PosAssistantGraphService(CompiledGraph posAssistantGraph,
+                                    AiReportSnapshotService snapshotService,
+                                    AiConversationMemory conversationMemory,
+                                    AiProperties properties) {
         this.posAssistantGraph = posAssistantGraph;
         this.snapshotService = snapshotService;
+        this.conversationMemory = conversationMemory;
+        this.properties = properties;
     }
 
     public AssistantResult ask(String question, String threadId, TenantContext tenant) {
         String effectiveThreadId = resolveThreadId(threadId, tenant);
+        String history = conversationMemory.formatHistory(effectiveThreadId);
 
         RunnableConfig config = RunnableConfig.builder()
                 .threadId(effectiveThreadId)
@@ -46,6 +55,7 @@ public class PosAssistantGraphService {
 
         Map<String, Object> initialState = new HashMap<>();
         initialState.put("question", question);
+        initialState.put("conversation_history", history == null ? "" : history);
         if (tenant != null) {
             initialState.put("vendor_id", tenant.vendorId());
             initialState.put("user_id", tenant.userId());
@@ -55,46 +65,53 @@ public class PosAssistantGraphService {
             initialState.put("can_report_cost", tenant.canQueryCost());
         }
 
-        Flux<NodeOutput> stream = posAssistantGraph.stream(initialState, config);
-        stream.blockLast();
+        AssistantTenantContext.set(tenant);
+        try {
+            Flux<NodeOutput> stream = posAssistantGraph.stream(initialState, config);
+            stream.blockLast(Duration.ofSeconds(Math.max(5, properties.timeoutSeconds())));
 
-        StateSnapshot snapshot = posAssistantGraph.getState(config);
-        Map<String, Object> data = snapshot.state().data();
+            StateSnapshot snapshot = posAssistantGraph.getState(config);
+            Map<String, Object> data = snapshot.state().data();
 
-        Map<String, String> slots = Collections.emptyMap();
-        Object slotsObj = data.get("slots");
-        if (slotsObj instanceof Map<?, ?> m) {
-            Map<String, String> copy = new LinkedHashMap<>();
-            m.forEach((k, v) -> {
-                if (k != null && v != null) {
-                    copy.put(k.toString(), v.toString());
-                }
-            });
-            slots = copy;
+            Map<String, String> slots = Collections.emptyMap();
+            Object slotsObj = data.get("slots");
+            if (slotsObj instanceof Map<?, ?> m) {
+                Map<String, String> copy = new LinkedHashMap<>();
+                m.forEach((k, v) -> {
+                    if (k != null && v != null) {
+                        copy.put(k.toString(), v.toString());
+                    }
+                });
+                slots = copy;
+            }
+
+            UiAction ui = new UiAction(
+                    emptyToNull(stringValue(data, "ui_panel")),
+                    emptyToNull(stringValue(data, "ui_view")),
+                    emptyToNull(stringValue(data, "ui_route")),
+                    emptyToNull(stringValue(data, "ui_action"))
+            );
+
+            ReportTable table = tableFrom(data);
+            String answer = stringValue(data, "answer");
+            String intent = stringValue(data, "intent");
+            Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
+
+            conversationMemory.append(effectiveThreadId, question, intent, answer);
+
+            return new AssistantResult(
+                    effectiveThreadId,
+                    intent,
+                    stringValue(data, "intent_summary"),
+                    answer,
+                    slots,
+                    ui,
+                    table,
+                    reportId
+            );
+        } finally {
+            AssistantTenantContext.clear();
         }
-
-        UiAction ui = new UiAction(
-                emptyToNull(stringValue(data, "ui_panel")),
-                emptyToNull(stringValue(data, "ui_view")),
-                emptyToNull(stringValue(data, "ui_route")),
-                emptyToNull(stringValue(data, "ui_action"))
-        );
-
-        ReportTable table = tableFrom(data);
-        String answer = stringValue(data, "answer");
-        String intent = stringValue(data, "intent");
-        Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
-
-        return new AssistantResult(
-                effectiveThreadId,
-                intent,
-                stringValue(data, "intent_summary"),
-                answer,
-                slots,
-                ui,
-                table,
-                reportId
-        );
     }
 
     private static ReportTable tableFrom(Map<String, Object> data) {

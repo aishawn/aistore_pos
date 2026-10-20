@@ -2,13 +2,17 @@ package com.orithos.modules.ai.config;
 
 import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAsyncToolCallingManagerAutoConfiguration;
 import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration;
+import com.alibaba.cloud.ai.graph.CompileConfig;
 import com.alibaba.cloud.ai.graph.CompiledGraph;
 import com.alibaba.cloud.ai.graph.KeyStrategy;
 import com.alibaba.cloud.ai.graph.KeyStrategyFactory;
 import com.alibaba.cloud.ai.graph.StateGraph;
+import com.alibaba.cloud.ai.graph.checkpoint.config.SaverConfig;
+import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.alibaba.cloud.ai.graph.state.strategy.ReplaceStrategy;
 import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.node.ClassifyQueryNode;
@@ -61,6 +65,7 @@ public class PosAssistantGraphConfig {
         return () -> {
             HashMap<String, KeyStrategy> strategies = new HashMap<>();
             strategies.put("question", new ReplaceStrategy());
+            strategies.put("conversation_history", new ReplaceStrategy());
             strategies.put("intent", new ReplaceStrategy());
             strategies.put("intent_summary", new ReplaceStrategy());
             strategies.put("slots", new ReplaceStrategy());
@@ -96,13 +101,15 @@ public class PosAssistantGraphConfig {
             ChatClient posAssistantChatClient,
             IntentConfigService intentConfigService,
             IntentSanitizeService intentSanitizeService,
+            PosAssistantTools posAssistantTools,
             FillReportSlotsNode fillReportSlotsNode,
             OdooReportQueryNode odooReportQueryNode,
             ReportRespondNode reportRespondNode) throws GraphStateException {
 
         var classify = node_async(new ClassifyQueryNode(
-                posAssistantChatClient, intentConfigService, intentSanitizeService));
-        var respond = node_async(new GenerateResponseNode(posAssistantChatClient, intentConfigService));
+                posAssistantChatClient, intentConfigService, intentSanitizeService, properties));
+        var respond = node_async(new GenerateResponseNode(
+                posAssistantChatClient, intentConfigService, properties, posAssistantTools));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)
                 .addNode(CLASSIFY, classify)
                 .addNode(RESPOND, respond)
@@ -124,6 +131,11 @@ public class PosAssistantGraphConfig {
 
     @Bean
     CompiledGraph posAssistantGraph(StateGraph posAssistantStateGraph) throws GraphStateException {
-        return posAssistantStateGraph.compile();
+        // In-process checkpointer for thread continuity; multi-turn Q&A text lives in Redis
+        // via AiConversationMemory (Lettuce). Official RedisSaver needs Redisson.
+        CompileConfig compileConfig = CompileConfig.builder()
+                .saverConfig(SaverConfig.builder().register(new MemorySaver()).build())
+                .build();
+        return posAssistantStateGraph.compile(compileConfig);
     }
 }

@@ -157,7 +157,7 @@ async function refreshAccessToken(): Promise<boolean> {
 async function request<T>(
   method: string,
   path: string,
-  opts: { query?: Record<string, QueryValue>; body?: unknown } = {},
+  opts: { query?: Record<string, QueryValue>; body?: unknown; signal?: AbortSignal } = {},
   retriedAfterRefresh = false,
 ): Promise<T> {
   getToken();
@@ -167,6 +167,7 @@ async function request<T>(
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     cache: "no-store",
     credentials: "same-origin",
+    signal: opts.signal,
   });
 
   let json: { code: number; message: string; data: T } | null = null;
@@ -197,7 +198,8 @@ async function request<T>(
 
 export const api = {
   get: <T>(path: string, query?: Record<string, QueryValue>) => request<T>("GET", path, { query }),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, { body }),
+  post: <T>(path: string, body?: unknown, opts?: { signal?: AbortSignal }) =>
+    request<T>("POST", path, { body, signal: opts?.signal }),
   put: <T>(path: string, body?: unknown) => request<T>("PUT", path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, { body }),
   del: <T>(path: string, body?: unknown) => request<T>("DELETE", path, { body }),
@@ -780,11 +782,16 @@ export function fetchAiReportMetrics(hours = 24): Promise<AiReportMetrics> {
 export function askAssistant(
   question: string,
   threadId?: string | null,
+  signal?: AbortSignal,
 ): Promise<AssistantResponse> {
-  return api.post<AssistantResponse>("/api/ai/assistant", {
-    question,
-    threadId: threadId || undefined,
-  });
+  return api.post<AssistantResponse>(
+    "/api/ai/assistant",
+    {
+      question,
+      threadId: threadId || undefined,
+    },
+    { signal },
+  );
 }
 
 export interface AiClientConfig {

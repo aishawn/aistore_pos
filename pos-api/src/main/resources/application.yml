@@ -72,6 +72,8 @@ spring:
           # multi-model + completions-path are set by DashScopeEnvironmentPostProcessor
           # (override with AI_DASHSCOPE_MULTI_MODEL / AI_DASHSCOPE_COMPLETIONS_PATH if needed)
           model: ${AI_DASHSCOPE_MODEL:qwen-plus}
+          temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}
+          max-tokens: ${AI_DASHSCOPE_MAX_TOKENS:1024}
       audio:
         transcription:
           options:
@@ -114,6 +116,13 @@ app:
     graph-name: pos-assistant       # Graph 工作流名称
     transcription-model: ${AI_TRANSCRIPTION_MODEL:qwen3-asr-flash}
     vision-model: ${AI_VISION_MODEL:qwen-vl-plus}
+    # Optional: faster classify-only model (e.g. qwen-flash). Empty = same as chat model.
+    classify-model: ${AI_DASHSCOPE_CLASSIFY_MODEL:}
+    temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}
+    max-tokens: ${AI_DASHSCOPE_MAX_TOKENS:1024}
+    timeout-seconds: ${AI_DASHSCOPE_TIMEOUT_SECONDS:40}
+    conversation-memory-turns: ${AI_CONVERSATION_MEMORY_TURNS:6}
+    conversation-memory-ttl-minutes: ${AI_CONVERSATION_MEMORY_TTL_MINUTES:120}
     report:
       username: ${AI_REPORT_RO_USER:orithos_ai_ro}
       # Never use a source-controlled fallback for the tenant reporting account.

@@ -16,9 +16,13 @@ Do **not** put API keys or passwords in this file.
 
 - [ ] Monthly DashScope budget agreed; over-budget action is set `AI_ENABLED=false` (POS still works).
 - [ ] Dokploy Compose env: `AI_ENABLED`, `AI_DASHSCOPE_API_KEY`, `AI_DASHSCOPE_MODEL`, `AI_DASHSCOPE_BASE_URL` (intl if needed), `AI_TRANSCRIPTION_MODEL`, `AI_VISION_MODEL`.
+- [ ] Optional latency knobs: `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-flash`, `AI_DASHSCOPE_TEMPERATURE`, `AI_DASHSCOPE_MAX_TOKENS`, `AI_DASHSCOPE_TIMEOUT_SECONDS`.
+- [ ] Redis up (JWT + `AiConversationMemory` multi-turn). Optional: `AI_CONVERSATION_MEMORY_TURNS`, `AI_CONVERSATION_MEMORY_TTL_MINUTES`.
 - [ ] Dokploy: `AI_REPORT_RO_USER` / `AI_REPORT_RO_PASSWORD` for read-only report SQL (no default password in git).
 - [ ] Connectivity probe PASS for chat, ASR, and vision (no store PII) — attach `docs/UAT_AI_DASHSCOPE_PROBE_*.json`.
 - [ ] Isolation UAT PASS for NLQ, voice, Find, Identify (photo), pitch/ask, invoice preview, price suggestions (0 price writes) — attach `docs/UAT_AI_ENABLED_ISOLATION_*.json`.
+- [ ] Utterance regression from [`docs/AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md): at least Today's sales, Open sell, Look up products, Check stock, one `report_adhoc` guided refusal, one follow-up (“and yesterday?”).
+- [ ] Admin `/admin/ai-metrics` (or equivalent) shows intent latency after smoke — no secrets in metrics payloads.
 - [ ] Operator confirmation timestamp recorded in the current `docs/HANDOFF_*.md` snapshot.
 
 ## Known failure modes (2026-10-19)
@@ -51,7 +55,7 @@ Expect: NLQ `PASS` when AI is on; Sommelier text/pitch/ask/similar `PASS`; price
 
 1. Set env in Dokploy; **Deploy** (never Fresh Volumes to “fix” AI).
 2. Confirm `/api/ai/config/client` returns `enabled: true` for an authenticated store session.
-3. Read-only smoke: floating chat accepts a sales/stock question; Find wine returns Odoo-priced stock; Identify text search works; invoice preview if using a non-production sample image; `/stock/price-suggestions` loads with `writeEnabled: false`.
+3. Read-only smoke: floating chat — pill **Today's sales** returns a report (or empty-day message) without hanging on Thinking; **Open sell / Look up products / Check stock** open pages immediately; a qa follow-up uses the same thread; Find wine returns Odoo-priced stock; Identify text search works; invoice preview if using a non-production sample image; `/stock/price-suggestions` loads with `writeEnabled: false`.
 4. Confirm anonymous AI routes still return `401`.
 5. Confirm no automatic RFQ confirm, no list_price write from price suggestions, no invoice receive.
 

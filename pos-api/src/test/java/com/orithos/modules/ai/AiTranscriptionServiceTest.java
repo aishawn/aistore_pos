@@ -22,7 +22,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 class AiTranscriptionServiceTest {
 
     private final AiTranscriptionService service = new AiTranscriptionService(
-            new AiProperties(true, null, null, null), "test-key", "https://dashscope.aliyuncs.com");
+            new AiProperties(true, null, null, null, null, 0.1, 1024, 40, 6, 120),
+            "test-key", "https://dashscope.aliyuncs.com");
 
     @Test
     void rejectsEmptyAudioBeforeCallingProvider() {
@@ -73,7 +74,8 @@ class AiTranscriptionServiceTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body("{\"error\":\"" + providerDetail + "\"}"));
         AiTranscriptionService testService = new AiTranscriptionService(
-                new AiProperties(true, null, null, null), "test-key", "https://dashscope.aliyuncs.com", builder);
+                new AiProperties(true, null, null, null, null, 0.1, 1024, 40, 6, 120),
+                "test-key", "https://dashscope.aliyuncs.com", builder);
         MockMultipartFile file = new MockMultipartFile("file", "voice.webm", "audio/webm", new byte[] {1, 2, 3});
 
         Logger logger = (Logger) LoggerFactory.getLogger(AiTranscriptionService.class);

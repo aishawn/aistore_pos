@@ -53,7 +53,8 @@ class ReportRespondNodeTest {
     @Test
     void unsupportedAndOversizedReportsAskForSupportedNarrowerQueries() {
         assertError("ODOO_REPORT_UNSUPPORTED",
-                "That report type is not available from live Odoo data yet. Try sales, quantity, average ticket, stock, or dead stock.");
+                "I can't run that custom comparison yet. Try: Today's sales, average ticket this week, "
+                        + "how much [product] is in stock, or dead stock last 30 days.");
         assertError("ODOO_REPORT_TOO_LARGE",
                 "That report is too large to summarize safely. Add a product filter or narrow the date range.");
     }

@@ -1,7 +1,10 @@
 package com.orithos.modules.ai.node;
 
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import org.springframework.ai.chat.client.ChatClient;
 
@@ -10,6 +13,7 @@ import java.util.Set;
 
 /**
  * Generates a chat answer for qa/unknown; Phase A action intents get a short canned message (no LLM).
+ * qa/unknown may use read-only {@link PosAssistantTools} with tenant from {@code AssistantTenantContext}.
  */
 public class GenerateResponseNode implements NodeAction {
 
@@ -18,15 +22,21 @@ public class GenerateResponseNode implements NodeAction {
     private static final String FALLBACK_RESPOND = """
             You are an assistant for the Orithos POS system used by retail staff.
             Answer concisely in the same language as the user.
-            When the user asks for live data, explain which screen to use instead of inventing numbers.
+            When live numbers are needed, call the provided tools. Never invent sales, stock, or prices.
+            If tools are unavailable, explain which screen to use instead.
             """;
 
     private final ChatClient chatClient;
     private final IntentConfigService configService;
+    private final AiProperties properties;
+    private final PosAssistantTools tools;
 
-    public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService) {
+    public GenerateResponseNode(ChatClient chatClient, IntentConfigService configService,
+                                AiProperties properties, PosAssistantTools tools) {
         this.chatClient = chatClient;
         this.configService = configService;
+        this.properties = properties;
+        this.tools = tools;
     }
 
     @Override
@@ -42,18 +52,29 @@ public class GenerateResponseNode implements NodeAction {
 
         String system = configService.getSnapshot()
                 .promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
+        String history = state.value("conversation_history", String.class).orElse("");
 
         String userPrompt = """
                 Intent: %s
                 Intent summary: %s
-                Question: %s
-                """.formatted(intent, summary, question);
+                %sQuestion: %s
+                """.formatted(
+                intent,
+                summary,
+                history == null || history.isBlank() ? "" : "Recent conversation:\n" + history + "\n",
+                question);
 
-        String answer = chatClient.prompt()
+        var prompt = chatClient.prompt()
                 .system(system)
                 .user(userPrompt)
-                .call()
-                .content();
+                .options(DashScopeChatOptions.builder()
+                        .temperature(properties.temperature())
+                        .maxToken(properties.maxTokens())
+                        .build());
+        if (tools != null) {
+            prompt = prompt.tools(tools);
+        }
+        String answer = prompt.call().content();
 
         return Map.of("answer", answer == null ? "" : answer);
     }

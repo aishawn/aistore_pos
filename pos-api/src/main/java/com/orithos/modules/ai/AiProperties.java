@@ -9,7 +9,17 @@ public record AiProperties(
         /** DashScope ASR model for Voice → text (default qwen3-asr-flash). */
         String transcriptionModel,
         /** DashScope vision model for wine-label OCR (default qwen-vl-plus). */
-        String visionModel
+        String visionModel,
+        /**
+         * Optional lighter model for intent classify only. Empty = use the primary
+         * {@code spring.ai.dashscope.chat.options.model} (usually qwen-plus).
+         */
+        String classifyModel,
+        double temperature,
+        int maxTokens,
+        int timeoutSeconds,
+        int conversationMemoryTurns,
+        int conversationMemoryTtlMinutes
 ) {
     public AiProperties {
         if (graphName == null || graphName.isBlank()) {
@@ -20,6 +30,24 @@ public record AiProperties(
         }
         if (visionModel == null || visionModel.isBlank()) {
             visionModel = "qwen-vl-plus";
+        }
+        if (classifyModel == null) {
+            classifyModel = "";
+        }
+        if (temperature < 0) {
+            temperature = 0.1;
+        }
+        if (maxTokens <= 0) {
+            maxTokens = 1024;
+        }
+        if (timeoutSeconds <= 0) {
+            timeoutSeconds = 40;
+        }
+        if (conversationMemoryTurns <= 0) {
+            conversationMemoryTurns = 6;
+        }
+        if (conversationMemoryTtlMinutes <= 0) {
+            conversationMemoryTtlMinutes = 120;
         }
     }
 }

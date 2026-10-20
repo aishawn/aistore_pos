@@ -157,6 +157,7 @@ export function SellAiPanel({
   const [listening, setListening] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [thinkingHint, setThinkingHint] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
@@ -252,7 +253,7 @@ export function SellAiPanel({
       return true;
     }
     if (
-      /^(进入收银界面|进入收银|打开收银|收银界面|open\s*(the\s*)?(sell|cashier|register)(\s*screen)?)$/i.test(
+      /^(进入收银界面|进入收银|打开收银|收银界面|open\s*(the\s*)?(sell|cashier|register)(\s*screen)?|open\s*sell)$/i.test(
         t,
       )
     ) {
@@ -264,7 +265,9 @@ export function SellAiPanel({
       return true;
     }
     if (
-      /^(查询库存|查看库存|库存查询|check\s*(stock|inventory)|stock\s*list)$/i.test(t)
+      /^(查询库存|查看库存|库存查询|check\s*(stock|inventory)|stock\s*list|check\s*stock)$/i.test(
+        t,
+      )
     ) {
       openStockLookup("");
       return true;
@@ -483,16 +486,27 @@ export function SellAiPanel({
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    setThinkingHint(null);
     lockAndClearInput();
     setMessages((prev) => [...prev, { role: "user", text }]);
     if (tryLocalWorkspaceIntent(text)) {
       busyRef.current = false;
       setBusy(false);
+      setThinkingHint(null);
       return;
     }
     const startedAt = performance.now();
+    const hintTimers: number[] = [
+      window.setTimeout(() => setThinkingHint("Still working on your question…"), 3000),
+      window.setTimeout(
+        () => setThinkingHint("This is taking longer than usual — hang tight…"),
+        8000,
+      ),
+    ];
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const hardTimeout = window.setTimeout(() => controller?.abort(), 45_000);
     try {
-      const result = await askAssistant(text, threadId);
+      const result = await askAssistant(text, threadId, controller?.signal);
       setThreadId(result.threadId);
       await dispatchIntent(result);
       if (result.answer || result.table || result.reportId) {
@@ -515,11 +529,16 @@ export function SellAiPanel({
       if (e instanceof ApiError && (e.code === 50301 || e.status === 503)) {
         setAiEnabled(false);
       }
+      const aborted =
+        (typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "AbortError") ||
+        (e instanceof Error && e.name === "AbortError");
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: aiFailureMessage(e, "chat"),
+          text: aborted
+            ? "The assistant timed out. Try a shorter question, or use Today's sales / Check stock shortcuts."
+            : aiFailureMessage(e, "chat"),
           diagnostics: {
             intent: "unavailable",
             latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
@@ -528,8 +547,11 @@ export function SellAiPanel({
         },
       ]);
     } finally {
+      window.clearTimeout(hardTimeout);
+      for (const id of hintTimers) window.clearTimeout(id);
       busyRef.current = false;
       setBusy(false);
+      setThinkingHint(null);
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }
@@ -793,11 +815,7 @@ export function SellAiPanel({
   }
 
   function runQuickAction(action: string) {
-    if (action === "Create Customer") {
-      applySellView("customers");
-      return;
-    }
-    // Report shortcuts go through the AI intent pipeline, not sell-pad actions.
+    // Nav pills skip the LLM when possible; Today's sales still needs the report graph.
     if (action === "Today's sales") {
       if (aiEnabled === false) {
         openWorkspace("/history/odoo", "Opened sales history.");
@@ -806,8 +824,16 @@ export function SellAiPanel({
       void runIntent("Today's sales");
       return;
     }
-    if (action === "Open sell" || action === "Look up products" || action === "Check stock") {
-      void runIntent(action);
+    if (action === "Open sell") {
+      openWorkspace("/", "Opened the sell screen.");
+      return;
+    }
+    if (action === "Look up products") {
+      openWorkspace("/products", "Opened products.");
+      return;
+    }
+    if (action === "Check stock") {
+      openStockLookup("");
       return;
     }
     runSellAction(action);
@@ -1030,6 +1056,7 @@ export function SellAiPanel({
                 onAction={runQuickAction}
                 onClear={clearChat}
                 busy={busy}
+                thinkingHint={thinkingHint}
               />
             </div>
 
@@ -1105,11 +1132,13 @@ function DialogueView({
   onAction,
   onClear,
   busy,
+  thinkingHint,
 }: {
   messages: ChatMessage[];
   onAction: (action: string) => void;
   onClear: () => void;
   busy?: boolean;
+  thinkingHint?: string | null;
 }) {
   const canClear = !busy && messages.length > 1;
   const diagnosticMessages = messages.filter((message) => message.role === "assistant" && message.diagnostics);
@@ -1231,7 +1260,7 @@ function DialogueView({
         ))}
         {busy && (
           <div className="mr-auto max-w-[92%] rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3.5 py-2.5 text-[14px] text-[var(--oh-primary)] shadow-sm">
-            Thinking…
+            {thinkingHint ?? "Thinking…"}
           </div>
         )}
       </div>

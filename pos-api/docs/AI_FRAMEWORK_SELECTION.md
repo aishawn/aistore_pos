@@ -222,10 +222,10 @@ ReActAgent reactAgent = reactAgentBuilder.toolExecutionContext(agentScopeCtx).bu
 |------|------|
 | 技术栈 | Spring Boot 3.3.5 · Java 21 · MyBatis + MySQL + Redis + JWT · POI |
 | 规模 | 296 个 Java 文件 / 约 11,766 行 · 37 个业务模块 / 56 个 Controller · schema 约 80 张表 |
-| 已集成 AI | spring-ai-alibaba 1.1.2.2（graph-core + starter-dashscope），模型 `qwen-plus` |
-| AI 实现 | `classify → respond` 两节点线性 Graph，无数据库访问、无 Tool Calling |
-| 对外接口 | `POST /api/ai/assistant`（JWT 必需），`stream.blockLast()` 后一次性返回 JSON，非 SSE |
-| 前端 AI | 完全 Mock。`SellAiPanel.tsx` 的 `aiReply()` 是硬编码 if-else；`AiAssistant.tsx` 是静态 demo 且未被任何页面 import |
+| 已集成 AI | spring-ai-alibaba 1.1.2.2（graph-core + starter-dashscope），默认聊天模型 `qwen-plus` |
+| AI 实现 | Graph：`classify → respond` 或 `classify → fill_slots → odoo_report → report_respond`；快捷语绕过 classify LLM；qa 路径只读 Tool Calling（tenant 来自 ThreadLocal）；多轮历史在 Redis（Lettuce），Graph 用 MemorySaver |
+| 对外接口 | `POST /api/ai/assistant`（JWT 必需），`stream.blockLast(timeout)` 后一次性返回 JSON，非 SSE |
+| 前端 AI | `SellAiPanel` / `AiFloatHost` 调真实 `/api/ai/assistant`；导航快捷本地处理；Thinking 3s/8s 提示 + 45s 客户端超时。`AiAssistant.tsx` 仍为遗留静态 demo |
 | 部署 | docker-compose 单机，backend / frontend / mysql / redis 各 1 副本，未使用 Kubernetes |
 | 租户模型 | 单 vendor + 多 outlet；**业务表仅有 `outlet_id`，全库无 `vendor_id` / `tenant_id` 列** |
 
@@ -255,12 +255,12 @@ SaaS 化的第一大工程是给这批表加租户维度、给 37 个模块的 M
 | 优先级 | 事项 | 说明 |
 |--------|------|------|
 | P0 | **抽防腐层** | 当前 `AiAssistantController` → `PosAssistantGraphService` → `CompiledGraph`，框架类型已渗透业务层。抽自有接口（形如 `PosAssistant.ask(TenantContext, question, threadId)`），SAA 实现只是其中一个实现类。将来并列引入 AgentScope 只需新增实现，Controller 与业务代码一行不动 |
-| P0 | **租户 ID 贯穿到 Tool 层** | 所有 Tool 一律从 ToolContext 读 `tenantId` 并强制拼进 WHERE，**绝不允许模型通过参数传租户 ID**。否则 prompt injection 可直接造成跨租户数据泄露——这是 SaaS AI 最大的安全风险。SAA 1.1.2.0 新增的 `ToolContextHelper` 即用于此 |
-| P1 | **接 Tool Calling** | 把 `stocklist` / `stocktake` / `product` / `customer` 等已接真实 DB 的 API 包成 Tool。现有两个节点只调 `ChatClient`，未注入任何 Mapper/Service，`GenerateResponseNode` 的 System Prompt 甚至明确要求不编造实时数据、引导用户自己去界面操作。这是价值增量最大的一步 |
-| P1 | **接 Redis Checkpointer** | `threadId` 目前只是空壳，未配置 Checkpointer，多轮上下文记不住，且多副本下路由不到同一实例。项目已有 Redis，直接接 `redis` Saver，key 设计为 `tenantId:userId:sessionId` |
-| P2 | **补模型调用参数** | `application.yml` 中只配了 `model: qwen-plus`，无 timeout / retry / temperature / max-tokens。收银台对延迟敏感，需显式设置并加降级兜底 |
-| P2 | **落地报表聚合查询** | `ReportController` 的 `POST /api/reports` 目前返回代表性 Mock 数据，注释写明待替换为真实 DSL 解析与 `GROUP BY`。想做"AI 查报表"必须先落地，否则模型只会拿到假数据 |
-| P2 | **前端接真实接口** | `SellAiPanel.tsx` / `AiAssistant.tsx` 目前完全 Mock，未调 `/api/ai/assistant` |
+| done | **租户 ID 贯穿到 Tool 层** | `AssistantTenantContext` + `PosAssistantTools`：模型参数不含 tenant；只读 sales/stock/aov 工具走 `OdooReportQueryService` |
+| done | **接 Tool Calling（只读）** | qa/unknown 路径启用 `PosAssistantTools`；写操作仍走前端确认 dispatcher |
+| done | **多轮记忆** | Redis `AiConversationMemory`（threadId=`vendor:user:session`）+ Graph `MemorySaver`。官方 `RedisSaver` 需 Redisson，本仓库用 Lettuce，未引入 Redisson |
+| done | **补模型调用参数** | `temperature` / `max-tokens` / `timeout-seconds`；可选 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-flash` |
+| P2 | **落地报表聚合查询** | Classic `ReportController` mock 与 Odoo 模板报表是两套路径；AI 已走 Odoo 模板。`report_adhoc` 仍为引导拒答（无裸 NL2SQL） |
+| done | **前端接真实接口** | `SellAiPanel` 已调 `/api/ai/assistant`；快捷导航本地化；Thinking 超时提示 |
 
 ### 版本管理注意
 

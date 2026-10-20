@@ -1,14 +1,17 @@
 package com.orithos.modules.ai.node;
 
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.orithos.modules.ai.AiProperties;
+import com.orithos.modules.ai.AssistantFastPathRouter;
+import com.orithos.modules.ai.WorkflowRouteRouter;
 import com.orithos.modules.ai.configstore.AiIntent;
 import com.orithos.modules.ai.configstore.AiSlot;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.RawIntent;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
-import com.orithos.modules.ai.WorkflowRouteRouter;
 import com.orithos.modules.ai.report.ReportAdhocRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +25,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Phase A: classify utterance using DB-backed prompt + whitelist, then sanitize slots.
+ * Classify utterance using DB-backed prompt + whitelist, then sanitize slots.
+ * High-frequency shortcuts skip the classify LLM via {@link AssistantFastPathRouter}.
  */
 public class ClassifyQueryNode implements NodeAction {
 
@@ -36,13 +40,16 @@ public class ClassifyQueryNode implements NodeAction {
     private final ChatClient chatClient;
     private final IntentConfigService configService;
     private final IntentSanitizeService sanitizeService;
+    private final AiProperties properties;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
-                             IntentSanitizeService sanitizeService) {
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.sanitizeService = sanitizeService;
+        this.properties = properties;
     }
 
     @Override
@@ -50,9 +57,24 @@ public class ClassifyQueryNode implements NodeAction {
         String question = state.value("question", String.class)
                 .orElseThrow(() -> new IllegalStateException("question is required"));
 
+        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
+        if (fast != null) {
+            log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
+            Map<String, Object> out = new HashMap<>();
+            out.put("intent", fast.intent());
+            out.put("intent_summary", fast.summary());
+            out.put("slots", fast.slots() == null ? Map.of() : fast.slots());
+            out.put("ui_panel", nullToEmpty(fast.panel()));
+            out.put("ui_view", nullToEmpty(fast.view()));
+            out.put("ui_route", nullToEmpty(fast.route()));
+            out.put("ui_action", nullToEmpty(fast.action()));
+            return out;
+        }
+
         IntentConfigService.Snapshot snap = configService.getSnapshot();
         String system = snap.promptContent(IntentConfigService.PROMPT_CLASSIFY, FALLBACK_CLASSIFY_PROMPT);
-        String userPrompt = buildUserPrompt(snap, question);
+        String history = state.value("conversation_history", String.class).orElse("");
+        String userPrompt = buildUserPrompt(snap, question, history);
 
         RawIntent raw = callModel(system, userPrompt);
         SanitizedIntent result = sanitizeService.sanitize(raw);
@@ -82,12 +104,24 @@ public class ClassifyQueryNode implements NodeAction {
         return out;
     }
 
+    private DashScopeChatOptions classifyOptions() {
+        var builder = DashScopeChatOptions.builder()
+                .temperature(properties.temperature())
+                .maxToken(Math.min(512, properties.maxTokens()));
+        String classifyModel = properties.classifyModel();
+        if (classifyModel != null && !classifyModel.isBlank()) {
+            builder.model(classifyModel.trim());
+        }
+        return builder.build();
+    }
+
     private RawIntent callModel(String system, String userPrompt) {
         // Prefer plain JSON text: more reliable across DashScope models than BeanOutputConverter/entity().
         try {
             String raw = chatClient.prompt()
                     .system(system)
                     .user(userPrompt)
+                    .options(classifyOptions())
                     .call()
                     .content();
             RawIntent parsed = parseRawJson(raw);
@@ -103,6 +137,7 @@ public class ClassifyQueryNode implements NodeAction {
             LlmIntentOutput entity = chatClient.prompt()
                     .system(system)
                     .user(userPrompt)
+                    .options(classifyOptions())
                     .call()
                     .entity(LlmIntentOutput.class);
             if (entity != null && entity.intent() != null) {
@@ -130,7 +165,7 @@ public class ClassifyQueryNode implements NodeAction {
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question) {
+    private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question, String history) {
         String intentLines = snap.intents().stream()
                 .map(i -> "- " + i.getCode() + ": " + hint(i))
                 .collect(Collectors.joining("\n"));
@@ -151,15 +186,19 @@ public class ClassifyQueryNode implements NodeAction {
             slotLines.append('\n');
         }
 
+        String historyBlock = (history == null || history.isBlank())
+                ? ""
+                : "Recent conversation (for relative follow-ups like \"and yesterday?\"):\n" + history + "\n\n";
+
         return """
                 Allowed intents:
                 %s
 
                 Allowed slots:
                 %s
-                User utterance:
+                %sUser utterance:
                 """
-                .formatted(intentLines, slotLines)
+                .formatted(intentLines, slotLines, historyBlock)
                 + """
                 ---
                 %s
@@ -171,7 +210,8 @@ public class ClassifyQueryNode implements NodeAction {
                 Creating a user/customer (创建一个用户/客户) → intent entity_action, entity=customer, op=create (query optional; client prefills required fields).
                 Creating a product (创建商品/产品) → intent entity_action, entity=product, op=create (query optional; client prefills required fields, user clicks Save).
                 For sales/quantity/stock/dead-stock/average-ticket questions use report_* intents (not qa). Dates as YYYY-MM-DD when known.
-                Ticket counts (几笔订单 / how many tickets), mixed metrics, rankings, and day-vs-day comparisons MUST use report_adhoc, not report_qty.
+                Ticket counts (几笔订单 / how many tickets) → report_aov (tickets field). Rankings / mixed metrics / day-vs-day → report_adhoc.
+                Prefer the nearest report_* template over report_adhoc when one fits.
                 For route prefer path like /orders or key like orders from allowed list.
                 """.formatted(question);
     }
