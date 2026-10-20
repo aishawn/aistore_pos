@@ -2,11 +2,11 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
-### 2026-10-20 定价/库存回归与路由脚本校正
+### 2026-10-20 定价/库存回归与路由脚本校正（`816c13b`）
 
 - 价格建议 fixture UAT 已改为检查实际 `pos-ui/app` 路由，并在公网目标上 `15/15 PASS`；Stock/Capped/Bulk `6/6 PASS`，Vendor Connections `2/2 PASS`，均无业务写入。
 - 发票扫描 mock 通过能力探测重试、OCR 重试和 preview-only 边界。
-- 默认本地目标失败是因 `demo.localhost:3035` 未启动；公网 fixture 重跑通过。结果仅代表当前线上基线，待 Dokploy 分支修正后需重新验证 `d34fa45`。
+- 默认本地目标失败是因 `demo.localhost:3035` 未启动；公网 fixture 重跑通过。结果仅代表当前线上基线；包含 `816c13b` 的 webhook 仍返回 `301 Branch Not Match`，待 Dokploy 分支修正后需重新验证 `d34fa45`。
 
 ### 2026-10-20 管理页共享移动安全区批次（`d34fa45`，待部署）
 
