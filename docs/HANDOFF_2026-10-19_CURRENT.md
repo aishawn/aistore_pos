@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-21 Dokploy 部署尝试（`4aacb74`）
+
+- 在完成本轮 AI/UI 回归并推送 `4aacb74` 后，Compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务。
+- 本次结果已记录在 `UAT_DEPLOYMENT_2026-10-21_4AACB74_BRANCH-BLOCK.json`。按照规则停止继续重试；必须先在 Dokploy Source/Git 设置确认仓库 `aishawn/aistore_pos`、分支 `main`、仓库根目录 `/` 和 `docker-compose.yml`。
+- 因没有构建日志、容器 SHA 或运行 commit，本轮线上回归只能作为公网旧运行版本基线，不能标记为 `4aacb74` 的 post-deploy。
+
 ## 2026-10-21 公网只读复测（运行身份未核验）
 
 - 当前公网基线通过：全站实际 `135` 路由 × `390/1440`，`270/270 PASS`；AI features `14/14`、AI reports `14/14`、Sommelier `10/10`、AI UI `2/2`、设置 `28/28`、价格/库存 `8/8`、表格/表单 `14/14`。

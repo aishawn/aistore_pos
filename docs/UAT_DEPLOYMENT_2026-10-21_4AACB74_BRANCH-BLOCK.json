@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-21T00:00:00+08:00",
+  "targetCommit": "4aacb74",
+  "source": "Dokploy Compose webhook",
+  "httpStatus": 301,
+  "response": {
+    "message": "Branch Not Match"
+  },
+  "buildStarted": false,
+  "deploymentShaVerified": false,
+  "result": "BLOCKED",
+  "nextAction": "In Dokploy Source/Git settings, verify repository aishawn/aistore_pos, branch main, repository root /, and docker-compose.yml before retrying."
+}
