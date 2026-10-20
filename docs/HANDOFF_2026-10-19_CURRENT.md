@@ -988,3 +988,9 @@
 - AI 报表/assistant 审计日志只记录 path、允许状态、行数和延迟；数据库写入异常只记录异常类型，不记录 SQL、问题文本或数据库诊断内容。
 - Sell AI 前端额外 allowlist 可派发 intent，未知响应不会触发路由、Sell 操作或实体动作；后端同步拒绝伪造/非法实体操作。
 - 新增 ASR 输入/错误脱敏、视觉 provider 安全消息、审计日志脱敏和 intent 行为测试；本地未运行 Maven/Next/Docker build。下一次部署目标为 `2e45369` 或其后提交，部署后补跑 AI features、AI UI 和匿名鉴权。
+
+## 2026-10-20 最新 Dokploy 阻断
+
+- 安全批次已推送，当前 `main`/`origin/main` 最新为 `97572da`。
+- 针对 `97572da` 的 compose webhook 于 2026-10-20 14:03（UTC+8）再次返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务。
+- 该结果与此前相同，不能作为 Java/Next 编译失败证据；在 Dokploy 控制台修正 Compose 仓库分支绑定前停止重复触发。修正后目标部署 `97572da`，并回读 frontend/backend 构建日志、健康状态和运行 SHA。
