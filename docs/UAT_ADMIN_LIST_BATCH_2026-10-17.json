@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-17T15:49:30.973Z",
-  "sourceCommit": "8a0ce7ab64d87977c9b09c6b859b77685ce31f76",
-  "deployment": "dokploy-sha-unverified",
+  "generatedAt": "2026-10-20T03:05:24.020Z",
+  "sourceCommit": null,
+  "deployment": null,
   "scope": "authenticated read-only admin list visual regression; no business writes",
   "routes": [
     "https://demo.orithos.com.au/purchases/odoo",
@@ -42,6 +42,7 @@
           "emptyStateVisible": true,
           "clearVisible": true,
           "visibleClearText": true,
+          "createVisible": true,
           "cleared": true,
           "passed": true
         }
@@ -61,6 +62,7 @@
           "emptyStateVisible": true,
           "clearVisible": true,
           "visibleClearText": true,
+          "createVisible": true,
           "cleared": true,
           "passed": true
         }
@@ -80,6 +82,7 @@
           "emptyStateVisible": true,
           "clearVisible": true,
           "visibleClearText": true,
+          "createVisible": true,
           "cleared": true,
           "passed": true
         }
@@ -110,6 +113,7 @@
           "emptyStateVisible": true,
           "clearVisible": true,
           "visibleClearText": true,
+          "createVisible": true,
           "cleared": true,
           "passed": true
         }
@@ -129,6 +133,7 @@
           "emptyStateVisible": true,
           "clearVisible": true,
           "visibleClearText": true,
+          "createVisible": true,
           "cleared": true,
           "passed": true
         }
@@ -148,6 +153,7 @@
           "emptyStateVisible": true,
           "clearVisible": true,
           "visibleClearText": true,
+          "createVisible": true,
           "cleared": true,
           "passed": true
         }

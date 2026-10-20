@@ -35,12 +35,31 @@ for (const viewport of viewports) {
     }
     const page = await context.newPage();
     const response = await page.goto(`${route.host}${route.path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.waitForTimeout(1800);
+    const loadingLabel = route.path === "/utilities/mail-log"
+      ? "Loading mail log"
+      : route.path === "/utilities/trashed-items"
+        ? "Loading trashed items"
+        : route.path === "/platform/stores"
+          ? "Loading stores"
+          : null;
+    if (loadingLabel) {
+      await page.getByRole("status", { name: loadingLabel }).waitFor({ state: "hidden", timeout: 30000 }).catch(() => {});
+    }
     const interactiveChecks = [];
     if (["/platform/stores", "/utilities/mail-log", "/utilities/trashed-items"].includes(route.path)) {
       // Search inputs expose the ARIA searchbox role; keep textbox as a fallback for legacy pages.
       const input = page.locator('input[type="search"], input[type="text"]').first();
       await input.waitFor({ state: "visible", timeout: 30000 });
+      // The platform stores page shows its create action only in the unfiltered
+      // empty state. Capture that invariant before applying the no-match filter.
+      const initialCreateVisible = route.path === "/platform/stores"
+        ? await page.locator('a[href="/signup"]').filter({ hasText: "Create store" }).evaluateAll((links) => links.some((link) => {
+          const element = link;
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.visibility !== "hidden" && style.display !== "none" && rect.width > 0 && rect.height > 0;
+        })).catch(() => false)
+        : true;
       await input.fill("__codex_no_match__");
       await page.waitForTimeout(300);
       const emptyCopy = route.path === "/platform/stores"
@@ -59,13 +78,13 @@ for (const viewport of viewports) {
       await clearButton.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
       const clearVisible = await clearButton.isVisible().catch(() => false);
       const visibleClearText = await page.getByText(clearLabel, { exact: true }).isVisible().catch(() => false);
-      const createVisible = route.path === "/platform/stores"
-        ? await page.getByRole("link", { name: "Create store", exact: true }).isVisible().catch(() => false)
-        : true;
       if (clearVisible) await clearButton.click();
+      if (loadingLabel) {
+        await page.getByRole("status", { name: loadingLabel }).waitFor({ state: "hidden", timeout: 30000 }).catch(() => {});
+      }
       await page.waitForTimeout(250);
       const cleared = (await input.inputValue().catch(() => "")) === "";
-      interactiveChecks.push({ emptyStateVisible, clearVisible, visibleClearText, createVisible, cleared, passed: emptyStateVisible && clearVisible && createVisible && cleared });
+      interactiveChecks.push({ emptyStateVisible, clearVisible, visibleClearText, createVisible: initialCreateVisible, cleared, passed: emptyStateVisible && clearVisible && initialCreateVisible && cleared });
     }
     const checks = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
