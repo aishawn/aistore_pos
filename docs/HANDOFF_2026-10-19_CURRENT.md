@@ -3,9 +3,10 @@
 ## 2026-10-24 AI 助手问法扩展与 Demo 只读回归
 
 - 工作区新增销售、库存、补货、侍酒和供应商账单的自然口语路由；测试目录、线上 utterance 脚本和误路由边界已同步。改动尚未提交/部署，不能宣称线上已具备这些新增别名。
-- Demo 扩展问法矩阵：`51 PASS / 8 BLOCKED / 0 FAIL`；阻塞均为旧运行版本对新增问法返回 `50210`。旁路 surface `11/11`、UI `2/2`、route `9/9`、availability `3/3`、admin guard `15/15`、metrics `9/9` 通过。
+- Demo 扩展问法矩阵：`51 PASS / 8 BLOCKED / 0 FAIL`（已执行 59 条）；阻塞均为旧运行版本对新增问法返回 `50210`。当前工作区目录已到 62 条，新增的补货/定价/发票费用边界问法尚未部署执行。旁路 surface `11/11`、UI `2/2`、route `9/9`、availability `3/3`、admin guard `15/15`、metrics `9/9` 通过。
 - 报表 `13 PASS / 1 BLOCKED`：库存报表仍返回安全 unavailable 提示；features `14 PASS / 1 BLOCKED`：发票 OCR 探针收到非 JSON HTTP 502。两项均不是功能断言 FAIL。
 - 运行身份仍未核验（`deploymentShaVerified=false`）；Dokploy 之前的 `Branch Not Match` 阻断没有改变。继续停止重复 webhook，先修 Source/Git 的 `main` 分支绑定，再以含 Java 21 门禁的提交部署并重跑完整 P0。
+- 独立只读 Odoo stock RPC 为 `7 PASS / 1 INFO`，本地 DashScope 探针为 `1 PASS`；两者不能证明 Demo 运行容器的 AI graph/OCR 配置一致，库存和 OCR 阻塞仍需目标 runtime 日志与 SHA 归因。
 
 ## 2026-10-23 AI UI 识别结果竞态复测
 
@@ -1294,4 +1295,5 @@
 - 自然语言工作流为 `51 PASS / 8 BLOCKED / 0 FAIL`。8 项阻断均返回 `HTTP 200 / code 50210`，集中在补货、酒款配对、账单中文问法、直接库存问法和销售口语问法。当前工作区的 `AssistantFastPathRouter`、`WorkflowRouteRouter` 和对应 UAT 已覆盖这些表达，但公网旧镜像尚未包含它们。
 - `pos-ui npm run typecheck`、工作流脚本 `node --check`、`git diff --check` 通过；没有运行 Next/Docker build。工作流证据副本为 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_CONTINUATION3.json`。
 - 全站只读矩阵复核 `135 routes x 390/1440 = 270/270 PASS`，无页面错误或横向溢出；证据为 `docs/UAT_ALL_STATIC_PAGES_2026-10-21_CURRENT_RECHECK.json`。这仍是公网旧运行版本行为，不是最新源码的 post-deploy 证明。
+- 真实只读交互复核 `14/14 PASS`，运营安全只读 `3/3 PASS`；移动导航/焦点、商品搜索编辑、表单/CSV 预览、客户/历史销售、补货/报表筛选、现金关班门禁和采购状态筛选均通过。证据为 `docs/UAT_INTERACTION_2026-10-21_CURRENT.json`、`docs/UAT_OPS_READONLY_2026-10-21_CURRENT.json`；无业务写入，POS session `00004` 保持 opened。
 - 当前 `HEAD/origin/main` 为 `435ec47`，但该提交只包含交接文档；后端路由改动仍在工作区，未推送，原因是 Dokploy webhook 仍返回 `HTTP 301 Branch Not Match`，无法满足 Java 21 远程门禁。不得把这些改动称为已部署。
