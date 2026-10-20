@@ -2,6 +2,13 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 AI 助手确定性问法扩展（待部署）
+
+- Assistant fast path 新增带日期的销售问法、带商品名的商品搜索和库存问法；商品名称进入 query，不调用分类模型、不编造库存数。
+- 自定义比较问法（中英文）继续优先进入 `report_adhoc` 引导拒答，避免被日期销售快捷路由误判。
+- Java 21 `mvn -B clean verify`：`238 tests, 0 failures, 0 errors`；仅有既存 JSqlParser `Parenthesis` deprecated warnings。
+- 相关测试计划和问法目录已同步；当前改动尚未进入 Dokploy 镜像，部署后需重跑 AI workflow/features/reports 与全站只读矩阵。
+
 ### 2026-10-20 发票 OCR 预览可靠性批次（`a346fcd` 后工作区）
 
 - 发票预览页拒绝非图片文件和超过 10 MB 的图片，减少移动端无效上传；仍保持 OCR 预览只读，不创建采购、收货或供应商记录。识别出的发票日期和到期日都可在预览中复核。
