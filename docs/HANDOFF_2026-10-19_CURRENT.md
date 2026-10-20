@@ -1,5 +1,11 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 Owner 试用优先级
+
+- Owner 希望尽快开始试用；默认线上只读验收目标为 `https://demo.orithos.com.au`，登录账号 `admin`。密码和 Dokploy webhook 只在 owner 提供的安全渠道/本地忽略环境变量中使用，不写入 Git、交接文档、UAT JSON 或命令输出；API keys 从已配置环境变量读取且不回显。
+- Owner 明确要求不运行本地 build。前端可做 typecheck、目标 lint 和脚本语法检查；应用构建及 Java 21 Maven 全量验证走 Dokploy，并以日志中的目标 SHA 为准。
+- 试用推进顺序：先确认 Dokploy Compose 的仓库、`main` 分支、根目录与 `docker-compose.yml` 绑定，再部署目标提交；若 webhook 返回 `Branch Not Match`，停止重试并先修 Source/Git 配置。部署后核对运行 SHA，再做 demo 只读 smoke/UAT；任何真实业务写入仍须走已批准的隔离环境。
+
 ## 2026-10-20 AI 助手问法扩展（待部署）
 
 - 确定性路由新增显式日期销售问法、带名称商品搜索和商品库存问法，避免 provider 暂不可用时把明确请求送入分类模型；商品名称会保留为 query。
@@ -1189,3 +1195,10 @@
 - Java 21 `mvn -B clean verify`：`243 tests, 0 failures, 0 errors`；目标 ESLint、报表 UAT `node --check`、`git diff --check` 通过。
 - `pos-ui npm run typecheck` 当前被既有 `.next/dev/types/routes.d.ts` 语法损坏阻断（TS1109/TS1160）；未运行 Next/Docker build，需清理生成目录后再复核。
 - 尚未触发 Dokploy：此前 Compose webhook 的 `HTTP 301 Branch Not Match` 仍未确认修复。部署前先修正 Source/Git 分支绑定，部署后核对运行 SHA，再执行 AI report/UI、全站和设置回归。
+
+## 2026-10-21 公网 AI 报表只读复测
+
+- 使用当前测试脚本完成 demo 只读回归：`13/14 PASS`、`1 BLOCKED`、`0 failures`。证据：`docs/UAT_AI_REPORTS_READONLY_ONLINE_4E056EA.json`。
+- 门店 Odoo 商品目录读取 `VB Cans` 的库存字段返回 `HTTP 200`，证明产品库存字段可读；AI stock report 仍返回固定的“Live Odoo reporting is temporarily unavailable”提示，因此阻断范围是 AI stock report 数据源/路径。
+- 销售报表的今日业务日、7/30 天、英文/中文日期解析、14 Oct 与 Overview 对账、逐日趋势对账和 Odoo source path 全部通过。
+- 该结果是公网当前运行版本的只读证据，runtime SHA 尚未从 Dokploy 控制台核验，不能标记为 `post-deploy`。
