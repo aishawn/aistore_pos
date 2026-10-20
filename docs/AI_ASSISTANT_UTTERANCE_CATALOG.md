@@ -7,6 +7,7 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 | Example | Expected intent | Expected period |
 |---|---|---|
 | Today's sales | `report_sales` | today in store timezone |
+| And yesterday? *(after a sales question in the same thread)* | `report_sales` | resolve the follow-up period from conversation context; never reuse yesterday's total as today's value |
 | How much did we take yesterday? | `report_sales` | yesterday |
 | 16 Oct 2026 sales | `report_sales` | 2026-10-16 |
 | Sales on 14/10/2026 | `report_sales` | 2026-10-14 (AU day first) |
