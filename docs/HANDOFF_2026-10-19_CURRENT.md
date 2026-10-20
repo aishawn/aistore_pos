@@ -1029,3 +1029,10 @@
 - 安全批次已推送，当前 `main`/`origin/main` 最新为 `97572da`。
 - 针对 `97572da` 的 compose webhook 于 2026-10-20 14:03（UTC+8）再次返回 `HTTP 301 {"message":"Branch Not Match"}`，没有创建构建任务。
 - 该结果与此前相同，不能作为 Java/Next 编译失败证据；在 Dokploy 控制台修正 Compose 仓库分支绑定前停止重复触发。修正后目标部署 `97572da`，并回读 frontend/backend 构建日志、健康状态和运行 SHA。
+
+## 2026-10-20 Dokploy #38 编译日志最终复核（当前 HEAD `ffdfdfa`）
+
+- #38 的唯一阻断是两个控制器调用 `AiProviderConfig.isValidBaseUrl(...)` 时缺少显式 import；`Parenthesis` deprecated 只是 warning，不会导致退出。
+- `ea8f1b6` 已补齐 `AiConfigController` 与 `SommelierController` 的 `import com.orithos.modules.ai.AiProviderConfig;`。当前 `main`/`origin/main` 为 `ffdfdfa`，且 `ea8f1b6` 是其祖先；`AiProviderConfig.java`、两个 import 和调用均存在于当前 Git 树。
+- 因此 #38 日志对应旧源码快照或 Dokploy 分支绑定错位，不能作为当前 HEAD 的编译结果。工作区本机 Maven 使用 Java 8，无法替代项目要求的 Java 21 构建验证；未将本地失败误报为 Java 21 编译失败。
+- 下一次部署前必须在 Dokploy 确认 Compose 仓库/分支指向 `main`，目标 commit 至少为 `ffdfdfa`，并回读 Maven/Next 完整日志、backend/frontend 健康状态和运行容器 SHA。确认这些证据前，发布状态继续 **NO-GO**。
