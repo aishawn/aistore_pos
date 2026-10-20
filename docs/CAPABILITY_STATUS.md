@@ -880,3 +880,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 证据：`docs/UAT_AI_UI_POST_E9D9D69_RETRY.json`、`docs/UAT_PRICING_POST_E9D9D69.json`、`docs/UAT_TABLE_A11Y_POST_E9D9D69.json`。
 - 全站只读矩阵复测 `134 × 390/1440 = 268/268 PASS`，HTTP 全部 200，无页面错误或横向溢出；证据：`docs/UAT_ALL_STATIC_PAGES_POST_351C02F.json`。
 - 本地未运行 build；Dokploy 容器 SHA、构建日志和健康状态仍未独立核验，发布保持 **NO-GO**。
+
+### 2026-10-20 报表时区与日期解析批次（`73ba45c`）
+
+- AI 报表读取绑定 Odoo company 的国家/州地址并推断业务时区，缓存 30 分钟；该时区同时用于相对日期、`context.tz`、UTC 查询边界和订单业务日分组，读取失败回退 Sydney。
+- 英文月份解析改为大小写不敏感，覆盖全部 12 个缩写及无效日期回退；新增 Adelaide/Sydney 午夜边界和只读公司时区 RPC fixture。
+- `pilot-ai-report-readonly-uat.mjs` 增加逐日 Overview 对账；本地 typecheck、目标 ESLint、脚本语法和 diff check 通过，未运行本地 build。
+- 该批次尚未取得 Dokploy 构建/运行 SHA 证据，线上 RPT-04 仍为 **In progress**，整体发布继续 **NO-GO**。

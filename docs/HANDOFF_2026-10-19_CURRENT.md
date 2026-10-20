@@ -959,3 +959,11 @@
 - 当前源码静态核对结果：`AiProviderConfig.java` 被 Git 跟踪，两个控制器的 import 与调用均存在。该日志不能证明当前 `a57d0c8` 仍有同一编译错误，应按 Dokploy 使用旧源码快照或分支错位处理。
 - 本地遵守约束未运行 Maven、Next 或 Docker build；未把 #38 标为成功或已部署。下一次部署必须在 Dokploy 控制台确认目标 commit 至少为 `a57d0c8`（或其后提交）、Maven/Next 构建完成、frontend/backend 健康且运行 SHA 与目标一致。
 - 文档提交 `839e394` 推送后再次调用 compose webhook，平台仍返回 `HTTP 301 Branch Not Match`，因此本次没有启动构建；需先在 Dokploy 修正 Compose 的仓库/分支绑定，再重试。
+
+## 2026-10-20 报表时区与日期解析批次（`73ba45c`）
+
+- AI 报表相对日期现在按绑定 Odoo company 的地址推断业务时区，缓存 30 分钟，并将同一时区用于 Odoo `context.tz`、UTC 查询边界和订单业务日分组；无法读取时安全回退 `Australia/Sydney`。
+- 日期解析补齐大小写不敏感的英文月份、全部 12 个月份缩写和无效日期回退；增加 Adelaide/Sydney 午夜边界、公司地址解析、DST/UTC 边界测试。
+- 报表只读 UAT 增加逐日 AI/Overview 对账，而不是只比较单日；所有报告请求仍禁止 Odoo 写方法。`OdooReportingDashboard` 与 Settings/Data loading 状态补齐 `aria-live`/`aria-busy`。
+- 本地验证：`pos-ui` `npm run typecheck`、目标 ESLint、AI 报表/OCR UAT `node --check`、目标 `git diff --check` 通过；遵守约束未运行 Maven、Next build 或 Docker build。
+- 提交已推送前的下一步：集中推送 `73ba45c` 后，在 Dokploy 修正 Compose 分支绑定再部署；部署后必须执行 `pilot-ai-report-readonly-uat.mjs`、全站矩阵、表格/表单和 AI availability。当前线上仍不能标记为该提交，发布保持 **NO-GO**。
