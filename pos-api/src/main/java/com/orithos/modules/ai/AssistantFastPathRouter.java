@@ -19,6 +19,18 @@ public final class AssistantFastPathRouter {
     private static final Pattern SALES_RANGE = Pattern.compile(
             "^(?:(?:sales|revenue|takings|turnover)\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern DATE_TOKEN = Pattern.compile(
+            "(?:\\b\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}\\b|\\b\\d{1,2}/\\d{1,2}/\\d{4}\\b|"
+                    + "\\b\\d{1,2}(?:st|nd|rd|th)?[\\s,./-]+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|"
+                    + "jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+                    + "(?:[\\s,./-]+\\d{4})?\\b|"
+                    + "\\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|"
+                    + "sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[\\s,./-]+\\d{1,2}"
+                    + "(?:st|nd|rd|th)?(?:[\\s,./-]+\\d{4})?\\b|\\d{1,2}月\\d{1,2}[日号])",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern SALES_MARKER = Pattern.compile(
+            "\\b(?:sales|revenue|takings|turnover)\\b|销售额|营业额|流水",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
             "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销量|销售数量))$",
             Pattern.CASE_INSENSITIVE);
@@ -31,8 +43,21 @@ public final class AssistantFastPathRouter {
     private static final Pattern LOOKUP_PRODUCTS = Pattern.compile(
             "^(look\\s*up\\s*products?|search\\s*products?|查询产品|查找产品|产品查询)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOOKUP_PRODUCT_QUERY = Pattern.compile(
+            "^(?:look\\s*up|search(?:\\s+for)?|find(?:\\s+me)?)\\s+(?:the\\s+)?products?\\s+(?:for\\s+)?(.+?)[?.!]*$|"
+                    + "^(?:帮我)?(?:查询|查找|搜索)(?:商品|产品)\\s*(.+?)[。！？]*$|"
+                    + "^(?:帮我)?(?:搜一下|找一下)\\s*(?!产品[。！？?！]*$|商品[。！？?！]*$|库存[。！？?！]*$)(.+?)[。！？]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern CHECK_STOCK = Pattern.compile(
             "^(check\\s*(stock|inventory)|stock\\s*list|查询库存|查看库存|库存查询)$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern STOCK_QUERY = Pattern.compile(
+            "^how much\\s+(.+?)\\s+(?:is|are)\\s+in\\s+stock[?.!]*$|"
+                    + "^(?:stock (?:level|quantity) of)\\s+(.+?)[?.!]*$|"
+                    + "^what(?:'s| is)\\s+the\\s+stock(?:\\s+level)?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^how many\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$|"
+                    + "^(?:查一下|查询|查看)\\s*(.+?)(?:还有多少|有多少)?库存[？?。]*$|"
+                    + "^(.+?)库存(?:还有多少|有多少)[？?。]*$",
             Pattern.CASE_INSENSITIVE);
 
     private AssistantFastPathRouter() {}
@@ -64,6 +89,16 @@ public final class AssistantFastPathRouter {
                     "");
         }
         if (SALES_RANGE.matcher(normalized).matches()) {
+            return new Match(
+                    "report_sales",
+                    "Sales report",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (SALES_MARKER.matcher(normalized).find() && DATE_TOKEN.matcher(normalized).find()) {
             return new Match(
                     "report_sales",
                     "Sales report",
@@ -107,6 +142,20 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
+        var productQuery = LOOKUP_PRODUCT_QUERY.matcher(question.trim());
+        if (productQuery.matches()) {
+            String query = cleanQuery(firstNonNull(productQuery.group(1), productQuery.group(2), productQuery.group(3)));
+            if (query != null) {
+                return new Match(
+                        "search_product",
+                        "Opened products.",
+                        Map.of("query", query),
+                        "/products",
+                        "products",
+                        "",
+                        "");
+            }
+        }
         if (LOOKUP_PRODUCTS.matcher(normalized).matches()) {
             return new Match(
                     "search_product",
@@ -127,7 +176,36 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
+        var stockQuery = STOCK_QUERY.matcher(question.trim());
+        if (stockQuery.matches()) {
+            String query = cleanQuery(firstNonNull(
+                    stockQuery.group(1), stockQuery.group(2), stockQuery.group(3), stockQuery.group(4),
+                    stockQuery.group(5), stockQuery.group(6)));
+            if (query != null) {
+                return new Match(
+                        "report_stock",
+                        "Stock report",
+                        Map.of("query", query),
+                        "",
+                        "",
+                        "",
+                        "");
+            }
+        }
         return null;
+    }
+
+    private static String firstNonNull(String... values) {
+        for (String value : values) {
+            if (value != null) return value;
+        }
+        return null;
+    }
+
+    private static String cleanQuery(String value) {
+        if (value == null) return null;
+        String query = value.trim().replaceAll("[?.!。！？]+$", "").trim();
+        return query.isEmpty() ? null : query;
     }
 
     public record Match(

@@ -35,7 +35,10 @@ This catalog defines the read-only questions a cashier is likely to ask. Each ca
 | Example | Expected intent | Expected result |
 |---|---|---|
 | How much Carlton Draught is in stock? | `report_stock` | matching catalogue stock rows |
+| What's the stock level for VB Cans? | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
+| How many Carlton Draught do we have in stock? | `report_stock` | matching catalogue stock rows; query is `Carlton Draught` |
 | 查一下 VB Cans 库存 | `report_stock` | matching catalogue stock rows |
+| VB Cans库存还有多少？ | `report_stock` | matching catalogue stock rows; query is `VB Cans` |
 | What is dead stock? | `report_dead_stock` | default 30-day window |
 | Products with no sales in the last 90 days | `report_dead_stock` | 90-day window |
 
@@ -85,7 +88,9 @@ The negative cases are equally important: `How much red wine sold this week?`,
 `What was our wine revenue yesterday?`, `How many invoices did we receive?`, and
 `How much did we pay suppliers this month?` are report questions. They must stay
 in reporting and must not navigate to a workflow page merely because they contain
-`wine`, `invoice`, or a supplier term.
+`wine`, `invoice`, or a supplier term. `Compare sales on 14 Oct with 15 Oct` and
+`比较10月14日和10月15日销售额` are unsupported custom comparisons; they must not be
+misclassified as supported single-day sales queries.
 
 For each workflow, repeat the prompt with an empty catalogue, unavailable provider,
 missing store binding and restricted role. The response must identify the source
@@ -97,6 +102,8 @@ problem and offer a next step instead of fabricating a recommendation.
 |---|---|---|
 | Find customer John | `search_customer` | open customer search, no write |
 | Search product Shiraz | `search_product` | open product search |
+| Search for the product VB Cans | `search_product` | open product search with `VB Cans` query |
+| 帮我搜一下 Shiraz | `search_product` | open product search with `Shiraz` query |
 | Open orders | `navigate` / `entity_action` | route `/orders` |
 | 去盘点 | `navigate` | route `/stocktake` |
 | Check stock | local shortcut / `report_stock` | open stock list or ask for a product name |

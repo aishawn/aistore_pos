@@ -179,6 +179,8 @@ npm run typecheck
 | FAST-03 | Look up products / 查询产品 | `/products` |
 | FAST-04 | Check stock / 查询库存 | `/stock/list` |
 | FAST-05 | Thinking > 配置超时 | 可见超时/重试提示，不无限转圈 |
+| FAST-06 | `Search for the product VB Cans` / `帮我搜一下 Shiraz` | `search_product`；保留商品名并打开 `/products` |
+| FAST-07 | `What's the stock level for VB Cans?` / `VB Cans库存还有多少？` | `report_stock`；商品名进入 query，不编造数量 |
 
 ### 7.3 模板报表与对账（P0）
 
@@ -190,11 +192,13 @@ npm run typecheck
 | RPT-T02 | yesterday / 昨天销售额 | 昨日区间；不误用今日数 |
 | RPT-T03 | 多轮：先今日再 “and yesterday?” | 同一 thread；昨日数正确 |
 | RPT-T04 | `14,oct` / `14/10/2026` / `2026-10-14` | 解析为同一业务日（当年或显式年） |
+| RPT-T04a | `14 Oct sales` / `sales on 14 October 2026` / `10月14日销售额` | 日期销售走模板报表；显式日期优先，按门店业务时区 |
 | RPT-T05 | 最近 7 天 / 本月销售额 | 区间与 Overview 对齐 |
 | RPT-T06 | How many tickets yesterday? / 几笔订单 | `report_aov`（含票数），非 adhoc 死胡同 |
 | RPT-T07 | units sold / 销量 | `report_qty` |
 | RPT-T08 | 某品库存 / dead stock | `report_stock` / `report_dead_stock`；无编造 SKU |
 | RPT-T09 | 利润 / margin / why sales down / top seller | `report_adhoc` **引导拒答或改问**；不编利润 |
+| RPT-T09a | `Compare sales on 14 Oct with 15 Oct` / `比较10月14日和10月15日销售额` | `report_adhoc` 引导拒答；不得误判为单日销售 |
 | RPT-T10 | 无报表权限用户 | 明确拒绝；无数据行 |
 | RPT-T11 | Odoo 断连 / 未绑定（可注入或故障窗） | 「源不可用」≠「无销售」 |
 
@@ -221,7 +225,7 @@ npm run typecheck
 
 | ID | 问法 | 期望 |
 |----|------|------|
-| NAV-01 | Search product Shiraz / 查找产品 | 打开产品搜索，query 合理 |
+| NAV-01 | Search product Shiraz / Search for the product VB Cans / 帮我搜一下 Shiraz | 打开产品搜索，保留 query |
 | NAV-02 | Find customer John | 打开客户搜索 |
 | NAV-03 | 去盘点 / Open orders | 合法站内路由 |
 | NAV-04 | 伪造 route `/admin/secret`（夹带） | 丢弃；不导航 |

@@ -8,11 +8,10 @@ Natural-language coverage catalog: [`AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSI
 
 ## Current execution snapshot (2026-10-20)
 
-- Local backend: Java 21 `mvn -B clean verify` → **233 tests, 0 failures, 0 errors**.
-- Online read-only baseline: availability `3/3`, features `14/14`, route matrix `9/9`, metrics `9/9`, Sommelier/invoice checks remain read-only.
-- Online workflow utterances: **16/17 PASS**. Replenishment, pricing, recommendation, invoice, English ranking and category quantity phrases pass. The remaining Chinese ranking phrase (`卖得最好`) is covered by the latest local fix but still returns `50210` on the runtime currently serving the demo. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20_RECHECK-FFC6016.json`.
-- History and metrics: store-scoped reads pass; cross-user/platform-admin cases remain blocked where credentials or a successful provider turn are required. Evidence: `UAT_AI_HISTORY_PLATFORM_2026-10-20.json`.
-- Deployment identity: runtime SHA and Dokploy build result remain unverified; the latest webhook for `1861fa5` returned HTTP 301 `Branch Not Match`. Evidence: `UAT_DEPLOYMENT_2026-10-20_1861FA5_BRANCH-BLOCK.json`.
+- Local backend: Java 21 `mvn -B clean verify` → **238 tests, 0 failures, 0 errors** (2026-10-20, after utterance routing updates).
+- Online read-only baseline: workflow utterances `17/17`, features `14/14`, route matrix `9/9`, metrics `9/9`, Sommelier `10/10` passed. Reports `4/5` and assistant surface `5/6` were blocked by AI provider `50210`; the sales data reconciliation itself passed. Latest evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20.json`, `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-20_RECHECK-A6AFED7.json`, `UAT_AI_SURFACE_ONLINE_2026-10-20_RECHECK-A6AFED7.json`.
+- Deployment identity: current runtime SHA and Dokploy build result remain unverified; recent deploy webhook returned HTTP 301 `Branch Not Match`. Online evidence is for the runtime that served the Demo at test time and does not include the current uncommitted source changes.
+- Read-only scope: no sales, purchase, receiving, inventory, cash or register-close data was written during online checks.
 
 ## Regression cases
 

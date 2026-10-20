@@ -57,22 +57,21 @@ public class ClassifyQueryNode implements NodeAction {
         String question = state.value("question", String.class)
                 .orElseThrow(() -> new IllegalStateException("question is required"));
 
-        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
-        if (fast != null) {
-            log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
-            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
-                    fast.route(), fast.action());
-        }
-
-        // Ad-hoc comparisons, rankings and unsupported supplier questions are
-        // intentionally guided refusals. Route them before the classifier so a
-        // provider outage cannot turn a safe refusal into a generic 50210 error.
+        // Explicit unsupported comparisons should keep their guided refusal even
+        // when a date or metric token also matches a supported report shortcut.
         if (ReportAdhocRouter.shouldUseNl2Sql(question)) {
             log.info("Ad-hoc report fast-path (skipped classify LLM)");
             return shortcutResult(
                     "report_adhoc",
                     "This custom report is not available yet.",
                     Map.of(), "", "", "", "");
+        }
+
+        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
+        if (fast != null) {
+            log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
+            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
+                    fast.route(), fast.action());
         }
 
         // Explicit workflow requests are deterministic navigation intents. Resolve

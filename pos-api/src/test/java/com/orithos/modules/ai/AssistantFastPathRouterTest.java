@@ -25,6 +25,49 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesExplicitDateSalesQuestionsWithoutTheClassifier() {
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("14,oct sales").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("sales on 14 October 2026").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("2026-10-14 sales").intent());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("10月14日销售额").intent());
+    }
+
+    @Test
+    void routesNamedProductSearchAndStockQuestionsWithoutTheClassifier() {
+        AssistantFastPathRouter.Match product = AssistantFastPathRouter.maybeMatch("look up product DEMO");
+        assertEquals("search_product", product.intent());
+        assertEquals("DEMO", product.slots().get("query"));
+
+        AssistantFastPathRouter.Match naturalProduct = AssistantFastPathRouter.maybeMatch("Search for the product VB Cans");
+        assertEquals("search_product", naturalProduct.intent());
+        assertEquals("VB Cans", naturalProduct.slots().get("query"));
+
+        AssistantFastPathRouter.Match chineseProduct = AssistantFastPathRouter.maybeMatch("帮我搜一下 Shiraz");
+        assertEquals("search_product", chineseProduct.intent());
+        assertEquals("Shiraz", chineseProduct.slots().get("query"));
+
+        AssistantFastPathRouter.Match stock = AssistantFastPathRouter.maybeMatch("How much Carlton Draught is in stock?");
+        assertEquals("report_stock", stock.intent());
+        assertEquals("Carlton Draught", stock.slots().get("query"));
+
+        AssistantFastPathRouter.Match chineseStock = AssistantFastPathRouter.maybeMatch("查一下 VB Cans 库存");
+        assertEquals("report_stock", chineseStock.intent());
+        assertEquals("VB Cans", chineseStock.slots().get("query"));
+
+        AssistantFastPathRouter.Match stockLevel = AssistantFastPathRouter.maybeMatch("What's the stock level for VB Cans?");
+        assertEquals("report_stock", stockLevel.intent());
+        assertEquals("VB Cans", stockLevel.slots().get("query"));
+
+        AssistantFastPathRouter.Match quantity = AssistantFastPathRouter.maybeMatch("How many Carlton Draught do we have in stock?");
+        assertEquals("report_stock", quantity.intent());
+        assertEquals("Carlton Draught", quantity.slots().get("query"));
+
+        AssistantFastPathRouter.Match reverseChinese = AssistantFastPathRouter.maybeMatch("VB Cans库存还有多少？");
+        assertEquals("report_stock", reverseChinese.intent());
+        assertEquals("VB Cans", reverseChinese.slots().get("query"));
+    }
+
+    @Test
     void matchesTodaySalesWithoutLlm() {
         AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch("Today's sales");
         assertNotNull(match);
