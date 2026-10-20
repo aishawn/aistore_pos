@@ -1,5 +1,19 @@
 # Orithos POS 当前交接
 
+## 2026-10-20 AI 日志与错误码脱敏批次（工作区）
+
+- 分类器日志不再写入原始问题或 slot 值；NL2SQL 日志只保留 outletId 与参数数量，不记录 SQL、参数、provider 或数据库异常文本。
+- `SqlGuardException`、查询失败、配额失败统一使用 `SQL_GUARD_REJECTED`、`EXEC_QUERY_FAILED`、`QUOTA_EXCEEDED` 等固定错误码；`ReportRespondNode` 继续返回安全的员工提示。
+- Redis、Odoo、报表快照、租户 schema provision、酒商 LLM fallback 和配置初始化日志只记录异常类型；不改变正常业务结果或 fallback 行为。
+- 本地验证：AI 模块源码扫描不再发现 `e.getMessage()`、SQL/参数日志；`git diff --check` 通过。按约束未运行 Maven/Next/Docker build；Java 单测和 Dokploy 构建仍待后续集中验证。
+
+## 2026-10-20 Dokploy #38 编译错误复核（当前状态）
+
+- #38 的 Maven 失败点是 `AiConfigController.java` 与 `SommelierController.java` 调用 `AiProviderConfig.isValidBaseUrl(...)` 时解析不到该类型；`Parenthesis` deprecated 只是警告，不是失败原因。
+- 当前 `main`/`origin/main` 为 `0299872`。源码静态核对确认 `pos-api/src/main/java/com/orithos/modules/ai/AiProviderConfig.java` 已被 Git 跟踪，两个控制器均包含 `import com.orithos.modules.ai.AiProviderConfig;`，所以 #38 对应的是旧源码快照，不能作为当前提交仍无法编译的证据。
+- 遵守本项目验证约束，本地未运行 Maven、Next 或 Docker build；当前没有新的编译通过证据。应在 Dokploy 控制台确认目标构建至少使用 `0299872`（或其后提交），再读取完整 backend/frontend 日志、容器 SHA、健康状态和完成时间。
+- Dokploy Compose 分支绑定此前反复返回 `HTTP 301 {"message":"Branch Not Match"}`；在 Source/Git 设置修正为 `aishawn/aistore_pos`、`main`、仓库根目录和 `docker-compose.yml` 前，不再重复 webhook。发布状态保持 **NO-GO**。
+
 ## 2026-10-20 Odoo 报表数据源改造（并行提交 `1ea5e18`）
 
 - AI 报表路径已从 Classic/NL2SQL 查询改为绑定租户 Odoo company 的只读 JSON-RPC：销售、数量、AOV、库存和滞销查询均带 company、warehouse、时间窗口和 Demo seed 过滤；新增 `OdooReportQueryServiceTest`、`ReportPeriodResolverTest` 扩展及 `scripts/pilot-ai-report-readonly-uat.mjs`。

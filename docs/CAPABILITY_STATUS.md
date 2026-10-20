@@ -2,6 +2,18 @@
 
 **Last updated:** 2026-10-20（根 `app` 路由矩阵与共享移动安全区批次）
 
+### 2026-10-20 AI 日志与错误码脱敏批次（工作区）
+
+- AI 分类、NL2SQL、报表查询、配额、Odoo catalog、快照和 sommelier fallback 日志移除原始问题、SQL、参数、provider/DB 异常文本，只保留异常类型及必要的 outlet/intent/fallback 信息。
+- guard、查询和 quota 状态改为固定错误码，响应层保持通用安全提示；未改变 AI 查询权限、租户绑定或只读策略。
+- 源码静态扫描与 `git diff --check` 通过；未运行 Maven/Next/Docker build，当前能力仍需 Dokploy 构建和线上 AI 回归确认。
+
+### 2026-10-20 Dokploy #38 编译错误复核
+
+- #38 的后端失败来自旧源码快照：两个控制器调用 `AiProviderConfig.isValidBaseUrl(...)` 时缺少显式 import。当前 `main`/`origin/main` 为 `0299872`，类文件已被 Git 跟踪且两个 import 均存在。
+- `Parenthesis` deprecated 只是非阻断警告。遵守验证约束，本地未运行 Maven、Next 或 Docker build，因此当前提交仍没有新的构建通过证据。
+- 发布保持 **NO-GO**，直到 Dokploy 控制台确认使用当前提交构建成功、frontend/backend 健康并回读运行 SHA。此前 webhook 的 `HTTP 301 Branch Not Match` 仍需先通过 Source/Git 分支绑定修复。
+
 ### 2026-10-20 Odoo 报表数据源改造（`1ea5e18`）
 
 - AI 报表改为绑定租户 Odoo company 的只读查询，补充服务层/日期解析测试和 `AI_ASSISTANT_TEST_MATRIX.md`；不允许写入 Odoo。
