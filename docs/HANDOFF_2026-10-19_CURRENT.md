@@ -980,3 +980,11 @@
 - 保留已配置的 `navigate`、商品搜索和实体列表行为；缺少实体操作时仍可安全打开对应列表。意图 key 规范化改为 `Locale.ROOT`，避免运行环境 locale 影响。
 - 新增 `IntentSanitizeServiceTest` 的未知意图、合法导航、非法动作、合法实体操作、缺失操作和长度限制覆盖；本地未运行 Maven，Java 21 测试需 CI/部署环境执行。
 - 当前线上行为仍来自未核验运行镜像；下一次 Dokploy 部署目标为当前 `ea43033` 或其后提交，部署后补跑 AI UI、AI features 和匿名鉴权回归。
+
+## 2026-10-20 AI provider 安全与输入边界批次（`2e45369`）
+
+- ASR 现在在 provider 调用前拒绝空音频、超过 5 MB 和非音频 MIME；支持的 MediaRecorder MIME 会规范化，provider 失败只返回固定重试提示。
+- 发票 OCR、酒标识别和 ASR 不再把 provider body、request id 或异常 message 返回给员工或写入日志；模型不存在和配置错误仍保留可操作的配置提示。
+- AI 报表/assistant 审计日志只记录 path、允许状态、行数和延迟；数据库写入异常只记录异常类型，不记录 SQL、问题文本或数据库诊断内容。
+- Sell AI 前端额外 allowlist 可派发 intent，未知响应不会触发路由、Sell 操作或实体动作；后端同步拒绝伪造/非法实体操作。
+- 新增 ASR 输入/错误脱敏、视觉 provider 安全消息、审计日志脱敏和 intent 行为测试；本地未运行 Maven/Next/Docker build。下一次部署目标为 `2e45369` 或其后提交，部署后补跑 AI features、AI UI 和匿名鉴权。

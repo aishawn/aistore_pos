@@ -887,3 +887,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 英文月份解析改为大小写不敏感，覆盖全部 12 个缩写及无效日期回退；新增 Adelaide/Sydney 午夜边界和只读公司时区 RPC fixture。
 - `pilot-ai-report-readonly-uat.mjs` 增加逐日 Overview 对账；本地 typecheck、目标 ESLint、脚本语法和 diff check 通过，未运行本地 build。
 - 该批次尚未取得 Dokploy 构建/运行 SHA 证据，线上 RPT-04 仍为 **In progress**，整体发布继续 **NO-GO**。
+
+### 2026-10-20 AI provider 安全与输入边界批次（`2e45369`）
+
+- ASR 增加空文件、5 MB 上限和音频 MIME 白名单；provider 错误只返回固定重试提示。
+- Invoice Vision、Wine Label Vision、ASR 和 AI report audit 均移除 provider body、request id、SQL 和数据库异常 message 的日志/用户响应泄露路径。
+- Sell AI 前后端均对 intent、route、action 和 entity operation 做 allowlist/fail-closed 处理；未知响应不会触发导航或业务动作。
+- 新增 Java 21 目标单测；本地只完成源码审查、前端 typecheck/ESLint 和脚本语法检查，未运行 Maven/Next/Docker build。线上 provider failure、真实麦克风交互和运行 SHA 仍待部署验证。
