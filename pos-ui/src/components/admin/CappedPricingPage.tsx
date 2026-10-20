@@ -133,6 +133,7 @@ function CappedPriceRowEditor({
             min="0"
             step="0.01"
             className={cellInput(cn("pl-5", overCap && "text-[#e2231a]"))}
+            aria-label={`Current price for ${row.productName}`}
             value={current}
             aria-busy={saving}
             aria-invalid={saveError ? true : undefined}

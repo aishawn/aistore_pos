@@ -60,7 +60,7 @@ function Toggle({
   label: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-neutral-700">
+    <div className="flex items-center gap-2.5 text-[13px] text-neutral-700">
       <button
         type="button"
         role="switch"
@@ -80,17 +80,19 @@ function Toggle({
         />
       </button>
       {label}
-    </label>
+    </div>
   );
 }
 
 function PriceCell({
   productId,
+  productName,
   quantity,
   priceBreak,
   onSaved,
 }: {
   productId: string;
+  productName: string;
   quantity: number;
   priceBreak?: PriceBreak;
   onSaved: () => void;
@@ -145,6 +147,7 @@ function PriceCell({
         min="0"
         step="0.01"
         className={cellInput("pl-5")}
+        aria-label={`Price for ${productName}, quantity ${quantity}`}
         value={value}
         aria-busy={saving}
         aria-invalid={saveError ? true : undefined}
@@ -199,6 +202,7 @@ function BulkPriceRowLine({
         <PriceCell
           key={`${row.productId}-${q}`}
           productId={row.productId}
+          productName={row.productName}
           quantity={q}
           priceBreak={priceByQty.get(qtyKey(q))}
           onSaved={onSaved}
