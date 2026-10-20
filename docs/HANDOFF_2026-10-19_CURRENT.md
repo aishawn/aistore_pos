@@ -7,6 +7,7 @@
 - 公网只读复测：4 路由 × 390/1440，共 `8/8 PASS`；无业务写入。证据：`docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json`（本次运行时间 `2026-10-20T03:05:24.020Z`）。
 - 本次只修正测试等待与断言，没有改变产品代码。Dokploy #38 的 `AiProviderConfig` 错误仍应按旧快照/错误 Compose 分支处理：当前 `main` 已跟踪该类且两个控制器都有显式 import；需在控制台核对分支为 `main` 后部署并回读构建日志、运行 SHA 和健康状态。
 - 本批次提交 `d8ed163` 已推送到 `origin/main`；触发 Compose webhook 返回 `HTTP 301 {"message":"Branch Not Match"}`，未启动构建，故不能宣称该批次已上线。
+- 随后合并远端并推送 `14940f1`，再次触发 webhook 仍返回 `HTTP 301 {"message":"Branch Not Match"}`；仍需控制台修正 Compose 分支绑定。
 
 ## 2026-10-20 AI、报表与基础交互回归补充
 

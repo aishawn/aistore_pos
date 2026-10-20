@@ -8,6 +8,7 @@
 - 产品页面不需要为该失败项改动；创建入口在未筛选空状态显示，筛选后显示清空筛选入口。脚本已分别验证两种状态。
 - Dokploy #38 的 `AiProviderConfig` 编译错误不对应当前 `main`：类文件已被 Git 跟踪，两个控制器已导入。部署前仍须在 Dokploy 控制台确认 Compose 分支和构建上下文。
 - `d8ed163` 已推送 `origin/main`；Compose webhook 返回 `HTTP 301 Branch Not Match`，没有构建，因此本批次线上状态仍为待部署。
+- 合并远端后的 `14940f1` 再次触发 webhook 仍为 `HTTP 301 Branch Not Match`，线上状态仍为待部署。
 
 ### 2026-10-20 AI、报表与基础交互回归补充
 
