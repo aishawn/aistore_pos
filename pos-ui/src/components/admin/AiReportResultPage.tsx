@@ -172,6 +172,10 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
     });
   }
 
+  function showAllColumns() {
+    setHiddenColumns(new Set());
+  }
+
   if (loading) {
     return (
       <div role="status" aria-live="polite" className="flex h-full items-center justify-center bg-white text-[16px] text-neutral-500">
@@ -294,7 +298,17 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
               aria-label="Visible report columns"
               className="absolute right-0 top-full z-20 mt-2 w-64 rounded-md border border-neutral-300 bg-white p-3 shadow-lg"
             >
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">Visible columns</p>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Visible columns</p>
+                <button
+                  type="button"
+                  onClick={showAllColumns}
+                  disabled={hiddenColumns.size === 0}
+                  className="min-h-11 rounded px-2 text-xs font-semibold text-[var(--sf-tab-blue)] hover:bg-sky-50 disabled:cursor-default disabled:text-neutral-400"
+                >
+                  Show all
+                </button>
+              </div>
               <div className="space-y-2">
                 {columns.map((column) => {
                   const checked = !hiddenColumns.has(column);
@@ -326,12 +340,13 @@ export function AiReportResultPage({ reportId }: { reportId: string }) {
                 <th key={col} scope="col" className="px-2 py-2 text-center">
                   <span className="inline-flex items-center justify-center gap-1">
                     {formatReportColumnHeader(col)}
-                    {i > 0 && <SortArrowsIcon size={12} className="shrink-0 opacity-70" />}
+                    {i > 0 && <SortArrowsIcon aria-hidden="true" size={12} className="shrink-0 opacity-70" />}
                   </span>
                 </th>
               ))}
             </tr>
             <tr className="bg-[var(--oh-primary)] text-[13px] font-bold text-white">
+              <th scope="row" className="sr-only">Column totals</th>
               {totals.map((t, i) => (
                 <td key={visibleColumns[i] ?? i} className="px-2 py-2 text-center">
                   {t ?? ""}
