@@ -33,4 +33,23 @@ class ClassifyQueryNodeTest {
         assertEquals("/invoices/scan", result.get("ui_route"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
+
+    @Test
+    void unsupportedAdhocReportSkipsClassifierWhenProviderIsUnavailable() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class))
+                .thenReturn(Optional.of("What did we sell most this week?"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("report_adhoc", result.get("intent"));
+        assertEquals("This custom report is not available yet.", result.get("intent_summary"));
+        assertEquals("", result.get("ui_route"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
 }

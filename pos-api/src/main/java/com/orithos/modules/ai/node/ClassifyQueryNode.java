@@ -60,15 +60,19 @@ public class ClassifyQueryNode implements NodeAction {
         AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
         if (fast != null) {
             log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
-            Map<String, Object> out = new HashMap<>();
-            out.put("intent", fast.intent());
-            out.put("intent_summary", fast.summary());
-            out.put("slots", fast.slots() == null ? Map.of() : fast.slots());
-            out.put("ui_panel", nullToEmpty(fast.panel()));
-            out.put("ui_view", nullToEmpty(fast.view()));
-            out.put("ui_route", nullToEmpty(fast.route()));
-            out.put("ui_action", nullToEmpty(fast.action()));
-            return out;
+            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
+                    fast.route(), fast.action());
+        }
+
+        // Ad-hoc comparisons, rankings and unsupported supplier questions are
+        // intentionally guided refusals. Route them before the classifier so a
+        // provider outage cannot turn a safe refusal into a generic 50210 error.
+        if (ReportAdhocRouter.shouldUseNl2Sql(question)) {
+            log.info("Ad-hoc report fast-path (skipped classify LLM)");
+            return shortcutResult(
+                    "report_adhoc",
+                    "This custom report is not available yet.",
+                    Map.of(), "", "", "", "");
         }
 
         // Explicit workflow requests are deterministic navigation intents. Resolve
@@ -118,6 +122,25 @@ public class ClassifyQueryNode implements NodeAction {
         out.put("ui_view", nullToEmpty(result.view()));
         out.put("ui_route", route);
         out.put("ui_action", nullToEmpty(result.action()));
+        return out;
+    }
+
+    private static Map<String, Object> shortcutResult(
+            String intent,
+            String summary,
+            Map<String, String> slots,
+            String panel,
+            String view,
+            String route,
+            String action) {
+        Map<String, Object> out = new HashMap<>();
+        out.put("intent", intent);
+        out.put("intent_summary", summary);
+        out.put("slots", slots == null ? Map.of() : slots);
+        out.put("ui_panel", nullToEmpty(panel));
+        out.put("ui_view", nullToEmpty(view));
+        out.put("ui_route", nullToEmpty(route));
+        out.put("ui_action", nullToEmpty(action));
         return out;
     }
 
