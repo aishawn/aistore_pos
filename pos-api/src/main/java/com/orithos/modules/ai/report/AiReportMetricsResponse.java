@@ -12,7 +12,8 @@ public record AiReportMetricsResponse(
         LocalDateTime since,
         LocalDateTime generatedAt,
         Summary summary,
-        List<PathMetric> byPath
+        List<PathMetric> byPath,
+        Highlights highlights
 ) {
     public record Summary(
             long requests,
@@ -36,5 +37,13 @@ public record AiReportMetricsResponse(
             Integer p50LatencyMs,
             Integer p95LatencyMs,
             long estimatedTokens
+    ) {}
+
+    /** Ops cards: last-24h activity + top intents (aggregates only, no Q/A text). */
+    public record Highlights(
+            long last24hRequests,
+            long last24hRejected,
+            double last24hRejectedRate,
+            List<PathMetric> topIntents
     ) {}
 }

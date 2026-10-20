@@ -75,7 +75,10 @@ class AiReportMetricsServiceTest {
         // Nearest-rank: ceil(0.5 * 2) - 1 => index 0 => 10; p95 => index 1 => 20.
         assertEquals(10, lower.summary().p50LatencyMs());
         assertEquals(20, lower.summary().p95LatencyMs());
-        verify(mapper, times(2)).summarize(eq(42L), any());
+        assertEquals(2, lower.highlights().last24hRequests());
+        assertEquals(1, lower.highlights().topIntents().size());
+        // hours=1 uses one summarize; hours=168 uses window + last-24h summarizes.
+        verify(mapper, times(3)).summarize(eq(42L), any());
         verify(mapper, times(2)).latencyValues(eq(42L), any());
         verify(mapper, times(2)).latencyValuesByPath(eq(42L), any());
         verify(mapper, times(2)).summarizeByPath(eq(42L), any());

@@ -82,4 +82,21 @@ public interface AiReportAuditMapper {
             """)
     List<AiReportMetricsLatencyRow> latencyValuesByPath(@Param("vendorId") long vendorId,
                                                         @Param("since") LocalDateTime since);
+
+    @Select("""
+            SELECT vendor_id AS vendorId,
+                   COUNT(*) AS requests,
+                   COALESCE(SUM(CASE WHEN allowed = 1 THEN 1 ELSE 0 END), 0) AS allowed,
+                   COALESCE(SUM(CASE WHEN allowed = 0 THEN 1 ELSE 0 END), 0) AS rejected,
+                   COALESCE(AVG(latency_ms), 0) AS averageLatencyMs,
+                   COALESCE(SUM(COALESCE(estimated_tokens, CEIL((COALESCE(CHAR_LENGTH(question), 0) +
+                                     COALESCE(CHAR_LENGTH(sql_text), 0)) / 4.0))), 0) AS estimatedTokens,
+                   MAX(created_at) AS lastSeenAt
+            FROM ai_report_audit
+            WHERE created_at >= #{since}
+            GROUP BY vendor_id
+            ORDER BY requests DESC, vendor_id ASC
+            """)
+    List<AiPlatformVendorMetricsRow> summarizeByVendor(@Param("since") LocalDateTime since);
+
 }

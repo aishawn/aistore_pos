@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T07:55:28.493Z",
-  "sourceCommit": "952bb63af5762ac57de174634da2cdcd88cff467",
+  "generatedAt": "2026-10-20T09:22:28.363Z",
+  "sourceCommit": "1b7cee510c8ae8c25e0a0b83933b6eae4596c8c0",
   "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "config": {
@@ -12,89 +12,144 @@
     {
       "id": "replenishment-en",
       "question": "What should I reorder today?",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "report_adhoc",
-        "route": null
+        "intent": "navigate",
+        "route": "/stock/replenishment"
+      }
+    },
+    {
+      "id": "replenishment-colloquial-en",
+      "question": "What should we buy before the weekend?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment"
       }
     },
     {
       "id": "replenishment-zh",
       "question": "给我今天的补货建议",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "report_adhoc",
-        "route": null
+        "intent": "navigate",
+        "route": "/stock/replenishment"
+      }
+    },
+    {
+      "id": "replenishment-alert-zh",
+      "question": "库存预警有哪些",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment"
       }
     },
     {
       "id": "pricing-en",
       "question": "Which prices should I review?",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "report_adhoc",
-        "route": null
+        "intent": "navigate",
+        "route": "/stock/capped-pricing"
+      }
+    },
+    {
+      "id": "pricing-colloquial-en",
+      "question": "What should I charge for Shiraz?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/capped-pricing"
       }
     },
     {
       "id": "pricing-zh",
       "question": "帮我看看哪些商品需要调价",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "entity_action",
-        "route": null
+        "intent": "navigate",
+        "route": "/stock/capped-pricing"
       }
     },
     {
       "id": "recommendation-en",
       "question": "Recommend a red wine under $30",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "search_product",
-        "route": null
+        "intent": "navigate",
+        "route": "/sommelier"
+      }
+    },
+    {
+      "id": "recommendation-colloquial-en",
+      "question": "What wine goes with steak?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier"
       }
     },
     {
       "id": "recommendation-zh",
       "question": "推荐适合聚会的白葡萄酒",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "search_product",
-        "route": null
+        "intent": "navigate",
+        "route": "/sommelier"
       }
     },
     {
       "id": "invoice-en",
       "question": "Scan this supplier invoice",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "entity_action",
-        "route": null
+        "intent": "navigate",
+        "route": "/invoices/scan"
+      }
+    },
+    {
+      "id": "invoice-colloquial-en",
+      "question": "Upload this supplier bill",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan"
       }
     },
     {
       "id": "invoice-zh",
       "question": "识别这张发票",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "httpStatus": 200,
         "code": 0,
-        "intent": "unknown",
-        "route": null
+        "intent": "navigate",
+        "route": "/invoices/scan"
       }
     },
     {
@@ -118,12 +173,34 @@
         "intent": "report_adhoc",
         "route": null
       }
+    },
+    {
+      "id": "report-negative-wine",
+      "question": "How much red wine sold this week?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_qty",
+        "route": null
+      }
+    },
+    {
+      "id": "report-negative-invoice",
+      "question": "How many invoices did we receive?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_adhoc",
+        "route": null
+      }
     }
   ],
   "writeRequests": [
     "none: assistant API only"
   ],
-  "passed": 2,
-  "failed": 8,
-  "status": "FAIL"
+  "passed": 17,
+  "failed": 0,
+  "status": "PASS"
 }

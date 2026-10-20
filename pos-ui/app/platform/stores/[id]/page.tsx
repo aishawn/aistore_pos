@@ -10,7 +10,7 @@ import {
 } from "@/components/admin/AdminPageLayout";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useAuth } from "@/lib/auth";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, fetchPlatformStoreAiKpi, type PlatformStoreAiKpi } from "@/lib/api";
 
 interface StoreDetail {
   id: number;
@@ -76,6 +76,7 @@ export default function PlatformStoreDetailPage() {
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [linkResult, setLinkResult] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [aiKpi, setAiKpi] = useState<PlatformStoreAiKpi | null>(null);
   const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
@@ -90,6 +91,12 @@ export default function PlatformStoreDetailPage() {
     try {
       const data = await api.get<StoreDetail>(`/api/admin/tenants/${id}`);
       if (sequence === requestSequence.current) setStore(data);
+      try {
+        const kpi = await fetchPlatformStoreAiKpi(id, 24);
+        if (sequence === requestSequence.current) setAiKpi(kpi);
+      } catch {
+        if (sequence === requestSequence.current) setAiKpi(null);
+      }
     } catch (cause) {
       if (sequence === requestSequence.current) {
         setError(cause instanceof ApiError ? cause.message : "Failed to load store");
@@ -198,6 +205,42 @@ export default function PlatformStoreDetailPage() {
               <p className="mt-1 break-all font-mono text-xs">{linkResult}</p>
             </div>
           )}
+
+          <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--oh-muted)]">AI usage (24h)</h2>
+              <Link href="/platform/usage" className="text-xs font-semibold text-[var(--oh-primary)] hover:underline">
+                All stores
+              </Link>
+            </div>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-4">
+              <div>
+                <dt className="text-[var(--oh-muted)]">Requests</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-[var(--oh-text)]">
+                  {aiKpi ? aiKpi.requests.toLocaleString() : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[var(--oh-muted)]">Allow rate</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-[var(--oh-text)]">
+                  {aiKpi ? `${aiKpi.allowedRate.toFixed(1)}%` : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[var(--oh-muted)]">P95 latency</dt>
+                <dd className="mt-0.5 font-semibold tabular-nums text-[var(--oh-text)]">
+                  {aiKpi?.p95LatencyMs != null ? `${aiKpi.p95LatencyMs} ms` : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[var(--oh-muted)]">Last seen</dt>
+                <dd className="mt-0.5 text-[var(--oh-text)]">{formatDate(aiKpi?.lastSeenAt)}</dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-xs text-[var(--oh-muted)]">
+              Aggregates from AI audit events. Chat transcripts are not available on the control plane.
+            </p>
+          </section>
 
           <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Identity</h2>

@@ -258,7 +258,9 @@ SaaS 化的第一大工程是给这批表加租户维度、给 37 个模块的 M
 | done | **租户 ID 贯穿到 Tool 层** | `AssistantTenantContext` + `PosAssistantTools`：模型参数不含 tenant；只读 sales/stock/aov 工具走 `OdooReportQueryService` |
 | done | **接 Tool Calling（只读）** | qa/unknown 路径启用 `PosAssistantTools`；写操作仍走前端确认 dispatcher |
 | done | **多轮记忆** | Redis `AiConversationMemory`（threadId=`vendor:user:session`）+ Graph `MemorySaver`。官方 `RedisSaver` 需 Redisson，本仓库用 Lettuce，未引入 Redisson |
-| done | **补模型调用参数** | `temperature` / `max-tokens` / `timeout-seconds`；可选 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-flash` |
+| done | **可浏览历史** | MySQL `ai_chat_thread` / `ai_chat_message` + `GET /api/ai/threads`；浮标 History UI；仅本人本店 |
+| done | **补模型调用参数** | `temperature` / `max-tokens` / `timeout-seconds`；classify 默认 `qwen-flash` |
+| done | **平台用量聚合** | `GET /api/platform/metrics/ai` + `/platform/usage`；无聊天正文 |
 | P2 | **落地报表聚合查询** | Classic `ReportController` mock 与 Odoo 模板报表是两套路径；AI 已走 Odoo 模板。`report_adhoc` 仍为引导拒答（无裸 NL2SQL） |
 | done | **前端接真实接口** | `SellAiPanel` 已调 `/api/ai/assistant`；快捷导航本地化；Thinking 超时提示 |
 

@@ -28,6 +28,19 @@ public class AiReportMetricsService {
         LocalDateTime since = generatedAt.minusHours(hours);
         AuthUser user = CurrentUser.get();
         long vendorId = user.vendorId() == null ? 0L : user.vendorId();
+        return buildForVendor(vendorId, hours, since, generatedAt);
+    }
+
+    /** Platform rollup helper — no admin gate; caller must enforce platform access. */
+    public AiReportMetricsResponse forVendor(long vendorId, int requestedHours) {
+        int hours = Math.max(1, Math.min(requestedHours, 24 * 7));
+        LocalDateTime generatedAt = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime since = generatedAt.minusHours(hours);
+        return buildForVendor(vendorId, hours, since, generatedAt);
+    }
+
+    private AiReportMetricsResponse buildForVendor(long vendorId, int hours,
+                                                   LocalDateTime since, LocalDateTime generatedAt) {
         AiReportMetricsRow row = mapper.summarize(vendorId, since);
         List<Integer> latencies = mapper.latencyValues(vendorId, since);
         Map<String, List<Integer>> pathLatencies = mapper.latencyValuesByPath(vendorId, since).stream()
@@ -37,6 +50,30 @@ public class AiReportMetricsService {
                         LinkedHashMap::new,
                         Collectors.mapping(AiReportMetricsLatencyRow::latencyMs, Collectors.toList())
                 ));
+        List<AiReportMetricsResponse.PathMetric> byPath = mapper.summarizeByPath(vendorId, since).stream()
+                .map(path -> new AiReportMetricsResponse.PathMetric(
+                        path.path(),
+                        path.requests(),
+                        path.allowed(),
+                        path.rejected(),
+                        rate(path.allowed(), path.requests()),
+                        round(path.averageLatencyMs()),
+                        percentile(pathLatencies.get(path.path()), 0.50),
+                        percentile(pathLatencies.get(path.path()), 0.95),
+                        path.estimatedTokens()
+                ))
+                .toList();
+
+        LocalDateTime since24h = generatedAt.minusHours(24);
+        AiReportMetricsRow day = hours <= 24 ? row : mapper.summarize(vendorId, since24h);
+        List<AiReportMetricsResponse.PathMetric> topIntents = byPath.stream()
+                .filter(p -> p.path() != null && p.path().startsWith("assistant:"))
+                .limit(5)
+                .toList();
+        if (topIntents.isEmpty()) {
+            topIntents = byPath.stream().limit(5).toList();
+        }
+
         return new AiReportMetricsResponse(
                 hours,
                 since,
@@ -52,19 +89,13 @@ public class AiReportMetricsService {
                         row.estimatedTokens(),
                         true
                 ),
-                mapper.summarizeByPath(vendorId, since).stream()
-                        .map(path -> new AiReportMetricsResponse.PathMetric(
-                                path.path(),
-                                path.requests(),
-                                path.allowed(),
-                                path.rejected(),
-                                rate(path.allowed(), path.requests()),
-                                round(path.averageLatencyMs()),
-                        percentile(pathLatencies.get(path.path()), 0.50),
-                        percentile(pathLatencies.get(path.path()), 0.95),
-                                path.estimatedTokens()
-                        ))
-                        .toList()
+                byPath,
+                new AiReportMetricsResponse.Highlights(
+                        day.requests(),
+                        day.rejected(),
+                        rate(day.rejected(), day.requests()),
+                        topIntents
+                )
         );
     }
 

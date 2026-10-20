@@ -67,6 +67,33 @@ export function AiMetricsPage() {
           <Metric title="Tenant scope" value="Current store" detail="Vendor-scoped and admin-only" icon={<ShieldCheck size={17} />} />
         </section>
 
+        {data.highlights ? (
+          <section aria-label="AI ops highlights" className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Metric
+              title="Last 24h requests"
+              value={data.highlights.last24hRequests.toLocaleString()}
+              detail={`${data.highlights.last24hRejected} rejected · ${data.highlights.last24hRejectedRate.toFixed(1)}% fail`}
+            />
+            <article className="rounded-lg border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)] md:col-span-2">
+              <p className="oh-type-label text-[var(--oh-muted)]">Top intents / paths</p>
+              {data.highlights.topIntents.length ? (
+                <ul className="mt-3 space-y-1.5 text-sm">
+                  {data.highlights.topIntents.map((item) => (
+                    <li key={item.path} className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate font-medium text-[var(--oh-text)]">{item.path}</span>
+                      <span className="shrink-0 tabular-nums text-[var(--oh-muted)]">
+                        {item.requests} · {item.allowedRate.toFixed(0)}% ok · {Math.round(item.averageLatencyMs)}ms
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="oh-type-meta mt-3 text-[var(--oh-muted)]">No intent activity in this window.</p>
+              )}
+            </article>
+          </section>
+        ) : null}
+
         <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
           <div className="border-b border-[var(--oh-border)] px-4 py-4 md:px-5"><h2 className="oh-type-title text-[var(--oh-text)]">By AI path</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Assistant intents and report paths are aggregate only.</p></div>
           {data.byPath.length ? <div className="overflow-x-auto"><table className="min-w-[900px] w-full text-left text-sm"><caption className="sr-only">AI requests grouped by assistant intent and report path</caption><thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3 font-semibold md:px-5">Path</th><th scope="col" className="px-4 py-3 font-semibold">Requests</th><th scope="col" className="px-4 py-3 font-semibold">Allowed</th><th scope="col" className="px-4 py-3 font-semibold">Rate</th><th scope="col" className="px-4 py-3 font-semibold">Avg latency</th><th scope="col" className="px-4 py-3 font-semibold">P50</th><th scope="col" className="px-4 py-3 font-semibold">P95</th><th scope="col" className="px-4 py-3 font-semibold">Est. tokens</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{data.byPath.map((item) => <tr key={item.path}><td className="px-4 py-3 font-medium text-[var(--oh-text)] md:px-5">{item.path}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.requests}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowed}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowedRate.toFixed(1)}%</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{Math.round(item.averageLatencyMs)} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.p50LatencyMs ?? "—"} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.p95LatencyMs ?? "—"} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.estimatedTokens.toLocaleString()}</td></tr>)}</tbody></table></div> : <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No AI audit events in this period.</p>}

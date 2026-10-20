@@ -4,6 +4,7 @@ import com.orithos.common.BusinessException;
 import com.orithos.common.ApiResult;
 import com.orithos.modules.ai.dto.AssistantRequest;
 import com.orithos.modules.ai.dto.AiReportSnapshotResponse;
+import com.orithos.modules.ai.chat.AiChatHistoryService;
 import com.orithos.modules.ai.report.AiReportAuditService;
 import com.orithos.modules.ai.report.AiReportMetricsService;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -90,7 +91,7 @@ class AiAssistantControllerTest {
         when(tenants.fromSecurity()).thenReturn(tenant);
         when(snapshots.getOwned(91L, tenant)).thenReturn(expected);
         AiAssistantController controller = new AiAssistantController(
-                graph, transcription, tenants, snapshots, metrics, audit);
+                graph, transcription, tenants, snapshots, metrics, audit, mock(AiChatHistoryService.class));
 
         ApiResult<AiReportSnapshotResponse> result = controller.reportSnapshot(91L);
 
@@ -110,6 +111,7 @@ class AiAssistantControllerTest {
                 tenants,
                 mock(AiReportSnapshotService.class),
                 mock(AiReportMetricsService.class),
-                audit);
+                audit,
+                mock(AiChatHistoryService.class));
     }
 }

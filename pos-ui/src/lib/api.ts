@@ -772,6 +772,22 @@ export interface AiReportMetrics {
       p95LatencyMs: number | null;
     estimatedTokens: number;
   }>;
+  highlights?: {
+    last24hRequests: number;
+    last24hRejected: number;
+    last24hRejectedRate: number;
+    topIntents: Array<{
+      path: string;
+      requests: number;
+      allowed: number;
+      rejected: number;
+      allowedRate: number;
+      averageLatencyMs: number;
+      p50LatencyMs: number | null;
+      p95LatencyMs: number | null;
+      estimatedTokens: number;
+    }>;
+  };
 }
 
 /** Admin-only, vendor-scoped AI report audit metrics. Token values are estimates. */
@@ -792,6 +808,87 @@ export function askAssistant(
     },
     { signal },
   );
+}
+
+export interface AiChatThreadSummary {
+  id: number;
+  sessionKey: string;
+  title: string;
+  updatedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface AiChatThreadDetail {
+  id: number;
+  sessionKey: string;
+  title: string | null;
+  updatedAt: string | null;
+  messages: Array<{
+    id: number;
+    role: string;
+    text: string;
+    intent: string | null;
+    createdAt: string | null;
+  }>;
+}
+
+/** Cashier-owned floating-assistant chat history (current user only). */
+export function fetchAiChatThreads(): Promise<AiChatThreadSummary[]> {
+  return api.get<AiChatThreadSummary[]>("/api/ai/threads");
+}
+
+export function fetchAiChatThread(id: number): Promise<AiChatThreadDetail> {
+  return api.get<AiChatThreadDetail>(`/api/ai/threads/${id}`);
+}
+
+export interface PlatformAiUsageStoreRow {
+  vendorId: number;
+  storeName: string;
+  subdomain: string;
+  status: string | null;
+  requests: number;
+  allowed: number;
+  rejected: number;
+  allowedRate: number;
+  averageLatencyMs: number;
+  p95LatencyMs: number | null;
+  estimatedTokens: number;
+  lastSeenAt: string | null;
+}
+
+export interface PlatformAiUsageMetrics {
+  windowHours: number;
+  since: string;
+  generatedAt: string;
+  summary: {
+    storesWithActivity: number;
+    requests: number;
+    allowed: number;
+    rejected: number;
+    allowedRate: number;
+    averageLatencyMs: number;
+    p95LatencyMs: number | null;
+    estimatedTokens: number;
+  };
+  byStore: PlatformAiUsageStoreRow[];
+}
+
+/** Platform-operator control-plane AI usage rollup (aggregates only). */
+export function fetchPlatformAiUsage(hours = 24): Promise<PlatformAiUsageMetrics> {
+  return api.get<PlatformAiUsageMetrics>("/api/platform/metrics/ai", { hours });
+}
+
+export interface PlatformStoreAiKpi {
+  vendorId: number;
+  windowHours: number;
+  requests: number;
+  allowedRate: number;
+  p95LatencyMs: number | null;
+  lastSeenAt: string | null;
+}
+
+export function fetchPlatformStoreAiKpi(vendorId: number, hours = 24): Promise<PlatformStoreAiKpi> {
+  return api.get<PlatformStoreAiKpi>(`/api/platform/metrics/ai/stores/${vendorId}`, { hours });
 }
 
 export interface AiClientConfig {

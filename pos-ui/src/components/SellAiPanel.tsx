@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Eraser, ExternalLink, MessageCircle, Mic, Send, X } from "lucide-react";
+import { Eraser, ExternalLink, History, MessageCircle, Mic, Send, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
+  fetchAiChatThread,
+  fetchAiChatThreads,
   fetchAiClientConfig,
   transcribeAudio,
   ApiError,
+  type AiChatThreadSummary,
   type AssistantResponse,
 } from "@/lib/api";
 import {
@@ -159,6 +162,10 @@ export function SellAiPanel({
   const [busy, setBusy] = useState(false);
   const [thinkingHint, setThinkingHint] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyThreads, setHistoryThreads] = useState<AiChatThreadSummary[]>([]);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -466,6 +473,51 @@ export function SellAiPanel({
     if (busy || busyRef.current) return;
     setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
     setThreadId(null);
+    setHistoryOpen(false);
+  }
+
+  async function openHistory() {
+    if (busy || busyRef.current) return;
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      setHistoryThreads(await fetchAiChatThreads());
+    } catch (e) {
+      setHistoryError(aiFailureMessage(e, "chat"));
+      setHistoryThreads([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function loadHistoryThread(id: number) {
+    if (busy || busyRef.current) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const detail = await fetchAiChatThread(id);
+      const restored: ChatMessage[] = detail.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          text: m.text || "",
+          diagnostics: m.role === "assistant" && m.intent
+            ? { intent: m.intent, latencyMs: 0, status: "ok" as const }
+            : undefined,
+        }));
+      setMessages(
+        restored.length
+          ? restored
+          : [{ role: "assistant", text: greetingText(aiEnabled) }],
+      );
+      setThreadId(detail.sessionKey);
+      setHistoryOpen(false);
+    } catch (e) {
+      setHistoryError(aiFailureMessage(e, "chat"));
+    } finally {
+      setHistoryLoading(false);
+    }
   }
 
   function lockAndClearInput() {
@@ -1035,6 +1087,19 @@ export function SellAiPanel({
               <div className="flex items-center gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
                 <button
                   type="button"
+                  onClick={() => {
+                    if (historyOpen) setHistoryOpen(false);
+                    else void openHistory();
+                  }}
+                  title="Chat history"
+                  aria-label="Chat history"
+                  disabled={busy || chatOff}
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-white/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <History size={16} />
+                </button>
+                <button
+                  type="button"
                   onClick={collapsePanel}
                   title="Close"
                   aria-label="Close assistant"
@@ -1051,13 +1116,24 @@ export function SellAiPanel({
               aria-atomic="false"
               className="min-h-[240px] flex-1 overflow-y-auto bg-[var(--oh-surface)]"
             >
-              <DialogueView
-                messages={messages}
-                onAction={runQuickAction}
-                onClear={clearChat}
-                busy={busy}
-                thinkingHint={thinkingHint}
-              />
+              {historyOpen ? (
+                <HistoryView
+                  loading={historyLoading}
+                  error={historyError}
+                  threads={historyThreads}
+                  onBack={() => setHistoryOpen(false)}
+                  onSelect={(id) => void loadHistoryThread(id)}
+                  onRefresh={() => void openHistory()}
+                />
+              ) : (
+                <DialogueView
+                  messages={messages}
+                  onAction={runQuickAction}
+                  onClear={clearChat}
+                  busy={busy}
+                  thinkingHint={thinkingHint}
+                />
+              )}
             </div>
 
             <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
@@ -1124,6 +1200,81 @@ export function SellAiPanel({
       {mounted ? createPortal(floatUi, document.body) : null}
       {panelDialogs}
     </>
+  );
+}
+
+function HistoryView({
+  loading,
+  error,
+  threads,
+  onBack,
+  onSelect,
+  onRefresh,
+}: {
+  loading: boolean;
+  error: string | null;
+  threads: AiChatThreadSummary[];
+  onBack: () => void;
+  onSelect: (id: number) => void;
+  onRefresh: () => void;
+}) {
+  return (
+    <div className="flex h-full flex-col p-3.5">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
+          History
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={loading}
+            className="rounded-md px-2 py-1 text-[13px] font-medium text-[var(--oh-muted)] hover:bg-white hover:text-[var(--oh-text)] disabled:opacity-40"
+          >
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="rounded-md px-2 py-1 text-[13px] font-medium text-[var(--oh-primary)] hover:bg-white"
+          >
+            Back
+          </button>
+        </div>
+      </div>
+      <p className="mb-2.5 text-[12px] text-[var(--oh-muted)]">
+        Your chats on this store only. Opening a thread continues that conversation.
+      </p>
+      {error ? (
+        <p role="alert" className="mb-2 rounded-md bg-rose-50 px-2.5 py-2 text-[13px] text-rose-700">
+          {error}
+        </p>
+      ) : null}
+      {loading ? (
+        <p className="text-[13px] text-[var(--oh-muted)]">Loading…</p>
+      ) : threads.length === 0 ? (
+        <p className="text-[13px] text-[var(--oh-muted)]">No saved chats yet. Ask a question to start one.</p>
+      ) : (
+        <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+          {threads.map((thread) => (
+            <li key={thread.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(thread.id)}
+                className="w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-left transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]"
+              >
+                <span className="block truncate text-[14px] font-medium text-[var(--oh-text)]">
+                  {thread.title || "Chat"}
+                </span>
+                <span className="mt-0.5 block text-[11px] tabular-nums text-[var(--oh-muted)]">
+                  {thread.updatedAt ? new Date(thread.updatedAt).toLocaleString() : ""}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
