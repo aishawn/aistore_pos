@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T07:07:48.107Z",
-  "sourceCommit": "f8b3081e475c825961f9771115c406705364b5f8",
+  "generatedAt": "2026-10-20T07:09:02.714Z",
+  "sourceCommit": "139aacddffec84b2bdcec11bddc8390d29afe565",
   "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "authenticated AI entry-point and disabled label-photo route matrix; no business writes",
