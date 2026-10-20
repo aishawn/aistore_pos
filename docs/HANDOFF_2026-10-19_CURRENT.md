@@ -5,7 +5,7 @@
 - 盘点搜索结果支持键盘 Enter/Space 添加可盘商品，并保留重复、不可盘商品和数量上限保护。
 - Manage Cash 的金额输入与提交校验统一为 `0 < amount <= 1,000,000`，避免明显超限金额才在 Odoo 返回错误；仍要求打开 session，未改变真实写入流程。
 - 本地验证：前端 typecheck、目标 ESLint、盘点 UAT 脚本语法和 `git diff --check` 通过；未运行 Next/Docker build。
-- 最新代码已推送 `54bff20`；尚未触发 Dokploy，等待 Compose `main` 分支绑定修正后集中部署和线上复验。
+- 最新代码已推送 `b0dee7e`；尚未触发 Dokploy，等待 Compose `main` 分支绑定修正后集中部署和线上复验。
 
 ## 2026-10-20 集中部署后只读回归（`d76e786`，运行身份未核验）
 
