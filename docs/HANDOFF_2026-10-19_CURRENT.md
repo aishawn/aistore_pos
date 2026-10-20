@@ -1099,6 +1099,7 @@
 ## 2026-10-20 发票 OCR 预览可靠性批次（工作区）
 
 - `ScanInvoicePage` 现在在浏览器端拒绝非图片和超过 10 MB 的文件，错误提示可操作；OCR 仍是 preview-only，不会写入采购、收货或供应商。
+- 预览表单现在同时展示并允许复核发票日期和到期日；mock UAT 增加到期日回填断言。
 - 连续选择图片时用请求 revision 忽略旧响应，避免旧图片结果覆盖新图片，也避免旧请求清除新请求的 loading/error 状态。
 - 本地验证：`npm run typecheck`、目标 ESLint、发票 OCR/价格建议/盘点 UAT `node --check`、`git diff --check` 均通过；按用户要求未运行 Next/Docker build。
 - 改动尚未部署；下一次集中部署后重跑 `pilot-invoice-scan-mock-uat.mjs`、`pilot-invoice-ocr-preview-online.mjs`、价格建议和盘点只读专项，并核对 Dokploy runtime SHA。

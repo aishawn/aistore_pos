@@ -46,6 +46,7 @@ try {
         supplierAbn: "MOCK-ABN-0001",
         invoiceNumber: "MOCK-INV-2026-001",
         invoiceDate: "14/10/2026",
+        dueDate: "30/10/2026",
         totalPayable: 220,
         totalCases: 2,
         lines: [{ description: "MOCK Shiraz test line", packQty: 6, qtyCases: 2, unitPrice: 110, lineTotal: 220 }],
@@ -98,6 +99,8 @@ try {
   await page.getByRole("heading", { name: "Invoice line items" }).waitFor({ timeout: 10000 });
   const invoiceNumber = page.locator("label").filter({ hasText: "Invoice number" }).locator("input");
   if (await invoiceNumber.inputValue() !== "MOCK-INV-2026-001") throw new Error("Mock invoice number was not shown in the review form");
+  const dueDate = page.locator("label").filter({ hasText: "Due date" }).locator("input");
+  if (await dueDate.inputValue() !== "2026-10-30") throw new Error("Mock invoice due date was not shown in the review form");
   const productDescription = page.locator('input[aria-label="Product description 1"]:visible');
   if (!(await productDescription.inputValue()).includes("MOCK Shiraz")) throw new Error("Mock line item was not shown for review");
   if (!(await page.getByRole("img", { name: "Invoice preview" }).count())) throw new Error("Uploaded image preview was not shown");
