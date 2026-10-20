@@ -19,6 +19,7 @@ class WorkflowRouteRouterTest {
     void leavesUnrelatedQuestionsUntouched() {
         assertNull(WorkflowRouteRouter.maybeOverride("What did we sell most this week?"));
         assertNull(WorkflowRouteRouter.maybeOverride("How much stock is left?"));
+        assertNull(WorkflowRouteRouter.maybeOverride("How much red wine sold this week?"));
     }
 
     private static void assertRoute(String question, String route) {

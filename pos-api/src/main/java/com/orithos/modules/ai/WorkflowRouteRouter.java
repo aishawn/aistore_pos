@@ -22,6 +22,9 @@ public final class WorkflowRouteRouter {
     private static final Pattern INVOICE = Pattern.compile(
             "scan(?: this)? supplier invoice|read(?: this)? invoice|invoice capture|invoice photo|发票|供应商单据|识别.*发票",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern REPORT_CONTEXT = Pattern.compile(
+            "sales|sold|revenue|takings|units|quantity|how much .*sold|销量|销售|卖了|营业额",
+            Pattern.CASE_INSENSITIVE);
 
     private WorkflowRouteRouter() {}
 
@@ -31,7 +34,9 @@ public final class WorkflowRouteRouter {
         if (INVOICE.matcher(normalized).find()) return new Override("navigate", "/invoices/scan");
         if (REPLENISHMENT.matcher(normalized).find()) return new Override("navigate", "/stock/replenishment");
         if (PRICING.matcher(normalized).find()) return new Override("navigate", "/stock/capped-pricing");
-        if (SOMMELIER.matcher(normalized).find()) return new Override("navigate", "/sommelier");
+        if (SOMMELIER.matcher(normalized).find() && !REPORT_CONTEXT.matcher(normalized).find()) {
+            return new Override("navigate", "/sommelier");
+        }
         return null;
     }
 
