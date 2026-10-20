@@ -1193,7 +1193,7 @@
 - 报表只读 UAT 增加门店 Odoo 商品目录库存字段对照，用于区分 AI 报表链路不可用和 Odoo 库存字段本身不可读；请求仍为只读查询。
 - Sell AI 欢迎语改为与当前可用的销售/库存查询能力一致，不再暗示未接入的客户创建功能。
 - Java 21 `mvn -B clean verify`：`243 tests, 0 failures, 0 errors`；目标 ESLint、报表 UAT `node --check`、`git diff --check` 通过。
-- `pos-ui npm run typecheck` 当前被既有 `.next/dev/types/routes.d.ts` 语法损坏阻断（TS1109/TS1160）；未运行 Next/Docker build，需清理生成目录后再复核。
+- `pos-ui npm run typecheck` 首次被既有 `.next/dev/types/routes.d.ts` 语法损坏阻断（TS1109/TS1160）；修正生成文件残片后重新通过。未运行 Next/Docker build。
 - 尚未触发 Dokploy：此前 Compose webhook 的 `HTTP 301 Branch Not Match` 仍未确认修复。部署前先修正 Source/Git 分支绑定，部署后核对运行 SHA，再执行 AI report/UI、全站和设置回归。
 
 ## 2026-10-21 公网 AI 报表只读复测
