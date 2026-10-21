@@ -492,3 +492,22 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] 最新 Dokploy 文档部署及前一项 backend schema 部署均显示 Done。
 - [x] 平台 Operations/Usage/Audit/Failures 最新复核 `8/8 PASS`，无页面错误、溢出或业务写入；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22_A4740FF.json`。
 - [ ] runtime frontend/backend commit 仍为 null，不能完成源码与镜像 exact-SHA 绑定。
+
+### 2026-10-22 Stock List Odoo 数据源迁移
+
+- [x] Stock List 已从退役的 Classic POS `/api/stock-list` 和分类接口迁移到 Odoo `products` / `posCategories` 只读桥接；搜索、分类、库存筛选、分页、移动卡片和 Odoo CSV 导出继续可用。
+- [x] Stock List 产品名与 Odoo list price 编辑改为调用 `/api/odoo/products/:id`，保留价格乐观并发校验；Odoo 未提供采购成本时显示为不可编辑，避免把缺失成本写成虚假数据。
+- [x] Odoo records API 增加 `stockOnly` 校验和 `qty_available > 0` 过滤；产品更新桥接允许受控名称修改。
+- [x] Node `24.19.0` typecheck、目标 ESLint、UAT 脚本 `node --check`、`git diff --check` 通过；库存定价响应式 fixture `15/15 PASS`，`blockedWrites=0`，且 `forbiddenLegacyRequests=[]`。证据：`docs/UAT_STOCK_LIST_ODOO_LOCAL_2026-10-22.json`。
+- [x] 本批已部署并完成 Demo 只读验证；真实价格写入仍需隔离 Odoo UAT。线上导出按钮未在本轮触发下载，需后续单独验证大目录导出。
+
+### 2026-10-22 `c031989` Stock List 部署后复验
+
+- [x] Dokploy deployment `c031989a36554083d376984e4eb151cfa2b4de25` 显示 Done，构建完成；公开版本端点 frontend/backend runtime SHA 均匹配该提交。
+- [x] Demo Stock List 390px/1440px 双视口 `2/2 PASS`：HTTP 200、标题可见、页面错误 0、无横向溢出、Odoo records 请求正常、旧 Classic Stock List/分类请求 `0`、业务写入 `0`；CSV 导出下载 `demo-products.csv` 通过。证据：`docs/UAT_STOCK_LIST_ODOO_ONLINE_2026-10-22_C031989.json`。
+- [ ] Capped Pricing 仍为 `2/2 BLOCKED`，页面明确提示 Classic POS API 已退役；定价批次总计 `6 PASS / 2 BLOCKED / 0 FAIL`，后续需迁移 Odoo price list item 工作流。
+- [x] **Current update:** Capped Pricing migration is now implemented on Odoo price-list rules (`e0e3bfc` through `2f63f0c`); the previous Classic POS statement above is historical.
+- [x] Odoo pricing local fixture: `15/15 PASS`, `blockedWrites=0`, retired Classic requests `0`; online read-only pricing recheck `8/8 PASS` with no business writes.
+- [ ] Demo currently has no Odoo price rules (`items=[]`), so real rule editing, concurrency conflict handling against a live rule, and POS effective-price impact remain data-blocked.
+- [ ] Price Suggestions remains blocked by upstream Cloudflare `502`; AI OCR remains `410/41001`; live inventory AI report remains unavailable.
+- [ ] Complete isolated business-write UAT, Java 21 backend gate, exact runtime SHA readback, cash close, procurement reconciliation, device and offline POS tests before changing pilot status from NO-GO.
