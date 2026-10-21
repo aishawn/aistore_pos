@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T16:43:00.031Z",
-  "sourceCommit": "4aacb740b6cfd78065474ba03b327bffa138073d",
+  "generatedAt": "2026-10-21T19:21:30.429Z",
+  "sourceCommit": "c031989a36554083d376984e4eb151cfa2b4de25",
   "deploymentShaVerified": false,
   "runtimeCommit": null,
   "target": "https://demo.orithos.com.au",
@@ -35,12 +35,12 @@
     {
       "id": "MET-S01",
       "status": "PASS",
-      "evidence": "HTTP 200 windowHours=24 paths=12"
+      "evidence": "HTTP 200 windowHours=24 paths=11"
     },
     {
       "id": "MET-S02",
       "status": "PASS",
-      "evidence": "aggregateOnly=true; payloadLength=3400"
+      "evidence": "aggregateOnly=true; payloadLength=3254"
     },
     {
       "id": "MET-S03",

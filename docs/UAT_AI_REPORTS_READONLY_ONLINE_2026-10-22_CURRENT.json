@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-10-20T16:43:18.737Z",
-  "testHarnessCommit": "4aacb740b6cfd78065474ba03b327bffa138073d",
+  "generatedAt": "2026-10-21T19:20:52.032Z",
+  "testHarnessCommit": "c031989a36554083d376984e4eb151cfa2b4de25",
   "target": "https://demo.orithos.com.au",
   "deploymentShaVerified": false,
   "runtimeCommit": null,
   "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
-  "checksPassed": 14,
-  "checksBlocked": 0,
-  "checksTotal": 14,
+  "checksPassed": 15,
+  "checksBlocked": 1,
+  "checksTotal": 16,
   "checks": [
     {
       "name": "store-scoped catalogue reads product stock fields",
@@ -22,22 +22,22 @@
     {
       "name": "today uses store business date",
       "status": "PASS",
-      "evidence": "timezone=Australia/Adelaide; expected=2026-10-21; actual=2026-10-21"
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-22; actual=2026-10-22"
     },
     {
       "name": "empty today agrees with 24-hour overview",
       "status": "PASS",
-      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-21. Try a wider range, for example: sales last 7 days."
+      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-22. Try a wider range, for example: sales last 7 days."
     },
     {
       "name": "7-day sales report returns rows",
       "status": "PASS",
-      "evidence": "answer=Sales for 2026-10-15 to 2026-10-21 total 2328.16 (2 day(s)).; rows=2"
+      "evidence": "answer=Sales for 2026-10-16 to 2026-10-22 total AUD 12.99 (1 day).; rows=1"
     },
     {
       "name": "30-day sales report returns rows",
       "status": "PASS",
-      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-22 to 2026-10-21 total 16536.98 (7 day(s)).; rows=7"
+      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-23 to 2026-10-22 total AUD 16536.98 (7 days).; rows=7"
     },
     {
       "name": "day-month date uses current year",
@@ -47,12 +47,22 @@
     {
       "name": "compact and explicit dates return the same report",
       "status": "PASS",
-      "evidence": "compact=Sales for 2026-10-14 total 4014.36 (1 day(s)).; explicit=Sales for 2026-10-14 total 4014.36 (1 day(s))."
+      "evidence": "compact=Sales for 2026-10-14 total AUD 4014.36 (1 day).; explicit=Sales for 2026-10-14 total AUD 4014.36 (1 day)."
     },
     {
       "name": "Chinese explicit date resolves to the same business day",
       "status": "PASS",
       "evidence": "expected=2026-10-14; actual=2026-10-14"
+    },
+    {
+      "name": "screenshot date wording resolves to one business day",
+      "status": "PASS",
+      "evidence": "expected=2026-10-16; actual=2026-10-16; answer=Sales for 2026-10-16 total AUD 12.99 (1 day)."
+    },
+    {
+      "name": "screenshot date sales total reconciles with overview",
+      "status": "PASS",
+      "evidence": "overview=12.99; assistant=12.99; date=2026-10-16"
     },
     {
       "name": "unsupported date comparison stays a guided refusal",
@@ -66,13 +76,13 @@
     },
     {
       "name": "stock report data source availability",
-      "status": "PASS",
-      "evidence": "Stock report returned a source-backed response."
+      "status": "BLOCKED",
+      "evidence": "I could not read live stock data right now. Open the stock list to check manually, or try again shortly."
     },
     {
       "name": "14 October reconciles with overview",
       "status": "PASS",
-      "evidence": "overview=4014.36; assistant=4014.36; rows=[{\"sales\":4014.36,\"date\":\"14 Oct 2026\"}]"
+      "evidence": "overview=4014.36; assistant=4014.36; rows=[{\"date\":\"14 Oct 2026\",\"sales\":4014.36}]"
     },
     {
       "name": "AI daily sales rows reconcile with overview trend",
@@ -82,9 +92,9 @@
     {
       "name": "report execution uses Odoo source",
       "status": "PASS",
-      "evidence": "requestsByPath={\"odoo\":73,\"assistant:navigate\":45,\"assistant:report_sales\":35,\"assistant:report_stock\":35,\"assistant:report_adhoc\":21,\"unsupported\":21,\"assistant:search_product\":15,\"assistant:unknown\":6,\"assistant:qa\":3,\"assistant:report_qty\":3}"
+      "evidence": "requestsByPath={\"assistant:navigate\":559,\"odoo\":298,\"assistant:unknown\":212,\"assistant:report_adhoc\":176,\"assistant:report_sales\":176,\"unsupported\":176,\"assistant:report_stock\":116,\"assistant:search_product\":56,\"assistant:qa\":24,\"assistant:search_customer\":24,\"assistant:report_qty\":6}"
     }
   ],
   "failures": [],
-  "result": "PASS"
+  "result": "BLOCKED"
 }

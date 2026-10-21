@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-10-20T16:43:39.001Z",
-  "sourceCommit": "4aacb740b6cfd78065474ba03b327bffa138073d",
+  "generatedAt": "2026-10-21T19:20:58.750Z",
+  "sourceCommit": "c031989a36554083d376984e4eb151cfa2b4de25",
+  "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
-  "status": "PASS",
+  "status": "BLOCKED",
   "checks": [
     {
       "name": "login",
@@ -57,13 +58,13 @@
     },
     {
       "name": "Invoice OCR probe",
-      "status": "INFO",
-      "evidence": "{\"httpStatus\":200,\"contentType\":\"application/json\",\"apiCode\":50212,\"detail\":\"provider reachable; probe image has no invoice fields\"}"
+      "status": "BLOCKED",
+      "evidence": "{\"httpStatus\":410,\"contentType\":\"application/json;charset=UTF-8\",\"apiCode\":41001,\"detail\":\"invoice OCR route unavailable or deprecated; no extraction claim\"}"
     },
     {
       "name": "Price suggestions API",
       "status": "PASS",
-      "evidence": "products=1000 writeEnabled=false"
+      "evidence": "products=10 writeEnabled=false"
     },
     {
       "name": "Price suggestions page",
@@ -83,5 +84,5 @@
   ],
   "passed": 14,
   "failed": 0,
-  "blocked": 0
+  "blocked": 1
 }
