@@ -454,3 +454,19 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] `1c36a11` 已触发新构建，Demo builtAt 更新为 `2026-10-21T16:14:31.063Z`。
 - [ ] SecurityConfig bean-cycle 修复后 app 登录仍为 HTTP `502`；Audit/Failures/Operations/Usage 认证检查 `0/8`，runtime SHA 仍为空。
+
+### 2026-10-22 用户确认 Dokploy 成功后的最终状态记录
+
+- [x] 用户确认 Dokploy 面板最新部署状态为成功；仅记录面板状态，未取得可核验 commit SHA。
+- [ ] 重新执行线上平台可观测性验收仍为 `8/8 BLOCKED`：`/api/auth/login` HTTP `502`，四页在认证阶段未进入页面断言；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`。
+- [ ] Demo `/api/public/version` 仍为 `frontend.commit=null`、`backend=null`、`builtAt=2026-10-21T16:14:31.063Z`；部署身份、容器健康和源码对齐未证实。
+- [x] 本地已实现并验证平台四页 Retry、加载/错误/恢复状态、日期校验和可访问性；Audit/Failures `4/4` fixture、Operations/Usage `4/4` fixture 均通过。
+- [ ] 生产验收仍缺 backend 登录 502 根因、Java 21 `mvn -B clean verify` 候选门禁、runtime SHA 回读，以及登录恢复后的四页线上复验。
+
+### 2026-10-22 `ff32021` 前端 Retry 与移动定价批次
+
+- [x] 列表错误态 Retry 现在防重复点击，显示进行中状态和 spinner，并保留键盘/屏幕阅读器状态。
+- [x] Capped Pricing / Bulk Price Edit 移动端输入控件、筛选区和标题响应式优化；Capped Pricing tabs 增加 `aria-pressed`。
+- [x] Node `24.19.0` typecheck、目标 ESLint、`git diff --check` 通过；库存定价响应式 fixture `15/15 PASS`，价格建议、平台错误恢复、实体目录保护 fixture 均 PASS，业务写入 `0`。
+- [x] `ff32021` 已推送到 `origin/main`，仅前端/UAT 脚本。
+- [ ] 未运行本地 production build；Demo runtime SHA 未核验，线上登录 HTTP `502` 仍阻断部署后页面验收。

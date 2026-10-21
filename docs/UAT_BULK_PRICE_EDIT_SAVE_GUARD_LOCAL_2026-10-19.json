@@ -1,6 +1,9 @@
 {
-  "generatedAt": "2026-10-19T08:24:32.125Z",
-  "sourceCommit": "d90c157326303455c3af0bdc4edb18a7e0c10df5",
+  "generatedAt": "2026-10-21T17:05:28.457Z",
+  "sourceCommit": "0494fcb6adbbaeb3e7b0a2249cd109520af276dd",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v22.22.2",
+  "viewport": 1440,
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "bulk price edit save error containment; PATCH intercepted; no business writes",
@@ -17,44 +20,31 @@
       "evidence": "DEMO-SHIRAZ"
     },
     {
-      "name": "failed save is announced",
+      "name": "unknown save is announced",
       "status": "PASS",
-      "evidence": "cell-level alert contains safe API message"
+      "evidence": "read-back result is explicitly pending confirmation"
     },
     {
-      "name": "failed save rolls back",
+      "name": "uncertain value stays visible",
       "status": "PASS",
-      "evidence": "12"
+      "evidence": "13.50"
     },
     {
-      "name": "input is not left busy",
+      "name": "automatic retry is disabled",
       "status": "PASS",
-      "evidence": "false"
-    },
-    {
-      "name": "retry save can proceed",
-      "status": "PASS",
-      "evidence": "[{\"productId\":\"101\",\"priceId\":\"p1\",\"quantity\":1,\"price\":13.5},{\"productId\":\"101\",\"priceId\":\"p1\",\"quantity\":1,\"price\":13.5}]"
+      "evidence": "[{\"list_price\":13.5,\"expectedListPrice\":12}]"
     },
     {
       "name": "no page errors",
       "status": "PASS",
-      "evidence": "fixture run completed without navigation or render error"
+      "evidence": "[]"
     }
   ],
-  "patchAttempts": 2,
+  "patchAttempts": 1,
   "patches": [
     {
-      "productId": "101",
-      "priceId": "p1",
-      "quantity": 1,
-      "price": 13.5
-    },
-    {
-      "productId": "101",
-      "priceId": "p1",
-      "quantity": 1,
-      "price": 13.5
+      "list_price": 13.5,
+      "expectedListPrice": 12
     }
   ]
 }

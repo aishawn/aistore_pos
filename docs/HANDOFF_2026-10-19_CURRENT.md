@@ -118,7 +118,7 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | 待验证 | 待验证 | 问法目录 217 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。 |
+| AI 助手 | 是 | 是 | 待验证 | 待验证 | 问法目录 216 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
 试点决策：**NO-GO**。阻塞：Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例；无已核验的远程 Java 21 同候选 SHA pre-push 构建；aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备；隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成。
@@ -2125,3 +2125,51 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 远端新增 `1c36a11 fix: remove security configuration bean cycle`，Demo builtAt 更新到 `2026-10-21T16:14:31.063Z`，说明新构建时间发生变化。
 - 认证观测再次运行仍为 `8/8 BLOCKED`：app `/api/auth/login` HTTP `502`，Audit/Failures/Operations/Usage 均未进入页面断言。frontend/backend runtime SHA 仍为 `null`。
 - 结论：`1c36a11` 的构建时间更新不能证明 backend 健康或平台页面可用；必须读取 backend 容器启动/依赖日志并修复登录 502 后再做线上验收。
+
+## 2026-10-22 用户确认 Dokploy 面板部署成功后的复核
+
+- 用户确认 Dokploy 最新一次部署状态为“成功”。这只作为控制台状态记录，不等同于容器健康、源码 SHA 对齐或业务验收通过；本次没有取得可核验的 Dokploy commit SHA。
+- 按部署成功信息重新执行只读平台可观测性脚本：`docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`，结果仍为 **8/8 BLOCKED**。390px 和 1440px 下四页均在登录阶段阻断，`POST /api/auth/login` 返回 HTTP `502`；没有进入页面标题、API 或布局断言，也没有业务写入。
+- Demo 版本端点仍为 `builtAt=2026-10-21T16:14:31.063Z`、`frontend.commit=null`、`backend=null`。因此当前仍不能证明 `0494fcb` 或 Dokploy 面板所示的最新部署正在运行。
+
+### 当前已完成
+
+- 前端平台可观测性页面已实现：Operations、AI Usage、Audit、Failures；页面级 Retry、请求中禁用重复操作、错误恢复状态、时间窗口切换和日期范围校验已完成。
+- 已完成多批次前端产品化、AI 输入与 provider 错误边界、Odoo 错误关联 ID、价格建议/报表错误态、库存/定价/收银等 UI 修复；具体提交和证据以本文件前文及 `docs/FUNCTIONALITY_CHECKLIST.md` 为准。
+- 本地 Node `24.19.0` 静态检查通过：typecheck、目标 ESLint、UAT 脚本 `node --check`、`git diff --check`。平台页面受控 fixture 为 Audit/Failures `4/4 PASS`、Operations/Usage `4/4 PASS`。
+- 已有线上只读证据：管理员列表 `8/8 PASS`、Operations/Usage `4/4 PASS`、价格页面 `8/8 PASS`、多轮全站路由/交互/设置/表格可访问性回归；这些证据均明确标注 runtime SHA 未核验，不能替代当前部署验收。
+
+### 当前未完成或未证实
+
+- `/api/auth/login` 的线上 `502` 根因仍未定位；必须读取 Dokploy backend 容器启动日志、依赖连接状态及 Cloudflare/origin 日志。
+- Dokploy Source/Git、实际构建 commit、镜像/container SHA、backend/frontend 健康状态仍未从控制台或版本端点核验；版本端点需要返回可比对的 `SOURCE_COMMIT`。
+- Audit/Failures/Operations/Usage 的部署后线上验收尚未完成；当前不能把本地 Retry fixture 结果宣称为线上结果。
+- AI 全量工作流仍有 provider `50210` 阻断和若干路由/回答格式失败；价格建议上游 `502`、实时库存安全不可用、日期销售回复格式等问题需在运行 SHA 可核验后重新归因和复测。
+- 未运行本地 Next production build；涉及 `pos-api` 的改动未通过同一候选 SHA 的 Java 21 `mvn -B clean verify` 时，不得继续推送后端或触发新的部署。
+
+### 主要功能范围
+
+- 门店运营：POS 销售/付款/退款、收银班次、库存盘点与调拨、采购/补货、供应商、商品与价格管理、税率/支付方式/门店设置。
+- 平台管理：门店、用户/角色、审计、失败记录、运营状态、AI 用量与成本、租户/连接状态。
+- AI 能力：销售与库存问答、补货/调价意图、侍酒推荐、AI 报表、价格建议、发票/酒标识别、语音输入，以及错误降级和关联 ID 展示。
+- 数据边界：Odoo 为业务数据源；生产验收默认只读，任何写入测试必须使用明确批准的隔离环境。
+
+### 下一步交接顺序
+
+1. 从 Dokploy 取得最新部署的 commit、构建日志和 backend 容器健康状态，先处理登录 `502`。
+2. 让 `/api/public/version` 返回 frontend/backend 与 `SOURCE_COMMIT`，并核对三者一致。
+3. 登录恢复后重跑四个平台页面双视口只读验收，再重跑 AI 代表性及全量矩阵。
+4. 将每项结果分别标为“已实现、已本地验证、已部署、已线上验证”，不要用面板成功状态替代运行证据。
+
+## 2026-10-22 `ff32021` 前端 Retry 与移动定价批次
+
+- `ff32021` 已在 `main` / `origin/main`，只包含 `pos-ui` 与 UAT 脚本，不涉及 `pos-api`，因此不触发 Java 21 后端门禁问题。
+- `AsyncState` 的所有列表错误态现在防止重复 Retry，显示 spinner、`aria-busy` 和明确的 Retrying 状态，并移除面向用户的内部 API 地址提示。
+- Capped Pricing 与 Bulk Price Edit 的移动端标题、边距、筛选输入和价格输入统一为触控友好的至少 44px；Capped Pricing tabs 补充 `aria-pressed`。
+- Node `24.19.0` typecheck、目标 ESLint、`git diff --check` 通过。浏览器 fixture 结果：库存/定价响应式 `15/15 PASS`、价格建议 `PASS`、Audit/Failures `4/4 PASS`、Operations/Usage `4/4 PASS`、实体目录和不支持动作保护 `PASS`；均为受控/只读验证，业务写入 `0`。
+- 本批没有运行 Next production build；线上尚未归因到 `ff32021`。Demo runtime commit 仍为空，app 登录 HTTP `502` 仍阻断线上平台验收。证据文件已由相关 UAT 脚本刷新。
+## 2026-10-22 AI proxy availability follow-up
+
+- The executable assistant catalog contains **216 unique IDs**. The retry-enabled representative smoke selected replenishment, pricing, recommendation, invoice, and daily-sales cases, but Demo login returned HTTP 502 from Cloudflare after three attempts. No assistant request or business write was issued.
+- Anonymous probes for `/api/auth/me`, `/api/ai/config/client`, and `/api/ai/assistant` all returned HTTP 502, so the block is shared by the frontend-to-backend proxy rather than a single AI workflow. Evidence: `docs/UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json` and `docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-DIAGNOSTIC.json`.
+- `/api/public/version` returns HTTP 200 but still exposes no frontend/backend runtime SHA. After backend changes, retain the Java 21 same-candidate-SHA `mvn -B clean verify` gate and rerun the full 216-case matrix only after login and proxy health recover.

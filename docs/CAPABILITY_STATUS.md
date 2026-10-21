@@ -1168,3 +1168,18 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Audit/Failures 已补充页内 Retry；受控 fixture 双视口 `4/4 PASS`，覆盖错误恢复、页面错误、横向溢出和非 GET 写入。
 - Operations/AI usage 也已补充页内 Retry；受控 fixture 双视口 `4/4 PASS`，覆盖错误恢复、时间窗口切换、页面错误、横向溢出和非 GET 写入。证据：`docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json`。
 - 上述结果均为前端 fixture；后端 Java 21 门禁、迁移、Dokploy runtime SHA 和 app 域线上验收仍待完成。
+
+- 公网只读回归：app 控制台 Operations/AI usage 在 390px、1440px 共 `4/4 PASS`，HTTP 200、标题可见、无页面错误/溢出/业务写入；证据 `docs/UAT_PLATFORM_OPERATIONS_USAGE_ONLINE_2026-10-24.json`。runtime SHA 仍为空，本地 Retry 改动尚未获得部署归因。
+- 自动构建后新的平台可观测性复核被 `/api/auth/login` HTTP `502` 阻断（8/8 认证检查未进入页面），证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`；builtAt 更新但 runtime SHA 仍未核验。
+
+## 2026-10-22 部署状态更新
+
+- 用户确认 Dokploy 面板最新部署显示成功，但未提供可核验 commit SHA；该状态不能替代运行镜像和健康检查证据。
+- 重新执行平台可观测性线上脚本仍为 `8/8 BLOCKED`：app `/api/auth/login` HTTP `502`，Audit、Failures、Operations、AI Usage 均未完成页面级线上验收。
+- Demo 版本端点仍无 frontend/backend runtime commit（均为 `null`），builtAt 为 `2026-10-21T16:14:31.063Z`。当前能力状态应保持“已实现/本地已验证”，不能升级为“已部署/线上已验证”。
+
+## 2026-10-22 `ff32021` 前端批次
+
+- `ff32021` 已推送，范围为 `pos-ui` 和 UAT 工具：列表错误态 Retry 防重复提交与可访问状态；Capped Pricing/Bulk Price Edit 移动端触控尺寸、响应式间距和标签语义。
+- Node `24.19.0` typecheck、目标 ESLint 通过；库存定价响应式 `15/15 PASS`，平台错误恢复和实体目录保护 fixture 通过，所有本地验证无业务写入。
+- 该批次尚未取得线上 runtime SHA；app 登录 `502` 继续阻断部署后验收，仍标记为“已本地验证、线上待验证”。

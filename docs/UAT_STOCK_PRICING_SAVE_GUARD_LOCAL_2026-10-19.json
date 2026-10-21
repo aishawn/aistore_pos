@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T10:48:08.999Z",
-  "sourceCommit": "1639c44c8284d3c99c78e8c4832765222a08b62b",
+  "generatedAt": "2026-10-21T17:05:25.971Z",
+  "sourceCommit": "0494fcb6adbbaeb3e7b0a2249cd109520af276dd",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "Stock List and Capped Pricing save error handling; writes intercepted by Playwright",

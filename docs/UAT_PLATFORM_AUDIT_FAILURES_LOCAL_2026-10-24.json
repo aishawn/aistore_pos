@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T15:25:21.182Z",
+  "generatedAt": "2026-10-21T17:11:15.851Z",
   "target": "http://app.localhost:3035",
   "scope": "local browser fixture; platform APIs intercepted; no writes",
   "status": "PASS",

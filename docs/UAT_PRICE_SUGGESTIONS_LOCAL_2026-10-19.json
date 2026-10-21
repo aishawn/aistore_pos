@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-21T08:18:09.835Z",
-  "sourceCommit": "1cf20c5de2be7b40d49f83ec3be81a0370ce30b5",
+  "generatedAt": "2026-10-21T17:11:09.454Z",
+  "sourceCommit": "ff32021f439a7294c9968adb00fe826923d6e10a",
   "sourceWorkingTree": false,
-  "nodeVersion": "v22.22.2",
+  "nodeVersion": "v24.19.0",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
