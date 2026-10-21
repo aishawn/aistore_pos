@@ -8,6 +8,8 @@ Dokploy 控制台已保存显式分类模型变量 `AI_DASHSCOPE_CLASSIFY_MODEL=
 
 本次结果记录的源提交为 `a4740ff1a038ffbe59888a4d149fd556caf3810f`，部署状态字段仍为 `unverified-after-deploy`；Demo 版本接口没有返回 frontend/backend commit，虽然 backend `builtAt` 更新为 `2026-10-21T18:24:30Z`，仍不能证明运行镜像与源提交身份一致。该限制不影响本轮“线上问法响应”结论，但后续发布验收仍必须补齐 runtime SHA。
 
+同轮只读伴随套件：能力门禁 **PASS**，路由矩阵 **9/9 PASS**，surface/auth **11/11 PASS**，可用性 **3/3 PASS**，enabled gate **PASS**，AI UI **2/2 PASS**，指标 **9/9 PASS**；功能套件 **13 PASS / 2 BLOCKED**，报表 **15/16 PASS**，History/Platform **9 PASS / 2 BLOCKED**。转写脚本本次因未提供音频 fixture 为 **2 PASS / 2 BLOCKED**，不能解释为 ASR 失败；此前带临时英/中文音频 fixture 的专项证据仍为 **4/4 PASS**。所有阻断均无断言 FAIL，线上检查未执行业务写入。
+
 ## 2026-10-22 representative smoke
 
 The representative smoke was corrected after the first attempt used IDs that
