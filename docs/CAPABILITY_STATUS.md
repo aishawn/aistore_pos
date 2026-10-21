@@ -1195,3 +1195,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Dokploy Compose 已成功部署并启动容器；平台 `8/8`、全站 `276/276`、交互 `14/14`、表格/可访问性 `14/14` 通过。
 - 定价与 AI 的阻断已分层记录：Classic POS API 退役、价格建议 Cloudflare 502、发票 OCR 410/41001；没有业务写入。
 - 运行版本仍缺 frontend/backend commit，构建层显示 cached 且 SOURCE_COMMIT 为空；能力状态保持“已部署、线上行为已复核、runtime 身份未绑定”。
+
+## 2026-10-22 最新部署 `a4740ff`
+
+- 最新文档部署及 backend schema 部署均为 Done；平台四页再次 `8/8 PASS`，无写入。
+- backend builtAt 已更新，但 frontend/backend commit 仍为空；状态保持“线上行为已验证、runtime SHA 未绑定”。

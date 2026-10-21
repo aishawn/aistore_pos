@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-21T18:26:00.000Z",
+  "sourceCommit": "a4740ff1a038ffbe59888a4d149fd556caf3810f",
+  "deployment": "a4740ff1a038ffbe59888a4d149fd556caf3810f",
+  "target": "https://app.orithos.com.au",
+  "status": "PASS",
+  "checks": 8,
+  "passed": 8,
+  "routes": ["/platform/operations", "/platform/usage", "/platform/audit", "/platform/failures"],
+  "viewports": [390, 1440],
+  "pageErrors": 0,
+  "nonGetBusinessWrites": 0,
+  "noHorizontalOverflow": true,
+  "runtimeVersion": {
+    "frontendCommit": null,
+    "backendCommit": null,
+    "frontendBuiltAt": "2026-10-21T17:42:25.986Z",
+    "backendBuiltAt": "2026-10-21T18:24:30Z"
+  }
+}

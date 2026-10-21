@@ -2186,6 +2186,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - AI features `13 PASS / 2 BLOCKED / 0 FAIL`：价格建议 API `502`、发票 OCR 探针 HTTP `410/41001`（路由不可用/已退役）；AI 配置、NLQ、Sommelier、ASR/空输入保护、页面入口和匿名守卫通过。证据 `docs/UAT_AI_FEATURES_VERIFY_2026-10-22_3845BF2_RECHECK.json`。
 - AI 工作流全量复测 `179 PASS / 37 BLOCKED / 0 FAIL`；BLOCKED 主要为 provider/Odoo 数据不可用，路由专项 `2/2 PASS`。证据 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FINAL-3845BF2.json`、`docs/UAT_AI_WORKFLOW_ROUTE_FIX_3845BF2.json`。
 - `/api/public/version` 的 frontend/backend commit 仍为 `null`，只有 builtAt；Docker 日志中的 `SOURCE_COMMIT` 为空且 Maven/frontend 层为缓存命中。因此本轮可标记“已部署且线上行为可复核”，不能标记“runtime SHA 已绑定”。
+
+## 2026-10-22 `a4740ff` 最新部署复核
+
+- Dokploy 最新文档部署 `a4740ff` 显示 `Done`，其前一项 backend schema 提交 `fc5076b` 也显示 `Done`。
+- 平台四页在最新部署后再次 `8/8 PASS`；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22_A4740FF.json`。
+- Demo 版本端点 backend builtAt 更新为 `2026-10-21T18:24:30Z`，frontend builtAt 保持 `2026-10-21T17:42:25.986Z`，两个 commit 字段仍为 `null`。当前仍需补齐构建身份注入，才能完成 exact-SHA 绑定。
 ## 2026-10-22 AI proxy availability follow-up
 
 - The executable assistant catalog contains **216 unique IDs**. The retry-enabled representative smoke selected replenishment, pricing, recommendation, invoice, and daily-sales cases, but Demo login returned HTTP 502 from Cloudflare after three attempts. No assistant request or business write was issued.

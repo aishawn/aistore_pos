@@ -486,3 +486,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] AI features：`13 PASS / 2 BLOCKED / 0 FAIL`；发票 OCR 路由 410/41001、价格建议 502 待处理。
 - [ ] Settings 移动专项在 live Odoo register card 数据断言处 BLOCKED，不把数据缺失误记为 UI FAIL；证据 `docs/UAT_SETTINGS_MOBILE_2026-10-22_3845BF2_BLOCKED.json`。
 - [ ] runtime frontend/backend commit 仍为空；必须补充 SOURCE_COMMIT 注入和新鲜 exact-SHA 构建证据。
+
+### 2026-10-22 `a4740ff` 最新平台复核
+
+- [x] 最新 Dokploy 文档部署及前一项 backend schema 部署均显示 Done。
+- [x] 平台 Operations/Usage/Audit/Failures 最新复核 `8/8 PASS`，无页面错误、溢出或业务写入；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22_A4740FF.json`。
+- [ ] runtime frontend/backend commit 仍为 null，不能完成源码与镜像 exact-SHA 绑定。
