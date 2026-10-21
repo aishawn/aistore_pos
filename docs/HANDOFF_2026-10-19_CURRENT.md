@@ -2176,6 +2176,16 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - `AdminPageLayout` 的筛选栏现在允许窄屏换行；固定操作栏按钮组可换行并保留浮动助手安全间距；AdminPill/Outline 工具按钮统一至少 44px 触控高度。
 - Node `24.19.0` typecheck、目标 ESLint、diff check 通过；产品化 UI `12/12 PASS`、AI 焦点模态五视口 `5/5 PASS`、AI 能力门禁 `10/10 PASS`、供应商连接响应式 `5/5 PASS`、盘点边界 `20/20 PASS`，业务写入 `0`。汇总证据：`docs/UAT_SHARED_ADMIN_LAYOUT_LOCAL_2026-10-22_FF32021.json`。
 - 该批次尚未部署；当前 Dokploy webhook 301 和线上登录 502 阻断仍适用。
+
+## 2026-10-22 `3845bf2` Dokploy 部署后线上复核
+
+- Dokploy deployment `3845bf2` 显示 `Done`；构建日志显示 backend/frontend/mysql/r2-sync 镜像构建完成，Compose 部署成功，backend started，MySQL/Redis healthy。证据 `docs/UAT_DOKPLOY_DEPLOYMENT_3845BF2.json`。
+- 线上平台可观测性 `8/8 PASS`：Operations、AI Usage、Audit、Failures 在 390px/1440px 均 HTTP 200、标题可见、无页面错误、无横向溢出、无非 GET 业务写入。当前运行证据应以脚本新生成的线上 JSON 为准。
+- 全站静态页面 `138 × 2 = 276/276 PASS`；交互 `14/14 PASS`；表格/可访问性 `14/14 PASS`；均为只读检查。
+- 定价四页结果为 **0 FAIL / 6 BLOCKED / 2 可继续**：Stock List/Capped Pricing 的 Classic POS API 已退役，Price Suggestions 上游返回 Cloudflare `502`；Bulk Price Edit 页面可达且无横向溢出。证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_3845BF2_RECHECK.json`。
+- AI features `13 PASS / 2 BLOCKED / 0 FAIL`：价格建议 API `502`、发票 OCR 探针 HTTP `410/41001`（路由不可用/已退役）；AI 配置、NLQ、Sommelier、ASR/空输入保护、页面入口和匿名守卫通过。证据 `docs/UAT_AI_FEATURES_VERIFY_2026-10-22_3845BF2_RECHECK.json`。
+- AI 工作流全量复测 `179 PASS / 37 BLOCKED / 0 FAIL`；BLOCKED 主要为 provider/Odoo 数据不可用，路由专项 `2/2 PASS`。证据 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FINAL-3845BF2.json`、`docs/UAT_AI_WORKFLOW_ROUTE_FIX_3845BF2.json`。
+- `/api/public/version` 的 frontend/backend commit 仍为 `null`，只有 builtAt；Docker 日志中的 `SOURCE_COMMIT` 为空且 Maven/frontend 层为缓存命中。因此本轮可标记“已部署且线上行为可复核”，不能标记“runtime SHA 已绑定”。
 ## 2026-10-22 AI proxy availability follow-up
 
 - The executable assistant catalog contains **216 unique IDs**. The retry-enabled representative smoke selected replenishment, pricing, recommendation, invoice, and daily-sales cases, but Demo login returned HTTP 502 from Cloudflare after three attempts. No assistant request or business write was issued.

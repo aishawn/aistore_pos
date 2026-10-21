@@ -477,3 +477,12 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] `AdminPageLayout` 筛选栏换行、操作 footer 换行安全、工具栏按钮触控高度统一。
 - [x] Node `24.19.0` typecheck/目标 ESLint/diff check；产品化 UI、AI 焦点/能力门禁、供应商连接、盘点边界 fixture 均通过，业务写入 `0`；汇总证据 `docs/UAT_SHARED_ADMIN_LAYOUT_LOCAL_2026-10-22_FF32021.json`。
 - [ ] 尚未取得该共享壳线上 runtime SHA；线上登录 `502` 和 Dokploy `301` 阻断部署后验证。
+
+### 2026-10-22 `3845bf2` 部署后线上复核
+
+- [x] Dokploy deployment `3845bf2` 显示 Done，Compose 成功，backend started，MySQL/Redis healthy；构建日志记录 Maven/frontend 层为 cached，SOURCE_COMMIT 为空。
+- [x] 平台四页线上 `8/8 PASS`；全站静态页面 `276/276 PASS`；交互 `14/14 PASS`；表格/可访问性 `14/14 PASS`；无业务写入。
+- [ ] 定价页：`0 FAIL / 6 BLOCKED / 2 可继续`；Classic POS API 退役与价格建议 Cloudflare 502 待处理。
+- [ ] AI features：`13 PASS / 2 BLOCKED / 0 FAIL`；发票 OCR 路由 410/41001、价格建议 502 待处理。
+- [ ] Settings 移动专项在 live Odoo register card 数据断言处 BLOCKED，不把数据缺失误记为 UI FAIL；证据 `docs/UAT_SETTINGS_MOBILE_2026-10-22_3845BF2_BLOCKED.json`。
+- [ ] runtime frontend/backend commit 仍为空；必须补充 SOURCE_COMMIT 注入和新鲜 exact-SHA 构建证据。

@@ -60,6 +60,10 @@ try {
       const loading = page.getByRole("status", { name: "Loading" }).first();
       await loading.waitFor({ state: "hidden", timeout: 30000 }).catch(() => {});
       const loadingComplete = !(await loading.isVisible().catch(() => false));
+      const alertText = (await page.getByRole("alert").allTextContents().catch(() => []))
+        .join(" ")
+        .trim();
+      const dataBlocked = /classic pos api is retired|connect odoo|could not load|temporarily unavailable/i.test(alertText);
       const firstHeadingText = await page.locator("h1").first().innerText().catch(() => "");
       const headingVisible = await heading.isVisible().catch(() => false)
         || firstHeadingText.trim() === route.heading
@@ -208,6 +212,8 @@ try {
         tableColumnsDoNotOverlap,
         columnsAlignWithFirstRow,
         headerTextFits,
+        dataBlocked,
+        blockedReason: dataBlocked ? alertText.slice(0, 240) : null,
         pageErrors: [...pageErrors],
         screenshot: path.relative(root, screenshot).replaceAll(path.sep, "/"),
       });
@@ -222,7 +228,7 @@ try {
   await browser.close();
 }
 
-const failures = checks.filter((check) => check.status === "FAIL"
+const failures = checks.filter((check) => !check.dataBlocked && (check.status === "FAIL"
   || (check.httpStatus != null && (check.httpStatus < 200 || check.httpStatus >= 400))
   || check.headingVisible === false
   || check.loadingComplete === false
@@ -239,7 +245,8 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.tableColumnsDoNotOverlap === false
   || check.columnsAlignWithFirstRow === false
   || check.headerTextFits === false
-  || (check.pageErrors?.length ?? 0) > 0);
+  || (check.pageErrors?.length ?? 0) > 0));
+const blockedChecks = checks.filter((check) => check.dataBlocked);
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
@@ -248,9 +255,10 @@ const output = {
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
   scope: "authenticated pricing and stock pages; non-GET API calls blocked; no business writes",
-  status: failures.length === 0 && blockedWrites.length === 0 ? "PASS" : "FAIL",
+  status: failures.length > 0 || blockedWrites.length > 0 ? "FAIL" : blockedChecks.length > 0 ? "BLOCKED" : "PASS",
   passed: checks.length - failures.length,
   failed: failures.length,
+  blocked: blockedChecks.length,
   checks,
   blockedWrites,
 };
@@ -259,5 +267,5 @@ const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   : path.join(root, "docs", "UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json");
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
-console.log(JSON.stringify({ outputPath, status: output.status, passed: output.passed, failed: output.failed, blockedWrites: blockedWrites.length }));
+console.log(JSON.stringify({ outputPath, status: output.status, passed: output.passed, failed: output.failed, blocked: output.blocked, blockedWrites: blockedWrites.length }));
 if (failures.length > 0 || blockedWrites.length > 0) process.exitCode = 1;

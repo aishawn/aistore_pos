@@ -1189,3 +1189,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - `AdminPageLayout` 已改善移动筛选换行、固定操作栏换行和工具按钮触控尺寸；本地产品化、AI 焦点/能力、供应商连接、盘点边界回归均通过，汇总证据 `docs/UAT_SHARED_ADMIN_LAYOUT_LOCAL_2026-10-22_FF32021.json`。
 - 共享壳仍仅标为“本地已验证”；未取得 Dokploy runtime SHA，不能升级为线上已验证。
+
+## 2026-10-22 `3845bf2` 线上结果
+
+- Dokploy Compose 已成功部署并启动容器；平台 `8/8`、全站 `276/276`、交互 `14/14`、表格/可访问性 `14/14` 通过。
+- 定价与 AI 的阻断已分层记录：Classic POS API 退役、价格建议 Cloudflare 502、发票 OCR 410/41001；没有业务写入。
+- 运行版本仍缺 frontend/backend commit，构建层显示 cached 且 SOURCE_COMMIT 为空；能力状态保持“已部署、线上行为已复核、runtime 身份未绑定”。

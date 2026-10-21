@@ -1,0 +1,71 @@
+{
+  "generatedAt": "2026-10-21T17:51:38.282Z",
+  "sourceCommit": "3845bf2032afdf5e0efec1370d9113b03e49ffc5",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": null,
+    "frontendBuiltAt": "2026-10-21T17:42:25.986Z",
+    "backendCommit": null,
+    "backendBuiltAt": "2026-10-21T17:48:44Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 2,
+  "selectedIds": [
+    "supplier-lookup-directory-en",
+    "price-list-lookup-en"
+  ],
+  "checks": [
+    {
+      "id": "supplier-lookup-directory-en",
+      "question": "Search supplier directory",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/suppliers/odoo",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/suppliers/odoo",
+        "correlationId": "49478ece-7b3a-4b6d-92c4-f93e9cb7bfe7"
+      }
+    },
+    {
+      "id": "price-list-lookup-en",
+      "question": "Search price lists",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/pricelists",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/pricelists",
+        "correlationId": "7859b243-7c8f-4bfb-9345-ba9a67c5ad6c"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 2,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

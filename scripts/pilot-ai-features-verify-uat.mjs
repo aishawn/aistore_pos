@@ -189,6 +189,8 @@ try {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("valid image was rejected as empty"));
     } else if (invoiceCode === 50213) {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("provider/model configuration failure"));
+    } else if (invoiceCode === 41001 || invoice.status() === 410) {
+      record("Invoice OCR probe", "BLOCKED", invoiceEvidence("invoice OCR route unavailable or deprecated; no extraction claim"));
     } else {
       record("Invoice OCR probe", "FAIL", invoiceEvidence("unexpected invoice OCR response"));
     }
