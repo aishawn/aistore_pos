@@ -167,14 +167,14 @@ export function OdooPurchaseOrdersPage() {
 
   useEffect(() => { void loadOrders(); }, [loadOrders, refreshKey]);
 
-  async function openDetail(purchaseId: number) {
+  async function openDetail(purchaseId: number, receiveMessage: string | null = null) {
     const revision = ++detailRevision.current;
     setDetailPurchaseId(purchaseId);
     setDetail(null);
     setDetailError(null);
     setConfirmError(null);
     setReceiveError(null);
-    setReceiveSuccess(null);
+    setReceiveSuccess(receiveMessage);
     setReceiveOpen(false);
     setDetailLoading(true);
     try {
@@ -195,6 +195,7 @@ export function OdooPurchaseOrdersPage() {
   }
 
   function closeDetail() {
+    if (confirming || receiving) return;
     detailRevision.current += 1;
     setDetailPurchaseId(null);
     setDetail(null);
@@ -207,8 +208,8 @@ export function OdooPurchaseOrdersPage() {
   }
 
   useDialogFocus(Boolean((detail || detailLoading || detailError) && !confirmOpen && !receiveOpen), closeDetail, detail ? "detail" : detailError ? "error" : "loading");
-  useDialogFocus(confirmOpen && Boolean(detail), () => setConfirmOpen(false));
-  useDialogFocus(receiveOpen && Boolean(detail?.receivable), () => setReceiveOpen(false));
+  useDialogFocus(confirmOpen && Boolean(detail), () => { if (!confirming) setConfirmOpen(false); });
+  useDialogFocus(receiveOpen && Boolean(detail?.receivable), () => { if (!receiving) setReceiveOpen(false); });
 
   async function receiveOrder() {
     if (!detail?.receivable || receiving) return;
@@ -233,9 +234,8 @@ export function OdooPurchaseOrdersPage() {
         lines,
       });
       setReceiveOpen(false);
-      setReceiveSuccess(`Received on ${result.pickingName} (${result.pickingState || "updated"}).`);
       setRefreshKey((value) => value + 1);
-      await openDetail(detail.order.id);
+      await openDetail(detail.order.id, `Received on ${result.pickingName} (${result.pickingState || "updated"}).`);
     } catch (cause) {
       setReceiveError(cause instanceof Error ? cause.message : "Could not receive this purchase order.");
     } finally {
@@ -351,7 +351,7 @@ export function OdooPurchaseOrdersPage() {
 
       {(detail || detailLoading || detailError) && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !confirming) closeDetail(); }}>
         <section role={detailError ? "alertdialog" : "dialog"} aria-modal="true" aria-labelledby="purchase-detail-title" className="my-auto flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
-          {detailLoading ? <div role="status" className="grid min-h-56 place-items-center text-sm text-[var(--oh-muted)]"><span><LoaderCircle className="mx-auto animate-spin" /><span className="mt-2 block">Loading purchase details…</span></span></div> : detailError ? <div className="p-6"><div className="flex justify-between gap-4"><h2 id="purchase-detail-title" className="text-lg font-semibold text-[var(--oh-text)]">Purchase details</h2><button type="button" onClick={closeDetail} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></div><p role="alert" className="mt-5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{detailError}</p>{detailPurchaseId !== null && <button type="button" onClick={() => void openDetail(detailPurchaseId)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry details</button>}</div> : detail && <>
+          {detailLoading ? <div role="status" className="grid min-h-56 place-items-center text-sm text-[var(--oh-muted)]"><span><LoaderCircle className="mx-auto animate-spin" /><span className="mt-2 block">Loading purchase details…</span></span></div> : detailError ? <div className="p-6"><div className="flex justify-between gap-4"><h2 id="purchase-detail-title" className="text-lg font-semibold text-[var(--oh-text)]">Purchase details</h2><button type="button" onClick={closeDetail} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></div>{receiveSuccess && <p role="status" className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-5 text-emerald-900">{receiveSuccess}</p>}<p role="alert" className="mt-5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{detailError}</p>{detailPurchaseId !== null && <button type="button" onClick={() => void openDetail(detailPurchaseId, receiveSuccess)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry details</button>}</div> : detail && <>
             <header className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] p-4 sm:gap-4 sm:p-5 md:px-6"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 id="purchase-detail-title" className="text-lg font-semibold text-[var(--oh-text)]">{detail.order.name}</h2><span className={`inline-flex min-h-6 items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(detail.order.state)}`}>{statusLabel(detail.order.state)}</span>{purchaseReceiptLabel(detail.order.receipt_status) && <span className="inline-flex min-h-6 items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{purchaseReceiptLabel(detail.order.receipt_status)}</span>}</div><p className="mt-1 break-words text-sm text-[var(--oh-muted)]">{relationName(detail.order.partner_id) || "No supplier"} · {formatDate(detail.order.date_order)}</p></div><button type="button" onClick={closeDetail} disabled={confirming} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button></header>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 md:px-6">
               <div className="overflow-hidden rounded-lg border border-[var(--oh-border)]">
@@ -414,7 +414,7 @@ export function OdooPurchaseOrdersPage() {
               <li key={move.id} className="rounded-lg border border-[var(--oh-border)] px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0"><p className="text-sm font-medium text-[var(--oh-text)]">{relationName(move.product_id) || `Move #${move.id}`}</p><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Ordered {move.product_uom_qty} · remaining {move.remaining}</p></div>
-                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Qty<input type="number" min={0} max={move.remaining} step="any" inputMode="decimal" aria-label={`Quantity received for ${relationName(move.product_id) || `move ${move.id}`}`} value={receiveQty[move.id] ?? "0"} onChange={(event) => { setReceiveError(null); setReceiveQty((current) => ({ ...current, [move.id]: event.target.value })); }} className="h-10 w-24 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]" /></label>
+                  <label className="grid gap-1 text-xs font-medium text-[var(--oh-muted)]">Qty<input type="number" min={0} max={move.remaining} step="any" inputMode="decimal" aria-label={`Quantity received for ${relationName(move.product_id) || `move ${move.id}`}`} value={receiveQty[move.id] ?? "0"} disabled={receiving} onChange={(event) => { setReceiveError(null); setReceiveQty((current) => ({ ...current, [move.id]: event.target.value })); }} className="h-10 w-24 rounded-md border border-[var(--oh-border)] px-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] disabled:opacity-60" /></label>
                 </div>
               </li>
             ))}

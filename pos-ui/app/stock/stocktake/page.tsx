@@ -59,6 +59,7 @@ export default function OdooStocktakePage() {
   const [applyError, setApplyError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const debouncedQuery = useDebouncedValue(query, 250);
+  const searchTerm = query.trim();
   const searchRevision = useRef(0);
 
   useEffect(() => {
@@ -84,10 +85,10 @@ export default function OdooStocktakePage() {
 
   useEffect(() => {
     const term = debouncedQuery.trim();
-    if (!locationId || !term) {
+    if (!locationId || !term || term !== searchTerm) {
       setProducts([]);
       setProductsError(null);
-      setProductsLoading(false);
+      setProductsLoading(Boolean(locationId && searchTerm));
       return;
     }
     const revision = ++searchRevision.current;
@@ -107,9 +108,11 @@ export default function OdooStocktakePage() {
         if (revision === searchRevision.current) setProductsLoading(false);
       });
     return () => { searchRevision.current += 1; };
-  }, [debouncedQuery, locationId, retryKey]);
+  }, [debouncedQuery, searchTerm, locationId, retryKey]);
 
   const selectedLocation = locations.find((location) => String(location.id) === locationId);
+  const searchPending = Boolean(searchTerm) && (productsLoading || searchTerm !== debouncedQuery.trim());
+  const resultsVisible = Boolean(searchTerm) && !searchPending && !productsError;
   const eligibleProducts = products.filter((product) => product.eligible);
   const invalidCount = countLines.filter((line) => !line.countedQty.trim()
     || !Number.isFinite(Number(line.countedQty))
@@ -137,6 +140,17 @@ export default function OdooStocktakePage() {
       ? current
       : [...current, { ...product, countedQty: "" }]);
     setSuccess(null);
+  }
+
+  function changeSearch(value: string) {
+    if (value.trim() !== searchTerm) {
+      // Retire the old result immediately, including requests completing during debounce.
+      searchRevision.current += 1;
+      setProducts([]);
+      setProductsError(null);
+      setProductsLoading(Boolean(value.trim()));
+    }
+    setQuery(value);
   }
 
   async function applyCount() {
@@ -214,9 +228,9 @@ export default function OdooStocktakePage() {
                 <input
                   id="stocktake-search"
                   value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+                  onChange={(event) => changeSearch(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key !== "Enter" || productsLoading || query.trim() !== debouncedQuery.trim()) return;
+                    if (event.key !== "Enter" || !resultsVisible) return;
                     const term = query.trim().toLowerCase();
                     const exactBarcode = products.find((product) => product.barcode.toLowerCase() === term);
                     if (exactBarcode?.eligible) {
@@ -229,11 +243,11 @@ export default function OdooStocktakePage() {
                   role="combobox"
                   aria-autocomplete="list"
                   aria-controls="stocktake-search-results"
-                  aria-expanded={Boolean(query.trim())}
-                  aria-busy={productsLoading}
+                  aria-expanded={resultsVisible}
+                  aria-busy={searchPending}
                   className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-white pl-10 pr-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
                 />
-                {productsLoading && <LoaderCircle size={17} role="status" aria-label="Searching products" className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
+                {searchPending && <LoaderCircle size={17} role="status" aria-label="Searching products" className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
               </div>
               {productsError && (
                 <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
@@ -241,7 +255,7 @@ export default function OdooStocktakePage() {
                   <button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={productsLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
                 </div>
               )}
-              {query.trim() && !productsLoading && !productsError && (
+              {resultsVisible && (
                 <div id="stocktake-search-results" role="listbox" aria-label="Stocktake product results" className="divide-y divide-[var(--oh-border)] overflow-hidden rounded-md border border-[var(--oh-border)] bg-white">
                   {products.length === 0 ? (
                     <p role="status" className="px-4 py-6 text-center text-sm text-[var(--oh-muted)]">No matching products.</p>

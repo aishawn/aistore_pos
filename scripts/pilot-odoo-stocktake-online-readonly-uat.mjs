@@ -15,7 +15,7 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
-const outputDir = path.join(root, "docs", "screenshots", "2026-10-19-stocktake-online");
+const outputDir = path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-19-stocktake-online");
 fs.mkdirSync(outputDir, { recursive: true });
 const checks = [];
 let writeRequests = 0;
@@ -45,12 +45,16 @@ try {
   const sourceExplained = locationSource === "tenant-binding" || locationSource === "single-warehouse-fallback";
   checks.push({ name: "authenticated stocktake location read", status: apiReadable && sourceExplained ? "PASS" : "FAIL", httpStatus: apiResponse.status(), message: apiBody.message ?? null, locationCount: locations.length, locationSource: locationSource ?? null, writeEnabled: apiBody.data?.writeEnabled ?? null });
   const storageState = await context.storageState();
+  await context.close();
 
   for (const viewport of viewports) {
-    await context.close();
     const pageContext = await browser.newContext({ viewport, storageState });
-    pageContext.on("request", (request) => {
-      if (request.method() !== "GET" && request.url().includes("/api/odoo/stocktake")) writeRequests += 1;
+    await pageContext.route("**/api/**", async (route) => {
+      if (!["GET", "HEAD", "OPTIONS"].includes(route.request().method())) {
+        writeRequests += 1;
+        return route.fulfill({ status: 405, json: { code: 40500, message: "Read-only UAT blocked this request" } });
+      }
+      return route.continue();
     });
     const page = await pageContext.newPage();
     const response = await page.goto(`${base}/stock/stocktake`, { waitUntil: "networkidle", timeout: 60000 });
@@ -68,7 +72,7 @@ try {
       && searchSemantics.expanded === "false";
     checks.push({ name: `stocktake search combobox semantics ${viewport.width}px`, status: searchSemanticPass ? "PASS" : "FAIL", semantics: searchSemantics });
     await search.fill("wine");
-    await page.waitForFunction(() => document.querySelector("#stocktake-search")?.getAttribute("aria-busy") !== "true", null, { timeout: 30000 });
+    await page.getByRole("listbox", { name: "Stocktake product results" }).waitFor({ state: "visible", timeout: 30000 });
     const resultSemantics = await page.evaluate(() => {
       const list = document.querySelector("#stocktake-search-results");
       return {
@@ -81,6 +85,10 @@ try {
       && resultSemantics.expanded === "true"
       && (resultSemantics.optionCount > 0 || resultSemantics.listRole === "listbox");
     checks.push({ name: `stocktake search result semantics ${viewport.width}px`, status: resultSemanticPass ? "PASS" : "FAIL", semantics: resultSemantics });
+    const headerAi = page.getByRole("button", { name: "Open Orithos AI assistant", exact: true });
+    const headerVisible = await headerAi.isVisible().catch(() => false);
+    const floatingHidden = await page.getByRole("button", { name: "Open Orithos AI", exact: true }).count() === 0;
+    checks.push({ name: `stocktake header AI placement ${viewport.width}px`, status: headerVisible && floatingHidden ? "PASS" : "FAIL", headerVisible, floatingHidden });
     const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth }));
     const screenshot = path.join(outputDir, `stocktake-${viewport.width}.png`);
     await page.screenshot({ path: screenshot, fullPage: true });
@@ -97,7 +105,7 @@ try {
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+  deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
   target: base,

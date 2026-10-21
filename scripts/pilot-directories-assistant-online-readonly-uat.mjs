@@ -1,0 +1,108 @@
+/** Real Demo directory search and assistant UI; all page API mutations blocked. */
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#") && line.includes("=")).map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
+const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
+const base = process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au";
+const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_DIRECTORIES_ASSISTANT_ONLINE_CURRENT.json");
+const screenshotDir = path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR ?? "docs/screenshots/directories-assistant-online");
+fs.mkdirSync(screenshotDir, { recursive: true });
+const browser = await chromium.launch({ headless: true });
+const checks = [];
+const blockedWrites = [];
+const readOnlyDatasetRequests = [];
+const query = "ORITHOS_UAT_NO_MATCH_786592";
+const routes = [
+  { route: "/products/odoo", heading: "Products", search: "Search products by name, barcode or SKU", empty: "No matching products", clear: "Clear filters" },
+  { route: "/customers/odoo", heading: "Customers", search: "Search customers by name, phone, email or customer code", empty: "No customers match this search", clear: "Clear search" },
+  { route: "/suppliers/odoo", heading: "Suppliers", search: "Search suppliers by name, phone, email, ABN or reference", empty: "No suppliers found", clear: "Clear search" },
+];
+try {
+  const context = await browser.newContext();
+  const response = await context.request.post(`${base}/api/auth/login`, { data: { username: "admin", password }, headers: { Origin: base }, timeout: 60000 });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok() || body.code !== 0) throw new Error(`LOGIN_FAILED_${response.status()}`);
+  await context.route("**/api/**", async (route) => {
+    const request = route.request();
+    if (request.method() === "POST" && new URL(request.url()).pathname === "/api/odoo/records") {
+      const body = request.postDataJSON();
+      // This endpoint performs server-allowlisted search_read, although its transport uses POST.
+      if (["products", "customers", "suppliers", "posCategories"].includes(body?.type)
+        && Object.keys(body).every((key) => ["type", "query", "limit", "offset", "categoryId", "status", "period"].includes(key))) {
+        readOnlyDatasetRequests.push({ type: body.type });
+        return route.continue();
+      }
+    }
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) {
+      blockedWrites.push({ method: request.method(), path: new URL(request.url()).pathname });
+      return route.fulfill({ status: 405, json: { code: 40500, message: "Read-only UAT blocks this request" } });
+    }
+    return route.continue();
+  });
+  for (const width of [320, 390, 1024, 1440]) {
+    const page = await context.newPage({ viewport: { width, height: 900 } });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const record = (name, ok, evidence = null) => checks.push({ viewport: width, name, status: ok ? "PASS" : "FAIL", evidence });
+    for (const item of routes) {
+      try {
+        const response = await page.goto(`${base}${item.route}?q=${query}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+        await page.getByRole("heading", { name: item.heading, exact: true }).waitFor({ timeout: 30000 });
+        const search = page.getByRole("textbox", { name: item.search, exact: true });
+        await page.waitForFunction(({ label, value }) => [...document.querySelectorAll("input")].some((input) => input.getAttribute("aria-label") === label && input.value === value), { label: item.search, value: query });
+        record(`${item.heading} search deep link`, response?.status() === 200 && await search.inputValue() === query);
+        await page.getByText(item.empty, { exact: true }).filter({ visible: true }).waitFor({ timeout: 30000 });
+        record(`${item.heading} real empty search`, true);
+        await page.screenshot({ path: path.join(screenshotDir, `${item.heading.toLowerCase()}-empty-${width}.png`), fullPage: true });
+        await page.getByRole("button", { name: item.clear, exact: true }).filter({ visible: true }).click();
+        await page.waitForFunction((label) => [...document.querySelectorAll("input")].some((input) => input.getAttribute("aria-label") === label && input.value === ""), item.search);
+        await page.getByText(item.empty, { exact: true }).filter({ visible: true }).waitFor({ state: "hidden", timeout: 30000 });
+        record(`${item.heading} clear search and layout`, await search.inputValue() === "" && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      } catch (error) {
+        record(`${item.heading} run`, false, error instanceof Error ? error.message : "Unexpected failure");
+      }
+    }
+    try {
+      await page.goto(`${base}/stock/list`, { waitUntil: "networkidle", timeout: 60000 });
+      const trigger = page.getByRole("button", { name: "Open Orithos AI assistant", exact: true });
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: "Orithos AI assistant", exact: true });
+      await dialog.waitFor();
+      const shortcuts = ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Scan this supplier invoice"];
+      for (const label of shortcuts) await dialog.getByRole("button", { name: label, exact: true }).waitFor();
+      let trapped = true;
+      for (let index = 0; index < 12; index += 1) {
+        await page.keyboard.press("Tab");
+        trapped &&= await dialog.evaluate((element) => element.contains(document.activeElement));
+      }
+      await page.screenshot({ path: path.join(screenshotDir, `assistant-${width}.png`), fullPage: true });
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+      const focusRestored = await trigger.evaluate((element) => element === document.activeElement);
+      record("header assistant shortcuts, focus trap and Escape restore", trapped && focusRestored, { shortcuts: shortcuts.length, trapped, focusRestored });
+    } catch (error) {
+      record("assistant run", false, error instanceof Error ? error.message : "Unexpected failure");
+      await page.screenshot({ path: path.join(screenshotDir, `assistant-failure-${width}.png`), fullPage: true }).catch(() => null);
+    }
+    record("no page JS errors", errors.length === 0, errors);
+    await page.close();
+  }
+  await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
+  await context.close();
+} catch (error) {
+  checks.push({ name: "run", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+} finally {
+  await browser.close();
+}
+const failed = checks.filter((check) => check.status === "FAIL").length;
+const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: "unverified-after-deploy", target: base, scope: "Real directory reads (including allowlisted POST /api/odoo/records) and assistant UI only; other API mutations blocked; no model submissions or business writes", status: failed === 0 && blockedWrites.length === 0 ? "PASS" : "FAIL", checks, blockedWrites, readOnlyDatasetRequests, screenshotDir: path.relative(root, screenshotDir).replaceAll(path.sep, "/") };
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
+console.log(JSON.stringify({ outputPath, status: output.status, checks: checks.length, failed, blockedWrites: blockedWrites.length }));
+if (output.status !== "PASS") process.exitCode = 1;

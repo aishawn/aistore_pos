@@ -60,6 +60,7 @@ export function OdooReplenishmentPage() {
   const [rfqSubmitting, setRfqSubmitting] = useState(false);
   const [rfqSuppliers, setRfqSuppliers] = useState<OdooSupplierOption[]>([]);
   const [rfqSupplierId, setRfqSupplierId] = useState("");
+  const [rfqSupplierError, setRfqSupplierError] = useState<string | null>(null);
   const [rfqLines, setRfqLines] = useState<DraftRfqLine[]>([]);
   const [rfqError, setRfqError] = useState<string | null>(null);
   const [createdRfq, setCreatedRfq] = useState<OdooDraftRfq | null>(null);
@@ -124,9 +125,11 @@ export function OdooReplenishmentPage() {
   const outOfStockWithDemand = suggestedItems.filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
   const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
+  const planCoverageDays = data?.coverageDays ?? coverageDays;
+  const canCreateRfq = suggestedItems.length > 0 && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
 
-  async function openRfqDialog() {
-    const revision = ++rfqSupplierRevision.current;
+  function openRfqDialog() {
+    if (!canCreateRfq) return;
     setRfqLines(suggestedItems.slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
       name: product.name,
@@ -139,7 +142,15 @@ export function OdooReplenishmentPage() {
     setRfqError(null);
     setCreatedRfq(null);
     setRfqOpen(true);
+    void loadRfqSuppliers();
+  }
+
+  async function loadRfqSuppliers() {
+    const revision = ++rfqSupplierRevision.current;
     setRfqLoadingSuppliers(true);
+    setRfqSupplierError(null);
+    setRfqSuppliers([]);
+    setRfqSupplierId("");
     try {
       const suppliers = await getOdooSuppliers();
       if (revision !== rfqSupplierRevision.current) return;
@@ -147,7 +158,7 @@ export function OdooReplenishmentPage() {
       if (suppliers.length === 1) setRfqSupplierId(String(suppliers[0].id));
     } catch (cause) {
       if (revision === rfqSupplierRevision.current) {
-        setRfqError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
+        setRfqSupplierError(cause instanceof Error ? cause.message : "Could not load Odoo suppliers.");
       }
     } finally {
       if (revision === rfqSupplierRevision.current) setRfqLoadingSuppliers(false);
@@ -214,7 +225,7 @@ export function OdooReplenishmentPage() {
         <Store className="mx-auto text-amber-600" size={30} />
         <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to plan replenishment</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">This view uses Odoo POS sales and on-hand stock for your current company.</p>
-        <Link href="/settings/integrations" className="mt-5 inline-flex h-10 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+        <div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"><RefreshCw size={16} /> Retry</button><Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link></div>
       </section>
     </main>
   );
@@ -246,9 +257,11 @@ export function OdooReplenishmentPage() {
               {coverageOptions.map((days) => <option key={days} value={days}>{days} days</option>)}
             </select>
           </label>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] outline-none hover:bg-[var(--oh-paper)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-60">{refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
+          <button type="button" onClick={() => void load(true)} disabled={loading || refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] outline-none hover:bg-[var(--oh-paper)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:opacity-60">{refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
       </header>
+
+      {data && (loading || refreshing) && <p role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Updating replenishment plan…</p>}
 
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The plan below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
@@ -258,14 +271,14 @@ export function OdooReplenishmentPage() {
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard title="Products to replenish" value={number.format(suggestedItems.length)} detail={`of ${number.format(data?.products.length ?? 0)} POS products`} />
-        <SummaryCard title="Suggested units" value={number.format(totalSuggestedUnits)} detail={`Across a ${coverageDays}-day target`} />
+        <SummaryCard title="Suggested units" value={number.format(totalSuggestedUnits)} detail={`Across a ${planCoverageDays}-day target`} />
         <div className="col-span-2 sm:col-span-1"><SummaryCard title="Out of stock with demand" value={number.format(outOfStockWithDemand)} detail={`Sold in the last ${data?.historyDays ?? 56} days`} /></div>
       </section>
 
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
         <header className="flex flex-col items-stretch gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5 xl:flex-row xl:items-center xl:justify-between">
           <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Replenishment suggestions"}</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Demand trend compares the latest {data?.periodDays ?? 28} days with the previous period.</p></div>
-          <div className="flex flex-col items-stretch gap-2 xl:flex-row xl:items-center"><button type="button" onClick={() => void openRfqDialog()} disabled={!suggestedItems.length} className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
+          <div className="flex flex-col items-stretch gap-2 xl:flex-row xl:items-center"><button type="button" onClick={openRfqDialog} disabled={!canCreateRfq} className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
             <button type="button" onClick={() => setShowAll((value) => !value)} aria-pressed={showAll} className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:bg-[var(--oh-orange-light)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">{showAll ? "Show suggestions only" : "Show all products"}</button></div>
         </header>
         <div className="divide-y divide-[var(--oh-border)] xl:hidden">
@@ -351,7 +364,7 @@ export function OdooReplenishmentPage() {
 
       <section className="rounded-md border border-[var(--oh-border)] bg-white px-4 py-3 text-xs leading-5 text-[var(--oh-muted)]">
         <p className="font-semibold text-[var(--oh-text-secondary)]">How this estimate works</p>
-        <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {coverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.</p>
+        <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {planCoverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.</p>
       </section>
 
       <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? formatOdooDateTime(data.generatedAt, storeTimezone) : "—"}.</p>
@@ -370,8 +383,9 @@ export function OdooReplenishmentPage() {
                   {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
                 </select>
               </label>
+              {rfqSupplierError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span>{rfqSupplierError}</span><button type="button" onClick={() => void loadRfqSuppliers()} disabled={rfqLoadingSuppliers} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold disabled:opacity-60"><RefreshCw size={15} /> Retry suppliers</button></div>}
               <div className="overflow-hidden rounded-lg border border-[var(--oh-border)]">
-                <div className="flex items-center justify-between bg-[#f7f8f8] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><span>Suggested products</span><span>{selectedRfqLines.length} selected</span></div>
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#f7f8f8] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><span>Suggested products</span><span>{selectedRfqLines.length} selected</span></div>
                 <div className="max-h-[38dvh] divide-y divide-[var(--oh-border)] overflow-y-auto">
                   {rfqLines.map((line) => <div key={line.productId} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(96px,120px)] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
                     <div className="min-w-0"><p className="break-words text-sm font-medium text-[var(--oh-text)]">{line.name}</p><p className="text-xs text-[var(--oh-muted)]">Suggested {number.format(line.suggestedQuantity)} {line.unit}</p></div>
