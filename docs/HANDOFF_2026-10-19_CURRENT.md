@@ -2275,4 +2275,5 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 
 - GitHub `main` is `409c3c3`; the public version endpoint still reports frontend/backend `c4585ad`, so the current runtime is known and healthy but does not include the latest documentation-only evidence commit.
 - A normal Dokploy Compose webhook attempt returned HTTP `301` with `Branch Not Match`. Per the deployment rule, no retry was sent. In the Dokploy Source/Git settings, verify repository `aishawn/aistore_pos`, branch `main`, repository root `/`, and `docker-compose.yml` before the next deployment. No Fresh Volumes operation is authorized.
+- The same service was then deployed through the Dokploy web console with the ordinary `Deploy` action. Deployment `091718e` is `Done`; backend/frontend/mysql/r2-sync images built, all application containers are running, and MySQL/Redis report healthy. The public version endpoint remains `c4585ad` because `091718e` contains documentation only; no application-code change was expected in that image.
 
