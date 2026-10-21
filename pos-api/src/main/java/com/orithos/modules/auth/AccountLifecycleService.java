@@ -85,12 +85,21 @@ public class AccountLifecycleService {
     public void revokeAndDeleteVendorAccounts(Long vendorId) {
         List<User> users = userMapper.findAllByVendor(vendorId);
         for (User user : users) {
-            tokenStore.revokeRefresh(user.getId());
-            accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP);
-            accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_RESET);
-            accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_INVITE);
-            userMapper.softDelete(user.getId());
+            revokeAndDeleteUser(user);
         }
+    }
+
+    /** Delete a tenant-local account and invalidate every outstanding credential. */
+    public void revokeAndDeleteUser(Long userId) {
+        revokeAndDeleteUser(userService.require(userId));
+    }
+
+    private void revokeAndDeleteUser(User user) {
+        tokenStore.revokeRefresh(user.getId());
+        accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_BOOTSTRAP);
+        accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_RESET);
+        accountTokens.revokeForUser(user.getId(), AccountTokenStore.PURPOSE_INVITE);
+        userMapper.softDelete(user.getId());
     }
 
     public Map<String, Object> peekResetToken(String token) {

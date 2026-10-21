@@ -13,6 +13,7 @@ import com.orithos.modules.user.entity.User;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import com.orithos.security.AccountTokenStore;
+import com.orithos.security.AdminAccess;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.JwtProperties;
 import com.orithos.security.JwtService;
@@ -217,6 +218,14 @@ public class AuthController {
     @PostMapping("/users/{id}/reset-link")
     public ApiResult<Map<String, Object>> issueResetLink(@PathVariable Long id) {
         return ApiResult.ok(accountLifecycle.issueResetLink(id));
+    }
+
+    /** Tenant-local account removal; the retired Classic user controller stays unavailable. */
+    @DeleteMapping("/users/{id}")
+    public ApiResult<Void> deleteUser(@PathVariable Long id) {
+        AdminAccess.requireAdmin();
+        accountLifecycle.revokeAndDeleteUser(id);
+        return ApiResult.ok();
     }
 
     /** Current user info — mirrors the live /user/info shape. */
