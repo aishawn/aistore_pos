@@ -46,6 +46,39 @@ Investigate the Price Suggestions HTTP 502 in Cloudflare/origin logs. Validate t
 
 ## AI assistant UAT continuation (2026-10-21)
 
+### 2026-10-22 provider 配置后复测
+
+Dokploy 环境通过控制台保存 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus`，保存请求和普通 Compose 部署均返回 HTTP 200；没有执行 Fresh Volumes。模型配置前，未知/安全判定用例为 HTTP 502；配置后定向复测 **9/9 PASS**。
+
+随后重新执行当前 216 条助手问法，结果 **216 PASS / 0 BLOCKED / 0 FAIL**，所有请求仍为 Assistant API only，业务写入为 0。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_144CASE_CURRENT.json`。
+
+本次证据的 `sourceCommit` 为 `a4740ff1a038ffbe59888a4d149fd556caf3810f`，Dokploy `backendBuiltAt` 为 `2026-10-21T18:24:30Z`；Demo 版本接口仍未暴露 frontend/backend runtime SHA，`matchesSourceCommit=false`，因此不能把这次部署称为源码身份已核验。该完整问法结果证明当前 Demo 响应已恢复，不替代 Java 21 同候选 SHA 门禁、迁移核对或 runtime 身份验收。
+
+### 2026-10-22 representative smoke follow-up
+
+The first representative smoke used nonexistent catalog IDs and was corrected
+to five valid IDs covering replenishment, pricing, recommendation, invoice,
+and daily-sales questions. Both corrected attempts stopped at Demo login with
+HTTP 502 (`LOGIN_FAILED_502`) before submitting any utterance. Evidence:
+`docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22.json` and
+`docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RERUN.json`.
+This is an authentication/availability block, not a product routing result;
+retry after login recovers. No business writes were issued.
+
+The executable runner audit now finds 216 unique catalog IDs (the prior 216
+case totals are historical). Its login probe retries transient HTTP 502/503/504
+responses up to three times before recording `LOGIN_FAILED_*`.
+
+The retry-enabled run still returned `LOGIN_FAILED_502` after all three login
+attempts; no assistant requests or business writes were issued.
+
+Anonymous proxy probes for `/api/auth/me`, `/api/ai/config/client`, and
+`/api/ai/assistant` also returned HTTP 502 before authentication or routing.
+Evidence: `docs/UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json`. This points to a
+shared frontend-to-backend availability issue; it is not an AI utterance result.
+The online runner now records the same three proxy probes during setup in
+`docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-PROXY-INTEGRATED.json`.
+
 - Added a public `/api/public/version` probe to `scripts/pilot-ai-workflow-utterances-online-uat.mjs`. It captures HTTP status, frontend/backend commit and build times, and source-SHA match status without saving the version response body.
 - `node --check` passed. The focused Demo smoke `Restock list please` returned **1/1 PASS** to `/stock/replenishment`; it issued no business writes. Evidence: `UAT_AI_WORKFLOW_RUNTIME_IDENTITY_SMOKE.json`.
 - Runtime endpoint returned HTTP 200, frontend build time `2026-10-21T13:35:45.867Z`, null frontend/backend commits, null backend build time, and `matchesSourceCommit=false` against source HEAD `6aeb3cf3b131bc74f8cc3d51075053f186e56d58`. This verifies the served utterance only, not deployment of the current source.

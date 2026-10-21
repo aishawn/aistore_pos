@@ -1,5 +1,54 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 provider 配置复核与完整复测
+
+Dokploy 控制台已保存显式分类模型变量 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus`，并通过 `compose.saveEnvironment` 返回 HTTP 200；随后使用普通 `compose.deploy` 完成部署，未使用 Fresh Volumes。此前剩余的 9 条未知/安全判定用例在模型回退路径上返回 HTTP 502；配置更新后复测为 **9 PASS / 0 BLOCKED / 0 FAIL**。
+
+同一运行环境下重新执行当前目录的完整 **216 条**助手问法，结果为 **216 PASS / 0 BLOCKED / 0 FAIL**。测试范围仍为已认证助手 API，只读业务路径；写入计数为 `none: assistant API only`。证据文件为 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_144CASE_CURRENT.json`。
+
+本次结果记录的源提交为 `a4740ff1a038ffbe59888a4d149fd556caf3810f`，部署状态字段仍为 `unverified-after-deploy`；Demo 版本接口没有返回 frontend/backend commit，虽然 backend `builtAt` 更新为 `2026-10-21T18:24:30Z`，仍不能证明运行镜像与源提交身份一致。该限制不影响本轮“线上问法响应”结论，但后续发布验收仍必须补齐 runtime SHA。
+
+## 2026-10-22 representative smoke
+
+The representative smoke was corrected after the first attempt used IDs that
+are not present in the executable catalog. The corrected selection uses the
+actual IDs `replenishment-restock-en`, `pricing-en`, `recommendation-en`,
+`invoice-en`, and `sales-paraphrase-show-today`. Two attempts were blocked at
+login with HTTP 502 (`LOGIN_FAILED_502`) before any utterance was submitted;
+therefore this run has **0 PASS / 1 BLOCKED / 0 FAIL** and no business writes.
+Evidence: `UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22.json` and
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RERUN.json`. This is an
+availability/authentication finding, not a route verdict. Retry after the
+Demo login service recovers.
+
+The executable catalog was audited locally after this run: **216 unique case
+IDs** are present in `scripts/pilot-ai-workflow-utterances-online-uat.mjs`.
+Historical 216-case result counts below remain historical evidence and are not
+presented as the current catalog size.
+
+After adding transient-login retries, the representative smoke was attempted
+again. All three login attempts returned HTTP 502, producing
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RETRY2.json` with
+`LOGIN_FAILED_502`; no assistant calls were made.
+
+The same retry-enabled runner was also used for the full current **216-case**
+selection. It stopped at the same login boundary before sending any utterance;
+evidence is `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-217.json` (the
+filename is historical; the runner records the authoritative count in the
+payload).
+
+The diagnostic smoke recorded the final login response as HTTP 502 from
+Cloudflare with `text/html` and no correlation header after three attempts;
+see `UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-DIAGNOSTIC.json`. This
+points to the edge/origin login path, not an assistant routing assertion.
+Anonymous proxy probes now show the same backend availability problem on
+`/api/auth/me`, `/api/ai/config/client`, and `/api/ai/assistant`: all returned
+HTTP 502 before authentication or AI routing. Evidence:
+`UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json`.
+The runner now performs these three probes automatically during setup; the
+integrated representative evidence is
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-PROXY-INTEGRATED.json`.
+
 ## 2026-10-21 runtime identity smoke
 
 The online runner now captures the public version endpoint before sending utterances. A focused read-only smoke for `Restock list please` returned **1/1 PASS**, routing to `/stock/replenishment`; no business writes were issued. Evidence: [`UAT_AI_WORKFLOW_RUNTIME_IDENTITY_SMOKE.json`](UAT_AI_WORKFLOW_RUNTIME_IDENTITY_SMOKE.json).
@@ -690,7 +739,7 @@ mvn -B clean verify
 
 | 模块 | 代表测试 | 断言要点 |
 |------|----------|----------|
-| FastPath | `AssistantFastPathRouterTest` | Today's sales / Open sell / products / stock |
+| FastPath | `AssistantFastPathRouterTest` | Today's sales / Products shortcut / stock |
 | Workflow | `WorkflowRouteRouterTest` | 补货/定价/侍酒/发票；销售负面不误导航 |
 | Adhoc | `ReportAdhocRouter` 相关 | 几笔单→`report_aov`；利润/top→`report_adhoc` |
 | Classify / sanitize | `IntentSanitizeServiceTest` 等 | 伪造 route/action 丢弃；非法 entity op 失败关闭 |
@@ -751,7 +800,7 @@ npm run typecheck
 | ID | 输入 | 期望 |
 |----|------|------|
 | FAST-01 | Today's sales / 今日销售额 | `report_sales`；有表或诚实空日；延迟可接受 |
-| FAST-02 | Open sell / 进入收银 | 立即进 `/`；可本地跳过 LLM |
+| FAST-02 | Products shortcut / 产品 | 立即进 `/products`；不调用模型、不写数据 |
 | FAST-03 | Look up products / 查询产品 | `/products` |
 | FAST-04 | Check stock / 查询库存 | `/stock/list` |
 | FAST-05 | Thinking > 配置超时 | 可见超时/重试提示，不无限转圈 |
