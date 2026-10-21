@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -43,6 +44,20 @@ const loginBody = await login.json().catch(() => ({}));
 if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
 
 const checks = [];
+async function gotoWithNetworkRetry(page, url) {
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/ERR_(?:CONNECTION|NETWORK)|interrupted by another navigation|chrome-error/i.test(message) || attempt === 3) throw error;
+      await page.waitForTimeout(750 * attempt);
+    }
+  }
+  throw lastError;
+}
 for (const viewport of viewports) {
   const page = await context.newPage({ viewport });
   const errors = [];
@@ -51,12 +66,12 @@ for (const viewport of viewports) {
     errors.length = 0;
     let response;
     try {
-      response = await page.goto(`${base}${route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      response = await gotoWithNetworkRetry(page, `${base}${route}`);
       await page.waitForTimeout(500);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       const status = response?.status() ?? 0;
       checks.push({ route, viewport: viewport.width, status, overflow, pageErrors: [...errors] });
-      console.log(`${status >= 200 && status < 400 && !overflow && errors.length === 0 ? "PASS" : "FAIL"} ${viewport.width} ${route} ${status}${overflow ? " OVERFLOW" : ""}${errors.length ? ` ERRORS=${errors.length}` : ""}`);
+      console.log(`${status === 200 && !overflow && errors.length === 0 ? "PASS" : "FAIL"} ${viewport.width} ${route} ${status}${overflow ? " OVERFLOW" : ""}${errors.length ? ` ERRORS=${errors.length}` : ""}`);
     } catch (error) {
       checks.push({ route, viewport: viewport.width, status: response?.status() ?? 0, overflow: null, pageErrors: [error instanceof Error ? error.message : String(error)] });
       console.log(`FAIL ${viewport.width} ${route} ${error instanceof Error ? error.message : String(error)}`);
@@ -66,11 +81,15 @@ for (const viewport of viewports) {
 }
 await browser.close();
 
-const failures = checks.filter((check) => check.status < 200 || check.status >= 400 || check.overflow || check.pageErrors.length);
+const failures = checks.filter((check) => check.status !== 200 || check.overflow || check.pageErrors.length);
 const output = {
   generatedAt: new Date().toISOString(),
   target: base,
-  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? process.env.GIT_COMMIT ?? null,
+  sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? process.env.GIT_COMMIT
+    ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   staticRoutes: routes.length,
   viewports: viewports.map((viewport) => viewport.width),
   checksPassed: checks.length - failures.length,
