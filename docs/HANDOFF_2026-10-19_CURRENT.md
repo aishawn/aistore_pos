@@ -2112,3 +2112,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 之前的 webhook 请求返回 HTTP `301`，未取得可读部署结果；按规则未重复触发。随后自动构建时间发生变化，来源仍未核验。
 - 新的四平台页面登录态脚本在 390px/1440px 共 `8` 个检查均被控制面 `/api/auth/login` HTTP `502` 阻断，未进入页面/API断言；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`。这不是页面 PASS/FAIL 结论，而是线上控制面登录可用性阻断。
 - 需要先查看 Dokploy/Cloudflare 源站日志，确认 app 控制面登录 502、容器健康和 backend 依赖状态，再重跑 Audit/Failures/Operations/Usage 的认证只读验收。不要把已更新 builtAt 当作完整部署或运行身份证明。
+
+## 2026-10-22 Git 推送恢复后的复核
+
+- GitHub 连接恢复，`3a2ca5f` 已成功推送到 `origin/main`。
+- 推送后 Demo `/api/public/version` 仍为 `builtAt=2026-10-21T15:56:09.064Z`、`frontend.commit=null`、`backend=null`；没有观察到新的构建身份。
+- 认证观测脚本再次运行，8 个控制台页面检查全部在 `/api/auth/login` 返回 HTTP `502` 时阻断；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json` 已更新。当前不能判定 `3a2ca5f` 是否被 Dokploy checkout 或运行。
+- Dokploy webhook 仍曾返回 `301`，不再重复触发；需要从 Dokploy/Cloudflare 日志确认 Source/Git 绑定、backend 容器和登录 502 根因。

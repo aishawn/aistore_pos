@@ -443,3 +443,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Audit/Failures/Operations/AI usage 认证回归：`8` 个检查均因 `/api/auth/login` HTTP `502` 阻断，未产生页面验收结论；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`。
 - [ ] `/api/public/version` builtAt 已更新，但 frontend/backend SHA 仍为空；部署身份和容器健康仍待核验。
 - [ ] Dokploy webhook 返回 `301` 后未重复触发；需修正/核对 Source/Git 或读取构建日志，再继续线上验收。
+
+### 2026-10-22 推送恢复后的状态
+
+- [x] `3a2ca5f` 已推送到 `origin/main`。
+- [ ] 推送后 builtAt 未变化，frontend/backend SHA 仍为空；不能确认 Dokploy 已运行该提交。
+- [ ] app 登录 HTTP `502` 仍阻断 8 个平台页面认证检查；需源站日志和容器健康证据后再继续。
