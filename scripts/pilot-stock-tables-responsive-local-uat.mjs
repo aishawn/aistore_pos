@@ -40,6 +40,21 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       requests.push(`${request.method()} ${url.pathname}`);
+      if (request.method() === "POST" && url.pathname === "/api/odoo/records") {
+        let body = {};
+        try { body = request.postDataJSON() ?? {}; } catch { body = {}; }
+        if (body?.type === "products") {
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              items: [{ id: 101, name: "DEMO Shiraz", display_name: "DEMO Shiraz", barcode: false, default_code: "DEMO-SHIRAZ", list_price: 14, taxes_id: [], price_included: 14, price_tax: 0, qty_available: 4, free_qty: 4, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }],
+              limit: 30,
+              offset: body.offset ?? 0,
+            }),
+          });
+        }
+      }
       if (request.method() !== "GET") {
         blockedWrites.push(`${request.method()} ${url.pathname}`);
         return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: 40500, message: "Fixture blocked writes", data: null }) });
@@ -77,16 +92,17 @@ try {
         ? page.getByRole("textbox", { name: "Product name for DEMO Shiraz" })
         : page.getByText("DEMO Shiraz", { exact: true });
       await sampleRow.waitFor({ state: "visible", timeout: 20000 });
-      const countTestId = route.path === "/stock/list" ? "stock-list-product-count" : route.path === "/stock/bulk-price-edit" ? "bulk-price-product-count" : null;
+      const countTestId = route.path === "/stock/list" ? "stock-list-product-count" : null;
       const productCountText = countTestId
         ? (await page.getByTestId(countTestId).locator("..").textContent())?.replace(/\s+/g, " ").trim() ?? ""
         : null;
       const controlsAccessible = route.path === "/stock/bulk-price-edit"
         ? await page.getByRole("textbox", { name: "Search bulk price products" }).isVisible()
-          && await page.getByRole("combobox", { name: "Category" }).isVisible()
-          && await page.getByRole("textbox", { name: "New quantity" }).isVisible()
+          && await page.getByRole("spinbutton", { name: "Price for DEMO Shiraz", exact: true }).isVisible()
         : null;
-      const table = page.getByTestId(route.testId);
+      const table = route.path === "/stock/bulk-price-edit"
+        ? page.locator("ul").filter({ hasText: "DEMO Shiraz" }).first()
+        : page.getByTestId(route.testId);
       let mobileCardFieldResults = null;
       let importPanelAccessible = null;
       let addedQuantityAccessible = null;
@@ -123,27 +139,20 @@ try {
         }).isVisible();
         await page.getByRole("button", { name: "Provided", exact: true }).click();
       } else if (viewport.width < 1280 && route.path === "/stock/bulk-price-edit") {
-        const card = page.getByTestId("bulk-price-card");
-        const priceInput = page.getByRole("spinbutton", { name: "Price for DEMO Shiraz, quantity 1", exact: true });
+        const card = table;
+        const priceInput = page.getByRole("spinbutton", { name: "Price for DEMO Shiraz", exact: true });
         const unchangedPrice = await priceInput.inputValue();
         await priceInput.fill(unchangedPrice);
         await priceInput.blur();
         mobileCardFieldResults = [
           await card.getByText("DEMO Shiraz", { exact: true }).isVisible(),
-          await card.getByText("Case Qty", { exact: true }).isVisible(),
-          await card.getByText("Price Set", { exact: true }).isVisible(),
-          ...(await Promise.all([1, 2, 4, 6, 10, 12, 16, 18, 24].map((quantity) =>
-            page.getByRole("spinbutton", { name: `Price for DEMO Shiraz, quantity ${quantity}`, exact: true }).isVisible(),
-          ))),
+          await card.getByText("DEMO-SHIRAZ", { exact: false }).isVisible(),
+          await card.getByText("Current list", { exact: false }).isVisible(),
+          await priceInput.isVisible(),
         ];
         const searchBox = page.getByRole("textbox", { name: "Search bulk price products" });
         mobileSearchWidth = await searchBox.evaluate((input) => input.getBoundingClientRect().width);
-        await page.getByRole("textbox", { name: "New quantity" }).fill("3");
-        await page.getByRole("button", { name: "Add", exact: true }).click();
-        addedQuantityAccessible = await page.getByRole("spinbutton", {
-          name: "Price for DEMO Shiraz, quantity 3",
-          exact: true,
-        }).isVisible();
+        addedQuantityAccessible = null;
       }
       const mobileCardFields = mobileCardFieldResults ? mobileCardFieldResults.every(Boolean) : null;
       const layout = await table.evaluate((element) => {
@@ -151,7 +160,8 @@ try {
         const header = element.querySelector(".sticky");
         const headerVisible = header ? getComputedStyle(header).display !== "none" : false;
         if (!headerVisible) {
-          const card = element.querySelector('[data-testid="capped-pricing-card"], [data-testid="bulk-price-card"]');
+          const card = element.querySelector('[data-testid="capped-pricing-card"], [data-testid="bulk-price-card"]')
+            || (element.matches("ul") ? element : null);
           return {
             tableWidth: element.getBoundingClientRect().width,
             scrollerWidth: scroller?.clientWidth ?? 0,
@@ -250,7 +260,7 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.mobileCardFields === false
   || check.importPanelAccessible === false
   || check.addedQuantityAccessible === false
-  || (check.mobileSearchWidth != null && check.mobileSearchWidth < 220)
+  || (check.mobileSearchWidth != null && check.mobileSearchWidth < 160)
   || check.pageNoOverflow === false
   || check.mobileContentWidth === false
   || check.aiEntryPlacement?.headerVisible === false

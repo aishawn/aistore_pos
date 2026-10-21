@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-21T03:23:26.041Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "Stock List and Capped Pricing save error handling; writes intercepted by Playwright",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Error: strict mode violation: getByLabel('Product name for DEMO Shiraz') resolved to 2 elements:\n    1) <input aria-busy=\"false\" value=\"DEMO Shiraz\" aria-label=\"Product name for DEMO Shiraz\" class=\"h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20 \"/> aka getByRole('textbox', { name: 'Product name for DEMO Shiraz' })\n    2) <input aria-busy=\"false\" id=\"stock-name-101\" value=\"DEMO Shiraz\" aria-label=\"Product name for DEMO Shiraz\" class=\"h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20 \"/> aka locator('#stock-name-101')\n\nCall log:\n\u001b[2m  - waiting for getByLabel('Product name for DEMO Shiraz') to be visible\u001b[22m\n"
+    }
+  ],
+  "writes": [],
+  "stockPatches": 0,
+  "cappedPatches": 0
+}

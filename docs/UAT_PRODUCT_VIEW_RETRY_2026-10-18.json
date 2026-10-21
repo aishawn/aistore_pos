@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-18T12:11:12.790Z",
-  "deployment": "58f1926",
+  "generatedAt": "2026-10-18T12:28:47.158Z",
+  "deployment": null,
   "target": "https://demo.orithos.com.au",
   "scope": "read-only product detail GET failure injection; one GET returns 503; Retry GETs continue to production; no business writes",
   "checks": [

@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-21",
+  "target": "http://app.localhost:3035",
+  "scope": "frontend fixture only; platform audit API intercepted; no writes",
+  "status": "PASS",
+  "checks": {
+    "desktopTable": "PASS",
+    "searchSubmit": "PASS",
+    "pagination": "PASS",
+    "refresh": "PASS",
+    "mobileCards390": "PASS",
+    "horizontalOverflow": false,
+    "pageErrors": 0,
+    "fixtureEvents": 12,
+    "auditRequests": 5
+  },
+  "limitation": "The page depends on the uncommitted platform audit backend endpoint and is not deployed or production-verified."
+}

@@ -69,15 +69,18 @@ public class ReportRespondNode implements NodeAction {
             total = total.add(ReportQueryService.toDecimal(row.get(metricKey)));
         }
         String range = rangeText(from, to);
-        String sum = money(total);
-        return label + " for " + range + " total " + sum + " (" + rows.size() + " day(s)).";
+        String sum = "AUD " + money(total);
+        int days = rows.size();
+        return label + " for " + range + " total " + sum + " (" + days + (days == 1 ? " day)." : " days).");
     }
 
     private String formatAov(Map<String, Object> row, String from, String to) {
         String range = rangeText(from, to);
-        String aov = money(ReportQueryService.toDecimal(row.get("aov")));
+        String aov = "AUD " + money(ReportQueryService.toDecimal(row.get("aov")));
         String tickets = ReportQueryService.toDecimal(row.get("tickets")).stripTrailingZeros().toPlainString();
-        return "Average Ticket for " + range + " is " + aov + " across " + tickets + " sale(s).";
+        BigDecimal ticketCount = ReportQueryService.toDecimal(row.get("tickets"));
+        return "Average Ticket for " + range + " is " + aov + " across " + tickets
+                + (ticketCount.compareTo(BigDecimal.ONE) == 0 ? " sale." : " sales.");
     }
 
     private String formatStock(List<Map<String, Object>> rows, String query) {

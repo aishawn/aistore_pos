@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-19T09:51:36.101Z",
+  "sourceCommit": "f1993d65bbb685cee2c58b36bcb769690b5069c6",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "Stock List/Capped Pricing responsive table headers; API fixtures; no business writes",
+  "status": "FAIL",
+  "passed": 0,
+  "failed": 1,
+  "checks": [
+    {
+      "route": "/stock/list 390",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('DEMO Shiraz', { exact: true }) to be visible\u001b[22m\n",
+      "requests": [
+        "GET /api/sell/parked",
+        "GET /api/ai/config/client",
+        "GET /api/auth/me",
+        "GET /api/classifications/category",
+        "GET /api/stock-list"
+      ],
+      "blockedWrites": []
+    }
+  ],
+  "blockedWrites": []
+}

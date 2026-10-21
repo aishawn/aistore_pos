@@ -10,6 +10,7 @@ import com.orithos.modules.vendor.VendorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -244,6 +245,8 @@ public class OdooWineCatalogClient {
                 .timeout(Duration.ofSeconds(15))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+        String correlationId = MDC.get("correlationId");
+        if (correlationId != null) builder.header("X-Correlation-ID", correlationId);
         if (sessionId != null && !sessionId.isBlank()) {
             builder.header("Cookie", "session_id=" + sessionId);
         }

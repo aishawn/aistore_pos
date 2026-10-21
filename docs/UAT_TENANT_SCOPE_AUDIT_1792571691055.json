@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-10-21T08:34:51.054Z",
+  "sourceCommit": null,
+  "scope": "Static audit of Spring API controllers; no network or business writes",
+  "status": "PASS",
+  "inspectedControllers": 66,
+  "composeGuardEnabled": true,
+  "uatGuardEnabled": true,
+  "findings": [],
+  "note": "Classic MySQL APIs must be tenant-scoped or retired by OdooOnlyModeFilter. This static report does not prove runtime isolation; the filter must be enabled in the deployed environment."
+}

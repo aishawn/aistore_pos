@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-10-19T03:44:15.875Z",
+  "sourceCommit": "4281ffe266792809de62d65b779e9dc40b69745d",
+  "deployment": "4281ffe266792809de62d65b779e9dc40b69745d",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated Odoo stocktake read-only browser UAT; no inventory writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "httpStatus": 200,
+      "isAdmin": true
+    },
+    {
+      "name": "Odoo read-only session recovery",
+      "status": "PASS",
+      "httpStatus": 200,
+      "hasOdooUser": true
+    },
+    {
+      "name": "tenant Odoo binding read",
+      "status": "PASS",
+      "httpStatus": 200,
+      "binding": {
+        "odooCompanyId": 1,
+        "odooStockLocationId": null,
+        "odooProvisionStatus": "ready"
+      }
+    },
+    {
+      "name": "authenticated stocktake location read",
+      "status": "PASS",
+      "httpStatus": 200,
+      "message": "OK",
+      "locationCount": 1,
+      "locationSource": "single-warehouse-fallback",
+      "writeEnabled": false
+    },
+    {
+      "name": "stocktake page 390px",
+      "status": "PASS",
+      "httpStatus": 200,
+      "horizontalOverflow": false,
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake-online\\stocktake-390.png"
+    },
+    {
+      "name": "stocktake page 1440px",
+      "status": "PASS",
+      "httpStatus": 200,
+      "horizontalOverflow": false,
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake-online\\stocktake-1440.png"
+    }
+  ],
+  "nonGetStocktakeRequests": 0
+}

@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-10-19T13:28:47.054Z",
+  "deployment": "6aa867ccb794bff46bf3260bf4092c4a2e53346b",
+  "scope": "production Odoo session-cookie recovery only; no sale, inventory, purchase, refund, or register-close writes",
+  "checks": [
+    {
+      "name": "Orithos admin login",
+      "status": "PASS",
+      "evidence": "Authenticated using the same-origin login API."
+    },
+    {
+      "name": "Odoo service-account recovery is configured",
+      "status": "PASS",
+      "evidence": "Production reports autoRecoverConfigured=true and an authenticated Odoo user."
+    },
+    {
+      "name": "Odoo browser session cleared",
+      "status": "PASS",
+      "evidence": "Same-origin session DELETE succeeded; this only clears the Odoo session cookie/session."
+    },
+    {
+      "name": "First business page reconnects without manual Connect",
+      "status": "PASS",
+      "evidence": "After clearing the Odoo cookie, replenishment loaded through its data API and returned to the normal page without a manual connect action."
+    },
+    {
+      "name": "Odoo auto-recovery regression",
+      "status": "FAIL",
+      "evidence": "Product catalogue initial load failed: ; main=<no main>"
+    }
+  ]
+}

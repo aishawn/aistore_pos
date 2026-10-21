@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-10-21T01:42:43.938Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 159,
+  "selectedCount": 4,
+  "selectedIds": [
+    "replenishment-restock-en",
+    "pricing-en",
+    "recommendation-en",
+    "invoice-en"
+  ],
+  "checks": [
+    {
+      "id": "replenishment-restock-en",
+      "question": "What should I restock?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment"
+      }
+    },
+    {
+      "id": "pricing-en",
+      "question": "Which prices should I review?",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/capped-pricing"
+      }
+    },
+    {
+      "id": "recommendation-en",
+      "question": "Recommend a red wine under $30",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier"
+      }
+    },
+    {
+      "id": "invoice-en",
+      "question": "Scan this supplier invoice",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 4,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

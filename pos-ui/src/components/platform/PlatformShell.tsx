@@ -12,6 +12,8 @@ const NAV = [
   { href: "/platform/stores", label: "Stores" },
   { href: "/platform/usage", label: "AI usage" },
   { href: "/platform/operations", label: "Operations" },
+  { href: "/platform/failures", label: "Failures" },
+  { href: "/platform/audit", label: "Audit" },
   { href: "/signup", label: "Create store" },
 ] as const;
 
@@ -79,13 +81,13 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
                 </p>
               </div>
             </div>
-            <nav className="flex items-center gap-1" aria-label="Platform">
+            <nav className="flex min-w-0 max-w-full shrink items-center gap-1 overflow-x-auto" aria-label="Platform">
               {NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium transition-colors",
+                    "inline-flex min-h-10 shrink-0 items-center rounded-md px-3 text-sm font-medium transition-colors",
                     navActive(item.href, pathname)
                       ? "bg-[var(--oh-primary)]/10 text-[var(--oh-primary)]"
                       : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]",

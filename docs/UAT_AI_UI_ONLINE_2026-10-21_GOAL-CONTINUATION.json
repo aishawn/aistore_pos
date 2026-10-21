@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-21T01:57:55.899Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant' }).getByRole('button', { name: 'What should I restock?', exact: true }) to be visible\u001b[22m\n"
+    }
+  ],
+  "results": [
+    {
+      "failure": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant' }).getByRole('button', { name: 'What should I restock?', exact: true }) to be visible\u001b[22m\n"
+    }
+  ]
+}

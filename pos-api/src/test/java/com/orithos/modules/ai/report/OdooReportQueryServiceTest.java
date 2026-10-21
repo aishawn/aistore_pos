@@ -1,5 +1,8 @@
 package com.orithos.modules.ai.report;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.modules.vendor.Vendor;
@@ -7,6 +10,8 @@ import com.orithos.modules.vendor.VendorMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
@@ -199,20 +204,74 @@ class OdooReportQueryServiceTest {
 
     @Test
     void stockQueryHidesOdooRpcErrorsAsUnavailableInsteadOfReturningInventory() throws Exception {
-        startStockServer("{\"error\":{\"message\":\"AccessError\"}}");
+        startStockServer("{\"error\":{\"code\":200,\"message\":\"private product detail\","
+                + "\"data\":{\"name\":\"odoo.exceptions.AccessError\"}}}");
         VendorMapper vendors = mock(VendorMapper.class);
         when(vendors.findById(42L)).thenReturn(readyVendor(false));
         OdooReportQueryService service = service(vendors);
+        Logger logger = (Logger) LoggerFactory.getLogger(OdooReportQueryService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
         TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
         LocalDate day = LocalDate.of(2026, 10, 16);
         ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
                 day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
 
-        OdooReportQueryService.Result result = service.query(
-                tenant, "report_stock", Map.of("query", "VB Cans"), window);
+        String previousCorrelationId = MDC.get("correlationId");
+        MDC.put("correlationId", "test-stock-report-correlation");
+        try {
+            OdooReportQueryService.Result result = service.query(
+                    tenant, "report_stock", Map.of("query", "VB Cans"), window);
 
-        assertEquals("ODOO_REPORT_UNAVAILABLE", result.error());
-        assertTrue(result.rows().isEmpty());
+            assertEquals("ODOO_REPORT_UNAVAILABLE", result.error());
+            assertTrue(result.rows().isEmpty());
+            String diagnostic = appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .filter(message -> message.contains("failureKind=ODOO_RPC_ERROR"))
+                    .findFirst().orElseThrow();
+            assertTrue(diagnostic.contains("rpcCode=200"));
+            assertTrue(diagnostic.contains("rpcType=AccessError"));
+            assertTrue(diagnostic.contains("correlationId=test-stock-report-correlation"));
+            assertFalse(diagnostic.contains("private product detail"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+            if (previousCorrelationId == null) MDC.remove("correlationId");
+            else MDC.put("correlationId", previousCorrelationId);
+        }
+    }
+
+    @Test
+    void stockQueryLogsSafeDetailsForUnexpectedOdooResponseShape() throws Exception {
+        startStockServer("{\"privateDetail\":\"sensitive response body\"}");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        Logger logger = (Logger) LoggerFactory.getLogger(OdooReportQueryService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
+
+        try {
+            OdooReportQueryService.Result result = service.query(
+                    tenant, "report_stock", Map.of("query", "VB Cans"), window);
+
+            assertEquals("ODOO_REPORT_UNAVAILABLE", result.error());
+            String diagnostic = appender.list.stream().map(ILoggingEvent::getFormattedMessage)
+                    .filter(message -> message.contains("failureKind=ODOO_INVALID_RESPONSE"))
+                    .findFirst().orElseThrow();
+            assertTrue(diagnostic.contains("rpcModel=product.product"));
+            assertTrue(diagnostic.contains("rpcMethod=search_read"));
+            assertTrue(diagnostic.contains("responseType=OBJECT"));
+            assertFalse(diagnostic.contains("sensitive response body"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test
@@ -265,7 +324,7 @@ class OdooReportQueryServiceTest {
         server.createContext("/web/dataset/call_kw", exchange -> {
             requests.add(MAPPER.readTree(exchange.getRequestBody()));
             String response = rpcResponseJson.startsWith("{\"error\"")
-                    ? "{\"jsonrpc\":\"2.0\"," + rpcResponseJson + "}"
+                    ? "{\"jsonrpc\":\"2.0\"," + rpcResponseJson.substring(1)
                     : "{\"jsonrpc\":\"2.0\",\"result\":" + rpcResponseJson + "}";
             respond(exchange, response);
         });

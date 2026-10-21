@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-10-17T16:40:42.487Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": null,
+  "staticRoutes": 131,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 257,
+  "checksTotal": 262,
+  "failures": [
+    {
+      "route": "/orders/return/new",
+      "viewport": 390,
+      "status": 502,
+      "overflow": false,
+      "pageErrors": [
+        "Failed to load chunk /_next/static/chunks/0t8da3iipc73v.js from module 64893"
+      ]
+    },
+    {
+      "route": "/orders/transfer/new",
+      "viewport": 390,
+      "status": 504,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/settings/company/login-after-sale",
+      "viewport": 390,
+      "status": 502,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/settings/customerdisplay",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/settings/data",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    }
+  ],
+  "result": "FAIL"
+}

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-18T09:30:17.481Z",
-  "sourceCommit": "cacf8c5",
+  "generatedAt": "2026-10-20T13:09:45.975Z",
+  "sourceCommit": "8f58868",
   "scope": "mocked authenticated read-only replenishment request race; no business writes",
   "requests": [
     {

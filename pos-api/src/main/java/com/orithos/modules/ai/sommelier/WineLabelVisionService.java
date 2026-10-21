@@ -3,6 +3,7 @@ package com.orithos.modules.ai.sommelier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
+import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.DashScopeModelRouting;
 import org.slf4j.Logger;
@@ -69,7 +70,10 @@ public class WineLabelVisionService {
         this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
                 ? "https://dashscope.aliyuncs.com"
                 : baseUrl.trim());
-        this.restClient = RestClient.builder().baseUrl(this.baseUrl).build();
+        this.restClient = RestClient.builder()
+                .baseUrl(this.baseUrl)
+                .requestInterceptor(new CorrelationIdClientHttpRequestInterceptor())
+                .build();
     }
 
     public WineLabelRead read(MultipartFile file) {

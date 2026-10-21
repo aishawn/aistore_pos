@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T03:05:24.020Z",
-  "sourceCommit": "d8ed163",
+  "generatedAt": "2026-10-21T15:22:27.523Z",
+  "sourceCommit": null,
   "deployment": null,
   "scope": "authenticated read-only admin list visual regression; no business writes",
   "routes": [

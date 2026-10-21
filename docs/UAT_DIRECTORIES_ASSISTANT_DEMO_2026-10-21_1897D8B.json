@@ -1,0 +1,349 @@
+{
+  "generatedAt": "2026-10-21T04:05:20.551Z",
+  "sourceCommit": "1897d8b2f65946ddedef63f1dbe7437548851ca5",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "Real directory reads and assistant UI only; API mutations blocked; no model submissions or business writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "viewport": 320,
+      "name": "Products search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "Products real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "Products clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "Customers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "Customers run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('No customers found', { exact: true }).filter({ visible: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 320,
+      "name": "Suppliers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "Suppliers real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "Suppliers clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "assistant run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 320,
+      "name": "no page JS errors",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 390,
+      "name": "Products search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Products real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Products clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Customers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Customers run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('No customers found', { exact: true }).filter({ visible: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 390,
+      "name": "Suppliers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Suppliers real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Suppliers clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "assistant run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 390,
+      "name": "no page JS errors",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 1024,
+      "name": "Products search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Products real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Products clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Customers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Customers run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('No customers found', { exact: true }).filter({ visible: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 1024,
+      "name": "Suppliers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Suppliers real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Suppliers clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "assistant run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 1024,
+      "name": "no page JS errors",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 1440,
+      "name": "Products search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Products real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Products clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Customers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Customers run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('No customers found', { exact: true }).filter({ visible: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 1440,
+      "name": "Suppliers search deep link",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Suppliers real empty search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Suppliers clear search and layout",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "assistant run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant', exact: true }) to be visible\u001b[22m\n"
+    },
+    {
+      "viewport": 1440,
+      "name": "no page JS errors",
+      "status": "PASS",
+      "evidence": []
+    }
+  ],
+  "blockedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/records"
+    }
+  ],
+  "screenshotDir": "docs/screenshots/2026-10-21-directories-assistant-demo"
+}

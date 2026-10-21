@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-10-19T15:40:59.014Z",
-  "sourceCommit": "0f9faabf651a2700122de69ddb62d8fcd6ea6734",
+  "generatedAt": "2026-10-21T08:27:53.076Z",
+  "sourceCommit": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
-  "status": "PASS",
+  "status": "BLOCKED",
   "checks": [
     {
       "name": "login",
@@ -18,7 +19,7 @@
     {
       "name": "NLQ assistant",
       "status": "PASS",
-      "evidence": "intent=entity_action"
+      "evidence": "intent=search_product"
     },
     {
       "name": "ASR empty guard",
@@ -28,7 +29,7 @@
     {
       "name": "Sommelier identify text",
       "status": "PASS",
-      "evidence": "count=8 productId=5669"
+      "evidence": "count=48 productId=5444"
     },
     {
       "name": "Sommelier recommend",
@@ -58,12 +59,12 @@
     {
       "name": "Invoice OCR probe",
       "status": "INFO",
-      "evidence": "provider reachable; image has no invoice fields code=50212"
+      "evidence": "{\"httpStatus\":200,\"contentType\":\"application/json\",\"apiCode\":50212,\"detail\":\"provider reachable; probe image has no invoice fields\"}"
     },
     {
       "name": "Price suggestions API",
-      "status": "PASS",
-      "evidence": "products=1000 writeEnabled=false"
+      "status": "BLOCKED",
+      "evidence": "upstream unavailable status=502"
     },
     {
       "name": "Price suggestions page",
@@ -81,7 +82,7 @@
       "evidence": "status=401"
     }
   ],
-  "passed": 14,
+  "passed": 13,
   "failed": 0,
-  "blocked": 0
+  "blocked": 1
 }

@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-20T14:03:19.471Z",
+  "sourceCommit": "c8e892e9c6e4f7e12339a7de413c96932eaf1243",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3000",
+  "scope": "assistant response diagnostics UI; AI request intercepted; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "assistant diagnostics visible",
+      "status": "PASS",
+      "evidence": "AI · report_sales · 27ms"
+    },
+    {
+      "name": "single-response session summary",
+      "status": "PASS",
+      "evidence": "AI session · 1 response · 100% success · 27ms avg"
+    },
+    {
+      "name": "multi-response session summary",
+      "status": "PASS",
+      "evidence": "AI session · 2 responses · 100% success · 21ms avg"
+    },
+    {
+      "name": "no business writes",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "writes": []
+}

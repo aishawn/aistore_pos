@@ -1,22 +1,23 @@
 {
-  "generatedAt": "2026-10-17T20:56:20.181Z",
-  "deployment": "528e0cb593041a829137157d08f7a70eb047e079",
+  "generatedAt": "2026-10-21T09:03:31.374Z",
+  "sourceCommit": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "deployment": "unverified-after-deploy",
   "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
   "checks": [
     {
       "name": "Odoo catalog identify",
       "status": "PASS",
-      "evidence": "Found 4 wine products; 4 have free stock and all pass the wine filter."
+      "evidence": "Search=Shiraz; found 48 wine products; 7 have free stock and all pass the wine filter."
     },
     {
       "name": "Recommendation price and free-stock parity",
       "status": "PASS",
-      "evidence": "Product 5671: AUD 32; free stock 30; recommendation agrees with Odoo identify data."
+      "evidence": "Product 5245: AUD 19.9909; free stock 8; recommendation agrees with Odoo identify data."
     },
     {
       "name": "Wine detail parity",
       "status": "PASS",
-      "evidence": "Product 5671 detail matches the Odoo catalog price and free stock."
+      "evidence": "Product 5245 detail matches the Odoo catalog price and free stock."
     },
     {
       "name": "cheaper alternatives filter unavailable stock",
@@ -26,27 +27,27 @@
     {
       "name": "upgrade alternatives filter unavailable stock",
       "status": "PASS",
-      "evidence": "Returned 0 alternatives; every result has positive free stock."
+      "evidence": "Returned 5 alternatives; every result has positive free stock."
     },
     {
       "name": "card sales pitch",
       "status": "PASS",
-      "evidence": "Product 5671 returned non-empty pitch text."
+      "evidence": "Product 5245 returned non-empty pitch text."
     },
     {
       "name": "10s sales pitch",
       "status": "PASS",
-      "evidence": "Product 5671 returned non-empty pitch text."
+      "evidence": "Product 5245 returned non-empty pitch text."
     },
     {
       "name": "30s sales pitch",
       "status": "PASS",
-      "evidence": "Product 5671 returned non-empty pitch text."
+      "evidence": "Product 5245 returned non-empty pitch text."
     },
     {
       "name": "Sommelier product question",
       "status": "PASS",
-      "evidence": "Product 5671 returned an answer with 0 alternatives."
+      "evidence": "Product 5245 returned an answer with 0 alternatives."
     },
     {
       "name": "Anonymous access guard",

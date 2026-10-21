@@ -1,0 +1,31 @@
+-- Durable index of unexpected server failures; request/response bodies and query strings are excluded.
+-- Apply before deploying the failure search API and platform page.
+CREATE TABLE IF NOT EXISTS platform_failure_event (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  event_id CHAR(36) NOT NULL,
+  fingerprint CHAR(64) NOT NULL,
+  correlation_id CHAR(36) NULL,
+  environment VARCHAR(64) NOT NULL,
+  service VARCHAR(64) NOT NULL,
+  runtime_commit CHAR(40) NULL,
+  tenant_id BIGINT NULL,
+  tenant_name VARCHAR(255) NULL,
+  tenant_slug VARCHAR(63) NULL,
+  actor_id BIGINT NULL,
+  actor_username VARCHAR(120) NULL,
+  http_method VARCHAR(12) NOT NULL,
+  request_path VARCHAR(255) NOT NULL,
+  http_status INT NOT NULL,
+  error_code INT NULL,
+  error_type VARCHAR(120) NOT NULL,
+  error_summary VARCHAR(500) NULL,
+  duration_ms BIGINT NULL,
+  occurred_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_platform_failure_event (event_id),
+  KEY idx_platform_failure_time (occurred_at, id),
+  KEY idx_platform_failure_tenant_time (tenant_id, occurred_at, id),
+  KEY idx_platform_failure_fingerprint_tenant_version_time
+    (fingerprint, tenant_id, runtime_commit, occurred_at, id),
+  KEY idx_platform_failure_correlation (correlation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

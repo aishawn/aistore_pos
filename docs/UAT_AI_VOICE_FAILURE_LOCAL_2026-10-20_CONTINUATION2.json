@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-10-20T14:02:46.513Z",
+  "sourceCommit": "c8e892e9c6e4f7e12339a7de413c96932eaf1243",
+  "worktreeChangesIncluded": true,
+  "target": "http://demo.localhost:3000",
+  "scope": "fixture cloud ASR failure; safe retry guidance; no transcript insertion or assistant submit",
+  "status": "PASS",
+  "result": {
+    "safeRetryMessage": true,
+    "noTranscriptInserted": true,
+    "noAssistantSubmit": true,
+    "transcribeRequests": 1,
+    "pageErrors": []
+  }
+}

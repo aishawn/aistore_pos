@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-19T05:15:40.502Z",
+  "sourceCommit": "1cc28614185cbffcd8f67c3ba720138bac71d0c3",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "live pricing page is not cached",
+      "status": "PASS",
+      "evidence": "no-cache, must-revalidate"
+    },
+    {
+      "name": "price suggestions page",
+      "status": "PASS",
+      "evidence": "Heading, DEMO row, raise badge, writeEnabled=false visible"
+    },
+    {
+      "name": "apply CTA present",
+      "status": "PASS",
+      "evidence": "Open product link present; no apply-price write control"
+    },
+    {
+      "name": "ai fab on price page",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "no api writes",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "writes": []
+}

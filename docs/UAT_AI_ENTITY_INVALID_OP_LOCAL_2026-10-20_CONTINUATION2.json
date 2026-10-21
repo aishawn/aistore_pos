@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-10-20T14:03:00.287Z",
+  "sourceCommit": "c8e892e9c6e4f7e12339a7de413c96932eaf1243",
+  "worktreeChangesIncluded": true,
+  "target": "http://demo.localhost:3000",
+  "scope": "mocked invalid AI entity operation and delete confirmation; all APIs intercepted; DELETE is fixture-only",
+  "status": "PASS",
+  "result": {
+    "routeUnchanged": true,
+    "unsupportedActionExplained": true,
+    "deleteConfirmationShown": true,
+    "cancelDismissedConfirmation": true,
+    "cancelSentNoDelete": true,
+    "failureKeptConfirmationOpen": true,
+    "duplicateConfirmGuarded": true,
+    "retryCompletedDelete": true,
+    "assistantRequests": 3,
+    "deleteRequests": [
+      "DELETE /api/customers/777",
+      "DELETE /api/customers/777"
+    ],
+    "blockedBusinessWrites": [],
+    "pageErrors": []
+  }
+}

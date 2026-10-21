@@ -28,6 +28,32 @@ class ReportRespondNodeTest {
     }
 
     @Test
+    void salesSummaryIncludesAudAndUsesSingularDayForSingleDate() {
+        OverAllState state = state("", List.of(Map.of("date", "2026-10-16", "sales", 12.99)),
+                "2026-10-16", "2026-10-16");
+
+        assertEquals("Sales for 2026-10-16 total AUD 12.99 (1 day).", node.apply(state).get("answer"));
+    }
+
+    @Test
+    void salesSummaryUsesPluralDaysForMultiDayRange() {
+        OverAllState state = state("", List.of(
+                Map.of("date", "2026-10-19", "sales", 12.99),
+                Map.of("date", "2026-10-20", "sales", 5.01)), "2026-10-19", "2026-10-20");
+
+        assertEquals("Sales for 2026-10-19 to 2026-10-20 total AUD 18.00 (2 days).",
+                node.apply(state).get("answer"));
+    }
+
+    @Test
+    void averageTicketSummaryIncludesAudAndUsesSingularSale() {
+        OverAllState state = state("", List.of(Map.of("sales", 12.99, "tickets", 1, "aov", 12.99)));
+        when(state.value("intent", String.class)).thenReturn(Optional.of("report_aov"));
+
+        assertEquals("Average Ticket for 2026-10-20 is AUD 12.99 across 1 sale.", node.apply(state).get("answer"));
+    }
+
+    @Test
     void unavailableOdooIsNotReportedAsAnEmptyDay() {
         assertError("ODOO_REPORT_UNAVAILABLE", "Live Odoo reporting is temporarily unavailable. Please try again.");
     }
@@ -89,12 +115,16 @@ class ReportRespondNodeTest {
     }
 
     private OverAllState state(String error, List<Map<String, Object>> rows) {
+        return state(error, rows, "2026-10-20", "2026-10-20");
+    }
+
+    private OverAllState state(String error, List<Map<String, Object>> rows, String from, String to) {
         OverAllState state = mock(OverAllState.class);
         when(state.value("intent", String.class)).thenReturn(Optional.of("report_sales"));
         when(state.value("sql_error", String.class)).thenReturn(Optional.of(error));
         when(state.value("report_rows")).thenReturn(Optional.<Object>of(rows));
         when(state.value("slots")).thenReturn(Optional.<Object>of(
-                Map.of("from", "2026-10-20", "to", "2026-10-20")));
+                Map.of("from", from, "to", to)));
         return state;
     }
 }

@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-21T14:30:47.340Z",
+  "sourceCommit": "6aeb3cf3b131bc74f8cc3d51075053f186e56d58",
+  "scope": "single short DashScope health prompt; contains no store or customer data",
+  "model": "qwen3.8-flash",
+  "endpointPath": "/api/v1/services/aigc/multimodal-generation/generation",
+  "checks": [
+    {
+      "name": "DashScope generation endpoint responds",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "providerCode": null,
+        "hasTextResponse": true,
+        "elapsedMs": 1269,
+        "responseBodyAndCredentialOmitted": true
+      }
+    }
+  ],
+  "passed": 1,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

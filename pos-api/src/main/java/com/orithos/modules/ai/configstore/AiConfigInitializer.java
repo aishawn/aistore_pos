@@ -73,8 +73,8 @@ public class AiConfigInitializer implements ApplicationRunner {
                 "User wants a POS action like discount, void, or finalise — do NOT execute, only suggest.",
                 "dialogue", null, 40);
         insertIntent("entity_action", "Entity CRUD",
-                "Inventory/Customer menu CRUD: list/search/create/view/edit/delete",
-                "User wants to manage Inventory or Customer menu entities. Extract entity + op + query. Map user/用户 to entity customer. Destructive ops confirmed on client.",
+                "Supported inventory, customer and operations entities: list/search/create/view/edit/delete/import/export",
+                "User wants to manage a supported Inventory, Customer, Supplier, Order, Stocktake, Classification, Customer group, Price list, Gift card, Buying period, Stock list, Balance or pricing entity. Extract entity + op + query. Map user/用户 to entity customer. Use list/search/view for read-only requests; destructive ops are confirmed on client. Never invent entities or operations.",
                 "dialogue", null, 45);
         insertIntent("qa", "Q&A", "General how-to question about the POS",
                 "User asks how to use the POS; answer in chat, no navigation required.",

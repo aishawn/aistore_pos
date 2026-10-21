@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-10-21T10:14:56.531Z",
+  "sourceCommit": "5afdf2cb6816f76c82b43b028b4bfd019fff061f",
+  "target": "http://demo.localhost:3035",
+  "scope": "Local fixture only; purchase detail read and AI placement, no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "purchase detail has header AI and unobstructed receive action",
+      "status": "PASS",
+      "header": 1,
+      "floating": 0,
+      "receive": true,
+      "errors": []
+    },
+    {
+      "viewport": 1024,
+      "actualViewport": 1024,
+      "name": "purchase detail has header AI and unobstructed receive action",
+      "status": "PASS",
+      "header": 1,
+      "floating": 0,
+      "receive": true,
+      "errors": []
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "purchase detail has header AI and unobstructed receive action",
+      "status": "PASS",
+      "header": 1,
+      "floating": 0,
+      "receive": true,
+      "errors": []
+    }
+  ]
+}

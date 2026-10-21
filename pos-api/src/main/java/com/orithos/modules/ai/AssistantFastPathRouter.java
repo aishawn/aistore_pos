@@ -13,19 +13,21 @@ public final class AssistantFastPathRouter {
     private static final Pattern TODAY_SALES = Pattern.compile(
             "^(?:today'?s?\\s+sales|sales\\s+today|show(?:\\s+me)?\\s+today'?s?\\s+sales|"
                     + "what were today'?s?\\s+sales|today'?s?\\s+takings|how did we do today|"
-                    + "how much did we (?:make|take|sell) today|"
+                    + "how much did we (?:make|take|sell) today|what did we (?:make|take|sell) today|how were (?:sales|we) today|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) today|"
-                    + "今日销售额?|今天销售额?|今天卖了多少|今天营业额?)[?.!。！？]*$",
+                    + "what(?:'s| is) today'?s? (?:sales|revenue|takings|turnover)|"
+                    + "今日销售额?|今天销售额?|今天卖了多少|今天营业额?|今天流水|今天收入多少|今日收入多少|今天赚了多少)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_SALES = Pattern.compile(
             "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|show(?:\\s+me)?\\s+yesterday'?s?\\s+sales|"
                     + "what were yesterday'?s?\\s+sales|yesterday'?s?\\s+takings|"
-                    + "how much did we (?:make|take|sell) yesterday|"
+                    + "how much did we (?:make|take|sell) yesterday|what did we (?:make|take|sell) yesterday|how were (?:sales|we) yesterday|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) yesterday|"
-                    + "昨天销售额?|昨天卖了多少|昨天营业额?)[?.!。！？]*$",
+                    + "what(?:'s| is) yesterday'?s? (?:sales|revenue|takings|turnover)|"
+                    + "昨天销售额?|昨天卖了多少|昨天营业额?|昨天收入多少)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SALES_RANGE = Pattern.compile(
-            "^(?:(?:sales|revenue|takings|turnover)\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
+            "^(?:(?:sales|revenue|takings|turnover)\\s+(?:for\\s+)?(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销售额?|营业额?)?)$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DATE_TOKEN = Pattern.compile(
             "(?:\\b\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}\\b|\\b\\d{1,2}/\\d{1,2}/\\d{4}\\b|"
@@ -39,6 +41,12 @@ public final class AssistantFastPathRouter {
     private static final Pattern SALES_MARKER = Pattern.compile(
             "\\b(?:sales|revenue|takings|turnover)\\b|销售额|营业额|流水",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern DATED_SALES_AMOUNT_QUESTION = Pattern.compile(
+            "\\bhow much did (?:we|the store) (?:make|take|sell)\\b|"
+                    + "\\bwhat did (?:we|the store) (?:make|take|sell)\\b|"
+                    + "\\bwhat were (?:our|the store'?s) takings\\b|"
+                    + "卖了多少钱|收入多少|营业额多少|流水多少",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
             "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销量|销售数量))$",
             Pattern.CASE_INSENSITIVE);
@@ -51,9 +59,21 @@ public final class AssistantFastPathRouter {
     private static final Pattern LOOKUP_PRODUCTS = Pattern.compile(
             "^(look\\s*up\\s*products?|search\\s*products?|查询产品|查找产品|产品查询)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOOKUP_CUSTOMERS = Pattern.compile(
+            "^(look\\s*up\\s*customers?|search\\s*customers?|find\\s*customers?|查询客户|查找客户|搜索客户|客户查询)$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOOKUP_CUSTOMER_QUERY = Pattern.compile(
+            "^(?:look\\s*up|search(?:\\s+for)?|find(?:\\s+me)?)\\s+(?:the\\s+)?customers?\\s+(?:for\\s+)?(.+?)[?.!]*$|"
+                    + "^(?:can you|could you|please)\\s+(?:find|look\\s+for|search\\s+for)\\s+(?:the\\s+)?customer\\s+(.+?)[?.!]*$|"
+                    + "^(?:帮我)?(?:查询|查找|搜索)(?:一下)?(?:客户|顾客)\\s*(.+?)[。！？?！]*$|"
+                    + "^(?:帮我)?(?:查一下|查下)\\s*(?:客户|顾客)\\s+(.+?)[。！？?！]*$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern LOOKUP_PRODUCT_QUERY = Pattern.compile(
-            "^(?:look\\s*up|search(?:\\s+for)?|find(?:\\s+me)?)\\s+(?:the\\s+)?products?\\s+(?:for\\s+)?(.+?)[?.!]*$|"
+            "^(?:look\\s*up|search(?:\\s+for)?)\\s+(?:the\\s+)?(?:products?\\s+(?:for\\s+)?)?(?!(?:products?|product)[?.!]*$)(.+?)[?.!]*$|"
+                    + "^find(?:\\s+me)?(?:\\s+the)?(?:\\s+product)?\\s+(?!me\\s+a\\s+wine\\b|products?$|a\\s+wine\\b|wine\\b)(.+?)[?.!]*$|"
+                    + "^(?:can you|could you|please)\\s+(?:find|look\\s+for|search\\s+for)\\s+(?:the\\s+)?(?:product\\s+)?(?!a\\s+wine\\b|wine\\b)(.+?)[?.!]*$|"
                     + "^(?:帮我)?(?:查询|查找|搜索)(?:商品|产品)\\s*(.+?)[。！？]*$|"
+                    + "^(?:帮我)?(?:查一下|查下)\\s*(?!(?:库存|商品|产品)\\b)(?!.*(?:库存|还有|剩|有多少))(.+?)[。！？?！]*$|"
                     + "^(?:帮我)?(?:搜一下|找一下)\\s*(?!产品[。！？?！]*$|商品[。！？?！]*$|库存[。！？?！]*$)(.+?)[。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CHECK_STOCK = Pattern.compile(
@@ -64,10 +84,21 @@ public final class AssistantFastPathRouter {
                     + "^(?:怎么|如何|怎样)(?:关闭|关掉|结算)收银台[？?。！!]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FORGED_ROUTE = Pattern.compile(
-            "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/admin/|admin/secret|后台秘密)|"
-                    + "(?:/admin/secret|后台秘密)",
+            "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)|"
+                    + "(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern GIBBERISH = Pattern.compile("^(?:asdfghjkl|qwertyuiop|啊啊啊+)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern HELP = Pattern.compile(
+            "^(?:help|what can you do|what are you able to do|what can i ask you|how can you help|"
+                    + "what does the assistant do|你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern INVOICE_REPORT = Pattern.compile(
+            "^(?:do we have (?:any )?invoices?|any invoices?|are there (?:any )?invoices?|"
+                    + "(?:have we receiv(?:e|ed)|did we receive) (?:any )?invoices?|how many invoices?(?: did we receive)?|"
+                    + "(?:how many (?:supplier )?bills?(?: did we receive)?|(?:have we|did we) receiv(?:e|ed) (?:any )?bills?)|"
+                    + "发票(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少)|收到发票了吗|"
+                    + "账单(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少)|收到(?:了)?账单了吗)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_QUERY = Pattern.compile(
             "^how much\\s+(.+?)\\s+(?:is|are)\\s+in\\s+stock[?.!]*$|"
@@ -76,13 +107,20 @@ public final class AssistantFastPathRouter {
                     + "^(?:what(?:'s| is)\\s+the\\s+)?inventory(?:\\s+level)?\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
                     + "^is\\s+(.+?)\\s+in\\s+stock[?.!]*$|"
                     + "^how many\\s+(.+?)\\s+do we have(?:\\s+in stock)?[?.!]*$|"
+                    + "^how many\\s+do we have\\s+of\\s+(.+?)[?.!]*$|"
                     + "^do we have (?:any )?(.+?)\\s+(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
                     + "^how many\\s+(.+?)\\s+(?:are )?(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
                     + "^have we got\\s+(?:any\\s+)?(.+?)(?:\\s+in (?:the )?(?:shop|store))?[?.!]*$|"
+                    + "^do we have\\s+(?!(?:any\\s+)?(?:customers?|suppliers?|orders?|invoices?|sales|revenue|takings)\\b)(?:any\\s+)?(.+?)(?:\\s+in stock)?[?.!]*$|"
+                    + "^any\\s+(.+?)\\s+in stock[?.!]*$|"
+                    + "^is there (?:any )?(.+?)\\s+(?:left|remaining)(?:\\s+in stock)?[?.!]*$|"
+                    + "^do we still have (?:any )?(.+?)(?:\\s+in stock)?[?.!]*$|"
                     + "^(?:查一下|查询|查看)\\s*(.+?)(?:还有多少|有多少)?库存[？?。]*$|"
-                    + "^(.+?)库存(?:还有多少|有多少)[？?。]*$|"
+                    + "^(?!(?:帮我)?(?:查下|查一下|看看|看下)\\s)(.+?)库存(?:还有多少|有多少)[？?。]*$|"
                     + "^(?!(?:帮我)?(?:查下|查一下|看看|看下)\\s)(.+?)(?:还剩多少|剩多少)(?:库存)?[？?。]*$|"
                     + "^(?:店里|我们店里|门店)还有\\s*(.+?)(?:\\s*(?:吗|没有|没了))?[？?。]*$|"
+                    + "^(?:店里|我们店里|门店)有\\s*(.+?)吗[？?。]*$|"
+                    + "^(?!(?:订单|客户|供应商|发票))(.+?)(?:还有吗|还有没有|有吗)[？?。]*$|"
                     + "^(?:帮我)?(?:查下|查一下|看看|看下)\\s*(.+?)\\s*(?:还剩几件|还剩多少|剩下多少|还有多少|库存)[？?。]*$",
             Pattern.CASE_INSENSITIVE);
 
@@ -93,6 +131,18 @@ public final class AssistantFastPathRouter {
             return null;
         }
         String normalized = question.trim().toLowerCase(Locale.ROOT);
+        // Reject forged routes before any entity/report shortcut can extract a
+        // harmless-looking search term from the same malicious utterance.
+        if (FORGED_ROUTE.matcher(question.trim()).find()) {
+            return new Match(
+                    "unknown",
+                    "I can only help with supported store tasks. I cannot open that route.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
         if (TODAY_SALES.matcher(normalized).matches()) {
             // Period comes from the utterance via ReportPeriodResolver (today).
             return new Match(
@@ -124,7 +174,8 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
-        if (SALES_MARKER.matcher(normalized).find() && DATE_TOKEN.matcher(normalized).find()) {
+        if ((SALES_MARKER.matcher(normalized).find() || DATED_SALES_AMOUNT_QUESTION.matcher(normalized).find())
+                && DATE_TOKEN.matcher(normalized).find()) {
             return new Match(
                     "report_sales",
                     "Sales report",
@@ -168,9 +219,36 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
+        var customerQuery = LOOKUP_CUSTOMER_QUERY.matcher(question.trim());
+        if (customerQuery.matches()) {
+            String query = cleanQuery(firstNonNull(
+                    customerQuery.group(1), customerQuery.group(2), customerQuery.group(3), customerQuery.group(4)));
+            if (query != null) {
+                return new Match(
+                        "search_customer",
+                        "Opened customers.",
+                        Map.of("query", query),
+                        "",
+                        "",
+                        "",
+                        "");
+            }
+        }
+        if (LOOKUP_CUSTOMERS.matcher(normalized).matches()) {
+            return new Match(
+                    "search_customer",
+                    "Opened customers.",
+                    Map.of("query", ""),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
         var productQuery = LOOKUP_PRODUCT_QUERY.matcher(question.trim());
         if (productQuery.matches()) {
-            String query = cleanQuery(firstNonNull(productQuery.group(1), productQuery.group(2), productQuery.group(3)));
+            String query = cleanQuery(firstNonNull(
+                    productQuery.group(1), productQuery.group(2), productQuery.group(3),
+                    productQuery.group(4), productQuery.group(5), productQuery.group(6)));
             if (query != null) {
                 return new Match(
                         "search_product",
@@ -202,10 +280,20 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
-        if (FORGED_ROUTE.matcher(question.trim()).find()) {
+        if (HELP.matcher(normalized).matches()) {
             return new Match(
-                    "unknown",
-                    "I can only help with supported store tasks. I cannot open that route.",
+                    "qa",
+                    "I can help with sales, stock, products, replenishment, pricing, wine recommendations and invoice previews.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (INVOICE_REPORT.matcher(normalized).matches()) {
+            return new Match(
+                    "report_adhoc",
+                    "Invoice counts and existence stay in reporting; invoice scanning is for a specific uploaded document.",
                     Map.of(),
                     "",
                     "",
@@ -238,7 +326,9 @@ public final class AssistantFastPathRouter {
                     stockQuery.group(1), stockQuery.group(2), stockQuery.group(3), stockQuery.group(4),
                     stockQuery.group(5), stockQuery.group(6), stockQuery.group(7), stockQuery.group(8),
                     stockQuery.group(9), stockQuery.group(10), stockQuery.group(11), stockQuery.group(12),
-                    stockQuery.group(13), stockQuery.group(14)));
+                    stockQuery.group(13), stockQuery.group(14), stockQuery.group(15), stockQuery.group(16),
+                    stockQuery.group(17), stockQuery.group(18), stockQuery.group(19), stockQuery.group(20),
+                    stockQuery.group(21)));
             if (query != null) {
                 return new Match(
                         "report_stock",

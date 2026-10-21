@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-10-21T01:11:57.361Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "worktreeChangesIncluded": true,
+  "nodeVersion": "v24.19.0",
+  "target": "http://demo.localhost:3035",
+  "scope": "AI entity action guards, fixture-only delete confirmation/retry, Odoo directory query prefill and result rendering at 390/1440; APIs intercepted; Odoo record POSTs are read-only fixtures",
+  "status": "PASS",
+  "result": {
+    "routeUnchanged": true,
+    "unsupportedActionExplained": true,
+    "unsupportedCreateStayed": true,
+    "unsupportedImportStayed": true,
+    "unsupportedExportStayed": true,
+    "supplierViewUsesReadOnlyDirectory": true,
+    "supplierSearchPrefilled": true,
+    "customerSearchPrefilled": true,
+    "productSearchPrefilled": true,
+    "searchPrefillResults": [
+      {
+        "name": "supplier",
+        "viewport": 390,
+        "query": "Acme Wines",
+        "recordVisible": true,
+        "layout": "mobile-card",
+        "overflow": false,
+        "toolbar": null,
+        "screenshot": "docs/screenshots/2026-10-21-odoo-directories-local/supplier-390.png"
+      },
+      {
+        "name": "customer",
+        "viewport": 390,
+        "query": "Alex Example",
+        "recordVisible": true,
+        "layout": "mobile-card",
+        "overflow": false,
+        "toolbar": null,
+        "screenshot": "docs/screenshots/2026-10-21-odoo-directories-local/customer-390.png"
+      },
+      {
+        "name": "product",
+        "viewport": 390,
+        "query": "VB Cans",
+        "recordVisible": true,
+        "layout": "mobile-card",
+        "overflow": false,
+        "toolbar": {
+          "controlsVisible": true,
+          "withinViewport": true,
+          "noOverlap": true
+        },
+        "screenshot": "docs/screenshots/2026-10-21-odoo-directories-local/product-390.png"
+      },
+      {
+        "name": "supplier",
+        "viewport": 1440,
+        "query": "Acme Wines",
+        "recordVisible": true,
+        "layout": "desktop-table",
+        "overflow": false,
+        "toolbar": null,
+        "screenshot": "docs/screenshots/2026-10-21-odoo-directories-local/supplier-1440.png"
+      },
+      {
+        "name": "customer",
+        "viewport": 1440,
+        "query": "Alex Example",
+        "recordVisible": true,
+        "layout": "desktop-table",
+        "overflow": false,
+        "toolbar": null,
+        "screenshot": "docs/screenshots/2026-10-21-odoo-directories-local/customer-1440.png"
+      },
+      {
+        "name": "product",
+        "viewport": 1440,
+        "query": "VB Cans",
+        "recordVisible": true,
+        "layout": "desktop-table",
+        "overflow": false,
+        "toolbar": {
+          "controlsVisible": true,
+          "withinViewport": true,
+          "noOverlap": true
+        },
+        "screenshot": "docs/screenshots/2026-10-21-odoo-directories-local/product-1440.png"
+      }
+    ],
+    "readOnlyOdooQueries": [
+      {
+        "type": "suppliers",
+        "query": ""
+      },
+      {
+        "type": "suppliers",
+        "query": ""
+      },
+      {
+        "type": "suppliers",
+        "query": "Acme Wines"
+      },
+      {
+        "type": "customers",
+        "query": ""
+      },
+      {
+        "type": "customers",
+        "query": "Alex Example"
+      },
+      {
+        "type": "products",
+        "query": ""
+      },
+      {
+        "type": "posCategories",
+        "query": ""
+      },
+      {
+        "type": "products",
+        "query": "VB Cans"
+      },
+      {
+        "type": "suppliers",
+        "query": ""
+      },
+      {
+        "type": "suppliers",
+        "query": "Acme Wines"
+      },
+      {
+        "type": "customers",
+        "query": ""
+      },
+      {
+        "type": "customers",
+        "query": "Alex Example"
+      },
+      {
+        "type": "products",
+        "query": ""
+      },
+      {
+        "type": "posCategories",
+        "query": ""
+      },
+      {
+        "type": "products",
+        "query": "VB Cans"
+      }
+    ],
+    "screenshots": [
+      "docs/screenshots/2026-10-21-odoo-directories-local/supplier-390.png",
+      "docs/screenshots/2026-10-21-odoo-directories-local/customer-390.png",
+      "docs/screenshots/2026-10-21-odoo-directories-local/product-390.png",
+      "docs/screenshots/2026-10-21-odoo-directories-local/supplier-1440.png",
+      "docs/screenshots/2026-10-21-odoo-directories-local/customer-1440.png",
+      "docs/screenshots/2026-10-21-odoo-directories-local/product-1440.png"
+    ],
+    "deleteConfirmationShown": true,
+    "cancelDismissedConfirmation": true,
+    "cancelSentNoDelete": true,
+    "failureKeptConfirmationOpen": true,
+    "duplicateConfirmGuarded": true,
+    "retryCompletedDelete": true,
+    "assistantRequests": 7,
+    "deleteRequests": [
+      "DELETE /api/customers/777",
+      "DELETE /api/customers/777"
+    ],
+    "blockedBusinessWrites": [],
+    "pageErrors": []
+  }
+}

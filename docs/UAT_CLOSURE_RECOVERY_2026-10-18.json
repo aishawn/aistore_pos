@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-18T08:51:19.076Z",
-  "sourceCommit": "5871dbc",
+  "generatedAt": "2026-10-19T14:07:18.827Z",
+  "sourceCommit": "1eab63297b575927b89c56deb286fbd01dd15dc8",
   "deployment": "unverified-after-deploy",
   "scope": "mocked authenticated read-only closure checks; no business writes",
   "status": "PASS",

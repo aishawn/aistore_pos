@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-10-21T15:32:26.443Z",
+  "sourceCommit": "6aeb3cf3b131bc74f8cc3d51075053f186e56d58",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only History, store metrics and platform access checks; no business or AI configuration writes",
+  "writeBusinessData": false,
+  "checks": [
+    {
+      "id": "AUTH-01",
+      "status": "PASS",
+      "evidence": "HTTP 200"
+    },
+    {
+      "id": "CFG-01",
+      "status": "PASS",
+      "evidence": "enabled=true; assistantAvailable=true"
+    },
+    {
+      "id": "HIST-01",
+      "status": "PASS",
+      "evidence": "HTTP 200 count=40 metadataValid=true"
+    },
+    {
+      "id": "HIST-02",
+      "status": "PASS",
+      "evidence": "HTTP 200 messages=2 sameThread=true messageShapeValid=true; content omitted"
+    },
+    {
+      "id": "HIST-03",
+      "status": "BLOCKED",
+      "evidence": "A second store-user credential is unavailable; cross-user thread isolation was not exercised."
+    },
+    {
+      "id": "MET-S01",
+      "status": "PASS",
+      "evidence": "HTTP 200 windowHours=24 paths=10"
+    },
+    {
+      "id": "MET-S02",
+      "status": "PASS",
+      "evidence": "aggregateOnly=true; payloadLength=3082"
+    },
+    {
+      "id": "MET-S03",
+      "status": "PASS",
+      "evidence": "store-admin platform access HTTP 200 code=40300"
+    },
+    {
+      "id": "MET-S04",
+      "status": "PASS",
+      "evidence": "store-admin platform access HTTP 200 code=40300"
+    },
+    {
+      "id": "MET-P01",
+      "status": "BLOCKED",
+      "evidence": "Platform-operator credentials are unavailable; cross-store usage UI was not opened."
+    },
+    {
+      "id": "AUTH-02",
+      "status": "PASS",
+      "evidence": "anonymous thread list HTTP 401"
+    }
+  ],
+  "passed": 9,
+  "blocked": 2,
+  "failed": 0,
+  "status": "BLOCKED"
+}

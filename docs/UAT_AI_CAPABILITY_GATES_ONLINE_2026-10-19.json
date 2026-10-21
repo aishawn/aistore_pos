@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-19T09:35:11.361Z",
-  "sourceCommit": "ac4c3070e87b7d73daecf256539a8d4bd9fb8c17",
-  "deployment": "ac4c307",
+  "generatedAt": "2026-10-19T17:11:11.450Z",
+  "sourceCommit": "36ed5fd5055ecb5df3a5cf17a104e45509086b7f",
+  "deployment": "bec6d0b",
   "target": "https://demo.orithos.com.au",
   "scope": "online browser fault injection for transcription capability; no business writes",
   "status": "PASS",

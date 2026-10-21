@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-17T10:44:26.593Z",
+  "generatedAt": "2026-10-17T20:25:37.445Z",
   "deployment": null,
-  "sourceCommit": "3b75e05c6d81ceb8244e38c83649e12046fb50c8",
+  "sourceCommit": "1e7eaf96bda2df85d04ec7738946ebbcda62864f",
   "target": "https://demo.orithos.com.au",
   "roleResult": "CREATED_PERMISSION_SAVED_DELETED",
   "matrix": [
@@ -19,7 +19,7 @@
     },
     {
       "path": "/history/odoo",
-      "status": "PASS"
+      "status": "FAIL"
     },
     {
       "path": "/close",
@@ -210,7 +210,38 @@
       "evidence": "390px viewport has no horizontal page overflow (390px content)."
     }
   ],
-  "unauthorizedResponses": [],
+  "unauthorizedResponses": [
+    {
+      "route": null,
+      "method": "GET",
+      "path": "/api/odoo/session",
+      "resourceType": "fetch"
+    },
+    {
+      "route": null,
+      "method": "GET",
+      "path": "/api/odoo/session",
+      "resourceType": "fetch"
+    },
+    {
+      "route": null,
+      "method": "GET",
+      "path": "/api/odoo/session",
+      "resourceType": "fetch"
+    },
+    {
+      "route": null,
+      "method": "GET",
+      "path": "/api/odoo/session",
+      "resourceType": "fetch"
+    },
+    {
+      "route": null,
+      "method": "GET",
+      "path": "/api/odoo/session",
+      "resourceType": "fetch"
+    }
+  ],
   "reportingResponses": [
     {
       "route": "/overview",
@@ -243,6 +274,60 @@
       "path": "/api/odoo/session",
       "method": "GET",
       "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "route": null,
+      "path": "/api/auth/refresh",
+      "method": "POST",
+      "status": 502
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "route": null,
+      "path": "/api/odoo/session",
+      "method": "GET",
+      "status": 401
+    },
+    {
+      "route": null,
+      "path": "/api/auth/refresh",
+      "method": "POST",
+      "status": 502
     },
     {
       "route": null,

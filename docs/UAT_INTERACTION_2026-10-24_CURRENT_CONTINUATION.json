@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-10-21T10:30:16.801Z",
+  "sourceCommit": "5afdf2cb6816f76c82b43b028b4bfd019fff061f",
+  "deployment": "unverified-after-deploy",
+  "scope": "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
+  "checks": [
+    {
+      "name": "Mobile navigation drawer opens and dismisses",
+      "status": "PASS",
+      "evidence": "At 390px, the navigation drawer opens and closes with Escape and the outside backdrop; ARIA state tracks visibility."
+    },
+    {
+      "name": "Compact account popover opens and closes accessibly",
+      "status": "PASS",
+      "evidence": "Account popover opens, exposes aria-expanded, and closes on Escape and an outside click."
+    },
+    {
+      "name": "Sidebar keeps the active settings destination reachable",
+      "status": "PASS",
+      "evidence": "The active Setup group expands on direct navigation and remains expanded when the route changes back to a settings child page."
+    },
+    {
+      "name": "Classification creation restores mobile menu focus",
+      "status": "PASS",
+      "evidence": "At 390px the Menu opens the classification dialog, the MDB selector supports ArrowDown/Escape, and closing restores focus to Menu."
+    },
+    {
+      "name": "Product search filters the Odoo catalogue",
+      "status": "PASS",
+      "evidence": "At 390px the R2 product cards replaced the wide table; searching a unique SKU returned one matching result."
+    },
+    {
+      "name": "Product edit dialog is prefilled from Odoo",
+      "status": "PASS",
+      "evidence": "At 390px the edit dialog fit the viewport, prefilled a valid R2 Odoo price, and was closed without saving."
+    },
+    {
+      "name": "New product form blocks submission without a name",
+      "status": "PASS",
+      "evidence": "Product name is required; dialog focus and trigger restoration passed; empty form validation was checked and no product was created."
+    },
+    {
+      "name": "CSV product import previews valid rows without writing to Odoo",
+      "status": "PASS",
+      "evidence": "A valid one-row CSV was parsed and previewed; Cancel closed the dialog with no Odoo product write."
+    },
+    {
+      "name": "Customer creation form is required-field guarded",
+      "status": "PASS",
+      "evidence": "At 390px the customer dialog fit the viewport; initial focus, trigger restoration, required Customer name and empty-form protection passed."
+    },
+    {
+      "name": "Customer mobile card and edit dialog render from a read-only fixture",
+      "status": "PASS",
+      "evidence": "Mobile customer card showed Odoo fixture details and tap-to-call; edit dialog fit the viewport and was closed without saving."
+    },
+    {
+      "name": "Sales history searches and opens a refunded receipt",
+      "status": "PASS",
+      "evidence": "At 390px the Refunded filter returned a mobile receipt card; the receipt dialog opened by keyboard, fit the viewport, and hid the duplicate full-refund action."
+    },
+    {
+      "name": "Replenishment coverage control refreshes the estimate",
+      "status": "PASS",
+      "evidence": "At 390px, replenishment showed product cards without overflow (390px); coverage changed to 7 days; no-sales state remains explicitly qualified."
+    },
+    {
+      "name": "Reporting period selector reloads Odoo dashboard",
+      "status": "PASS",
+      "evidence": "At 390px there is no horizontal overflow (390px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes."
+    },
+    {
+      "name": "Legacy report previews do not imply live Odoo data",
+      "status": "PASS",
+      "evidence": "At 390px the sales report clearly identifies itself as a static preview, displays no placeholder totals, and has no horizontal overflow."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-19T08:31:30.760Z",
+  "sourceCommit": "7a87dd792b072e458ea1bfb50787af748f8677e1",
+  "environment": "local-dev-fixtures",
+  "target": "https://demo.orithos.com.au",
+  "scope": "bulk price edit save error containment; PATCH intercepted; no business writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "bulk page loads",
+      "status": "PASS",
+      "evidence": "200"
+    },
+    {
+      "name": "run",
+      "status": "FAIL",
+      "evidence": "locator.inputValue: Error: strict mode violation: getByPlaceholder('Search for Product or Classification...') resolved to 2 elements:\n    1) <input value=\"DEMO-SHIRAZ\" placeholder=\"Search for Product or Classification...\" class=\"h-[38px] min-w-0 flex-1 rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]\"/> aka getByRole('textbox', { name: 'Search for Product or' })\n    2) <input value=\"DEMO-SHIRAZ\" placeholder=\"Search for Product or Classification...\" class=\"h-[38px] min-w-0 flex-1 rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]\"/> aka getByPlaceholder('Search for Product or').nth(1)\n\nCall log:\n\u001b[2m  - waiting for getByPlaceholder('Search for Product or Classification...')\u001b[22m\n"
+    }
+  ],
+  "patchAttempts": 0,
+  "patches": []
+}

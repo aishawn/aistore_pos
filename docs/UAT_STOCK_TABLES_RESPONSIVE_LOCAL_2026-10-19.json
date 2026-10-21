@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-20T01:48:01.565Z",
-  "sourceCommit": "4a35df73d88b869b8aeaf5b827a99df364463970",
+  "generatedAt": "2026-10-20T02:29:15.583Z",
+  "sourceCommit": "49f0874735f89f4e48fba69d42f99207343fbfdf",
   "environment": "local-dev-fixtures",
-  "target": "https://demo.orithos.com.au",
+  "target": "http://demo.localhost:3035",
   "scope": "Stock List/Capped Pricing/Bulk Price Edit responsive table headers; API requests intercepted; no business writes",
   "status": "PASS",
   "passed": 6,

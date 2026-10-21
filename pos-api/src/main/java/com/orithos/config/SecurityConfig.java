@@ -32,6 +32,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtFilter;
     private final TenantResolverFilter tenantResolverFilter;
     private final TenantMatchFilter tenantMatchFilter;
+    private final OdooOnlyModeFilter odooOnlyModeFilter;
+    private final RequestCorrelationFilter requestCorrelationFilter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -45,15 +47,24 @@ public class SecurityConfig {
 
     public SecurityConfig(JwtAuthenticationFilter jwtFilter,
                           TenantResolverFilter tenantResolverFilter,
-                          TenantMatchFilter tenantMatchFilter) {
+                          TenantMatchFilter tenantMatchFilter,
+                          OdooOnlyModeFilter odooOnlyModeFilter,
+                          RequestCorrelationFilter requestCorrelationFilter) {
         this.jwtFilter = jwtFilter;
         this.tenantResolverFilter = tenantResolverFilter;
         this.tenantMatchFilter = tenantMatchFilter;
+        this.odooOnlyModeFilter = odooOnlyModeFilter;
+        this.requestCorrelationFilter = requestCorrelationFilter;
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public RequestCorrelationFilter requestCorrelationFilter() {
+        return new RequestCorrelationFilter();
     }
 
     /** Keep tenant/JWT filters only inside the Security chain (avoid double execution). */
@@ -76,6 +87,14 @@ public class SecurityConfig {
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(
             JwtAuthenticationFilter filter) {
         FilterRegistrationBean<JwtAuthenticationFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RequestCorrelationFilter> requestCorrelationRegistration(
+            RequestCorrelationFilter filter) {
+        FilterRegistrationBean<RequestCorrelationFilter> reg = new FilterRegistrationBean<>(filter);
         reg.setEnabled(false);
         return reg;
     }
@@ -104,7 +123,9 @@ public class SecurityConfig {
                 res.getWriter().write(objectMapper.writeValueAsString(
                         ApiResult.fail(40100, "Unauthorized")));
             }))
+            .addFilterBefore(requestCorrelationFilter, TenantResolverFilter.class)
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(odooOnlyModeFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(tenantMatchFilter, JwtAuthenticationFilter.class);
         return http.build();

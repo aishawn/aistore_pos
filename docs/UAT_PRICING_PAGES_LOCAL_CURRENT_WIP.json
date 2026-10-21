@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-21T05:03:26.784Z",
+  "sourceCommit": "aab8273cf38e94c742216843edf7ee3f5960f6a6",
+  "target": "http://demo.localhost:3035",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated pricing and stock pages; non-GET API calls blocked; no business writes",
+  "status": "FAIL",
+  "passed": 0,
+  "failed": 1,
+  "checks": [
+    {
+      "route": "run",
+      "viewport": null,
+      "status": "FAIL",
+      "evidence": "LOGIN_FAILED_502"
+    }
+  ],
+  "blockedWrites": []
+}

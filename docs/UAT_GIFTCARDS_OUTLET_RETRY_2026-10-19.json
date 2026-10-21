@@ -1,13 +1,14 @@
 {
-  "generatedAt": "2026-10-19T01:01:54.244Z",
-  "sourceCommit": "2a2d9aba758494fdfa0176e41ed7cf7044c1d514",
+  "generatedAt": "2026-10-20T10:20:40.974Z",
+  "sourceCommit": "2380226a23009c7f334c47882356cdfba482e9be",
+  "environment": "live-read-only-injected",
   "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only gift card outlet lookup failure injection; one GET returns 503; Retry progress and outlet filter lock are verified; no business writes",
   "checks": [
     {
       "name": "Gift card outlet Retry remains visible and locks repeated actions",
-      "status": "FAIL",
+      "status": "PASS",
       "evidence": {
         "outletRequests": 2,
         "outletStatuses": [
@@ -15,11 +16,21 @@
           200
         ],
         "retryRequestPending": true,
-        "retryDisabledWhileLoading": false,
-        "retryAlertBusy": false,
+        "retryDisabledWhileLoading": true,
+        "retryAlertBusy": true,
         "retryState": {
-          "alerts": [],
-          "retryButtons": []
+          "alerts": [
+            {
+              "text": "Some lookup options could not be loaded.Outlets: Injected outlet lookup failureRetrying…",
+              "busy": true
+            }
+          ],
+          "retryButtons": [
+            {
+              "text": "Retrying…",
+              "disabled": true
+            }
+          ]
         },
         "outletFilterDisabledWhileLoading": true,
         "viewport": {

@@ -1,0 +1,10 @@
+{
+  "generatedAt": "2026-10-21T06:48:55.659Z",
+  "target": "https://demo.orithos.com.au",
+  "expectedCommit": "ae13e2279f858f0ac69d09bd0a2133d5be34236c",
+  "sourceWorkingTree": false,
+  "scope": "version endpoint only; no business writes",
+  "status": "BLOCKED",
+  "deploymentShaVerified": false,
+  "services": null
+}

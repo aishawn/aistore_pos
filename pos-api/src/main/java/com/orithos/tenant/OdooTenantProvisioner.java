@@ -11,6 +11,7 @@ import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,13 +28,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import javax.sql.DataSource;
 
 /**
  * Creates (or links) an Odoo company + POS config for a vendor and persists the binding.
  */
 @Service
 public class OdooTenantProvisioner {
-
     private static final Logger log = LoggerFactory.getLogger(OdooTenantProvisioner.class);
     private static final double DUMMY_STOCK_QUANTITY = 35.0;
     private static final double GST_FACTOR = 1.10;
@@ -74,6 +75,8 @@ public class OdooTenantProvisioner {
     private final OutletMapper outletMapper;
     private final RegisterMapper registerMapper;
     private final ObjectMapper objectMapper;
+    private final DataSource dataSource;
+    private final TenantProvisionAttemptService provisionAttempts;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -88,6 +91,8 @@ public class OdooTenantProvisioner {
             OutletMapper outletMapper,
             RegisterMapper registerMapper,
             ObjectMapper objectMapper,
+            DataSource dataSource,
+            TenantProvisionAttemptService provisionAttempts,
             @Value("${ODOO_BASE_URL:}") String baseUrl,
             @Value("${ODOO_DATABASE:aipos}") String database,
             @Value("${ODOO_SERVICE_USERNAME:}") String username,
@@ -96,6 +101,8 @@ public class OdooTenantProvisioner {
         this.outletMapper = outletMapper;
         this.registerMapper = registerMapper;
         this.objectMapper = objectMapper;
+        this.dataSource = dataSource;
+        this.provisionAttempts = provisionAttempts;
         this.baseUrl = baseUrl == null ? "" : baseUrl.trim().replaceAll("/+$", "");
         this.database = database == null ? "" : database.trim();
         this.username = username == null ? "" : username.trim();
@@ -112,7 +119,7 @@ public class OdooTenantProvisioner {
 
     public void provisionAsyncSafe(Long vendorId, boolean seedDummyData) {
         try {
-            provision(vendorId, seedDummyData);
+            provision(vendorId, seedDummyData, "SIGNUP");
         } catch (Exception e) {
             log.warn("Odoo provision failed for vendor {}: {}", vendorId, e.getMessage());
         }
@@ -123,64 +130,131 @@ public class OdooTenantProvisioner {
     }
 
     public Vendor provision(Long vendorId, boolean seedDummyData) {
+        return provision(vendorId, seedDummyData, "ADMIN_RETRY");
+    }
+
+    private Vendor provision(Long vendorId, boolean seedDummyData, String triggerType) {
+        if (vendorId == null || vendorId <= 0) throw new IllegalArgumentException("vendor id is required");
+        Vendor tenant = vendorMapper.findById(vendorId);
+        if (tenant == null) throw new IllegalArgumentException("vendor not found");
+        String attemptId = provisionAttempts.start(tenant, triggerType);
+        // Hold a DB advisory lock across the external Odoo calls, across application replicas.
+        // The same dedicated connection owns acquisition and release; mapper calls use their normal connections.
+        try (var connection = dataSource.getConnection()) {
+            String lockName = "orithos:odoo-provision:" + vendorId;
+            try (var statement = connection.prepareStatement("SELECT GET_LOCK(?, 0)")) {
+                statement.setString(1, lockName);
+                try (var result = statement.executeQuery()) {
+                    if (!result.next() || result.getInt(1) != 1) {
+                        throw new ProvisionLockException("Store provisioning is already running. Check its status before retrying.");
+                    }
+                }
+            }
+            try {
+                Vendor result = provisionLocked(vendorId, seedDummyData, attemptId);
+                if ("ready".equalsIgnoreCase(result.getOdooProvisionStatus())) provisionAttempts.succeed(attemptId);
+                else provisionAttempts.finishFailure(attemptId,
+                        new IllegalStateException(result.getOdooProvisionError() == null
+                                ? "Provisioning did not reach ready state" : result.getOdooProvisionError()));
+                return result;
+            } finally {
+                try (var statement = connection.prepareStatement("SELECT RELEASE_LOCK(?)")) {
+                    statement.setString(1, lockName);
+                    statement.execute();
+                }
+            }
+        } catch (ProvisionLockException error) {
+            provisionAttempts.fail(attemptId, "DATABASE_LOCK", error);
+            throw error;
+        } catch (java.sql.SQLException error) {
+            IllegalStateException failure = new IllegalStateException("Could not acquire the store provisioning lock.", error);
+            provisionAttempts.fail(attemptId, "DATABASE_LOCK", failure);
+            throw failure;
+        } catch (RuntimeException error) {
+            provisionAttempts.finishFailure(attemptId, error);
+            throw error;
+        }
+    }
+
+    private Vendor provisionLocked(Long vendorId, boolean seedDummyData, String attemptId) {
         Vendor vendor = vendorMapper.findById(vendorId);
         if (vendor == null) throw new IllegalArgumentException("vendor not found");
 
         String prefix = "shopfront/" + vendor.getSubdomain() + "/";
         vendor.setR2Prefix(prefix);
 
+        String preflightStep = beginProvisionStep(attemptId, "PREFLIGHT");
         if (!isConfigured()) {
             vendor.setOdooProvisionStatus("failed");
             vendor.setOdooProvisionError("Odoo service account is not configured (ODOO_SERVICE_*).");
             vendorMapper.updateOdooBinding(vendor);
+            failProvisionStep(attemptId, preflightStep, "PREFLIGHT",
+                    new IllegalStateException(vendor.getOdooProvisionError()));
             return vendor;
         }
+        completeProvisionStep(attemptId, preflightStep, "PREFLIGHT", "Odoo service configuration present");
 
         vendor.setOdooProvisionStatus("pending");
         vendor.setOdooProvisionError(null);
         vendorMapper.updateOdooBinding(vendor);
 
         try {
-            String sessionId = authenticate();
-            long companyId = createCompany(sessionId, vendor.getName());
-            // Odoo validates allowed_company_ids on every company-scoped RPC.
-            // Add the newly-created company before any forced-company setup call;
-            // otherwise a fresh service user can fail with "unauthorized company".
-            addCompanyToServiceUser(sessionId, companyId);
-            prepareCompanyBasics(sessionId, companyId, vendor.getName());
-            long[] warehouse = ensureWarehouse(sessionId, companyId, vendor.getName(), vendor.getSubdomain());
+            String sessionId = provisionStep(attemptId, "ODOO_AUTHENTICATION", this::authenticate, null);
+            // Names are not tenant identities: two stores may have the same display name.
+            // Existing explicit bindings are retained; unbound stores use a stable vendor-specific name.
+            long companyId = provisionStep(attemptId, "COMPANY_SETUP", () -> {
+                long id = vendor.getOdooCompanyId() != null && vendor.getOdooCompanyId() > 0
+                        ? vendor.getOdooCompanyId()
+                        : createCompany(sessionId, vendor.getName() + " [Orithos " + vendorId + "]");
+                addCompanyToServiceUser(sessionId, id);
+                prepareCompanyBasics(sessionId, id, vendor.getName());
+                return id;
+            }, null);
+            vendor.setOdooCompanyId(companyId);
+            vendorMapper.updateOdooBinding(vendor);
+            long[] warehouse = provisionStep(attemptId, "WAREHOUSE_SETUP",
+                    () -> ensureWarehouse(sessionId, companyId, vendor.getName(), vendor.getSubdomain()),
+                    "companyId=" + companyId);
             // Payment methods are created per POS config: Odoo forbids sharing one cash PM / cash journal
             // across multiple pos.config records.
 
             List<Outlet> outlets = outletMapper.findByVendorId(vendorId);
-            long primaryPosConfigId = 0;
-            if (outlets == null || outlets.isEmpty()) {
-                primaryPosConfigId = ensurePosConfig(sessionId, vendor.getName() + " Register", companyId);
-            } else {
+            long primaryPosConfigId = provisionStep(attemptId, "POS_CONFIGURATION", () -> {
+                long primaryConfigId = 0;
+                if (outlets == null || outlets.isEmpty()) {
+                    return ensurePosConfig(sessionId, vendor.getName() + " Register", companyId);
+                }
                 for (Outlet outlet : outlets) {
                     String outletName = (outlet.getName() == null || outlet.getName().isBlank()
-                            ? vendor.getName()
-                            : outlet.getName());
+                            ? vendor.getName() : outlet.getName());
                     var registers = registerMapper.findByOutletId(outlet.getId());
                     int registerCount = registers == null || registers.isEmpty() ? 1 : registers.size();
                     for (String configName : registerConfigNames(outletName, registerCount)) {
                         long configId = ensurePosConfig(sessionId, configName, companyId);
-                        if (primaryPosConfigId <= 0) primaryPosConfigId = configId;
+                        if (primaryConfigId <= 0) primaryConfigId = configId;
                     }
                 }
-            }
+                return primaryConfigId;
+            }, "companyId=" + companyId);
             if (primaryPosConfigId <= 0) {
                 throw new IllegalStateException("No POS config was created for the new Odoo company.");
             }
 
             // Odoo requires every cash journal used by a POS payment method to
             // have explicit profit/loss accounts before a session can open.
-            ensureCashDifferenceAccounts(sessionId, companyId);
+            provisionStep(attemptId, "ACCOUNTING_SETUP", () -> {
+                ensureCashDifferenceAccounts(sessionId, companyId);
+                return null;
+            }, "companyId=" + companyId);
 
             if (seedDummyData) {
                 try {
-                    seedDummyExperience(sessionId, companyId, warehouse[1], primaryPosConfigId);
+                    provisionStep(attemptId, "OPTIONAL_SAMPLE_DATA", () -> {
+                        seedDummyExperience(sessionId, companyId, warehouse[1], primaryPosConfigId);
+                        return null;
+                    }, "companyId=" + companyId);
                 } catch (Exception seedError) {
+                    if (seedError instanceof TenantProvisionAttemptPersistenceException) throw seedError;
                     log.warn("Dummy data seed failed for vendor {}: {}", vendorId, seedError.getMessage());
                 }
             }
@@ -191,7 +265,10 @@ public class OdooTenantProvisioner {
             vendor.setOdooStockLocationId(warehouse[1] > 0 ? warehouse[1] : null);
             vendor.setOdooProvisionStatus("ready");
             vendor.setOdooProvisionError(null);
-            vendorMapper.updateOdooBinding(vendor);
+            provisionStep(attemptId, "SAVE_BINDING", () -> {
+                vendorMapper.updateOdooBinding(vendor);
+                return null;
+            }, "companyId=" + companyId + ";posConfigId=" + primaryPosConfigId);
             return vendor;
         } catch (Exception e) {
             vendor.setOdooProvisionStatus("failed");
@@ -200,6 +277,44 @@ public class OdooTenantProvisioner {
             vendorMapper.updateOdooBinding(vendor);
             throw new IllegalStateException(msg, e);
         }
+    }
+
+    private String beginProvisionStep(String attemptId, String stepName) {
+        return provisionAttempts.beginStep(attemptId, stepName);
+    }
+
+    private void completeProvisionStep(String attemptId, String stepId, String stepName, String resourceRef) {
+        provisionAttempts.succeedStep(attemptId, stepId, stepName, resourceRef);
+    }
+
+    private void failProvisionStep(String attemptId, String stepId, String stepName, Exception error) {
+        provisionAttempts.failStep(attemptId, stepId, stepName, error);
+    }
+
+    private <T> T provisionStep(String attemptId, String stepName, ProvisionStep<T> operation,
+                                String resourceRef) throws Exception {
+        String stepId = beginProvisionStep(attemptId, stepName);
+        try {
+            T result = operation.run();
+            completeProvisionStep(attemptId, stepId, stepName, resourceRef);
+            return result;
+        } catch (Exception error) {
+            try {
+                failProvisionStep(attemptId, stepId, stepName, error);
+            } catch (RuntimeException recordingError) {
+                error.addSuppressed(recordingError);
+            }
+            throw error;
+        }
+    }
+
+    @FunctionalInterface
+    private interface ProvisionStep<T> {
+        T run() throws Exception;
+    }
+
+    private static final class ProvisionLockException extends IllegalStateException {
+        private ProvisionLockException(String message) { super(message); }
     }
 
     public Vendor linkManual(Long vendorId, Long companyId, Long posConfigId, Long warehouseId, Long stockLocationId) {
@@ -1951,6 +2066,8 @@ public class OdooTenantProvisioner {
                 .timeout(Duration.ofSeconds(90))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+        String correlationId = MDC.get("correlationId");
+        if (correlationId != null) builder.header("X-Correlation-ID", correlationId);
         if (sessionId != null && !sessionId.isBlank()) {
             builder.header("Cookie", "session_id=" + sessionId);
         }

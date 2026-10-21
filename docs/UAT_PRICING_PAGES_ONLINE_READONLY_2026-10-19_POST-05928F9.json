@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-19T10:21:53.264Z",
+  "sourceCommit": "05928f9e94da26181bbb6bd7c6f09e6a50bda3a9",
+  "target": "https://demo.orithos.com.au",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated pricing and stock pages; non-GET API calls blocked; no business writes",
+  "status": "FAIL",
+  "passed": 0,
+  "failed": 1,
+  "checks": [
+    {
+      "route": "run",
+      "viewport": null,
+      "status": "FAIL",
+      "evidence": "LOGIN_FAILED_404"
+    }
+  ],
+  "blockedWrites": []
+}

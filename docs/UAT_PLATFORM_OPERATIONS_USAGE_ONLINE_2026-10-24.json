@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-10-21T15:47:50.297Z",
+  "sourceCommit": "6aeb3cf3b131bc74f8cc3d51075053f186e56d58",
+  "deployment": "unverified-after-deploy",
+  "target": "https://app.orithos.com.au",
+  "scope": "authenticated read-only control-plane UI; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "route": "/platform/operations",
+      "viewport": 390,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1792597655322",
+      "headingVisible": true,
+      "pageErrors": [],
+      "nonGet": [],
+      "noHorizontalOverflow": true,
+      "bodyHasRetry": false,
+      "bodyPreview": "Platform admin\n\nAll stores · app.orithos.com.au\n\nStores\nAI usage\nOperations\nCreate store\nOpen demo store\nSign out\nOperations\n\nRuntime identity and dependency checks for the platform services.\n\nRefresh\nRuntime versions\n\nEnvironment Unknown ·"
+    },
+    {
+      "route": "/platform/usage",
+      "viewport": 390,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1792597661061",
+      "headingVisible": true,
+      "pageErrors": [],
+      "nonGet": [],
+      "noHorizontalOverflow": true,
+      "bodyHasRetry": false,
+      "bodyPreview": "Platform admin\n\nAll stores · app.orithos.com.au\n\nStores\nAI usage\nOperations\nCreate store\nOpen demo store\nSign out\nAI usage\n\nCross-store assistant and report aggregates. Chat text is never shown here.\n\nWindow\nLast 24 hours\nLast 3 days\nLast 7"
+    },
+    {
+      "route": "/platform/operations",
+      "viewport": 1440,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1792597662966",
+      "headingVisible": true,
+      "pageErrors": [],
+      "nonGet": [],
+      "noHorizontalOverflow": true,
+      "bodyHasRetry": false,
+      "bodyPreview": "Platform admin\n\nAll stores · app.orithos.com.au\n\nStores\nAI usage\nOperations\nCreate store\nOpen demo store\nadmin\nSign out\nOperations\n\nRuntime identity and dependency checks for the platform services.\n\nRefresh\nRuntime versions\n\nEnvironment Unk"
+    },
+    {
+      "route": "/platform/usage",
+      "viewport": 1440,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1792597667804",
+      "headingVisible": true,
+      "pageErrors": [],
+      "nonGet": [],
+      "noHorizontalOverflow": true,
+      "bodyHasRetry": false,
+      "bodyPreview": "Platform admin\n\nAll stores · app.orithos.com.au\n\nStores\nAI usage\nOperations\nCreate store\nOpen demo store\nadmin\nSign out\nAI usage\n\nCross-store assistant and report aggregates. Chat text is never shown here.\n\nWindow\nLast 24 hours\nLast 3 days\n"
+    }
+  ],
+  "runtimeVersion": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": null,
+      "builtAt": "2026-10-21T13:35:45.867Z"
+    },
+    "backend": null
+  }
+}

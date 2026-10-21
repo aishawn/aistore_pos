@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T04:48:11.385Z",
-  "sourceCommit": "f7a7288fe295ce82f27a5fdbb9e88da32e937e37",
+  "generatedAt": "2026-10-21T08:18:03.573Z",
+  "sourceCommit": "1cf20c5de2be7b40d49f83ec3be81a0370ce30b5",
   "target": "http://demo.localhost:3035",
   "scope": "Local fixture: first Odoo read returns 401, session recovery returns user, read is replayed; no business writes",
   "status": "PASS",

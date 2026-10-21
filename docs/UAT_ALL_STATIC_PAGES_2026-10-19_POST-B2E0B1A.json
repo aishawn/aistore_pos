@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-19T15:04:46.061Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": null,
+  "staticRoutes": 134,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 267,
+  "checksTotal": 268,
+  "failures": [
+    {
+      "route": "/history",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    }
+  ],
+  "result": "FAIL"
+}

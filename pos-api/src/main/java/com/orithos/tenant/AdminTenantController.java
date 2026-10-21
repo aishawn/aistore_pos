@@ -14,6 +14,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -31,10 +36,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 @RestController
 @RequestMapping("/api/admin/tenants")
 public class AdminTenantController {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminTenantController.class);
 
     private static final Set<String> STATUS_VALUES = Set.of("active", "suspended", "expired", "trial");
     private static final Map<String, Set<String>> STATUS_TRANSITIONS = Map.of(
@@ -50,6 +59,11 @@ public class AdminTenantController {
     private final TenantProperties tenantProperties;
     private final AccountLifecycleService accountLifecycle;
     private final OdooTenantProvisioner odooTenantProvisioner;
+
+    @Autowired
+    private PlatformAdminAuditService adminAudit;
+    @Autowired
+    private TenantProvisionAttemptService provisionAttempts;
 
     public AdminTenantController(TenantProvisionService provisionService,
                                  PlatformAccessService platformAccess,
@@ -80,16 +94,56 @@ public class AdminTenantController {
             Boolean dummyData
     ) {}
 
-    public record StatusBody(@NotBlank String status) {}
+    public record StatusBody(@NotBlank String status, String reason) {
+        public StatusBody(String status) { this(status, null); }
+    }
 
-    public record TrialBody(@NotNull @Min(1) @Max(90) Integer days) {}
+    public record TrialBody(@NotNull @Min(1) @Max(90) Integer days, String reason) {
+        public TrialBody(Integer days) { this(days, null); }
+    }
+
+    public record ReasonBody(String reason) {}
 
     public record OdooBindingBody(
             Long odooCompanyId,
             Long odooPosConfigId,
             Long odooWarehouseId,
-            Long odooStockLocationId
-    ) {}
+            Long odooStockLocationId,
+            String reason
+    ) {
+        public OdooBindingBody(Long odooCompanyId, Long odooPosConfigId,
+                               Long odooWarehouseId, Long odooStockLocationId) {
+            this(odooCompanyId, odooPosConfigId, odooWarehouseId, odooStockLocationId, null);
+        }
+    }
+
+    @GetMapping("/{id}/audit")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<PageResult<PlatformAdminAuditEntry>> auditHistory(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        platformAccess.requirePlatformAdmin();
+        requireVendor(id);
+        int safePage = Math.max(1, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+        return ApiResult.ok(PageResult.of(adminAudit.pageForTenant(id, safePage, safeSize),
+                adminAudit.countForTenant(id), safePage, safeSize));
+    }
+
+    @GetMapping("/{id}/provision-attempts")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ApiResult<PageResult<TenantProvisionAttemptDetails>> provisionAttempts(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        platformAccess.requirePlatformAdmin();
+        requireVendor(id);
+        int safePage = Math.max(1, page);
+        int safeSize = Math.min(50, Math.max(1, size));
+        return ApiResult.ok(PageResult.of(provisionAttempts.pageForTenant(id, safePage, safeSize),
+                provisionAttempts.countForTenant(id), safePage, safeSize));
+    }
 
     @GetMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
@@ -166,10 +220,15 @@ public class AdminTenantController {
         if (!STATUS_TRANSITIONS.getOrDefault(currentStatus, Set.of()).contains(status)) {
             throw new BusinessException(40910, "Cannot change store status from " + currentStatus + " to " + status);
         }
-        if (vendorMapper.updateStatusIfCurrent(id, status, currentStatus) != 1) {
-            throw new BusinessException(40910, "Store status changed; refresh and try again");
-        }
-        return ApiResult.ok(toDetail(requireVendor(id)));
+        String fromStatus = currentStatus;
+        String toStatus = status;
+        return ApiResult.ok(audited(vendor, "TENANT_STATUS_CHANGED", "vendor", String.valueOf(id), body.reason(),
+                summary("status", fromStatus), () -> {
+                    if (vendorMapper.updateStatusIfCurrent(id, toStatus, fromStatus) != 1) {
+                        throw new BusinessException(40910, "Store status changed; refresh and try again");
+                    }
+                    return toDetail(requireVendor(id));
+                }, result -> summary("status", result.get("status"))));
     }
 
     @PatchMapping("/{id}/trial")
@@ -188,84 +247,187 @@ public class AdminTenantController {
         } else if (!"active".equalsIgnoreCase(status)) {
             status = "trial";
         }
-        if (vendorMapper.updateTrialEndsAtIfCurrent(id, ends, status, currentStatus) != 1) {
-            throw new BusinessException(40910, "Store status changed; refresh and try again");
-        }
-        return ApiResult.ok(toDetail(requireVendor(id)));
+        String nextStatus = status;
+        return ApiResult.ok(audited(vendor, "TENANT_TRIAL_EXTENDED", "vendor", String.valueOf(id), body.reason(),
+                summary("status", currentStatus, "trialEndsAt", vendor.getTrialEndsAt()), () -> {
+                    if (vendorMapper.updateTrialEndsAtIfCurrent(id, ends, nextStatus, currentStatus) != 1) {
+                        throw new BusinessException(40910, "Store status changed; refresh and try again");
+                    }
+                    return toDetail(requireVendor(id));
+                }, result -> summary("status", result.get("status"), "trialEndsAt", result.get("trialEndsAt"))));
     }
 
     @PostMapping("/{id}/owner/reset-password")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ApiResult<Map<String, Object>> resetOwner(@PathVariable Long id) {
+    public ApiResult<Map<String, Object>> resetOwner(@PathVariable Long id,
+                                                     @RequestBody(required = false) ReasonBody body) {
         platformAccess.requirePlatformAdmin();
-        forbidDeleted(requireVendor(id));
-        return ApiResult.ok(accountLifecycle.issueOwnerResetForVendor(id));
+        Vendor vendor = requireVendor(id);
+        forbidDeleted(vendor);
+        User owner = userMapper.findPrimaryByVendor(id);
+        return ApiResult.ok(audited(vendor, "OWNER_RESET_ISSUED", "store_owner", ownerId(vendor), reason(body),
+                summary("pendingPasswordReset", owner == null ? null : owner.getPendingPasswordReset()),
+                () -> accountLifecycle.issueOwnerResetForVendor(id),
+                result -> summary("pendingPasswordReset", true, "emailSent", result.get("emailSent"))));
+    }
+
+    public ApiResult<Map<String, Object>> resetOwner(Long id) {
+        return resetOwner(id, null);
     }
 
     @PostMapping("/{id}/owner/reinvite")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ApiResult<Map<String, Object>> reinviteOwner(@PathVariable Long id) {
+    public ApiResult<Map<String, Object>> reinviteOwner(@PathVariable Long id,
+                                                         @RequestBody(required = false) ReasonBody body) {
         platformAccess.requirePlatformAdmin();
-        forbidDeleted(requireVendor(id));
-        return ApiResult.ok(accountLifecycle.reinviteOwnerForVendor(id));
+        Vendor vendor = requireVendor(id);
+        forbidDeleted(vendor);
+        return ApiResult.ok(audited(vendor, "OWNER_REINVITED", "store_owner", ownerId(vendor), reason(body),
+                summary("ownerExists", true),
+                () -> accountLifecycle.reinviteOwnerForVendor(id),
+                result -> summary("ownerExists", true, "emailSent", result.get("emailSent"))));
     }
 
     /** One-time auto-login token for the store owner (platform ops / UAT). Does not change password. */
     @PostMapping("/{id}/owner/bootstrap")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ApiResult<Map<String, Object>> bootstrapOwner(@PathVariable Long id) {
+    public ApiResult<Map<String, Object>> bootstrapOwner(@PathVariable Long id,
+                                                          @RequestBody(required = false) ReasonBody body) {
         platformAccess.requirePlatformAdmin();
         Vendor vendor = requireVendor(id);
         forbidDeleted(vendor);
-        return ApiResult.ok(accountLifecycle.issueOwnerBootstrapForVendor(vendor.getId()));
+        return ApiResult.ok(audited(vendor, "OWNER_BOOTSTRAP_ISSUED", "store_owner", ownerId(vendor), reason(body),
+                summary("ownerExists", true),
+                () -> accountLifecycle.issueOwnerBootstrapForVendor(vendor.getId()),
+                result -> summary("ownerExists", true, "tokenIssued", result.containsKey("bootstrapToken"))));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @Transactional
-    public ApiResult<Map<String, Object>> deleteTrialStore(@PathVariable Long id) {
+    public ApiResult<Map<String, Object>> deleteTrialStore(@PathVariable Long id,
+                                                            @RequestBody(required = false) ReasonBody body) {
         platformAccess.requirePlatformAdmin();
         Vendor vendor = requireVendor(id);
         forbidOperatorLifecycle(vendor);
-        if ("deleted".equalsIgnoreCase(vendor.getStatus())) {
-            return ApiResult.ok(toDetail(vendor));
-        }
         if (!"trial".equalsIgnoreCase(vendor.getStatus())) {
             throw new BusinessException(40910, "Only trial stores can be deleted");
         }
-        if (vendorMapper.markTrialDeleted(id) != 1) {
-            throw new BusinessException(40910, "Store status changed; refresh and try again");
-        }
-        accountLifecycle.revokeAndDeleteVendorAccounts(id);
-        return ApiResult.ok(toDetail(requireVendor(id)));
+        return ApiResult.ok(audited(vendor, "TRIAL_TENANT_DELETED", "vendor", String.valueOf(id), reason(body),
+                summary("status", vendor.getStatus()), () -> {
+                    if (vendorMapper.markTrialDeleted(id) != 1) {
+                        throw new BusinessException(40910, "Store status changed; refresh and try again");
+                    }
+                    accountLifecycle.revokeAndDeleteVendorAccounts(id);
+                    return toDetail(requireVendor(id));
+                }, result -> summary("status", result.get("status"))));
+    }
+
+    public ApiResult<Map<String, Object>> deleteTrialStore(Long id) {
+        return deleteTrialStore(id, null);
     }
 
     @PostMapping("/{id}/odoo-provision")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ApiResult<Map<String, Object>> reprovisionOdoo(@PathVariable Long id) {
+    public ApiResult<Map<String, Object>> reprovisionOdoo(@PathVariable Long id,
+                                                           @RequestBody(required = false) ReasonBody body) {
         platformAccess.requirePlatformAdmin();
-        forbidDeleted(requireVendor(id));
-        try {
-            odooTenantProvisioner.provision(id);
-        } catch (Exception e) {
-            // binding already marked failed; still return detail
-        }
-        return ApiResult.ok(toDetail(requireVendor(id)));
+        Vendor vendor = requireVendor(id);
+        forbidDeleted(vendor);
+        return ApiResult.ok(audited(vendor, "ODOO_PROVISION_RETRIED", "odoo_company", stringId(vendor.getOdooCompanyId()), reason(body),
+                odooBindingSummary(vendor), () -> {
+                    try {
+                        odooTenantProvisioner.provision(id);
+                    } catch (Exception ignored) {
+                        // Provisioner persists a failed state; return it for operator review.
+                    }
+                    return toDetail(requireVendor(id));
+                }, result -> summary("provisionStatus", result.get("odooProvisionStatus"),
+                        "odooCompanyId", result.get("odooCompanyId"))));
     }
 
     @PatchMapping("/{id}/odoo-binding")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ApiResult<Map<String, Object>> patchOdooBinding(@PathVariable Long id, @RequestBody OdooBindingBody body) {
         platformAccess.requirePlatformAdmin();
-        forbidDeleted(requireVendor(id));
-        odooTenantProvisioner.linkManual(
-                id,
-                body.odooCompanyId(),
-                body.odooPosConfigId(),
-                body.odooWarehouseId(),
-                body.odooStockLocationId());
-        return ApiResult.ok(toDetail(requireVendor(id)));
+        Vendor vendor = requireVendor(id);
+        forbidDeleted(vendor);
+        return ApiResult.ok(audited(vendor, "ODOO_BINDING_CHANGED", "odoo_company", stringId(body.odooCompanyId()), body.reason(),
+                odooBindingSummary(vendor), () -> {
+                    odooTenantProvisioner.linkManual(id, body.odooCompanyId(), body.odooPosConfigId(),
+                            body.odooWarehouseId(), body.odooStockLocationId());
+                    return toDetail(requireVendor(id));
+                }, result -> odooBindingSummary(requireVendor(id))));
     }
+
+    private <T> T audited(Vendor tenant, String action, String targetType, String targetId,
+                          String reason, Map<String, ?> before, Supplier<T> operation,
+                          Function<T, Map<String, ?>> after) {
+        if (adminAudit == null) return operation.get();
+        String eventId = adminAudit.begin(tenant, action, targetType, targetId, reason, before);
+        try {
+            T result = operation.get();
+            Map<String, ?> afterSummary = after.apply(result);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        completeAudit(eventId, action, afterSummary);
+                    }
+
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status == STATUS_ROLLED_BACK) {
+                            failAudit(eventId, action, null, "TransactionRolledBack");
+                        }
+                    }
+                });
+            } else {
+                completeAudit(eventId, action, afterSummary);
+            }
+            return result;
+        } catch (RuntimeException operationError) {
+            failAudit(eventId, action, PlatformAdminAuditService.errorCode(operationError),
+                    operationError.getClass().getSimpleName());
+            throw operationError;
+        }
+    }
+
+    private void completeAudit(String eventId, String action, Map<String, ?> after) {
+        try {
+            adminAudit.succeeded(eventId, after);
+        } catch (RuntimeException auditError) {
+            log.error("Platform audit event completion failed eventId={} action={}", eventId, action);
+        }
+    }
+
+    private void failAudit(String eventId, String action, Integer errorCode, String errorType) {
+        try {
+            adminAudit.failed(eventId, errorCode, errorType);
+        } catch (RuntimeException auditError) {
+            log.error("Platform audit failure recording failed eventId={} action={}", eventId, action);
+        }
+    }
+
+    private static Map<String, Object> summary(Object... values) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (int i = 0; i < values.length; i += 2) result.put((String) values[i], values[i + 1]);
+        return result;
+    }
+
+    private static Map<String, Object> odooBindingSummary(Vendor vendor) {
+        return summary("companyId", vendor.getOdooCompanyId(), "posConfigId", vendor.getOdooPosConfigId(),
+                "warehouseId", vendor.getOdooWarehouseId(), "stockLocationId", vendor.getOdooStockLocationId(),
+                "provisionStatus", vendor.getOdooProvisionStatus());
+    }
+
+    private String ownerId(Vendor vendor) {
+        User owner = userMapper.findPrimaryByVendor(vendor.getId());
+        return owner == null ? null : String.valueOf(owner.getId());
+    }
+
+    private static String reason(ReasonBody body) { return body == null ? null : body.reason(); }
+    private static String stringId(Long id) { return id == null ? null : String.valueOf(id); }
 
     private Vendor requireVendor(Long id) {
         Vendor vendor = vendorMapper.findById(id);

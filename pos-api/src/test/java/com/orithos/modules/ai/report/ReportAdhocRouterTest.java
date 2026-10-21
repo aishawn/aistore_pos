@@ -39,9 +39,57 @@ class ReportAdhocRouterTest {
     void invoiceAndSupplierSpendQuestionsStayInReporting() {
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How many invoices did we receive?"));
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How much did we pay suppliers this month?"));
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("How much did we pay for this invoice?"));
+        assertTrue(ReportAdhocRouter.shouldUseNl2Sql("What did we spend on supplier bills last month?"));
         assertEquals("report_adhoc",
                 ReportAdhocRouter.maybeOverride("How many invoices did we receive?", "navigate"));
         assertEquals("report_adhoc",
                 ReportAdhocRouter.maybeOverride("供应商付款总额是多少", "navigate"));
+        assertEquals("report_adhoc",
+                ReportAdhocRouter.maybeOverride("How much did we pay for this invoice?", "navigate"));
+    }
+
+    @Test
+    void purchaseHistoryAndSpendQuestionsDoNotOpenCurrentWorkflowPages() {
+        for (String question : new String[]{
+                "How much did we spend on purchases last month?",
+                "What was our purchase history last week?",
+                "What did we spend on replenishment last week?",
+                "上个月采购花了多少钱",
+                "上周采购记录是什么",
+                "本月补货花了多少钱"
+        }) {
+            assertTrue(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+            assertEquals("report_adhoc", ReportAdhocRouter.maybeOverride(question, "navigate"), question);
+        }
+
+        for (String question : new String[]{
+                "What should I purchase?",
+                "What should I reorder today?",
+                "How much should I charge for Shiraz?",
+                "Show me the price suggestions"
+        }) {
+            assertFalse(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+        }
+    }
+
+    @Test
+    void pricingHistoryQuestionsStayOutOfThePricingWorkflow() {
+        for (String question : new String[]{
+                "Show me the pricing report for yesterday",
+                "Show me last week's pricing history",
+                "Show me the price history for yesterday",
+                "Show me the price suggestions from last week",
+                "上周的价格建议有哪些",
+                "昨天的定价报告",
+                "上周价格历史",
+                "昨天价格历史"
+        }) {
+            assertTrue(ReportAdhocRouter.shouldUseNl2Sql(question), question);
+            assertEquals("report_adhoc", ReportAdhocRouter.maybeOverride(question, "navigate"), question);
+        }
+        assertFalse(ReportAdhocRouter.shouldUseNl2Sql("Can you review prices for Shiraz?"));
+        assertFalse(ReportAdhocRouter.shouldUseNl2Sql("Show me the price suggestions"));
+        assertFalse(ReportAdhocRouter.shouldUseNl2Sql("给我看看价格建议"));
     }
 }

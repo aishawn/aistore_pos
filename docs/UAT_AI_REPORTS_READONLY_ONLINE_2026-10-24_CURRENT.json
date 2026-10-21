@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-20T17:19:30.330Z",
+  "testHarnessCommit": "435ec476e5dd6ed1408b462eee88c7bf6b7718c5",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 0,
+  "checksBlocked": 1,
+  "checksTotal": 1,
+  "checks": [
+    {
+      "name": "AI assistant availability",
+      "status": "BLOCKED",
+      "evidence": "LOGIN_FAILED_502"
+    }
+  ],
+  "failures": [],
+  "result": "BLOCKED"
+}

@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-10-21T01:24:49.668Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "AI capability gate UI; chat on/off and voice unavailable at 390/1440; all API writes intercepted",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 390,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 390,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice input is disabled for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice input is disabled for this store",
+      "pageErrors": []
+    }
+  ],
+  "assistantRequests": 0,
+  "transcriptionRequests": 0,
+  "interceptedWrites": []
+}

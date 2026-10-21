@@ -1,6 +1,7 @@
 package com.orithos.modules.utility;
 
 import com.orithos.common.ApiResult;
+import com.orithos.common.BusinessException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,30 +18,31 @@ public class VendorConnectionController {
 
     @GetMapping
     public ApiResult<List<VendorConnection>> list() {
-        return ApiResult.ok(mapper.findAll());
+        throw disabled();
     }
 
     @GetMapping("/{id}")
     public ApiResult<VendorConnection> get(@PathVariable Long id) {
-        return ApiResult.ok(mapper.findById(id));
+        throw disabled();
     }
 
     @PostMapping
     public ApiResult<VendorConnection> create(@RequestBody VendorConnection v) {
-        mapper.insert(v);
-        return ApiResult.ok(v);
+        throw disabled();
     }
 
     @PutMapping("/{id}")
     public ApiResult<VendorConnection> update(@PathVariable Long id, @RequestBody VendorConnection v) {
-        v.setId(id);
-        mapper.update(v);
-        return ApiResult.ok(v);
+        throw disabled();
     }
 
     @DeleteMapping("/{id}")
     public ApiResult<Void> delete(@PathVariable Long id) {
-        mapper.delete(id);
-        return ApiResult.ok();
+        throw disabled();
+    }
+
+    /** Classic vendor connections have no tenant key; Odoo is the only live source of truth. */
+    private BusinessException disabled() {
+        return new BusinessException(41001, "Classic vendor connections are retired; use the Odoo supplier workflow.");
     }
 }

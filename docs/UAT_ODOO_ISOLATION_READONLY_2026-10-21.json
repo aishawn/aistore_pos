@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-21T15:30:00+08:00",
+  "database": "aipos_uat",
+  "productionDatabaseTouched": false,
+  "scope": "Odoo authentication, module readiness and read-only model probes; no business writes",
+  "status": "PASS",
+  "authentication": {
+    "authenticated": true,
+    "uid": 2
+  },
+  "modules": {
+    "account": "installed",
+    "stock": "installed",
+    "purchase": "installed",
+    "point_of_sale": "installed",
+    "sale_management": "installed",
+    "l10n_au": "installed"
+  },
+  "readOnlyProbes": {
+    "companies": 1,
+    "warehouses": 1,
+    "products": 2,
+    "taxes": 5,
+    "gstTaxObserved": true
+  },
+  "limitations": [
+    "No cashier, manager or second-tenant application accounts prepared yet.",
+    "No sales, refunds, purchases, stock adjustments or register close written yet.",
+    "Runtime application SHA and frontend/backend deployment identity remain unverified."
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-10-19T01:35:41.299Z",
+  "sourceCommit": "94ccc320643ddf2dfb682bf4fca9c4abe1796e5e",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "AI assistant dialog accessibility and disabled-state UI; all APIs intercepted locally; no model or business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 390,
+      "composerInsideDialog": true,
+      "focusStayedInside": true,
+      "escapeRestoredFocus": true,
+      "disabledAssistantCopy": true,
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "composerInsideDialog": true,
+      "focusStayedInside": true,
+      "escapeRestoredFocus": true,
+      "disabledAssistantCopy": true,
+      "pageErrors": []
+    }
+  ],
+  "assistantRequests": 2,
+  "interceptedAiRequests": [
+    "POST /api/ai/assistant",
+    "POST /api/ai/assistant"
+  ]
+}

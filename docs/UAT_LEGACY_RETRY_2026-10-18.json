@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-18T05:43:19.314Z",
-  "sourceCommit": "unverified-after-webhook",
-  "deployment": "unverified-after-webhook",
+  "generatedAt": "2026-10-20T02:39:50.733Z",
+  "sourceCommit": "5d99445e3ddb775bc833f1c1428e59213db2a7c3",
+  "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only injected 503 recovery; no business writes",
   "results": [

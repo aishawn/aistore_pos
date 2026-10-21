@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-10-21",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only release identity probe",
+  "versionEndpoint": {
+    "httpStatus": 200,
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": null,
+      "builtAt": "2026-10-21T08:19:13.701Z"
+    },
+    "backend": null
+  },
+  "healthEndpoint": {
+    "httpStatus": 401,
+    "code": 40100,
+    "message": "Unauthorized"
+  },
+  "sourceCommit": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "originMain": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "businessWrites": 0,
+  "conclusion": "Frontend build is observable, but backend/runtime identity is not exposed; deployment remains unverified."
+}

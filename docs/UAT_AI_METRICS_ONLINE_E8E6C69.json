@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T12:15:05.719Z",
+  "generatedAt": "2026-10-20T12:19:54.410Z",
   "sourceCommit": "e8e6c69",
   "target": "https://demo.orithos.com.au",
   "scope": "admin-only AI report metrics read-only regression; no business or configuration writes",
@@ -10,9 +10,19 @@
       "detail": "status=200"
     },
     {
+      "name": "assistant audit seed",
+      "status": "PASS",
+      "detail": "intent=search_product"
+    },
+    {
       "name": "admin metrics response",
       "status": "PASS",
-      "detail": "status=200 paths=0"
+      "detail": "status=200 paths=10 p50=1022 p95=4557"
+    },
+    {
+      "name": "assistant intent metrics coverage",
+      "status": "PASS",
+      "detail": "assistant:search_product requests=29 allowed=29 p50=1838 p95=4687 estimatedTokens=306"
     },
     {
       "name": "anonymous metrics guard",
@@ -25,9 +35,19 @@
       "detail": "table=true pageErrors=0"
     },
     {
+      "name": "metrics accessibility 390px",
+      "status": "PASS",
+      "detail": "caption=1 scopedHeaders=8 busy=1"
+    },
+    {
       "name": "metrics UI 1440px",
       "status": "PASS",
       "detail": "table=true pageErrors=0"
+    },
+    {
+      "name": "metrics accessibility 1440px",
+      "status": "PASS",
+      "detail": "caption=1 scopedHeaders=8 busy=1"
     }
   ],
   "writes": [],

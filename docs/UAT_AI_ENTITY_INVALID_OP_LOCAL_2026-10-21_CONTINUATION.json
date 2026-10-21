@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-21T00:38:05.228Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "worktreeChangesIncluded": true,
+  "target": "http://demo.localhost:3000",
+  "scope": "mocked invalid AI entity operation and delete confirmation; all APIs intercepted; DELETE is fixture-only",
+  "status": "FAIL",
+  "result": {
+    "routeUnchanged": false,
+    "unsupportedActionExplained": false,
+    "deleteConfirmationShown": false,
+    "cancelDismissedConfirmation": false,
+    "cancelSentNoDelete": false,
+    "failureKeptConfirmationOpen": false,
+    "retryCompletedDelete": false,
+    "assistantRequests": 0,
+    "deleteRequests": [],
+    "blockedBusinessWrites": [],
+    "pageErrors": [],
+    "failure": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /Open Orithos AI/ }).first() to be visible\u001b[22m\n"
+  }
+}

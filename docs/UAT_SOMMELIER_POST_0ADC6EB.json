@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-10-19T22:10:26.604Z",
+  "sourceCommit": "0adc6ebb8bdc53c1af77b274aa596d3c070f93a0",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
+  "checks": [
+    {
+      "name": "Odoo catalog identify",
+      "status": "PASS",
+      "evidence": "Found 4 wine products; 4 have free stock and all pass the wine filter."
+    },
+    {
+      "name": "Recommendation price and free-stock parity",
+      "status": "PASS",
+      "evidence": "Product 5671: AUD 32; free stock 30; recommendation agrees with Odoo identify data."
+    },
+    {
+      "name": "Wine detail parity",
+      "status": "PASS",
+      "evidence": "Product 5671 detail matches the Odoo catalog price and free stock."
+    },
+    {
+      "name": "cheaper alternatives filter unavailable stock",
+      "status": "PASS",
+      "evidence": "Returned 2 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "upgrade alternatives filter unavailable stock",
+      "status": "PASS",
+      "evidence": "Returned 0 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "card sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5671 returned non-empty pitch text."
+    },
+    {
+      "name": "10s sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5671 returned non-empty pitch text."
+    },
+    {
+      "name": "30s sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5671 returned non-empty pitch text."
+    },
+    {
+      "name": "Sommelier product question",
+      "status": "PASS",
+      "evidence": "Product 5671 returned an answer with 0 alternatives."
+    },
+    {
+      "name": "Anonymous access guard",
+      "status": "PASS",
+      "evidence": "Recommendation API returns HTTP 401 after logout."
+    }
+  ]
+}

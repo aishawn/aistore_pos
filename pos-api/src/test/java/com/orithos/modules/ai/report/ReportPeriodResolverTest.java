@@ -87,6 +87,16 @@ class ReportPeriodResolverTest {
         ReportPeriodResolver.Window explicitYear = resolver.resolve(Map.of(), "sales on 14 October 2024");
         assertEquals(LocalDate.of(2024, 10, 14), explicitYear.from().toLocalDate());
 
+        for (String question : List.of(
+                "How much did we sell on 16 Oct 2026?",
+                "How much did the store sell on 16 October 2026?",
+                "What did we sell on 16 October 2026?")) {
+            ReportPeriodResolver.Window soldOnDate = resolver.resolve(Map.of(), question);
+            assertEquals(LocalDate.of(2026, 10, 16), soldOnDate.from().toLocalDate(), question);
+            assertEquals(LocalDate.of(2026, 10, 17), soldOnDate.toExclusive().toLocalDate(), question);
+            assertEquals(1, soldOnDate.days(), question);
+        }
+
         ReportPeriodResolver.Window chineseCurrentYear = resolver.resolve(
                 Map.of("from", "2020-01-01", "to", "2020-01-01"), "10月14日销售额");
         assertEquals(LocalDate.of(AustraliaTime.today().getYear(), 10, 14), chineseCurrentYear.from().toLocalDate());
@@ -126,6 +136,34 @@ class ReportPeriodResolverTest {
         ReportPeriodResolver.Window w = resolver.resolve(
                 Map.of("from", "2023-10-14", "to", "2023-10-14"), "sales on 14/10/2025");
         assertEquals(LocalDate.of(2025, 10, 14), w.from().toLocalDate());
+    }
+
+    @Test
+    void datedSalesParaphrasesResolveToTheSameSingleBusinessDay() {
+        ReportPeriodResolver fixedResolver = new ReportPeriodResolver(
+                Clock.fixed(Instant.parse("2026-06-01T00:00:00Z"), ZoneOffset.UTC));
+        LocalDate expected = LocalDate.of(2026, 10, 16);
+        for (String question : List.of(
+                "16 Oct 2026 sales",
+                "How much did we take on 16 Oct 2026?",
+                "What did we take on 16 October 2026?",
+                "What did we make on 16 October 2026?",
+                "How were sales on 16 October 2026?",
+                "16/10/2026 revenue",
+                "What were our takings on 16/10/2026?",
+                "收入多少：2026年10月16日",
+                "10月16日营业额")) {
+            ReportPeriodResolver.Window window = fixedResolver.resolve(
+                    Map.of("from", "2020-01-01", "to", "2020-01-02"), question);
+            assertEquals(expected, window.from().toLocalDate(), question);
+            assertEquals(expected.plusDays(1), window.toExclusive().toLocalDate(), question);
+            assertEquals(1, window.days(), question);
+        }
+
+        LocalDate currentYearDate = LocalDate.of(2026, 10, 16);
+        ReportPeriodResolver.Window implicitYear = fixedResolver.resolve(Map.of(), "10月16日卖了多少钱");
+        assertEquals(currentYearDate, implicitYear.from().toLocalDate());
+        assertEquals(currentYearDate.plusDays(1), implicitYear.toExclusive().toLocalDate());
     }
 
     @Test

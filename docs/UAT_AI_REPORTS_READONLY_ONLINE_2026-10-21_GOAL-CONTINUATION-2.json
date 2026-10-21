@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-21T02:33:35.736Z",
+  "testHarnessCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 0,
+  "checksBlocked": 0,
+  "checksTotal": 1,
+  "checks": [
+    {
+      "name": "AI assistant availability",
+      "status": "FAIL",
+      "evidence": "page.goto: net::ERR_CONNECTION_CLOSED at https://demo.orithos.com.au/overview\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/overview\", waiting until \"networkidle\"\u001b[22m\n"
+    }
+  ],
+  "failures": [
+    "page.goto: net::ERR_CONNECTION_CLOSED at https://demo.orithos.com.au/overview\nCall log:\n\u001b[2m  - navigating to \"https://demo.orithos.com.au/overview\", waiting until \"networkidle\"\u001b[22m\n"
+  ],
+  "result": "FAIL"
+}

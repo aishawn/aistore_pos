@@ -29,15 +29,9 @@ public class TenantSlugParser {
     }
 
     public HostTenant resolve(HttpServletRequest request) {
-        String headerSlug = request.getHeader("X-Orithos-Tenant-Slug");
-        if (headerSlug != null && !headerSlug.isBlank()) {
-            String normalized = normalizeSlug(headerSlug);
-            if (normalized != null && !props.reservedSlugSet().contains(normalized)) {
-                return HostTenant.tenant(normalized);
-            }
-            return HostTenant.controlPlaneTenant();
-        }
-
+        // The Host header is the tenant boundary. Never let a client-supplied
+        // tenant slug override it; callers must be rejected by the host resolver
+        // rather than selecting another store with an arbitrary request header.
         String host = firstHost(request.getHeader("X-Forwarded-Host"));
         if (host == null || host.isBlank()) {
             host = firstHost(request.getHeader("Host"));

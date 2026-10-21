@@ -123,9 +123,11 @@ export default function PlatformOperationsPage() {
     >
       <div className="mx-auto max-w-5xl">
         {error ? (
-          <div role="alert" className="mb-5 flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
-            <AlertCircle size={17} className="mt-0.5 shrink-0" />
-            <span>{error}</span>
+          <div role="alert" className="mb-5 flex flex-wrap items-start justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
+            <span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span>
+            <button type="button" onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:opacity-50">
+              <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Retry
+            </button>
           </div>
         ) : null}
 

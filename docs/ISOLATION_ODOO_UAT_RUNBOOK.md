@@ -1,44 +1,14 @@
-# Isolation Odoo UAT runbook (Phase 1)
+# Isolated UAT environment
 
-**Purpose:** Prove sell → refund → stock restore on an **isolated** Odoo database before production `aipos` write UAT.
+Use `.env.uat.example` as the variable name template and copy it to ignored `.env.uat`. Set `ODOO_MASTER_PASSWORD` only on the host that creates the isolated database; use `scripts/create-isolated-odoo-database.mjs` before starting the stack. The UAT Compose overlay requires `RUNTIME_ENVIRONMENT=uat`, and both services must set `ODOO_DATABASE` and `ISOLATION_ODOO_DATABASE` to the same dedicated database. The value must not be `aipos`.
 
-## Prerequisites
+Start with a distinct project and keep the frontend bound to localhost until identity and access checks pass:
 
-| Item | Requirement |
-|---|---|
-| Odoo DB | Dedicated DB (recommended name `aipos_uat`) **or** a dedicated TEST company the store owner approved |
-| Env | `ODOO_DATABASE` on the UAT runner must equal `ISOLATION_ODOO_DATABASE` |
-| Catalog | Seeded products with verified GST/price (or a small DEMO set) |
-| Session | Open POS session on that DB/company |
-| Creds | Pilot admin password in `.env` (`INITIAL_ADMIN_PASSWORD`); never commit secrets |
-
-## Cold history policy
-
-- Shopfront / R2 historical receipts stay on **R2** (read-only archive).
-- Production tenants must **not** bulk-import ~150k historical `pos.order` rows.
-- Demo-only historical import scripts remain opt-in (`scripts/import-r2-sales-receipts.py --apply`) and must target TEST only.
-
-See [R2_COLD_HISTORY_POLICY.md](R2_COLD_HISTORY_POLICY.md).
-
-## Run
-
-```bash
-# PowerShell
-$env:ISOLATION_ODOO_DATABASE = "aipos_uat"
-$env:ODOO_DATABASE = "aipos_uat"
-$env:PILOT_BASE_URL = "https://demo.orithos.com.au"   # or local tenant host
-node scripts/pilot-isolation-write-uat.mjs
+```powershell
+docker compose -p orithos-uat --env-file .env.uat -f docker-compose.yml -f docker-compose.uat.yml up -d
+node scripts/verify-release-identity.mjs
 ```
 
-The script **exits non-zero** if `ODOO_DATABASE` ≠ `ISOLATION_ODOO_DATABASE`, so it cannot silently hit production `aipos`.
+The version check requires `SOURCE_COMMIT` to be the exact full candidate SHA. A missing endpoint, unknown SHA, or mismatch is `BLOCKED`; it is not a deployment pass. Then call `/api/odoo/uat-context` as the platform/store admin and verify that both services attest the same dedicated database and SHA.
 
-## Acceptance
-
-1. One Card + one Cash sale complete with receipt numbers.
-2. Full refund of both sales; on-hand quantities restore.
-3. Evidence written to `docs/UAT_ISOLATION_WRITE_<date>.json` with `database`, `isolationGate: pass`, receipt ids, and stock before/after.
-4. No Classic MySQL stock/order writes.
-
-## After PASS
-
-Update [PILOT_RELEASE_READINESS.md](PILOT_RELEASE_READINESS.md) P0 rows for sales/refund reconciliation. Close-register and purchase receive remain separate evidence items.
+Prepare cashier, store manager, platform administrator and second-tenant accounts before any write. The first write run must use the isolated database and record order, payment, GST, stock, register and recovery evidence. Do not use production `aipos` for this run.

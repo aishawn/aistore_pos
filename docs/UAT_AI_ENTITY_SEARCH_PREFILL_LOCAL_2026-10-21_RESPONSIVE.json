@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-10-21T00:45:59.878Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "worktreeChangesIncluded": true,
+  "target": "http://demo.localhost:3000",
+  "scope": "mocked invalid AI entity operation and delete confirmation; all APIs intercepted; DELETE is fixture-only",
+  "status": "PASS",
+  "result": {
+    "routeUnchanged": true,
+    "unsupportedActionExplained": true,
+    "unsupportedCreateStayed": true,
+    "unsupportedImportStayed": true,
+    "unsupportedExportStayed": true,
+    "supplierViewUsesReadOnlyDirectory": true,
+    "supplierSearchPrefilled": true,
+    "customerSearchPrefilled": true,
+    "productSearchPrefilled": true,
+    "searchPrefillResults": [
+      {
+        "name": "supplier",
+        "viewport": 390,
+        "query": "Acme Wines",
+        "overflow": false
+      },
+      {
+        "name": "customer",
+        "viewport": 390,
+        "query": "Alex Example",
+        "overflow": false
+      },
+      {
+        "name": "product",
+        "viewport": 390,
+        "query": "VB Cans",
+        "overflow": false
+      },
+      {
+        "name": "supplier",
+        "viewport": 1440,
+        "query": "Acme Wines",
+        "overflow": false
+      },
+      {
+        "name": "customer",
+        "viewport": 1440,
+        "query": "Alex Example",
+        "overflow": false
+      },
+      {
+        "name": "product",
+        "viewport": 1440,
+        "query": "VB Cans",
+        "overflow": false
+      }
+    ],
+    "deleteConfirmationShown": true,
+    "cancelDismissedConfirmation": true,
+    "cancelSentNoDelete": true,
+    "failureKeptConfirmationOpen": true,
+    "duplicateConfirmGuarded": true,
+    "retryCompletedDelete": true,
+    "assistantRequests": 7,
+    "deleteRequests": [
+      "DELETE /api/customers/777",
+      "DELETE /api/customers/777"
+    ],
+    "blockedBusinessWrites": [],
+    "pageErrors": []
+  }
+}

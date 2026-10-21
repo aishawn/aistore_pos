@@ -11,6 +11,8 @@ import com.alibaba.cloud.ai.graph.checkpoint.config.SaverConfig;
 import com.alibaba.cloud.ai.graph.checkpoint.savers.MemorySaver;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
 import com.alibaba.cloud.ai.graph.state.strategy.ReplaceStrategy;
+import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
@@ -66,6 +68,7 @@ public class PosAssistantGraphConfig {
             HashMap<String, KeyStrategy> strategies = new HashMap<>();
             strategies.put("question", new ReplaceStrategy());
             strategies.put("conversation_history", new ReplaceStrategy());
+            strategies.put(CorrelationIdContext.STATE_KEY, new ReplaceStrategy());
             strategies.put("intent", new ReplaceStrategy());
             strategies.put("intent_summary", new ReplaceStrategy());
             strategies.put("slots", new ReplaceStrategy());
@@ -106,16 +109,16 @@ public class PosAssistantGraphConfig {
             OdooReportQueryNode odooReportQueryNode,
             ReportRespondNode reportRespondNode) throws GraphStateException {
 
-        var classify = node_async(new ClassifyQueryNode(
-                posAssistantChatClient, intentConfigService, intentSanitizeService, properties));
-        var respond = node_async(new GenerateResponseNode(
-                posAssistantChatClient, intentConfigService, properties, posAssistantTools));
+        var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
+                posAssistantChatClient, intentConfigService, intentSanitizeService, properties)));
+        var respond = node_async(withCorrelationContext(new GenerateResponseNode(
+                posAssistantChatClient, intentConfigService, properties, posAssistantTools)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)
                 .addNode(CLASSIFY, classify)
                 .addNode(RESPOND, respond)
-                .addNode(FILL_SLOTS, node_async(fillReportSlotsNode))
-                .addNode(REPORT_RESPOND, node_async(reportRespondNode))
-                .addNode(ODOO_REPORT, node_async(odooReportQueryNode))
+                .addNode(FILL_SLOTS, node_async(withCorrelationContext(fillReportSlotsNode)))
+                .addNode(REPORT_RESPOND, node_async(withCorrelationContext(reportRespondNode)))
+                .addNode(ODOO_REPORT, node_async(withCorrelationContext(odooReportQueryNode)))
                 .addEdge(START, CLASSIFY)
                 .addConditionalEdges(CLASSIFY, edge_async(state -> {
                     String intent = state.value("intent", String.class).orElse("unknown");
@@ -127,6 +130,12 @@ public class PosAssistantGraphConfig {
                 .addEdge(ODOO_REPORT, REPORT_RESPOND)
                 .addEdge(REPORT_RESPOND, END)
                 .addEdge(RESPOND, END);
+    }
+
+    private static NodeAction withCorrelationContext(NodeAction action) {
+        return state -> CorrelationIdContext.with(
+                state.value(CorrelationIdContext.STATE_KEY, String.class).orElse(null),
+                () -> action.apply(state));
     }
 
     @Bean

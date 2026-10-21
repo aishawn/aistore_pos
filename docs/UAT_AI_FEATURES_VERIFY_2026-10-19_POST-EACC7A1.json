@@ -1,0 +1,87 @@
+{
+  "generatedAt": "2026-10-19T09:11:00.751Z",
+  "sourceCommit": "eacc7a15fa4cb1d935b0d460a35d9f89afe47cbb",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "login",
+      "status": "PASS",
+      "evidence": "admin"
+    },
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "enabled=true assistantAvailable=true transcription=true labelVision=true invoiceVision=true"
+    },
+    {
+      "name": "NLQ assistant",
+      "status": "PASS",
+      "evidence": "intent=entity_action"
+    },
+    {
+      "name": "ASR empty guard",
+      "status": "PASS",
+      "evidence": "40010"
+    },
+    {
+      "name": "Sommelier identify text",
+      "status": "PASS",
+      "evidence": "count=8 productId=5669"
+    },
+    {
+      "name": "Sommelier recommend",
+      "status": "PASS",
+      "evidence": "recs=3"
+    },
+    {
+      "name": "Sommelier pitch",
+      "status": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "name": "Sommelier ask",
+      "status": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "name": "Sommelier similar",
+      "status": "PASS",
+      "evidence": "ok"
+    },
+    {
+      "name": "Label image empty guard",
+      "status": "PASS",
+      "evidence": "40010"
+    },
+    {
+      "name": "Invoice OCR probe",
+      "status": "INFO",
+      "evidence": "provider reachable; image has no invoice fields code=50212"
+    },
+    {
+      "name": "Price suggestions API",
+      "status": "PASS",
+      "evidence": "products=1000 writeEnabled=false"
+    },
+    {
+      "name": "Price suggestions page",
+      "status": "PASS",
+      "evidence": "https://demo.orithos.com.au/stock/price-suggestions"
+    },
+    {
+      "name": "Replenishment page",
+      "status": "PASS",
+      "evidence": "https://demo.orithos.com.au/stock/replenishment"
+    },
+    {
+      "name": "Anonymous assistant guard",
+      "status": "PASS",
+      "evidence": "status=401"
+    }
+  ],
+  "passed": 14,
+  "failed": 0,
+  "blocked": 0
+}

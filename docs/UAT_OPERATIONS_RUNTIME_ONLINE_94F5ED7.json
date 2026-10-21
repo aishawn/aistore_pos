@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-21T07:49:24.502Z",
+  "sourceCommit": "94f5ed74a18810fb7c7f684068d8f99345801a23",
+  "deployment": "unverified-after-push",
+  "target": "https://demo.orithos.com.au",
+  "scope": "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal permitted; business API mutations blocked; no inventory/RFQ/order writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "run",
+      "status": "FAIL",
+      "evidence": "LOGIN_FAILED_404"
+    }
+  ],
+  "blockedWrites": [],
+  "sessionRenewals": []
+}

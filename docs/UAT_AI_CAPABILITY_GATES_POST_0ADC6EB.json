@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-19T22:06:58.417Z",
+  "sourceCommit": "0adc6ebb8bdc53c1af77b274aa596d3c070f93a0",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "online browser fault injection for transcription capability; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "chatEnabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": [],
+      "writes": []
+    }
+  ]
+}

@@ -91,7 +91,7 @@ services:
       AI_DASHSCOPE_TEMPERATURE: ${AI_DASHSCOPE_TEMPERATURE:-0.1}
       AI_DASHSCOPE_MAX_TOKENS: ${AI_DASHSCOPE_MAX_TOKENS:-1024}
       AI_DASHSCOPE_TIMEOUT_SECONDS: ${AI_DASHSCOPE_TIMEOUT_SECONDS:-40}
-      # Host only (no /api/v1). qwen3.8-flash auto-routes to multimodal-generation.
+      # Host only (no /api/v1). qwen3.8-flash sets multi-model=true; text remains the fallback path.
       AI_DASHSCOPE_BASE_URL: ${AI_DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com}
       AI_DASHSCOPE_MULTI_MODEL: ${AI_DASHSCOPE_MULTI_MODEL:-}
       AI_DASHSCOPE_COMPLETIONS_PATH: ${AI_DASHSCOPE_COMPLETIONS_PATH:-}

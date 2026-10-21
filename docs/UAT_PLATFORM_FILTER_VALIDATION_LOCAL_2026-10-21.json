@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-10-21",
+  "target": "http://app.localhost:3035/platform/audit",
+  "scope": "local browser fixture; platform audit API intercepted; no writes",
+  "toolchain": { "node": "24.19.0" },
+  "status": "PASS",
+  "viewport": { "width": 390, "height": 844, "documentWidth": 390, "clientWidth": 390 },
+  "checks": {
+    "reverseDateRangeShowsValidation": "PASS",
+    "reverseDateRangeDoesNotSendQuery": "PASS",
+    "auditRequestsBeforeAndAfterSubmit": { "before": 2, "after": 2 },
+    "auditAriaInvalid": "true",
+    "auditAriaDescribedBy": "audit-date-range-error",
+    "pageHorizontalOverflow": false,
+    "pageErrors": 0,
+    "failuresReverseDateRange": {
+      "status": "PASS",
+      "apiRequestsBeforeAndAfterSubmit": { "before": 2, "after": 2 },
+      "ariaInvalid": "true",
+      "pageHorizontalOverflow": false
+    }
+  },
+  "limitation": "Frontend fixture only; platform backend endpoints were intercepted and this does not prove production deployment."
+}

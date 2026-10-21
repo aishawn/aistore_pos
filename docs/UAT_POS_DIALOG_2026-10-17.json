@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-17T19:39:19.998Z",
-  "sourceCommit": "bf9bfcd1e497b977c03f2e35a3555c7508f026a5",
+  "generatedAt": "2026-10-20T13:22:14.708Z",
+  "sourceCommit": "8f58868ceb46e2afabec23382bcf48ecc2348638",
   "deployment": null,
   "scope": "authenticated read-only POS dialog keyboard regression; no business writes",
   "host": "https://demo.orithos.com.au",
@@ -18,6 +18,11 @@
       "status": 200,
       "visibleBefore": true,
       "visibleAfter": false,
+      "keyboardChecks": {
+        "salesKeys": null,
+        "parkedSales": null,
+        "functionGrid": null
+      },
       "screenshot": "docs/screenshots/2026-10-17-pos-dialog/pos-help-390.png"
     },
     {
@@ -25,6 +30,11 @@
       "status": 200,
       "visibleBefore": true,
       "visibleAfter": false,
+      "keyboardChecks": {
+        "salesKeys": true,
+        "parkedSales": true,
+        "functionGrid": "not applicable to the Odoo register shell"
+      },
       "screenshot": "docs/screenshots/2026-10-17-pos-dialog/pos-help-1440.png"
     }
   ]

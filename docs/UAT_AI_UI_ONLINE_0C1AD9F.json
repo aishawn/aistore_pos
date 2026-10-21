@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-20T15:31:46.519Z",
+  "sourceCommit": "0c1ad9f4f897226a6fbd46bebb2ff2ca513de3bc",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "IDENTIFY_EMPTY_URL_https://demo.orithos.com.au/sommelier/identify_results=0_all=13_orithos Overview Register Stock Customers Reporting Orithos AI Wine Assistant Find a wine or identify a label Find a Wine Recommend in-stock bottles by budget and taste Identify Wine Label Search by name, barcode, or label photo Price Suggestions Suggested shelf prices. You apply changes Scan Supplier Invoice Preview only. Does not create a purchase AI Report Metrics Admin-only query health and latency Setup orithos Skip to main content Wine Assistant Identify a wine Photograph the bottle label,"
+    }
+  ],
+  "results": [
+    {
+      "failure": "IDENTIFY_EMPTY_URL_https://demo.orithos.com.au/sommelier/identify_results=0_all=13_orithos Overview Register Stock Customers Reporting Orithos AI Wine Assistant Find a wine or identify a label Find a Wine Recommend in-stock bottles by budget and taste Identify Wine Label Search by name, barcode, or label photo Price Suggestions Suggested shelf prices. You apply changes Scan Supplier Invoice Preview only. Does not create a purchase AI Report Metrics Admin-only query health and latency Setup orithos Skip to main content Wine Assistant Identify a wine Photograph the bottle label,"
+    }
+  ]
+}

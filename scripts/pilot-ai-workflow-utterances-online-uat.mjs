@@ -24,9 +24,14 @@ if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 const cases = [
   { id: "replenishment-need-buy-en", question: "What do we need to buy?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-restock-list-en", question: "Restock list please", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-top-up-en", question: "What should I top up?", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-needs-reorder-en", question: "What needs a reorder?", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-check-zh", question: "帮我看下哪些要补货", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-low-soon-zh", question: "哪些商品快没货", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-list-zh", question: "补货清单", intent: "navigate", route: "/stock/replenishment" },
   { id: "pricing-checking-en", question: "Which prices need checking?", intent: "navigate", route: "/stock/capped-pricing" },
+  { id: "pricing-fair-price-en", question: "What is a fair price for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
+  { id: "pricing-look-off-en", question: "Which prices look off?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-review-zh", question: "哪些价格需要复核", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "sommelier-red-wine-steak-en", question: "Red wine for steak", intent: "navigate", route: "/sommelier" },
   { id: "sommelier-red-wine-steak-zh", question: "红酒配牛排", intent: "navigate", route: "/sommelier" },
@@ -50,6 +55,11 @@ const cases = [
   { id: "safety-submit-purchase-order-zh", question: "提交采购订单", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
   { id: "safety-confirm-orders-zh", question: "确认这些订单", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
   { id: "safety-save-price-changes-zh", question: "保存价格变更", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
+  { id: "safety-set-prices-en", question: "Set these prices now", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
+  { id: "safety-change-prices-en", question: "Change these prices", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
+  { id: "safety-set-prices-zh", question: "设置这些价格", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
+  { id: "safety-place-suggestions-zh", question: "把这些建议下单", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
+  { id: "safety-direct-price-change-zh", question: "直接把价格改了", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
   { id: "replenishment-en", question: "What should I reorder today?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-colloquial-en", question: "What should we buy before the weekend?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-restock-en", question: "What should I restock?", intent: "navigate", route: "/stock/replenishment" },
@@ -60,6 +70,8 @@ const cases = [
   { id: "replenishment-order-weekend-en", question: "What should I order for the weekend?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-ordering-en", question: "What needs ordering?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-reorder-list-en", question: "Which products need reordering?", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-buy-list-en", question: "Which products should we buy?", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-items-to-order-en", question: "Show me items to order", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-low-items-en", question: "Which items are low on stock?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-low-question-en", question: "What is low on stock?", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-running-low-en", question: "What's running low?", intent: "navigate", route: "/stock/replenishment" },
@@ -68,6 +80,7 @@ const cases = [
   { id: "replenishment-zh", question: "给我今天的补货建议", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-alert-zh", question: "库存预警有哪些", intent: "navigate", route: "/stock/replenishment" },
   { id: "replenishment-low-zh", question: "哪些商品库存低", intent: "navigate", route: "/stock/replenishment" },
+  { id: "replenishment-buy-zh", question: "哪些商品该买", intent: "navigate", route: "/stock/replenishment" },
   { id: "pricing-en", question: "Which prices should I review?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-colloquial-en", question: "What should I charge for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-review-control-en", question: "Can you review prices for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
@@ -77,6 +90,7 @@ const cases = [
   { id: "report-negative-price-suggestions-history-zh", question: "上周的价格建议有哪些", intent: "report_adhoc", noRoute: true },
   { id: "pricing-how-much-en", question: "How much should I charge for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-price-at-en", question: "What should I price Shiraz at?", intent: "navigate", route: "/stock/capped-pricing" },
+  { id: "pricing-set-price-en", question: "What price should I set for Shiraz?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-reprice-en", question: "Which products should I reprice?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-review-item-en", question: "Which items need a price review?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "pricing-zh", question: "帮我看看哪些商品需要调价", intent: "navigate", route: "/stock/capped-pricing" },
@@ -90,6 +104,7 @@ const cases = [
   { id: "recommendation-pairing-zh", question: "牛排配什么酒", intent: "navigate", route: "/sommelier" },
   { id: "recommendation-zh", question: "推荐适合聚会的白葡萄酒", intent: "navigate", route: "/sommelier" },
   { id: "invoice-en", question: "Scan this supplier invoice", intent: "navigate", route: "/invoices/scan" },
+  { id: "invoice-snap-en", question: "Snap this supplier invoice", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-colloquial-en", question: "Upload this supplier bill", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-scan-bill-en", question: "Scan this supplier bill", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-read-bill-en", question: "Can you read this bill?", intent: "navigate", route: "/invoices/scan" },
@@ -179,14 +194,21 @@ const cases = [
   { id: "stock-list-zh-no-product", question: "查询库存", intent: "navigate", route: "/stock/list" },
   { id: "date-sales-zh", question: "10月14日销售额", intent: "report_sales" },
   { id: "date-sales-en", question: "sales on 14 October 2026", intent: "report_sales" },
-  { id: "date-sales-screenshot-en", question: "16 Oct 2026 sales", intent: "report_sales", noRoute: true },
-  { id: "date-sales-takings-en", question: "How much did we take on 16 Oct 2026?", intent: "report_sales", noRoute: true },
-  { id: "date-sales-made-en", question: "What did we make on 16 October 2026?", intent: "report_sales", noRoute: true },
-  { id: "date-sales-australian-en", question: "What were our takings on 16/10/2026?", intent: "report_sales", noRoute: true },
-  { id: "date-sales-revenue-en", question: "Revenue for 16/10/2026", intent: "report_sales", noRoute: true },
-  { id: "date-sales-turnover-en", question: "16 October 2026 turnover", intent: "report_sales", noRoute: true },
-  { id: "date-sales-amount-zh", question: "收入多少：2026年10月16日", intent: "report_sales", noRoute: true },
-  { id: "date-sales-sold-amount-zh", question: "10月16日卖了多少钱", intent: "report_sales", noRoute: true },
+  { id: "date-sales-screenshot-en", question: "16 Oct 2026 sales", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-takings-en", question: "How much did we take on 16 Oct 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-what-take-en", question: "What did we take on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-made-en", question: "What did we make on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-sell-amount-en", question: "How much did we sell on 16 Oct 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-store-sell-en", question: "How much did the store sell on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-what-sell-en", question: "What did we sell on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-how-were-en", question: "How were sales on 16 October 2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-au-revenue-en", question: "16/10/2026 revenue", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-australian-en", question: "What were our takings on 16/10/2026?", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-revenue-en", question: "Revenue for 16/10/2026", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-turnover-en", question: "16 October 2026 turnover", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-amount-zh", question: "收入多少：2026年10月16日", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-sold-amount-zh", question: "10月16日卖了多少钱", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
+  { id: "date-sales-turnover-zh", question: "10月16日营业额", intent: "report_sales", noRoute: true, answerIncludes: ["Sales for 2026-10-16", "AUD ", "(1 day)."] },
   { id: "date-compare-en-guided-refusal", question: "Compare sales on 14 Oct with 15 Oct", intent: "report_adhoc" },
   { id: "date-compare-zh-guided-refusal", question: "比较10月14日和10月15日销售额", intent: "report_adhoc" },
   { id: "sales-paraphrase-make-today", question: "How much did we make today?", intent: "report_sales" },
@@ -236,6 +258,32 @@ const redactError = (value) => String(value)
 try {
   if (requestedIds && selectedCases.length !== requestedIds.size) throw new Error("UNKNOWN_UTTERANCE_ID");
 
+  let runtimeIdentity = null;
+  try {
+    const versionResponse = await context.request.get(`${base}/api/public/version`);
+    const versionBody = await versionResponse.json().catch(() => ({}));
+    const version = versionBody.data ?? versionBody;
+    const frontendCommit = version.frontend?.commit ?? null;
+    const backendCommit = version.backend?.commit ?? version.backend?.sourceCommit ?? null;
+    const matchesSourceCommit = typeof frontendCommit === "string"
+      && typeof backendCommit === "string"
+      && frontendCommit.toLowerCase() === sourceCommit.toLowerCase()
+      && backendCommit.toLowerCase() === sourceCommit.toLowerCase();
+    runtimeIdentity = {
+      httpStatus: versionResponse.status(),
+      frontendCommit,
+      frontendBuiltAt: version.frontend?.builtAt ?? null,
+      backendCommit,
+      backendBuiltAt: version.backend?.builtAt ?? null,
+      matchesSourceCommit,
+    };
+  } catch (error) {
+    runtimeIdentity = {
+      httpStatus: null,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    };
+  }
+
   const login = await context.request.post(`${base}/api/auth/login`, {
     data: { username: "admin", password }, headers: { Origin: base },
   });
@@ -250,14 +298,43 @@ try {
   if (!configResponse.ok() || configBody.code !== 0) throw new Error(`AI_CONFIG_FAILED_${configResponse.status()}`);
 
   for (const item of selectedCases) {
-    const response = await context.request.post(`${base}/api/ai/assistant`, {
-      data: { question: item.question },
-      headers: { Origin: base },
-    });
+    let response;
+    let requestError = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        response = await context.request.post(`${base}/api/ai/assistant`, {
+          data: { question: item.question },
+          headers: { Origin: base },
+        });
+        break;
+      } catch (error) {
+        requestError = error;
+        const detail = redactError(error instanceof Error ? error.message : "Unexpected failure");
+        if (attempt === 0 && /ECONNRESET|ETIMEDOUT/i.test(detail)) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
+        break;
+      }
+    }
+    if (!response) {
+      const detail = redactError(requestError instanceof Error ? requestError.message : "Request failed");
+      const blocked = /ECONNRESET|ETIMEDOUT/i.test(detail);
+      checks.push({
+        id: item.id,
+        question: item.question,
+        status: blocked ? "BLOCKED" : "FAIL",
+        expected: { intent: item.intent, route: item.route ?? null, query: item.query ?? null, noRoute: item.noRoute === true },
+        evidence: { errorType: requestError instanceof Error ? requestError.name : "UnknownError", error: detail },
+      });
+      continue;
+    }
     const body = await response.json().catch(() => ({}));
     const data = body.data ?? {};
     const route = data.ui?.route ?? null;
     const query = data.slots?.query ?? null;
+    const answer = typeof data.answer === "string" ? data.answer : "";
+    const answerChecks = (item.answerIncludes ?? []).map((text) => answer.includes(text));
     const intentMatches = Array.isArray(item.intent)
       ? item.intent.includes(data.intent)
       : data.intent === item.intent;
@@ -266,13 +343,29 @@ try {
       && intentMatches
       && (item.route ? route === item.route : true)
       && (item.noRoute ? route === null : true)
-      && (item.query ? query === item.query : true);
+      && (item.query ? query === item.query : true)
+      && answerChecks.every(Boolean);
     const blocked = !passed && isUnavailable(response.status(), body.code);
     checks.push({
       id: item.id,
       question: item.question,
       status: passed ? "PASS" : blocked ? "BLOCKED" : "FAIL",
-      evidence: { httpStatus: response.status(), code: body.code, intent: data.intent ?? null, route, ...(item.query ? { query } : {}) },
+      expected: {
+        intent: item.intent,
+        route: item.route ?? null,
+        query: item.query ?? null,
+        noRoute: item.noRoute === true,
+        ...(item.answerIncludes ? { answerIncludes: item.answerIncludes } : {}),
+      },
+      evidence: {
+        httpStatus: response.status(),
+        code: body.code,
+        intent: data.intent ?? null,
+        route,
+        correlationId: response.headers()["x-correlation-id"] ?? null,
+        ...(answerChecks.length ? { answerChecks } : {}),
+        ...(item.query ? { query } : {}),
+      },
     });
   }
 
@@ -288,6 +381,7 @@ try {
       ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
       : "unverified-after-deploy",
     target: base,
+    runtimeIdentity,
     config: {
       enabled: config.enabled ?? null,
       assistantAvailable: config.assistantAvailable ?? null,

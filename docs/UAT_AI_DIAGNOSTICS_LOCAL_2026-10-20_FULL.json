@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-10-20T10:00:25.205Z",
+  "sourceCommit": "553f6e286b1381451737f255fb448ecd8fdf2a22",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "assistant response diagnostics UI; AI request intercepted; no business writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Open Orithos AI' }).first() to be visible\u001b[22m\n body=orithos\nPlatform admin required\n\nThis console lists every store. Sign in with a platform operator account on app.orithos.com.au (not a store owner from the brand signup form).\n\nBack to sign in"
+    }
+  ],
+  "writes": []
+}

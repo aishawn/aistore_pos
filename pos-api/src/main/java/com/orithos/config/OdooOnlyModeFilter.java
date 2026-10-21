@@ -1,0 +1,70 @@
+package com.orithos.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.common.ApiResult;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Set;
+
+/**
+ * Fail closed for the old MySQL POS API when a deployment is Odoo-only.
+ * Odoo routes are served by the Next BFF and are not affected. This prevents
+ * unscoped reference controllers from becoming a second writable tenant store.
+ */
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 5)
+public final class OdooOnlyModeFilter extends OncePerRequestFilter {
+    private static final Set<String> LEGACY_PREFIXES = Set.of(
+            "/api/barcode-templates", "/api/bulk-price-edit", "/api/buying-periods",
+            "/api/capped-pricing", "/api/classifications", "/api/customer-displays",
+            "/api/customer-payments", "/api/customers", "/api/external-stocktakes",
+            "/api/future-costs", "/api/future-prices", "/api/gift-cards", "/api/host",
+            "/api/host-connections", "/api/integrations", "/api/kitchen-screens",
+            "/api/mail-log", "/api/notifications", "/api/order-reviews", "/api/orders",
+            "/api/outlets", "/api/payment-methods", "/api/price-lists", "/api/price-sets",
+            "/api/product-backorders", "/api/products", "/api/promotion-categories",
+            "/api/promotions", "/api/push-devices", "/api/quick-menu", "/api/receipts",
+            "/api/register-closures", "/api/registers", "/api/reports", "/api/resources",
+            "/api/sale-keys", "/api/sales", "/api/security-events", "/api/settings",
+            "/api/shelf-tickets", "/api/statements", "/api/stock-list", "/api/stocktakes",
+            "/api/suppliers", "/api/supply-chain", "/api/tax-rates", "/api/ticket-template-pages",
+            "/api/ticket-templates", "/api/transferees", "/api/trashed-items", "/api/users",
+            "/api/vendor-connections", "/api/webhooks");
+
+    private final boolean enabled;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public OdooOnlyModeFilter(@Value("${app.odoo-only-mode:false}") boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    @Override
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain chain) throws ServletException, IOException {
+        if (enabled && isLegacy(request.getRequestURI())) {
+            response.setStatus(HttpServletResponse.SC_GONE);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(
+                    ApiResult.fail(41001, "This Classic POS API is retired; use the Odoo workflow.")));
+            return;
+        }
+        chain.doFilter(request, response);
+    }
+
+    private static boolean isLegacy(String path) {
+        return LEGACY_PREFIXES.stream().anyMatch(prefix -> path.equals(prefix) || path.startsWith(prefix + "/"));
+    }
+}

@@ -1,0 +1,82 @@
+{
+  "source": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\docs\\功能说明.html",
+  "generatedAt": "2026-10-21T06:39:09.531Z",
+  "checks": [
+    {
+      "viewport": 390,
+      "overflow": false,
+      "anchors": true,
+      "offenders": [
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 412,
+          "text": "平台管理员后台"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 525,
+          "text": "关键记录与追溯"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 638,
+          "text": "运维迭代路线图"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 725,
+          "text": "租户与开店"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 812,
+          "text": "收银与班次"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 899,
+          "text": "商品与客户"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 1012,
+          "text": "智能定价与促销"
+        },
+        {
+          "tag": "A",
+          "id": "",
+          "className": "",
+          "right": 1099,
+          "text": "库存与采购"
+        }
+      ],
+      "pageErrors": [],
+      "missingLinks": [],
+      "status": "PASS"
+    },
+    {
+      "viewport": 1440,
+      "overflow": false,
+      "anchors": true,
+      "offenders": [],
+      "pageErrors": [],
+      "missingLinks": [],
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-10-20T19:26:45.615Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
+  "checks": [
+    {
+      "name": "Odoo catalog identify",
+      "status": "PASS",
+      "evidence": "Search=Shiraz; found 48 wine products; 7 have free stock and all pass the wine filter."
+    },
+    {
+      "name": "Recommendation price and free-stock parity",
+      "status": "PASS",
+      "evidence": "Product 5245: AUD 19.9909; free stock 8; recommendation agrees with Odoo identify data."
+    },
+    {
+      "name": "Wine detail parity",
+      "status": "PASS",
+      "evidence": "Product 5245 detail matches the Odoo catalog price and free stock."
+    },
+    {
+      "name": "cheaper alternatives filter unavailable stock",
+      "status": "PASS",
+      "evidence": "Returned 2 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "upgrade alternatives filter unavailable stock",
+      "status": "PASS",
+      "evidence": "Returned 5 alternatives; every result has positive free stock."
+    },
+    {
+      "name": "card sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5245 returned non-empty pitch text."
+    },
+    {
+      "name": "10s sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5245 returned non-empty pitch text."
+    },
+    {
+      "name": "30s sales pitch",
+      "status": "PASS",
+      "evidence": "Product 5245 returned non-empty pitch text."
+    },
+    {
+      "name": "Sommelier product question",
+      "status": "PASS",
+      "evidence": "Product 5245 returned an answer with 0 alternatives."
+    },
+    {
+      "name": "Anonymous access guard",
+      "status": "PASS",
+      "evidence": "Recommendation API returns HTTP 401 after logout."
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-10-21T10:28:36.276Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "5afdf2cb6816f76c82b43b028b4bfd019fff061f",
+  "deployment": "unverified-after-deploy",
+  "staticRoutes": 138,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 272,
+  "checksTotal": 276,
+  "expectedUnavailable": [],
+  "failures": [
+    {
+      "route": "/platform/audit",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": [],
+      "expectedUnavailable": false
+    },
+    {
+      "route": "/platform/failures",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": [],
+      "expectedUnavailable": false
+    },
+    {
+      "route": "/platform/audit",
+      "viewport": 1440,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": [],
+      "expectedUnavailable": false
+    },
+    {
+      "route": "/platform/failures",
+      "viewport": 1440,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": [],
+      "expectedUnavailable": false
+    }
+  ],
+  "result": "FAIL"
+}

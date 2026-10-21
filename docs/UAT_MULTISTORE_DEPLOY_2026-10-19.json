@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-19T04:27:38.917Z",
-  "sourceCommit": "126c6575ed34dea5e46ddaf8d959b1493ab20941",
-  "deploymentSha": "a6d5a579761cdce9d755c691f00deae5f749ee4a",
+  "generatedAt": "2026-10-19T04:53:20.159Z",
+  "sourceCommit": "8cf2cc09bb96f0687323433187462e83e357da86",
+  "deploymentSha": null,
   "appBase": "https://app.orithos.com.au",
   "demoBase": "https://demo.orithos.com.au",
   "passed": 15,
@@ -92,7 +92,7 @@
     {
       "name": "demo.manageCash.page",
       "status": "PASS",
-      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Loadin"
+      "snippet": "orithos Overview Register Stock Customers Reporting Orithos AI Setup ONLINE admin Skip to main content Manage Cash Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register. Open s"
     },
     {
       "name": "demo.purchases.page",

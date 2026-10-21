@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-10-17T18:28:43.204Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "89b6c24",
+  "staticRoutes": 131,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 262,
+  "checksTotal": 262,
+  "failures": [],
+  "result": "PASS"
+}

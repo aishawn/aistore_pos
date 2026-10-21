@@ -33,36 +33,29 @@ try {
   await context.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    if (request.method() === "PATCH" && url.pathname === "/api/bulk-price-edit/prices") {
+    if (request.method() === "PATCH" && url.pathname === "/api/odoo/products/101") {
       patchAttempts += 1;
       patches.push(request.postDataJSON());
-      if (patchAttempts === 1) {
-        return route.fulfill({
-          status: 503,
-          contentType: "application/json",
-          body: JSON.stringify({ code: 50301, message: "Price update rejected", data: null }),
-        });
-      }
+      return route.fulfill({
+        status: patchAttempts === 1 ? 503 : 200,
+        contentType: "application/json",
+        body: JSON.stringify(patchAttempts === 1
+          ? { message: "Price update could not be confirmed.", resultState: "unknown" }
+          : { ok: true }),
+      });
+    }
+    if (request.method() === "POST" && url.pathname === "/api/odoo/records") {
       return route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ code: 0, message: "ok", data: null }),
+        body: JSON.stringify({ items: [{ id: 101, name: "DEMO Shiraz", display_name: "DEMO Shiraz", barcode: false, default_code: "DEMO-SHIRAZ", list_price: 12, taxes_id: [], price_included: 12, price_tax: 0, qty_available: 4, free_qty: 4, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }], limit: 30, offset: 0 }),
       });
     }
     if (request.method() !== "GET" && request.method() !== "HEAD" && request.method() !== "OPTIONS") {
       return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ message: "fixture write blocked" }) });
     }
-    if (url.pathname === "/api/bulk-price-edit") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ code: 0, message: "ok", data: {
-          items: [{ productId: "101", productName: "DEMO Shiraz", caseQuantity: 6, priceSetName: "Default", prices: [{ priceId: "p1", quantity: 1, price: 12 }] }],
-          total: 1,
-          page: 1,
-          size: 20,
-        } }),
-      });
+    if (request.method() === "GET" && url.pathname === "/api/odoo/products/101") {
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: 101, list_price: 12 }) });
     }
     if (url.pathname === "/api/classifications/category") {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "ok", data: [] }) });
@@ -80,27 +73,17 @@ try {
   record("bulk page loads", response?.ok() ?? false, String(response?.status() ?? "no response"));
   const input = page.locator('input[type="number"]').first();
   await input.waitFor({ state: "visible", timeout: 30000 });
-  const searchInput = page.getByPlaceholder("Search for Product or Classification...").first();
+  const searchInput = page.getByRole("textbox", { name: "Search bulk price products" });
   record("deep-link search is usable", await searchInput.inputValue() === "DEMO-SHIRAZ", await searchInput.inputValue());
 
   await input.fill("13.50");
-  await page.getByRole("heading", { name: "Bulk Price Edit" }).click();
-  const saveAlert = page.getByText("Price update rejected", { exact: true });
+  await page.getByRole("checkbox", { name: "I have reviewed these changes." }).check();
+  await page.getByRole("button", { name: "Save reviewed prices", exact: true }).click();
+  const saveAlert = page.getByText("Result pending confirmation. Check Odoo before making another change.", { exact: true });
   await saveAlert.waitFor({ state: "visible", timeout: 10000 });
-  record("failed save is announced", await saveAlert.getAttribute("role") === "alert", "cell-level alert contains safe API message");
-  const inputRect = await input.boundingBox();
-  const alertRect = await saveAlert.boundingBox();
-  record("save error stays next to its input and within viewport", Boolean(inputRect && alertRect
-    && alertRect.y >= inputRect.y + inputRect.height - 1
-    && alertRect.y <= inputRect.y + inputRect.height + 10
-    && alertRect.x >= 0 && alertRect.x + alertRect.width <= viewportWidth), JSON.stringify({ inputRect, alertRect }));
-  record("failed save rolls back", await input.inputValue() === "12", await input.inputValue());
-  record("input is not left busy", (await input.getAttribute("aria-busy")) !== "true", await input.getAttribute("aria-busy") ?? "unset");
-
-  await input.fill("13.50");
-  await page.getByRole("heading", { name: "Bulk Price Edit" }).click();
-  await page.waitForTimeout(300);
-  record("retry save can proceed", patchAttempts === 2 && patches[1]?.price === 13.5, JSON.stringify(patches));
+  record("unknown save is announced", await saveAlert.getAttribute("role") === "status", "read-back result is explicitly pending confirmation");
+  record("uncertain value stays visible", await input.inputValue() === "13.50", await input.inputValue());
+  record("automatic retry is disabled", patchAttempts === 1 && await page.getByRole("button", { name: "Save reviewed prices", exact: true }).isDisabled(), JSON.stringify(patches));
   record("no page errors", pageErrors.length === 0, JSON.stringify(pageErrors));
   await context.close();
 } catch (error) {

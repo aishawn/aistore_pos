@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-18T11:01:20.736Z",
-  "sourceCommit": "6a60a3f",
-  "deployment": "unverified-after-webhook",
+  "generatedAt": "2026-10-19T00:56:04.382Z",
+  "sourceCommit": "2a2d9ab",
+  "deployment": "2a2d9ab",
   "scope": "authenticated AI availability UI and local shortcut; no business writes",
   "checks": [
     {

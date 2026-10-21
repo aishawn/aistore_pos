@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-14T14:46:45.938Z",
-  "sourceCommit": "42844b86422bf81ad38d74122dddd3b8a3b1d8fe",
-  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
-  "target": "https://app.orithos.com.au",
+  "generatedAt": "2026-10-20T10:20:39.415Z",
+  "sourceCommit": "2380226a23009c7f334c47882356cdfba482e9be",
+  "deployment": null,
+  "target": "https://demo.orithos.com.au",
   "status": "PASS",
   "scope": "connection failure presentation only; Odoo session API intercepted in browser, no Odoo credentials or requests sent",
   "viewport": 390,

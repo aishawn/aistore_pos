@@ -1,0 +1,281 @@
+{
+  "generatedAt": "2026-10-21T04:15:43.007Z",
+  "sourceCommit": "1897d8b2f65946ddedef63f1dbe7437548851ca5",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v24.19.0",
+  "target": "http://demo.localhost:3035",
+  "scope": "Local browser fixtures for delayed confirmation/receipt, failure recovery and success feedback; all APIs intercepted; no Odoo writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 390,
+      "name": "Escape cannot dismiss an in-flight purchase confirmation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "confirmation failure remains visible in its dialog",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "confirmation sends one request",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "receipt quantity cannot change while request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "Escape cannot dismiss an in-flight receipt",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "receipt failure keeps edited quantity and error visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "receipt success survives detail reload",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "receipt retry preserves submitted payload",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "no page JS errors or viewport overflow",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 1024,
+      "name": "Escape cannot dismiss an in-flight purchase confirmation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "confirmation failure remains visible in its dialog",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "confirmation sends one request",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "receipt quantity cannot change while request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "Escape cannot dismiss an in-flight receipt",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "receipt failure keeps edited quantity and error visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "receipt success survives detail reload",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "receipt retry preserves submitted payload",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "no page JS errors or viewport overflow",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 1440,
+      "name": "Escape cannot dismiss an in-flight purchase confirmation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "confirmation failure remains visible in its dialog",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "confirmation sends one request",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "receipt quantity cannot change while request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "Escape cannot dismiss an in-flight receipt",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "receipt failure keeps edited quantity and error visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "receipt success survives detail reload",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "receipt retry preserves submitted payload",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "no page JS errors or viewport overflow",
+      "status": "PASS",
+      "evidence": []
+    }
+  ],
+  "fixtureWrites": [
+    {
+      "viewport": 390,
+      "path": "/api/odoo/purchase-orders/987654",
+      "body": {
+        "confirm": true
+      }
+    },
+    {
+      "viewport": 390,
+      "path": "/api/odoo/purchase-orders/987654/receive",
+      "body": {
+        "confirm": true,
+        "pickingId": 71,
+        "lines": [
+          {
+            "moveId": 81,
+            "qtyDone": 1
+          }
+        ]
+      }
+    },
+    {
+      "viewport": 390,
+      "path": "/api/odoo/purchase-orders/987654/receive",
+      "body": {
+        "confirm": true,
+        "pickingId": 71,
+        "lines": [
+          {
+            "moveId": 81,
+            "qtyDone": 1
+          }
+        ]
+      }
+    },
+    {
+      "viewport": 1024,
+      "path": "/api/odoo/purchase-orders/987654",
+      "body": {
+        "confirm": true
+      }
+    },
+    {
+      "viewport": 1024,
+      "path": "/api/odoo/purchase-orders/987654/receive",
+      "body": {
+        "confirm": true,
+        "pickingId": 71,
+        "lines": [
+          {
+            "moveId": 81,
+            "qtyDone": 1
+          }
+        ]
+      }
+    },
+    {
+      "viewport": 1024,
+      "path": "/api/odoo/purchase-orders/987654/receive",
+      "body": {
+        "confirm": true,
+        "pickingId": 71,
+        "lines": [
+          {
+            "moveId": 81,
+            "qtyDone": 1
+          }
+        ]
+      }
+    },
+    {
+      "viewport": 1440,
+      "path": "/api/odoo/purchase-orders/987654",
+      "body": {
+        "confirm": true
+      }
+    },
+    {
+      "viewport": 1440,
+      "path": "/api/odoo/purchase-orders/987654/receive",
+      "body": {
+        "confirm": true,
+        "pickingId": 71,
+        "lines": [
+          {
+            "moveId": 81,
+            "qtyDone": 1
+          }
+        ]
+      }
+    },
+    {
+      "viewport": 1440,
+      "path": "/api/odoo/purchase-orders/987654/receive",
+      "body": {
+        "confirm": true,
+        "pickingId": 71,
+        "lines": [
+          {
+            "moveId": 81,
+            "qtyDone": 1
+          }
+        ]
+      }
+    }
+  ],
+  "blockedWrites": []
+}

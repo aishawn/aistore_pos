@@ -9,14 +9,17 @@ import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -103,8 +106,20 @@ public class OdooReportQueryService {
             };
             return rows == null ? Result.fail("ODOO_REPORT_TOO_LARGE") : Result.ok(rows);
         } catch (Exception e) {
-            log.warn("AI Odoo report failed vendorId={} intent={} cause={}", tenant.vendorId(), intent,
-                    e.getClass().getSimpleName());
+            OdooReportFailure failure = e instanceof OdooReportFailure reportFailure ? reportFailure : null;
+            String failureKind = failure != null ? failure.kind()
+                    : e instanceof HttpTimeoutException ? "ODOO_TIMEOUT"
+                    : e instanceof IOException ? "ODOO_IO_ERROR" : "ODOO_UNEXPECTED_ERROR";
+            log.warn("AI Odoo report failed vendorId={} intent={} failureKind={} httpStatus={} rpcCode={} "
+                            + "rpcType={} rpcModel={} rpcMethod={} responseType={} causeType={} correlationId={}",
+                    tenant.vendorId(), intent, failureKind,
+                    failure == null ? "" : failure.httpStatus(),
+                    failure == null ? "" : failure.rpcCode(),
+                    failure == null ? "" : failure.rpcType(),
+                    failure == null ? "" : failure.rpcModel(),
+                    failure == null ? "" : failure.rpcMethod(),
+                    failure == null ? "" : failure.responseType(),
+                    e.getClass().getSimpleName(), correlationId());
             return Result.fail("ODOO_REPORT_UNAVAILABLE");
         }
     }
@@ -387,7 +402,7 @@ public class OdooReportQueryService {
         HttpResponse<String> response = post("/web/session/authenticate", params, null);
         JsonNode root = objectMapper.readTree(response.body());
         if (root.path("result").path("uid").asLong(0) <= 0) {
-            throw new IllegalStateException("Odoo authentication failed");
+            throw new OdooReportFailure("ODOO_AUTH_REJECTED", null, "", "");
         }
         for (String cookie : response.headers().allValues("set-cookie")) {
             int start = cookie.indexOf("session_id=");
@@ -397,7 +412,7 @@ public class OdooReportQueryService {
                 return end < 0 ? value : value.substring(0, end);
             }
         }
-        throw new IllegalStateException("Odoo session cookie is missing");
+        throw new OdooReportFailure("ODOO_SESSION_COOKIE_MISSING", null, "", "");
     }
 
     private JsonNode call(String session, String model, String method,
@@ -408,8 +423,19 @@ public class OdooReportQueryService {
         params.set("args", objectMapper.valueToTree(args));
         params.set("kwargs", objectMapper.valueToTree(kwargs));
         JsonNode root = objectMapper.readTree(post("/web/dataset/call_kw", params, session).body());
-        if (root.hasNonNull("error")) throw new IllegalStateException("Odoo report RPC failed");
-        return root.path("result");
+        if (root.hasNonNull("error")) {
+            JsonNode error = root.path("error");
+            JsonNode code = error.path("code");
+            String rpcCode = code.isNumber() ? code.asText() : "";
+            String rpcType = simpleExceptionName(error.path("data").path("name").asText(""));
+            throw new OdooReportFailure("ODOO_RPC_ERROR", null, rpcCode, rpcType, model, method, "");
+        }
+        JsonNode result = root.get("result");
+        if (result == null || !result.isArray()) {
+            String responseType = result == null ? "MISSING" : result.getNodeType().name();
+            throw new OdooReportFailure("ODOO_INVALID_RESPONSE", null, "", "", model, method, responseType);
+        }
+        return result;
     }
 
     private HttpResponse<String> post(String path, ObjectNode params, String session) throws Exception {
@@ -421,9 +447,13 @@ public class OdooReportQueryService {
         HttpRequest.Builder request = HttpRequest.newBuilder().uri(URI.create(baseUrl + path))
                 .timeout(Duration.ofSeconds(15)).header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)));
+        String correlationId = MDC.get("correlationId");
+        if (correlationId != null) request.header("X-Correlation-ID", correlationId);
         if (session != null) request.header("Cookie", "session_id=" + session);
         HttpResponse<String> response = httpClient.send(request.build(), HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() >= 400) throw new IllegalStateException("Odoo HTTP error");
+        if (response.statusCode() >= 400) {
+            throw new OdooReportFailure("ODOO_HTTP_ERROR", response.statusCode(), "", "");
+        }
         return response;
     }
 
@@ -486,6 +516,72 @@ public class OdooReportQueryService {
     }
 
     private record CachedTimezone(ZoneId zone, long expiresAtMillis) {}
+
+    private static String correlationId() {
+        String value = MDC.get("correlationId");
+        return value == null ? "" : value;
+    }
+
+    private static final class OdooReportFailure extends RuntimeException {
+        private final String kind;
+        private final Integer httpStatus;
+        private final String rpcCode;
+        private final String rpcType;
+        private final String rpcModel;
+        private final String rpcMethod;
+        private final String responseType;
+
+        private OdooReportFailure(String kind, Integer httpStatus, String rpcCode, String rpcType) {
+            this(kind, httpStatus, rpcCode, rpcType, "", "", "");
+        }
+
+        private OdooReportFailure(String kind, Integer httpStatus, String rpcCode, String rpcType,
+                                  String rpcModel, String rpcMethod, String responseType) {
+            super(kind);
+            this.kind = kind;
+            this.httpStatus = httpStatus;
+            this.rpcCode = rpcCode;
+            this.rpcType = rpcType;
+            this.rpcModel = rpcModel;
+            this.rpcMethod = rpcMethod;
+            this.responseType = responseType;
+        }
+
+        private String kind() {
+            return kind;
+        }
+
+        private Integer httpStatus() {
+            return httpStatus;
+        }
+
+        private String rpcCode() {
+            return rpcCode;
+        }
+
+        private String rpcType() {
+            return rpcType;
+        }
+
+        private String rpcModel() {
+            return rpcModel;
+        }
+
+        private String rpcMethod() {
+            return rpcMethod;
+        }
+
+        private String responseType() {
+            return responseType;
+        }
+    }
+
+    private static String simpleExceptionName(String name) {
+        if (name == null || name.isBlank()) return "";
+        int separator = name.lastIndexOf('.');
+        String simpleName = separator >= 0 ? name.substring(separator + 1) : name;
+        return simpleName.matches("[A-Za-z][A-Za-z0-9_]{0,79}") ? simpleName : "";
+    }
 
     private boolean configured() {
         if (baseUrl.isBlank() || database.isBlank() || username.isBlank() || password.isBlank()) return false;

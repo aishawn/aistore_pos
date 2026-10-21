@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-21T10:42:01.009Z",
+  "deployment": "5afdf2cb6816f76c82b43b028b4bfd019fff061f",
+  "scope": "read-only production validation; no purchase order confirmed; close UI was cancelled; an invalid close request was rejected before any Odoo write",
+  "checks": [
+    {
+      "name": "Integrations displays automatic Odoo recovery and the live POS session",
+      "status": "PASS",
+      "evidence": "Connected status, auto-reconnect message, and opened session 00004 were visible."
+    },
+    {
+      "name": "Close-register confirmation is explicit and safely cancellable",
+      "status": "PASS",
+      "evidence": "Cash count is required before close; the UI confirmation was cancelled, and a direct API close without cash returned 422 before any Odoo write. Session 00004 remains open."
+    },
+    {
+      "name": "Purchase status filter refreshes Odoo results and detail is view-only",
+      "status": "PASS",
+      "evidence": "Draft filter rendered 0 row(s); explicit empty state shown."
+    }
+  ]
+}

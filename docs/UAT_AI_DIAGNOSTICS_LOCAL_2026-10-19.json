@@ -1,30 +1,15 @@
 {
-  "generatedAt": "2026-10-19T10:48:07.052Z",
-  "sourceCommit": "1639c44c8284d3c99c78e8c4832765222a08b62b",
+  "generatedAt": "2026-10-20T09:56:39.573Z",
+  "sourceCommit": "553f6e286b1381451737f255fb448ecd8fdf2a22",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
   "scope": "assistant response diagnostics UI; AI request intercepted; no business writes",
-  "status": "PASS",
+  "status": "FAIL",
   "checks": [
     {
-      "name": "assistant diagnostics visible",
-      "status": "PASS",
-      "evidence": "AI · report_sales · 20ms"
-    },
-    {
-      "name": "single-response session summary",
-      "status": "PASS",
-      "evidence": "AI session · 1 response · 100% success · 20ms avg"
-    },
-    {
-      "name": "multi-response session summary",
-      "status": "PASS",
-      "evidence": "AI session · 2 responses · 100% success · 21ms avg"
-    },
-    {
-      "name": "no business writes",
-      "status": "PASS",
-      "evidence": "[]"
+      "name": "run",
+      "status": "FAIL",
+      "evidence": "page.goto: net::ERR_CONNECTION_REFUSED at http://demo.localhost:3035/overview\nCall log:\n\u001b[2m  - navigating to \"http://demo.localhost:3035/overview\", waiting until \"domcontentloaded\"\u001b[22m\n body="
     }
   ],
   "writes": []

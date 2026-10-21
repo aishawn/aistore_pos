@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-20T13:41:40.315Z",
+  "sourceCommit": "c8e892e9c6e4f7e12339a7de413c96932eaf1243",
+  "worktreeChangesIncluded": true,
+  "target": "http://demo.localhost:3000",
+  "scope": "mocked invalid AI entity operation and delete confirmation; all APIs intercepted; DELETE is fixture-only",
+  "status": "FAIL",
+  "result": {
+    "routeUnchanged": false,
+    "unsupportedActionExplained": false,
+    "deleteConfirmationShown": false,
+    "cancelDismissedConfirmation": false,
+    "cancelSentNoDelete": false,
+    "failureKeptConfirmationOpen": false,
+    "retryCompletedDelete": false,
+    "assistantRequests": 0,
+    "deleteRequests": [],
+    "blockedBusinessWrites": [],
+    "pageErrors": [],
+    "failure": "page.goto: net::ERR_CONNECTION_REFUSED at http://demo.localhost:3000/overview?__uat_entity_guard=1792503697887\nCall log:\n\u001b[2m  - navigating to \"http://demo.localhost:3000/overview?__uat_entity_guard=1792503697887\", waiting until \"domcontentloaded\"\u001b[22m\n"
+  }
+}

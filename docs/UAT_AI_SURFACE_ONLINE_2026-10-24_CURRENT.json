@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-10-20T17:19:29.810Z",
+  "sourceCommit": "435ec476e5dd6ed1408b462eee88c7bf6b7718c5",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI surface regression",
+      "status": "FAIL",
+      "evidence": "LOGIN_FAILED_502"
+    }
+  ],
+  "passed": 0,
+  "failed": 1
+}

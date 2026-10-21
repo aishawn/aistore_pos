@@ -13,12 +13,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.orithos.modules.customer.CustomerGroupService;
 import com.orithos.modules.customer.CustomerService;
 import com.orithos.modules.product.ProductService;
+import com.orithos.tenant.PlatformFailureEventService;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private final PlatformFailureEventService failureEvents;
+
+    public GlobalExceptionHandler(PlatformFailureEventService failureEvents) {
+        this.failureEvents = failureEvents;
+    }
 
     private static final String DUPLICATE_PRODUCT_NAME_MESSAGE = "A product with this name already exists.";
     private static final String DUPLICATE_BARCODE_MESSAGE = "This barcode is already assigned to another product.";
@@ -30,7 +38,8 @@ public class GlobalExceptionHandler {
     private static final String INVALID_PRICE_QUANTITY_MESSAGE = "Price quantity must be greater than zero.";
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResult<Void>> business(BusinessException e) {
+    public ResponseEntity<ApiResult<Void>> business(BusinessException e, HttpServletRequest request) {
+        if (e.getCode() >= 50000) failureEvents.record(request, 200, e.getCode(), e);
         return ResponseEntity.ok(ApiResult.fail(e.getCode(), e.getMessage()));
     }
 
@@ -141,7 +150,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResult<Void>> generic(Exception e) {
+    public ResponseEntity<ApiResult<Void>> generic(Exception e, HttpServletRequest request) {
         if (SqlConstraintUtils.isDuplicateProductName(e)) {
             return duplicateProductNameResponse();
         }
@@ -163,8 +172,9 @@ public class GlobalExceptionHandler {
         if (SqlConstraintUtils.isInvalidPriceQuantity(e)) {
             return invalidPriceQuantityResponse();
         }
+        failureEvents.record(request, 500, 50000, e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResult.fail(50000, e.getMessage()));
+                .body(ApiResult.fail(50000, "Unexpected server error."));
     }
 
     private static ResponseEntity<ApiResult<Void>> duplicateProductNameResponse() {

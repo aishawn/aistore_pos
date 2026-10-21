@@ -2,6 +2,7 @@ package com.orithos.tenant;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -56,5 +57,17 @@ class TenantSlugParserTest {
         assertTrue(parser.isReserved("app"));
         assertFalse(parser.isReserved("demo"));
         assertFalse(parser.isReserved("acme"));
+    }
+
+    @Test
+    void clientTenantHeaderCannotOverrideTheForwardedHost() {
+        var request = new MockHttpServletRequest();
+        request.addHeader("X-Orithos-Tenant-Slug", "other-store");
+        request.addHeader("X-Forwarded-Host", "demo.orithos.com.au");
+
+        var resolved = parser.resolve(request);
+
+        assertFalse(resolved.controlPlane());
+        assertEquals("demo", resolved.slug());
     }
 }

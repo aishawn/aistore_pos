@@ -1,5 +1,6 @@
 package com.orithos.modules.ai;
 
+import com.orithos.config.CorrelationIdClientHttpRequestInterceptor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.orithos.common.BusinessException;
 import org.slf4j.Logger;
@@ -68,7 +69,10 @@ public class AiTranscriptionService {
         this.baseUrl = trimTrailingSlash(baseUrl == null || baseUrl.isBlank()
                 ? "https://dashscope.aliyuncs.com"
                 : baseUrl.trim());
-        this.restClient = builder.baseUrl(this.baseUrl).build();
+        this.restClient = builder
+                .baseUrl(this.baseUrl)
+                .requestInterceptor(new CorrelationIdClientHttpRequestInterceptor())
+                .build();
     }
 
     /**

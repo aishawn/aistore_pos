@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Aligns Spring AI DashScope chat routing with the selected model before beans are created.
+ * Aligns Spring AI's default DashScope model flag before beans are created.
  *
  * <p>{@code AI_DASHSCOPE_BASE_URL} must remain the host only
  * ({@code https://dashscope.aliyuncs.com}). Do not append {@code /api/v1} or
@@ -42,7 +42,8 @@ public class DashScopeEnvironmentPostProcessor implements EnvironmentPostProcess
         if (StringUtils.hasText(pathOverride)) {
             props.put(COMPLETIONS_PATH_PROPERTY, pathOverride.trim());
         } else {
-            props.put(COMPLETIONS_PATH_PROPERTY, DashScopeModelRouting.completionsPathForModel(model));
+            // Keep text-generation as fallback; multiModel=true forces multimodal per request.
+            props.put(COMPLETIONS_PATH_PROPERTY, DashScopeModelRouting.TEXT_COMPLETIONS_PATH);
         }
 
         environment.getPropertySources().addFirst(new MapPropertySource(PROPERTY_SOURCE, props));

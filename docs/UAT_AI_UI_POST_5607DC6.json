@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-19T21:45:58.680Z",
+  "sourceCommit": "5607dc6d301ebfbe42787b148ebadc82f5e05326",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "AI_FOCUS_NOT_RESTORED_390"
+    }
+  ],
+  "results": [
+    {
+      "failure": "AI_FOCUS_NOT_RESTORED_390"
+    }
+  ]
+}

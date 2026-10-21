@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-10-19T01:25:08.221Z",
+  "sourceCommit": "9f15b706a499ea3af6b72a5c762391a0b5baa36f",
+  "environment": "live-read-only-injected",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only product detail GET failure injection; one GET returns 503; verifies Retry progress lock; no business writes",
+  "checks": [
+    {
+      "name": "Product detail lookup read failure recovers in place",
+      "status": "PASS",
+      "evidence": {
+        "detailRequests": 2,
+        "taxRateRequests": 2,
+        "initialLookupNoticeVisible": false,
+        "retryRequestPending": true,
+        "retryDisabledWhileLoading": true,
+        "retryAlertBusy": true,
+        "viewport": {
+          "viewport": 390,
+          "document": 390
+        },
+        "pageErrors": []
+      }
+    }
+  ],
+  "writes": []
+}

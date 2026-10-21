@@ -11,6 +11,8 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
 
 # Build
 COPY src ./src
+ARG SOURCE_COMMIT=
+RUN printf 'commit=%s\nbuiltAt=%s\n' "$SOURCE_COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/main/resources/build-identity.properties
 RUN --mount=type=cache,target=/root/.m2 mvn -B clean verify
 
 # ============================================

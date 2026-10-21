@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.graph.CompiledGraph;
 import com.alibaba.cloud.ai.graph.NodeOutput;
 import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.state.StateSnapshot;
+import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.dto.ReportTable;
 import com.orithos.modules.ai.dto.UiAction;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -56,6 +57,7 @@ public class PosAssistantGraphService {
         Map<String, Object> initialState = new HashMap<>();
         initialState.put("question", question);
         initialState.put("conversation_history", history == null ? "" : history);
+        initialState.put(CorrelationIdContext.STATE_KEY, CorrelationIdContext.current());
         if (tenant != null) {
             initialState.put("vendor_id", tenant.vendorId());
             initialState.put("user_id", tenant.userId());

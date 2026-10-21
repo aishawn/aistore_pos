@@ -22,7 +22,7 @@ Do **not** put API keys or passwords in this file.
 - [ ] Dokploy: `AI_REPORT_RO_USER` / `AI_REPORT_RO_PASSWORD` for read-only report SQL (no default password in git).
 - [ ] Connectivity probe PASS for chat, ASR, and vision (no store PII) — attach `docs/UAT_AI_DASHSCOPE_PROBE_*.json`.
 - [ ] Isolation UAT PASS for NLQ, voice, Find, Identify (photo), pitch/ask, invoice preview, price suggestions (0 price writes) — attach `docs/UAT_AI_ENABLED_ISOLATION_*.json`.
-- [ ] Utterance regression from [`docs/AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md): at least Today's sales, Open sell, Look up products, Check stock, one `report_adhoc` guided refusal, one follow-up (“and yesterday?”), History reopen of prior thread. Full procedure: [`docs/AI_ASSISTANT_TEST_PLAN.md`](AI_ASSISTANT_TEST_PLAN.md) §11 P0 + §9 L4.
+- [ ] Utterance regression from [`docs/AI_ASSISTANT_UTTERANCE_CATALOG.md`](AI_ASSISTANT_UTTERANCE_CATALOG.md): at least Today's sales, the Products shortcut, `What should I restock?`, Check stock, one `report_adhoc` guided refusal, one follow-up (“and yesterday?”), and History reopen of a prior thread. Full procedure: [`docs/AI_ASSISTANT_TEST_PLAN.md`](AI_ASSISTANT_TEST_PLAN.md) §11 P0 + §9 L4.
 - [ ] Store admin `/reports/ai/metrics` shows last-24h + top intents after smoke — no Q/A text in payloads.
 - [ ] Platform `app.*` `/platform/usage` shows cross-store aggregates; store detail shows 24h AI KPI — no chat transcripts.
 - [ ] Operator confirmation timestamp recorded in the current `docs/HANDOFF_*.md` snapshot.
@@ -31,7 +31,7 @@ Do **not** put API keys or passwords in this file.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Assistant `InvalidParameter: url error` with `AI_DASHSCOPE_MODEL=qwen3.8-flash` | Spring AI default path is **text-generation**; `qwen3.8-flash` only accepts **multimodal-generation**. This is not a bad `AI_DASHSCOPE_BASE_URL` when the host is correct. | Keep `AI_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com` (host only). Deploy build that auto-sets `multi-model` / completions-path from the model id. Or set `AI_DASHSCOPE_MULTI_MODEL=true`. Or switch model to `qwen-plus` / `qwen-flash`. |
+| Assistant `InvalidParameter: url error` with `AI_DASHSCOPE_MODEL=qwen3.8-flash` | `qwen3.8-flash` requires `multi-model=true`; that request flag forces **multimodal-generation**. The configured completions path is only the fallback, so keep it on **text-generation** when text and multimodal models are mixed. This is not a bad `AI_DASHSCOPE_BASE_URL` when the host is correct. | Keep `AI_DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com` (host only). Deploy build that sets the model flag by default and on per-request classifier overrides. Leave `AI_DASHSCOPE_COMPLETIONS_PATH` unset unless a custom fallback is required. Or switch both models to a text model such as `qwen-plus` / `qwen-flash`. |
 | `AI_DASHSCOPE_BASE_URL` includes `/api/v1` or `/compatible-mode/v1` | SDK appends its own path → double path / url error | Host only: `https://dashscope.aliyuncs.com` or `https://dashscope-intl.aliyuncs.com` |
 | `/api/ai/config/client` `enabled=true` but `/api/ai/assistant` returns `50301` | `PosAssistantGraphService` skipped by `@ConditionalOnBean(CompiledGraph)` timing | Use `@ConditionalOnProperty(app.ai.enabled=true)` (shipped); redeploy backend |
 | Pitch/ask work, chat does not | Same as above — `ChatClient` bean exists, graph service did not | Redeploy backend after the registration fix |
@@ -57,7 +57,7 @@ Expect: NLQ `PASS` when AI is on; Sommelier text/pitch/ask/similar `PASS`; price
 
 1. Set env in Dokploy; **Deploy** (never Fresh Volumes to “fix” AI).
 2. Confirm `/api/ai/config/client` returns `enabled: true` for an authenticated store session.
-3. Read-only smoke: floating chat — pill **Today's sales** returns a report (or empty-day message) without hanging on Thinking; **Open sell / Look up products / Check stock** open pages immediately; a qa follow-up uses the same thread; Find wine returns Odoo-priced stock; Identify text search works; invoice preview if using a non-production sample image; `/stock/price-suggestions` loads with `writeEnabled: false`.
+3. Read-only smoke: floating chat — pill **Today's sales** returns a report (or empty-day message) without hanging on Thinking; **Products / What should I restock? / Check stock** open the intended pages immediately; a qa follow-up uses the same thread; Find wine returns Odoo-priced stock; Identify text search works; invoice preview if using a non-production sample image; `/stock/price-suggestions` loads with `writeEnabled: false`.
 4. Confirm anonymous AI routes still return `401`.
 5. Confirm no automatic RFQ confirm, no list_price write from price suggestions, no invoice receive.
 

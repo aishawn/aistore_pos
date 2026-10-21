@@ -3,7 +3,7 @@
   "sourceCommit": "39e0dc8",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only capability-loading gate regression; no image/model or business writes",
-  "status": "PASS",
+  "status": "FAIL",
   "checks": [
     {
       "name": "Identify gate while capability loads",

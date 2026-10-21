@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.AssistantFastPathRouter;
+import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.WorkflowRouteRouter;
 import com.orithos.modules.ai.configstore.AiIntent;
 import com.orithos.modules.ai.configstore.AiSlot;
@@ -56,6 +57,17 @@ public class ClassifyQueryNode implements NodeAction {
     public Map<String, Object> apply(OverAllState state) {
         String question = state.value("question", String.class)
                 .orElseThrow(() -> new IllegalStateException("question is required"));
+
+        // Explicit write requests must never reach a shortcut or the model.
+        // Both paths can otherwise produce a harmless-looking read-only route
+        // for words such as “submit”, “save” or “receive”.
+        if (WorkflowRouteRouter.hasWriteIntent(question)) {
+            log.info("Write-intent request kept in guided flow");
+            return shortcutResult(
+                    "unknown",
+                    "I can help review this, but I cannot perform that business action from chat.",
+                    Map.of(), "", "", "", "");
+        }
 
         // Explicit unsupported comparisons should keep their guided refusal even
         // when a date or metric token also matches a supported report shortcut.
@@ -143,13 +155,20 @@ public class ClassifyQueryNode implements NodeAction {
         return out;
     }
 
-    private DashScopeChatOptions classifyOptions() {
+    DashScopeChatOptions classifyOptions() {
+        return classifyOptions(properties);
+    }
+
+    static DashScopeChatOptions classifyOptions(AiProperties properties) {
         var builder = DashScopeChatOptions.builder()
                 .temperature(properties.temperature())
                 .maxToken(Math.min(512, properties.maxTokens()));
         String classifyModel = properties.classifyModel();
         if (classifyModel != null && !classifyModel.isBlank()) {
-            builder.model(classifyModel.trim());
+            String model = classifyModel.trim();
+            // DashScope selects its endpoint from this request option, not only the global model config.
+            builder.model(model)
+                    .multiModel(DashScopeModelRouting.requiresMultimodalEndpoint(model));
         }
         return builder.build();
     }

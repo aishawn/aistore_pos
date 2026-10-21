@@ -1,6 +1,7 @@
 {
-  "generatedAt": "2026-10-18T07:13:37.167Z",
-  "sourceCommit": "unverified-before-deploy",
+  "generatedAt": "2026-10-19T22:07:27.483Z",
+  "sourceCommit": "0adc6ebb8bdc53c1af77b274aa596d3c070f93a0",
+  "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "scope": "read-only injected 503 recovery for create forms; no business writes",
   "results": [
@@ -16,6 +17,7 @@
         "GET /api/suppliers",
         "GET /api/outlets",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/suppliers",
         "GET /api/outlets"
@@ -34,6 +36,7 @@
         "GET /api/suppliers",
         "GET /api/outlets",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/suppliers",
         "GET /api/outlets"
@@ -52,6 +55,7 @@
         "GET /api/suppliers",
         "GET /api/outlets",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/suppliers",
         "GET /api/outlets"
@@ -70,6 +74,7 @@
         "GET /api/suppliers",
         "GET /api/outlets",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/suppliers",
         "GET /api/outlets"
@@ -87,6 +92,7 @@
       "requests": [
         "GET /api/outlets",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/outlets"
       ],
@@ -105,6 +111,7 @@
         "GET /api/classifications/family",
         "GET /api/classifications/tag",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/classifications/category",
         "GET /api/classifications/family",
@@ -124,6 +131,7 @@
         "GET /api/customers/groups",
         "GET /api/price-lists",
         "GET /api/sell/parked",
+        "GET /api/ai/config/client",
         "GET /api/auth/me",
         "GET /api/customers/groups",
         "GET /api/price-lists"

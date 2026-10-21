@@ -73,9 +73,11 @@ export default function PlatformAiUsagePage() {
       }
     >
       {error ? (
-        <div role="alert" className="mb-4 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
-          <AlertCircle size={17} className="mt-0.5 shrink-0" />
-          <span>{error}</span>
+        <div role="alert" className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
+          <span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span>
+          <button type="button" onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold disabled:opacity-50">
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Retry
+          </button>
         </div>
       ) : null}
 

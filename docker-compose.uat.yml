@@ -1,0 +1,24 @@
+# Use a distinct Compose project: docker compose -p orithos-uat --env-file .env.uat -f docker-compose.yml -f docker-compose.uat.yml up -d
+# The Odoo database must already exist on the configured UAT Odoo instance.
+services:
+  backend:
+    image: orithos-uat-backend:latest
+    environment:
+      RUNTIME_ENVIRONMENT: uat
+      ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
+      ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
+      R2_SYNC_SCHEDULE_ENABLED: "false"
+      AI_ENABLED: "false"
+      APP_ODOO_ONLY_MODE: "true"
+  frontend:
+    image: orithos-uat-frontend:latest
+    labels:
+      traefik.enable: "false"
+    ports:
+      - "127.0.0.1:3300:3000"
+    environment:
+      RUNTIME_ENVIRONMENT: uat
+      ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
+      ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:?Set a dedicated UAT database}
+  r2-sync:
+    profiles: ["archive-disabled-for-uat"]

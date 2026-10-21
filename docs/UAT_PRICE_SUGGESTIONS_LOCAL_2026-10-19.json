@@ -1,9 +1,18 @@
 {
-  "generatedAt": "2026-10-20T01:47:51.960Z",
-  "sourceCommit": "4a35df73d88b869b8aeaf5b827a99df364463970",
+  "generatedAt": "2026-10-21T08:18:09.835Z",
+  "sourceCommit": "1cf20c5de2be7b40d49f83ec3be81a0370ce30b5",
+  "sourceWorkingTree": false,
+  "nodeVersion": "v22.22.2",
   "environment": "local-dev-fixtures",
-  "target": "https://demo.orithos.com.au",
+  "target": "http://demo.localhost:3035",
   "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
+  "screenshots": [
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-320.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-390.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-768.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-1024.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-1440.png"
+  ],
   "status": "PASS",
   "checks": [
     {
@@ -19,12 +28,12 @@
     {
       "name": "live pricing page is not cached",
       "status": "PASS",
-      "evidence": "no-store, max-age=0"
+      "evidence": "no-cache, must-revalidate"
     },
     {
       "name": "price suggestions page",
       "status": "PASS",
-      "evidence": "Heading, DEMO row, raise badge, writeEnabled=false visible"
+      "evidence": "Heading, DEMO row, raise badge and read-only guidance visible"
     },
     {
       "name": "product and SKU search",
@@ -59,7 +68,7 @@
     {
       "name": "read-only CSV export",
       "status": "PASS",
-      "evidence": "orithos-price-suggestions-2026-10-20.csv ﻿\"Product\",\"SKU\",\"Status\",\"Cost (AUD)\",\"Current price (AUD)\",\"Suggested price (AUD)\",\"Current margin\",\"Suggested margin\",\"Sold units (28d)\",\"On hand\",\"Reason\"\r\n\"DEMO Shiraz\",\"DEMO-"
+      "evidence": "orithos-price-suggestions-2026-10-21.csv ﻿\"Product\",\"SKU\",\"Status\",\"Standard cost (AUD)\",\"Current shelf incl GST (AUD)\",\"Suggested shelf incl GST (AUD)\",\"Current net margin\",\"Suggested net margin\",\"Sold units (28d)\",\"On h"
     },
     {
       "name": "bulk edit pre-fills SKU",
@@ -72,7 +81,82 @@
       "evidence": "[\"DEMO-SHIRAZ\"]"
     },
     {
-      "name": "ai fab on price page",
+      "name": "mobile content uses available width at 320px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":320,\"documentWidth\":320,\"contentWidth\":288,\"mainWidth\":320,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 320px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":320,\"documentWidth\":320,\"contentWidth\":288,\"mainWidth\":320,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 320px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":320,\"documentWidth\":320,\"contentWidth\":288,\"mainWidth\":320,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 320px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "mobile content uses available width at 390px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":390,\"documentWidth\":390,\"contentWidth\":358,\"mainWidth\":390,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 390px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":390,\"documentWidth\":390,\"contentWidth\":358,\"mainWidth\":390,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 390px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":390,\"documentWidth\":390,\"contentWidth\":358,\"mainWidth\":390,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 390px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "mobile content uses available width at 768px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":768,\"documentWidth\":768,\"contentWidth\":464,\"mainWidth\":512,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 768px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":768,\"documentWidth\":768,\"contentWidth\":464,\"mainWidth\":512,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 768px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":768,\"documentWidth\":768,\"contentWidth\":464,\"mainWidth\":512,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 768px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "mobile content uses available width at 1024px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":1024,\"documentWidth\":1024,\"contentWidth\":720,\"mainWidth\":768,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":1024,\"documentWidth\":1024,\"contentWidth\":720,\"mainWidth\":768,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 1024px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":1024,\"documentWidth\":1024,\"contentWidth\":720,\"mainWidth\":768,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 1024px",
       "status": "PASS",
       "evidence": ""
     },

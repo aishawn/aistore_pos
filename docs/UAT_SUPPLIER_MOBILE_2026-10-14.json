@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-14T13:17:18.886Z",
-  "sourceCommit": "8a27df59d2c5f788553adb547f55abe052c4a897",
-  "deployment": "0d72f19cdfd7ae3cc80b9abca5e2367e78a7a140",
+  "generatedAt": "2026-10-18T07:25:50.828Z",
+  "sourceCommit": "de8d540758d05c7bbbdc1ebbfcd67a03ec547425",
+  "deployment": null,
   "status": "PASS",
   "viewport": 390,
   "fixture": "create API intercepted; no Odoo write",
@@ -9,6 +9,7 @@
     "mobile supplier directory has no horizontal overflow",
     "mobile card replaces wide supplier table",
     "supplier create dialog fits mobile viewport",
+    "supplier dialog receives focus and Escape restores trigger focus",
     "browser rejects malformed email before API",
     "duplicate ABN response is shown and form remains editable",
     "unique ABN and contact fields submit",

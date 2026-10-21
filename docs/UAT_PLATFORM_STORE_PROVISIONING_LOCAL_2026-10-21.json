@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-21",
+  "target": "http://app.localhost:3035/platform/stores/2",
+  "scope": "platform store detail frontend fixture; store, KPI, audit and provisioning APIs intercepted; no writes",
+  "status": "PASS",
+  "checks": {
+    "storeDetailLoads": "PASS",
+    "aiKpiLoads": "PASS",
+    "operationHistoryLoads": "PASS",
+    "provisioningTimelineLoads": "PASS",
+    "provisionStepVisible": "PASS",
+    "desktopHorizontalOverflow": false,
+    "mobile390HorizontalOverflow": false,
+    "pageErrors": 0
+  },
+  "limitation": "The provisioning endpoints are uncommitted backend WIP and were intercepted by fixtures; this is not production verification."
+}

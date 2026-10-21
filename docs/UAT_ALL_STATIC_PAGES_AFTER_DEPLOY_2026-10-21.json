@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-10-21T06:58:18.081Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "ae13e2279f858f0ac69d09bd0a2133d5be34236c",
+  "deployment": "unverified-after-deploy",
+  "staticRoutes": 136,
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 270,
+  "checksTotal": 272,
+  "failures": [
+    {
+      "route": "/platform/operations",
+      "viewport": 390,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "route": "/platform/operations",
+      "viewport": 1440,
+      "status": 404,
+      "overflow": false,
+      "pageErrors": []
+    }
+  ],
+  "result": "FAIL"
+}

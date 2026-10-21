@@ -34,7 +34,7 @@ class DashScopeModelRoutingTest {
         new DashScopeEnvironmentPostProcessor().postProcessEnvironment(env, new SpringApplication());
         assertEquals(Boolean.TRUE, env.getProperty(DashScopeEnvironmentPostProcessor.MULTI_MODEL_PROPERTY, Boolean.class));
         assertEquals(
-                DashScopeModelRouting.MULTIMODAL_COMPLETIONS_PATH,
+                DashScopeModelRouting.TEXT_COMPLETIONS_PATH,
                 env.getProperty(DashScopeEnvironmentPostProcessor.COMPLETIONS_PATH_PROPERTY));
     }
 

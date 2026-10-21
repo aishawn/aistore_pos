@@ -100,10 +100,10 @@ final class AiEntityCrudSeeder {
 
     private static void ensureIntent(AiIntentMapper intentMapper) {
         final String hint =
-                "User wants to manage Inventory or Customer menu entities. Extract entity + op + query. Map user/用户 to entity customer. Destructive ops confirmed on client. Create does not need field slots — client prefills defaults.";
+                "User wants to manage a supported Inventory, Customer, Supplier, Order, Stocktake, Classification, Customer group, Price list, Gift card, Buying period, Stock list, Balance or pricing entity. Extract entity + op + query. Map user/用户 to entity customer. Use list/search/view for read-only requests; destructive ops are confirmed on client. Create does not need field slots — client prefills defaults. Never invent entities or operations.";
         AiIntent existing = intentMapper.findByCode("entity_action");
         if (existing != null) {
-            if (existing.getPromptHint() == null || !existing.getPromptHint().contains("user/用户")) {
+            if (existing.getPromptHint() == null || !existing.getPromptHint().contains("supported Inventory")) {
                 existing.setPromptHint(hint);
                 intentMapper.update(existing);
             }
@@ -112,7 +112,7 @@ final class AiEntityCrudSeeder {
         AiIntent i = new AiIntent();
         i.setCode("entity_action");
         i.setName("Entity CRUD");
-        i.setDescription("Inventory/Customer menu CRUD: list/search/create/view/edit/delete");
+        i.setDescription("Supported inventory, customer and operations entities: list/search/create/view/edit/delete/import/export");
         i.setPromptHint(hint);
         i.setDefaultPanel("dialogue");
         i.setEnabled(true);

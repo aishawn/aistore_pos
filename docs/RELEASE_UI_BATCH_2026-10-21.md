@@ -1,5 +1,11 @@
 # Orithos 前端发布批次：2026-10-21
 
+目录/助手补验：四视口 **44/44 PASS**，三类目录深链、真实空结果及清空、顶部AI五条快捷问句、Tab焦点和Escape恢复通过。证据 `UAT_DIRECTORIES_ASSISTANT_DEMO_2026-10-21_1897D8B_CORRECTED.json`；无模型提交或业务写入。精确运行SHA未核验。
+
+03:57 UTC续验：Demo四页双视口已为 **8/8 PASS**，手机新卡片、宽搜索和顶部AI已实际观察到；证据 `UAT_UI_BATCH_DEMO_RUNTIME_RECHECK_2026-10-21_1897D8B.json`。这更新下段03:47 UTC的4/8观察，旧报告保留。盘点只读12/12，库存位置为唯一仓库回退且写入关闭。两套检查无业务写入；精确checkout/runtime SHA仍未核验。后续本地盘点搜索竞态修复不在此提交内，待下一合批发布。
+
+最新进展：本批已推送main，SHA `1897d8b2f65946ddedef63f1dbe7437548851ca5`。用户报告Dokploy成功，checkout/runtime SHA和完整日志未取得。随后Demo只读矩阵 **4/8 PASS**：桌面四项通过，手机四项仍呈现旧布局（窄卡片、裁切表格、浮动AI且无新顶部入口）。证据 `UAT_UI_BATCH_DEMO_RUNTIME_BASELINE_2026-10-21_1897D8B.json`；业务写入和页面JS错误均0。本批线上生效状态未确认；下文为发布准备时的验证记录。
+
 本批修复窄屏库存/定价表格、盘点录入保护和目录搜索深链，并将密集操作页的 AI 入口移至顶部，减少按钮遮挡。候选包含 16 个前端文件；完整源文件 Git blob 与测试证据见 `RELEASE_UI_BATCH_2026-10-21.json`。当前状态为本地验证通过，Dokploy 构建和运行身份尚未验证。
 
 | 功能 | 本批行为 | 本地证据 |

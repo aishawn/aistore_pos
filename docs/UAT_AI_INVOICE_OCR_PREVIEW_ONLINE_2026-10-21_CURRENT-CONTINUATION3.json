@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-10-21T15:15:36.183Z",
+  "sourceCommit": "6aeb3cf3b131bc74f8cc3d51075053f186e56d58",
+  "worktreeDirty": true,
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "real provider invoice OCR preview only; no supplier, purchase, receipt, inventory, or configuration writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "provider OCR response",
+      "status": "PASS",
+      "detail": "supplier=true invoice=HW-2026-1042 date=2026-10-19 lines=2 total=382.8"
+    },
+    {
+      "name": "invoice supplier, number, and date accuracy",
+      "status": "PASS",
+      "detail": "supplier=Harbour Wine Co; invoice=HW-2026-1042; date=2026-10-19"
+    },
+    {
+      "name": "invoice line item accuracy",
+      "status": "PASS",
+      "detail": "lines=[{\"description\":\"Harbour Shiraz 2024\",\"qtyCases\":12,\"unitPrice\":18,\"lineTotal\":216},{\"description\":\"Coastal Sauvignon Blanc 2025\",\"qtyCases\":6,\"unitPrice\":22,\"lineTotal\":132}]"
+    },
+    {
+      "name": "GST and payable total accuracy",
+      "status": "PASS",
+      "detail": "gst=34.8; total=382.8"
+    },
+    {
+      "name": "preview-only write boundary",
+      "status": "PASS",
+      "detail": "unexpected="
+    }
+  ],
+  "writes": [],
+  "providerCode": 0
+}

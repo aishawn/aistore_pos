@@ -14,6 +14,8 @@ import com.orithos.modules.ai.report.AiReportAuditService;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.report.TenantContextFactory;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -32,6 +34,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/ai")
 public class AiAssistantController {
+
+    private static final Logger log = LoggerFactory.getLogger(AiAssistantController.class);
 
     private final ObjectProvider<PosAssistantGraphService> graphService;
     private final ObjectProvider<AiTranscriptionService> transcriptionService;
@@ -65,6 +69,7 @@ public class AiAssistantController {
     /** Phase A: classify intent + return UI instructions; frontend dispatches search/navigation. */
     @PostMapping("/assistant")
     public ApiResult<AssistantResponse> assistant(@Valid @RequestBody AssistantRequest request) {
+        String correlationId = AiFailureDiagnostics.correlationId();
         TenantContext tenant = tenantContextFactory.fromSecurity();
         long startedAt = System.nanoTime();
         PosAssistantGraphService service = graphService.getIfAvailable();
@@ -82,6 +87,9 @@ public class AiAssistantController {
             throw e;
         } catch (Exception e) {
             auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
+            Throwable rootCause = rootCauseOf(e);
+            log.warn("AI assistant request failed: correlationId={}, category={}, exceptionType={}, rootCauseType={}, elapsedMs={}",
+                    correlationId, AiFailureDiagnostics.category(e), e.getClass().getSimpleName(), rootCause.getClass().getSimpleName(), elapsedMs(startedAt));
             // Do not expose provider URLs, request ids, or model configuration details to store staff.
             throw new BusinessException(50210,
                     "AI assistant is temporarily unavailable. Check the AI configuration and try again.");
@@ -117,6 +125,14 @@ public class AiAssistantController {
 
     private static int elapsedMs(long startedAt) {
         return (int) Math.max(0, (System.nanoTime() - startedAt) / 1_000_000L);
+    }
+
+    private static Throwable rootCauseOf(Throwable error) {
+        Throwable current = error;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
     }
 
     /** Full AI report snapshot for the dedicated results page. */

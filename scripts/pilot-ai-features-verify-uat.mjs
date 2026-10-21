@@ -33,6 +33,15 @@ const safeEvidence = (value) => String(value ?? "")
   .replace(/(cookie|authorization):[^\r\n]*/gi, "$1: [redacted]")
   .replace(/(access|refresh)[_-]?token=[^;\s]+/gi, "$1=[redacted]")
   .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[redacted-token]");
+const priceSuggestionErrorClass = (message) => {
+  if (/session expired/i.test(message ?? "")) return "odoo_session_expired";
+  if (/not configured/i.test(message ?? "")) return "odoo_not_configured";
+  if (/must use https/i.test(message ?? "")) return "odoo_transport_configuration";
+  if (/no odoo companies/i.test(message ?? "")) return "no_allowed_company";
+  if (/cannot read the product prices/i.test(message ?? "")) return "odoo_product_price_access_denied";
+  if (/price suggestion data is unavailable/i.test(message ?? "")) return "odoo_rpc_or_transport_unavailable";
+  return message ? "unclassified_api_error" : "empty_error_response";
+};
 
 const adminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
 if (!adminPassword) {
@@ -195,7 +204,9 @@ try {
         ? "Service-account recovery was configured but did not return a session."
         : "No active Odoo session and no service-account recovery configured.");
     }
+    const priceStartedAt = Date.now();
     const priceApi = await context.request.get(`${base}/api/odoo/price-suggestions?marginTarget=0.3`);
+    const priceElapsedMs = Date.now() - priceStartedAt;
     const priceBody = await priceApi.json().catch(() => ({}));
     if (priceApi.ok() && Array.isArray(priceBody.products) && priceBody.writeEnabled === false) {
       record("Price suggestions API", "PASS", `products=${priceBody.products.length} writeEnabled=false`);
@@ -205,9 +216,24 @@ try {
       // A gateway/upstream outage is an environment block, not a product
       // assertion failure. Keep the status visible so deployment checks still
       // require the endpoint to recover before calling the suite green.
-      record("Price suggestions API", "BLOCKED", `upstream unavailable status=${priceApi.status()}`);
+      record("Price suggestions API", "BLOCKED", JSON.stringify({
+        status: priceApi.status(),
+        errorClass: priceSuggestionErrorClass(priceBody.message),
+        contentType: priceApi.headers()["content-type"] ?? null,
+        server: priceApi.headers().server ?? null,
+        elapsedMs: priceElapsedMs,
+        correlationId: priceApi.headers()["x-correlation-id"] ?? null,
+        writeEnabled: priceBody.writeEnabled ?? null,
+      }));
     } else {
-      record("Price suggestions API", "FAIL", `status=${priceApi.status()} ${(priceBody.message || "").slice(0, 120)}`);
+      record("Price suggestions API", "FAIL", JSON.stringify({
+        status: priceApi.status(),
+        errorClass: priceSuggestionErrorClass(priceBody.message),
+        contentType: priceApi.headers()["content-type"] ?? null,
+        server: priceApi.headers().server ?? null,
+        elapsedMs: priceElapsedMs,
+        correlationId: priceApi.headers()["x-correlation-id"] ?? null,
+      }));
     }
 
     await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 90000 });

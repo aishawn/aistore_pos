@@ -57,7 +57,8 @@ class AiAssistantControllerTest {
         PosAssistantGraphService service = mock(PosAssistantGraphService.class);
         when(graph.getIfAvailable()).thenReturn(service);
         when(service.ask(eq("What should I reorder?"), isNull(), any(TenantContext.class)))
-                .thenThrow(new IllegalStateException("provider request id=secret-123"));
+                .thenThrow(new IllegalStateException("provider request id=secret-123",
+                        new IllegalArgumentException("api-key=private-value")));
         TenantContext tenant = new TenantContext(42L, 7L, 3L, java.util.List.of(3L),
                 java.util.Set.of(TenantContext.PERM_QUERY));
         TenantContextFactory tenants = mock(TenantContextFactory.class);
@@ -71,6 +72,7 @@ class AiAssistantControllerTest {
 
         assertEquals(50210, error.getCode());
         assertFalse(error.getMessage().contains("secret-123"));
+        assertFalse(error.getMessage().contains("private-value"));
         assertTrue(error.getMessage().contains("temporarily unavailable"));
         verify(audit).recordAssistant(eq(tenant), eq("unknown"), eq(false), anyInt(),
                 eq("What should I reorder?"), isNull());

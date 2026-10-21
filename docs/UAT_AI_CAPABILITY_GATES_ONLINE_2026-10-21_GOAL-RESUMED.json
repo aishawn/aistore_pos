@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-21T00:58:40.260Z",
+  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "online browser fault injection for transcription capability; no business writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "chatEnabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Checking voice availability…",
+      "pageErrors": [],
+      "writes": []
+    }
+  ]
+}

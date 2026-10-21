@@ -1,19 +1,23 @@
 {
-  "generatedAt": "2026-10-18T07:15:08.014Z",
-  "sourceCommit": "fc21fbcca6781e98f6e297bb115252fa10399ebe",
+  "generatedAt": "2026-10-20T09:41:18.043Z",
+  "sourceCommit": "db8f02e6d9172547edcde3f5c5b11d72954e51c4",
   "deployment": null,
   "target": "https://demo.orithos.com.au",
   "status": "PASS",
   "fixture": "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
   "viewport": 390,
   "checks": [
+    "invoice AI availability retry recovers after a transient failure",
+    "invoice scan retry reuses the selected file after a transient OCR failure",
     "invoice preview has no received-order save button before scanning",
     "mock scan image preview and details render",
     "invoice line is editable before leaving preview",
     "Odoo purchasing links are shown and no business write was sent"
   ],
-  "scanCalls": 1,
+  "scanCalls": 2,
+  "capabilityCalls": 3,
   "businessWrites": [
+    "POST /api/orders/receives/scan",
     "POST /api/orders/receives/scan"
   ]
 }

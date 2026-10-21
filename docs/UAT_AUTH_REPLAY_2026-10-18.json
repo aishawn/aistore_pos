@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-18T14:04:09.923Z",
+  "deployment": "0e964c5",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only auth recovery injection; GET is replayed once, DELETE is intercepted and never replayed",
+  "checks": [
+    {
+      "name": "GET refreshes once after 401",
+      "status": "PASS",
+      "evidence": {
+        "priceSetReads": 2,
+        "refreshRequests": 1
+      }
+    },
+    {
+      "name": "DELETE is not replayed after 401",
+      "status": "PASS",
+      "evidence": {
+        "priceSetDeletes": 1
+      }
+    }
+  ],
+  "writes": [
+    "DELETE /api/price-sets/77"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-19T07:18:21.228Z",
+  "sourceCommit": "9b01128c9715ac8f6be5d1a6704ba0fd3509d2b1",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "Loaded 44 trigger keywords; enabled=true."
+    },
+    {
+      "name": "AI config intents",
+      "status": "PASS",
+      "evidence": "Loaded 13 records."
+    },
+    {
+      "name": "AI config slots",
+      "status": "PASS",
+      "evidence": "Loaded 12 records."
+    },
+    {
+      "name": "AI config slot-values",
+      "status": "PASS",
+      "evidence": "Loaded 119 records."
+    },
+    {
+      "name": "AI config prompts",
+      "status": "PASS",
+      "evidence": "Loaded 3 records."
+    },
+    {
+      "name": "AI assistant product lookup",
+      "status": "PASS",
+      "evidence": "Returned intent search_product."
+    },
+    {
+      "name": "AI surface regression",
+      "status": "FAIL",
+      "evidence": "EMPTY_AUDIO_GUARD_200_40010"
+    }
+  ],
+  "passed": 6,
+  "failed": 1
+}

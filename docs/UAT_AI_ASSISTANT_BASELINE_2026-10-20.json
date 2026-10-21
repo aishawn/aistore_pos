@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-20T03:58:36.149Z",
+  "sourceCommit": "7b347c3987b274a1f4019e3dd086a05229b9ebae",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "LOGIN_FAILED_390"
+    }
+  ],
+  "results": [
+    {
+      "failure": "LOGIN_FAILED_390"
+    }
+  ]
+}

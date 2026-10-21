@@ -61,6 +61,35 @@ interface PlatformAuditEvent {
   completedAt: string | null;
 }
 
+interface ProvisionStep {
+  stepId: string;
+  stepName: string;
+  outcome: "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | string;
+  resourceRef: string | null;
+  errorType: string | null;
+  errorSummary: string | null;
+  startedAt: string;
+  completedAt: string | null;
+}
+
+interface ProvisionAttempt {
+  attemptId: string;
+  tenantId: number;
+  tenantName: string | null;
+  tenantSlug: string | null;
+  triggerType: string;
+  actorId: number | null;
+  actorUsername: string | null;
+  correlationId: string | null;
+  outcome: "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | string;
+  currentStep: string | null;
+  errorType: string | null;
+  errorSummary: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  steps: ProvisionStep[];
+}
+
 type ConfirmAction = { title: string; message: string; reason: string } & (
   | { kind: "status"; status: string }
   | { kind: "trial"; days: number }
@@ -91,6 +120,13 @@ function utcDate(value: string | null | undefined): string {
   const date = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`);
   if (Number.isNaN(date.getTime())) return value;
   return `${date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC`;
+}
+
+function timestampMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const date = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`);
+  const milliseconds = date.getTime();
+  return Number.isNaN(milliseconds) ? null : milliseconds;
 }
 
 function formatAuditSummary(value: string | null): string {
@@ -136,6 +172,11 @@ export default function PlatformStoreDetailPage() {
   const [auditPage, setAuditPage] = useState(1);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [provisionAttempts, setProvisionAttempts] = useState<ProvisionAttempt[]>([]);
+  const [provisionTotal, setProvisionTotal] = useState(0);
+  const [provisionPage, setProvisionPage] = useState(1);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
+  const [provisionLoading, setProvisionLoading] = useState(false);
   const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
@@ -175,6 +216,25 @@ export default function PlatformStoreDetailPage() {
       } finally {
         if (sequence === requestSequence.current) setAuditLoading(false);
       }
+      setProvisionLoading(true);
+      try {
+        const result = await api.get<{ items: ProvisionAttempt[]; total: number }>(
+          `/api/admin/tenants/${id}/provision-attempts`, { page: provisionPage, size: 10 },
+        );
+        if (sequence === requestSequence.current) {
+          setProvisionAttempts(result.items);
+          setProvisionTotal(result.total);
+          setProvisionError(null);
+        }
+      } catch (cause) {
+        if (sequence === requestSequence.current) {
+          setProvisionError(cause instanceof ApiError
+            ? `${cause.message}${cause.correlationId ? ` · Request ID ${cause.correlationId}` : ""}`
+            : "Could not load provisioning attempts.");
+        }
+      } finally {
+        if (sequence === requestSequence.current) setProvisionLoading(false);
+      }
     } catch (cause) {
       if (sequence === requestSequence.current) {
         setError(cause instanceof ApiError ? cause.message : "Failed to load store");
@@ -182,7 +242,7 @@ export default function PlatformStoreDetailPage() {
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [id, auditPage]);
+  }, [id, auditPage, provisionPage]);
 
   useEffect(() => {
     if (ready && user) void load();
@@ -211,8 +271,10 @@ export default function PlatformStoreDetailPage() {
         setStore(await api.post<StoreDetail>(`/api/admin/tenants/${store.id}/odoo-provision`, { reason: confirm.reason }));
       }
       setConfirm(null);
+      const resetHistoryPages = auditPage !== 1 || provisionPage !== 1;
       if (auditPage !== 1) setAuditPage(1);
-      else await load();
+      if (provisionPage !== 1) setProvisionPage(1);
+      if (!resetHistoryPages) await load();
     } catch (cause) {
       setError(cause instanceof ApiError
         ? `${cause.message}${cause.correlationId ? ` · Request ID ${cause.correlationId}` : ""}`
@@ -410,6 +472,27 @@ export default function PlatformStoreDetailPage() {
           </li>)}
         </ol>}
         {auditTotal > 20 ? <div className="mt-3 flex items-center justify-between border-t border-[var(--oh-border)] pt-3 text-sm"><span className="text-xs text-[var(--oh-muted)]">{auditTotal} events</span><div className="flex gap-2"><button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage <= 1 || auditLoading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 disabled:opacity-40">Previous</button><span className="flex min-h-10 items-center text-xs text-[var(--oh-muted)]">{auditPage} / {Math.ceil(auditTotal / 20)}</span><button type="button" onClick={() => setAuditPage((page) => page + 1)} disabled={auditPage >= Math.ceil(auditTotal / 20) || auditLoading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 disabled:opacity-40">Next</button></div></div> : null}
+      </section> : null}
+      {store ? <section className="mx-auto mb-6 max-w-3xl rounded-lg border border-[var(--oh-border)] bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h2 className="text-base font-semibold text-[var(--oh-text)]">Odoo setup attempts</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Each retry is retained with stage results and request identity.</p></div>
+          <button type="button" onClick={() => void load()} disabled={provisionLoading} aria-label="Refresh Odoo setup attempts" title="Refresh setup attempts" className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><RefreshCw size={16} className={provisionLoading ? "animate-spin" : ""} aria-hidden="true" /></button>
+        </div>
+        {provisionError ? <p role="alert" className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{provisionError}</p> : null}
+        {provisionLoading && provisionAttempts.length === 0 ? <p role="status" className="py-8 text-center text-sm text-[var(--oh-muted)]">Loading setup attempts…</p> : provisionAttempts.length === 0 ? <p className="py-8 text-center text-sm text-[var(--oh-muted)]">{provisionError ? "Setup attempt history is unavailable." : "No setup attempts recorded."}</p> : <ol className="mt-4 divide-y divide-[var(--oh-border)]">
+          {provisionAttempts.map((attempt) => <li key={attempt.attemptId} className="py-4">
+            <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-[var(--oh-text)]">{attempt.triggerType === "SIGNUP" ? "Signup setup" : "Platform retry"}</h3><span className={`rounded border px-2 py-0.5 text-xs font-medium ${attempt.outcome === "SUCCEEDED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : attempt.outcome === "FAILED" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{attempt.outcome}</span></div><p className="mt-1 text-xs text-[var(--oh-muted)]">Started {utcDate(attempt.startedAt)}{attempt.actorUsername ? ` · ${attempt.actorUsername}` : " · System-triggered"}{attempt.currentStep ? ` · Current step: ${attempt.currentStep}` : ""}</p></div><code className="max-w-full break-all font-mono text-[11px] text-[var(--oh-muted)]">{attempt.attemptId}</code></div>
+            {attempt.correlationId ? <p className="mt-2 break-all text-xs text-[var(--oh-text-secondary)]">Request ID: <code className="font-mono">{attempt.correlationId}</code></p> : null}
+            {attempt.errorSummary ? <p role="alert" className="mt-2 break-words rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">{attempt.errorType ? `${attempt.errorType}: ` : ""}{attempt.errorSummary}</p> : null}
+            {attempt.steps.length ? <ol className="mt-3 border-l border-[var(--oh-border)] pl-3">{attempt.steps.map((step) => {
+              const startedMs = timestampMs(step.startedAt);
+              const completedMs = timestampMs(step.completedAt);
+              const durationMs = startedMs != null && completedMs != null ? completedMs - startedMs : null;
+              return <li key={step.stepId} className="relative pb-3 last:pb-0"><span className={`absolute -left-[17px] top-1 size-2 rounded-full ${step.outcome === "SUCCEEDED" ? "bg-emerald-500" : step.outcome === "FAILED" ? "bg-rose-500" : "bg-amber-500"}`} aria-hidden="true" /><div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"><span className="text-xs font-medium text-[var(--oh-text)]">{step.stepName.replaceAll("_", " ")}</span><span className="text-[11px] text-[var(--oh-muted)]">{step.outcome}{durationMs != null && durationMs >= 0 ? ` · ${durationMs} ms` : " · in progress"}</span></div>{step.resourceRef ? <p className="mt-0.5 break-all font-mono text-[10px] text-[var(--oh-muted)]">{step.resourceRef}</p> : null}{step.errorSummary ? <p className="mt-1 break-words text-xs text-rose-800">{step.errorType ? `${step.errorType}: ` : ""}{step.errorSummary}</p> : null}</li>;
+            })}</ol> : <p className="mt-3 text-xs text-[var(--oh-muted)]">No stages recorded yet.</p>}
+          </li>)}
+        </ol>}
+        {provisionTotal > 10 ? <div className="mt-3 flex items-center justify-between border-t border-[var(--oh-border)] pt-3 text-sm"><span className="text-xs text-[var(--oh-muted)]">{provisionTotal} attempts</span><div className="flex gap-2"><button type="button" onClick={() => setProvisionPage((page) => Math.max(1, page - 1))} disabled={provisionPage <= 1 || provisionLoading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 disabled:opacity-40">Previous</button><span className="flex min-h-10 items-center text-xs text-[var(--oh-muted)]">{provisionPage} / {Math.ceil(provisionTotal / 10)}</span><button type="button" onClick={() => setProvisionPage((page) => page + 1)} disabled={provisionPage >= Math.ceil(provisionTotal / 10) || provisionLoading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 disabled:opacity-40">Next</button></div></div> : null}
       </section> : null}
       <ConfirmDialog
         open={Boolean(confirm)}

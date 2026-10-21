@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-10-21T14:50:30.691Z",
+  "sourceCommit": "6aeb3cf3b131bc74f8cc3d51075053f186e56d58",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": null,
+    "frontendBuiltAt": "2026-10-21T13:35:45.867Z",
+    "backendCommit": null,
+    "backendBuiltAt": null,
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 1,
+  "selectedIds": [
+    "replenishment-restock-list-en"
+  ],
+  "checks": [
+    {
+      "id": "replenishment-restock-list-en",
+      "question": "Restock list please",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "correlationId": "a2929ea9-6a02-4eca-8b0c-bdd989d0ac95"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 1,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

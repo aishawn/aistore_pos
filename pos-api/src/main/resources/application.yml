@@ -60,16 +60,16 @@ spring:
   # 阿里云百炼 DashScope（Spring AI 模型）
   # AI_DASHSCOPE_BASE_URL = host only（https://dashscope.aliyuncs.com）。不要加 /api/v1 或 /compatible-mode/v1。
   # 国际区 Key：https://dashscope-intl.aliyuncs.com
-  # qwen3.8-flash 等模型不能走 text-generation（会 InvalidParameter url error）；
-  # DashScopeEnvironmentPostProcessor 会按模型自动设 chat.options.multi-model + completions-path。
+  # qwen3.8-flash 等模型需按请求走 multimodal-generation（multi-model=true）；
+  # DashScopeEnvironmentPostProcessor 设置模型默认标志，分类器也按其覆盖模型设置请求标志。
   ai:
     dashscope:
       api-key: ${AI_DASHSCOPE_API_KEY:}
       base-url: ${AI_DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com}
       chat:
         options:
-          # qwen-plus / qwen-flash = text-generation；qwen3.8-flash = multimodal-generation
-          # multi-model + completions-path are set by DashScopeEnvironmentPostProcessor
+          # qwen-plus / qwen-flash = text-generation；qwen3.8-flash uses multi-model=true
+          # completions-path stays text as fallback; multi-model requests force multimodal-generation
           # (override with AI_DASHSCOPE_MULTI_MODEL / AI_DASHSCOPE_COMPLETIONS_PATH if needed)
           model: ${AI_DASHSCOPE_MODEL:qwen-plus}
           temperature: ${AI_DASHSCOPE_TEMPERATURE:0.1}
@@ -137,5 +137,7 @@ app:
 
 # 日志级别
 logging:
+  pattern:
+    level: "%5p [cid:%X{correlationId:-}]"
   level:
-    com.orithos: DEBUG
+    com.orithos: INFO
