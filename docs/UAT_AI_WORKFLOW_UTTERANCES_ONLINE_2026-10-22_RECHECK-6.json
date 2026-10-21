@@ -1,0 +1,168 @@
+{
+  "generatedAt": "2026-10-21T20:10:49.927Z",
+  "sourceCommit": "4b0f4487e0a7e03f5329b3938c75a00627c60e53",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "c4585adc47b33af8b3c814de534252d6599dadb5",
+    "frontendBuiltAt": "2026-10-21T20:06:31.151Z",
+    "backendCommit": "c4585adc47b33af8b3c814de534252d6599dadb5",
+    "backendBuiltAt": "2026-10-21T20:06:30Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 6,
+  "selectedIds": [
+    "stock-lookup-natural-zh",
+    "stock-list-zh-no-product",
+    "date-sales-zh",
+    "date-sales-en",
+    "date-sales-screenshot-en",
+    "date-sales-takings-en"
+  ],
+  "checks": [
+    {
+      "id": "stock-lookup-natural-zh",
+      "question": "帮我查下 VB Cans 还剩几件",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "correlationId": "cbdcbbde-a6fb-4fa0-961c-db09559cedbd",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "stock-list-zh-no-product",
+      "question": "查询库存",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/list",
+        "correlationId": "9d0d0e7d-fbb7-4d4c-a0ef-ea51aeb62ee0"
+      }
+    },
+    {
+      "id": "date-sales-zh",
+      "question": "10月14日销售额",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "72ca89ab-999a-43de-83a1-aabca2ec07d2"
+      }
+    },
+    {
+      "id": "date-sales-en",
+      "question": "sales on 14 October 2026",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "8c537963-19e5-4917-8cff-6409a680ed17"
+      }
+    },
+    {
+      "id": "date-sales-screenshot-en",
+      "question": "16 Oct 2026 sales",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "8abbb109-d982-4215-b0ee-6663d73cac46",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-takings-en",
+      "question": "How much did we take on 16 Oct 2026?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "42092b44-88c5-4e87-863b-d0b995b9cd5e",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 6,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

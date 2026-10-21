@@ -2263,3 +2263,11 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - **Build/deployment discipline:** frontend typecheck, targeted ESLint, UAT script syntax, and diff checks pass. Do not claim backend changes as deployed without Java 21 `mvn -B clean verify` on the exact candidate SHA. Dokploy “success” confirms deployment completion only; exact runtime SHA must still be read from `/api/public/version` or deployment logs for any newer batch.
 - **Acceptance summary:** implemented and read-only verified does not equal production-ready. The pilot remains **NO-GO** until isolated business-write UAT, Odoo reconciliation, runtime identity, and operational recovery evidence are complete.
 
+## 2026-10-22 latest full AI recheck on `c4585ad`
+
+- The complete authenticated assistant catalog selected **216/216** cases and returned **216 PASS / 0 BLOCKED / 0 FAIL**. Evidence: `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-RECHECK-C4585AD.json`.
+- The run was assistant API only. It issued no sale, refund, purchase, receiving, inventory, price, payment, or register-close business write; assistant usage/audit telemetry may still be recorded.
+- The Demo runtime reported frontend/backend `c4585ad`. The worktree source was `4b0f448`, a documentation-only commit after `c4585ad`; the evidence therefore keeps `matchesSourceCommit=false` rather than claiming the documentation commit was deployed.
+- A six-case retry of the preceding transient failures also returned **6/6 PASS**: stock lookup, stock navigation, and dated sales prompts all returned HTTP 200. Evidence: `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_RECHECK-6.json`.
+- Remaining companion limits are unchanged: invoice OCR returns `410/41001`, the live stock report safely returns unavailable, and two History/platform checks require isolated second-store and platform-operator credentials. The pilot remains **NO-GO** for isolated business writes, Odoo reconciliation, backup recovery, and durable alert handling.
+
