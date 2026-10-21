@@ -52,7 +52,7 @@ function marginPct(cost?: number | null, price?: number | null) {
 
 function cellInput(className?: string) {
   return cn(
-    "h-[34px] w-full rounded border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#6eb5e0]",
+    "h-11 w-full rounded border border-neutral-300 bg-white px-2 text-[13px] outline-none focus:border-[#6eb5e0]",
     className,
   );
 }
@@ -309,9 +309,9 @@ export function CappedPricingPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="flex shrink-0 flex-wrap items-center gap-4 border-b border-neutral-200 px-6 py-4">
-        <h1 className="text-[28px] font-bold text-black">Capped Pricing</h1>
-        <div className="ml-auto flex items-center gap-2 text-[14px] text-neutral-600">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-neutral-200 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <h1 className="text-xl font-bold text-black sm:text-[28px]">Capped Pricing</h1>
+        <div className="ml-auto flex items-center gap-2 text-xs text-neutral-600 sm:text-[14px]">
           <span
             className={cn(
               "h-2.5 w-2.5 rounded-full",
@@ -322,7 +322,7 @@ export function CappedPricingPage() {
         </div>
       </div>
 
-      <div className="shrink-0 px-6 pt-4">
+      <div className="shrink-0 px-4 pt-3 sm:px-6 sm:pt-4">
         <div className="inline-flex overflow-hidden rounded-md border border-neutral-200">
           {(["PROVIDED", "IMPORTED"] as SourceTab[]).map((key) => {
             const active = tab === key;
@@ -335,8 +335,9 @@ export function CappedPricingPage() {
                   setHasChanges(false);
                   setPage(1);
                 }}
+                aria-pressed={active}
                 className={cn(
-                  "flex items-center gap-2 px-5 py-2.5 text-[14px] font-medium transition-colors",
+                  "flex min-h-11 items-center gap-2 px-4 py-2.5 text-[14px] font-medium transition-colors sm:px-5",
                   active ? "bg-[#b8d9eb] text-black" : "bg-white text-neutral-600 hover:bg-neutral-50",
                 )}
               >
@@ -349,7 +350,7 @@ export function CappedPricingPage() {
         <h2 className="mt-5 text-[22px] font-normal text-black">{TAB_LABELS[tab]}</h2>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 pb-6 pt-3">
+      <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 pt-3 sm:px-6">
         {tab === "IMPORTED" ? <CappedPricingImportPanel onImported={reload} /> : null}
 
         <div data-testid="capped-pricing-table" className="min-w-0 xl:min-w-[1050px]">

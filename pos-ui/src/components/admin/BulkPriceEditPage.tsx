@@ -45,7 +45,7 @@ function qtyKey(q: number) {
 
 function cellInput(className?: string) {
   return cn(
-    "h-[34px] w-full min-w-[72px] rounded border border-neutral-300 bg-white px-2 text-[13px] text-black outline-none focus:border-[#6eb5e0]",
+    "h-11 w-full min-w-[72px] rounded border border-neutral-300 bg-white px-2 text-[13px] text-black outline-none focus:border-[#6eb5e0]",
     className,
   );
 }
@@ -254,9 +254,9 @@ export function BulkPriceEditPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="flex shrink-0 items-center gap-4 border-b border-neutral-200 px-6 py-4">
-        <h1 className="text-[28px] font-normal text-black">Bulk Price Edit</h1>
-        <div className="ml-auto text-[15px] text-neutral-700">
+      <div className="flex shrink-0 items-center gap-3 border-b border-neutral-200 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <h1 className="text-xl font-normal text-black sm:text-[28px]">Bulk Price Edit</h1>
+        <div className="ml-auto text-sm text-neutral-700 sm:text-[15px]">
           <span data-testid="bulk-price-product-count" className="font-semibold text-black">{total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
@@ -265,7 +265,7 @@ export function BulkPriceEditPage() {
         dependencies={[{ label: "Categories", error: categories.error, loading: categories.loading, onRetry: categories.reload }]}
       />
 
-      <div className="shrink-0 space-y-3 border-b border-neutral-200 px-6 py-4">
+      <div className="shrink-0 space-y-3 border-b border-neutral-200 px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex flex-col gap-3 md:flex-row">
           <input
             aria-label="Search bulk price products"
@@ -275,7 +275,7 @@ export function BulkPriceEditPage() {
               setPage(1);
             }}
             placeholder="Search for Product or Classification..."
-            className="h-[38px] min-w-0 flex-1 rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
+            className="h-11 min-w-0 flex-1 rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
           />
           <div className="w-full md:w-[220px] md:shrink-0">
             <FilterSelect
@@ -306,7 +306,7 @@ export function BulkPriceEditPage() {
               value={newQuantity}
               onChange={(e) => setNewQuantity(e.target.value)}
               placeholder="New Quantity"
-              className="h-[36px] w-[140px] rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
+              className="h-11 w-[140px] rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
               onKeyDown={(e) => {
                 if (e.key === "Enter") addQuantity();
               }}
@@ -314,7 +314,7 @@ export function BulkPriceEditPage() {
             <button
               type="button"
               onClick={addQuantity}
-              className="flex cursor-pointer items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-4 py-2 text-[14px] text-neutral-700 transition-colors hover:bg-neutral-200"
+              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-4 py-2 text-[14px] text-neutral-700 transition-colors hover:bg-neutral-200"
             >
               <PlusIcon size={14} />
               Add
@@ -323,7 +323,7 @@ export function BulkPriceEditPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
+      <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 sm:px-6">
         <div data-testid="bulk-price-edit-table" className="w-full min-w-0 xl:inline-block xl:min-w-[1170px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md bg-black py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[220px] shrink-0 px-2">Product</div>

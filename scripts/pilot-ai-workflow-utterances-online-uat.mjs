@@ -248,6 +248,7 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const checks = [];
 const writeRequests = [];
+let loginDiagnostics = null;
 const isUnavailable = (httpStatus, code) => [502, 503, 504].includes(httpStatus) || [50210, 50301].includes(code);
 const redactError = (value) => String(value)
   .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
@@ -256,7 +257,11 @@ const redactError = (value) => String(value)
   .replace(/(password|api[_-]?key|token)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]");
 
 try {
-  if (requestedIds && selectedCases.length !== requestedIds.size) throw new Error("UNKNOWN_UTTERANCE_ID");
+  if (requestedIds && selectedCases.length !== requestedIds.size) {
+    const knownIds = new Set(cases.map((item) => item.id));
+    const unknownIds = [...requestedIds].filter((id) => !knownIds.has(id));
+    throw new Error(`UNKNOWN_UTTERANCE_ID:${unknownIds.join(",")}`);
+  }
 
   let runtimeIdentity = null;
   try {
@@ -284,9 +289,21 @@ try {
     };
   }
 
-  const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password }, headers: { Origin: base },
-  });
+  let login;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    login = await context.request.post(`${base}/api/auth/login`, {
+      data: { username: "admin", password }, headers: { Origin: base },
+    });
+    loginDiagnostics = {
+      status: login.status(),
+      server: login.headers().server ?? null,
+      contentType: login.headers()["content-type"] ?? null,
+      correlationId: login.headers()["x-correlation-id"] ?? null,
+      attempts: attempt + 1,
+    };
+    if (login.ok() || ![502, 503, 504].includes(login.status()) || attempt === 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error(`LOGIN_FAILED_${login.status()}`);
   const accessCookie = (await context.cookies(base)).find((cookie) => cookie.name === "orithos_access_token");
@@ -416,6 +433,10 @@ try {
     worktreeDirty,
     target: base,
     scope: "authenticated natural-language workflow routing; assistant API only; no business writes",
+    catalogTotal: cases.length,
+    selectedCount: selectedCases.length,
+    selectedIds: requestedIds ? [...requestedIds] : "all",
+    login: loginDiagnostics,
     checks: [{ id: "setup", status: blocked ? "BLOCKED" : "FAIL", evidence: { error: detail } }],
     writeRequests,
     passed: 0,
