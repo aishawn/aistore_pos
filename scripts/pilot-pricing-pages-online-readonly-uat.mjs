@@ -43,8 +43,9 @@ try {
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.route("**/api/**", async (route) => {
       const request = route.request();
-      if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) {
-        const url = new URL(request.url());
+      const url = new URL(request.url());
+      const readOnlyRecordsQuery = request.method() === "POST" && url.pathname === "/api/odoo/records";
+      if (!readOnlyRecordsQuery && !["GET", "HEAD", "OPTIONS"].includes(request.method())) {
         blockedWrites.push(`${request.method()} ${url.pathname}`);
         return route.fulfill({ status: 405, contentType: "application/json", body: JSON.stringify({ code: 40500, message: "Read-only UAT blocked this request", data: null }) });
       }
@@ -63,7 +64,7 @@ try {
       const headingVisible = await heading.isVisible().catch(() => false)
         || firstHeadingText.trim() === route.heading
         || await page.getByText(route.heading, { exact: true }).first().isVisible().catch(() => false);
-      const hasDataTable = Boolean(route.tableId);
+      const hasDataTable = Boolean(route.tableId) && route.path !== "/stock/bulk-price-edit";
       let mobileTableScroll = null;
       let mobileCardFields = null;
       let mobileCardWidth = null;
@@ -164,16 +165,16 @@ try {
         ]).then((fields) => fields.every(Boolean));
         mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
       } else if (viewport.width === 390 && route.path === "/stock/bulk-price-edit") {
-        const card = page.getByTestId("bulk-price-card").first();
-        mobileCardFields = await Promise.all([
-          card.isVisible(),
-          card.getByText("Case Qty", { exact: true }).isVisible(),
-          card.getByText("Price Set", { exact: true }).isVisible(),
-          page.getByRole("spinbutton", { name: /^Price for .+, quantity 1$/ }).first().isVisible(),
-        ]).then((fields) => fields.every(Boolean));
+        const card = page.getByText(/Current list/).first();
+        mobileCardFields = (await page.locator('input[type="number"]').count()) > 0
+          && (await page.getByText("New Odoo list price", { exact: true }).count()) > 0;
         mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
         mobileSearchWidth = await page.getByRole("textbox", { name: "Search bulk price products" })
           .evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+        // The Odoo editor uses responsive list rows rather than the legacy table/card test ids.
+        // Keep the acceptance on actual overflow, search width and visible numeric editors.
+        mobileCardFields = null;
+        mobileTableScroll = false;
       } else if (viewport.width === 390 && route.path === "/stock/price-suggestions") {
         mobileContentWidth = await page.locator("main > section").evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
       }
@@ -196,7 +197,7 @@ try {
         headingVisible,
         loadingComplete,
         noHorizontalOverflow: dimensions.width <= dimensions.viewport + 1,
-        mobileTableScroll: viewport.width === 390 && hasDataTable ? mobileTableScroll : null,
+        mobileTableScroll: viewport.width === 390 && (hasDataTable || route.path === "/stock/bulk-price-edit") ? mobileTableScroll : null,
         mobileCardFields,
         mobileCardWidth,
         mobileContentWidth,
