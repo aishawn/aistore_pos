@@ -2168,6 +2168,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Capped Pricing 与 Bulk Price Edit 的移动端标题、边距、筛选输入和价格输入统一为触控友好的至少 44px；Capped Pricing tabs 补充 `aria-pressed`。
 - Node `24.19.0` typecheck、目标 ESLint、`git diff --check` 通过。浏览器 fixture 结果：库存/定价响应式 `15/15 PASS`、价格建议 `PASS`、Audit/Failures `4/4 PASS`、Operations/Usage `4/4 PASS`、实体目录和不支持动作保护 `PASS`；均为受控/只读验证，业务写入 `0`。
 - 本批没有运行 Next production build；线上尚未归因到 `ff32021`。Demo runtime commit 仍为空，app 登录 HTTP `502` 仍阻断线上平台验收。证据文件已由相关 UAT 脚本刷新。
+- 本批推送后仅触发一次 Dokploy webhook，返回 HTTP `301`；按发布规则未重复触发。定价四页线上脚本在登录阶段同样收到 HTTP `502`，证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json`，不是页面断言失败。
+- 发布恢复前置：在 Dokploy Source/Git 核对仓库 `aishawn/aistore_pos`、分支 `main`、根目录 `/` 和 `docker-compose.yml`；确认 checkout SHA 后读取完整构建日志、容器健康和 runtime SHA，再重跑定价与四个平台双视口验收。
 ## 2026-10-22 AI proxy availability follow-up
 
 - The executable assistant catalog contains **216 unique IDs**. The retry-enabled representative smoke selected replenishment, pricing, recommendation, invoice, and daily-sales cases, but Demo login returned HTTP 502 from Cloudflare after three attempts. No assistant request or business write was issued.

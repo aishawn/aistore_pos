@@ -1183,3 +1183,4 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - `ff32021` 已推送，范围为 `pos-ui` 和 UAT 工具：列表错误态 Retry 防重复提交与可访问状态；Capped Pricing/Bulk Price Edit 移动端触控尺寸、响应式间距和标签语义。
 - Node `24.19.0` typecheck、目标 ESLint 通过；库存定价响应式 `15/15 PASS`，平台错误恢复和实体目录保护 fixture 通过，所有本地验证无业务写入。
 - 该批次尚未取得线上 runtime SHA；app 登录 `502` 继续阻断部署后验收，仍标记为“已本地验证、线上待验证”。
+- 本批 webhook 只触发一次并返回 HTTP `301`，按规则停止重试；Demo 定价验收在登录 HTTP `502` 阻断，未产生业务写入。需先核对 Dokploy Source/Git 和 backend 容器日志。

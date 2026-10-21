@@ -470,3 +470,4 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Node `24.19.0` typecheck、目标 ESLint、`git diff --check` 通过；库存定价响应式 fixture `15/15 PASS`，价格建议、平台错误恢复、实体目录保护 fixture 均 PASS，业务写入 `0`。
 - [x] `ff32021` 已推送到 `origin/main`，仅前端/UAT 脚本。
 - [ ] 未运行本地 production build；Demo runtime SHA 未核验，线上登录 HTTP `502` 仍阻断部署后页面验收。
+- [ ] `ff32021` 推送后 Dokploy webhook 返回 HTTP `301`，未重复触发；线上定价只读脚本在登录 HTTP `502` 阶段阻断，证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json`。
