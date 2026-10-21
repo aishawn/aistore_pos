@@ -63,7 +63,9 @@ try {
       const alertText = (await page.getByRole("alert").allTextContents().catch(() => []))
         .join(" ")
         .trim();
-      const dataBlocked = /classic pos api is retired|connect odoo|could not load|temporarily unavailable/i.test(alertText);
+      const emptyOdooRules = route.path === "/stock/capped-pricing"
+        && await page.getByText("No Odoo price rules are configured for this store yet.", { exact: true }).isVisible().catch(() => false);
+      const dataBlocked = /classic pos api is retired|connect odoo|could not load|temporarily unavailable/i.test(alertText) || emptyOdooRules;
       const firstHeadingText = await page.locator("h1").first().innerText().catch(() => "");
       const headingVisible = await heading.isVisible().catch(() => false)
         || firstHeadingText.trim() === route.heading
