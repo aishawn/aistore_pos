@@ -1,0 +1,122 @@
+{
+  "generatedAt": "2026-10-21T16:04:06.652Z",
+  "sourceCommit": "70cc2347ee01d6e2d054059fb48f575c3c71700b",
+  "deployment": "unverified-after-deploy",
+  "target": "https://app.orithos.com.au",
+  "scope": "authenticated read-only platform observability UI; no business writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "route": "/platform/operations",
+      "viewport": 390,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/usage",
+      "viewport": 390,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/audit",
+      "viewport": 390,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/failures",
+      "viewport": 390,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/operations",
+      "viewport": 1440,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/usage",
+      "viewport": 1440,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/audit",
+      "viewport": 1440,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    },
+    {
+      "route": "/platform/failures",
+      "viewport": 1440,
+      "status": null,
+      "authStatus": 502,
+      "authCode": null,
+      "finalUrl": null,
+      "headingVisible": false,
+      "pageErrors": [],
+      "apiResponses": [],
+      "nonGet": [],
+      "noHorizontalOverflow": false
+    }
+  ],
+  "runtimeVersion": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": null,
+      "builtAt": "2026-10-21T15:56:09.064Z"
+    },
+    "backend": null
+  }
+}

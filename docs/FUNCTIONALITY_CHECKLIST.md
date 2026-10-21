@@ -437,3 +437,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] app 控制台 Operations、AI usage 在 390/1440 两个视口共 `4/4 PASS`；HTTP 200、标题可见、页面错误 0、无横向溢出、无业务写入。
 - [x] Operations 的 runtime/dependency 区域和 AI usage 的窗口选择均可加载；证据 `docs/UAT_PLATFORM_OPERATIONS_USAGE_ONLINE_2026-10-24.json`。
 - [ ] runtime SHA 仍为空，无法证明本地 Retry 优化已部署；线上错误态 Retry 仍需在已识别候选 SHA 上注入/验证。
+
+### 2026-10-22 自动构建后的控制面阻断
+
+- [ ] Audit/Failures/Operations/AI usage 认证回归：`8` 个检查均因 `/api/auth/login` HTTP `502` 阻断，未产生页面验收结论；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`。
+- [ ] `/api/public/version` builtAt 已更新，但 frontend/backend SHA 仍为空；部署身份和容器健康仍待核验。
+- [ ] Dokploy webhook 返回 `301` 后未重复触发；需修正/核对 Source/Git 或读取构建日志，再继续线上验收。

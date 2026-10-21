@@ -2105,3 +2105,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 使用管理员环境变量登录 `app.orithos.com.au`，Operations 与 AI usage 在 390px/1440px 共 `4/4 PASS`：HTTP 200、目标标题可见、页面错误 `0`、无横向溢出、非登录 API 写入 `0`。
 - 证据：`docs/UAT_PLATFORM_OPERATIONS_USAGE_ONLINE_2026-10-24.json`。页面内容可见，Operations 的环境/依赖状态和 Usage 的窗口选择均加载；线上没有触发业务写入。
 - 线上版本端点仍为 `frontend.commit=null`、`backend=null`，`builtAt=2026-10-21T13:35:45.867Z`；因此这证明当前公网页面行为，不证明本地 Retry 改动已运行。线上页面当前导航没有显示 Retry，因为本次 API 未注入错误。
+
+## 2026-10-22 自动构建后平台可观测性复核
+
+- 推送 `70cc234` 后，Demo `/api/public/version` 的 `builtAt` 更新为 `2026-10-21T15:56:09.064Z`；frontend/backend commit 仍为 `null`，只能证明构建时间变化，不能绑定运行 SHA。
+- 之前的 webhook 请求返回 HTTP `301`，未取得可读部署结果；按规则未重复触发。随后自动构建时间发生变化，来源仍未核验。
+- 新的四平台页面登录态脚本在 390px/1440px 共 `8` 个检查均被控制面 `/api/auth/login` HTTP `502` 阻断，未进入页面/API断言；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`。这不是页面 PASS/FAIL 结论，而是线上控制面登录可用性阻断。
+- 需要先查看 Dokploy/Cloudflare 源站日志，确认 app 控制面登录 502、容器健康和 backend 依赖状态，再重跑 Audit/Failures/Operations/Usage 的认证只读验收。不要把已更新 builtAt 当作完整部署或运行身份证明。
