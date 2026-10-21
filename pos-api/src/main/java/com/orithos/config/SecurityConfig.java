@@ -121,8 +121,8 @@ public class SecurityConfig {
                 res.getWriter().write(objectMapper.writeValueAsString(
                         ApiResult.fail(40100, "Unauthorized")));
             }))
-            .addFilterBefore(requestCorrelationFilter, TenantResolverFilter.class)
             .addFilterBefore(tenantResolverFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(requestCorrelationFilter, TenantResolverFilter.class)
             .addFilterBefore(odooOnlyModeFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(tenantMatchFilter, JwtAuthenticationFilter.class);
