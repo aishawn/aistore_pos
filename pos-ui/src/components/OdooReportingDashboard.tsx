@@ -63,6 +63,7 @@ export function OdooReportingDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const requestRevision = useRef(0);
 
@@ -71,11 +72,13 @@ export function OdooReportingDashboard() {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
+    setRequestId(null);
     try {
       const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${rangeHours}`, {
         credentials: "same-origin",
         cache: "no-store",
       });
+      setRequestId(response.headers.get("x-correlation-id"));
       const payload = await response.json().catch(() => null) as DashboardData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
@@ -135,7 +138,7 @@ export function OdooReportingDashboard() {
         <section role="alert" className="w-full max-w-lg rounded-xl border border-red-200 bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
           <AlertCircle className="mx-auto text-red-700" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the reporting dashboard</h1>
-          <p className="mt-2 text-sm leading-6 text-red-800">{error}</p>
+          <p className="mt-2 text-sm leading-6 text-red-800">{error}{requestId ? <span className="mt-2 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</p>
           <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
         </section>
       </main>
@@ -165,7 +168,7 @@ export function OdooReportingDashboard() {
         </div>
       </header>
 
-      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The dashboard below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex min-w-0 items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error} The dashboard below is the last successful result and may be out of date.{requestId ? <span className="mt-1 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</span></span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       <section aria-label="Sales summary" className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard title="Net sales" value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")} detail="Completed sales less refunds · incl. tax" icon={<ShoppingBag size={18} />} />

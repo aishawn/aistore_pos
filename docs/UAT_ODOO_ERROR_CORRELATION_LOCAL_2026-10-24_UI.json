@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-21T11:07:30.613Z",
+  "target": "http://demo.localhost:3035",
+  "scope": "local intercepted UI error-state verification",
+  "requestId": "33333333-3333-4333-8333-333333333333",
+  "checks": [
+    {
+      "name": "Price suggestions shows gateway request ID",
+      "status": "PASS",
+      "evidence": "/stock/price-suggestions · 33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "name": "Price suggestions has no page error",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "Odoo reporting shows gateway request ID",
+      "status": "PASS",
+      "evidence": "/reports/dashboard · 33333333-3333-4333-8333-333333333333"
+    },
+    {
+      "name": "Odoo reporting has no page error",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "fixture blocked business writes",
+      "status": "PASS",
+      "evidence": ""
+    }
+  ],
+  "blockedWrites": [],
+  "status": "PASS",
+  "limitation": "The fixture proves UI rendering and correlation propagation only; it does not prove the Odoo upstream is healthy."
+}

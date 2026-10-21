@@ -101,6 +101,7 @@ export function OdooPriceSuggestionsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -111,6 +112,7 @@ export function OdooPriceSuggestionsPage() {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
+    setRequestId(null);
     try {
       const session = await getOdooSessionStatus();
       if (!session.user) {
@@ -121,6 +123,7 @@ export function OdooPriceSuggestionsPage() {
         `/api/odoo/price-suggestions?marginTarget=${marginTarget}&offset=${offset}`,
         { credentials: "same-origin", cache: "no-store" },
       );
+      setRequestId(response.headers.get("x-correlation-id"));
       const payload = await response.json().catch(() => null) as PriceSuggestionData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
@@ -243,7 +246,7 @@ export function OdooPriceSuggestionsPage() {
 
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
-          <span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span>
+          <span className="flex min-w-0 items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error}{requestId ? <span className="mt-1 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</span></span>
           <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold underline-offset-2 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60">
             {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry
           </button>
