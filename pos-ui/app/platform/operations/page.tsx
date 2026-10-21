@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertCircle, LoaderCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, HelpCircle, LoaderCircle, RefreshCw } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { useAuth } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api";
@@ -57,6 +57,41 @@ function dateTime(value: string | null | undefined): string {
   if (!value) return "Unknown";
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? "Unknown" : parsed.toLocaleString();
+}
+
+type RuntimeIdentityState = "VERIFIED" | "MISMATCH" | "UNKNOWN";
+
+function runtimeIdentityState(frontend: BuildIdentity | null, backend: BuildIdentity | null): RuntimeIdentityState {
+  const frontendCommit = frontend?.commit?.trim() || null;
+  const backendCommit = backend?.commit?.trim() || null;
+  if (!frontendCommit || !backendCommit) return "UNKNOWN";
+  return frontendCommit === backendCommit ? "VERIFIED" : "MISMATCH";
+}
+
+function RuntimeIdentityNotice({ frontend, backend }: { frontend: BuildIdentity | null; backend: BuildIdentity | null }) {
+  const state = runtimeIdentityState(frontend, backend);
+  if (state === "VERIFIED") {
+    return (
+      <div role="status" className="mb-5 flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
+        <CheckCircle2 size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <span><strong>Runtime identity verified.</strong> Frontend and backend report the same commit.</span>
+      </div>
+    );
+  }
+  if (state === "MISMATCH") {
+    return (
+      <div role="alert" className="mb-5 flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
+        <AlertTriangle size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <span><strong>Runtime identity mismatch.</strong> Frontend and backend report different commits; do not treat this deployment as verified.</span>
+      </div>
+    );
+  }
+  return (
+    <div role="status" className="mb-5 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+      <HelpCircle size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
+      <span><strong>Runtime identity unknown.</strong> A missing frontend or backend commit prevents source-to-runtime verification.</span>
+    </div>
+  );
 }
 
 function BuildRow({ label, identity }: { label: string; identity: BuildIdentity | null | undefined }) {
@@ -130,6 +165,8 @@ export default function PlatformOperationsPage() {
             </button>
           </div>
         ) : null}
+
+        <RuntimeIdentityNotice frontend={frontend} backend={health?.backend ?? null} />
 
         <section aria-labelledby="runtime-heading" className="mb-7">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
