@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authProxyError, backendUrl, isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const upstream = await fetch(upstreamUrl, {
       method: "GET",
+      headers: withRequestCorrelation({}, request),
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),
     });

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { ACCESS_COOKIE, backendUrl } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export type TenantOdooBinding = {
   vendorId: number;
@@ -42,7 +43,7 @@ export async function fetchTenantOdooBinding(request: NextRequest): Promise<Tena
 
   try {
     const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/tenant/odoo-binding`, {
-      headers,
+      headers: withRequestCorrelation(headers, request),
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
     });

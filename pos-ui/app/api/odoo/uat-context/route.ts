@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
 import { backendUrl } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 import identity from "@/lib/build-identity.json";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export async function GET(request: NextRequest) {
     const database = process.env.ODOO_DATABASE?.trim();
     const expected = process.env.ISOLATION_ODOO_DATABASE?.trim();
     const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/public/uat-context`, {
+      headers: withRequestCorrelation({}, request),
       cache: "no-store", signal: AbortSignal.timeout(3_000),
     });
     const backend = response.ok ? await response.json() : null;

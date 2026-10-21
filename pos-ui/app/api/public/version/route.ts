@@ -1,15 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import identity from "@/lib/build-identity.json";
 import { backendUrl } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** Image metadata, never runtime env overrides or a client-supplied SHA. */
-export async function GET() {
+export async function GET(request: NextRequest) {
   let backend: { service: string; commit: string | null; builtAt: string | null } | null = null;
   try {
     const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/public/version`, {
+      headers: withRequestCorrelation({}, request),
       cache: "no-store", signal: AbortSignal.timeout(3_000),
     });
     const payload = response.ok ? await response.json() : null;

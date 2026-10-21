@@ -4,6 +4,7 @@ import { ACCESS_COOKIE, backendUrl, isSameOrigin } from "@/lib/server-auth";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +41,7 @@ async function requireAdmin(request: NextRequest): Promise<boolean> {
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
   if (!token) return false;
   const response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: withRequestCorrelation({ Authorization: `Bearer ${token}` }, request),
     cache: "no-store",
     signal: AbortSignal.timeout(8_000),
   });
