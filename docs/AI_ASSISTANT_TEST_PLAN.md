@@ -1318,3 +1318,40 @@ are empty. The runtime SHA therefore remains unverified. The current blocker
 for deploying the local backend fixes is the missing remote pre-push Java 21
 runner for the exact candidate SHA. Local Maven success is not a substitute for
 that gate.
+## 2026-10-22 SHA-aligned final recheck
+
+After a normal Dokploy Compose Deploy (no Fresh Volumes), `/api/public/version`
+reported frontend and backend `7c5e981774e14ce7ebfc952799049cfdff6cbdb9`.
+The complete authenticated catalog then returned **216 PASS / 0 BLOCKED / 0
+FAIL**, with `matchesSourceCommit=true`. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-SHA-7C5E981.json`.
+
+The prior runtime comparison remains below as historical context; this result
+is the current SHA-bound acceptance for assistant routing. The companion
+limitations remain unchanged: invoice OCR is unavailable (`410/41001`), live
+stock reporting is safely unavailable, and two History/platform checks need
+isolated credentials.
+
+## 2026-10-22 current runtime full recheck
+
+Using the current executable catalog, the authenticated Demo assistant-only
+workflow run selected all **216/216 unique cases** and returned **216 PASS / 0
+BLOCKED / 0 FAIL**. The run issued no sales, purchase, receiving, inventory,
+price, payment, or register-close writes; assistant usage/audit telemetry may
+be recorded. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-CURRENT.json`.
+
+The source checkout was `c031989a36554083d376984e4eb151cfa2b4de25`, while the
+Demo version endpoint reported frontend/backend runtime
+`e799c1977d45a2e1631d253249488b14d64c5353`. `matchesSourceCommit=false`, so
+this is a verified behavior result for the served runtime, not proof that the
+current checkout is deployed.
+
+Fresh companion checks were: availability **3/3 PASS**, enabled gate **PASS**,
+surface/auth **11/11 PASS**, route matrix **9/9 PASS**, AI UI **2/2 PASS**, and
+metrics **9/9 PASS**. The feature suite was **14 PASS / 1 BLOCKED** because the
+invoice OCR route returned the structured `410/41001` unavailable response;
+reports were **15/16 PASS** because the live stock data source remained safely
+unavailable; History/platform was **9 PASS / 2 BLOCKED** because isolated
+second-store and platform-operator credentials were not available. No blocked
+companion check was an assertion failure, and no business write was issued.
+

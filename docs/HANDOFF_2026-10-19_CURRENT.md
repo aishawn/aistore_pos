@@ -2197,3 +2197,59 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - The executable assistant catalog contains **216 unique IDs**. The retry-enabled representative smoke selected replenishment, pricing, recommendation, invoice, and daily-sales cases, but Demo login returned HTTP 502 from Cloudflare after three attempts. No assistant request or business write was issued.
 - Anonymous probes for `/api/auth/me`, `/api/ai/config/client`, and `/api/ai/assistant` all returned HTTP 502, so the block is shared by the frontend-to-backend proxy rather than a single AI workflow. Evidence: `docs/UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json` and `docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-DIAGNOSTIC.json`.
 - `/api/public/version` returns HTTP 200 but still exposes no frontend/backend runtime SHA. After backend changes, retain the Java 21 same-candidate-SHA `mvn -B clean verify` gate and rerun the full 216-case matrix only after login and proxy health recover.
+
+## 2026-10-22 latest owner deployment confirmation
+
+- Owner confirmed that the latest Dokploy deployment is shown as successful. This is a panel-status confirmation only; no deployment commit SHA, fresh exact-SHA Maven log, container digest, or runtime SHA was supplied.
+- Repository state is `HEAD == origin/main == fc5b736` (`docs: record AI provider recovery and full UAT`). The current working tree still contains unrelated WIP and generated UAT artifacts; do not deploy those files implicitly.
+- The known `AiProviderConfig` compilation message belongs to an earlier Dokploy build context and is not evidence against the current checkout. Do not change Java sources solely from that log; any future `pos-api` candidate still requires the Java 21 same-candidate-SHA `mvn -B clean verify` gate before push.
+- Current release classification remains: implemented/local checks and selected online behavior are documented; source-to-runtime identity is unverified. Production write UAT remains out of scope.
+
+## 2026-10-22 Stock List Odoo migration batch
+
+- Stock List now reads products and categories through the existing Odoo allowlisted records bridge, including search, category filter, stock-only filter, paging, and Odoo product CSV export. It no longer requests Classic POS `/api/stock-list` or `/api/classifications/category`.
+- Product name and Odoo list price edits use the scoped `/api/odoo/products/:id` route with expected-price concurrency protection. Cost is shown as managed by Odoo purchasing when unavailable and is never fabricated or written from this page.
+- The Odoo records bridge validates `stockOnly` and applies `qty_available > 0` for that filter. The product bridge accepts a validated name update.
+- Local evidence: Node `24.19.0` typecheck, targeted ESLint, `node --check`, and `git diff --check` passed; responsive fixture `15/15 PASS`, `blockedWrites=0`, `forbiddenLegacyRequests=[]`: `docs/UAT_STOCK_LIST_ODOO_LOCAL_2026-10-22.json`.
+- This batch is frontend/Next route work only; the local candidate has now been deployed and runtime-identified below. Price writes still belong in an approved isolated Odoo environment.
+
+## 2026-10-22 `c031989` deployment and Demo verification
+
+- Dokploy deployment for `c031989a36554083d376984e4eb151cfa2b4de25` is `Done`; `/api/public/version` reports the same frontend/backend runtime SHA. This is the first exact runtime identity match for this batch.
+- Demo Stock List read-only UAT passed at 390px and 1440px: `2/2 PASS`, HTTP 200, no page errors, no horizontal overflow, Odoo records requests observed, and zero requests to the retired Classic Stock List/category routes. The Odoo CSV export downloaded `demo-products.csv`; no business writes were sent. Evidence: `docs/UAT_STOCK_LIST_ODOO_ONLINE_2026-10-22_C031989.json`.
+- The broader pricing run is `6 PASS / 2 BLOCKED / 0 FAIL`; both Capped Pricing checks are blocked because its legacy Classic POS API is retired. Bulk Price Edit and Price Suggestions remain reachable and visually healthy.
+- The next migration target is Capped Pricing/Odoo price-list items. Keep it separate from this verified Stock List batch, and continue to use isolated Odoo UAT for any real price write.
+## 2026-10-22 SHA-aligned final AI recheck
+
+- A normal Dokploy Compose Deploy completed without Fresh Volumes. Demo
+  `/api/public/version` now reports frontend/backend
+  `7c5e981774e14ce7ebfc952799049cfdff6cbdb9`, matching the source checkout.
+- The complete authenticated assistant catalog returned **216 PASS / 0
+  BLOCKED / 0 FAIL**, with `matchesSourceCommit=true`; evidence:
+  `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-SHA-7C5E981.json`.
+- This is assistant-only read-only coverage. No sale, refund, purchase,
+  receiving, inventory, price, payment, or register-close write was sent.
+- Remaining AI companion limits are explicit: invoice OCR route `410/41001`,
+  live stock report unavailable, and two History/platform checks blocked by
+  unavailable isolated accounts. Pilot remains NO-GO for business-write UAT,
+  Odoo reconciliation, backup recovery and durable alert handling.
+
+## 2026-10-22 current AI full recheck
+
+- The complete authenticated Demo assistant-only catalog selected **216/216**
+  cases and returned **216 PASS / 0 BLOCKED / 0 FAIL**. Evidence:
+  `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-CURRENT.json`.
+- The run was read-only at the business layer: no sales, refund, purchase,
+  receiving, inventory, price, payment, or register-close request was sent.
+  Assistant usage/audit telemetry may exist.
+- Source checkout was `c031989`; the runtime endpoint reported both frontend
+  and backend as `e799c19`; `matchesSourceCommit=false`. Keep this as online
+  behavior evidence only until the intended candidate SHA is deployed and
+  returned by `/api/public/version`.
+- Companion suites: availability `3/3`, enabled gate PASS, surface/auth
+  `11/11`, route `9/9`, UI `2/2`, metrics `9/9`; feature `14 PASS / 1 BLOCKED`
+  (invoice OCR route `410/41001`), reports `15/16` (stock source unavailable),
+  History/platform `9 PASS / 2 BLOCKED` (missing isolated credentials).
+- Pilot remains **NO-GO** for release identity, isolated business write and
+  Odoo reconciliation, backup recovery, and durable operational alerting.
+

@@ -1208,3 +1208,27 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Owner confirmed the latest Dokploy deployment is displayed as successful. The confirmation does not include a checkout SHA, fresh exact-SHA Java 21 build log, container digest, or runtime commit, so it does not upgrade capabilities to runtime-verified.
 - `main` and `origin/main` currently point to `dab824f`, a documentation/UAT record commit. Keep unrelated dirty WIP out of any deployment candidate.
 - The historical `AiProviderConfig` compile error is retained as prior build-context evidence only; it is not a reproducible current-checkout failure. Any future `pos-api` change remains blocked on the same-candidate-SHA Java 21 `mvn -B clean verify` gate.
+## 2026-10-22 SHA-aligned Demo AI verification
+
+- After a normal Dokploy Compose Deploy, frontend and backend both reported
+  `7c5e981774e14ce7ebfc952799049cfdff6cbdb9`; the full catalog was **216/216
+  PASS**, **0 BLOCKED**, **0 FAIL**, with `matchesSourceCommit=true`.
+  Evidence: `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-SHA-7C5E981.json`.
+- The companion limitations remain: invoice OCR `410/41001`, live stock report
+  unavailable, and two History/platform checks requiring isolated accounts.
+
+## 2026-10-22 current Demo AI verification
+
+- Complete assistant workflow catalog: **216/216 PASS**, **0 BLOCKED**, **0 FAIL**;
+  assistant API only and no business writes. Evidence:
+  `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-CURRENT.json`.
+- Runtime identity is still not bound to the checkout: source `c031989`, Demo
+  frontend/backend `e799c19`, `matchesSourceCommit=false`.
+- Companion results: availability `3/3`, enabled gate PASS, surface/auth `11/11`,
+  routes `9/9`, UI `2/2`, metrics `9/9`; features `14 PASS / 1 BLOCKED` (OCR
+  route unavailable `410/41001`), reports `15/16` (stock source unavailable),
+  History/platform `9 PASS / 2 BLOCKED` (isolated credentials unavailable).
+- This improves the online AI behavior evidence but does not change the pilot
+  decision: release identity, isolated write UAT, Odoo reconciliation, backup
+  recovery and durable alert handling remain outstanding.
+
