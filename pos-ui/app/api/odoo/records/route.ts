@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; status?: string; period?: string; filters?: Record<string, unknown> };
+  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; status?: string; period?: string; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -177,6 +177,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Product category is invalid" }, { status: 400 });
     }
     domain.push(["pos_categ_ids", "in", [body.categoryId]]);
+  }
+  if (type === "products" && body.stockOnly !== undefined) {
+    if (typeof body.stockOnly !== "boolean") {
+      return NextResponse.json({ message: "Stock filter is invalid" }, { status: 400 });
+    }
+    if (body.stockOnly) domain.push(["qty_available", ">", 0]);
   }
   if (query) {
     const clauses = config.searchFields.map((field) => [field, "ilike", query]);

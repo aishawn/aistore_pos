@@ -9,18 +9,14 @@ import { AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
 import { Pagination } from "@/components/admin/Pagination";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
-import { useApi, useApiList, useDebouncedValue } from "@/hooks/useApi";
-import { api, exportStockListCsv } from "@/lib/api";
-import { validateNonNegativeMoney, validatePositiveMoney, validatePositiveQuantity } from "@/lib/quantity";
+import { useDebouncedValue } from "@/hooks/useApi";
+import { exportOdooProductsCsv, searchOdooRecords, updateOdooProduct, type OdooProductCategoryRecord, type OdooProductRecord } from "@/lib/odoo-api";
+import { validateNonNegativeMoney, validatePositiveMoney } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
-
-interface Named {
-  id: string;
-  name: string;
-}
 
 interface StockListRow {
   id: string;
+  productId: number;
   name: string;
   categoryName?: string | null;
   priceSetName?: string | null;
@@ -111,36 +107,34 @@ function StockListRowEditor({
     if (name.trim() !== row.name) body.name = name.trim();
     const costNum = cost === "" ? null : Number(cost);
     const priceNum = price === "" ? null : Number(price);
-    const qtyNum = quantity === "" ? null : Number(quantity);
     const costError = validateNonNegativeMoney(costNum, "Cost");
     if (costError) {
       setSaveError(costError);
       return;
     }
-    if (costNum !== row.cost) body.cost = costNum;
+    if (costNum !== row.cost) {
+      setSaveError("Cost is managed by Odoo purchasing and cannot be edited here.");
+      return;
+    }
     if (
       row.priceId &&
-      (priceNum !== row.price || qtyNum !== row.priceQuantity)
+      priceNum !== row.price
     ) {
-      const priceQtyError = validatePositiveQuantity(quantity, "Price quantity");
-      if (priceQtyError) {
-        setSaveError(priceQtyError);
-        return;
-      }
       const priceError = validatePositiveMoney(priceNum, "Price");
       if (priceError) {
         setSaveError(priceError);
         return;
       }
-      body.priceId = row.priceId;
-      body.price = priceNum;
-      body.priceQuantity = qtyNum ?? row.priceQuantity ?? 1;
+      body.list_price = priceNum;
     }
     if (Object.keys(body).length === 0) return;
     savingRef.current = true;
     setSaving(true);
     try {
-      await api.patch(`/api/stock-list/${row.id}`, body);
+      await updateOdooProduct(row.productId, {
+        ...(body.name !== undefined ? { name: String(body.name) } : {}),
+        ...(body.list_price !== undefined ? { list_price: Number(body.list_price), expectedListPrice: row.price ?? undefined } : {}),
+      });
       onSaved();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save row");
@@ -148,7 +142,7 @@ function StockListRowEditor({
       savingRef.current = false;
       setSaving(false);
     }
-  }, [cost, name, onSaved, price, quantity, row]);
+  }, [cost, name, onSaved, price, row]);
 
   const profit = profitPct(cost === "" ? null : Number(cost), price === "" ? null : Number(price));
   const hasStock = Number(row.casesOnHand ?? 0) > 0 || Number(row.itemsOnHand ?? 0) > 0;
@@ -185,7 +179,8 @@ function StockListRowEditor({
           aria-label={`Price quantity for ${row.name}`}
           aria-busy={saving}
           aria-invalid={saveError ? true : undefined}
-          disabled={saving}
+          disabled
+          readOnly
           value={quantity}
           onChange={(e) => {
             setQuantity(e.target.value);
@@ -203,7 +198,9 @@ function StockListRowEditor({
             aria-label={`Cost for ${row.name}`}
             aria-busy={saving}
             aria-invalid={saveError ? true : undefined}
-            disabled={saving}
+            disabled={saving || row.cost == null}
+            readOnly={row.cost == null}
+            placeholder={row.cost == null ? "Managed in purchasing" : undefined}
             value={cost}
             onChange={(e) => {
               setCost(e.target.value);
@@ -271,8 +268,8 @@ function StockListRowEditor({
         <div><dt className="text-xs text-[var(--oh-muted)]">Stock on hand</dt><dd className={`mt-1 tabular-nums font-medium ${hasStock ? "text-[var(--oh-text)]" : "text-[var(--oh-danger)]"}`}>{num(row.casesOnHand) || "0"} cases · {num(row.itemsOnHand) || "0"} items</dd></div>
       </dl>
       <div className="grid grid-cols-2 gap-3">
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-quantity-${row.id}`}>Price quantity</label><input id={`stock-quantity-${row.id}`} type="number" min="1" step="1" className={cellInput("text-center")} aria-label={`Price quantity for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={quantity} onChange={(e) => { setQuantity(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div>
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-cost-${row.id}`} className={cellInput("pl-5")} aria-label={`Cost for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-quantity-${row.id}`}>Price quantity</label><input id={`stock-quantity-${row.id}`} type="number" min="1" step="1" className={cellInput("text-center")} aria-label={`Price quantity for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled value={quantity} readOnly /></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-cost-${row.id}`} className={cellInput("pl-5")} aria-label={`Cost for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving || row.cost == null} readOnly={row.cost == null} placeholder={row.cost == null ? "Managed in purchasing" : undefined} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-price-${row.id}`}>Price</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-price-${row.id}`} className={cellInput("pl-5")} aria-label={`Price for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={price} onChange={(e) => { setPrice(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-profit-${row.id}`}>Profit %</label><div className="relative"><input id={`stock-profit-${row.id}`} className={cn(cellInput("pr-6 text-right"), Number(profit) < 0 ? "border-red-200 bg-red-50 font-semibold text-[var(--oh-danger)]" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]")} aria-label={`Profit margin for ${row.name}`} value={profit} readOnly /><span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500">%</span></div></div>
       </div>
@@ -308,30 +305,69 @@ function StockListPageInner() {
   }, [searchParams]);
 
   const debouncedSearch = useDebouncedValue(search, 300);
-  const { data: categoryData, error: categoryError, loading: categoriesLoading, reload: reloadCategories } = useApi<Named[]>("/api/classifications/category");
+  const [categoryData, setCategoryData] = useState<OdooProductCategoryRecord[]>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [items, setItems] = useState<StockListRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const request = useRef(0);
 
-  const { items, total, loading, error, reload } = useApiList<StockListRow>("/api/stock-list", {
-    search: debouncedSearch || undefined,
-    categoryId: categoryId || undefined,
-    inStockOnly: inStockOnly || undefined,
-    page,
-    size: PAGE_SIZE,
-  });
+  const reload = useCallback(() => {
+    const current = ++request.current;
+    setLoading(true);
+    setError(null);
+    void searchOdooRecords<OdooProductRecord>("products", {
+      query: debouncedSearch || undefined,
+      categoryId: categoryId ? Number(categoryId) : undefined,
+      stockOnly: inStockOnly,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }).then((result) => {
+      if (current !== request.current) return;
+      const rows = result.items.map((product) => ({
+        id: String(product.id),
+        productId: product.id,
+        name: product.display_name || product.name,
+        categoryName: product.pos_categ_ids?.map((id) => categoryData.find((category) => category.id === id)?.name).filter(Boolean).join(", ") || null,
+        priceSetName: "Odoo list price",
+        caseQuantity: null,
+        casesOnHand: null,
+        itemsOnHand: product.free_qty ?? product.qty_available ?? 0,
+        priceQuantity: 1,
+        priceId: String(product.id),
+        cost: null,
+        price: product.list_price,
+      }));
+      setItems(rows);
+      setTotal((page - 1) * PAGE_SIZE + rows.length + (rows.length === PAGE_SIZE ? 1 : 0));
+    }).catch((cause) => {
+      if (current === request.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo stock.");
+    }).finally(() => {
+      if (current === request.current) setLoading(false);
+    });
+  }, [categoryData, categoryId, debouncedSearch, inStockOnly, page]);
+
+  const reloadCategories = useCallback(() => {
+    setCategoriesLoading(true);
+    setCategoryError(null);
+    void searchOdooRecords<OdooProductCategoryRecord>("posCategories", { limit: 100 }).then((result) => setCategoryData(result.items)).catch((cause) => setCategoryError(cause instanceof Error ? cause.message : "Could not load Odoo categories.")).finally(() => setCategoriesLoading(false));
+  }, []);
+
+  useEffect(() => { reloadCategories(); }, [reloadCategories]);
+  useEffect(() => { reload(); }, [reload]);
 
   const categoryOptions: SelectOption[] = (categoryData ?? []).map((c) => ({
     label: c.name,
-    value: c.id,
+    value: String(c.id),
   }));
 
   async function onExport() {
     setExporting(true);
     setExportError(null);
     try {
-      await exportStockListCsv({
-        search: debouncedSearch || undefined,
-        categoryId: categoryId || undefined,
-        inStockOnly: inStockOnly || undefined,
-      });
+      await exportOdooProductsCsv();
     } catch (cause) {
       setExportError(cause instanceof Error ? cause.message : "Could not export the stock list.");
     } finally {
@@ -348,7 +384,7 @@ function StockListPageInner() {
           {exporting ? "Exporting…" : "Export to CSV"}
         </AdminPrimaryButton>
         <div data-testid="stock-list-product-count" className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
-          <span className="font-semibold tabular-nums text-[var(--oh-text)]">{total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
+            <span className="font-semibold tabular-nums text-[var(--oh-text)]">{items.length === PAGE_SIZE ? `${(page - 1) * PAGE_SIZE + items.length}+` : total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
 

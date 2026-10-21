@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
-const EDITABLE_FIELDS = new Set(["barcode", "default_code", "list_price", "pos_categ_ids", "available_in_pos", "image_1920", "expectedListPrice"]);
+const EDITABLE_FIELDS = new Set(["name", "barcode", "default_code", "list_price", "pos_categ_ids", "available_in_pos", "image_1920", "expectedListPrice"]);
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -63,6 +63,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   const values: Record<string, unknown> = {};
+  if ("name" in body) {
+    if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 120) {
+      return NextResponse.json({ message: "Product name is required and must be 120 characters or fewer" }, { status: 400 });
+    }
+    values.name = body.name.trim();
+  }
   if ("barcode" in body) {
     if (typeof body.barcode !== "string" || body.barcode.length > 64) return NextResponse.json({ message: "Barcode must be 64 characters or fewer" }, { status: 400 });
     values.barcode = body.barcode.trim() || false;

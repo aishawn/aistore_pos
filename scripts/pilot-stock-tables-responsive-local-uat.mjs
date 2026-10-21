@@ -54,6 +54,13 @@ try {
             }),
           });
         }
+        if (body?.type === "posCategories") {
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ items: [{ id: 10, name: "Wine", parent_id: false }], limit: 100, offset: 0 }),
+          });
+        }
       }
       if (request.method() !== "GET") {
         blockedWrites.push(`${request.method()} ${url.pathname}`);
@@ -272,6 +279,8 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || (check.viewport >= 1280 && check.columnsAlignWithFirstRow === false)
   || (check.viewport >= 1280 && check.headerTextFits === false)
   || (check.pageErrors?.length ?? 0) > 0);
+const forbiddenLegacyRequests = requests.filter((request) => /\/api\/(stock-list|classifications\/category)(?:\/|\?|$)/.test(request));
+if (forbiddenLegacyRequests.length > 0) failures.push({ status: "FAIL", reason: "legacy stock route requested", requests: forbiddenLegacyRequests });
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
@@ -294,6 +303,8 @@ const output = {
   passed: checks.length - failures.length,
   failed: failures.length,
   checks,
+  requests,
+  forbiddenLegacyRequests,
   blockedWrites,
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH

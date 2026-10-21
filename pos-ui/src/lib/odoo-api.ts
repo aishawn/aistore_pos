@@ -36,7 +36,13 @@ export interface OdooProductRecord {
   available_in_pos: boolean;
 }
 
-export type OdooProductUpdate = Pick<OdooProductRecord, "barcode" | "default_code" | "list_price" | "pos_categ_ids" | "available_in_pos">;
+export interface OdooProductCategoryRecord {
+  id: number;
+  name: string;
+  parent_id: [number, string] | false;
+}
+
+export type OdooProductUpdate = Partial<Pick<OdooProductRecord, "name" | "barcode" | "default_code" | "list_price" | "pos_categ_ids" | "available_in_pos">> & { expectedListPrice?: number };
 
 export interface OdooPosCategoryRecord {
   id: number;
@@ -481,7 +487,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { query?: string; limit?: number; offset?: number; categoryId?: number; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
+  options: { query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -494,6 +500,7 @@ export async function searchOdooRecords<T>(
       limit: options.limit,
       offset: options.offset,
       categoryId: options.categoryId,
+      stockOnly: options.stockOnly,
       status: options.status,
       period: options.period,
     }),
@@ -510,6 +517,28 @@ export async function searchOdooRecords<T>(
     throw new OdooApiError("Odoo returned an invalid records response", 502);
   }
   return payload as OdooPage<T>;
+}
+
+/** Download the current store product catalogue from the Odoo source of truth. */
+export async function exportOdooProductsCsv(): Promise<void> {
+  const response = await fetchOdooApi("/api/odoo/products/export", {
+    method: "GET",
+    credentials: "same-origin",
+    cache: "no-store",
+  }, true);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { message?: string } | null;
+    throw new OdooApiError(payload?.message || `Product export failed (${response.status})`, response.status);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? "products.csv";
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate> & { image_1920?: string }): Promise<void> {
