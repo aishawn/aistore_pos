@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-10-21T05:00:00.814Z",
+  "sourceCommit": "c0368b94f3178af1e9a2fdbfb5477871263d3ded",
+  "deployment": "runtime-identity-unverified",
+  "target": "https://demo.orithos.com.au",
+  "scope": "Authenticated Demo cold stocktake page; GET-only browser observation; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "stocktake cold entry recovers Odoo read",
+      "status": "PASS",
+      "errors": [],
+      "apiResponses": [
+        {
+          "path": "/api/odoo/stocktake",
+          "status": 401
+        },
+        {
+          "path": "/api/odoo/session",
+          "status": 200
+        },
+        {
+          "path": "/api/odoo/stocktake",
+          "status": 200
+        }
+      ]
+    }
+  ],
+  "blockedWrites": []
+}

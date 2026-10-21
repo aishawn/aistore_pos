@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-21T04:55:25.394Z",
+  "sourceCommit": "c0368b94f3178af1e9a2fdbfb5477871263d3ded",
+  "deployment": "runtime-identity-unverified",
+  "target": "https://demo.orithos.com.au",
+  "scope": "Authenticated Demo read-only purchase list; GET-only browser observation; no purchase/receipt writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "purchase list AI placement and responsive shell",
+      "status": "PASS",
+      "header": 1,
+      "floating": 0,
+      "overflow": false,
+      "orderButtons": 0,
+      "errors": [],
+      "path": "/purchases/odoo"
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "purchase list AI placement and responsive shell",
+      "status": "PASS",
+      "header": 1,
+      "floating": 0,
+      "overflow": false,
+      "orderButtons": 0,
+      "errors": [],
+      "path": "/purchases/odoo"
+    }
+  ],
+  "blockedWrites": []
+}
