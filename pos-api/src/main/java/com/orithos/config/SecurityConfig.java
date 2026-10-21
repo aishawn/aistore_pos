@@ -33,7 +33,6 @@ public class SecurityConfig {
     private final TenantResolverFilter tenantResolverFilter;
     private final TenantMatchFilter tenantMatchFilter;
     private final OdooOnlyModeFilter odooOnlyModeFilter;
-    private final RequestCorrelationFilter requestCorrelationFilter;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -48,13 +47,11 @@ public class SecurityConfig {
     public SecurityConfig(JwtAuthenticationFilter jwtFilter,
                           TenantResolverFilter tenantResolverFilter,
                           TenantMatchFilter tenantMatchFilter,
-                          OdooOnlyModeFilter odooOnlyModeFilter,
-                          RequestCorrelationFilter requestCorrelationFilter) {
+                          OdooOnlyModeFilter odooOnlyModeFilter) {
         this.jwtFilter = jwtFilter;
         this.tenantResolverFilter = tenantResolverFilter;
         this.tenantMatchFilter = tenantMatchFilter;
         this.odooOnlyModeFilter = odooOnlyModeFilter;
-        this.requestCorrelationFilter = requestCorrelationFilter;
     }
 
     @Bean
@@ -100,7 +97,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           RequestCorrelationFilter requestCorrelationFilter) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(c -> c.configurationSource(corsSource()))
