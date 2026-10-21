@@ -62,6 +62,15 @@ public final class AssistantFastPathRouter {
     private static final Pattern LOOKUP_CUSTOMERS = Pattern.compile(
             "^(look\\s*up\\s*customers?|search\\s*customers?|find\\s*customers?|查询客户|查找客户|搜索客户|客户查询)$",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOOKUP_SUPPLIERS = Pattern.compile(
+            "^(?:show|open|view|list|search|find|look up|check)(?:\\s+me)?\\s+(?:the\\s+)?suppliers?|"
+                    + "^(?:supplier|suppliers)\\s+(?:list|directory|lookup)$|"
+                    + "^(?:查看|打开|查询|搜索)供应商(?:列表|目录)?$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern LOOKUP_PRICE_LISTS = Pattern.compile(
+            "^(?:show|open|view|list|search|find|check)(?:\\s+me)?\\s+(?:the\\s+)?price lists?|"
+                    + "^(?:查看|打开|查询|搜索)(?:价目表|价格表)$",
+            Pattern.CASE_INSENSITIVE);
     private static final Pattern LOOKUP_CUSTOMER_QUERY = Pattern.compile(
             "^(?:look\\s*up|search(?:\\s+for)?|find(?:\\s+me)?)\\s+(?:the\\s+)?customers?\\s+(?:for\\s+)?(.+?)[?.!]*$|"
                     + "^(?:can you|could you|please)\\s+(?:find|look\\s+for|search\\s+for)\\s+(?:the\\s+)?customer\\s+(.+?)[?.!]*$|"
@@ -240,6 +249,26 @@ public final class AssistantFastPathRouter {
                     "Opened customers.",
                     Map.of("query", ""),
                     "",
+                    "",
+                    "",
+                    "");
+        }
+        if (LOOKUP_SUPPLIERS.matcher(normalized).matches()) {
+            return new Match(
+                    "navigate",
+                    "Opened suppliers.",
+                    Map.of(),
+                    "/suppliers/odoo",
+                    "",
+                    "",
+                    "");
+        }
+        if (LOOKUP_PRICE_LISTS.matcher(normalized).matches()) {
+            return new Match(
+                    "navigate",
+                    "Opened price lists.",
+                    Map.of(),
+                    "/pricelists",
                     "",
                     "",
                     "");
