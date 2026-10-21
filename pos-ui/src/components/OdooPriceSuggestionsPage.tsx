@@ -119,11 +119,15 @@ export function OdooPriceSuggestionsPage() {
         setNeedsConnection(true);
         throw new Error("Connect Odoo to review price suggestions.");
       }
+      if (revision !== requestRevision.current) return;
+      const correlationId = crypto.randomUUID();
+      setRequestId(correlationId);
       const response = await fetchOdooRoute(
         `/api/odoo/price-suggestions?marginTarget=${marginTarget}&offset=${offset}`,
-        { credentials: "same-origin", cache: "no-store" },
+        { credentials: "same-origin", cache: "no-store", headers: { "X-Correlation-ID": correlationId } },
       );
-      setRequestId(response.headers.get("x-correlation-id"));
+      if (revision !== requestRevision.current) return;
+      setRequestId(response.headers.get("x-correlation-id") || correlationId);
       const payload = await response.json().catch(() => null) as PriceSuggestionData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {

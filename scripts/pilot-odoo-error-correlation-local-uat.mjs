@@ -12,6 +12,7 @@ const requestId = "33333333-3333-4333-8333-333333333333";
 const fixtureUser = { id: 1, name: "Admin", username: "admin", isAdmin: true, outletId: 1, vendorId: 1, pendingPasswordReset: false };
 const checks = [];
 const blockedWrites = [];
+const observedRequestIds = {};
 const record = (name, passed, evidence) => checks.push({ name, status: passed ? "PASS" : "FAIL", evidence });
 
 const browser = await chromium.launch({ headless: true });
@@ -34,9 +35,15 @@ try {
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: fixtureUser, autoRecoverConfigured: true }) });
     }
     if (url.pathname === "/api/odoo/price-suggestions" || url.pathname === "/api/odoo/reporting-dashboard") {
+      const outgoingId = request.headers()["x-correlation-id"] ?? "";
+      observedRequestIds[url.pathname] ??= [];
+      observedRequestIds[url.pathname].push(outgoingId);
       return route.fulfill({
         status: 502,
-        headers: { "Content-Type": "application/json", "X-Correlation-ID": requestId },
+        headers: {
+          "Content-Type": "application/json",
+          ...(url.pathname === "/api/odoo/reporting-dashboard" ? { "X-Correlation-ID": requestId } : {}),
+        },
         body: JSON.stringify({ message: "Odoo is temporarily unavailable. Try again shortly." }),
       });
     }
@@ -54,9 +61,23 @@ try {
     await page.getByRole("heading", { name: item.heading, exact: true }).waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(1000);
     const bodyText = await page.locator("body").innerText().catch(() => "");
-    const visible = bodyText.includes(requestId);
-    record(`${item.heading} shows gateway request ID`, visible, `${item.path} · ${requestId}${visible ? "" : ` · body=${bodyText.slice(0, 240)}`}`);
+    const apiPath = item.path === "/stock/price-suggestions" ? "/api/odoo/price-suggestions" : "/api/odoo/reporting-dashboard";
+    const observedId = observedRequestIds[apiPath]?.[0];
+    const expectedId = item.path === "/stock/price-suggestions" ? observedId : requestId;
+    const requestIdVisible = Boolean(expectedId && bodyText.includes(expectedId));
+    record(`${item.heading} shows gateway request ID`, requestIdVisible, `${item.path} · ${expectedId || "missing outgoing correlation ID"}${requestIdVisible ? "" : ` · body=${bodyText.slice(0, 240)}`}`);
+    record(`${item.heading} sends a UUID correlation ID`, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(observedId ?? ""), observedId ?? "missing");
     record(`${item.heading} has no page error`, errors.length === 0, errors.join(" | "));
+    const responseIdAfterRetry = item.path === "/stock/price-suggestions" ? null : requestId;
+    const retryRequestPromise = page.waitForRequest((request) => new URL(request.url()).pathname === apiPath);
+    await page.getByRole("button", { name: "Retry" }).click();
+    const retryRequest = await retryRequestPromise;
+    const retryId = retryRequest.headers()["x-correlation-id"] ?? "";
+    const displayedRetryId = responseIdAfterRetry ?? retryId;
+    await page.waitForFunction((id) => document.body.innerText.includes(id), displayedRetryId, { timeout: 10000 }).catch(() => {});
+    const allRequestIds = observedRequestIds[apiPath] ?? [];
+    record(`${item.heading} retry creates a new correlation ID`, Boolean(retryId && retryId !== observedId && allRequestIds.length >= 2), retryId || "missing");
+    record(`${item.heading} retry displays the expected ID`, Boolean(displayedRetryId && (await page.locator("body").innerText()).includes(displayedRetryId)), displayedRetryId || "missing");
     const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
     record(`${item.heading} has no horizontal overflow`, dimensions.content <= dimensions.viewport, `${dimensions.content}/${dimensions.viewport}px`);
     await page.screenshot({ path: path.join(screenshotDir, `${item.path.split("/").at(-1)}-390.png`), fullPage: true });

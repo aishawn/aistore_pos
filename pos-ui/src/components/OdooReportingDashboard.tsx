@@ -74,11 +74,15 @@ export function OdooReportingDashboard() {
     setError(null);
     setRequestId(null);
     try {
+      const correlationId = crypto.randomUUID();
+      setRequestId(correlationId);
       const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${rangeHours}`, {
         credentials: "same-origin",
         cache: "no-store",
+        headers: { "X-Correlation-ID": correlationId },
       });
-      setRequestId(response.headers.get("x-correlation-id"));
+      if (revision !== requestRevision.current) return;
+      setRequestId(response.headers.get("x-correlation-id") || correlationId);
       const payload = await response.json().catch(() => null) as DashboardData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
