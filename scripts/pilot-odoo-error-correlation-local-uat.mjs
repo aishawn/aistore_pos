@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = (process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035").replace(/\/+$/, "");
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_ODOO_ERROR_CORRELATION_LOCAL_2026-10-24_UI.json");
+const screenshotDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-24-odoo-error-correlation");
 const requestId = "33333333-3333-4333-8333-333333333333";
 const fixtureUser = { id: 1, name: "Admin", username: "admin", isAdmin: true, outletId: 1, vendorId: 1, pendingPasswordReset: false };
 const checks = [];
@@ -14,6 +15,7 @@ const blockedWrites = [];
 const record = (name, passed, evidence) => checks.push({ name, status: passed ? "PASS" : "FAIL", evidence });
 
 const browser = await chromium.launch({ headless: true });
+fs.mkdirSync(screenshotDir, { recursive: true });
 try {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
@@ -49,11 +51,15 @@ try {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`${base}${item.path}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await page.getByText("Request ID:", { exact: false }).first().waitFor({ state: "visible", timeout: 30000 });
+    await page.getByRole("heading", { name: item.heading, exact: true }).waitFor({ state: "visible", timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1000);
     const bodyText = await page.locator("body").innerText().catch(() => "");
     const visible = bodyText.includes(requestId);
     record(`${item.heading} shows gateway request ID`, visible, `${item.path} · ${requestId}${visible ? "" : ` · body=${bodyText.slice(0, 240)}`}`);
     record(`${item.heading} has no page error`, errors.length === 0, errors.join(" | "));
+    const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
+    record(`${item.heading} has no horizontal overflow`, dimensions.content <= dimensions.viewport, `${dimensions.content}/${dimensions.viewport}px`);
+    await page.screenshot({ path: path.join(screenshotDir, `${item.path.split("/").at(-1)}-390.png`), fullPage: true });
     await page.close();
   }
   record("fixture blocked business writes", blockedWrites.length === 0, blockedWrites.join(", "));

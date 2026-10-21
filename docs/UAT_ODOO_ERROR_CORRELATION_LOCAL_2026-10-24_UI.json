@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T11:07:30.613Z",
+  "generatedAt": "2026-10-21T13:07:18.987Z",
   "target": "http://demo.localhost:3035",
   "scope": "local intercepted UI error-state verification",
   "requestId": "33333333-3333-4333-8333-333333333333",
@@ -15,6 +15,11 @@
       "evidence": ""
     },
     {
+      "name": "Price suggestions has no horizontal overflow",
+      "status": "PASS",
+      "evidence": "390/390px"
+    },
+    {
       "name": "Odoo reporting shows gateway request ID",
       "status": "PASS",
       "evidence": "/reports/dashboard · 33333333-3333-4333-8333-333333333333"
@@ -23,6 +28,11 @@
       "name": "Odoo reporting has no page error",
       "status": "PASS",
       "evidence": ""
+    },
+    {
+      "name": "Odoo reporting has no horizontal overflow",
+      "status": "PASS",
+      "evidence": "390/390px"
     },
     {
       "name": "fixture blocked business writes",
