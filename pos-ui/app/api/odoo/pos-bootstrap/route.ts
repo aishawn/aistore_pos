@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,10 +61,12 @@ function getOdooBaseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "call",
@@ -91,11 +94,12 @@ export async function GET(request: NextRequest) {
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   try {
     const infoResponse = await fetch(`${getOdooBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -105,7 +109,7 @@ export async function GET(request: NextRequest) {
     const info = infoPayload.result;
     if (infoPayload.error || !info?.uid) throw new OdooSessionExpiredError();
 
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) {
       return NextResponse.json({ configs: [], activeSessionId: null, message: forced.error }, { status: forced.status });
@@ -121,19 +125,19 @@ export async function GET(request: NextRequest) {
       fields: ["id", "name", "company_id", "current_session_id", "payment_method_ids", "available_pricelist_ids", "cash_rounding", "only_round_cash_method", "rounding_method"],
       limit: 100,
       order: "name asc, id asc",
-    })) ?? [];
+    }, correlationId)) ?? [];
 
     const configuredCompanyIds = [...new Set(configs.map((config) => Array.isArray(config.company_id) ? config.company_id[0] : null).filter((id): id is number => typeof id === "number"))];
     const companies = configuredCompanyIds.length
       ? (await rpc<Array<{ id: number; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
           ["id", "in", configuredCompanyIds],
-        ]], { fields: ["id", "partner_id"], limit: 100 })) ?? []
+        ]], { fields: ["id", "partner_id"], limit: 100 }, correlationId)) ?? []
       : [];
     const partnerIds = [...new Set(companies.map((company) => Array.isArray(company.partner_id) ? company.partner_id[0] : null).filter((id): id is number => typeof id === "number"))];
     const partners = partnerIds.length
       ? (await rpc<Array<{ id: number; state_id?: [number, string] | false; country_id?: [number, string] | false }>>(sessionId, "res.partner", "search_read", [[
           ["id", "in", partnerIds],
-        ]], { fields: ["id", "state_id", "country_id"], limit: 100 })) ?? []
+        ]], { fields: ["id", "state_id", "country_id"], limit: 100 }, correlationId)) ?? []
       : [];
     const partnerById = new Map(partners.map((partner) => [partner.id, partner]));
     const timezoneByCompanyId = new Map(companies.map((company) => {
@@ -152,7 +156,7 @@ export async function GET(request: NextRequest) {
         ]], {
           fields: ["id", "name", "state", "config_id", "user_id", "start_at"],
           limit: 100,
-        })) ?? []
+        }, correlationId)) ?? []
       : [];
     const methodIds = [...new Set(configs.flatMap((config) => config.payment_method_ids))];
     const paymentMethods = methodIds.length
@@ -161,7 +165,7 @@ export async function GET(request: NextRequest) {
         ]], {
           fields: ["id", "name", "type", "is_cash_count"],
           limit: 100,
-        })) ?? []
+        }, correlationId)) ?? []
       : [];
     const roundingIds = [...new Set(configs.map((config) => Array.isArray(config.rounding_method) ? config.rounding_method[0] : null).filter((id): id is number => typeof id === "number"))];
     const roundingMethods = roundingIds.length
@@ -170,7 +174,7 @@ export async function GET(request: NextRequest) {
         ]], {
           fields: ["id", "rounding", "rounding_method"],
           limit: 100,
-        })) ?? []
+        }, correlationId)) ?? []
       : [];
     const sessionsById = new Map(sessions.map((item) => [item.id, item]));
     const methodsById = new Map(paymentMethods.map((item) => [item.id, item]));

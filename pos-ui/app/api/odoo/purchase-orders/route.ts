@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,10 +26,12 @@ class PurchaseRequestError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -45,9 +48,10 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 }
 
 async function getCompanies(request: NextRequest, sessionId: string) {
+  const correlationId = request.headers.get("x-correlation-id");
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -55,7 +59,7 @@ async function getCompanies(request: NextRequest, sessionId: string) {
   if (!response.ok) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
   if (payload.error || !payload.result?.uid) throw new PurchaseRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new PurchaseRequestError(forced.error, forced.status);
   if (!forced.companyIds.length) throw new PurchaseRequestError("No Odoo companies are available to this user.", 403);
@@ -89,6 +93,7 @@ export async function GET(request: NextRequest) {
   const offset = Math.max(0, Math.floor(requestedOffset));
 
   try {
+    const correlationId = request.headers.get("x-correlation-id");
     const companyIds = await getCompanies(request, sessionId);
     const domain: unknown[] = [["company_id", "in", companyIds]];
     if (requestedState !== "all") domain.push(["state", "=", requestedState]);
@@ -99,7 +104,7 @@ export async function GET(request: NextRequest) {
       offset,
       order: "date_order desc, id desc",
       context: { allowed_company_ids: companyIds },
-    });
+    }, correlationId);
     const hasNext = (items?.length ?? 0) > limit;
     return NextResponse.json({ items: (items ?? []).slice(0, limit), limit, offset, hasNext }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

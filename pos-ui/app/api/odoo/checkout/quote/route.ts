@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,10 +37,12 @@ function baseUrl() {
   return value;
 }
 
-async function rpc<T>(session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${session}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${baseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${session}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
@@ -55,8 +58,8 @@ async function rpc<T>(session: string, model: string, method: string, args: unkn
   return payload.result;
 }
 
-async function searchRead<T>(session: string, model: string, domain: unknown[], fields: string[], limit = 100) {
-  return rpc<T[]>(session, model, "search_read", [domain], { fields, limit });
+async function searchRead<T>(session: string, model: string, domain: unknown[], fields: string[], limit = 100, correlationId?: string | null) {
+  return rpc<T[]>(session, model, "search_read", [domain], { fields, limit }, correlationId);
 }
 
 function roundCashTotal(amount: number, rounding: { rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" }) {
@@ -70,6 +73,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const session = request.cookies.get(SESSION_COOKIE)?.value;
   if (!session) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: { configId?: number; customerId?: number | null; paymentMethodId?: number; lines?: { productId: number; quantity: number; uomFactor?: number }[] };
   try { body = await request.json(); } catch { return NextResponse.json({ message: "Invalid cart quote request" }, { status: 400 }); }
@@ -82,28 +86,28 @@ export async function POST(request: NextRequest) {
 
   try {
     const sessionInfoResponse = await fetch(`${baseUrl()}/web/session/get_session_info`, {
-      method: "POST", headers: { "Content-Type": "application/json", Cookie: `session_id=${session}` },
+      method: "POST", headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${session}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }), cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
     const sessionInfo = await sessionInfoResponse.json() as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) throw new QuoteError("Odoo session expired", 401);
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(session, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(session, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new QuoteError(forced.error, forced.status);
     const companyIds = forced.companyIds;
     if (!companyIds.length) throw new QuoteError("This Odoo user has no accessible company.", 403);
 
-    const configs = await searchRead<PosConfig>(session, "pos.config", [["id", "=", body.configId], ["company_id", "in", companyIds]], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1);
+    const configs = await searchRead<PosConfig>(session, "pos.config", [["id", "=", body.configId], ["company_id", "in", companyIds]], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1, correlationId);
     const config = configs[0];
     if (!config) throw new QuoteError("This register is not available to your Odoo user.", 403);
     if (!Array.isArray(config.current_session_id)) throw new QuoteError("This register has no open POS session.", 409);
     if (!config.payment_method_ids.includes(body.paymentMethodId!)) throw new QuoteError("That payment method is not enabled for this register.", 403);
     if (config.pricelist_id) throw new QuoteError("This register uses an Odoo pricelist. Configure a POS pricelist before quoting this cart.", 409);
     const [sessionId] = config.current_session_id;
-    const opened = await searchRead<{ id: number }>(session, "pos.session", [["id", "=", sessionId], ["state", "=", "opened"], ["config_id", "=", config.id]], ["id"], 1);
+    const opened = await searchRead<{ id: number }>(session, "pos.session", [["id", "=", sessionId], ["state", "=", "opened"], ["config_id", "=", config.id]], ["id"], 1, correlationId);
     if (!opened.length) throw new QuoteError("The POS session has closed. Refresh the register.", 409);
 
-    const products = await searchRead<Product>(session, "product.product", [["id", "in", [...new Set(body.lines.map((line) => line.productId))]], ["available_in_pos", "=", true]], ["id", "name", "lst_price", "taxes_id", "available_in_pos", "free_qty"], MAX_LINES);
+    const products = await searchRead<Product>(session, "product.product", [["id", "in", [...new Set(body.lines.map((line) => line.productId))]], ["available_in_pos", "=", true]], ["id", "name", "lst_price", "taxes_id", "available_in_pos", "free_qty"], MAX_LINES, correlationId);
     if (products.length !== new Set(body.lines.map((line) => line.productId)).size) throw new QuoteError("One or more products are no longer available in this POS.", 409);
     const productMap = new Map(products.map((product) => [product.id, product]));
     const requestedByProduct = new Map<number, number>();
@@ -114,16 +118,16 @@ export async function POST(request: NextRequest) {
         throw new QuoteError(`Only ${Number.isFinite(product.free_qty) ? product.free_qty : 0} units of ${product.name} are available.`, 409);
       }
     }
-    const paymentMethods = await searchRead<{ id: number; is_cash_count: boolean }>(session, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "is_cash_count"], 1);
+    const paymentMethods = await searchRead<{ id: number; is_cash_count: boolean }>(session, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "is_cash_count"], 1, correlationId);
     if (!paymentMethods.length) throw new QuoteError("The selected payment method is unavailable.", 409);
 
     let fiscalPosition: Relation = config.default_fiscal_position_id;
     if (body.customerId != null) {
       if (!Number.isInteger(body.customerId)) throw new QuoteError("The customer selection is invalid.", 400);
-      const customers = await searchRead<{ id: number; property_account_position_id: Relation }>(session, "res.partner", [["id", "=", body.customerId]], ["id", "property_account_position_id"], 1);
+      const customers = await searchRead<{ id: number; property_account_position_id: Relation }>(session, "res.partner", [["id", "=", body.customerId]], ["id", "property_account_position_id"], 1, correlationId);
       if (!customers.length) throw new QuoteError("The selected customer is unavailable.", 409);
       fiscalPosition = customers[0].property_account_position_id || fiscalPosition;
-      const customerPricing = await searchRead<{ property_product_pricelist: Relation }>(session, "res.partner", [["id", "=", body.customerId]], ["property_product_pricelist"], 1);
+      const customerPricing = await searchRead<{ property_product_pricelist: Relation }>(session, "res.partner", [["id", "=", body.customerId]], ["property_product_pricelist"], 1, correlationId);
       if (customerPricing[0]?.property_product_pricelist) throw new QuoteError("This customer has an Odoo pricelist. Configure POS pricing before quoting this cart.", 409);
     }
     const fiscalPositionId = Array.isArray(fiscalPosition) ? fiscalPosition[0] : null;
@@ -133,10 +137,10 @@ export async function POST(request: NextRequest) {
     for (const line of body.lines) {
       const product = productMap.get(line.productId)!;
       let taxIds = product.taxes_id;
-      if (fiscalPositionId && taxIds.length) taxIds = await rpc<number[]>(session, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds]);
+      if (fiscalPositionId && taxIds.length) taxIds = await rpc<number[]>(session, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds], {}, correlationId);
       const effectiveQuantity = line.quantity * (line.uomFactor ?? 1);
       const totals = taxIds.length
-        ? await rpc<TaxTotals>(session, "account.tax", "compute_all", [taxIds, Number(product.lst_price), null, effectiveQuantity, false, false])
+        ? await rpc<TaxTotals>(session, "account.tax", "compute_all", [taxIds, Number(product.lst_price), null, effectiveQuantity, false, false], {}, correlationId)
         : { total_excluded: Number(product.lst_price) * effectiveQuantity, total_included: Number(product.lst_price) * effectiveQuantity };
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) throw new QuoteError(`Could not calculate tax for ${product.name}.`);
       subtotal += totals.total_excluded;
@@ -158,7 +162,7 @@ export async function POST(request: NextRequest) {
     if (config.cash_rounding && (!config.only_round_cash_method || cashSelected)) {
       const roundingId = Array.isArray(config.rounding_method) ? config.rounding_method[0] : null;
       if (!roundingId) throw new QuoteError("This register has cash rounding enabled but no rounding rule configured.", 409);
-      rounding = (await searchRead<CashRounding>(session, "account.cash.rounding", [["id", "=", roundingId]], ["id", "rounding", "rounding_method"], 1))[0] ?? null;
+      rounding = (await searchRead<CashRounding>(session, "account.cash.rounding", [["id", "=", roundingId]], ["id", "rounding", "rounding_method"], 1, correlationId))[0] ?? null;
       if (!rounding) throw new QuoteError("The register cash rounding rule is unavailable.", 409);
     }
     const amountDue = rounding ? roundCashTotal(total, rounding) : total;

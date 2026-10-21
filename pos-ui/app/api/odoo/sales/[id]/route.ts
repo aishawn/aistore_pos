@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,10 +20,12 @@ function baseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${baseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -45,11 +48,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const { id: rawId } = await context.params;
   const saleId = Number(rawId);
   if (!Number.isSafeInteger(saleId) || saleId < 1) return NextResponse.json({ message: "Invalid sale id" }, { status: 400 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   try {
     const sessionResponse = await fetch(`${baseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -57,7 +61,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (!sessionResponse.ok) throw new SaleSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (session.error || !session.result?.uid) throw new SaleSessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyIds = forced.companyIds;
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     ]], {
       fields: ["id", "name", "pos_reference", "date_order", "state", "amount_total", "amount_tax", "amount_paid", "amount_return", "partner_id", "session_id", "config_id", "user_id", "company_id", "lines", "payment_ids"],
       limit: 1,
-    });
+    }, correlationId);
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Sale not found or you do not have access to it." }, { status: 404 });
 
@@ -77,13 +81,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "search_read", [[["id", "in", order.lines]]], {
             fields: ["id", "product_id", "qty", "refunded_qty", "price_unit", "discount", "tax_ids", "price_subtotal", "price_subtotal_incl"],
             limit: 200,
-          })
+          }, correlationId)
         : Promise.resolve([]),
       Array.isArray(order.payment_ids) && order.payment_ids.length
         ? rpc<Array<Record<string, unknown>>>(sessionId, "pos.payment", "search_read", [[["id", "in", order.payment_ids]]], {
             fields: ["id", "payment_method_id", "amount", "payment_date"],
             limit: 50,
-          })
+          }, correlationId)
         : Promise.resolve([]),
       Array.isArray(order.company_id)
         ? rpc<Array<{ id: number; name: string; currency_id: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[["id", "=", order.company_id[0]]]], { fields: ["id", "name", "currency_id", "partner_id"], limit: 1 })

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,10 +28,12 @@ function getBaseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "call",
@@ -58,6 +61,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
   if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: { configId?: number; direction?: string; amount?: number; reason?: string };
   try {
@@ -82,14 +86,14 @@ export async function POST(request: NextRequest) {
   try {
     const sessionInfoResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSession}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${odooSession}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
     const sessionInfo = (await sessionInfoResponse.json()) as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) throw new SessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new CashError(forced.error, forced.status);
     const companyIds = forced.companyIds;
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest) {
     }>>(odooSession, "pos.config", "search_read", [[
       ["id", "=", body.configId],
       ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "current_session_id", "company_id"], limit: 1, context: companyContext });
+    ]], { fields: ["id", "name", "current_session_id", "company_id"], limit: 1, context: companyContext }, correlationId);
     const config = configs?.[0];
     if (!config) throw new CashError("This register is not available to your Odoo user.", 403);
     if (!config.current_session_id) throw new CashError("Open a POS session before managing cash.", 409);
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
       fields: ["id", "name", "state", "cash_register_balance_end", "cash_register_balance_start"],
       limit: 1,
       context: companyContext,
-    });
+    }, correlationId);
     const session = sessions?.[0];
     if (!session) throw new CashError("The POS session is not open.", 409);
 
@@ -148,9 +152,9 @@ export async function POST(request: NextRequest) {
       formattedAmount: amount.toFixed(2),
     };
     const cashAttempts: Array<() => Promise<unknown>> = [
-      () => rpc(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note, false, extras], { context: companyContext }),
-      () => rpc(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note], { context: companyContext }),
-      () => rpc(odooSession, "pos.session", "set_cashbox_pos", [[session.id], amount, note], { context: companyContext }),
+      () => rpc(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note, false, extras], { context: companyContext }, correlationId),
+      () => rpc(odooSession, "pos.session", "try_cash_in_out", [[session.id], direction, amount, note], { context: companyContext }, correlationId),
+      () => rpc(odooSession, "pos.session", "set_cashbox_pos", [[session.id], amount, note], { context: companyContext }, correlationId),
     ];
     let lastError: unknown = null;
     let succeeded = false;
