@@ -15,9 +15,9 @@ const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWOR
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const routes = [
-  { path: "/stock/list", heading: "Stock List", image: "stock-list" },
-  { path: "/stock/capped-pricing", heading: "Capped Pricing", image: "capped-pricing" },
-  { path: "/stock/bulk-price-edit", heading: "Bulk Price Edit", image: "bulk-price-edit" },
+  { path: "/stock/list", heading: "Stock List", image: "stock-list", tableId: "stock-list-table" },
+  { path: "/stock/capped-pricing", heading: "Capped Pricing", image: "capped-pricing", tableId: "capped-pricing-table" },
+  { path: "/stock/bulk-price-edit", heading: "Bulk Price Edit", image: "bulk-price-edit", tableId: "bulk-price-edit-table" },
   { path: "/stock/price-suggestions", heading: "Price suggestions", image: "price-suggestions" },
 ];
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
@@ -63,9 +63,13 @@ try {
       const headingVisible = await heading.isVisible().catch(() => false)
         || firstHeadingText.trim() === route.heading
         || await page.getByText(route.heading, { exact: true }).first().isVisible().catch(() => false);
-      const hasDataTable = ["/stock/list", "/stock/capped-pricing"].includes(route.path);
+      const hasDataTable = Boolean(route.tableId);
       let mobileTableScroll = null;
       let mobileCardFields = null;
+      let mobileCardWidth = null;
+      let mobileContentWidth = null;
+      let mobileSearchWidth = null;
+      let aiEntryPlacement = null;
       let bottomSafeArea = null;
       let assistantCardOverlap = null;
       let tableColumnsDoNotOverlap = null;
@@ -112,9 +116,10 @@ try {
       }
       if (route.path === "/stock/list" && viewport.width === 390) {
         const mobileEditor = page.locator('input[aria-label^="Product name for "]').last();
-        const hasMobileEditor = await mobileEditor.count() > 0;
-        mobileCardFields = !hasMobileEditor || await Promise.all([
+        const card = page.locator("article").filter({ has: mobileEditor }).last();
+        mobileCardFields = await Promise.all([
           mobileEditor.isVisible(),
+          card.isVisible(),
           page.locator('dl dt', { hasText: "Category" }).last().isVisible(),
           page.locator('dl dt', { hasText: "Stock on hand" }).last().isVisible(),
           page.locator('input[aria-label^="Price quantity for "]').last().isVisible(),
@@ -122,6 +127,7 @@ try {
           page.locator('input[aria-label^="Price for "]').last().isVisible(),
           page.locator('input[aria-label^="Profit margin for "]').last().isVisible(),
         ]).then((fields) => fields.every(Boolean));
+        mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
         assistantCardOverlap = await page.evaluate(() => {
           const assistant = document.querySelector('[aria-label="Open AI assistant"]');
           if (!assistant) return true;
@@ -144,6 +150,38 @@ try {
           return a.right <= n.left || a.left >= n.right || a.bottom <= n.top || a.top >= n.bottom;
         });
         await page.evaluate(() => window.scrollTo(0, 0));
+      } else if (viewport.width === 390 && route.path === "/stock/capped-pricing") {
+        const card = page.getByTestId("capped-pricing-card").first();
+        mobileCardFields = await Promise.all([
+          card.isVisible(),
+          card.getByText("Source", { exact: true }).isVisible(),
+          card.getByText("Start Date", { exact: true }).isVisible(),
+          card.getByText("End Date", { exact: true }).isVisible(),
+          card.getByText("Quantity", { exact: true }).isVisible(),
+          card.getByText("Capped Price", { exact: true }).isVisible(),
+          card.getByText("Current Price", { exact: true }).isVisible(),
+          card.getByText("Margin", { exact: true }).isVisible(),
+        ]).then((fields) => fields.every(Boolean));
+        mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+      } else if (viewport.width === 390 && route.path === "/stock/bulk-price-edit") {
+        const card = page.getByTestId("bulk-price-card").first();
+        mobileCardFields = await Promise.all([
+          card.isVisible(),
+          card.getByText("Case Qty", { exact: true }).isVisible(),
+          card.getByText("Price Set", { exact: true }).isVisible(),
+          page.getByRole("spinbutton", { name: /^Price for .+, quantity 1$/ }).first().isVisible(),
+        ]).then((fields) => fields.every(Boolean));
+        mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+        mobileSearchWidth = await page.getByRole("textbox", { name: "Search bulk price products" })
+          .evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+      } else if (viewport.width === 390 && route.path === "/stock/price-suggestions") {
+        mobileContentWidth = await page.locator("main > section").evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+      }
+      if (viewport.width === 390 && (route.tableId || route.path === "/stock/price-suggestions")) {
+        aiEntryPlacement = {
+          headerVisible: await page.getByRole("button", { name: "Open Orithos AI assistant" }).isVisible().catch(() => false),
+          floatingEntryHidden: await page.getByRole("button", { name: "Open Orithos AI", exact: true }).count() === 0,
+        };
       }
       const dimensions = await page.evaluate(() => ({
         width: document.documentElement.scrollWidth,
@@ -160,6 +198,10 @@ try {
         noHorizontalOverflow: dimensions.width <= dimensions.viewport + 1,
         mobileTableScroll: viewport.width === 390 && hasDataTable ? mobileTableScroll : null,
         mobileCardFields,
+        mobileCardWidth,
+        mobileContentWidth,
+        mobileSearchWidth,
+        aiEntryPlacement,
         bottomSafeArea,
         assistantCardOverlap,
         tableColumnsDoNotOverlap,
@@ -184,8 +226,13 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.headingVisible === false
   || check.loadingComplete === false
   || check.noHorizontalOverflow === false
-  || (check.mobileTableScroll === false && check.route !== "/stock/list")
+  || (check.viewport === 390 && check.route !== "/stock/price-suggestions" && check.mobileTableScroll !== false)
   || check.mobileCardFields === false
+  || (check.viewport === 390 && check.mobileCardFields !== null && (check.mobileCardWidth ?? 0) < check.viewport - 64)
+  || (check.viewport === 390 && check.route === "/stock/price-suggestions" && (check.mobileContentWidth ?? 0) < check.viewport - 48)
+  || (check.mobileSearchWidth != null && check.mobileSearchWidth < 240)
+  || check.aiEntryPlacement?.headerVisible === false
+  || check.aiEntryPlacement?.floatingEntryHidden === false
   || check.bottomSafeArea === false
   || check.assistantCardOverlap === false
   || check.tableColumnsDoNotOverlap === false

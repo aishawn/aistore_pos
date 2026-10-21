@@ -61,10 +61,10 @@ try {
 
   const page = await context.newPage();
   await page.goto(`${base}/stock/list`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const stockName = page.getByLabel("Product name for DEMO Shiraz");
+  const stockName = page.locator('input[aria-label="Product name for DEMO Shiraz"]:visible');
   await stockName.waitFor({ state: "visible", timeout: 30000 });
-  const costInput = page.getByLabel("Cost for DEMO Shiraz");
-  const priceInput = page.getByLabel("Price for DEMO Shiraz");
+  const costInput = page.locator('input[aria-label="Cost for DEMO Shiraz"]:visible');
+  const priceInput = page.locator('input[aria-label="Price for DEMO Shiraz"]:visible');
   await costInput.fill("11");
   await costInput.press("Tab");
   await priceInput.evaluate((element) => element.dispatchEvent(new FocusEvent("blur", { bubbles: true })));
@@ -73,11 +73,12 @@ try {
   record("stock list suppresses duplicate blur save", stockPatches === 1, `${stockPatches} PATCH after overlapping blur events`);
   record("stock list retains edited value for retry", await costInput.inputValue() === "11", await costInput.inputValue());
   await costInput.press("Tab");
-  await page.waitForFunction(() => document.querySelector('[aria-label="Cost for DEMO Shiraz"]')?.getAttribute("aria-busy") !== "true");
+  await page.waitForFunction(() => [...document.querySelectorAll('[aria-label="Cost for DEMO Shiraz"]')]
+    .find((input) => input.getClientRects().length > 0)?.getAttribute("aria-busy") !== "true");
   record("stock list retry succeeds", stockPatches === 2, `${stockPatches} PATCH attempts`);
 
   await page.goto(`${base}/stock/capped-pricing`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const cappedInput = page.locator('input[type="number"]').first();
+  const cappedInput = page.locator('input[type="number"]:visible').first();
   await cappedInput.waitFor({ state: "visible", timeout: 30000 });
   await cappedInput.fill("13.25");
   await cappedInput.press("Tab");
@@ -86,7 +87,8 @@ try {
   record("capped pricing retains edited value", await cappedInput.inputValue() === "13.25", await cappedInput.inputValue());
   await cappedInput.focus();
   await cappedInput.press("Tab");
-  await page.waitForFunction(() => document.querySelector('input[type="number"]')?.getAttribute("aria-busy") !== "true");
+  await page.waitForFunction(() => [...document.querySelectorAll('input[type="number"]')]
+    .find((input) => input.getClientRects().length > 0)?.getAttribute("aria-busy") !== "true");
   record("capped pricing retry succeeds", cappedPatches === 2, `${cappedPatches} PATCH attempts`);
   record("fixture boundary only", writes.every((entry) => entry.startsWith("PATCH ")) && stockPatches + cappedPatches === writes.length, JSON.stringify(writes));
   await context.close();

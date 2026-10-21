@@ -155,7 +155,7 @@ function StockListRowEditor({
 
   return (
     <>
-    <div className="hidden items-center border-b border-[var(--oh-border)] bg-white py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]/60 md:flex">
+    <div className="hidden items-center border-b border-[var(--oh-border)] bg-white py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]/60 xl:flex">
       <div className="w-[22%] shrink-0 px-2">
         <input
           className={cellInput()}
@@ -249,7 +249,7 @@ function StockListRowEditor({
         </div>
       </div>
     </div>
-    <article className="grid gap-3 border-b border-[var(--oh-border)] bg-white p-3 text-[13px] text-[var(--oh-text)] md:hidden">
+    <article className="grid gap-3 border-b border-[var(--oh-border)] bg-white p-3 text-[13px] text-[var(--oh-text)] xl:hidden">
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]" htmlFor={`stock-name-${row.id}`}>Product</label>
         <input
@@ -405,9 +405,9 @@ function StockListPageInner() {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto pl-3 pr-[calc(6rem+env(safe-area-inset-right))] pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-4 md:px-6">
-        <div data-testid="stock-list-table" className="md:min-w-[1100px]">
-          <div className="sticky top-0 z-10 hidden items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)] md:flex">
+      <div className="min-h-0 flex-1 overflow-auto pl-3 pr-3 pb-4 sm:px-4 md:px-6">
+        <div data-testid="stock-list-table" className="xl:min-w-[1100px]">
+          <div className="sticky top-0 z-10 hidden items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-text-secondary)] xl:flex">
             <div className="w-[22%] shrink-0 px-2">Product</div>
             <div className="w-[10%] shrink-0 px-2">Category</div>
             <div className="w-[8%] shrink-0 px-2">Price Set</div>

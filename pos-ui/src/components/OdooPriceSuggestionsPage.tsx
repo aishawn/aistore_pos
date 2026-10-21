@@ -188,7 +188,7 @@ export function OdooPriceSuggestionsPage() {
   }
 
   return (
-    <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-5 sm:px-6 sm:py-7">
+    <main className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-y-auto px-4 py-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Pricing</p>

@@ -10,6 +10,8 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+const screenshotDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-21-price-suggestions-local");
+fs.mkdirSync(screenshotDir, { recursive: true });
 const fixtureUser = {
   id: 1,
   name: "Admin",
@@ -136,6 +138,7 @@ try {
   await page.getByText("Raise price", { exact: true }).last().waitFor({ timeout: 10000 });
   await page.getByText("writeEnabled=false").waitFor({ timeout: 10000 });
   record("price suggestions page", true, "Heading, DEMO row, raise badge, writeEnabled=false visible");
+  await page.screenshot({ path: path.join(screenshotDir, "price-suggestions-1440.png"), fullPage: true });
 
   const productSearch = page.getByPlaceholder("Search product or SKU");
   await productSearch.fill("DEMO-SHIRAZ");
@@ -181,10 +184,38 @@ try {
   record("bulk edit requests SKU query", bulkPriceQueries.includes("DEMO-SHIRAZ"), JSON.stringify(bulkPriceQueries));
   await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Price suggestions", exact: true }).waitFor({ timeout: 30000 });
-
-  const fab = page.getByRole("button", { name: "Open Orithos AI" }).first();
-  await fab.waitFor({ state: "visible", timeout: 15000 });
-  record("ai fab on price page", true);
+  for (const viewport of [320, 390, 768, 1024].map((width) => ({
+    width,
+    height: width < 768 ? 844 : 900,
+  }))) {
+    await page.setViewportSize(viewport);
+    await page.waitForTimeout(100);
+    const mobileLayout = await page.evaluate(() => {
+      const main = document.querySelector("main");
+      const content = document.querySelector("main > section");
+      return {
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        contentWidth: content?.getBoundingClientRect().width ?? 0,
+        mainWidth: main?.getBoundingClientRect().width ?? 0,
+        floatCount: document.querySelectorAll('[aria-label="Open Orithos AI"]').length,
+      };
+    });
+    const suffix = viewport.width;
+    record(`mobile content uses available width at ${suffix}px`, mobileLayout.contentWidth >= mobileLayout.mainWidth - 48, JSON.stringify(mobileLayout));
+    record(`mobile page has no horizontal overflow at ${suffix}px`, mobileLayout.documentWidth <= mobileLayout.viewportWidth + 1, JSON.stringify(mobileLayout));
+    const headerAi = page.getByRole("button", { name: "Open Orithos AI assistant" });
+    record(`single header AI entry at ${suffix}px`, await headerAi.isVisible() && mobileLayout.floatCount === 0, JSON.stringify(mobileLayout));
+    await page.screenshot({ path: path.join(screenshotDir, `price-suggestions-${suffix}.png`), fullPage: true });
+    if (await headerAi.isVisible()) {
+      await headerAi.click();
+      const assistantDialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
+      await assistantDialog.waitFor({ state: "visible", timeout: 10000 });
+      record(`header AI opens assistant at ${suffix}px`, true);
+      await assistantDialog.getByRole("button", { name: "Close assistant" }).click();
+      await assistantDialog.waitFor({ state: "detached", timeout: 5000 });
+    }
+  }
 
   record("no api writes", writes.length === 0, JSON.stringify(writes));
   await context.close();
@@ -198,9 +229,18 @@ const failed = checks.filter((check) => check.status === "FAIL").length;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceWorkingTree: execFileSync("git", ["status", "--porcelain", "--", "pos-ui/src/components/OdooPriceSuggestionsPage.tsx", "scripts/pilot-price-suggestions-local-uat.mjs"], { cwd: root, encoding: "utf8" }).trim().length > 0,
+  nodeVersion: process.version,
   environment: "local-dev-fixtures",
   target: base,
   scope: "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
+  screenshots: [
+    path.relative(root, path.join(screenshotDir, "price-suggestions-320.png")).replaceAll(path.sep, "/"),
+    path.relative(root, path.join(screenshotDir, "price-suggestions-390.png")).replaceAll(path.sep, "/"),
+    path.relative(root, path.join(screenshotDir, "price-suggestions-768.png")).replaceAll(path.sep, "/"),
+    path.relative(root, path.join(screenshotDir, "price-suggestions-1024.png")).replaceAll(path.sep, "/"),
+    path.relative(root, path.join(screenshotDir, "price-suggestions-1440.png")).replaceAll(path.sep, "/"),
+  ],
   status: failed === 0 ? "PASS" : "FAIL",
   checks,
   writes,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Phone, Plus, RefreshCw, Search, Store, X } from "lucide-react";
 import { fetchOdooRoute, getOdooPosBootstrap, getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
@@ -35,6 +36,7 @@ function SupplierEmptyState({ hasSearch, onClear, onAdd }: { hasSearch: boolean;
 }
 
 export function OdooSupplierDirectoryPage() {
+  const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
@@ -48,6 +50,11 @@ export function OdooSupplierDirectoryPage() {
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const initialQuery = searchParams.get("q");
+    if (initialQuery !== null) setQuery(initialQuery);
+  }, [searchParams]);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -153,7 +160,7 @@ export function OdooSupplierDirectoryPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] pl-4 pr-[calc(6rem+env(safe-area-inset-right))] py-4 md:p-6">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Suppliers</h1>

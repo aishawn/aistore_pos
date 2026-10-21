@@ -140,35 +140,38 @@ function PriceCell({
   }, [onSaved, priceBreak?.price, priceBreak?.priceId, productId, quantity, saving, value]);
 
   return (
-    <div className="relative w-[88px] shrink-0 px-1">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        className={cellInput("pl-5")}
-        aria-label={`Price for ${productName}, quantity ${quantity}`}
-        value={value}
-        aria-busy={saving}
-        aria-invalid={saveError ? true : undefined}
-        title={saveError ?? undefined}
-        disabled={saving}
-        onChange={(e) => {
-          setSaveError(null);
-          const raw = e.target.value;
-          if (raw === "" || raw === "-") {
-            if (raw === "-") return;
-            setValue("");
-            return;
-          }
-          const num = Number(raw);
-          if (Number.isFinite(num) && num < 0) return;
-          setValue(raw);
-        }}
-        onBlur={() => void save()}
-      />
+    <div className="relative flex min-w-0 flex-col xl:block xl:w-[88px] xl:shrink-0 xl:px-1">
+      <span className="mb-1 text-[11px] text-neutral-500 xl:hidden">Quantity {quantity}</span>
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          className={cellInput("pl-5")}
+          aria-label={`Price for ${productName}, quantity ${quantity}`}
+          value={value}
+          aria-busy={saving}
+          aria-invalid={saveError ? true : undefined}
+          title={saveError ?? undefined}
+          disabled={saving}
+          onChange={(e) => {
+            setSaveError(null);
+            const raw = e.target.value;
+            if (raw === "" || raw === "-") {
+              if (raw === "-") return;
+              setValue("");
+              return;
+            }
+            const num = Number(raw);
+            if (Number.isFinite(num) && num < 0) return;
+            setValue(raw);
+          }}
+          onBlur={() => void save()}
+        />
+      </div>
       {saveError ? (
-        <span role="alert" className="absolute left-1 top-full z-20 mt-1 w-48 rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] leading-4 text-red-800 shadow-sm">
+        <span role="alert" className="mt-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] leading-4 text-red-800 shadow-sm xl:absolute xl:left-1 xl:top-full xl:z-20 xl:w-48">
           {saveError}
         </span>
       ) : null}
@@ -194,10 +197,14 @@ function BulkPriceRowLine({
   }, [row.prices]);
 
   return (
-    <div className="flex items-center border-b border-neutral-200 bg-white py-1.5 text-[13px] text-black">
-      <div className="w-[220px] shrink-0 px-2 font-medium">{row.productName}</div>
-      <div className="w-[72px] shrink-0 px-2 text-center">{num(row.caseQuantity)}</div>
-      <div className="w-[88px] shrink-0 px-2">{row.priceSetName ?? "Default"}</div>
+    <div data-testid="bulk-price-card" className="mb-3 grid grid-cols-2 gap-3 rounded border border-neutral-200 bg-white p-3 text-[13px] text-black xl:mb-0 xl:flex xl:items-center xl:gap-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-1.5">
+      <div className="col-span-2 min-w-0 font-medium xl:w-[220px] xl:shrink-0 xl:px-2">{row.productName}</div>
+      <div className="min-w-0 xl:w-[72px] xl:shrink-0 xl:px-2 xl:text-center">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Case Qty</div>{num(row.caseQuantity)}
+      </div>
+      <div className="min-w-0 xl:w-[88px] xl:shrink-0 xl:px-2">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Price Set</div>{row.priceSetName ?? "Default"}
+      </div>
       {quantities.map((q) => (
         <PriceCell
           key={`${row.productId}-${q}`}
@@ -259,7 +266,7 @@ export function BulkPriceEditPage() {
       />
 
       <div className="shrink-0 space-y-3 border-b border-neutral-200 px-6 py-4">
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 md:flex-row">
           <input
             aria-label="Search bulk price products"
             value={search}
@@ -270,7 +277,7 @@ export function BulkPriceEditPage() {
             placeholder="Search for Product or Classification..."
             className="h-[38px] min-w-0 flex-1 rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
           />
-          <div className="w-[220px] shrink-0">
+          <div className="w-full md:w-[220px] md:shrink-0">
             <FilterSelect
               label="Category"
               value={categoryId}
@@ -317,8 +324,8 @@ export function BulkPriceEditPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
-        <div data-testid="bulk-price-edit-table" className="inline-block min-w-[1170px]">
-          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black py-2 text-[13px] font-bold text-white">
+        <div data-testid="bulk-price-edit-table" className="w-full min-w-0 xl:inline-block xl:min-w-[1170px]">
+          <div className="sticky top-0 z-10 hidden items-center rounded-md bg-black py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[220px] shrink-0 px-2">Product</div>
             <div className="w-[72px] shrink-0 px-2 text-center">Case Qty</div>
             <div className="w-[88px] shrink-0 px-2">Price Set</div>

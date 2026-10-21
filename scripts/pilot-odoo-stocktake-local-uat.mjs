@@ -6,6 +6,9 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+const screenshotRoot = process.env.PILOT_UAT_SCREENSHOT_DIR
+  ? path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR)
+  : path.join(root, "docs", "screenshots", "2026-10-19-stocktake");
 const browser = await chromium.launch({ headless: true });
 const results = [];
 let postRequests = [];
@@ -92,14 +95,25 @@ async function runViewport(viewport) {
     await search.press("Enter");
     await page.locator('input[aria-label="Counted quantity for Demo Chardonnay"]:visible').fill("4");
     await page.locator('input[aria-label="Counted quantity for Demo Shiraz"]:visible').fill("9");
-    const visibleCountRow = viewport.width < 768
+    const visibleCountRow = viewport.width < 1280
       ? page.locator("article:visible").filter({ hasText: "Demo Chardonnay" })
       : page.locator("tbody tr:visible").filter({ hasText: "Demo Chardonnay" });
     await visibleCountRow.getByText("-1", { exact: true }).waitFor({ timeout: 5000 });
     const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    const screenshotPath = path.join(root, "docs", "screenshots", "2026-10-19-stocktake", `stocktake-${viewport.width}.png`);
+    const countTableFits = await page.locator('table[aria-label="Stocktake count lines"]').evaluate((table) =>
+      table.getClientRects().length === 0 || table.parentElement.scrollWidth <= table.parentElement.clientWidth + 1);
+    const headerAiVisible = await page.getByRole("button", { name: "Open Orithos AI assistant" }).isVisible();
+    const floatingAiHidden = await page.getByRole("button", { name: "Open Orithos AI", exact: true }).count() === 0;
+    const screenshotPath = path.join(screenshotRoot, `stocktake-${viewport.width}.png`);
     fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
     await page.screenshot({ path: screenshotPath, fullPage: true });
+    if (headerAiVisible) {
+      await page.getByRole("button", { name: "Open Orithos AI assistant" }).click();
+      const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
+      await assistant.waitFor({ state: "visible", timeout: 5000 });
+      await assistant.getByRole("button", { name: "Close assistant" }).click();
+      await assistant.waitFor({ state: "hidden", timeout: 5000 });
+    }
 
     const reviewButton = page.getByRole("button", { name: "Review and apply" });
     let invalidQuantityGuard = true;
@@ -155,6 +169,9 @@ async function runViewport(viewport) {
       confirmedExactlyOnce,
       confirmationPayloadValid,
       horizontalOverflow,
+      countTableFits,
+      headerAiVisible,
+      floatingAiHidden,
       pageErrors,
       locationRetryRecovered,
       invalidQuantityGuard,
@@ -166,9 +183,11 @@ async function runViewport(viewport) {
 }
 
 try {
+  await runViewport({ width: 320, height: 740 });
   await runViewport({ width: 390, height: 844 });
-  await runViewport({ width: 1440, height: 900 });
   await runViewport({ width: 768, height: 1024 });
+  await runViewport({ width: 1024, height: 900 });
+  await runViewport({ width: 1440, height: 900 });
 } finally {
   await browser.close();
 }
@@ -177,16 +196,21 @@ const failures = results.filter((result) => !result.cancelKeptNoWrite
   || !result.confirmedExactlyOnce
   || !result.confirmationPayloadValid
   || result.horizontalOverflow
+  || !result.countTableFits
+  || !result.headerAiVisible
+  || !result.floatingAiHidden
   || !result.locationRetryRecovered
   || !result.invalidQuantityGuard
   || result.pageErrors.length > 0);
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceWorkingTree: true,
+  nodeVersion: process.version,
   environment: "local-dev-fixtures",
   target: base,
-  scope: "Odoo stocktake UI only; all APIs intercepted locally; no Odoo calls or inventory writes",
-  status: failures.length === 0 && results.length === 3 ? "PASS" : "FAIL",
+  scope: "Odoo stocktake UI and header AI placement; all APIs intercepted locally; no Odoo calls or inventory writes",
+  status: failures.length === 0 && results.length === 5 ? "PASS" : "FAIL",
   checks: results,
   interceptedApplyRequests: postRequests.length,
 };

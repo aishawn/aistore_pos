@@ -6,6 +6,8 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+const screenshotDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-21-ai-focus-full-matrix");
+fs.mkdirSync(screenshotDir, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const results = [];
 let assistantRequests = 0;
@@ -67,6 +69,10 @@ async function runViewport(viewport) {
     const voiceInputDisabled = await voiceButton.isDisabled();
     if (!voiceInputDisabled) throw new Error("Voice input must stay disabled when AI is disabled");
     await dialog.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
+    const headerSubtitle = dialog.locator("p.truncate").filter({ hasText: "AI chat is off" });
+    await headerSubtitle.waitFor({ state: "visible", timeout: 10000 });
+    const headerSubtitleFits = await headerSubtitle.evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
+    if (!headerSubtitleFits) throw new Error("AI status subtitle is truncated in the dialog header");
 
     let focusStayedInside = true;
     for (let index = 0; index < 8; index += 1) {
@@ -89,9 +95,11 @@ async function runViewport(viewport) {
     if (await dialog.getByPlaceholder("AI chat is off for this store").isEnabled()) {
       throw new Error("Composer must stay disabled after reopening");
     }
-    if (!(await dialog.getByRole("button", { name: "Open sell", exact: true }).isEnabled())) {
-      throw new Error("Local shortcuts must stay available while chat is off");
+    if (!(await dialog.getByRole("button", { name: "Today's sales", exact: true }).isEnabled())) {
+      throw new Error("AI quick questions must stay available while chat is off");
     }
+    const screenshot = path.join(screenshotDir, `ai-assistant-focus-${viewport.width}.png`);
+    await page.screenshot({ path: screenshot });
 
     results.push({
       viewport: viewport.width,
@@ -102,6 +110,8 @@ async function runViewport(viewport) {
       focusStayedInside,
       escapeRestoredFocus: true,
       disabledAssistantCopy: true,
+      headerSubtitleFits,
+      screenshot: path.relative(root, screenshot).replaceAll(path.sep, "/"),
       pageErrors,
     });
   } finally {
@@ -110,8 +120,9 @@ async function runViewport(viewport) {
 }
 
 try {
-  await runViewport({ width: 390, height: 844 });
-  await runViewport({ width: 1440, height: 900 });
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await runViewport({ width, height: width < 1280 ? 844 : 900 });
+  }
 } finally {
   await browser.close();
 }
@@ -124,6 +135,7 @@ const failures = results.filter((result) =>
   || !result.focusStayedInside
   || !result.escapeRestoredFocus
   || !result.disabledAssistantCopy
+  || !result.headerSubtitleFits
   || result.pageErrors.length > 0);
 const output = {
   generatedAt: new Date().toISOString(),

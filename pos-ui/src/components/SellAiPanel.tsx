@@ -83,7 +83,7 @@ interface ChatMessage {
 }
 
 const ENABLED_GREETING =
-  "Hi, I'm the Orithos AI assistant. Ask about sales, or type a product name to check its current stock.";
+  "Hi, I'm the Orithos AI assistant. Ask about sales or stock, or try restock suggestions, price reviews, wine matches, or invoice capture.";
 const DISABLED_GREETING =
   "AI chat is off for this store. The shortcuts below still open the right page.";
 
@@ -119,8 +119,11 @@ function aiFailureMessage(error: unknown, mode: "chat" | "voice"): string {
 
 const QUICK_ACTIONS = [
   "Today's sales",
-  "Open sell",
-  "Look up products",
+  "What should I restock?",
+  "Which prices should I review?",
+  "Recommend a red wine under $30",
+  "Scan this supplier invoice",
+  "Products",
   "Check stock",
 ];
 
@@ -142,12 +145,14 @@ const DISPATCHABLE_AI_INTENTS = new Set([
 interface SellAiPanelProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  launcherVisible?: boolean;
 }
 
 /** Sell page AI chat panel — intent → frontend dispatcher. */
 export function SellAiPanel({
   expanded,
   onExpandedChange,
+  launcherVisible = true,
 }: SellAiPanelProps) {
   const mobileOnly = getUiMode() === "mobile";
   const sell = useOptionalSellScreen();
@@ -870,7 +875,7 @@ export function SellAiPanel({
   }
 
   function runQuickAction(action: string) {
-    // Nav pills skip the LLM when possible; Today's sales still needs the report graph.
+    // Route sample questions through the assistant; keep direct navigation available when chat is off.
     if (action === "Today's sales") {
       if (aiEnabled === false) {
         openWorkspace("/history/odoo", "Opened sales history.");
@@ -879,11 +884,38 @@ export function SellAiPanel({
       void runIntent("Today's sales");
       return;
     }
-    if (action === "Open sell") {
-      openWorkspace("/", "Opened the sell screen.");
+    const workflows: Record<string, { question: string; href: string; note: string }> = {
+      "What should I restock?": {
+        question: "What should I restock?",
+        href: "/stock/replenishment",
+        note: "Opened replenishment suggestions.",
+      },
+      "Which prices should I review?": {
+        question: "Which prices should I review?",
+        href: "/stock/capped-pricing",
+        note: "Opened price suggestions for review.",
+      },
+      "Recommend a red wine under $30": {
+        question: "Recommend a red wine under $30",
+        href: "/sommelier",
+        note: "Opened wine recommendations.",
+      },
+      "Scan this supplier invoice": {
+        question: "Scan this supplier invoice",
+        href: "/invoices/scan",
+        note: "Opened invoice capture.",
+      },
+    };
+    const workflow = workflows[action];
+    if (workflow) {
+      if (aiEnabled === false) {
+        openWorkspace(workflow.href, workflow.note);
+        return;
+      }
+      void runIntent(workflow.question);
       return;
     }
-    if (action === "Look up products") {
+    if (action === "Products") {
       openWorkspace("/products", "Opened products.");
       return;
     }
@@ -1083,7 +1115,7 @@ export function SellAiPanel({
                 </p>
                 <p className="truncate text-[13px] text-[var(--oh-muted)]">
                   {aiEnabled === false
-                    ? "AI is disabled for this store"
+                    ? "AI chat is off"
                     : "Ask anything about sales"}
                 </p>
               </div>
@@ -1176,7 +1208,7 @@ export function SellAiPanel({
         </div>
       )}
 
-      {!expanded && (
+      {!expanded && launcherVisible && (
         <button
           type="button"
           onClick={onFabClick}

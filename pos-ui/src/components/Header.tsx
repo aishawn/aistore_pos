@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { usesHeaderAiEntry } from "@/lib/ai-entry-placement";
 import { MessageCircle, PanelLeft, PanelLeftClose, Wifi, WifiOff } from "lucide-react";
 import { UserIcon } from "@/components/icons";
 import { OrithosLogo } from "@/components/OrithosLogo";
@@ -29,7 +30,7 @@ export function Header({
   const ai = useOptionalAiAssistant();
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
-  const showHeaderAi = checkoutKeyboard || pathname === "/products/odoo" || pathname === "/customers/odoo" || pathname === "/suppliers/odoo" || pathname === "/reports/dashboard";
+  const showHeaderAi = usesHeaderAiEntry(pathname);
   const tabIndex = checkoutKeyboard ? -1 : undefined;
 
   useEffect(() => {

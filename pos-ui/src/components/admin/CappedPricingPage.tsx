@@ -115,17 +115,29 @@ function CappedPriceRowEditor({
     currentNum > row.cappedPrice;
 
   return (
-    <div className="flex items-start border-b border-neutral-200 bg-white py-2 text-[13px] text-black">
-      <div className="w-[24%] shrink-0 px-3">
+    <div data-testid="capped-pricing-card" className="mb-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded border border-neutral-200 bg-white p-3 text-[13px] text-black xl:mb-0 xl:flex xl:items-start xl:gap-x-0 xl:gap-y-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-2">
+      <div className="col-span-2 min-w-0 xl:w-[24%] xl:shrink-0 xl:px-3">
         <div className="text-[13px] text-neutral-500">{row.priceSetName ?? "Default Price Set"}</div>
         <div className="mt-0.5 font-semibold leading-snug">{row.productName}</div>
       </div>
-      <div className="w-[18%] shrink-0 px-3 leading-snug">{row.source}</div>
-      <div className="w-[9%] shrink-0 px-3">{formatDate(row.startDate)}</div>
-      <div className="w-[9%] shrink-0 px-3">{formatDate(row.endDate)}</div>
-      <div className="w-[10%] shrink-0 px-3 text-center">{row.quantity ?? ""}</div>
-      <div className="w-[9%] shrink-0 px-3">{money(row.cappedPrice)}</div>
-      <div className="w-[11%] shrink-0 px-3">
+      <div className="min-w-0 xl:w-[18%] xl:shrink-0 xl:px-3 xl:leading-snug">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Source</div>
+        <span data-testid="capped-price-source">{row.source}</span>
+      </div>
+      <div className="min-w-0 xl:w-[9%] xl:shrink-0 xl:px-3">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Start Date</div>{formatDate(row.startDate)}
+      </div>
+      <div className="min-w-0 xl:w-[9%] xl:shrink-0 xl:px-3">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">End Date</div>{formatDate(row.endDate)}
+      </div>
+      <div className="min-w-0 xl:w-[10%] xl:shrink-0 xl:px-3 xl:text-center">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Quantity</div>{row.quantity ?? ""}
+      </div>
+      <div className="min-w-0 xl:w-[9%] xl:shrink-0 xl:px-3">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Capped Price</div>{money(row.cappedPrice)}
+      </div>
+      <div className="min-w-0 xl:w-[11%] xl:shrink-0 xl:px-3">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Current Price</div>
         <div className="relative">
           <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
           <input
@@ -154,7 +166,9 @@ function CappedPriceRowEditor({
           ) : null}
         </div>
       </div>
-      <div className="min-w-0 flex-1 px-3 pt-1.5">{marginPct(row.cost, currentNum)}</div>
+      <div className="min-w-0 xl:flex-1 xl:px-3 xl:pt-1.5">
+        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Margin</div>{marginPct(row.cost, currentNum)}
+      </div>
       {dirty ? <span className="sr-only">unsaved</span> : null}
     </div>
   );
@@ -338,8 +352,8 @@ export function CappedPricingPage() {
       <div className="min-h-0 flex-1 overflow-auto px-6 pb-6 pt-3">
         {tab === "IMPORTED" ? <CappedPricingImportPanel onImported={reload} /> : null}
 
-        <div data-testid="capped-pricing-table" className="min-w-[1050px]">
-          <div className="sticky top-0 z-10 flex items-center rounded-md bg-black py-2 text-[13px] font-bold text-white">
+        <div data-testid="capped-pricing-table" className="min-w-0 xl:min-w-[1050px]">
+          <div className="sticky top-0 z-10 hidden items-center rounded-md bg-black py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[24%] shrink-0 px-3">Product</div>
             <div className="w-[18%] shrink-0 px-3">Capped Pricing</div>
             <div className="w-[9%] shrink-0 px-3">Start Date</div>

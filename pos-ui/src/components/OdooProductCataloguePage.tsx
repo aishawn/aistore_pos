@@ -93,6 +93,11 @@ export function OdooProductCataloguePage() {
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
 
   useEffect(() => {
+    const initialQuery = searchParams.get("q");
+    if (initialQuery !== null) setQuery(initialQuery);
+  }, [searchParams]);
+
+  useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedQuery(query.trim());
       setOffset(0);
@@ -333,11 +338,11 @@ export function OdooProductCataloguePage() {
           <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
         </div>
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_44px] items-center gap-2 sm:flex">
+        <div className="grid grid-cols-2 items-center gap-2 sm:flex">
           <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button>
           <button type="button" onClick={() => { setCreateError(null); setNewProductOpen(true); }} disabled={connected !== true} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New product</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:px-3">
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh products" title="Refresh products" className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-2 justify-self-end rounded-lg border border-[var(--oh-border)] bg-white text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 sm:w-auto sm:justify-self-auto sm:px-3">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
@@ -438,7 +443,7 @@ export function OdooProductCataloguePage() {
                       <div className="flex min-w-0 items-center gap-3"><ProductImage productId={product.id} name={product.name} refreshToken={refreshKey} className="h-14 w-14 border border-[var(--oh-border)] bg-white" /><div className="min-w-0"><p className="break-words text-sm font-semibold text-[var(--oh-text)]">{product.display_name || product.name}</p><p className="mt-0.5 text-xs text-[var(--oh-muted)]">Odoo #{product.id}{product.default_code ? ` · SKU ${product.default_code}` : ""}</p></div></div>
                       <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(product.list_price)}</p>
                     </header>
-                    <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                    <dl className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1.5 text-xs min-[360px]:grid-cols-2">
                       <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Category</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]">{productCategories.length ? productCategories.join(", ") : "Uncategorised"}</dd></div>
                       <div className="flex min-w-0 items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">Barcode</dt><dd className="min-w-0 truncate text-[var(--oh-text-secondary)]" title={product.barcode || undefined}>{product.barcode || "—"}</dd></div>
                       <div className="flex items-baseline gap-1.5"><dt className="shrink-0 text-xs text-[var(--oh-muted)]">On hand</dt><dd className={`tabular-nums ${product.qty_available > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-700"}`}>{quantity(product.qty_available)}{product.uom_id && <span className="ml-1 text-[var(--oh-muted)]">{product.uom_id[1]}</span>}</dd></div>

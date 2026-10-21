@@ -1,0 +1,202 @@
+{
+  "name": "Orithos UI batch 2026-10-21",
+  "generatedAt": "2026-10-21T03:41:49.2439572Z",
+  "baseCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "baseBackendTree": "a3dcd1a0bef70b1611f928aa303d32b530dcae5a",
+  "backendChangesIncluded": false,
+  "localBuildRun": false,
+  "deployment": "unverified",
+  "verificationScope": "local-dev-fixtures; all APIs intercepted; real business writes not verified",
+  "nodeVersion": "v24.19.0",
+  "staticChecks": [
+    "TypeScript PASS",
+    "16 frontend files ESLint PASS",
+    "12 release scripts syntax PASS"
+  ],
+  "sourceFiles": [
+    {
+      "path": "pos-ui/app/customers/odoo/page.tsx",
+      "gitBlob": "2a6d8cbe1ca4f157324326f9015c55b932b64175"
+    },
+    {
+      "path": "pos-ui/app/suppliers/odoo/page.tsx",
+      "gitBlob": "93db2cf1b2f0725aea4ba9eba1aa70762f9d6a27"
+    },
+    {
+      "path": "pos-ui/app/stock/stocktake/page.tsx",
+      "gitBlob": "2e3ea857f8a999638959b7960ea22e762885321b"
+    },
+    {
+      "path": "pos-ui/app/utilities/vendor-connections/page.tsx",
+      "gitBlob": "69d614af45c75f19fe33871d66da416449da99b8"
+    },
+    {
+      "path": "pos-ui/src/components/AiFloatHost.tsx",
+      "gitBlob": "c67726229e5eb2f40c4a7cd9ea97beb04ec8d7c0"
+    },
+    {
+      "path": "pos-ui/src/components/Header.tsx",
+      "gitBlob": "2c1f4823c1a67255e2f52a37107564b94d77adff"
+    },
+    {
+      "path": "pos-ui/src/components/OdooCustomerDirectoryPage.tsx",
+      "gitBlob": "aa3664f73e0fb934f4016b3089c9101c9bfe89d6"
+    },
+    {
+      "path": "pos-ui/src/components/OdooPriceSuggestionsPage.tsx",
+      "gitBlob": "c92a2d13ab83c8973d6a0499a39433581459ca2b"
+    },
+    {
+      "path": "pos-ui/src/components/OdooProductCataloguePage.tsx",
+      "gitBlob": "fb115e78d3f0efeff0470ea01579c2ece4230874"
+    },
+    {
+      "path": "pos-ui/src/components/OdooSupplierDirectoryPage.tsx",
+      "gitBlob": "7d8d28b13e8c502e98bc37bb8e224afaf7a9649f"
+    },
+    {
+      "path": "pos-ui/src/components/SellAiPanel.tsx",
+      "gitBlob": "718742c0c5f1950d8e4ea42d44d92a56def6b451"
+    },
+    {
+      "path": "pos-ui/src/components/admin/BulkPriceEditPage.tsx",
+      "gitBlob": "53a3f35c68c8c714d1854f6d600665d73040b519"
+    },
+    {
+      "path": "pos-ui/src/components/admin/CappedPricingPage.tsx",
+      "gitBlob": "9bf6c528f8eedc668fba8fbbe760143ed0267961"
+    },
+    {
+      "path": "pos-ui/src/components/admin/StockListPage.tsx",
+      "gitBlob": "9efcbea230216ed5f5ba235f945d72a750835f35"
+    },
+    {
+      "path": "pos-ui/src/lib/ai-entry-placement.ts",
+      "gitBlob": "c1faa1e162db96b68bdaf5896a8d09b446e3fb2f"
+    },
+    {
+      "path": "pos-ui/src/lib/ai-entity-actions.ts",
+      "gitBlob": "21f9905515931d18048ca4ef2eaa4c63f6cc59b4"
+    },
+    {
+      "path": "scripts/pilot-ai-capability-gates-local-uat.mjs",
+      "gitBlob": "41d81b5ea0490bc33691c86576bb8738e3653e2a"
+    },
+    {
+      "path": "scripts/pilot-ai-focus-local-uat.mjs",
+      "gitBlob": "0fba86aa9798fc96b227117d55edb98c93c1076c"
+    },
+    {
+      "path": "scripts/pilot-ai-entity-invalid-op-local-uat.mjs",
+      "gitBlob": "77c3ea40feedc9b9b86f78e59b5e5b495dcb5c3c"
+    },
+    {
+      "path": "scripts/pilot-stock-tables-responsive-local-uat.mjs",
+      "gitBlob": "703b8b01beeac4278c3ad186d0e506569f033328"
+    },
+    {
+      "path": "scripts/pilot-price-suggestions-local-uat.mjs",
+      "gitBlob": "af22c89b69a57eacbd14af18d00333c3f999d9e1"
+    },
+    {
+      "path": "scripts/pilot-odoo-stocktake-local-uat.mjs",
+      "gitBlob": "4e298684bd9a9db5cb044664a9fe5044bdcae0e2"
+    },
+    {
+      "path": "scripts/pilot-stocktake-count-boundaries-local-uat.mjs",
+      "gitBlob": "ff261961451f9e53e6e12d7099c4f130a35c06f0"
+    },
+    {
+      "path": "scripts/pilot-stock-pricing-save-guard-local-uat.mjs",
+      "gitBlob": "e46c4c7ab993910687a6856551157e1d9207c056"
+    },
+    {
+      "path": "scripts/pilot-vendor-connections-responsive-local-uat.mjs",
+      "gitBlob": "570d9f1e39d5de71864add25141958dd9924665f"
+    },
+    {
+      "path": "scripts/pilot-ai-ui-uat.mjs",
+      "gitBlob": "3832aa0b793c6948bfbb9889e0ad4371a3d19cce"
+    },
+    {
+      "path": "scripts/pilot-pricing-pages-online-readonly-uat.mjs",
+      "gitBlob": "71da54a7798d518160d4b0a499fe44faa8eb2bb5"
+    },
+    {
+      "path": "scripts/pilot-bulk-price-edit-save-guard-local-uat.mjs",
+      "gitBlob": "47041f41c1f0a13cfdebf6de8e9a70870a78fddf"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "docs/UAT_UI_RELEASE_DIRECTORIES_2026-10-21.json",
+      "status": "PASS",
+      "gitBlob": "6d583e05abd675863795ee37910607c09b9a2eef"
+    },
+    {
+      "path": "docs/UAT_UI_RELEASE_STOCK_PRICING_2026-10-21.json",
+      "status": "PASS",
+      "gitBlob": "ccc9a0c816877ce683fa660583e4ddf655c24443"
+    },
+    {
+      "path": "docs/UAT_UI_RELEASE_PRICE_SUGGESTIONS_2026-10-21.json",
+      "status": "PASS",
+      "gitBlob": "c1d5846e1cd31855c26adfc88306796d1cad44bc"
+    },
+    {
+      "path": "docs/UAT_UI_RELEASE_BULK_SAVE_390_2026-10-21.json",
+      "status": "PASS",
+      "gitBlob": "c93dba40e7d47eaa373d1be682a960c977f71291"
+    },
+    {
+      "path": "docs/UAT_UI_RELEASE_BULK_SAVE_1024_2026-10-21.json",
+      "status": "PASS",
+      "gitBlob": "72fab22c76f2a8d3582b0b0e0670a053ea1503ee"
+    },
+    {
+      "path": "docs/UAT_UI_RELEASE_BULK_SAVE_1440_2026-10-21.json",
+      "status": "PASS",
+      "gitBlob": "8735b10551f41848c4d3a9ae57f7c060e797b0b2"
+    },
+    {
+      "path": "docs/UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-21_FULL-MATRIX.json",
+      "status": "PASS",
+      "gitBlob": "e507c784372016c23bcb4b8f43feb43069693454"
+    },
+    {
+      "path": "docs/UAT_AI_FOCUS_LOCAL_2026-10-21_FULL-MATRIX.json",
+      "status": "PASS",
+      "gitBlob": "431c78dab84e1132c3fa640117b813530aabbefd"
+    },
+    {
+      "path": "docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-21_FULL-MATRIX.json",
+      "status": "PASS",
+      "gitBlob": "fb278d7a66605236ef9ea80b0c2017c05b72a4e3"
+    },
+    {
+      "path": "docs/UAT_ODOO_STOCKTAKE_LOCAL_2026-10-21_FIVE-VIEWPORTS.json",
+      "status": "PASS",
+      "gitBlob": "2ad15351d093b10f0a9950a6d38c82b9bb386140"
+    },
+    {
+      "path": "docs/UAT_STOCKTAKE_COUNT_BOUNDARIES_LOCAL_2026-10-21_AFTER.json",
+      "status": "PASS",
+      "gitBlob": "8ffa68cc03166d8b427f355ede0264c565fbdc71"
+    },
+    {
+      "path": "docs/UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-21_CONTINUATION_RETRY.json",
+      "status": "PASS",
+      "gitBlob": "f76064e7e8bf6df01fcfdba0683a4dc07041a150"
+    },
+    {
+      "path": "docs/UAT_AI_VOICE_LOCAL_2026-10-21_AFTER-HEADER-FIX.json",
+      "status": "PASS",
+      "gitBlob": "156b66cb3330709b4c97bbe3c5375df2f27598ca"
+    },
+    {
+      "path": "docs/UAT_AI_VOICE_FAILURE_LOCAL_2026-10-21_AFTER-HEADER-FIX.json",
+      "status": "PASS",
+      "gitBlob": "4f945ef3240a230f0931739456c6896005eb69b6"
+    }
+  ]
+}

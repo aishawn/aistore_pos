@@ -105,6 +105,9 @@ async function runViewport(viewport) {
   await fab.click();
   const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await assistant.waitFor({ state: "visible", timeout: 10000 });
+  for (const label of ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Scan this supplier invoice", "Products", "Check stock"]) {
+    await assistant.getByRole("button", { name: label, exact: true }).waitFor({ state: "visible", timeout: 10000 });
+  }
   if (await assistant.getAttribute("aria-modal") !== "true") {
     throw new Error(`AI_DIALOG_NOT_MODAL_${viewport.width}`);
   }

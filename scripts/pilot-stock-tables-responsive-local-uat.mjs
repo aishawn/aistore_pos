@@ -1,4 +1,4 @@
-/** Fixture UAT for Stock List and Capped Pricing table layout at mobile/desktop widths. */
+/** Fixture UAT for stock and pricing layouts at mobile/desktop widths. */
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -14,7 +14,10 @@ const routes = [
   { path: "/stock/capped-pricing", heading: "Capped Pricing", api: "/api/capped-pricing", testId: "capped-pricing-table", screenshot: "capped-pricing" },
   { path: "/stock/bulk-price-edit", heading: "Bulk Price Edit", api: "/api/bulk-price-edit", testId: "bulk-price-edit-table", screenshot: "bulk-price-edit" },
 ];
-const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
+const viewports = [320, 390, 768, 1024, 1440].map((width) => ({
+  width,
+  height: width < 1280 ? 844 : 900,
+}));
 const outputDir = process.env.PILOT_SCREENSHOT_DIR
   ? path.resolve(root, process.env.PILOT_SCREENSHOT_DIR)
   : path.join(root, "docs", "screenshots", "2026-10-19-stock-tables-local");
@@ -84,8 +87,12 @@ try {
           && await page.getByRole("textbox", { name: "New quantity" }).isVisible()
         : null;
       const table = page.getByTestId(route.testId);
-      const mobileCardFieldResults = route.path === "/stock/list" && viewport.width === 390
-        ? await Promise.all([
+      let mobileCardFieldResults = null;
+      let importPanelAccessible = null;
+      let addedQuantityAccessible = null;
+      let mobileSearchWidth = null;
+      if (viewport.width < 1280 && route.path === "/stock/list") {
+        mobileCardFieldResults = await Promise.all([
           page.getByRole("textbox", { name: "Product name for DEMO Shiraz" }).isVisible(),
           table.locator("dl dt", { hasText: "Category" }).last().isVisible(),
           table.locator("dl dt", { hasText: "Stock on hand" }).last().isVisible(),
@@ -93,12 +100,70 @@ try {
           page.getByLabel("Cost for DEMO Shiraz", { exact: true }).last().isVisible(),
           page.getByLabel("Price for DEMO Shiraz", { exact: true }).last().isVisible(),
           page.getByLabel("Profit margin for DEMO Shiraz", { exact: true }).last().isVisible(),
-        ])
-        : null;
+        ]);
+      } else if (viewport.width < 1280 && route.path === "/stock/capped-pricing") {
+        const card = page.getByTestId("capped-pricing-card");
+        const currentPrice = page.getByRole("spinbutton", { name: "Current price for DEMO Shiraz" });
+        const unchangedPrice = await currentPrice.inputValue();
+        await currentPrice.fill(unchangedPrice);
+        await currentPrice.blur();
+        mobileCardFieldResults = await Promise.all([
+          card.getByText("DEMO Shiraz", { exact: true }).isVisible(),
+          card.getByTestId("capped-price-source").isVisible(),
+          card.getByText("Start Date", { exact: true }).isVisible(),
+          card.getByText("End Date", { exact: true }).isVisible(),
+          card.getByText("Quantity", { exact: true }).isVisible(),
+          card.getByText("Capped Price", { exact: true }).isVisible(),
+          currentPrice.isVisible(),
+          card.getByText("Margin", { exact: true }).isVisible(),
+        ]);
+        await page.getByRole("button", { name: "Imported", exact: true }).click();
+        importPanelAccessible = await page.getByRole("button", {
+          name: "Choose a capped pricing CSV file, or drop one here",
+        }).isVisible();
+        await page.getByRole("button", { name: "Provided", exact: true }).click();
+      } else if (viewport.width < 1280 && route.path === "/stock/bulk-price-edit") {
+        const card = page.getByTestId("bulk-price-card");
+        const priceInput = page.getByRole("spinbutton", { name: "Price for DEMO Shiraz, quantity 1", exact: true });
+        const unchangedPrice = await priceInput.inputValue();
+        await priceInput.fill(unchangedPrice);
+        await priceInput.blur();
+        mobileCardFieldResults = [
+          await card.getByText("DEMO Shiraz", { exact: true }).isVisible(),
+          await card.getByText("Case Qty", { exact: true }).isVisible(),
+          await card.getByText("Price Set", { exact: true }).isVisible(),
+          ...(await Promise.all([1, 2, 4, 6, 10, 12, 16, 18, 24].map((quantity) =>
+            page.getByRole("spinbutton", { name: `Price for DEMO Shiraz, quantity ${quantity}`, exact: true }).isVisible(),
+          ))),
+        ];
+        const searchBox = page.getByRole("textbox", { name: "Search bulk price products" });
+        mobileSearchWidth = await searchBox.evaluate((input) => input.getBoundingClientRect().width);
+        await page.getByRole("textbox", { name: "New quantity" }).fill("3");
+        await page.getByRole("button", { name: "Add", exact: true }).click();
+        addedQuantityAccessible = await page.getByRole("spinbutton", {
+          name: "Price for DEMO Shiraz, quantity 3",
+          exact: true,
+        }).isVisible();
+      }
       const mobileCardFields = mobileCardFieldResults ? mobileCardFieldResults.every(Boolean) : null;
       const layout = await table.evaluate((element) => {
         const scroller = element.parentElement;
         const header = element.querySelector(".sticky");
+        const headerVisible = header ? getComputedStyle(header).display !== "none" : false;
+        if (!headerVisible) {
+          const card = element.querySelector('[data-testid="capped-pricing-card"], [data-testid="bulk-price-card"]');
+          return {
+            tableWidth: element.getBoundingClientRect().width,
+            scrollerWidth: scroller?.clientWidth ?? 0,
+            scrollerScrollWidth: scroller?.scrollWidth ?? 0,
+            columnsDoNotOverlap: true,
+            columnsAlignWithFirstRow: true,
+            columnAlignmentIssues: [],
+            headerTextIssues: [],
+            headerTextFits: true,
+            mobileCardWidth: card ? card.getBoundingClientRect().width : 0,
+          };
+        }
         const boxes = header ? Array.from(header.children).map((child) => child.getBoundingClientRect()) : [];
         const row = header?.nextElementSibling;
         const rowBoxes = row ? Array.from(row.children).slice(0, boxes.length).map((child) => child.getBoundingClientRect()) : [];
@@ -129,6 +194,16 @@ try {
         };
       });
       const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: window.innerWidth }));
+      const aiEntryPlacement = {
+        headerVisible: await page.getByRole("button", { name: "Open Orithos AI assistant" }).isVisible(),
+        floatingEntryHidden: await page.getByRole("button", { name: "Open Orithos AI", exact: true }).count() === 0,
+      };
+      await page.getByRole("button", { name: "Open Orithos AI assistant" }).click();
+      const assistantDialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
+      await assistantDialog.waitFor({ state: "visible", timeout: 10000 });
+      aiEntryPlacement.headerOpensAssistant = true;
+      await assistantDialog.getByRole("button", { name: "Close assistant" }).click();
+      await assistantDialog.waitFor({ state: "detached", timeout: 5000 });
       const screenshot = path.join(outputDir, `${route.screenshot}-${viewport.width}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
       const horizontallyScrollable = layout.scrollerScrollWidth > layout.scrollerWidth;
@@ -142,8 +217,13 @@ try {
         sampleRowVisible: await sampleRow.isVisible(),
         mobileCardFields,
         mobileCardFieldResults,
+        importPanelAccessible,
+        addedQuantityAccessible,
+        mobileSearchWidth,
         pageNoOverflow: dimensions.width <= dimensions.viewport + 1,
-        internalHorizontalScroll: viewport.width === 390 && route.path !== "/stock/list" ? horizontallyScrollable : null,
+        mobileContentWidth: viewport.width >= 1280 || layout.tableWidth >= layout.scrollerWidth - 64,
+        aiEntryPlacement,
+        internalHorizontalScroll: viewport.width < 1280 && route.path !== "/stock/list" ? horizontallyScrollable : null,
         columnsDoNotOverlap: layout.columnsDoNotOverlap,
         columnsAlignWithFirstRow: layout.columnsAlignWithFirstRow,
         headerTextFits: layout.headerTextFits,
@@ -168,18 +248,38 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.controlsAccessible === false
   || check.sampleRowVisible === false
   || check.mobileCardFields === false
+  || check.importPanelAccessible === false
+  || check.addedQuantityAccessible === false
+  || (check.mobileSearchWidth != null && check.mobileSearchWidth < 220)
   || check.pageNoOverflow === false
-  || (check.internalHorizontalScroll === false && check.route !== "/stock/list")
-  || (check.viewport !== 390 || check.route !== "/stock/list") && check.columnsDoNotOverlap === false
-  || (check.viewport !== 390 || check.route !== "/stock/list") && check.columnsAlignWithFirstRow === false
-  || (check.viewport !== 390 || check.route !== "/stock/list") && check.headerTextFits === false
+  || check.mobileContentWidth === false
+  || check.aiEntryPlacement?.headerVisible === false
+  || check.aiEntryPlacement?.floatingEntryHidden === false
+  || check.aiEntryPlacement?.headerOpensAssistant === false
+  || (check.internalHorizontalScroll === true)
+  || (check.viewport < 1280 && check.route !== "/stock/list" && (check.layout?.mobileCardWidth ?? 0) <= 0)
+  || (check.viewport >= 1280 && check.columnsDoNotOverlap === false)
+  || (check.viewport >= 1280 && check.columnsAlignWithFirstRow === false)
+  || (check.viewport >= 1280 && check.headerTextFits === false)
   || (check.pageErrors?.length ?? 0) > 0);
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceWorkingTree: execFileSync("git", ["status", "--porcelain", "--", "pos-ui/src/components/Header.tsx", "pos-ui/src/components/AiFloatHost.tsx", "pos-ui/src/components/SellAiPanel.tsx", "pos-ui/src/components/admin/StockListPage.tsx", "pos-ui/src/components/admin/CappedPricingPage.tsx", "pos-ui/src/components/admin/BulkPriceEditPage.tsx", "pos-ui/src/lib/ai-entry-placement.ts", "scripts/pilot-stock-tables-responsive-local-uat.mjs"], { cwd: root, encoding: "utf8" }).trim().length > 0,
+  testedFiles: [
+    "pos-ui/src/components/Header.tsx",
+    "pos-ui/src/components/AiFloatHost.tsx",
+    "pos-ui/src/components/SellAiPanel.tsx",
+    "pos-ui/src/components/admin/StockListPage.tsx",
+    "pos-ui/src/components/admin/CappedPricingPage.tsx",
+    "pos-ui/src/components/admin/BulkPriceEditPage.tsx",
+    "pos-ui/src/lib/ai-entry-placement.ts",
+    "scripts/pilot-stock-tables-responsive-local-uat.mjs",
+  ],
   environment: "local-dev-fixtures",
+  nodeVersion: process.version,
   target: base,
-  scope: "Stock List/Capped Pricing/Bulk Price Edit responsive table headers; API requests intercepted; no business writes",
+  scope: "Stock List/Capped Pricing/Bulk Price Edit mobile content width, card fields, editing and controls; desktop column alignment; header AI opens/closes and floating launcher is suppressed on dense routes; API requests intercepted; no business writes",
   status: failures.length === 0 && blockedWrites.length === 0 ? "PASS" : "FAIL",
   passed: checks.length - failures.length,
   failed: failures.length,

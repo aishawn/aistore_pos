@@ -66,7 +66,7 @@ export default function VendorConnectionsPage() {
         <p className="rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">No vendor connections have been configured yet.</p>
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="hidden xl:block">
             <ListTable
               columns={[
                 { label: "Vendor" },
@@ -80,7 +80,7 @@ export default function VendorConnectionsPage() {
               ])}
             />
           </div>
-          <ul role="list" aria-label="Vendor connections list" className="space-y-2 md:hidden">
+          <ul role="list" aria-label="Vendor connections list" className="space-y-2 xl:hidden">
             {vendors.map((vendor) => (
               <li key={vendor.id} className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-sm">
                 <div className="flex min-w-0 items-start justify-between gap-3">

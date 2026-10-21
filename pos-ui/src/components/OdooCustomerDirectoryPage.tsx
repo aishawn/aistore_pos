@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Mail, Pencil, Phone, Plus, RefreshCw, Search, UserRound, X } from "lucide-react";
 import { createOdooCustomer, getOdooPosBootstrap, getOdooSession, searchOdooRecords, updateOdooCustomer, type OdooCustomerRecord } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
@@ -31,6 +32,7 @@ function CustomerEmptyState({ searching, onClear }: { searching: boolean; onClea
 }
 
 export function OdooCustomerDirectoryPage() {
+  const searchParams = useSearchParams();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [connectionRetryKey, setConnectionRetryKey] = useState(0);
   const [checkingConnection, setCheckingConnection] = useState(true);
@@ -44,6 +46,11 @@ export function OdooCustomerDirectoryPage() {
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const initialQuery = searchParams.get("q");
+    if (initialQuery !== null) setQuery(initialQuery);
+  }, [searchParams]);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);

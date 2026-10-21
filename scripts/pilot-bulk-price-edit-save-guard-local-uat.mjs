@@ -10,6 +10,7 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+const viewportWidth = Number(process.env.PILOT_VIEWPORT_WIDTH ?? 1440);
 const fixtureUser = {
   id: 1,
   name: "Admin",
@@ -26,7 +27,7 @@ const record = (name, ok, evidence = "") => checks.push({ name, status: ok ? "PA
 
 const browser = await chromium.launch({ headless: true });
 try {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({ viewport: { width: viewportWidth, height: 900 } });
   await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
   await context.addInitScript((user) => localStorage.setItem("sf_user", JSON.stringify(user)), fixtureUser);
   await context.route("**/api/**", async (route) => {
@@ -73,6 +74,8 @@ try {
   });
 
   const page = await context.newPage();
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
   const response = await page.goto(`${base}/stock/bulk-price-edit?search=DEMO-SHIRAZ`, { waitUntil: "domcontentloaded", timeout: 60000 });
   record("bulk page loads", response?.ok() ?? false, String(response?.status() ?? "no response"));
   const input = page.locator('input[type="number"]').first();
@@ -85,6 +88,12 @@ try {
   const saveAlert = page.getByText("Price update rejected", { exact: true });
   await saveAlert.waitFor({ state: "visible", timeout: 10000 });
   record("failed save is announced", await saveAlert.getAttribute("role") === "alert", "cell-level alert contains safe API message");
+  const inputRect = await input.boundingBox();
+  const alertRect = await saveAlert.boundingBox();
+  record("save error stays next to its input and within viewport", Boolean(inputRect && alertRect
+    && alertRect.y >= inputRect.y + inputRect.height - 1
+    && alertRect.y <= inputRect.y + inputRect.height + 10
+    && alertRect.x >= 0 && alertRect.x + alertRect.width <= viewportWidth), JSON.stringify({ inputRect, alertRect }));
   record("failed save rolls back", await input.inputValue() === "12", await input.inputValue());
   record("input is not left busy", (await input.getAttribute("aria-busy")) !== "true", await input.getAttribute("aria-busy") ?? "unset");
 
@@ -92,7 +101,7 @@ try {
   await page.getByRole("heading", { name: "Bulk Price Edit" }).click();
   await page.waitForTimeout(300);
   record("retry save can proceed", patchAttempts === 2 && patches[1]?.price === 13.5, JSON.stringify(patches));
-  record("no page errors", true, "fixture run completed without navigation or render error");
+  record("no page errors", pageErrors.length === 0, JSON.stringify(pageErrors));
   await context.close();
 } catch (error) {
   record("run", false, error instanceof Error ? error.message : "failed");
@@ -104,6 +113,9 @@ const failed = checks.filter((check) => check.status === "FAIL").length;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceWorkingTree: true,
+  nodeVersion: process.version,
+  viewport: viewportWidth,
   environment: "local-dev-fixtures",
   target: base,
   scope: "bulk price edit save error containment; PATCH intercepted; no business writes",

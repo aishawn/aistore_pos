@@ -223,14 +223,15 @@ function customerEditPatches(query: string): CustomerEditPrefill {
 }
 
 const LIST_ROUTE: Record<AiEntity, string> = {
-  product: "/products",
+  // Odoo is the authoritative catalogue for the current store pilot.
+  product: "/products/odoo",
   classification: "/classifications",
-  supplier: "/suppliers",
+  supplier: "/suppliers/odoo",
   order: "/orders",
   stocktake: "/stocktake",
   stock_list: "/stock/list",
   stock_more: "/stock/more",
-  customer: "/customers",
+  customer: "/customers/odoo",
   customer_group: "/customer-groups",
   price_list: "/pricelists",
   balance: "/customers/balances",
@@ -239,6 +240,11 @@ const LIST_ROUTE: Record<AiEntity, string> = {
   capped_pricing: "/stock/capped-pricing",
   bulk_price_edit: "/stock/bulk-price-edit",
 };
+
+function entityLabel(entity: AiEntity): string {
+  if (entity === "balance") return "customer balance";
+  return entity.replaceAll("_", " ");
+}
 
 const CREATE_ROUTE: Partial<Record<AiEntity, string>> = {
   product: "/products/new",
@@ -264,6 +270,11 @@ const IMPORT_ROUTE: Partial<Record<AiEntity, string>> = {
   gift_card: "/giftcards/import",
   supplier: "/stock/import-supplier-products",
 };
+
+// Keep action capability explicit. Falling back to a list for an unsupported
+// write/import/export request makes the assistant sound more capable than the
+// page actually is and can send staff toward the wrong workflow.
+const EXPORT_ENTITIES = new Set<AiEntity>(["product", "customer", "gift_card", "stocktake"]);
 
 const DELETE_PATH: Partial<Record<AiEntity, (id: string) => string>> = {
   product: (id) => `/api/products/${id}`,
@@ -362,8 +373,11 @@ function viewPath(entity: AiEntity, id: string): string | null {
       return `/customer-groups/${id}/view`;
     case "order":
       return `/orders/${id}/view`;
+    // The current supplier source of truth is the read-only Odoo directory;
+    // there is no safe supplier detail route here. The caller will open the
+    // directory with the lookup query instead of entering an edit form.
     case "supplier":
-      return `/suppliers/${id}/edit`;
+      return null;
     default:
       return null;
   }
@@ -427,7 +441,7 @@ export async function resolveEntityAction(
       return {
         kind: "navigate",
         href: withQuery(list, query),
-        note: query ? `Opened ${entity.replaceAll("_", " ")} search for “${query}”.` : undefined,
+        note: query ? `Opened ${entityLabel(entity)} search for “${query}”.` : undefined,
       };
 
     case "create": {
@@ -519,24 +533,36 @@ export async function resolveEntityAction(
           note: "Gift cards are created via Import — opened the import page.",
         };
       }
+      if (!CREATE_ROUTE[entity]) {
+        return {
+          kind: "message",
+          text: `Creating ${entityLabel(entity)} from the assistant is not available. Open the relevant page and complete the form there.`,
+        };
+      }
       const href = CREATE_ROUTE[entity] ?? list;
       return {
         kind: "navigate",
         href,
-        note: `Opened ${entity.replaceAll("_", " ")} create flow.`,
+        note: `Opened ${entityLabel(entity)} create flow.`,
       };
     }
 
     case "merge": {
       const href = MERGE_ROUTE[entity];
       if (!href) {
-        return { kind: "message", text: `Merge is not available for ${entity.replaceAll("_", " ")}.` };
+        return { kind: "message", text: `Merge is not available for ${entityLabel(entity)}.` };
       }
       return { kind: "navigate", href };
     }
 
     case "import": {
-      const href = IMPORT_ROUTE[entity] ?? list;
+      const href = IMPORT_ROUTE[entity];
+      if (!href) {
+        return {
+          kind: "message",
+          text: `Import is not available for ${entityLabel(entity)} from the assistant.`,
+        };
+      }
       return {
         kind: "navigate",
         href,
@@ -545,6 +571,12 @@ export async function resolveEntityAction(
     }
 
     case "export":
+      if (!EXPORT_ENTITIES.has(entity)) {
+        return {
+          kind: "message",
+          text: `Export is not available for ${entityLabel(entity)} from the assistant.`,
+        };
+      }
       return {
         kind: "navigate",
         href: list,
@@ -554,7 +586,14 @@ export async function resolveEntityAction(
     case "view":
     case "edit": {
       if (!query) {
-        return { kind: "navigate", href: list, note: `Opened ${entity.replaceAll("_", " ")} list. Specify a name to open one record.` };
+        return { kind: "navigate", href: list, note: `Opened ${entityLabel(entity)} list. Specify a name to open one record.` };
+      }
+      if (op === "view" && entity === "supplier") {
+        return {
+          kind: "navigate",
+          href: withQuery(list, query),
+          note: `Opened the read-only supplier directory for “${query}”.`,
+        };
       }
       const lookup =
         entity === "customer" ? customerLookupQuery(query) : query;
@@ -597,7 +636,7 @@ export async function resolveEntityAction(
         return {
           kind: "navigate",
           href: withQuery(list, query),
-          note: `Delete via API is not wired for ${entity.replaceAll("_", " ")}. Opened the list so you can delete there.`,
+          note: `Delete via API is not wired for ${entityLabel(entity)}. Opened the list so you can delete there.`,
         };
       }
       if (!query) {
