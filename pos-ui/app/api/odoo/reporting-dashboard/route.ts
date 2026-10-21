@@ -49,6 +49,14 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 
 class OdooSessionExpiredError extends Error {}
 
+function errorResponse(message: string, status: number, correlationId?: string | null) {
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  if (correlationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(correlationId)) {
+    headers.set("X-Correlation-ID", correlationId);
+  }
+  return NextResponse.json({ message }, { status, headers });
+}
+
 function percentDelta(current: number, previous: number): number | null {
   if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) return null;
   return Math.round(((current - previous) / Math.abs(previous)) * 1000) / 10;
@@ -139,10 +147,10 @@ async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: 
 }
 
 export async function GET(request: NextRequest) {
-  if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
+  if (!isSameOrigin(request)) return errorResponse("Cross-origin requests are not allowed", 403, correlationId);
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionId) return errorResponse("Odoo session expired", 401, correlationId);
 
   const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? 8);
   const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : 8;
@@ -165,9 +173,9 @@ export async function GET(request: NextRequest) {
     if (sessionPayload.error || !session?.uid) throw new OdooSessionExpiredError();
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
-    if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
+    if (forced.error) return errorResponse(forced.error, forced.status, correlationId);
     const companyId = forced.companyIds[0];
-    if (!companyId) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
+    if (!companyId) return errorResponse("No Odoo companies are available to this user.", 403, correlationId);
     const companies = await rpc<Array<{ name?: string; currency_id?: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
       ["id", "=", companyId],
     ]], { fields: ["name", "currency_id", "partner_id"], limit: 1 }, correlationId);
@@ -290,12 +298,12 @@ export async function GET(request: NextRequest) {
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof OdooSessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = errorResponse("Odoo session expired", 401, correlationId);
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
-    return NextResponse.json({ message }, { status });
+    return errorResponse(message, status, correlationId);
   }
 }

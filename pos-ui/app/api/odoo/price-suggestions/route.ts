@@ -47,14 +47,18 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 
 class PriceSuggestionSessionExpiredError extends Error {}
 
-function noStoreJson(body: unknown, status = 200) {
+function noStoreJson(body: unknown, status = 200, correlationId?: string | null) {
+  const headers = new Headers({
+    "Cache-Control": "no-store, max-age=0",
+    "CDN-Cache-Control": "no-store",
+    "Vercel-CDN-Cache-Control": "no-store",
+  });
+  if (correlationId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(correlationId)) {
+    headers.set("X-Correlation-ID", correlationId);
+  }
   return NextResponse.json(body, {
     status,
-    headers: {
-      "Cache-Control": "no-store, max-age=0",
-      "CDN-Cache-Control": "no-store",
-      "Vercel-CDN-Cache-Control": "no-store",
-    },
+    headers,
   });
 }
 
@@ -67,10 +71,10 @@ function parseMarginTarget(raw: string | null): number {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403);
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return noStoreJson({ message: "Odoo session expired" }, 401);
   const correlationId = request.headers.get("x-correlation-id");
+  if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403, correlationId);
+  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!sessionId) return noStoreJson({ message: "Odoo session expired" }, 401, correlationId);
 
   const marginTarget = parseMarginTarget(request.nextUrl.searchParams.get("marginTarget"));
   const now = Date.now();
@@ -90,9 +94,9 @@ export async function GET(request: NextRequest) {
     if (session.error || !session.result?.uid) throw new PriceSuggestionSessionExpiredError();
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
-    if (forced.error) return noStoreJson({ message: forced.error }, forced.status);
+    if (forced.error) return noStoreJson({ message: forced.error }, forced.status, correlationId);
     const companyId = forced.companyIds[0];
-    if (!companyId) return noStoreJson({ message: "No Odoo companies are available to this user." }, 403);
+    if (!companyId) return noStoreJson({ message: "No Odoo companies are available to this user." }, 403, correlationId);
 
     const salesBaseDomain = [
       ["order_id.company_id", "=", companyId],
@@ -101,7 +105,7 @@ export async function GET(request: NextRequest) {
     ];
 
     const rawOffset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
-    if (!Number.isSafeInteger(rawOffset) || rawOffset < 0) return noStoreJson({ message: "Invalid page offset." }, 400);
+    if (!Number.isSafeInteger(rawOffset) || rawOffset < 0) return noStoreJson({ message: "Invalid page offset." }, 400, correlationId);
     const context = { allowed_company_ids: [companyId], force_company: companyId };
     const products = await rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
       ["available_in_pos", "=", true], ["company_id", "=", companyId],
@@ -255,12 +259,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof PriceSuggestionSessionExpiredError) {
-      const response = noStoreJson({ message: "Odoo session expired" }, 401);
+      const response = noStoreJson({ message: "Odoo session expired" }, 401, correlationId);
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
     const status = error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
-    return noStoreJson({ message }, status);
+    return noStoreJson({ message }, status, correlationId);
   }
 }
