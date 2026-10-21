@@ -235,7 +235,7 @@ export function CappedPricingPage() {
           <input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-neutral-300 px-3 text-sm" />
           <button type="button" onClick={reload} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-neutral-300 px-3 text-sm font-medium disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
         </div>
-        <p className="mt-3 text-sm text-neutral-600">Read-only Odoo price rules. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Odoo.</p>
+        <p className="mt-3 text-sm text-neutral-600">Rules are read from Odoo. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Odoo.</p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 pt-3 sm:px-6">
@@ -251,8 +251,12 @@ export function CappedPricingPage() {
             <div className="min-w-0 flex-1 px-3">%</div>
           </div>
 
-          <AsyncState loading={loading} error={error} empty={items.length === 0} onRetry={reload}>
-            {items.map((row) => (
+          <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
+            {!loading && !error && items.length === 0 ? (
+              <div role="status" className="rounded border border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-600">
+                No Odoo price rules are configured for this store yet.
+              </div>
+            ) : items.map((row) => (
               <CappedPriceRowEditor
                 key={row.id}
                 row={row}
