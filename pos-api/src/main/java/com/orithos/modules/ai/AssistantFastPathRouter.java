@@ -63,7 +63,7 @@ public final class AssistantFastPathRouter {
             "^(look\\s*up\\s*customers?|search\\s*customers?|find\\s*customers?|查询客户|查找客户|搜索客户|客户查询)$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern LOOKUP_SUPPLIERS = Pattern.compile(
-            "^(?:show|open|view|list|search|find|look up|check)(?:\\s+me)?\\s+(?:the\\s+)?suppliers?|"
+            "^(?:show|open|view|list|search|find|look up|check)(?:\\s+me)?\\s+(?:the\\s+)?suppliers?(?:\\s+(?:list|directory|lookup))?$|"
                     + "^(?:supplier|suppliers)\\s+(?:list|directory|lookup)$|"
                     + "^(?:查看|打开|查询|搜索)供应商(?:列表|目录)?$",
             Pattern.CASE_INSENSITIVE);
