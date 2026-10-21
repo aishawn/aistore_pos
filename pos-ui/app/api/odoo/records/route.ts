@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,7 +85,7 @@ const RECORD_TYPES = {
 
 type RecordType = keyof typeof RECORD_TYPES;
 
-async function withTaxInclusivePrices(sessionId: string, items: unknown[]) {
+async function withTaxInclusivePrices(sessionId: string, items: unknown[], correlationId?: string | null) {
   const products = items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object" && !Array.isArray(item)));
   let cursor = 0;
   const worker = async () => {
@@ -99,7 +100,7 @@ async function withTaxInclusivePrices(sessionId: string, items: unknown[]) {
       try {
         const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+          headers: correlationHeaders(sessionId, correlationId),
           body: JSON.stringify({
             jsonrpc: "2.0",
             method: "call",
@@ -126,6 +127,12 @@ async function withTaxInclusivePrices(sessionId: string, items: unknown[]) {
   return items;
 }
 
+function correlationHeaders(sessionId: string, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
+  return headers;
+}
+
 function getOdooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
   if (!value) throw new Error("Odoo connection is not configured");
@@ -142,6 +149,7 @@ export async function POST(request: NextRequest) {
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; status?: string; period?: string; filters?: Record<string, unknown> };
   try {
@@ -204,7 +212,7 @@ export async function POST(request: NextRequest) {
   try {
     const sessionInfoResponse = await fetch(`${getOdooBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -216,7 +224,7 @@ export async function POST(request: NextRequest) {
     if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) {
       return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
     }
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) {
       return NextResponse.json({ message: forced.error }, { status: forced.status });
@@ -237,10 +245,7 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `session_id=${sessionId}`,
-      },
+      headers: correlationHeaders(sessionId, correlationId),
       body: JSON.stringify({
         jsonrpc: "2.0",
         method: "call",
@@ -269,14 +274,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo could not load records" }, { status });
     }
     let items = payload.result ?? [];
-    if (type === "products") items = await withTaxInclusivePrices(sessionId, items);
+    if (type === "products") items = await withTaxInclusivePrices(sessionId, items, correlationId);
     if (type === "posCategories") {
       const productResponse = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: `session_id=${sessionId}`,
-        },
+        headers: correlationHeaders(sessionId, correlationId),
         body: JSON.stringify({
           jsonrpc: "2.0",
           method: "call",

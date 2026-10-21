@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { getOdooCompanyTimezone } from "@/lib/odoo-store-timezone";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,10 +23,12 @@ function getOdooBaseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "call",
@@ -55,7 +58,7 @@ function moneyField(row: Record<string, unknown>) {
   return Number(row.price_subtotal_incl ?? row.price_subtotal ?? row.amount_total ?? 0);
 }
 
-async function loadLineExtras(sessionId: string, lineDomain: unknown[]) {
+async function loadLineExtras(sessionId: string, lineDomain: unknown[], correlationId?: string | null) {
   const empty = { itemsSold: 0, compareItemsSold: 0, topProducts: [] as Array<{ id: number; name: string; qty: number; revenue: number }>, byCategory: [] as Array<{ name: string; revenue: number; share: number }> };
   try {
     const compareLineDomain = lineDomain.map((clause) => {
@@ -72,14 +75,14 @@ async function loadLineExtras(sessionId: string, lineDomain: unknown[]) {
     });
 
     const [qtyRows, productRows, categoryRows, compareQtyRows] = await Promise.all([
-      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], []], { lazy: false }).catch(() => []),
-      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal_incl:sum"], ["product_id"]], { lazy: false }).catch(async () => (
-        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal:sum"], ["product_id"]], { lazy: false }).catch(() => [])
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum"], []], { lazy: false }, correlationId).catch(() => []),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal_incl:sum"], ["product_id"]], { lazy: false }, correlationId).catch(async () => (
+        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["qty:sum", "price_subtotal:sum"], ["product_id"]], { lazy: false }, correlationId).catch(() => [])
       )),
-      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["price_subtotal_incl:sum"], ["product_id.categ_id"]], { lazy: false }).catch(async () => (
-        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["price_subtotal:sum"], ["product_id.categ_id"]], { lazy: false }).catch(() => [])
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["price_subtotal_incl:sum"], ["product_id.categ_id"]], { lazy: false }, correlationId).catch(async () => (
+        rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [lineDomain, ["price_subtotal:sum"], ["product_id.categ_id"]], { lazy: false }, correlationId).catch(() => [])
       )),
-      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [compareLineDomain, ["qty:sum"], []], { lazy: false }).catch(() => []),
+      rpc<Array<Record<string, unknown>>>(sessionId, "pos.order.line", "read_group", [compareLineDomain, ["qty:sum"], []], { lazy: false }, correlationId).catch(() => []),
     ]);
 
     const itemsSold = Number(qtyRows?.[0]?.qty ?? 0);
@@ -122,15 +125,15 @@ async function loadLineExtras(sessionId: string, lineDomain: unknown[]) {
   }
 }
 
-async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: number, timezone: string) {
+async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: number, timezone: string, correlationId?: string | null) {
   const granularity = rangeHours <= 24 ? "hour" : "day";
   try {
-    const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], [`date_order:${granularity}`]], { lazy: false, context: { tz: timezone } });
+    const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], [`date_order:${granularity}`]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity };
   } catch (error) {
     // Odoo versions before 18 do not support hourly date grouping.
     if (granularity !== "hour") throw error;
-    const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: timezone } });
+    const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity: "day" };
   }
 }
@@ -139,6 +142,7 @@ export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? 8);
   const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : 8;
@@ -150,7 +154,7 @@ export async function GET(request: NextRequest) {
   try {
     const sessionResponse = await fetch(`${getOdooBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -159,18 +163,18 @@ export async function GET(request: NextRequest) {
     const sessionPayload = await sessionResponse.json() as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     const session = sessionPayload.result;
     if (sessionPayload.error || !session?.uid) throw new OdooSessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyId = forced.companyIds[0];
     if (!companyId) return NextResponse.json({ message: "No Odoo companies are available to this user." }, { status: 403 });
     const companies = await rpc<Array<{ name?: string; currency_id?: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
       ["id", "=", companyId],
-    ]], { fields: ["name", "currency_id", "partner_id"], limit: 1 });
+    ]], { fields: ["name", "currency_id", "partner_id"], limit: 1 }, correlationId);
     const partnerId = Array.isArray(companies?.[0]?.partner_id) ? companies[0].partner_id[0] : null;
     const partners = partnerId ? await rpc<Array<{ state_id?: [number, string] | false; country_id?: [number, string] | false }>>(sessionId, "res.partner", "search_read", [[
       ["id", "=", partnerId],
-    ]], { fields: ["state_id", "country_id"], limit: 1 }) : [];
+    ]], { fields: ["state_id", "country_id"], limit: 1 }, correlationId) : [];
     const timezone = getOdooCompanyTimezone(partners?.[0]?.country_id, partners?.[0]?.state_id);
 
     const excludeDemoSeed = Boolean(forced.binding?.sampleDataClearedAt);
@@ -210,24 +214,24 @@ export async function GET(request: NextRequest) {
     ];
 
     const [count, totals, grossTotals, refundCount, refundTotals, trendData, recentSales, openSessions, compareCount, compareTotals, compareGrossTotals, lineExtras] = await Promise.all([
-      rpc<number>(sessionId, "pos.order", "search_count", [salesDomain]),
-      rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []]),
-      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []]),
-      rpc<number>(sessionId, "pos.order", "search_count", [refundDomain]),
-      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []]),
-      readSalesTrend(sessionId, salesDomain, rangeHours, timezone),
+      rpc<number>(sessionId, "pos.order", "search_count", [salesDomain], {}, correlationId),
+      rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [salesDomain, ["amount_total:sum"], []], {}, correlationId),
+      rpc<number>(sessionId, "pos.order", "search_count", [refundDomain], {}, correlationId),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [refundDomain, ["amount_total:sum"], []], {}, correlationId),
+      readSalesTrend(sessionId, salesDomain, rangeHours, timezone, correlationId),
       rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "search_read", [domain], {
         fields: ["id", "name", "pos_reference", "date_order", "amount_total", "partner_id", "session_id"],
         order: "date_order desc, id desc",
         limit: 10,
-      }),
+      }, correlationId),
       rpc<number>(sessionId, "pos.session", "search_count", [[
         ["company_id", "=", companyId], ["state", "=", "opened"],
-      ]]),
-      rpc<number>(sessionId, "pos.order", "search_count", [compareSalesDomain]).catch(() => 0),
-      rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []]).catch(() => []),
-      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareSalesDomain, ["amount_total:sum"], []]).catch(() => []),
-      loadLineExtras(sessionId, lineDomain),
+      ]], {}, correlationId),
+      rpc<number>(sessionId, "pos.order", "search_count", [compareSalesDomain], {}, correlationId).catch(() => 0),
+      rpc<Array<{ amount_total?: number; amount_tax?: number; __count?: number }>>(sessionId, "pos.order", "read_group", [compareDomain, ["amount_total:sum", "amount_tax:sum"], []], {}, correlationId).catch(() => []),
+      rpc<Array<{ amount_total?: number }>>(sessionId, "pos.order", "read_group", [compareSalesDomain, ["amount_total:sum"], []], {}, correlationId).catch(() => []),
+      loadLineExtras(sessionId, lineDomain, correlationId),
     ]);
 
     const summary = totals?.[0] ?? {};

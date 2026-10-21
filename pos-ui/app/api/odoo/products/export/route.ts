@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,10 +26,12 @@ function odooBaseUrl() {
   return value;
 }
 
-async function callOdoo<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function callOdoo<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
@@ -65,11 +68,12 @@ export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   try {
     const infoResponse = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -78,7 +82,7 @@ export async function GET(request: NextRequest) {
     const infoPayload = await infoResponse.json() as { result?: { uid?: number; user_context?: Record<string, unknown> }; error?: unknown };
     const info = infoPayload.result;
     if (infoPayload.error || !info?.uid) throw new OdooExportError("Your Odoo session has expired. Sign in again.", 401);
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new OdooExportError(forced.error, forced.status);
     const companyIds = forced.companyIds;
@@ -108,13 +112,13 @@ export async function GET(request: NextRequest) {
       limit: MAX_ROWS,
       order: "name asc, id asc",
       context,
-    });
+    }, correlationId);
 
     const categoryIds = [...new Set((products ?? []).flatMap((product) => product.pos_categ_ids ?? []))];
     const categories = categoryIds.length
       ? await callOdoo<Array<{ id: number; name?: string }>>(sessionId, "pos.category", "search_read", [[
           ["id", "in", categoryIds],
-        ]], { fields: ["id", "name"], limit: 500, context })
+        ]], { fields: ["id", "name"], limit: 500, context }, correlationId)
       : [];
     const categoryNames = new Map((categories ?? []).map((category) => [category.id, category.name ?? ""]));
 

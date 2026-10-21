@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,23 +23,24 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const productId = Number((await context.params).id);
   if (!Number.isSafeInteger(productId) || productId < 1) return NextResponse.json({ message: "Invalid product" }, { status: 400 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   try {
     const baseUrl = odooBaseUrl();
     const infoResponse = await fetch(`${baseUrl}/web/session/get_session_info`, {
-      method: "POST", headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      method: "POST", headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
     const info = await infoResponse.json() as { result?: { uid?: number; user_context?: { allowed_company_ids?: number[] } }; error?: unknown };
     if (!infoResponse.ok || info.error || !info.result?.uid) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
-    const sessionCompanies = await resolveOdooAllowedCompanyIds(sessionId, info.result);
+    const sessionCompanies = await resolveOdooAllowedCompanyIds(sessionId, info.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanies);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     if (!forced.companyIds.length) return NextResponse.json({ message: "No accessible Odoo company is mapped to this store." }, { status: 403 });
 
     const response = await fetch(`${baseUrl}/web/dataset/call_kw`, {
-      method: "POST", headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      method: "POST", headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({
         jsonrpc: "2.0", method: "call",
         params: {

@@ -90,13 +90,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
           }, correlationId)
         : Promise.resolve([]),
       Array.isArray(order.company_id)
-        ? rpc<Array<{ id: number; name: string; currency_id: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[["id", "=", order.company_id[0]]]], { fields: ["id", "name", "currency_id", "partner_id"], limit: 1 })
+        ? rpc<Array<{ id: number; name: string; currency_id: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[["id", "=", order.company_id[0]]]], { fields: ["id", "name", "currency_id", "partner_id"], limit: 1 }, correlationId)
         : Promise.resolve([]),
     ]);
 
     const company = companies?.[0] ?? null;
     const partnerId = Array.isArray(company?.partner_id) ? company.partner_id[0] : null;
-    const partners = partnerId ? await rpc<Array<{ state_id?: [number, string] | false; country_id?: [number, string] | false }>>(sessionId, "res.partner", "search_read", [[["id", "=", partnerId]]], { fields: ["state_id", "country_id"], limit: 1 }) : [];
+    const partners = partnerId ? await rpc<Array<{ state_id?: [number, string] | false; country_id?: [number, string] | false }>>(sessionId, "res.partner", "search_read", [[["id", "=", partnerId]]], { fields: ["state_id", "country_id"], limit: 1 }, correlationId) : [];
     const timezone = getOdooCompanyTimezone(partners?.[0]?.country_id, partners?.[0]?.state_id);
 
     return NextResponse.json({
