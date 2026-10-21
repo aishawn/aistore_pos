@@ -6,7 +6,7 @@ import { AlertCircle, Download, LoaderCircle, RefreshCw, Search, X } from "lucid
 import { fetchOdooRoute, getOdooPosBootstrap, getOdooSessionStatus } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 
-type SuggestionStatus = "ok" | "raise" | "review_cost" | "missing_cost" | "unsaleable";
+type SuggestionStatus = "ok" | "raise" | "review_cost" | "review_tax" | "missing_cost" | "unsaleable";
 
 type PriceSuggestionProduct = {
   id: number;
@@ -24,6 +24,12 @@ type PriceSuggestionProduct = {
   reason: string;
   reasonParts?: string[];
   method?: string;
+  currentNetPrice?: number | null;
+  currentGst?: number | null;
+  suggestedNetPrice?: number | null;
+  suggestedGst?: number | null;
+  currentListPrice?: number | null;
+  suggestedListPrice?: number | null;
 };
 
 type PriceSuggestionData = {
@@ -34,6 +40,8 @@ type PriceSuggestionData = {
   truncated: boolean;
   generatedAt: string;
   writeEnabled: false;
+  nextOffset?: number | null;
+  offset?: number;
 };
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
@@ -43,6 +51,7 @@ const MARGIN_OPTIONS = [0.2, 0.25, 0.3, 0.35, 0.4];
 function statusLabel(status: SuggestionStatus) {
   if (status === "raise") return "Raise price";
   if (status === "review_cost") return "Review";
+  if (status === "review_tax") return "Review tax";
   if (status === "missing_cost") return "Missing cost";
   if (status === "unsaleable") return "No shelf price";
   return "On target";
@@ -54,7 +63,7 @@ function csvCell(value: string | number | null) {
 }
 
 function downloadSuggestions(products: PriceSuggestionProduct[]) {
-  const headers = ["Product", "SKU", "Status", "Cost (AUD)", "Current price (AUD)", "Suggested price (AUD)", "Current margin", "Suggested margin", "Sold units (28d)", "On hand", "Reason"];
+  const headers = ["Product", "SKU", "Status", "Standard cost (AUD)", "Current shelf incl GST (AUD)", "Suggested shelf incl GST (AUD)", "Current net margin", "Suggested net margin", "Sold units (28d)", "On hand", "Reason", "Current net", "Current GST", "Suggested net", "Suggested GST"];
   const rows = products.map((product) => [
     product.name,
     product.sku,
@@ -67,6 +76,7 @@ function downloadSuggestions(products: PriceSuggestionProduct[]) {
     product.soldUnits,
     product.onHand,
     product.reason,
+    product.currentNetPrice ?? null, product.currentGst ?? null, product.suggestedNetPrice ?? null, product.suggestedGst ?? null,
   ]);
   const csv = [headers, ...rows].map((row) => row.map((value) => csvCell(value)).join(",")).join("\r\n");
   const blob = new Blob([`\uFEFF${csv}\r\n`], { type: "text/csv;charset=utf-8" });
@@ -83,6 +93,7 @@ function downloadSuggestions(products: PriceSuggestionProduct[]) {
 export function OdooPriceSuggestionsPage() {
   const [data, setData] = useState<PriceSuggestionData | null>(null);
   const [marginTarget, setMarginTarget] = useState(0.3);
+  const [offset, setOffset] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | SuggestionStatus>("all");
@@ -107,7 +118,7 @@ export function OdooPriceSuggestionsPage() {
         throw new Error("Connect Odoo to review price suggestions.");
       }
       const response = await fetchOdooRoute(
-        `/api/odoo/price-suggestions?marginTarget=${marginTarget}`,
+        `/api/odoo/price-suggestions?marginTarget=${marginTarget}&offset=${offset}`,
         { credentials: "same-origin", cache: "no-store" },
       );
       const payload = await response.json().catch(() => null) as PriceSuggestionData | { message?: string } | null;
@@ -140,14 +151,14 @@ export function OdooPriceSuggestionsPage() {
         setRefreshing(false);
       }
     }
-  }, [marginTarget]);
+  }, [marginTarget, offset]);
 
   useEffect(() => {
     void load(false);
   }, [load]);
 
   const actionItems = useMemo(
-    () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost") ?? [],
+    () => data?.products.filter((product) => product.status === "raise" || product.status === "review_cost" || product.status === "review_tax" || product.status === "missing_cost") ?? [],
     [data],
   );
   const baseItems = useMemo(
@@ -194,7 +205,7 @@ export function OdooPriceSuggestionsPage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Pricing</p>
           <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price suggestions</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">
-            Rule-based GST-inclusive shelf suggestions from Odoo cost and a target margin on sell.
+            Shelf suggestions use Odoo taxes and a target margin on net sales excluding GST.
             You apply any change in Products or Bulk Price Edit — this page never writes prices.
             {lastLoadedAt !== null && (
               <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>
@@ -206,7 +217,7 @@ export function OdooPriceSuggestionsPage() {
             Target margin
             <select
               value={String(marginTarget)}
-              onChange={(event) => setMarginTarget(Number(event.target.value))}
+              onChange={(event) => { setOffset(0); setMarginTarget(Number(event.target.value)); }}
               className="bg-transparent font-semibold outline-none"
             >
               {MARGIN_OPTIONS.map((value) => (
@@ -242,7 +253,7 @@ export function OdooPriceSuggestionsPage() {
       {data && (
         <div className="grid gap-3 sm:grid-cols-3">
           <SummaryCard title="Products to review" value={String(actionItems.length)} detail={`of ${number.format(data.products.length)} POS products`} />
-          <SummaryCard title="Target margin" value={`${(data.marginTarget * 100).toFixed(0)}%`} detail="On GST-inclusive shelf price" />
+          <SummaryCard title="Target margin" value={`${(data.marginTarget * 100).toFixed(0)}%`} detail="On net sales excluding GST" />
           <SummaryCard title="Sales lookback" value={`${data.historyDays}d`} detail={data.company} />
         </div>
       )}
@@ -251,7 +262,7 @@ export function OdooPriceSuggestionsPage() {
         <div className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Suggested price changes"}</h2>
-            <p className="mt-1 text-xs text-[var(--oh-muted)]">Method: rules_v1_margin_on_sell · writeEnabled=false</p>
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">Suggestions are read-only. Costs and taxes require review.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -301,6 +312,7 @@ export function OdooPriceSuggestionsPage() {
               <option value="all">All</option>
               <option value="raise">Raise price</option>
               <option value="review_cost">Review</option>
+              <option value="review_tax">Review tax</option>
               <option value="missing_cost">Missing cost</option>
               <option value="unsaleable">No shelf price</option>
               <option value="ok">On target</option>
@@ -325,6 +337,10 @@ export function OdooPriceSuggestionsPage() {
                     <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
                       {product.sku || "No SKU"} · Sold {number.format(product.soldUnits)} · On hand {number.format(product.onHand)}
                     </p>
+                    {product.currentNetPrice != null && <p className="mt-1 text-xs text-[var(--oh-muted)]">
+                      Current net {money.format(product.currentNetPrice)} · GST {money.format(product.currentGst ?? 0)}
+                      {product.suggestedNetPrice != null && product.suggestedPrice != null ? ` · Suggested net ${money.format(product.suggestedNetPrice)} · GST ${money.format(product.suggestedGst ?? 0)}` : ""}
+                    </p>}
                     <p className="mt-2 text-sm text-[var(--oh-text-secondary)]">
                       Cost {product.cost == null ? "—" : money.format(product.cost)}
                       {" · "}Current {product.currentPrice == null ? "—" : money.format(product.currentPrice)}
@@ -343,7 +359,7 @@ export function OdooPriceSuggestionsPage() {
                       Open product
                     </Link>
                     <Link
-                      href={`/stock/bulk-price-edit?search=${encodeURIComponent(product.sku || product.name)}`}
+                      href={`/stock/bulk-price-edit?search=${encodeURIComponent(product.sku || product.name)}${product.status === "raise" && product.suggestedListPrice != null ? `&productId=${product.id}&suggestedPrice=${product.suggestedListPrice}&expectedPrice=${product.currentListPrice}` : ""}`}
                       className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold"
                     >
                       Bulk edit this product
@@ -369,6 +385,11 @@ export function OdooPriceSuggestionsPage() {
           </ul>
         )}
       </section>
+      {data && (offset > 0 || data.nextOffset != null || data.truncated) && <nav aria-label="Price suggestion pages" className="flex flex-wrap items-center gap-3 text-sm">
+        <button type="button" disabled={offset === 0 || loading || refreshing} onClick={() => setOffset(Math.max(0, offset - 30))} className="min-h-11 rounded border px-3 disabled:opacity-50">Previous</button>
+        <span>Page {Math.floor(offset / 30) + 1}. Search and export cover this page.</span>
+        <button type="button" disabled={data.nextOffset == null || loading || refreshing} onClick={() => { if (data.nextOffset != null) setOffset(data.nextOffset); }} className="min-h-11 rounded border px-3 disabled:opacity-50">Next</button>
+      </nav>}
     </main>
   );
 }

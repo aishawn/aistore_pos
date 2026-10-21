@@ -73,7 +73,8 @@ try {
   await context.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
-    if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    const readOnlyRecordsQuery = url.pathname === "/api/odoo/records" && method === "POST";
+    if (!readOnlyRecordsQuery && method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
       writes.push(`${method} ${url.pathname}`);
     }
     if (url.pathname === "/api/odoo/price-suggestions") {
@@ -99,6 +100,10 @@ try {
           },
         }),
       });
+    }
+    if (url.pathname === "/api/odoo/records") {
+      bulkPriceQueries.push(route.request().postDataJSON()?.query ?? "");
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: 101, name: "DEMO Shiraz", display_name: "DEMO Shiraz", barcode: "", default_code: "DEMO-SHIRAZ", list_price: 24, taxes_id: [], price_included: 1, price_tax: 0, qty_available: 12, free_qty: 12, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }], limit: 30, offset: 0 }) });
     }
     if (url.pathname === "/api/auth/me") {
       return route.fulfill({
@@ -136,8 +141,8 @@ try {
   await page.getByText("Suggestions only").waitFor({ timeout: 10000 });
   await page.getByText("DEMO Shiraz").waitFor({ timeout: 10000 });
   await page.getByText("Raise price", { exact: true }).last().waitFor({ timeout: 10000 });
-  await page.getByText("writeEnabled=false").waitFor({ timeout: 10000 });
-  record("price suggestions page", true, "Heading, DEMO row, raise badge, writeEnabled=false visible");
+  await page.getByText("Suggestions are read-only").waitFor({ timeout: 10000 });
+  record("price suggestions page", true, "Heading, DEMO row, raise badge and read-only guidance visible");
   await page.screenshot({ path: path.join(screenshotDir, "price-suggestions-1440.png"), fullPage: true });
 
   const productSearch = page.getByPlaceholder("Search product or SKU");
@@ -173,13 +178,16 @@ try {
   const downloadText = downloadPath ? fs.readFileSync(downloadPath, "utf8") : "";
   record(
     "read-only CSV export",
-    download.suggestedFilename().endsWith(".csv") && downloadText.includes("DEMO Shiraz") && downloadText.includes("Suggested price (AUD)"),
+    download.suggestedFilename().endsWith(".csv") && downloadText.includes("DEMO Shiraz") && downloadText.includes("Suggested shelf incl GST (AUD)"),
     `${download.suggestedFilename()} ${downloadText.slice(0, 180)}`,
   );
 
   await bulkEditLink.click();
-  const bulkSearch = page.getByPlaceholder("Search for Product or Classification...");
+  await page.waitForURL(/\/stock\/bulk-price-edit/);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const bulkSearch = page.getByPlaceholder("Search product or SKU");
   await bulkSearch.waitFor({ state: "visible", timeout: 10000 });
+  await page.waitForTimeout(1200);
   record("bulk edit pre-fills SKU", await bulkSearch.inputValue() === "DEMO-SHIRAZ", await bulkSearch.inputValue());
   record("bulk edit requests SKU query", bulkPriceQueries.includes("DEMO-SHIRAZ"), JSON.stringify(bulkPriceQueries));
   await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 60000 });

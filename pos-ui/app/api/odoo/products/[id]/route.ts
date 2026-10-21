@@ -1,11 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
+import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
+import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
-const EDITABLE_FIELDS = new Set(["barcode", "default_code", "list_price", "pos_categ_ids", "available_in_pos", "image_1920"]);
+const EDITABLE_FIELDS = new Set(["barcode", "default_code", "list_price", "pos_categ_ids", "available_in_pos", "image_1920", "expectedListPrice"]);
+
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    await requireStoreAdmin(request);
+    const id = Number((await context.params).id);
+    if (!Number.isSafeInteger(id) || id < 1) return NextResponse.json({ message: "Invalid product." }, { status: 400 });
+    const scope = await scopedOdoo(request);
+    const products = await scope.rpc<Array<{ id: number; name: string; list_price: number }>>("product.product", "search_read", [[
+      ["id", "=", id], ["company_id", "in", scope.companyIds],
+    ]], { fields: ["id", "name", "list_price"], limit: 1 });
+    if (!products[0]) return NextResponse.json({ message: "Product not found in this store." }, { status: 404 });
+    return NextResponse.json(products[0], { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    return NextResponse.json({ message: "Could not read this store's product." }, { status: error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502 });
+  }
+}
 
 function productImage(value: unknown): string {
   if (typeof value !== "string" || value.length > 2_000_000) throw new OdooRequestError("Product image must be smaller than 1.5 MB.", 400);
@@ -17,33 +35,6 @@ function productImage(value: unknown): string {
     : bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP";
   if (!valid || bytes.length > 1_500_000) throw new OdooRequestError("Choose a valid image smaller than 1.5 MB.", 400);
   return bytes.toString("base64");
-}
-
-function odooBaseUrl() {
-  const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
-  const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
-  return value;
-}
-
-async function callOdoo(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
-  const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
-    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(12_000),
-  });
-  if (!response.ok) throw new OdooRequestError("Odoo could not update this product", 502);
-  const payload = await response.json() as { result?: unknown; error?: { message?: string; data?: { message?: string; name?: string } } };
-  if (payload.error) {
-    const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooRequestError("Your Odoo account does not have permission to edit this product.", 403);
-    throw new OdooRequestError("Odoo rejected the product update. Check the fields and your product permissions.", 422);
-  }
-  return payload.result;
 }
 
 class OdooRequestError extends Error {
@@ -105,12 +96,30 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   try {
-    const result = await callOdoo(sessionId, "product.product", "write", [[productId], values]);
+    await requireStoreAdmin(request);
+    const scope = await scopedOdoo(request);
+    const domain = [["id", "=", productId], ["company_id", "in", scope.companyIds]];
+    const before = await scope.rpc<Array<{ id: number; list_price: number }>>("product.product", "search_read", [domain], { fields: ["id", "list_price"], limit: 1 });
+    if (!before[0]) return NextResponse.json({ message: "Product not found in this store." }, { status: 404 });
+    if (!Object.keys(values).length) return NextResponse.json({ message: "No product changes supplied." }, { status: 400 });
+    if ("expectedListPrice" in body && (typeof body.expectedListPrice !== "number" || !Number.isFinite(body.expectedListPrice))) {
+      return NextResponse.json({ message: "Invalid original price." }, { status: 400 });
+    }
+    if ("expectedListPrice" in body && Math.abs(before[0].list_price - Number(body.expectedListPrice)) > 0.000001) {
+      return NextResponse.json({ message: "The price changed after review. Refresh and review it again." }, { status: 409 });
+    }
+    const result = await scope.rpc<boolean>("product.product", "write", [[productId], values]);
     if (result !== true) return NextResponse.json({ message: "Odoo did not confirm the product update" }, { status: 502 });
-    return NextResponse.json({ ok: true, productId }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    if ("list_price" in values) {
+      const after = await scope.rpc<Array<{ list_price: number }>>("product.product", "search_read", [domain], { fields: ["list_price"], limit: 1 });
+      if (!after[0] || Math.abs(after[0].list_price - Number(values.list_price)) > 0.000001) {
+        return NextResponse.json({ message: "Price was submitted but could not be confirmed. Refresh the product before retrying.", resultState: "unknown" }, { status: 502 });
+      }
+    }
+    return NextResponse.json({ ok: true, productId, resultState: "confirmed" }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
-    const status = error instanceof OdooRequestError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
-    return NextResponse.json({ message }, { status });
+    const status = error instanceof OdooRequestError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    return NextResponse.json({ message, resultState: status >= 500 ? "unknown" : "rejected" }, { status });
   }
 }
