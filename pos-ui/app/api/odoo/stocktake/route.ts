@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
-import { ACCESS_COOKIE, backendUrl, isSameOrigin } from "@/lib/server-auth";
+import { isSameOrigin } from "@/lib/server-auth";
+import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,10 +61,12 @@ function relationId(value: Relation): number | null {
   return typeof id === "number" && Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${baseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
@@ -79,7 +82,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result as T;
 }
 
-async function deriveSingleWarehouseLocation(sessionId: string, companyId: number, context: Record<string, unknown>) {
+async function deriveSingleWarehouseLocation(sessionId: string, companyId: number, context: Record<string, unknown>, correlationId?: string | null) {
   const warehouses = await rpc<StocktakeWarehouse[]>(sessionId, "stock.warehouse", "search_read", [[
     ["company_id", "=", companyId],
   ]], {
@@ -87,7 +90,7 @@ async function deriveSingleWarehouseLocation(sessionId: string, companyId: numbe
     limit: 2,
     order: "id asc",
     context,
-  }) ?? [];
+  }, correlationId) ?? [];
   if (warehouses.length !== 1) return null;
   const warehouse = warehouses[0];
   const locationId = relationId(warehouse.lot_stock_id);
@@ -95,9 +98,12 @@ async function deriveSingleWarehouseLocation(sessionId: string, companyId: numbe
 }
 
 async function tenantScope(request: NextRequest, sessionId: string) {
+  const correlationId = request.headers.get("x-correlation-id");
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${baseUrl()}/web/session/get_session_info`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -106,20 +112,20 @@ async function tenantScope(request: NextRequest, sessionId: string) {
   const info = await response.json() as RpcEnvelope<{ uid?: number }>;
   if (info.error || !info.result?.uid) throw new StocktakeError("Odoo session expired.", 401);
 
-  const sessionCompanies = await resolveOdooAllowedCompanyIds(sessionId, info.result);
+  const sessionCompanies = await resolveOdooAllowedCompanyIds(sessionId, info.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanies);
   if (forced.error) throw new StocktakeError(forced.error, forced.status);
   const companyId = forced.companyIds[0];
   const context = odooCompanyContext(forced.companyIds);
   const configuredLocationId = forced.binding?.odooStockLocationId;
   const derived = !configuredLocationId && companyId
-    ? await deriveSingleWarehouseLocation(sessionId, companyId, context)
+    ? await deriveSingleWarehouseLocation(sessionId, companyId, context, correlationId)
     : null;
   const rootLocationId = configuredLocationId ?? derived?.id ?? null;
   if (!companyId || !rootLocationId) {
     throw new StocktakeError("This store has no unambiguous Odoo stock location configured.", 409);
   }
-  return { companyId, rootLocationId, context, locationSource: configuredLocationId ? "tenant-binding" as const : derived?.source ?? "tenant-binding" as const };
+  return { companyId, rootLocationId, context, correlationId, locationSource: configuredLocationId ? "tenant-binding" as const : derived?.source ?? "tenant-binding" as const };
 }
 
 async function leafLocations(sessionId: string, scope: Awaited<ReturnType<typeof tenantScope>>) {
@@ -132,7 +138,7 @@ async function leafLocations(sessionId: string, scope: Awaited<ReturnType<typeof
     limit: 500,
     order: "complete_name asc, id asc",
     context: scope.context,
-  }) ?? [];
+  }, scope.correlationId) ?? [];
   if (locations.length >= 500) throw new StocktakeError("This warehouse has too many locations for stocktake. Ask an administrator to review its location structure.", 422);
   const root = locations.find((location) => location.id === scope.rootLocationId);
   if (!root || root.usage !== "internal" || relationId(root.company_id) !== scope.companyId) {
@@ -169,7 +175,7 @@ async function readProducts(
     limit: MAX_PRODUCTS,
     order: "name asc, id asc",
     context: { ...scope.context, location: locationId },
-  }) ?? [];
+  }, scope.correlationId) ?? [];
   if (!products.length) return [];
 
   const ids = products.map((product) => product.id);
@@ -182,7 +188,7 @@ async function readProducts(
     limit: 5000,
     order: "id asc",
     context: scope.context,
-  }) ?? [];
+  }, scope.correlationId) ?? [];
   if (quants.length >= 5000) throw new StocktakeError("This stock location has too many inventory records to count safely in one request.", 422);
 
   return products.map((product) => {
@@ -214,28 +220,8 @@ function sessionCookie(request: NextRequest) {
   return sessionId;
 }
 
-async function requireStoreAdmin(request: NextRequest) {
-  const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (!accessToken) throw new StocktakeError("Orithos session expired.", 401);
-  let response: Response;
-  try {
-    response = await fetch(`${backendUrl().replace(/\/+$/, "")}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-    });
-  } catch {
-    throw new StocktakeError("Could not verify your Orithos account.", 503);
-  }
-  if (response.status === 401) throw new StocktakeError("Orithos session expired.", 401);
-  if (!response.ok) throw new StocktakeError("Could not verify your Orithos account.", 503);
-  const payload = await response.json().catch(() => null) as { code?: number; data?: { isAdmin?: boolean } } | null;
-  if (payload?.code !== 0 || !payload.data) throw new StocktakeError("Could not verify your Orithos account.", 503);
-  if (payload.data.isAdmin !== true) throw new StocktakeError("Store administrator access is required for stocktake.", 403);
-}
-
 function responseError(error: unknown) {
-  const status = error instanceof StocktakeError ? error.status : 502;
+  const status = error instanceof StocktakeError || error instanceof StoreAccessError ? error.status : 502;
   const message = error instanceof Error ? error.message : "Odoo stocktake is unavailable.";
   const response = NextResponse.json({ code: status * 100, message, data: null }, { status, headers: { "Cache-Control": "no-store" } });
   if (status === 401) response.cookies.delete(SESSION_COOKIE);
@@ -312,9 +298,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Stock adjustments are not enabled for this store." }, { status: 423 });
   }
 
+  let writeAttempted = false;
   try {
     const sessionId = sessionCookie(request);
     const scope = await tenantScope(request, sessionId);
+    if (scope.locationSource !== "tenant-binding") throw new StocktakeError("Bind this store to an explicit Odoo stock location before applying a count.", 409);
     const locations = await leafLocations(sessionId, scope);
     const location = selectLocation(locations, Number(body.locationId));
     const productIds = body.lines.map((line) => line.productId);
@@ -327,7 +315,7 @@ export async function POST(request: NextRequest) {
       fields: ["id", "name", "default_code", "barcode", "tracking", "uom_id", "company_id"],
       limit: MAX_LINES,
       context: { ...scope.context, location: location.id },
-    }) ?? [];
+    }, scope.correlationId) ?? [];
     if (products.length !== productIds.length) throw new StocktakeError("One or more products are no longer available to this store.", 409);
     const productById = new Map(products.map((product) => [product.id, product]));
     const quants = await rpc<StockQuant[]>(sessionId, "stock.quant", "search_read", [[
@@ -338,7 +326,7 @@ export async function POST(request: NextRequest) {
       fields: ["id", "product_id", "quantity", "lot_id", "package_id", "owner_id", "inventory_quantity_set"],
       limit: 5000,
       context: scope.context,
-    }) ?? [];
+    }, scope.correlationId) ?? [];
     if (quants.length >= 5000) throw new StocktakeError("This stock location has too many inventory records to adjust safely.", 422);
 
     const adjustments: Array<{ productId: number; expectedQty: number; countedQty: number }> = [];
@@ -350,6 +338,9 @@ export async function POST(request: NextRequest) {
         throw new StocktakeError("A selected product now requires a lot, package, consignment, or pending-count workflow in Odoo.", 409);
       }
       const currentQty = productQuants.reduce((sum, quant) => sum + Number(quant.quantity || 0), 0);
+      // An uncertain prior request may already have reached the requested quantity.
+      // Observe that state without applying another adjustment.
+      if (Math.abs(currentQty - line.countedQty) <= QUANTITY_EPSILON) continue;
       if (Math.abs(currentQty - line.expectedQty) > QUANTITY_EPSILON) {
         throw new StocktakeError(`${product.name} stock changed after it was counted. Refresh the count and review it again.`, 409);
       }
@@ -367,9 +358,10 @@ export async function POST(request: NextRequest) {
       location_id: location.id,
       inventory_quantity_auto_apply: line.countedQty,
     }));
+    writeAttempted = true;
     const createdQuantIds = await rpc<number | number[]>(sessionId, "stock.quant", "create", [values], {
       context: { ...scope.context, inventory_mode: true },
-    });
+    }, scope.correlationId);
     const adjustmentReferenceIds = (Array.isArray(createdQuantIds) ? createdQuantIds : [createdQuantIds])
       .filter((id): id is number => Number.isSafeInteger(id) && id > 0);
     if (adjustmentReferenceIds.length !== adjustments.length) {
@@ -380,7 +372,7 @@ export async function POST(request: NextRequest) {
       ["product_id", "in", adjustments.map((line) => line.productId)],
       ["location_id", "=", location.id],
       ["company_id", "=", scope.companyId],
-    ]], { fields: ["id", "product_id", "quantity"], limit: 5000, context: scope.context });
+    ]], { fields: ["id", "product_id", "quantity"], limit: 5000, context: scope.context }, scope.correlationId);
     const lines = adjustments.map((line) => {
       const actualQty = (verification ?? [])
         .filter((quant) => relationId(quant.product_id) === line.productId)
@@ -397,6 +389,7 @@ export async function POST(request: NextRequest) {
       lines,
     } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (writeAttempted) return NextResponse.json({ code: 50290, resultState: "unknown", message: "Stock adjustment result is pending confirmation. Reconcile the count in Odoo before retrying.", data: null }, { status: 502, headers: { "Cache-Control": "no-store" } });
     return responseError(error);
   }
 }

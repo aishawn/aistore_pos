@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
-import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
+import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, OdooApiError, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
@@ -121,6 +121,8 @@ export function OdooPurchaseOrdersPage() {
   const [receiveOpen, setReceiveOpen] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const [receiveError, setReceiveError] = useState<string | null>(null);
+  const [receiveUnconfirmed, setReceiveUnconfirmed] = useState(false);
+  const receiveLock = useRef(false);
   const [receiveQty, setReceiveQty] = useState<Record<number, string>>({});
   const [receiveSuccess, setReceiveSuccess] = useState<string | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
@@ -175,12 +177,24 @@ export function OdooPurchaseOrdersPage() {
     setConfirmError(null);
     setReceiveError(null);
     setReceiveSuccess(receiveMessage);
+    setReceiveUnconfirmed(false);
     setReceiveOpen(false);
     setDetailLoading(true);
     try {
       const result = await getOdooPurchaseOrderDetail(purchaseId);
       if (revision === detailRevision.current) {
         setDetail(result);
+        // Retain uncertain receipt identity across refreshes; a new backorder is not a retry target.
+        try {
+          const key = `orithos-pending-receipt:${purchaseId}`;
+          const saved = JSON.parse(sessionStorage.getItem(key) ?? "null");
+          if (saved?.pickingId) {
+            const completed = result.receipts.some((receipt) => receipt.id === saved.pickingId && receipt.state === "done");
+            if (completed) sessionStorage.removeItem(key);
+            setReceiveUnconfirmed(!completed);
+            if (!completed) setReceiveError("Receipt result is pending. Reconcile it in Odoo before receiving more stock.");
+          }
+        } catch { setReceiveUnconfirmed(true); setReceiveError("Browser storage is unavailable. Reconcile the receipt in Odoo before continuing."); }
         const qty: Record<number, string> = {};
         for (const move of result.receivable?.moves ?? []) {
           qty[move.id] = String(move.remaining);
@@ -212,9 +226,11 @@ export function OdooPurchaseOrdersPage() {
   useDialogFocus(receiveOpen && Boolean(detail?.receivable), () => { if (!receiving) setReceiveOpen(false); });
 
   async function receiveOrder() {
-    if (!detail?.receivable || receiving) return;
+    if (!detail?.receivable || receiveLock.current || receiveUnconfirmed) return;
+    receiveLock.current = true;
     setReceiving(true);
     setReceiveError(null);
+    let submitted = false;
     try {
       const invalidMove = detail.receivable.moves.find((move) => {
         const raw = receiveQty[move.id] ?? "0";
@@ -227,18 +243,26 @@ export function OdooPurchaseOrdersPage() {
       const lines = detail.receivable.moves.map((move) => ({
         moveId: move.id,
         qtyDone: Number(receiveQty[move.id] ?? "0"),
-      })).filter((line) => line.qtyDone > 0);
-      if (!lines.length) throw new Error("Enter at least one quantity to receive.");
+      }));
+      if (!lines.some((line) => line.qtyDone > 0)) throw new Error("Enter at least one quantity to receive.");
+      sessionStorage.setItem(`orithos-pending-receipt:${detail.order.id}`, JSON.stringify({ pickingId: detail.receivable.pickingId, lines }));
+      submitted = true;
       const result = await receiveOdooPurchaseOrder(detail.order.id, {
         pickingId: detail.receivable.pickingId,
         lines,
       });
+      try { sessionStorage.removeItem(`orithos-pending-receipt:${detail.order.id}`); } catch { /* Completed state will be reconciled on refresh. */ }
       setReceiveOpen(false);
       setRefreshKey((value) => value + 1);
       await openDetail(detail.order.id, `Received on ${result.pickingName} (${result.pickingState || "updated"}).`);
     } catch (cause) {
-      setReceiveError(cause instanceof Error ? cause.message : "Could not receive this purchase order.");
+      if (submitted && (!(cause instanceof OdooApiError) || cause.status >= 500)) setReceiveUnconfirmed(true);
+      else if (submitted) { try { sessionStorage.removeItem(`orithos-pending-receipt:${detail.order.id}`); } catch { /* Keep the original error. */ } }
+      setReceiveError(cause instanceof OdooApiError && cause.correlationId
+        ? `${cause.message} · Request ID ${cause.correlationId}`
+        : cause instanceof Error ? cause.message : "Could not receive this purchase order.");
     } finally {
+      receiveLock.current = false;
       setReceiving(false);
     }
   }
@@ -422,7 +446,7 @@ export function OdooPurchaseOrdersPage() {
           {receiveError && <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{receiveError}</p>}
           <footer className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setReceiveOpen(false)} disabled={receiving} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:opacity-50 sm:w-auto">Go back</button>
-            <button type="button" onClick={() => void receiveOrder()} disabled={receiving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60 sm:w-auto">{receiving ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {receiving ? "Receiving…" : "Confirm receive"}</button>
+            {receiveUnconfirmed ? <button type="button" onClick={() => { if (detail) void openDetail(detail.order.id); }} className="min-h-11 rounded border px-3">Refresh receipt status</button> : <button type="button" onClick={() => void receiveOrder()} disabled={receiving} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60 sm:w-auto">{receiving ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />} {receiving ? "Receiving…" : "Confirm receive"}</button>}
           </footer>
         </section>
       </div>}

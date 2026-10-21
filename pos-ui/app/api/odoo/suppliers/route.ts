@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: Record<string, unknown>;
   try {
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     const sessionInfoResponse = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -58,13 +60,13 @@ export async function POST(request: NextRequest) {
     if (!sessionInfoResponse.ok) throw new SupplierRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
     const sessionInfo = await sessionInfoResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (sessionInfo.error || !sessionInfo.result?.uid) throw new SupplierRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new SupplierRequestError(forced.error, forced.status);
     if (!forced.companyIds.length) throw new SupplierRequestError("No Odoo companies are available to this user.", 403);
     const companyIds = forced.companyIds;
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
-    const headers = { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` };
+    const headers = withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request);
     const duplicateCheck = vat ? await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
       method: "POST", headers,
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model: "res.partner", method: "search_read", args: [[

@@ -32,10 +32,12 @@ class OdooRequestError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
-async function callOdoo<T>(sessionId: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function callOdoo<T>(sessionId: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model: "product.template", method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -101,15 +103,16 @@ export async function POST(request: NextRequest) {
     pos_categ_ids: [[6, 0, (categoryIds as number[] | undefined) ?? []]],
   };
   if (image !== null) values.image_1920 = image;
+  const correlationId = request.headers.get("x-correlation-id");
 
   try {
-    const availableFields = await callOdoo<Record<string, { type?: string }>>(sessionId, "fields_get", [["is_storable", "detailed_type", "type"]], { attributes: ["type"] });
+    const availableFields = await callOdoo<Record<string, { type?: string }>>(sessionId, "fields_get", [["is_storable", "detailed_type", "type"]], { attributes: ["type"] }, correlationId);
     if (availableFields && Object.hasOwn(availableFields, "is_storable")) values.is_storable = true;
     else if (availableFields && Object.hasOwn(availableFields, "detailed_type")) values.detailed_type = "product";
     else if (availableFields && Object.hasOwn(availableFields, "type")) values.type = "product";
     else throw new OdooRequestError("This Odoo product model does not expose an inventory product type.", 422);
 
-    const productId = await callOdoo<number>(sessionId, "create", [values]);
+    const productId = await callOdoo<number>(sessionId, "create", [values], {}, correlationId);
     if (!Number.isSafeInteger(productId) || productId < 1) throw new OdooRequestError("Odoo did not confirm the new product", 502);
     return NextResponse.json({ id: productId, name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {

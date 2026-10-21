@@ -9,6 +9,9 @@ import {
   quoteOdooPosOrder,
   searchOdooRecords,
   submitOdooPosOrder,
+  recoverOdooPosOrder,
+  OdooCheckoutPendingError,
+  type OdooCheckoutRequest,
   type OdooCustomerRecord,
   type OdooCheckoutQuote,
   type OdooPosBootstrap,
@@ -59,6 +62,7 @@ const ACTIVE_CART_KEY = "orithos-odoo-active-cart-v1";
 const ACTIVE_CART_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 type ActiveCartDraft = {
+  pendingOrder?: OdooCheckoutRequest | null;
   lines: CartLine[];
   paymentMethodId: number | null;
   customer: { id: number; name: string } | null;
@@ -147,6 +151,9 @@ export function OdooRegisterPage() {
   const [quoteFailure, setQuoteFailure] = useState<{ fingerprint: string; message: string } | null>(null);
   const [quoteRetryKey, setQuoteRetryKey] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState<OdooCheckoutRequest | null>(null);
+  const [confirmedPaymentKey, setConfirmedPaymentKey] = useState<string | null>(null);
+  const checkoutBusy = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<CompletedReceipt | null>(null);
   const [cashTendered, setCashTendered] = useState("");
@@ -271,7 +278,7 @@ export function OdooRegisterPage() {
       const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
       if (!isActiveCartDraft(parsed)) return;
       const savedAt = Date.parse(parsed.savedAt);
-      if (!Number.isFinite(savedAt) || Date.now() - savedAt > ACTIVE_CART_MAX_AGE_MS) {
+      if ((!Number.isFinite(savedAt) || Date.now() - savedAt > ACTIVE_CART_MAX_AGE_MS) && !parsed.pendingOrder) {
         localStorage.removeItem(key);
         setDraftNotice("The saved cart draft was older than 24 hours and was discarded. Start a fresh sale.");
         return;
@@ -286,6 +293,10 @@ export function OdooRegisterPage() {
         ref: false,
       } : null);
       setCashTendered(parsed.cashTendered);
+      if (parsed.pendingOrder && parsed.pendingOrder.configId === configId && typeof parsed.pendingOrder.orderUuid === "string") {
+        setPendingCheckout(parsed.pendingOrder);
+        orderUuid.current = parsed.pendingOrder.orderUuid;
+      }
       const config = bootstrap?.configs.find((item) => item.id === configId);
       if (parsed.paymentMethodId && config?.paymentMethods.some((method) => method.id === parsed.paymentMethodId)) {
         selectedPaymentMethodIdRef.current = parsed.paymentMethodId;
@@ -307,12 +318,12 @@ export function OdooRegisterPage() {
         localStorage.removeItem(key);
         return;
       }
-      const draft: ActiveCartDraft = { lines, paymentMethodId, customer: customer ? { id: customer.id, name: customer.name } : null, cashTendered, savedAt: new Date().toISOString() };
+      const draft: ActiveCartDraft = { lines, paymentMethodId, customer: customer ? { id: customer.id, name: customer.name } : null, cashTendered, pendingOrder: pendingCheckout, savedAt: new Date().toISOString() };
       localStorage.setItem(key, JSON.stringify(draft));
     } catch {
       setDraftNotice("This device could not save the active cart draft.");
     }
-  }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, odooUserId, paymentMethodId]);
+  }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, odooUserId, paymentMethodId, pendingCheckout]);
 
   useEffect(() => {
     const revision = ++searchRevision.current;
@@ -694,7 +705,8 @@ export function OdooRegisterPage() {
   }
 
   async function checkout() {
-    if (!isOnline || !selectedConfig?.session || !paymentMethodId || !lines.length || busy) return;
+    if (!isOnline || !selectedConfig || (!pendingCheckout && (!selectedConfig.session || !paymentMethodId || !lines.length)) || checkoutBusy.current) return;
+    checkoutBusy.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -711,14 +723,28 @@ export function OdooRegisterPage() {
       }
       const stableOrderUuid = orderUuid.current ?? crypto.randomUUID();
       orderUuid.current = stableOrderUuid;
-      const result = await submitOdooPosOrder({
+      const request: OdooCheckoutRequest = pendingCheckout ?? {
+        externalPaymentConfirmed: !isCashPayment && confirmedPaymentKey === paymentConfirmationKey,
         configId: selectedConfig.id,
-        paymentMethodId,
+        paymentMethodId: paymentMethodId!,
         orderUuid: stableOrderUuid,
         customerId: customer?.id ?? null,
         tendered: tenderedAmount,
         lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1 })),
-      });
+      };
+      if (!pendingCheckout) {
+        // Persist the identity before sending money-related writes, including a browser refresh mid-request.
+        if (!hydratedDraftKey) throw new Error("Wait for this terminal's draft to load before finalising.");
+        try {
+          const saved = JSON.parse(localStorage.getItem(hydratedDraftKey) ?? "null");
+          if (!saved) throw new Error("missing draft");
+          localStorage.setItem(hydratedDraftKey, JSON.stringify({ ...saved, pendingOrder: request }));
+        } catch { throw new Error("This terminal cannot preserve the order identity. Enable browser storage before taking payment."); }
+        setPendingCheckout(request);
+      }
+      const result = pendingCheckout ? await recoverOdooPosOrder(request) : await submitOdooPosOrder(request);
+      if (!result) throw new OdooCheckoutPendingError(pendingCheckout!);
+      setPendingCheckout(null);
       setReceipt({
         reference: result.receipt,
         total: result.total,
@@ -730,7 +756,7 @@ export function OdooRegisterPage() {
         customerName: customer?.name ?? "Walk-in customer",
         companyName: Array.isArray(selectedConfig.company) ? selectedConfig.company[1] : "Orithos POS",
         paymentMethod: selectedPayment?.name ?? "Payment",
-        session: selectedConfig.session.name,
+        session: selectedConfig.session?.name ?? result.session,
         date: result.date,
         timezone: selectedConfig.timezone,
       });
@@ -741,11 +767,23 @@ export function OdooRegisterPage() {
       orderUuid.current = null;
       checkoutFingerprint.current = null;
     } catch (cause) {
+      if (cause instanceof OdooCheckoutPendingError) setPendingCheckout(cause.order);
+      else setPendingCheckout(null);
       setError(cause instanceof Error ? cause.message : "Odoo could not confirm the sale. Keep this order open and retry only after checking sales history.");
     } finally {
+      checkoutBusy.current = false;
       setBusy(false);
     }
   }
+
+  if (pendingCheckout) return <main className="flex h-full flex-col items-start gap-4 overflow-y-auto p-6">
+    <h1 className="text-xl font-semibold">Payment result pending confirmation</h1>
+    <p role="alert">{error || "Do not take payment again. This cart is preserved while the result is checked."}</p>
+    <p className="break-all text-sm">Order reference: {pendingCheckout.orderUuid}</p>
+    <button type="button" disabled={busy || !isOnline} onClick={() => void checkout()} className="min-h-11 rounded bg-green-800 px-4 text-white disabled:opacity-50">{busy ? "Checking…" : "Check saved order"}</button>
+    <Link href="/history/odoo" target="_blank" className="min-h-11 underline">Open sales history in another tab</Link>
+    <p className="text-sm">If the result remains unknown, a store administrator must reconcile the order and payment in Odoo before another sale is attempted.</p>
+  </main>;
 
   if (loading) return (
     <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col gap-3 overflow-hidden bg-[var(--oh-surface)] p-3 sm:p-4">
@@ -790,7 +828,8 @@ export function OdooRegisterPage() {
   );
 
   const { whole: totalWhole, cents: totalCents } = splitMoney(amountToCollect);
-  const canFinalise = Boolean(isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
+  const paymentConfirmationKey = JSON.stringify([configId, paymentMethodId, amountToCollect, customer?.id, lines.map((line) => [line.product.id, line.quantity, line.packFactor])]);
+  const canFinalise = Boolean(isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && (isCashPayment || confirmedPaymentKey === paymentConfirmationKey) && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
   const sessionOpen = Boolean(selectedConfig?.session);
   const sessionHint = selectedConfig?.session?.name
     ? selectedConfig.session.name
@@ -1180,6 +1219,10 @@ export function OdooRegisterPage() {
               </div>
             )}
             <div className="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+              {!isCashPayment && paymentMethodId && <label className="mb-3 flex min-h-11 items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-1" checked={confirmedPaymentKey === paymentConfirmationKey} disabled={busy || !quoteIsCurrent} onChange={(event) => setConfirmedPaymentKey(event.target.checked ? paymentConfirmationKey : null)} />
+                <span>Payment approved on the external terminal. This records the payment; Orithos does not charge the card.</span>
+              </label>}
               <div className="flex items-end justify-between gap-3">
                 <div className={cn("oh-type-label", lines.length ? "text-[var(--oh-text-secondary)]" : "text-[var(--oh-placeholder)]")}>
                   <p className="oh-type-body font-semibold text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>

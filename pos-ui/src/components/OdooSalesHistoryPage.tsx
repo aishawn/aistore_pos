@@ -9,6 +9,9 @@ import {
   getOdooSession,
   searchOdooRecords,
   submitOdooPosOrder,
+  recoverOdooPosOrder,
+  OdooCheckoutPendingError,
+  type OdooCheckoutRequest,
   type OdooPosBootstrap,
   type OdooSaleDetail,
   type OdooSaleRecord,
@@ -185,6 +188,8 @@ export function OdooSalesHistoryPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [storeTimezone, setStoreTimezone] = useState("Australia/Adelaide");
   const [refundBusy, setRefundBusy] = useState(false);
+  const pendingRefund = useRef<OdooCheckoutRequest | null>(null);
+  const refundLock = useRef(false);
   const [confirmingRefund, setConfirmingRefund] = useState(false);
   const [refundComplete, setRefundComplete] = useState(false);
   const [refundPaymentMethodId, setRefundPaymentMethodId] = useState<number | null>(null);
@@ -275,6 +280,11 @@ export function OdooSalesHistoryPage() {
   const hasActiveSearch = Boolean(debouncedQuery || status !== "all" || period !== "all");
 
   async function openSale(saleId: number) {
+    if (pendingRefund.current && pendingRefund.current.refundOfOrderId !== saleId) { setRefundMessage("Resolve the pending refund before opening another sale."); return; }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(`orithos-pending-refund:${saleId}`) ?? "null");
+      if (saved?.refundOfOrderId === saleId && typeof saved.orderUuid === "string" && Number.isSafeInteger(saved.configId)) pendingRefund.current = saved;
+    } catch { /* The write path below refuses to submit without durable browser storage. */ }
     const revision = ++detailRevision.current;
     setSaleDetailId(saleId);
     setSaleDetail(null);
@@ -293,6 +303,7 @@ export function OdooSalesHistoryPage() {
   }
 
   function closeSale() {
+    if (pendingRefund.current) { setRefundMessage("Refund result is pending. Check the saved refund before closing."); return; }
     detailRevision.current += 1;
     setSaleDetailId(null);
     setSaleDetail(null);
@@ -303,7 +314,19 @@ export function OdooSalesHistoryPage() {
   }
 
   async function refundSale() {
-    if (!saleDetail || refundBusy) return;
+    if (!saleDetail || refundLock.current) return;
+    if (pendingRefund.current) {
+      refundLock.current = true; setRefundBusy(true);
+      try {
+        const result = await recoverOdooPosOrder(pendingRefund.current);
+        if (!result) { setRefundMessage("Refund result is still pending. Do not return funds again; check Odoo."); return; }
+        pendingRefund.current = null;
+        try { sessionStorage.removeItem(`orithos-pending-refund:${saleDetail.order.id}`); } catch { /* Keep the confirmed result visible. */ }
+        setRefundMessage(`Refund confirmed as ${result.receipt}. Total ${money(result.total)}.`);
+        setRefundComplete(true); setConfirmingRefund(false); void loadSales();
+      } finally { refundLock.current = false; setRefundBusy(false); }
+      return;
+    }
     const refundable = ["paid", "done", "invoiced"].includes(saleDetail.order.state);
     if (!refundable) {
       setRefundMessage("Only paid, completed or invoiced sales can be refunded.");
@@ -331,10 +354,12 @@ export function OdooSalesHistoryPage() {
       return;
     }
     setRefundBusy(true);
+    refundLock.current = true;
     setRefundMessage(null);
     try {
       const amount = Math.abs(saleDetail.order.amount_total);
-      const result = await submitOdooPosOrder({
+      const request: OdooCheckoutRequest = {
+        externalPaymentConfirmed: true,
         configId: openConfig.id,
         paymentMethodId,
         orderUuid: crypto.randomUUID(),
@@ -342,15 +367,21 @@ export function OdooSalesHistoryPage() {
         tendered: amount,
         refundOfOrderId: saleDetail.order.id,
         lines,
-      });
+      };
+      sessionStorage.setItem(`orithos-pending-refund:${saleDetail.order.id}`, JSON.stringify(request));
+      const result = await submitOdooPosOrder(request);
+      try { sessionStorage.removeItem(`orithos-pending-refund:${saleDetail.order.id}`); } catch { /* Keep the confirmed result visible. */ }
       setRefundMessage(`Refund recorded as ${result.receipt}. Total ${money(result.total)}.`);
       setRefundComplete(true);
       setConfirmingRefund(false);
       void loadSales();
     } catch (cause) {
+      if (cause instanceof OdooCheckoutPendingError) pendingRefund.current = cause.order;
+      else { try { sessionStorage.removeItem(`orithos-pending-refund:${saleDetail.order.id}`); } catch { /* Preserve the original error. */ } }
       setRefundMessage(cause instanceof Error ? cause.message : "Refund failed.");
       setConfirmingRefund(false);
     } finally {
+      refundLock.current = false;
       setRefundBusy(false);
     }
   }
@@ -373,6 +404,7 @@ export function OdooSalesHistoryPage() {
   ));
 
   function requestRefundConfirmation() {
+    if (pendingRefund.current) { void refundSale(); return; }
     if (!saleDetail) return;
     if (!refundConfig) {
       setRefundMessage("Open the original Odoo register session before issuing this refund.");
@@ -588,7 +620,7 @@ export function OdooSalesHistoryPage() {
           {refundMessage && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">{refundMessage}</p>}
           <footer className="receipt-print-hidden mt-6 flex flex-col gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
             <button type="button" onClick={closeSale} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] sm:w-auto">Close</button>
-            {canRefund && (
+            {(canRefund || pendingRefund.current) && (
               <button
                 type="button"
                 onClick={requestRefundConfirmation}
@@ -596,7 +628,7 @@ export function OdooSalesHistoryPage() {
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-800 hover:bg-red-100 disabled:opacity-50 sm:w-auto"
               >
                 {refundBusy ? <LoaderCircle size={16} className="animate-spin" /> : <RotateCcw size={16} />}
-                {refundBusy ? "Refunding…" : "Refund full sale"}
+                {refundBusy ? "Checking…" : pendingRefund.current ? "Check saved refund" : "Refund full sale"}
               </button>
             )}
             {canRefund && !refundConfig && (
@@ -622,6 +654,7 @@ export function OdooSalesHistoryPage() {
             <p id="refund-sale-description" className="mt-2 text-sm leading-6 text-[var(--oh-text-secondary)]">
               Record a refund against <strong>{saleDetail.order.pos_reference || saleDetail.order.name}</strong> for <strong>{money(Math.abs(saleDetail.order.amount_total), receiptCurrency)}</strong>?
               This creates a financial transaction in Odoo and cannot be undone from this page.
+              For a non-cash refund, return the funds on the external terminal first. Confirming here records that refund and does not send funds to the card.
             </p>
             {refundConfig && refundConfig.paymentMethods.length > 1 && (
               <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">

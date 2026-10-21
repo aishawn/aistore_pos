@@ -5,7 +5,7 @@ import { AlertTriangle, LoaderCircle, Plus, RefreshCw, Search, Trash2 } from "lu
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { useDebouncedValue } from "@/hooks/useApi";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
 type StocktakeLocation = { id: number; name: string };
 type StocktakeProduct = {
@@ -57,6 +57,7 @@ export default function OdooStocktakePage() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [countUnconfirmed, setCountUnconfirmed] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const debouncedQuery = useDebouncedValue(query, 250);
   const searchTerm = query.trim();
@@ -122,7 +123,7 @@ export default function OdooStocktakePage() {
     const amount = delta(line.expectedQty, line.countedQty);
     return amount !== null && Math.abs(amount) > 0.000001;
   });
-  const canReview = writeEnabled && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying;
+  const canReview = writeEnabled && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying && !countUnconfirmed;
   const totalIncrease = changedLines.reduce((sum, line) => sum + Math.max(0, Number(line.countedQty) - line.expectedQty), 0);
   const totalDecrease = changedLines.reduce((sum, line) => sum + Math.max(0, line.expectedQty - Number(line.countedQty)), 0);
 
@@ -154,7 +155,7 @@ export default function OdooStocktakePage() {
   }
 
   async function applyCount() {
-    if (!canReview || !selectedLocation) return;
+    if (!canReview || !selectedLocation || countUnconfirmed) return;
     setApplying(true);
     setApplyError(null);
     try {
@@ -173,6 +174,7 @@ export default function OdooStocktakePage() {
       setCountLines([]);
       setQuery("");
     } catch (error) {
+      if ((error instanceof ApiError && error.code === 50290) || error instanceof TypeError) { setCountUnconfirmed(true); setReviewOpen(false); }
       setApplyError(error instanceof Error ? error.message : "Could not apply the stocktake.");
     } finally {
       setApplying(false);
@@ -199,6 +201,7 @@ export default function OdooStocktakePage() {
               {locationSource === "single-warehouse-fallback" && (
                 <p role="status" className="mt-1.5 text-xs text-[var(--oh-muted)]">Location derived from the store&apos;s only Odoo warehouse. Ask an administrator to save an explicit store binding before enabling stock adjustments.</p>
               )}
+              {countUnconfirmed && <p role="alert" className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-900">{applyError} This count is preserved. Reconcile it in Odoo, then clear it and start a fresh count.</p>}
             </div>
             {countLines.length > 0 && (
               <button type="button" onClick={() => setClearCountOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
@@ -352,7 +355,7 @@ export default function OdooStocktakePage() {
         title="Clear this count?"
         message={`Discard all ${countLines.length} products and their counted quantities? Odoo stock will not change.`}
         confirmLabel="Clear count"
-        onConfirm={() => { setCountLines([]); setApplyError(null); setClearCountOpen(false); }}
+        onConfirm={() => { setCountLines([]); setApplyError(null); setCountUnconfirmed(false); setClearCountOpen(false); }}
         onCancel={() => setClearCountOpen(false)}
       />
 

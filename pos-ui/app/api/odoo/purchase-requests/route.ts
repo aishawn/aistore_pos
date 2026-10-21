@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,10 +26,12 @@ class OdooRequestError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
-async function callOdoo<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function callOdoo<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -45,9 +48,10 @@ async function callOdoo<T>(sessionId: string, model: string, method: string, arg
 }
 
 async function getSessionContext(request: NextRequest, sessionId: string) {
+  const correlationId = request.headers.get("x-correlation-id");
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -58,7 +62,7 @@ async function getSessionContext(request: NextRequest, sessionId: string) {
     error?: OdooError;
   };
   if (payload.error || !payload.result?.uid) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new OdooRequestError(forced.error, forced.status);
   const companyId = forced.companyIds[0];
@@ -98,12 +102,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const { companyId } = await getSessionContext(request, sessionId);
+    const correlationId = request.headers.get("x-correlation-id");
     const suppliers = await callOdoo<Array<{ id: number; name: string; email?: string | false }>>(
       sessionId,
       "res.partner",
       "search_read",
       [[["supplier_rank", ">", 0], ["company_id", "=", companyId]]],
       { fields: ["id", "name", "email"], limit: 500, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } },
+      correlationId,
     );
     return NextResponse.json({ suppliers: suppliers ?? [] }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -158,17 +164,18 @@ export async function POST(request: NextRequest) {
 
   try {
     const { companyId } = await getSessionContext(request, sessionId);
+    const correlationId = request.headers.get("x-correlation-id");
     const [suppliers, products, orderLineFields] = await Promise.all([
       callOdoo<Array<{ id: number; name: string }>>(sessionId, "res.partner", "search_read", [[
         ["id", "=", Number(supplierId)],
         ["supplier_rank", ">", 0],
         ["company_id", "=", companyId],
-      ]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId], force_company: companyId } }),
+      ]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
       callOdoo<Array<{ id: number; name?: string; display_name?: string; purchase_ok?: boolean; uom_id?: [number, string] | false }>>(sessionId, "product.product", "search_read", [[
         ["id", "in", Array.from(lineMap.keys())],
         ["company_id", "=", companyId],
-      ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }),
-      callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }),
+      ]], { fields: ["id", "name", "display_name", "purchase_ok", "uom_id"], limit: MAX_LINES, context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+      callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id"]], { attributes: ["type"] }, correlationId),
     ]);
     const supplier = suppliers?.[0];
     if (!supplier) return NextResponse.json({ message: "This supplier is unavailable to your Odoo account" }, { status: 404 });
@@ -193,7 +200,7 @@ export async function POST(request: NextRequest) {
       partner_id: Number(supplierId),
       company_id: companyId,
       order_line: orderLines,
-    }], { context: { allowed_company_ids: [companyId], force_company: companyId } });
+    }], { context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId);
     if (!Number.isSafeInteger(orderId) || orderId < 1) throw new OdooRequestError("Odoo did not confirm the draft RFQ", 502);
 
     let auditSaved = false;
@@ -203,13 +210,13 @@ export async function POST(request: NextRequest) {
         message_type: "comment",
         subtype_xmlid: "mail.mt_note",
         partner_ids: [],
-      });
+      }, correlationId);
       auditSaved = true;
     } catch {
       // Do not leave an RFQ behind when its required approval audit cannot be saved.
       // The cleanup is best effort because Odoo may reject unlink after a partial write.
       try {
-        await callOdoo<boolean>(sessionId, "purchase.order", "unlink", [[orderId]], { context: { allowed_company_ids: [companyId], force_company: companyId } });
+        await callOdoo<boolean>(sessionId, "purchase.order", "unlink", [[orderId]], { context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId);
       } catch {
         throw new OdooRequestError("The approval audit could not be saved and the draft RFQ could not be cleaned up. Do not retry; check Odoo before continuing.", 502);
       }
@@ -218,7 +225,7 @@ export async function POST(request: NextRequest) {
 
     let orderName = `RFQ #${orderId}`;
     try {
-      const orders = await callOdoo<Array<{ id: number; name: string }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId]]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId] } });
+      const orders = await callOdoo<Array<{ id: number; name: string }>>(sessionId, "purchase.order", "search_read", [[["id", "=", orderId]]], { fields: ["id", "name"], limit: 1, context: { allowed_company_ids: [companyId] } }, correlationId);
       orderName = orders?.[0]?.name ?? orderName;
     } catch {
       return NextResponse.json({

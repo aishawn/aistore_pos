@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
   try {
     const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({
         jsonrpc: "2.0",
         method: "call",

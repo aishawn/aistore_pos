@@ -85,10 +85,12 @@ function roundCashTotal(amount: number, rounding: OdooCashRounding) {
   return sign * Math.round(rounded * rounding.rounding * 100) / 100;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "call",
@@ -109,8 +111,8 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
   return payload.result;
 }
 
-async function searchRead<T>(sessionId: string, model: string, domain: unknown[], fields: string[], limit = 100) {
-  return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit });
+async function searchRead<T>(sessionId: string, model: string, domain: unknown[], fields: string[], limit = 100, correlationId?: string | null) {
+  return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit }, correlationId);
 }
 
 /** Resolve unit price via Odoo pricelist rules; fall back to list price only when no pricelist is set. */
@@ -120,6 +122,7 @@ async function resolveUnitPrice(
   product: OdooProduct,
   quantity: number,
   partnerId: number | false,
+  correlationId?: string | null,
 ): Promise<number> {
   const fallback = Number(product.lst_price);
   if (!pricelistId) {
@@ -138,6 +141,7 @@ async function resolveUnitPrice(
       "_get_product_price",
       [[pricelistId], product.id],
       { quantity: qty, partner: partnerId || false },
+      correlationId,
     );
     const unit = Number(priced);
     if (Number.isFinite(unit) && unit >= 0) return unit;
@@ -151,6 +155,7 @@ async function resolveUnitPrice(
         "_get_product_price",
         [[pricelistId]],
         { product: product.id, quantity: qty, partner: partnerId || false },
+        correlationId,
       );
       const unit = Number(priced);
       if (Number.isFinite(unit) && unit >= 0) return unit;
@@ -173,8 +178,10 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
   if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: {
+    externalPaymentConfirmed?: boolean;
     configId?: number;
     paymentMethodId?: number;
     orderUuid?: string;
@@ -232,7 +239,11 @@ export async function POST(request: NextRequest) {
   try {
     const sessionInfoResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSession}` },
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `session_id=${odooSession}`,
+        ...(correlationId ? { "X-Correlation-ID": correlationId } : {}),
+      },
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -240,7 +251,7 @@ export async function POST(request: NextRequest) {
     const sessionInfo = (await sessionInfoResponse.json()) as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     const uid = sessionInfo.result?.uid;
     if (!sessionInfoResponse.ok || sessionInfo.error || !uid) throw new OdooSessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new OdooCheckoutError(forced.error, forced.status);
     const companyIds = forced.companyIds;
@@ -249,7 +260,7 @@ export async function POST(request: NextRequest) {
     const configs = await searchRead<OdooConfig>(odooSession, "pos.config", [
       ["id", "=", body.configId],
       ["company_id", "in", companyIds],
-    ], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1);
+    ], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1, correlationId);
     const config = configs[0];
     if (!config) throw new OdooCheckoutError("This register is not available to your Odoo user.", 403);
     if (!Array.isArray(config.current_session_id)) throw new OdooCheckoutError("This register has no open POS session. Open a session in Odoo first.", 409);
@@ -259,17 +270,46 @@ export async function POST(request: NextRequest) {
       ["id", "=", sessionId],
       ["state", "=", "opened"],
       ["config_id", "=", config.id],
-    ], ["id", "state"], 1);
+    ], ["id", "state"], 1, correlationId);
     if (!sessions.length) throw new OdooCheckoutError("The POS session has closed. Refresh the register and try again.", 409);
 
-    const paymentMethods = await searchRead<OdooPaymentMethod>(odooSession, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "name", "is_cash_count", "type"], 1);
+    // The UUID is unique in Odoo. Read it before any pricing or inventory work so
+    // a double click or concurrent retry returns the original order rather than
+    // attempting a second sync_from_ui write.
+    const existingByUuid = await searchRead<{
+      id: number; name: string; pos_reference?: string; state: string; uuid?: string;
+      amount_total: number; amount_tax: number; amount_paid: number; amount_return: number;
+    }>(odooSession, "pos.order", [["uuid", "=", body.orderUuid], ["company_id", "in", companyIds], ["config_id", "=", config.id]],
+      ["id", "name", "pos_reference", "state", "uuid", "amount_total", "amount_tax", "amount_paid", "amount_return"], 2, correlationId);
+    const existing = existingByUuid.find((candidate) => candidate.uuid === body.orderUuid);
+    if (existing && ["paid", "done", "invoiced"].includes(existing.state)) {
+      const total = Math.abs(existing.amount_total);
+      const gst = Math.abs(existing.amount_tax);
+      return NextResponse.json({
+        saleId: existing.id,
+        receipt: existing.pos_reference || existing.name,
+        total,
+        gst,
+        subtotal: Math.round((total - gst) * 100) / 100,
+        tendered: Math.round((Math.abs(existing.amount_paid) + Math.abs(existing.amount_return)) * 100) / 100,
+        change: Math.abs(existing.amount_return),
+        lines: [],
+        date: new Date().toISOString().slice(0, 19).replace("T", " "),
+        session: sessionName,
+      }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    }
+
+    const paymentMethods = await searchRead<OdooPaymentMethod>(odooSession, "pos.payment.method", [["id", "=", body.paymentMethodId]], ["id", "name", "is_cash_count", "type"], 1, correlationId);
     const paymentMethod = paymentMethods[0];
     if (!paymentMethod) throw new OdooCheckoutError("The selected payment method is unavailable.", 409);
+    if (!paymentMethod.is_cash_count && body.externalPaymentConfirmed !== true) {
+      throw new OdooCheckoutError("Confirm the external terminal payment or refund before recording this non-cash order.", 422);
+    }
     let cashRounding: OdooCashRounding | null = null;
     if (config.cash_rounding) {
       const roundingId = Array.isArray(config.rounding_method) ? config.rounding_method[0] : null;
       if (!roundingId) throw new OdooCheckoutError("This register has cash rounding enabled but no rounding rule configured.", 409);
-      const roundingMethods = await searchRead<OdooCashRounding>(odooSession, "account.cash.rounding", [["id", "=", roundingId]], ["id", "rounding", "rounding_method"], 1);
+      const roundingMethods = await searchRead<OdooCashRounding>(odooSession, "account.cash.rounding", [["id", "=", roundingId]], ["id", "rounding", "rounding_method"], 1, correlationId);
       cashRounding = roundingMethods[0] ?? null;
       if (!cashRounding) throw new OdooCheckoutError("The register cash rounding rule is unavailable.", 409);
     }
@@ -277,7 +317,7 @@ export async function POST(request: NextRequest) {
     let customer: OdooCustomer | null = null;
     if (body.customerId != null) {
       if (!Number.isInteger(body.customerId)) throw new OdooCheckoutError("The customer selection is invalid.", 400);
-      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId]], ["id", "property_product_pricelist", "property_account_position_id"], 1);
+      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId]], ["id", "property_product_pricelist", "property_account_position_id"], 1, correlationId);
       customer = customers[0] ?? null;
       if (!customer) throw new OdooCheckoutError("The selected customer is no longer available.", 409);
     }
@@ -290,7 +330,7 @@ export async function POST(request: NextRequest) {
     const pricelist = customerPricelist || configPricelist;
 
     if (pricelist && !isRefund) {
-      const pricelists = await searchRead<{ id: number; currency_id: Relation }>(odooSession, "product.pricelist", [["id", "=", pricelist]], ["id", "currency_id"], 1);
+      const pricelists = await searchRead<{ id: number; currency_id: Relation }>(odooSession, "product.pricelist", [["id", "=", pricelist]], ["id", "currency_id"], 1, correlationId);
       const configuredCurrencyId = Array.isArray(config.currency_id) ? config.currency_id[0] : null;
       const pricelistCurrencyId = Array.isArray(pricelists[0]?.currency_id) ? pricelists[0].currency_id[0] : null;
       if (configuredCurrencyId && pricelistCurrencyId && configuredCurrencyId !== pricelistCurrencyId) {
@@ -321,7 +361,7 @@ export async function POST(request: NextRequest) {
         ["company_id", "in", companyIds],
         ["config_id", "=", config.id],
         ["state", "in", ["paid", "done", "invoiced"]],
-      ], ["id", "state", "company_id", "config_id", "lines", "amount_total", "pricelist_id", "fiscal_position_id", "partner_id"], 1);
+      ], ["id", "state", "company_id", "config_id", "lines", "amount_total", "pricelist_id", "fiscal_position_id", "partner_id"], 1, correlationId);
       const original = originals[0];
       if (!original) throw new OdooCheckoutError("The original sale was not found or cannot be refunded.", 404);
       if (original.amount_total <= 0) throw new OdooCheckoutError("Only a positive original sale can be refunded.", 409);
@@ -338,6 +378,7 @@ export async function POST(request: NextRequest) {
           [["id", "in", original.lines], ["order_id", "=", original.id]],
           ["id", "product_id", "qty", "refunded_qty", "price_unit", "discount", "tax_ids"],
           MAX_LINES,
+          correlationId,
         )
         : [];
       const refundableLines = originalLines.filter((line) => line.qty > 0 && Number(line.refunded_qty || 0) === 0);
@@ -369,7 +410,7 @@ export async function POST(request: NextRequest) {
       ["id", "in", productIds],
     ];
     if (!isRefund) productDomain.push(["available_in_pos", "=", true]);
-    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "free_qty", "uom_id"], MAX_LINES);
+    const products = await searchRead<OdooProduct>(odooSession, "product.product", productDomain, ["id", "name", "lst_price", "taxes_id", "available_in_pos", "free_qty", "uom_id"], MAX_LINES, correlationId);
     if (products.length !== productIds.length) throw new OdooCheckoutError("One or more products are no longer available in this POS.", 409);
     const productsById = new Map(products.map((product) => [product.id, product]));
     if (!isRefund) {
@@ -403,14 +444,14 @@ export async function POST(request: NextRequest) {
       const effectiveQty = inputLine.quantity * packFactor;
       const priceUnit = refundSourceLine
         ? Number(refundSourceLine.price_unit)
-        : await resolveUnitPrice(odooSession, pricelist, product, effectiveQty, partnerId);
+        : await resolveUnitPrice(odooSession, pricelist, product, effectiveQty, partnerId, correlationId);
       const discount = refundSourceLine ? Number(refundSourceLine.discount || 0) : 0;
       if (!Number.isFinite(priceUnit) || priceUnit < 0 || !Number.isFinite(discount) || discount < 0 || discount > 100) {
         throw new OdooCheckoutError(`The source price for ${product.name} is invalid.`, 409);
       }
       let taxIds = refundSourceLine ? refundSourceLine.tax_ids : product.taxes_id;
       if (!isRefund && fiscalPositionId && taxIds.length) {
-        taxIds = await rpc<number[]>(odooSession, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds]);
+        taxIds = await rpc<number[]>(odooSession, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds], {}, correlationId);
       }
       const discountedUnitPrice = priceUnit * (1 - discount / 100);
       const totals = taxIds.length
@@ -421,7 +462,7 @@ export async function POST(request: NextRequest) {
           effectiveQty,
           false,
           false,
-        ])
+        ], {}, correlationId)
         : { total_excluded: discountedUnitPrice * effectiveQty, total_included: discountedUnitPrice * effectiveQty };
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) {
         throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
@@ -519,7 +560,7 @@ export async function POST(request: NextRequest) {
     };
     const synced = await rpc<{
       "pos.order"?: { id: number; name: string; pos_reference?: string; amount_total: number; amount_tax: number; uuid?: string }[];
-    }>(odooSession, "pos.order", "sync_from_ui", [[order]]);
+    }>(odooSession, "pos.order", "sync_from_ui", [[order]], {}, correlationId);
     // Odoo may return both the original sale and its refund from sync_from_ui.
     // Never assume the first record is the order just submitted.
     const savedFromSync = synced["pos.order"]?.find((candidate) => candidate.uuid === uuid);
@@ -535,7 +576,7 @@ export async function POST(request: NextRequest) {
       ["company_id", "in", companyIds],
       ["config_id", "=", config.id],
       ["session_id", "=", sessionId],
-    ], ["id", "name", "pos_reference", "amount_total", "amount_tax", "is_refund"], 1))[0];
+    ], ["id", "name", "pos_reference", "amount_total", "amount_tax", "is_refund"], 1, correlationId))[0];
     if (!saved) throw new OdooCheckoutError("Odoo did not confirm the sale. Check the order history before retrying.", 502);
     if ("is_refund" in saved && saved.is_refund !== isRefund) {
       throw new OdooCheckoutError("Odoo returned a different order type than requested. Check the order history before retrying.", 502);

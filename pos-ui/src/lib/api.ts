@@ -28,6 +28,7 @@ export class ApiError extends Error {
     message: string,
     public readonly code: number,
     public readonly status: number,
+    public readonly correlationId: string | null = null,
   ) {
     super(message);
   }
@@ -228,11 +229,12 @@ async function request<T>(
       json?.message ?? gatewayFailureMessage(res.status, `Request failed (${res.status})`),
       json?.code ?? -1,
       res.status,
+      res.headers.get("x-correlation-id"),
     );
   }
   if (json.code !== 0) {
     handleAuthFailure(path, res.status, json.code);
-    throw new ApiError(json.message, json.code, res.status);
+    throw new ApiError(json.message, json.code, res.status, res.headers.get("x-correlation-id"));
   }
   return json.data;
 }

@@ -48,7 +48,7 @@ export function getOdooAllowedCompanyIds(value: unknown): number[] {
  * its company summary. The fallback reads the authenticated user's own
  * res.users record and never elevates privileges.
  */
-export async function resolveOdooAllowedCompanyIds(sessionId: string, value: unknown): Promise<number[]> {
+export async function resolveOdooAllowedCompanyIds(sessionId: string, value: unknown, correlationId?: string | null): Promise<number[]> {
   const sessionCompanyIds = getOdooAllowedCompanyIds(value);
   if (sessionCompanyIds.length) return sessionCompanyIds;
   if (typeof value !== "object" || value === null) return [];
@@ -58,9 +58,11 @@ export async function resolveOdooAllowedCompanyIds(sessionId: string, value: unk
   if (!userId || !baseUrl) return [];
 
   try {
+    const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+    if (correlationId) headers.set("X-Correlation-ID", correlationId);
     const response = await fetch(`${baseUrl}/web/dataset/call_kw`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers,
       body: JSON.stringify({
         jsonrpc: "2.0",
         method: "call",

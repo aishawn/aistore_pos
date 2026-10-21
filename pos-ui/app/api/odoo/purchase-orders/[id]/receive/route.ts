@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
+import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -24,10 +25,12 @@ class ReceiveError extends Error {
   }
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(30_000),
@@ -44,9 +47,12 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 }
 
 async function getCompanyIds(request: NextRequest, sessionId: string) {
+  const correlationId = request.headers.get("x-correlation-id");
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -54,7 +60,7 @@ async function getCompanyIds(request: NextRequest, sessionId: string) {
   if (!response.ok) throw new ReceiveError("Your Odoo session has expired. Sign in to Odoo again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
   if (payload.error || !payload.result?.uid) throw new ReceiveError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new ReceiveError(forced.error, forced.status);
   if (!forced.companyIds.length) throw new ReceiveError("No Odoo companies are available to this user.", 403);
@@ -103,19 +109,28 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     lines.push({ moveId, qtyDone: Math.round(qtyDone * 10000) / 10000 });
   }
   if (!lines.length) return NextResponse.json({ message: "Add at least one receive line" }, { status: 400 });
+  if (new Set(lines.map((line) => line.moveId)).size !== lines.length || !lines.some((line) => line.qtyDone > 0)) {
+    return NextResponse.json({ message: "Include each move once and at least one positive received quantity." }, { status: 400 });
+  }
 
   const pickingIdHint = body.pickingId == null ? null : Number(body.pickingId);
+  if (pickingIdHint === null) return NextResponse.json({ message: "Choose a specific receipt before receiving stock." }, { status: 400 });
   if (pickingIdHint != null && (!Number.isSafeInteger(pickingIdHint) || pickingIdHint < 1)) {
     return NextResponse.json({ message: "Invalid pickingId" }, { status: 400 });
   }
 
+  let writeAttempted = false;
+  let recoveryContext: Record<string, unknown> | null = null;
   try {
+    await requireStoreAdmin(request);
     const companyIds = await getCompanyIds(request, sessionId);
+    const correlationId = request.headers.get("x-correlation-id");
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
+    recoveryContext = companyContext;
 
     const orders = await rpc<Array<{ id: number; name: string; state: string; picking_ids?: number[] }>>(sessionId, "purchase.order", "search_read", [[
       ["id", "=", purchaseId], ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "state", "picking_ids"], limit: 1, context: companyContext });
+    ]], { fields: ["id", "name", "state", "picking_ids"], limit: 1, context: companyContext }, correlationId);
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Purchase order not found or you do not have access to it." }, { status: 404 });
     if (order.state !== "purchase" && order.state !== "done") {
@@ -123,11 +138,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     const pickingIds = Array.isArray(order.picking_ids) ? order.picking_ids.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : [];
+    if (!pickingIds.includes(pickingIdHint)) return NextResponse.json({ message: "Receipt not found on this purchase order." }, { status: 404 });
+    const existing = await rpc<Array<{ id: number; name: string; state: string }>>(sessionId, "stock.picking", "search_read", [[
+      ["id", "=", pickingIdHint], ["company_id", "in", companyIds],
+    ]], { fields: ["id", "name", "state"], limit: 1, context: companyContext }, correlationId);
+    if (existing?.[0]?.state === "done") return NextResponse.json({ ok: true, resultState: "already_completed", purchaseId, pickingId: pickingIdHint, pickingName: existing[0].name, pickingState: "done" }, { headers: { "Cache-Control": "no-store" } });
     if (!pickingIds.length) {
       return NextResponse.json({ message: "No incoming receipts are linked to this purchase order yet." }, { status: 409 });
     }
 
-    const pickingFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.picking", "fields_get", [], { attributes: ["type"] });
+    const pickingFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.picking", "fields_get", [], { attributes: ["type"] }, correlationId);
     const moveRelationField = Object.hasOwn(pickingFields ?? {}, "move_ids_without_package")
       ? "move_ids_without_package"
       : Object.hasOwn(pickingFields ?? {}, "move_ids")
@@ -143,7 +163,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       fields: ["id", "name", "state", "picking_type_code", moveRelationField],
       limit: 50,
       context: companyContext,
-    }) ?? [];
+    }, correlationId) ?? [];
 
     const incoming = pickings.filter((picking) => !picking.picking_type_code || picking.picking_type_code === "incoming");
     if (!incoming.length) {
@@ -172,7 +192,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         .filter((id) => Number.isSafeInteger(id) && Number(id) > 0)
         .map((id) => Number(id))
       : [];
-    const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [], { attributes: ["type"] });
+    const moveFields = await rpc<Record<string, { type?: string }>>(sessionId, "stock.move", "fields_get", [], { attributes: ["type"] }, correlationId);
     const qtyField = moveFields && Object.hasOwn(moveFields, "quantity")
       ? "quantity"
       : moveFields && Object.hasOwn(moveFields, "quantity_done")
@@ -193,10 +213,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           fields: ["id", "product_uom_qty", qtyField, "product_id"],
           limit: 200,
           context: companyContext,
-        }) ?? []
+        }, correlationId) ?? []
       : [];
 
     const moveById = new Map(moves.map((move) => [move.id, move]));
+    if (moves.length !== moveIds.length || lines.length !== moves.length) {
+      return NextResponse.json({ message: "Receipt lines changed or are incomplete. Refresh and explicitly review every line, including zero quantities." }, { status: 409 });
+    }
     for (const line of lines) {
       const move = moveById.get(line.moveId);
       if (!move) throw new ReceiveError(`Move ${line.moveId} is not on receipt ${selectedPickingName}.`, 400);
@@ -206,10 +229,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     }
 
     for (const line of lines) {
-      await rpc<boolean>(sessionId, "stock.move", "write", [[line.moveId], { [qtyField]: line.qtyDone }], { context: companyContext });
+      writeAttempted = true;
+      await rpc<boolean>(sessionId, "stock.move", "write", [[line.moveId], { [qtyField]: line.qtyDone }], { context: companyContext }, correlationId);
     }
 
-    const validateResult = await rpc<unknown>(sessionId, "stock.picking", "button_validate", [[selectedPickingId]], { context: companyContext });
+    const validateResult = await rpc<unknown>(sessionId, "stock.picking", "button_validate", [[selectedPickingId]], { context: companyContext }, correlationId);
 
     // Odoo may return a wizard action for backorders / immediate transfer.
     if (validateResult && typeof validateResult === "object" && !Array.isArray(validateResult)) {
@@ -218,9 +242,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       if (action.res_model === "stock.immediate.transfer") {
         const wizardId = Number.isSafeInteger(action.res_id)
           ? action.res_id
-          : await rpc<number>(sessionId, "stock.immediate.transfer", "create", [{}], { context: wizardContext });
+          : await rpc<number>(sessionId, "stock.immediate.transfer", "create", [{}], { context: wizardContext }, correlationId);
         if (Number.isSafeInteger(wizardId)) {
-          await rpc<unknown>(sessionId, "stock.immediate.transfer", "process", [[wizardId]], { context: wizardContext });
+          await rpc<unknown>(sessionId, "stock.immediate.transfer", "process", [[wizardId]], { context: wizardContext }, correlationId);
         }
       } else if (action.res_model === "stock.backorder.confirmation") {
         const wizardId = Number.isSafeInteger(action.res_id)
@@ -228,19 +252,21 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           : await rpc<number>(sessionId, "stock.backorder.confirmation", "create", [{
             pick_ids: [[6, 0, [selectedPickingId]]],
             backorder_confirmation_line_ids: [[0, 0, { picking_id: selectedPickingId, to_backorder: true }]],
-          }], { context: wizardContext });
+          }], { context: wizardContext }, correlationId);
         if (Number.isSafeInteger(wizardId)) {
-          await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[wizardId]], { context: wizardContext });
+          await rpc<unknown>(sessionId, "stock.backorder.confirmation", "process", [[wizardId]], { context: wizardContext }, correlationId);
         }
       }
     }
 
     const refreshed = await rpc<Array<{ id: number; name: string; state: string }>>(sessionId, "stock.picking", "search_read", [[
       ["id", "=", selectedPickingId],
-    ]], { fields: ["id", "name", "state"], limit: 1, context: companyContext });
+    ]], { fields: ["id", "name", "state"], limit: 1, context: companyContext }, correlationId);
+    if (refreshed?.[0]?.state !== "done") throw new ReceiveError("Receipt was submitted but is not completed. Check Odoo before retrying.", 502);
 
     return NextResponse.json({
       ok: true,
+      resultState: "confirmed",
       purchaseId,
       purchaseName: order.name,
       pickingId: selectedPickingId,
@@ -248,6 +274,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       pickingState: refreshed?.[0]?.state || selectedPickingState,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof StoreAccessError) return NextResponse.json({ message: error.message }, { status: error.status });
+    if (writeAttempted && recoveryContext) {
+      try {
+        const saved = await rpc<Array<{ name: string; state: string }>>(sessionId, "stock.picking", "search_read", [[
+          ["id", "=", pickingIdHint], ["company_id", "in", recoveryContext.allowed_company_ids],
+        ]], { fields: ["name", "state"], limit: 1, context: recoveryContext }, request.headers.get("x-correlation-id"));
+        if (saved?.[0]?.state === "done") return NextResponse.json({ ok: true, resultState: "confirmed", purchaseId, pickingId: pickingIdHint, pickingName: saved[0].name, pickingState: "done" }, { headers: { "Cache-Control": "no-store" } });
+      } catch { /* A failed read is an unknown outcome, never permission to replay writes. */ }
+      return NextResponse.json({ message: "Receipt may be partly updated. Check this receipt in Odoo before retrying.", resultState: "unknown", pickingId: pickingIdHint }, { status: 502 });
+    }
     return errorResponse(error);
   }
 }

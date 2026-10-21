@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,10 +32,12 @@ function odooBaseUrl() {
   return value;
 }
 
-async function callOdoo<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function callOdoo<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
@@ -66,6 +69,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: { products?: unknown };
   try {
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
   try {
     const infoResponse = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
     const infoPayload = await infoResponse.json() as { result?: { uid?: number; user_context?: Record<string, unknown> }; error?: unknown };
     const info = infoPayload.result;
     if (infoPayload.error || !info?.uid) throw new OdooImportError("Your Odoo session has expired. Sign in again.", 401);
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new OdooImportError(forced.error, forced.status);
     const companyIds = forced.companyIds;
@@ -105,7 +109,7 @@ export async function POST(request: NextRequest) {
     if (categoryIds.length) {
       const categories = await callOdoo<Array<{ id: number }>>(sessionId, "pos.category", "search_read", [[
         ["id", "in", categoryIds],
-      ]], { fields: ["id"], limit: 100, context });
+      ]], { fields: ["id"], limit: 100, context }, correlationId);
       const existingIds = new Set((categories ?? []).map((category) => category.id));
       if (categoryIds.some((id) => !existingIds.has(id))) throw new OdooImportError("One or more selected POS categories are unavailable in this Odoo account.", 400);
     }
@@ -115,7 +119,7 @@ export async function POST(request: NextRequest) {
     const existing = skus.length || barcodes.length
       ? await callOdoo<Array<{ default_code?: string | false; barcode?: string | false }>>(sessionId, "product.template", "search_read", [[
           ["|", ["default_code", "in", skus], ["barcode", "in", barcodes]],
-        ]], { fields: ["default_code", "barcode"], limit: 2_000, context })
+        ]], { fields: ["default_code", "barcode"], limit: 2_000, context }, correlationId)
       : [];
     const existingSkus = new Set((existing ?? []).map((product) => typeof product.default_code === "string" ? product.default_code.trim().toLocaleLowerCase() : "").filter(Boolean));
     const existingBarcodes = new Set((existing ?? []).map((product) => typeof product.barcode === "string" ? product.barcode.trim() : "").filter(Boolean));
@@ -142,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!toCreate.length) return NextResponse.json({ created: 0, skipped }, { status: 200, headers: { "Cache-Control": "no-store" } });
-    const availableFields = await callOdoo<Record<string, { type?: string }>>(sessionId, "product.template", "fields_get", [["is_storable", "detailed_type", "type"]], { attributes: ["type"], context });
+    const availableFields = await callOdoo<Record<string, { type?: string }>>(sessionId, "product.template", "fields_get", [["is_storable", "detailed_type", "type"]], { attributes: ["type"], context }, correlationId);
     const stockField = Object.hasOwn(availableFields ?? {}, "is_storable") ? "is_storable"
       : Object.hasOwn(availableFields ?? {}, "detailed_type") ? "detailed_type"
         : Object.hasOwn(availableFields ?? {}, "type") ? "type" : null;
@@ -161,7 +165,7 @@ export async function POST(request: NextRequest) {
       pos_categ_ids: [[6, 0, product.pos_categ_ids]],
       [stockField]: stockField === "is_storable" ? true : "product",
     }));
-    await callOdoo<number[] | number>(sessionId, "product.template", "create", [values], { context });
+    await callOdoo<number[] | number>(sessionId, "product.template", "create", [values], { context }, correlationId);
     return NextResponse.json({ created: toCreate.length, skipped }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";

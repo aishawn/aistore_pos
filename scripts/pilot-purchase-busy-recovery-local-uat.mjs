@@ -30,7 +30,10 @@ try {
         await new Promise((resolve) => { releaseWrite = resolve; });
         if (pathname.endsWith("/receive")) {
           receiveAttempts += 1;
-          if (receiveAttempts === 1) return route.fulfill({ status: 503, json: { message: "Fixture receipt rejected" } });
+          // A known validation failure is recoverable in the dialog. Unknown
+          // 5xx results are covered by productization-local-verify and must
+          // stay pending for manual Odoo reconciliation.
+          if (receiveAttempts === 1) return route.fulfill({ status: 400, json: { message: "Fixture receipt rejected" } });
           failDetailOnce = width === 1024;
           return route.fulfill({ json: { pickingName: "FIXTURE/IN/001", pickingState: "done" } });
         }
@@ -61,6 +64,7 @@ try {
       await page.goto(`${base}/purchases/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
       await page.getByRole("button", { name: "FIXTURE-PO-001", exact: true }).filter({ visible: true }).click();
       await page.getByRole("dialog", { name: "FIXTURE-PO-001", exact: true }).waitFor();
+      record("purchase uses header AI without a floating modal obstruction", await page.getByRole("button", { name: "Open Orithos AI assistant", exact: true }).count() === 1 && await page.getByRole("button", { name: "Open Orithos AI", exact: true }).count() === 0);
     };
     try {
       await openDetail();

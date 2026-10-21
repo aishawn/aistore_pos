@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,10 +26,12 @@ function getBaseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "call",
@@ -52,6 +55,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
   if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   let body: { configId?: number; countedCash?: number | null };
   try {
@@ -74,14 +78,14 @@ export async function POST(request: NextRequest) {
   try {
     const sessionInfoResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSession}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${odooSession}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
     const sessionInfo = (await sessionInfoResponse.json()) as RpcResult<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (!sessionInfoResponse.ok || sessionInfo.error || !sessionInfo.result?.uid) throw new SessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(odooSession, sessionInfo.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new CloseError(forced.error, forced.status);
     const companyIds = forced.companyIds;
@@ -96,13 +100,13 @@ export async function POST(request: NextRequest) {
     }>>(odooSession, "pos.config", "search_read", [[
       ["id", "=", body.configId],
       ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "current_session_id", "company_id", "payment_method_ids"], limit: 1 });
+    ]], { fields: ["id", "name", "current_session_id", "company_id", "payment_method_ids"], limit: 1 }, correlationId);
     const config = configs?.[0];
     if (!config) throw new CloseError("This register is not available to your Odoo user.", 403);
     const paymentMethods = config.payment_method_ids.length
       ? await rpc<Array<{ id: number; is_cash_count: boolean }>>(odooSession, "pos.payment.method", "search_read", [[
           ["id", "in", config.payment_method_ids],
-        ]], { fields: ["id", "is_cash_count"], limit: 100 }) ?? []
+        ]], { fields: ["id", "is_cash_count"], limit: 100 }, correlationId) ?? []
       : [];
     if (paymentMethods.some((method) => method.is_cash_count) && body.countedCash == null) {
       throw new CloseError("Count the cash in the drawer before closing this register.", 422);
@@ -118,6 +122,7 @@ export async function POST(request: NextRequest) {
       "search_read",
       [[["id", "=", sessionId], ["state", "=", "opened"]]],
       { fields: ["id", "state", "cash_register_balance_end_real"], limit: 1 },
+      correlationId,
     );
     if (!sessions?.length) throw new CloseError("The POS session is no longer open.", 409);
 
@@ -127,16 +132,16 @@ export async function POST(request: NextRequest) {
       if (body.countedCash != null) {
         await rpc(odooSession, "pos.session", "write", [[sessionId], {
           cash_register_balance_end_real: Math.round(Number(body.countedCash) * 100) / 100,
-        }]);
+        }], {}, correlationId);
         countedCashWritten = true;
       }
 
       // Prefer the UI closing control used by Odoo POS; fall back to closing control action.
       try {
-        await rpc(odooSession, "pos.session", "action_pos_session_closing_control", [[sessionId]]);
+        await rpc(odooSession, "pos.session", "action_pos_session_closing_control", [[sessionId]], {}, correlationId);
       } catch (primary) {
         try {
-          await rpc(odooSession, "pos.session", "close_session_from_ui", [[sessionId]]);
+          await rpc(odooSession, "pos.session", "close_session_from_ui", [[sessionId]], {}, correlationId);
         } catch {
           throw primary;
         }
@@ -147,7 +152,7 @@ export async function POST(request: NextRequest) {
         try {
           await rpc(odooSession, "pos.session", "write", [[sessionId], {
             cash_register_balance_end_real: originalCountedCash,
-          }]);
+          }], {}, correlationId);
         } catch {
           throw new CloseError("Register close failed and the counted cash could not be rolled back in Odoo.", 502);
         }
@@ -161,6 +166,7 @@ export async function POST(request: NextRequest) {
       "search_read",
       [[["id", "=", sessionId]]],
       { fields: ["id", "state"], limit: 1 },
+      correlationId,
     );
 
     return NextResponse.json({

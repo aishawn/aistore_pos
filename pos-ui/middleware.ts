@@ -100,16 +100,22 @@ function withPageCachePolicy(response: NextResponse, pathname: string): NextResp
   return response;
 }
 
-function withHeaders(response: NextResponse, tenantSlug: string | null, pathname: string): NextResponse {
+function withHeaders(response: NextResponse, tenantSlug: string | null, pathname: string, correlationId: string): NextResponse {
+  response.headers.set("X-Correlation-ID", correlationId);
   return withPageCachePolicy(withSecurityHeaders(response, tenantSlug), pathname);
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const incomingCorrelationId = request.headers.get("x-correlation-id") || "";
+  const correlationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(incomingCorrelationId)
+    ? incomingCorrelationId
+    : crypto.randomUUID();
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const tenantSlug = parseTenantSlugFromHost(host);
 
   const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-correlation-id", correlationId);
   if (tenantSlug) {
     requestHeaders.set("x-orithos-tenant-slug", tenantSlug);
   }
@@ -122,6 +128,7 @@ export async function middleware(request: NextRequest) {
       NextResponse.next({ request: { headers: requestHeaders } }),
       tenantSlug,
       pathname,
+      correlationId,
     );
   }
 
@@ -130,6 +137,7 @@ export async function middleware(request: NextRequest) {
       NextResponse.json({ message: "Orithos session expired" }, { status: 401 }),
       tenantSlug,
       pathname,
+      correlationId,
     );
   }
 
@@ -140,6 +148,7 @@ export async function middleware(request: NextRequest) {
       NextResponse.next({ request: { headers: requestHeaders } }),
       tenantSlug,
       pathname,
+      correlationId,
     );
   }
 
@@ -148,7 +157,7 @@ export async function middleware(request: NextRequest) {
     const consoleHome = request.nextUrl.clone();
     consoleHome.pathname = "/platform/stores";
     consoleHome.search = "";
-    return withHeaders(NextResponse.redirect(consoleHome), tenantSlug, pathname);
+    return withHeaders(NextResponse.redirect(consoleHome), tenantSlug, pathname, correlationId);
   }
 
   const hasSession =
@@ -162,13 +171,14 @@ export async function middleware(request: NextRequest) {
       ? "/platform/stores"
       : `${pathname}${request.nextUrl.search}`;
     login.search = `?next=${encodeURIComponent(nextPath)}`;
-    return withHeaders(NextResponse.redirect(login), tenantSlug, pathname);
+    return withHeaders(NextResponse.redirect(login), tenantSlug, pathname, correlationId);
   }
 
   return withHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
     tenantSlug,
     pathname,
+    correlationId,
   );
 }
 

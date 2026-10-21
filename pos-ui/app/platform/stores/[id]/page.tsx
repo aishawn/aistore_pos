@@ -41,13 +41,67 @@ interface StoreDetail {
   } | null;
 }
 
-type ConfirmAction =
-  | { kind: "status"; status: string; title: string; message: string }
-  | { kind: "trial"; days: number; title: string; message: string }
-  | { kind: "reset"; title: string; message: string }
-  | { kind: "reinvite"; title: string; message: string }
-  | { kind: "delete"; title: string; message: string }
-  | { kind: "odoo"; title: string; message: string };
+interface PlatformAuditEvent {
+  id: number;
+  eventId: string;
+  tenantId: number;
+  actorId: number | null;
+  actorUsername: string | null;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  reason: string;
+  outcome: "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | string;
+  beforeSummary: string | null;
+  afterSummary: string | null;
+  errorCode: number | null;
+  errorType: string | null;
+  correlationId: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+type ConfirmAction = { title: string; message: string; reason: string } & (
+  | { kind: "status"; status: string }
+  | { kind: "trial"; days: number }
+  | { kind: "reset" }
+  | { kind: "reinvite" }
+  | { kind: "delete" }
+  | { kind: "odoo" }
+);
+type ConfirmRequest = ConfirmAction extends infer Action
+  ? Action extends ConfirmAction
+    ? Omit<Action, "reason">
+    : never
+  : never;
+
+const ACTION_LABELS: Record<string, string> = {
+  TENANT_STATUS_CHANGED: "Store status changed",
+  TENANT_TRIAL_EXTENDED: "Trial extended",
+  TRIAL_TENANT_DELETED: "Trial store deleted",
+  OWNER_RESET_ISSUED: "Owner reset issued",
+  OWNER_REINVITED: "Owner re-invited",
+  OWNER_BOOTSTRAP_ISSUED: "Owner sign-in link issued",
+  ODOO_PROVISION_RETRIED: "Odoo provisioning retried",
+  ODOO_BINDING_CHANGED: "Odoo binding changed",
+};
+
+function utcDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC`;
+}
+
+function formatAuditSummary(value: string | null): string {
+  if (!value) return "—";
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    return Object.entries(parsed).map(([key, item]) => `${key}: ${String(item ?? "—")}`).join(" · ");
+  } catch {
+    return "Recorded";
+  }
+}
 
 function statusTone(status: string | null | undefined): string {
   const value = (status || "").toLowerCase();
@@ -77,6 +131,11 @@ export default function PlatformStoreDetailPage() {
   const [linkResult, setLinkResult] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [aiKpi, setAiKpi] = useState<PlatformStoreAiKpi | null>(null);
+  const [audit, setAudit] = useState<PlatformAuditEvent[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
   const requestSequence = useRef(0);
 
   const load = useCallback(async () => {
@@ -97,6 +156,25 @@ export default function PlatformStoreDetailPage() {
       } catch {
         if (sequence === requestSequence.current) setAiKpi(null);
       }
+      setAuditLoading(true);
+      try {
+        const result = await api.get<{ items: PlatformAuditEvent[]; total: number }>(
+          `/api/admin/tenants/${id}/audit`, { page: auditPage, size: 20 },
+        );
+        if (sequence === requestSequence.current) {
+          setAudit(result.items);
+          setAuditTotal(result.total);
+          setAuditError(null);
+        }
+      } catch (cause) {
+        if (sequence === requestSequence.current) {
+          setAuditError(cause instanceof ApiError
+            ? `${cause.message}${cause.correlationId ? ` · Request ID ${cause.correlationId}` : ""}`
+            : "Could not load operation history.");
+        }
+      } finally {
+        if (sequence === requestSequence.current) setAuditLoading(false);
+      }
     } catch (cause) {
       if (sequence === requestSequence.current) {
         setError(cause instanceof ApiError ? cause.message : "Failed to load store");
@@ -104,7 +182,7 @@ export default function PlatformStoreDetailPage() {
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [id]);
+  }, [id, auditPage]);
 
   useEffect(() => {
     if (ready && user) void load();
@@ -118,27 +196,34 @@ export default function PlatformStoreDetailPage() {
     setCopied(false);
     try {
       if (confirm.kind === "status") {
-        setStore(await api.patch<StoreDetail>(`/api/admin/tenants/${store.id}/status`, { status: confirm.status }));
+        setStore(await api.patch<StoreDetail>(`/api/admin/tenants/${store.id}/status`, { status: confirm.status, reason: confirm.reason }));
       } else if (confirm.kind === "trial") {
-        setStore(await api.patch<StoreDetail>(`/api/admin/tenants/${store.id}/trial`, { days: confirm.days }));
+        setStore(await api.patch<StoreDetail>(`/api/admin/tenants/${store.id}/trial`, { days: confirm.days, reason: confirm.reason }));
       } else if (confirm.kind === "reset") {
-        const result = await api.post<{ resetUrl?: string; emailSent?: boolean }>(`/api/admin/tenants/${store.id}/owner/reset-password`);
+        const result = await api.post<{ resetUrl?: string; emailSent?: boolean }>(`/api/admin/tenants/${store.id}/owner/reset-password`, { reason: confirm.reason });
         setLinkResult(result.resetUrl || "Reset issued.");
       } else if (confirm.kind === "reinvite") {
-        const result = await api.post<{ inviteUrl?: string; resetUrl?: string }>(`/api/admin/tenants/${store.id}/owner/reinvite`);
+        const result = await api.post<{ inviteUrl?: string; resetUrl?: string }>(`/api/admin/tenants/${store.id}/owner/reinvite`, { reason: confirm.reason });
         setLinkResult(result.inviteUrl || result.resetUrl || "Invite issued.");
       } else if (confirm.kind === "delete") {
-        setStore(await api.del<StoreDetail>(`/api/admin/tenants/${store.id}`));
+        setStore(await api.del<StoreDetail>(`/api/admin/tenants/${store.id}`, { reason: confirm.reason }));
       } else if (confirm.kind === "odoo") {
-        setStore(await api.post<StoreDetail>(`/api/admin/tenants/${store.id}/odoo-provision`));
+        setStore(await api.post<StoreDetail>(`/api/admin/tenants/${store.id}/odoo-provision`, { reason: confirm.reason }));
       }
       setConfirm(null);
-      if (confirm.kind === "status" || confirm.kind === "trial" || confirm.kind === "odoo") await load();
+      if (auditPage !== 1) setAuditPage(1);
+      else await load();
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : "Action failed");
+      setError(cause instanceof ApiError
+        ? `${cause.message}${cause.correlationId ? ` · Request ID ${cause.correlationId}` : ""}`
+        : "Action failed");
     } finally {
       setBusy(false);
     }
+  }
+
+  function askConfirm(action: ConfirmRequest) {
+    setConfirm({ ...action, reason: "" });
   }
 
   async function copyLink() {
@@ -290,19 +375,19 @@ export default function PlatformStoreDetailPage() {
               <p className="mt-3 text-sm text-[var(--oh-muted)]">Tenant access is deleted. Odoo sales and audit history are retained.</p>
             ) : (
               <div className="mt-3 flex flex-wrap gap-2">
-                {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>}
-                {(status === "suspended" || status === "expired" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "active", title: "Activate store?", message: "Restores access for this store URL." })}>Activate</button>}
-                {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "status", status: "expired", title: "Mark expired?", message: "Marks the store as expired; login should be blocked." })}>Mark expired</button>}
-                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "trial", days: 14, title: "Extend trial by 14 days?", message: "Extends trial by 14 days from now." })}>Extend trial 14d</button>
+                {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => askConfirm({ kind: "status", status: "suspended", title: "Suspend store?", message: "Store staff cannot use this subdomain until reactivated." })}>Suspend</button>}
+                {(status === "suspended" || status === "expired" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => askConfirm({ kind: "status", status: "active", title: "Activate store?", message: "Restores access for this store URL." })}>Activate</button>}
+                {(status === "active" || status === "trial") && <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => askConfirm({ kind: "status", status: "expired", title: "Mark expired?", message: "Marks the store as expired; login should be blocked." })}>Mark expired</button>}
+                <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => askConfirm({ kind: "trial", days: 14, title: "Extend trial by 14 days?", message: "Extends trial by 14 days from now." })}>Extend trial 14d</button>
                 {store.owner ? (
                   <>
-                    <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "reset", title: "Reset owner password?", message: "Issues a reset link for the store origin host." })}>Reset owner password</button>
-                    <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => setConfirm({ kind: "reinvite", title: "Re-invite owner?", message: "Re-issues invite or reset link without creating a second user." })}>Re-invite owner</button>
+                    <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => askConfirm({ kind: "reset", title: "Reset owner password?", message: "Issues a reset link for the store origin host." })}>Reset owner password</button>
+                    <button type="button" className="min-h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold" onClick={() => askConfirm({ kind: "reinvite", title: "Re-invite owner?", message: "Re-issues invite or reset link without creating a second user." })}>Re-invite owner</button>
                   </>
                 ) : null}
-                <button type="button" className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white" onClick={() => setConfirm({ kind: "odoo", title: "Retry Odoo provision?", message: "Creates or refreshes the Odoo company / POS config mapping for this store." })}>Retry Odoo provision</button>
+                <button type="button" className="min-h-11 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white" onClick={() => askConfirm({ kind: "odoo", title: "Retry Odoo provision?", message: "Creates or refreshes the Odoo company / POS config mapping for this store." })}>Retry Odoo provision</button>
                 {store.status.toLowerCase() === "trial" ? (
-                  <button type="button" className="min-h-11 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => setConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Odoo sales and audit history are retained." })}>Delete trial store</button>
+                  <button type="button" className="min-h-11 rounded-md border border-rose-300 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => askConfirm({ kind: "delete", title: "Delete trial store?", message: "This permanently removes tenant access and owner accounts. Odoo sales and audit history are retained." })}>Delete trial store</button>
                 ) : null}
               </div>
             )}
@@ -310,12 +395,32 @@ export default function PlatformStoreDetailPage() {
         </div>
       ) : null}
 
+      {store ? <section className="mx-auto mb-6 max-w-3xl rounded-lg border border-[var(--oh-border)] bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div><h2 className="text-base font-semibold text-[var(--oh-text)]">Operation history</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Platform actions for this store, newest first · timestamps in UTC</p></div>
+          <button type="button" onClick={() => void load()} disabled={auditLoading} aria-label="Refresh operation history" title="Refresh operation history" className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><RefreshCw size={16} className={auditLoading ? "animate-spin" : ""} aria-hidden="true" /></button>
+        </div>
+        {auditError ? <p role="alert" className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{auditError}</p> : null}
+        {auditLoading && audit.length === 0 ? <p role="status" className="py-8 text-center text-sm text-[var(--oh-muted)]">Loading operation history…</p> : audit.length === 0 ? <p className="py-8 text-center text-sm text-[var(--oh-muted)]">{auditError ? "Operation history is unavailable." : "No platform actions recorded for this store."}</p> : <ol className="mt-4 divide-y divide-[var(--oh-border)]">
+          {audit.map((event) => <li key={event.eventId} className="grid gap-2 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-[var(--oh-text)]">{ACTION_LABELS[event.action] || event.action}</h3><span className={`rounded border px-2 py-0.5 text-xs font-medium ${event.outcome === "SUCCEEDED" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : event.outcome === "FAILED" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{event.outcome}</span></div>
+              <p className="mt-1 break-words text-sm text-[var(--oh-text-secondary)]">Reason: {event.reason}</p>
+              <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs text-[var(--oh-muted)] sm:grid-cols-2"><div><dt className="inline font-medium">Actor: </dt><dd className="inline">{event.actorUsername || `User ${event.actorId ?? "unknown"}`}</dd></div><div><dt className="inline font-medium">Target: </dt><dd className="inline">{event.targetType}{event.targetId ? ` #${event.targetId}` : ""}</dd></div><div><dt className="inline font-medium">Before: </dt><dd className="inline break-words">{formatAuditSummary(event.beforeSummary)}</dd></div><div><dt className="inline font-medium">After: </dt><dd className="inline break-words">{formatAuditSummary(event.afterSummary)}</dd></div>{event.errorType ? <div><dt className="inline font-medium">Error: </dt><dd className="inline">{event.errorType}{event.errorCode ? ` · ${event.errorCode}` : ""}</dd></div> : null}{event.correlationId ? <div className="sm:col-span-2"><dt className="inline font-medium">Request ID: </dt><dd className="inline break-all font-mono">{event.correlationId}</dd></div> : null}</dl>
+            </div><time className="text-xs text-[var(--oh-muted)] sm:text-right" dateTime={`${event.createdAt}Z`}>{utcDate(event.createdAt)}</time>
+          </li>)}
+        </ol>}
+        {auditTotal > 20 ? <div className="mt-3 flex items-center justify-between border-t border-[var(--oh-border)] pt-3 text-sm"><span className="text-xs text-[var(--oh-muted)]">{auditTotal} events</span><div className="flex gap-2"><button type="button" onClick={() => setAuditPage((page) => Math.max(1, page - 1))} disabled={auditPage <= 1 || auditLoading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 disabled:opacity-40">Previous</button><span className="flex min-h-10 items-center text-xs text-[var(--oh-muted)]">{auditPage} / {Math.ceil(auditTotal / 20)}</span><button type="button" onClick={() => setAuditPage((page) => page + 1)} disabled={auditPage >= Math.ceil(auditTotal / 20) || auditLoading} className="min-h-10 rounded-md border border-[var(--oh-border)] px-3 disabled:opacity-40">Next</button></div></div> : null}
+      </section> : null}
       <ConfirmDialog
         open={Boolean(confirm)}
         title={confirm?.title || ""}
         message={confirm?.message || ""}
         confirmLabel={confirm?.kind === "delete" ? "Delete trial store" : "Confirm"}
         busy={busy}
+        reason={confirm?.reason || ""}
+        reasonLabel="Reason for this operation"
+        reasonRequired
+        onReasonChange={(reason) => setConfirm((current) => current ? { ...current, reason } : null)}
         variant={(confirm?.kind === "status" && confirm.status === "suspended") || confirm?.kind === "delete" ? "danger" : "default"}
         onCancel={() => !busy && setConfirm(null)}
         onConfirm={() => void runConfirm()}

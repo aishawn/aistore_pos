@@ -37,6 +37,10 @@ export function ConfirmDialog({
   busy = false,
   busyLabel = variant === "danger" ? "Deleting…" : "Working…",
   error = null,
+  reason,
+  reasonLabel = "Reason",
+  onReasonChange,
+  reasonRequired = false,
   onConfirm,
   onCancel,
 }: {
@@ -49,6 +53,10 @@ export function ConfirmDialog({
   busy?: boolean;
   busyLabel?: string;
   error?: string | null;
+  reason?: string;
+  reasonLabel?: string;
+  onReasonChange?: (value: string) => void;
+  reasonRequired?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -88,6 +96,21 @@ export function ConfirmDialog({
           {message}
         </p>
 
+        {onReasonChange ? (
+          <label className="mx-5 mb-5 grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
+            <span>{reasonLabel}</span>
+            <textarea
+              value={reason ?? ""}
+              onChange={(event) => onReasonChange(event.target.value)}
+              rows={3}
+              maxLength={500}
+              required={reasonRequired}
+              aria-required={reasonRequired}
+              className="w-full resize-y rounded-md border border-[var(--oh-border-strong)] bg-white px-3 py-2 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/20"
+            />
+          </label>
+        ) : null}
+
         {error ? (
           <p role="alert" className="mx-5 mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-relaxed text-rose-800">
             {error}
@@ -106,7 +129,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={busy}
+            disabled={busy || (reasonRequired && !(reason ?? "").trim())}
             className={`min-h-11 rounded-[var(--oh-radius)] px-5 py-2 text-[14px] font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60 ${styles.confirmBg} ${styles.confirmHover}`}
           >
             {busy ? busyLabel : confirmLabel}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,10 +23,12 @@ class PurchaseOrderError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}): Promise<T> {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null): Promise<T> {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -42,9 +45,10 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 }
 
 async function getCompanyIds(request: NextRequest, sessionId: string) {
+  const correlationId = request.headers.get("x-correlation-id");
   const response = await fetch(`${odooBaseUrl()}/web/session/get_session_info`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
@@ -52,7 +56,7 @@ async function getCompanyIds(request: NextRequest, sessionId: string) {
   if (!response.ok) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
   const payload = await response.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
   if (payload.error || !payload.result?.uid) throw new PurchaseOrderError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result);
+  const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new PurchaseOrderError(forced.error, forced.status);
   if (!forced.companyIds.length) throw new PurchaseOrderError("No Odoo companies are available to this user.", 403);
@@ -223,15 +227,16 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 
   try {
+    const correlationId = request.headers.get("x-correlation-id");
     const companyIds = await getCompanyIds(request, sessionId);
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
     const orders = await rpc<Array<{ id: number; name: string; state: string; partner_id: [number, string] | false }>>(sessionId, "purchase.order", "search_read", [[
       ["id", "=", purchaseId], ["company_id", "in", companyIds],
-    ]], { fields: ["id", "name", "state", "partner_id"], limit: 1, context: companyContext });
+    ]], { fields: ["id", "name", "state", "partner_id"], limit: 1, context: companyContext }, correlationId);
     const order = orders?.[0];
     if (!order) return NextResponse.json({ message: "Purchase order not found or you do not have access to it." }, { status: 404 });
     if (order.state !== "draft" && order.state !== "sent") return NextResponse.json({ message: "Only draft or sent RFQs can be confirmed from this page." }, { status: 409 });
-    await rpc<unknown>(sessionId, "purchase.order", "button_confirm", [[purchaseId]], { context: companyContext });
+    await rpc<unknown>(sessionId, "purchase.order", "button_confirm", [[purchaseId]], { context: companyContext }, correlationId);
     return NextResponse.json({ ok: true, id: purchaseId, name: order.name }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);

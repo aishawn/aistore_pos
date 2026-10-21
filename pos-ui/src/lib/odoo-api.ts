@@ -207,6 +207,7 @@ export interface OdooPosBootstrap {
 }
 
 export interface OdooCheckoutRequest {
+  externalPaymentConfirmed?: boolean;
   configId: number;
   paymentMethodId: number;
   orderUuid: string;
@@ -259,6 +260,7 @@ export class OdooApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly correlationId: string | null = null,
   ) {
     // Gateway pages and connection failures often arrive without a JSON
     // payload. Replace only our generic status-suffixed fallbacks; preserve
@@ -390,7 +392,22 @@ export async function getOdooPosBootstrap(): Promise<OdooPosBootstrap> {
   return payload as OdooPosBootstrap;
 }
 
-export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckoutResult> {
+export class OdooCheckoutPendingError extends Error {
+  constructor(public readonly order: OdooCheckoutRequest) {
+    super("The payment result is pending confirmation. Do not take payment again. Check the saved order before continuing.");
+  }
+}
+
+export async function recoverOdooPosOrder(order: Pick<OdooCheckoutRequest, "configId" | "orderUuid">): Promise<OdooCheckoutResult | null> {
+  try {
+    const response = await fetchOdooApi(`/api/odoo/checkout/status?configId=${order.configId}&orderUuid=${encodeURIComponent(order.orderUuid)}`, { cache: "no-store" });
+    const payload = response.ok ? await response.json() : null;
+    return payload?.resultState === "confirmed" && typeof payload.result?.saleId === "number" && Array.isArray(payload.result?.lines)
+      ? payload.result as OdooCheckoutResult : null;
+  } catch { return null; }
+}
+
+async function postOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckoutResult> {
   const response = await fetchOdooApi("/api/odoo/checkout", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -409,6 +426,16 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
     throw new OdooApiError("Odoo did not confirm the sale", 502);
   }
   return payload as OdooCheckoutResult;
+}
+
+export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<OdooCheckoutResult> {
+  try { return await postOdooPosOrder(order); }
+  catch (error) {
+    if (error instanceof OdooApiError && error.status < 500) throw error;
+    const recovered = await recoverOdooPosOrder(order);
+    if (recovered) return recovered;
+    throw new OdooCheckoutPendingError(order);
+  }
 }
 
 export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "configId" | "paymentMethodId" | "customerId" | "lines">): Promise<OdooCheckoutQuote> {
@@ -682,7 +709,7 @@ export async function receiveOdooPurchaseOrder(
     pickingState?: string;
   } | null;
   if (!response.ok || !payload?.pickingName) {
-    throw new OdooApiError(payload?.message || `Purchase receive failed (${response.status})`, response.status || 502);
+    throw new OdooApiError(payload?.message || `Purchase receive failed (${response.status})`, response.status || 502, response.headers.get("x-correlation-id"));
   }
   return { pickingName: payload.pickingName, pickingState: payload.pickingState || "" };
 }
