@@ -4,6 +4,7 @@ import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,10 +26,12 @@ function getBaseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
@@ -67,6 +70,7 @@ export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return noStoreJson({ message: "Odoo session expired" }, 401);
+  const correlationId = request.headers.get("x-correlation-id");
 
   const marginTarget = parseMarginTarget(request.nextUrl.searchParams.get("marginTarget"));
   const now = Date.now();
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
     await requireStoreAdmin(request);
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -84,7 +88,7 @@ export async function GET(request: NextRequest) {
     if (!sessionResponse.ok) throw new PriceSuggestionSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (session.error || !session.result?.uid) throw new PriceSuggestionSessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return noStoreJson({ message: forced.error }, forced.status);
     const companyId = forced.companyIds[0];
@@ -104,7 +108,7 @@ export async function GET(request: NextRequest) {
     ]], {
       fields: ["id", "name", "display_name", "default_code", "list_price", "standard_price", "qty_available", "uom_id", "taxes_id"],
       limit: PAGE_SIZE + 1, offset: rawOffset, order: "name asc, id asc", context,
-    }) ?? [];
+    }, correlationId) ?? [];
     const pageProducts = products.slice(0, PAGE_SIZE);
     const productIds = pageProducts.map((product) => Number(product.id));
     const taxIds = [...new Set(pageProducts.flatMap((product) => Array.isArray(product.taxes_id) ? product.taxes_id as number[] : []))];
@@ -114,12 +118,12 @@ export async function GET(request: NextRequest) {
         "pos.order.line",
         "read_group",
         [[...salesBaseDomain, ["product_id", "in", productIds]], ["qty:sum"], ["product_id"]],
-        { limit: PAGE_SIZE, lazy: false, context },
+        { limit: PAGE_SIZE, lazy: false, context }, correlationId,
       ),
       taxIds.length ? rpc<SuggestionTax[]>(sessionId, "account.tax", "search_read", [[
         ["id", "in", taxIds], ["company_id", "=", companyId], ["type_tax_use", "=", "sale"],
-      ]], { fields: ["id", "amount", "amount_type", "price_include", "include_base_amount"], limit: taxIds.length, context }) : [],
-      rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1, context }),
+      ]], { fields: ["id", "amount", "amount_type", "price_include", "include_base_amount"], limit: taxIds.length, context }, correlationId) : [],
+      rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1, context }, correlationId),
     ]);
 
     const soldMap = new Map<number, number>();
@@ -150,7 +154,7 @@ export async function GET(request: NextRequest) {
         && suggestedListPrice(1, marginTarget, productTaxes) !== null;
       if (hasPrice && taxReady) {
         const compute = async (price: number) => {
-          const totals = await rpc<{ total_excluded: number; total_included: number }>(sessionId!, "account.tax", "compute_all", [productTaxIds, price, null, 1, id, false], { context });
+          const totals = await rpc<{ total_excluded: number; total_included: number }>(sessionId!, "account.tax", "compute_all", [productTaxIds, price, null, 1, id, false], { context }, correlationId);
           if (!totals || !Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)
             || totals.total_excluded <= 0 || totals.total_included < totals.total_excluded) throw new Error("Odoo returned invalid tax totals.");
           return totals;
