@@ -110,6 +110,29 @@ try {
         ? await page.getByRole("textbox", { name: "Search bulk price products" }).isVisible()
           && await page.getByRole("spinbutton", { name: "Price for DEMO Shiraz", exact: true }).isVisible()
         : null;
+      let clearFiltersAccessible = null;
+      if (route.path === "/stock/list") {
+        const searchBox = page.getByRole("textbox", { name: "Search stock products" });
+        await searchBox.fill("Shiraz");
+        const clear = page.getByRole("button", { name: "Clear stock list filters" });
+        clearFiltersAccessible = await clear.isVisible();
+        await clear.click();
+        clearFiltersAccessible = clearFiltersAccessible && (await searchBox.inputValue()) === "";
+      } else if (route.path === "/stock/capped-pricing") {
+        const searchBox = page.getByRole("textbox", { name: "Search Odoo price rules" });
+        await searchBox.fill("Shiraz");
+        const clear = page.getByRole("button", { name: "Clear price rule search" });
+        clearFiltersAccessible = await clear.isVisible();
+        await clear.click();
+        clearFiltersAccessible = clearFiltersAccessible && (await searchBox.inputValue()) === "";
+      } else if (route.path === "/stock/bulk-price-edit") {
+        const searchBox = page.getByRole("textbox", { name: "Search bulk price products" });
+        await searchBox.fill("Shiraz");
+        const clear = page.getByRole("button", { name: "Clear bulk price filters" });
+        clearFiltersAccessible = await clear.isVisible();
+        await clear.click();
+        clearFiltersAccessible = clearFiltersAccessible && (await searchBox.inputValue()) === "";
+      }
       const table = route.path === "/stock/bulk-price-edit"
         ? page.locator("ul").filter({ hasText: "DEMO Shiraz" }).first()
         : page.getByTestId(route.testId);
@@ -230,6 +253,7 @@ try {
         headingVisible: await heading.isVisible(),
         productCountText,
         controlsAccessible,
+        clearFiltersAccessible,
         sampleRowVisible: await sampleRow.isVisible(),
         mobileCardFields,
         mobileCardFieldResults,
@@ -264,6 +288,7 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.controlsAccessible === false
   || check.sampleRowVisible === false
   || check.mobileCardFields === false
+  || check.clearFiltersAccessible === false
   || check.importPanelAccessible === false
   || check.addedQuantityAccessible === false
   || (check.mobileSearchWidth != null && check.mobileSearchWidth < 160)

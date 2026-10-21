@@ -511,3 +511,12 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Demo currently has no Odoo price rules (`items=[]`), so real rule editing, concurrency conflict handling against a live rule, and POS effective-price impact remain data-blocked.
 - [ ] Price Suggestions remains blocked by upstream Cloudflare `502`; AI OCR remains `410/41001`; live inventory AI report remains unavailable.
 - [ ] Complete isolated business-write UAT, Java 21 backend gate, exact runtime SHA readback, cash close, procurement reconciliation, device and offline POS tests before changing pilot status from NO-GO.
+
+## 2026-10-22 frontend reliability batch
+
+- [x] Odoo records pagination now exposes `hasNext`; Stock List no longer guesses whether a full page is the final page.
+- [x] Stock List, Capped Pricing and Odoo Bulk Price Edit expose clear search/filter controls with keyboard and aria support.
+- [x] Odoo Bulk Price Edit uses the server `hasNext` signal for Next-page enablement.
+- [x] Responsive fixture `15/15 PASS` across five viewports; no page errors, overflow, or business writes.
+- [x] Odoo save failure/retry fixture `7/7 PASS`; all PATCH calls were intercepted locally and no real Odoo business data was changed.
+- [ ] Online post-deploy verification of these changes and exact runtime SHA remains pending.

@@ -2263,6 +2263,15 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - **Build/deployment discipline:** frontend typecheck, targeted ESLint, UAT script syntax, and diff checks pass. Do not claim backend changes as deployed without Java 21 `mvn -B clean verify` on the exact candidate SHA. Dokploy “success” confirms deployment completion only; exact runtime SHA must still be read from `/api/public/version` or deployment logs for any newer batch.
 - **Acceptance summary:** implemented and read-only verified does not equal production-ready. The pilot remains **NO-GO** until isolated business-write UAT, Odoo reconciliation, runtime identity, and operational recovery evidence are complete.
 
+## 2026-10-22 frontend reliability batch: pagination and filter controls
+
+- Odoo records now return a real `hasNext` signal by fetching one bounded look-ahead row and trimming it before tax enrichment. Stock List uses that signal instead of treating a full page as an exact count; the visible count is exact on the last page and marked with `+` while more data exists.
+- Stock List, Capped Pricing, and Odoo Bulk Price Edit now have keyboard-accessible clear search/filter controls with 44px minimum touch height and explicit aria labels. Bulk Price Edit also disables Next from the Odoo `hasNext` value, preventing navigation to an empty guessed page.
+- Odoo save failure/retry fixture was updated from retired Classic endpoints to the live Odoo routes. It passed `7/7`, covering Stock List and Capped Pricing failed PATCH, retained edits, retry, duplicate-save protection, and intercepted-write boundaries.
+- Responsive pricing fixture passed `15/15` across 320/390/768/1024/1440px, including clear filters, mobile fields, desktop alignment, AI entry placement, no page errors, and zero business writes. Evidence: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FILTERS_FINAL.json`, `docs/UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-22_ODOO.json`.
+- Local checks passed: Node 24 typecheck, targeted ESLint, `node --check`, and `git diff --check`; no local production build was run. This is a frontend-only batch and does not require the Java 21 backend gate.
+- Pending post-deploy verification: online hasNext pagination, clear controls, Odoo Bulk Price Edit next-page behavior, and live gateway error recovery. No production business writes are authorized for these checks.
+
 ## 2026-10-22 latest full AI recheck on `c4585ad`
 
 - The complete authenticated assistant catalog selected **216/216** cases and returned **216 PASS / 0 BLOCKED / 0 FAIL**. Evidence: `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-RECHECK-C4585AD.json`.
