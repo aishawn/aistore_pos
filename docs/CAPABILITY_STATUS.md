@@ -1184,3 +1184,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Node `24.19.0` typecheck、目标 ESLint 通过；库存定价响应式 `15/15 PASS`，平台错误恢复和实体目录保护 fixture 通过，所有本地验证无业务写入。
 - 该批次尚未取得线上 runtime SHA；app 登录 `502` 继续阻断部署后验收，仍标记为“已本地验证、线上待验证”。
 - 本批 webhook 只触发一次并返回 HTTP `301`，按规则停止重试；Demo 定价验收在登录 HTTP `502` 阻断，未产生业务写入。需先核对 Dokploy Source/Git 和 backend 容器日志。
+
+## 2026-10-22 共享管理页壳批次
+
+- `AdminPageLayout` 已改善移动筛选换行、固定操作栏换行和工具按钮触控尺寸；本地产品化、AI 焦点/能力、供应商连接、盘点边界回归均通过，汇总证据 `docs/UAT_SHARED_ADMIN_LAYOUT_LOCAL_2026-10-22_FF32021.json`。
+- 共享壳仍仅标为“本地已验证”；未取得 Dokploy runtime SHA，不能升级为线上已验证。

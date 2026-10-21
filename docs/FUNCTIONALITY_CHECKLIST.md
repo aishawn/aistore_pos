@@ -471,3 +471,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] `ff32021` 已推送到 `origin/main`，仅前端/UAT 脚本。
 - [ ] 未运行本地 production build；Demo runtime SHA 未核验，线上登录 HTTP `502` 仍阻断部署后页面验收。
 - [ ] `ff32021` 推送后 Dokploy webhook 返回 HTTP `301`，未重复触发；线上定价只读脚本在登录 HTTP `502` 阶段阻断，证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json`。
+
+### 2026-10-22 共享管理页壳响应式批次
+
+- [x] `AdminPageLayout` 筛选栏换行、操作 footer 换行安全、工具栏按钮触控高度统一。
+- [x] Node `24.19.0` typecheck/目标 ESLint/diff check；产品化 UI、AI 焦点/能力门禁、供应商连接、盘点边界 fixture 均通过，业务写入 `0`；汇总证据 `docs/UAT_SHARED_ADMIN_LAYOUT_LOCAL_2026-10-22_FF32021.json`。
+- [ ] 尚未取得该共享壳线上 runtime SHA；线上登录 `502` 和 Dokploy `301` 阻断部署后验证。

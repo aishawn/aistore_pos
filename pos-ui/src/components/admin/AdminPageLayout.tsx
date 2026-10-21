@@ -85,7 +85,7 @@ export function AdminSecondaryButton({
 export function AdminActionFooter({ children }: { children: React.ReactNode }) {
   return (
     <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6">
-      <div className="mr-20 flex gap-2">{children}</div>
+      <div className="flex w-full flex-wrap justify-end gap-2 sm:mr-20">{children}</div>
     </footer>
   );
 }
@@ -105,7 +105,7 @@ export function AdminPillButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-full bg-[var(--oh-primary)] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-[var(--oh-primary)] px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
         className,
       )}
     >
@@ -129,7 +129,7 @@ export function AdminOutlineButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-orange)] px-4 py-2 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors hover:bg-[var(--oh-orange-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-orange)] px-4 py-2 text-[13px] font-semibold text-[var(--oh-orange)] transition-colors hover:bg-[var(--oh-orange-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
         className,
       )}
     >
@@ -197,7 +197,7 @@ export function AdminPageLayout({
       )}
 
       {filters && (
-        <div className={cn("flex items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
+        <div className={cn("flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
           {filters}
         </div>
       )}

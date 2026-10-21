@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-21T17:34:00.000Z",
+  "sourceCommit": "ff32021f439a7294c9968adb00fe826923d6e10a",
+  "environment": "local-dev-fixtures",
+  "scope": "shared admin layout and adjacent read-only UI fixtures; no business writes",
+  "status": "PASS",
+  "checks": {
+    "typecheck": "PASS",
+    "targetedEslint": "PASS",
+    "productizationUi": "12/12 PASS",
+    "aiFocusViewports": "5/5 PASS",
+    "aiCapabilityGates": "10/10 PASS",
+    "vendorConnectionsResponsive": "5/5 PASS",
+    "stocktakeCountBoundaries": "20/20 PASS",
+    "unexpectedBusinessWrites": 0
+  },
+  "notes": [
+    "The shared shell now wraps filters on narrow screens, keeps footer actions wrap-safe, and gives toolbar buttons a minimum touch height.",
+    "No local production build was run by design."
+  ]
+}

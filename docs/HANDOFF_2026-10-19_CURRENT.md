@@ -2170,6 +2170,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 本批没有运行 Next production build；线上尚未归因到 `ff32021`。Demo runtime commit 仍为空，app 登录 HTTP `502` 仍阻断线上平台验收。证据文件已由相关 UAT 脚本刷新。
 - 本批推送后仅触发一次 Dokploy webhook，返回 HTTP `301`；按发布规则未重复触发。定价四页线上脚本在登录阶段同样收到 HTTP `502`，证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json`，不是页面断言失败。
 - 发布恢复前置：在 Dokploy Source/Git 核对仓库 `aishawn/aistore_pos`、分支 `main`、根目录 `/` 和 `docker-compose.yml`；确认 checkout SHA 后读取完整构建日志、容器健康和 runtime SHA，再重跑定价与四个平台双视口验收。
+
+## 2026-10-22 共享管理页壳响应式批次
+
+- `AdminPageLayout` 的筛选栏现在允许窄屏换行；固定操作栏按钮组可换行并保留浮动助手安全间距；AdminPill/Outline 工具按钮统一至少 44px 触控高度。
+- Node `24.19.0` typecheck、目标 ESLint、diff check 通过；产品化 UI `12/12 PASS`、AI 焦点模态五视口 `5/5 PASS`、AI 能力门禁 `10/10 PASS`、供应商连接响应式 `5/5 PASS`、盘点边界 `20/20 PASS`，业务写入 `0`。汇总证据：`docs/UAT_SHARED_ADMIN_LAYOUT_LOCAL_2026-10-22_FF32021.json`。
+- 该批次尚未部署；当前 Dokploy webhook 301 和线上登录 502 阻断仍适用。
 ## 2026-10-22 AI proxy availability follow-up
 
 - The executable assistant catalog contains **216 unique IDs**. The retry-enabled representative smoke selected replenishment, pricing, recommendation, invoice, and daily-sales cases, but Demo login returned HTTP 502 from Cloudflare after three attempts. No assistant request or business write was issued.
