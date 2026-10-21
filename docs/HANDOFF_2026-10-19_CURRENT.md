@@ -2277,3 +2277,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - A normal Dokploy Compose webhook attempt returned HTTP `301` with `Branch Not Match`. Per the deployment rule, no retry was sent. In the Dokploy Source/Git settings, verify repository `aishawn/aistore_pos`, branch `main`, repository root `/`, and `docker-compose.yml` before the next deployment. No Fresh Volumes operation is authorized.
 - The same service was then deployed through the Dokploy web console with the ordinary `Deploy` action. Deployment `091718e` is `Done`; backend/frontend/mysql/r2-sync images built, all application containers are running, and MySQL/Redis report healthy. The public version endpoint remains `c4585ad` because `091718e` contains documentation only; no application-code change was expected in that image.
 
+## 2026-10-22 serial AI companion recheck
+
+- Availability `3/3 PASS`, route matrix `9/9 PASS`, surface/auth `11/11 PASS`, and admin metrics `9/9 PASS`. Evidence: `docs/UAT_AI_AVAILABILITY_ONLINE_2026-10-22-LATEST.json`, `docs/UAT_AI_ROUTES_ONLINE_2026-10-22-LATEST.json`, `docs/UAT_AI_SURFACE_ONLINE_2026-10-22-LATEST.json`, and `docs/UAT_AI_METRICS_ONLINE_2026-10-22-LATEST.json`.
+- The feature matrix was rerun serially with one admin session and returned **14 PASS / 0 FAIL / 1 BLOCKED**. The only block is the explicit invoice OCR `410/41001` unavailable/deprecated response; no extraction or business write was claimed. Evidence: `docs/UAT_AI_FEATURES_ONLINE_2026-10-22-SERIAL.json`.
+- An earlier parallel run showed a transient anonymous-assistant `200`; that run shared the admin session with other scripts. The serial run returned the expected anonymous `401`, so the parallel result is diagnostic only and is not treated as a product failure.
+
