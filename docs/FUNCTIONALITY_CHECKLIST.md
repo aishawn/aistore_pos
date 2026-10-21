@@ -449,3 +449,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] `3a2ca5f` 已推送到 `origin/main`。
 - [ ] 推送后 builtAt 未变化，frontend/backend SHA 仍为空；不能确认 Dokploy 已运行该提交。
 - [ ] app 登录 HTTP `502` 仍阻断 8 个平台页面认证检查；需源站日志和容器健康证据后再继续。
+
+### 2026-10-22 `1c36a11` 后端修复后复核
+
+- [x] `1c36a11` 已触发新构建，Demo builtAt 更新为 `2026-10-21T16:14:31.063Z`。
+- [ ] SecurityConfig bean-cycle 修复后 app 登录仍为 HTTP `502`；Audit/Failures/Operations/Usage 认证检查 `0/8`，runtime SHA 仍为空。

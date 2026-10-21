@@ -118,7 +118,7 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | 待验证 | 待验证 | 问法目录 216 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。 |
+| AI 助手 | 是 | 是 | 待验证 | 待验证 | 问法目录 217 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
 试点决策：**NO-GO**。阻塞：Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例；无已核验的远程 Java 21 同候选 SHA pre-push 构建；aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备；隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成。
@@ -2119,3 +2119,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 推送后 Demo `/api/public/version` 仍为 `builtAt=2026-10-21T15:56:09.064Z`、`frontend.commit=null`、`backend=null`；没有观察到新的构建身份。
 - 认证观测脚本再次运行，8 个控制台页面检查全部在 `/api/auth/login` 返回 HTTP `502` 时阻断；证据 `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json` 已更新。当前不能判定 `3a2ca5f` 是否被 Dokploy checkout 或运行。
 - Dokploy webhook 仍曾返回 `301`，不再重复触发；需要从 Dokploy/Cloudflare 日志确认 Source/Git 绑定、backend 容器和登录 502 根因。
+
+## 2026-10-22 `1c36a11` backend cycle 修复后复核
+
+- 远端新增 `1c36a11 fix: remove security configuration bean cycle`，Demo builtAt 更新到 `2026-10-21T16:14:31.063Z`，说明新构建时间发生变化。
+- 认证观测再次运行仍为 `8/8 BLOCKED`：app `/api/auth/login` HTTP `502`，Audit/Failures/Operations/Usage 均未进入页面断言。frontend/backend runtime SHA 仍为 `null`。
+- 结论：`1c36a11` 的构建时间更新不能证明 backend 健康或平台页面可用；必须读取 backend 容器启动/依赖日志并修复登录 502 后再做线上验收。
