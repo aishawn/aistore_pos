@@ -2271,3 +2271,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - A six-case retry of the preceding transient failures also returned **6/6 PASS**: stock lookup, stock navigation, and dated sales prompts all returned HTTP 200. Evidence: `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_RECHECK-6.json`.
 - Remaining companion limits are unchanged: invoice OCR returns `410/41001`, the live stock report safely returns unavailable, and two History/platform checks require isolated second-store and platform-operator credentials. The pilot remains **NO-GO** for isolated business writes, Odoo reconciliation, backup recovery, and durable alert handling.
 
+## 2026-10-22 deployment identity follow-up
+
+- GitHub `main` is `409c3c3`; the public version endpoint still reports frontend/backend `c4585ad`, so the current runtime is known and healthy but does not include the latest documentation-only evidence commit.
+- A normal Dokploy Compose webhook attempt returned HTTP `301` with `Branch Not Match`. Per the deployment rule, no retry was sent. In the Dokploy Source/Git settings, verify repository `aishawn/aistore_pos`, branch `main`, repository root `/`, and `docker-compose.yml` before the next deployment. No Fresh Volumes operation is authorized.
+
