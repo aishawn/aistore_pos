@@ -58,6 +58,8 @@ Dokploy 环境通过控制台保存 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus`，�
 
 部署后通过 Dokploy 日志页读取 backend 最新日志窗口：`InvalidParameter=0`、`url error=0`、`PlatformFailureEventService=0`、`BadSqlGrammarException=0`、启动异常=0、HTTP 502=0；只出现预期的未知意图 fast-path 日志。该检查未读取完整历史日志，不能替代长期告警和保留策略验收。
 
+Dokploy 最新部署详情对应 `a4740ff`，backend builder 为 `maven:3.9-eclipse-temurin-21`，构建步骤明确执行 `mvn -B clean verify`；随后 backend 镜像导出完成，没有 `BUILD FAILURE`。日志没有提供测试总数，且 build-identity source commit 为空，所以 Java 21 构建命令可确认成功执行，但 exact-SHA/runtime identity 仍未闭环。
+
 ### 2026-10-22 representative smoke follow-up
 
 The first representative smoke used nonexistent catalog IDs and was corrected

@@ -8,6 +8,8 @@ Dokploy 控制台已保存显式分类模型变量 `AI_DASHSCOPE_CLASSIFY_MODEL=
 
 部署后的 Dokploy backend 日志窗口（最新 100 行）未发现 `InvalidParameter`、`url error`、`PlatformFailureEventService`、`BadSqlGrammarException`、启动异常或 HTTP 502；仅有预期的 `Fast-path intent=unknown` 记录。该统计只代表当前日志窗口，历史日志保留策略和长期告警仍需单独实现。
 
+Dokploy 最新成功构建详情显示候选 `a4740ff` 使用 `maven:3.9-eclipse-temurin-21` builder，并执行 `mvn -B clean verify`；该步骤之后 backend 镜像导出完成且没有 `BUILD FAILURE`。构建日志未输出测试汇总，build-identity 的 source commit 仍为空，因此记录为 Java 21 命令成功执行，源码/运行身份仍待独立核验。
+
 本次结果记录的源提交为 `a4740ff1a038ffbe59888a4d149fd556caf3810f`，部署状态字段仍为 `unverified-after-deploy`；Demo 版本接口没有返回 frontend/backend commit，虽然 backend `builtAt` 更新为 `2026-10-21T18:24:30Z`，仍不能证明运行镜像与源提交身份一致。该限制不影响本轮“线上问法响应”结论，但后续发布验收仍必须补齐 runtime SHA。
 
 同轮只读伴随套件：能力门禁 **PASS**，路由矩阵 **9/9 PASS**，surface/auth **11/11 PASS**，可用性 **3/3 PASS**，enabled gate **PASS**，AI UI **2/2 PASS**，指标 **9/9 PASS**；功能套件 **13 PASS / 2 BLOCKED**，报表 **15/16 PASS**，History/Platform **9 PASS / 2 BLOCKED**。转写脚本本次因未提供音频 fixture 为 **2 PASS / 2 BLOCKED**，不能解释为 ASR 失败；此前带临时英/中文音频 fixture 的专项证据仍为 **4/4 PASS**。所有阻断均无断言 FAIL，线上检查未执行业务写入。
