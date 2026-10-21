@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
         ["company_id", "=", companyId],
-      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }),
-      rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }),
+      ]], { fields: ["id", "name", "display_name", "default_code", "qty_available", "virtual_available", "uom_id"], limit: MAX_PRODUCTS, order: "name asc, id asc", context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId),
+      rpc<Array<{ name?: string }>>(sessionId, "res.company", "search_read", [[["id", "=", companyId]]], { fields: ["name"], limit: 1 }, correlationId),
     ]);
 
     const recentSold = new Map<number, number>();
