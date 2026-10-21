@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ExportIcon } from "@/components/icons";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { FilterSelect, SelectOption } from "@/components/admin/FilterSelect";
@@ -310,6 +310,7 @@ function StockListPageInner() {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [items, setItems] = useState<StockListRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
@@ -341,7 +342,10 @@ function StockListPageInner() {
         price: product.list_price,
       }));
       setItems(rows);
-      setTotal((page - 1) * PAGE_SIZE + rows.length + (rows.length === PAGE_SIZE ? 1 : 0));
+      setHasNext(Boolean(result.hasNext));
+      // Odoo exposes a cursor-style next-page signal rather than an expensive
+      // count query. Keep the count label honest until the last page is known.
+      setTotal((page - 1) * PAGE_SIZE + rows.length + (result.hasNext ? 1 : 0));
     }).catch((cause) => {
       if (current === request.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo stock.");
     }).finally(() => {
@@ -362,6 +366,7 @@ function StockListPageInner() {
     label: c.name,
     value: String(c.id),
   }));
+  const hasActiveFilters = Boolean(search.trim() || categoryId || inStockOnly);
 
   async function onExport() {
     setExporting(true);
@@ -384,7 +389,7 @@ function StockListPageInner() {
           {exporting ? "Exporting…" : "Export to CSV"}
         </AdminPrimaryButton>
         <div data-testid="stock-list-product-count" className="oh-type-meta ml-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-[var(--oh-text-secondary)]">
-            <span className="font-semibold tabular-nums text-[var(--oh-text)]">{items.length === PAGE_SIZE ? `${(page - 1) * PAGE_SIZE + items.length}+` : total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
+            <span className="font-semibold tabular-nums text-[var(--oh-text)]">{hasNext ? `${(page - 1) * PAGE_SIZE + items.length}+` : total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
 
@@ -430,6 +435,22 @@ function StockListPageInner() {
               placeholder="All Classifications"
             />
           </div>
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              aria-label="Clear stock list filters"
+              onClick={() => {
+                setSearch("");
+                setCategoryId("");
+                setInStockOnly(false);
+                setPage(1);
+              }}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+            >
+              <X size={15} aria-hidden="true" />
+              Clear filters
+            </button>
+          ) : null}
         </div>
         <Toggle
           checked={inStockOnly}
@@ -460,7 +481,7 @@ function StockListPageInner() {
             {items.map((row) => (
               <StockListRowEditor key={row.id} row={row} onSaved={reload} />
             ))}
-            <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
+        <Pagination page={page} size={PAGE_SIZE} total={total} onPage={setPage} />
           </AsyncState>
         </div>
       </div>

@@ -249,6 +249,9 @@ export async function POST(request: NextRequest) {
       domain.push(["company_id", "in", companyIds]);
     }
 
+    // Fetch one extra record so the client can render a truthful next-page
+    // state without guessing from a full page. The extra row is discarded
+    // before tax enrichment and never leaves this route.
     const response = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
       method: "POST",
       headers: correlationHeaders(sessionId, correlationId),
@@ -259,7 +262,7 @@ export async function POST(request: NextRequest) {
           model: config.model,
           method: "search_read",
           args: [domain],
-          kwargs: { fields: [...config.fields], limit, offset, order: config.order, context },
+          kwargs: { fields: [...config.fields], limit: limit + 1, offset, order: config.order, context },
         },
         id: Date.now(),
       }),
@@ -279,7 +282,9 @@ export async function POST(request: NextRequest) {
         : 502;
       return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo could not load records" }, { status });
     }
-    let items = payload.result ?? [];
+    const rawItems = payload.result ?? [];
+    const hasNext = rawItems.length > limit;
+    let items = rawItems.slice(0, limit);
     if (type === "products") items = await withTaxInclusivePrices(sessionId, items, correlationId);
     if (type === "posCategories") {
       const productResponse = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
@@ -324,7 +329,7 @@ export async function POST(request: NextRequest) {
         });
       }
     }
-    return NextResponse.json({ items, limit, offset }, { status: 200 });
+    return NextResponse.json({ items, limit, offset, hasNext }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;

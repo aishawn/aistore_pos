@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { getOdooPriceRules, updateOdooProduct } from "@/lib/odoo-api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
@@ -233,6 +233,9 @@ export function CappedPricingPage() {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <label className="sr-only" htmlFor="odoo-price-rule-search">Search Odoo price rules</label>
           <input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-neutral-300 px-3 text-sm" />
+          {search.trim() ? (
+            <button type="button" aria-label="Clear price rule search" onClick={() => { setSearch(""); setPage(1); }} className="inline-flex min-h-11 items-center gap-1.5 rounded border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6eb5e0]"><X size={15} aria-hidden="true" /> Clear</button>
+          ) : null}
           <button type="button" onClick={reload} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-neutral-300 px-3 text-sm font-medium disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
         </div>
         <p className="mt-3 text-sm text-neutral-600">Rules are read from Odoo. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Odoo.</p>

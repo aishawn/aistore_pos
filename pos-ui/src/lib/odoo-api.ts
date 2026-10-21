@@ -17,6 +17,8 @@ export interface OdooPage<T> {
   items: T[];
   limit: number;
   offset: number;
+  /** True when the server found at least one record after this page. */
+  hasNext?: boolean;
 }
 
 export interface OdooProductRecord {
