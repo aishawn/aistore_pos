@@ -72,6 +72,20 @@ function parseMarginTarget(raw: string | null): number {
   return Math.min(MAX_MARGIN, Math.max(MIN_MARGIN, normalized));
 }
 
+function computeSimpleTaxTotals(price: number, taxes: SuggestionTax[]) {
+  if (!Number.isFinite(price) || price <= 0 || !taxes.length) return null;
+  if (taxes.some((tax) => tax.amount_type !== "percent"
+    || !Number.isFinite(tax.amount) || tax.amount < 0
+    || tax.include_base_amount !== false
+    || tax.price_include !== taxes[0].price_include)) return null;
+  const rate = taxes.reduce((sum, tax) => sum + tax.amount / 100, 0);
+  const totalIncluded = taxes[0].price_include ? price : price * (1 + rate);
+  const totalExcluded = taxes[0].price_include ? price / (1 + rate) : price;
+  if (!Number.isFinite(totalExcluded) || !Number.isFinite(totalIncluded)
+    || totalExcluded <= 0 || totalIncluded < totalExcluded) return null;
+  return { total_excluded: totalExcluded, total_included: totalIncluded };
+}
+
 export async function GET(request: NextRequest) {
   const correlationId = request.headers.get("x-correlation-id");
   if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403, correlationId);
@@ -159,21 +173,46 @@ export async function GET(request: NextRequest) {
       const taxReady = productTaxIds.length > 0 && productTaxes.length === productTaxIds.length
         && suggestedListPrice(1, marginTarget, productTaxes) !== null;
       if (hasPrice && taxReady) {
-        const compute = async (price: number) => {
-          const totals = await rpc<{ total_excluded: number; total_included: number }>(sessionId!, "account.tax", "compute_all", [productTaxIds, price, null, 1, id, false], { context }, correlationId);
-          if (!totals || !Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)
-            || totals.total_excluded <= 0 || totals.total_included < totals.total_excluded) throw new Error("Odoo returned invalid tax totals.");
-          return totals;
-        };
+        const compute = (price: number) => computeSimpleTaxTotals(price, productTaxes);
         const current = await compute(listPrice);
+        currentNetPrice = current?.total_excluded ?? null;
+        currentPrice = current?.total_included ?? null;
+        if (!current) return {
+          id,
+          name: String(product.display_name ?? product.name ?? "Product"),
+          sku: product.default_code ? String(product.default_code) : "",
+          unit: Array.isArray(product.uom_id) ? String(product.uom_id[1]) : "Units",
+          soldUnits: soldMap.get(id) ?? 0,
+          onHand: Number(product.qty_available ?? 0),
+          cost,
+          currentPrice: null,
+          currentMargin: null,
+          suggestedPrice: null,
+          suggestedMargin: null,
+          status: "review_tax" as const,
+          reason: "Odoo sale tax configuration could not be reduced to a simple percentage; review it before calculating a shelf price.",
+          reasonParts: ["Odoo sale tax configuration could not be reduced to a simple percentage; review it before calculating a shelf price."],
+          currentNetPrice: null,
+          currentGst: null,
+          suggestedNetPrice: null,
+          suggestedGst: null,
+          currentListPrice: hasPrice ? listPrice : null,
+          suggestedListPrice: null,
+          taxBasis: "odoo_sale_taxes",
+          marginBasis: "net_sales_excluding_gst",
+          costBasis: "odoo_standard_cost",
+          method: "rules_v2_net_margin",
+        };
         currentNetPrice = current.total_excluded;
         currentPrice = current.total_included;
-        currentGst = Math.round((currentPrice - currentNetPrice) * 100) / 100;
-        if (proposedList !== null && netMargin(currentNetPrice, costRaw)! + 0.005 < marginTarget) {
+        currentGst = Math.round((current.total_included - current.total_excluded) * 100) / 100;
+        if (proposedList !== null && netMargin(current.total_excluded, costRaw)! + 0.005 < marginTarget) {
           const proposed = await compute(proposedList);
-          suggestedPrice = proposed.total_included;
-          suggestedNetPrice = proposed.total_excluded;
-          suggestedGst = Math.round((suggestedPrice - suggestedNetPrice) * 100) / 100;
+          suggestedPrice = proposed?.total_included ?? null;
+          suggestedNetPrice = proposed?.total_excluded ?? null;
+          if (suggestedPrice !== null && suggestedNetPrice !== null) {
+            suggestedGst = Math.round((suggestedPrice - suggestedNetPrice) * 100) / 100;
+          }
         }
       }
       const soldUnits = soldMap.get(id) ?? 0;
