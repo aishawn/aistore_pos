@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
+import { withRequestCorrelation } from "@/lib/request-correlation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,10 +23,12 @@ function getBaseUrl() {
   return value;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
+async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
+  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
+  if (correlationId) headers.set("X-Correlation-ID", correlationId);
   const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
     cache: "no-store",
     signal: AbortSignal.timeout(15_000),
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  const correlationId = request.headers.get("x-correlation-id");
 
   const parsedCoverage = Number(request.nextUrl.searchParams.get("coverageDays") ?? 21);
   const coverageDays = COVERAGE_OPTIONS.has(parsedCoverage) ? parsedCoverage : 21;
@@ -55,7 +59,7 @@ export async function GET(request: NextRequest) {
   try {
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Cookie: `session_id=${sessionId}` },
+      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }),
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
@@ -63,7 +67,7 @@ export async function GET(request: NextRequest) {
     if (!sessionResponse.ok) throw new ReplenishmentSessionExpiredError();
     const session = await sessionResponse.json() as RpcEnvelope<{ uid?: number; user_context?: { allowed_company_ids?: number[] } }>;
     if (session.error || !session.result?.uid) throw new ReplenishmentSessionExpiredError();
-    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result);
+    const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, session.result, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return NextResponse.json({ message: forced.error }, { status: forced.status });
     const companyId = forced.companyIds[0];
@@ -74,8 +78,8 @@ export async function GET(request: NextRequest) {
       ["order_id.state", "in", ["paid", "done", "invoiced"]],
     ];
     const [recentSales, previousSales, products, companies] = await Promise.all([
-      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
-      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom], ["order_id.date_order", "<", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }),
+      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }, correlationId),
+      rpc<Array<{ product_id?: [number, string] | false; qty?: number; __count?: number }>>(sessionId, "pos.order.line", "read_group", [[...salesBaseDomain, ["order_id.date_order", ">=", previousFrom], ["order_id.date_order", "<", recentFrom]], ["qty:sum"], ["product_id"]], { limit: MAX_PRODUCTS, lazy: false }, correlationId),
       rpc<Array<Record<string, unknown>>>(sessionId, "product.product", "search_read", [[
         ["available_in_pos", "=", true],
         ["company_id", "=", companyId],
