@@ -56,6 +56,8 @@ Dokploy 环境通过控制台保存 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus`，�
 
 配置后的只读伴随复测：capability **PASS**，availability **3/3**，route **9/9**，surface/auth **11/11**，metrics **9/9**，UI **2/2**，enabled gate **PASS**；features **13 PASS / 2 BLOCKED**，reports **15/16 PASS**，history/platform **9 PASS / 2 BLOCKED**。本次 transcription 脚本因未提供音频 fixture 为 **2 PASS / 2 BLOCKED**，此前合成英/中文音频专项为 **4/4 PASS**。所有套件均无业务写入；阻断项需要按各自证据补环境或依赖，不应改写为 FAIL。
 
+部署后通过 Dokploy 日志页读取 backend 最新日志窗口：`InvalidParameter=0`、`url error=0`、`PlatformFailureEventService=0`、`BadSqlGrammarException=0`、启动异常=0、HTTP 502=0；只出现预期的未知意图 fast-path 日志。该检查未读取完整历史日志，不能替代长期告警和保留策略验收。
+
 ### 2026-10-22 representative smoke follow-up
 
 The first representative smoke used nonexistent catalog IDs and was corrected
