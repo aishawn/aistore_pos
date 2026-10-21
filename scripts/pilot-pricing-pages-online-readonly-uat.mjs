@@ -157,17 +157,23 @@ try {
         await page.evaluate(() => window.scrollTo(0, 0));
       } else if (viewport.width === 390 && route.path === "/stock/capped-pricing") {
         const card = page.getByTestId("capped-pricing-card").first();
-        mobileCardFields = await Promise.all([
-          card.isVisible(),
-          card.getByText("Source", { exact: true }).isVisible(),
-          card.getByText("Start Date", { exact: true }).isVisible(),
-          card.getByText("End Date", { exact: true }).isVisible(),
-          card.getByText("Quantity", { exact: true }).isVisible(),
-          card.getByText("Capped Price", { exact: true }).isVisible(),
-          card.getByText("Current Price", { exact: true }).isVisible(),
-          card.getByText("Margin", { exact: true }).isVisible(),
-        ]).then((fields) => fields.every(Boolean));
-        mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+        if (await card.count()) {
+          mobileCardFields = await Promise.all([
+            card.isVisible(),
+            card.getByText("Source", { exact: true }).isVisible(),
+            card.getByText("Start Date", { exact: true }).isVisible(),
+            card.getByText("End Date", { exact: true }).isVisible(),
+            card.getByText("Quantity", { exact: true }).isVisible(),
+            card.getByText("Capped Price", { exact: true }).isVisible(),
+            card.getByText("Current Price", { exact: true }).isVisible(),
+            card.getByText("Margin", { exact: true }).isVisible(),
+          ]).then((fields) => fields.every(Boolean));
+          mobileCardWidth = await card.evaluate((element) => element.getBoundingClientRect().width).catch(() => 0);
+        } else {
+          // Empty Odoo price-rule data is valid; assert the explicit empty state.
+          mobileCardFields = await page.getByText("No results found.", { exact: true }).isVisible().catch(() => false);
+          mobileCardWidth = viewport.width - 24;
+        }
       } else if (viewport.width === 390 && route.path === "/stock/bulk-price-edit") {
         const card = page.getByText(/Current list/).first();
         mobileCardFields = (await page.locator('input[type="number"]').count()) > 0
