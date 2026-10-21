@@ -52,6 +52,10 @@ function dateTime(value: string | null): string {
   return Number.isNaN(parsed.getTime()) ? value : `${parsed.toLocaleString(undefined, { timeZone: "UTC" })} UTC`;
 }
 
+function relatedAuditHref(correlationId: string | null): string | null {
+  return correlationId ? `/platform/audit?q=${encodeURIComponent(correlationId)}` : null;
+}
+
 export default function PlatformFailuresPage() {
   const { user, ready } = useAuth();
   const [filters, setFilters] = useState<Filters>({ q: "", tenantId: "", httpStatus: "", errorCode: "", from: localDate(7), to: localDate(0) });
@@ -139,7 +143,7 @@ export default function PlatformFailuresPage() {
         <div><dt className="text-[var(--oh-muted)]">First seen</dt><dd className="mt-0.5">{dateTime(item.firstSeenAt)}</dd></div>
         <div><dt className="text-[var(--oh-muted)]">Last seen</dt><dd className="mt-0.5">{dateTime(item.lastSeenAt)}</dd></div>
         <div><dt className="text-[var(--oh-muted)]">Latest duration</dt><dd className="mt-0.5">{item.latestDurationMs == null ? "Unknown" : `${item.latestDurationMs} ms`}</dd></div>
-        <div className="col-span-2"><dt className="text-[var(--oh-muted)]">Latest request ID</dt><dd className="mt-0.5 break-all font-mono">{item.latestCorrelationId || "Unknown"}</dd></div>
+        <div className="col-span-2"><dt className="text-[var(--oh-muted)]">Latest request ID</dt><dd className="mt-0.5 break-all font-mono">{item.latestCorrelationId ? <Link href={relatedAuditHref(item.latestCorrelationId) as string} className="text-[var(--oh-primary)] hover:underline" aria-label="View audit events for this request ID">{item.latestCorrelationId}</Link> : "Unknown"}</dd></div>
         <div className="col-span-2"><dt className="text-[var(--oh-muted)]">Runtime SHA</dt><dd className="mt-0.5 break-all font-mono">{item.runtimeCommit || "Unknown"}</dd></div>
       </dl>
     </article>
