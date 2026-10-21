@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Cloud, FileText, Upload } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { AsyncState } from "@/components/admin/AsyncState";
-import { Pagination } from "@/components/admin/Pagination";
-import { useApiList } from "@/hooks/useApi";
+import { getOdooPriceRules, updateOdooProduct } from "@/lib/odoo-api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
-import { api, downloadCappedPricingTemplate, importCappedPricingCsv } from "@/lib/api";
+import { Pagination } from "@/components/admin/Pagination";
+import { useDebouncedValue } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
 
-type SourceTab = "PROVIDED" | "IMPORTED";
+type SourceTab = "PROVIDED";
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 interface CappedPriceRow {
   id: string;
@@ -27,10 +28,7 @@ interface CappedPriceRow {
   cost?: number | null;
 }
 
-const TAB_LABELS: Record<SourceTab, string> = {
-  PROVIDED: "Provided",
-  IMPORTED: "Imported",
-};
+const TAB_LABELS: Record<SourceTab, string> = { PROVIDED: "Odoo price rules" };
 
 function formatDate(value?: string | null) {
   if (!value) return "";
@@ -93,9 +91,9 @@ function CappedPriceRowEditor({
     savingRef.current = true;
     setSaving(true);
     try {
-      await api.patch("/api/capped-pricing/current-price", {
-        priceId: row.priceId,
-        price: priceNum,
+      await updateOdooProduct(Number(row.productId), {
+        list_price: priceNum,
+        expectedListPrice: row.currentPrice ?? undefined,
       });
       setDirty(false);
       onSaved();
@@ -105,7 +103,7 @@ function CappedPriceRowEditor({
       savingRef.current = false;
       setSaving(false);
     }
-  }, [current, onSaved, row.currentPrice, row.priceId]);
+  }, [current, onSaved, row.currentPrice, row.productId, row.priceId]);
 
   const currentNum = current === "" ? null : Number(current);
   const overCap =
@@ -174,138 +172,28 @@ function CappedPriceRowEditor({
   );
 }
 
-function CappedPricingImportPanel({
-  onImported,
-}: {
-  onImported: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
-  const upload = useCallback(
-    async (file: File) => {
-      setBusy(true);
-      setError(null);
-      setNotice(null);
-      try {
-        const result = await importCappedPricingCsv(file);
-        if (result.errors.length > 0) {
-          const first = result.errors[0];
-          const extra = result.errors.length > 1 ? ` (and ${result.errors.length - 1} more)` : "";
-          setNotice(
-            `Imported ${result.imported} row${result.imported === 1 ? "" : "s"}. Row ${first.row}: ${first.message}${extra}`,
-          );
-        } else if (result.imported > 0) {
-          setNotice(`Imported ${result.imported} row${result.imported === 1 ? "" : "s"}.`);
-        }
-        if (result.imported > 0) onImported();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Import failed");
-      } finally {
-        setBusy(false);
-        if (inputRef.current) inputRef.current.value = "";
-      }
-    },
-    [onImported],
-  );
-
-  function onFiles(files: FileList | null) {
-    const file = files?.[0];
-    if (!file || busy) return;
-    void upload(file);
-  }
-
-  return (
-    <div className="mb-6">
-      <p className="text-[14px] text-[var(--oh-text-secondary)]">
-        Looking for the file format?{" "}
-        <button
-          type="button"
-          onClick={downloadCappedPricingTemplate}
-          className="font-medium text-[#00a3ee] underline underline-offset-2 transition-colors hover:text-[#0090d4]"
-        >
-          Click here
-        </button>
-        .
-      </p>
-
-      <div
-        role="button"
-        tabIndex={busy ? -1 : 0}
-        aria-label="Choose a capped pricing CSV file, or drop one here"
-        aria-disabled={busy}
-        aria-busy={busy}
-        onClick={() => !busy && inputRef.current?.click()}
-        onKeyDown={(e) => {
-          if ((e.key === "Enter" || e.key === " ") && !busy) {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          if (!busy) setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          onFiles(e.dataTransfer.files);
-        }}
-        className={cn(
-          "mt-4 flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border border-dashed px-6 py-10 text-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
-          dragging
-            ? "border-[#00a3ee] bg-[#00a3ee]/5"
-            : "border-[var(--oh-border-strong)] bg-white hover:border-[#00a3ee]/60 hover:bg-[var(--oh-surface)]",
-          busy && "pointer-events-none opacity-60",
-        )}
-      >
-        <Upload size={40} strokeWidth={1.25} className="text-[var(--oh-muted)]" />
-        <p className="mt-4 text-[15px] text-[var(--oh-text-secondary)]">
-          {busy ? (
-            "Importing…"
-          ) : (
-            <>
-              <span className="font-medium text-[#00a3ee] underline underline-offset-2 transition-colors">
-                Upload a file
-              </span>{" "}
-              or drag and drop.
-            </>
-          )}
-        </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv,text/csv"
-          className="hidden"
-          onChange={(e) => onFiles(e.target.files)}
-        />
-      </div>
-
-      {notice && <p className="mt-3 text-[14px] text-[var(--oh-text-secondary)]">{notice}</p>}
-      {error && <p className="mt-3 text-[14px] text-[var(--oh-danger)]">{error}</p>}
-    </div>
-  );
-}
-
 /** Compare current prices against provided or imported capped price lists. */
 export function CappedPricingPage() {
-  const [tab, setTab] = useState<SourceTab>("PROVIDED");
+  const [tab] = useState<SourceTab>("PROVIDED");
   const [hasChanges, setHasChanges] = useState(false);
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = DEFAULT_PAGE_SIZE;
-
-  // Provided is the working list: supplier caps and CSV imports both belong here.
-  // Imported keeps the same rows that were just uploaded, under the drop zone.
-  const listSourceType = tab === "IMPORTED" ? "IMPORTED" : "ALL";
-
-  const { items, total, loading, error, reload } = useApiList<CappedPriceRow>(
-    "/api/capped-pricing",
-    { sourceType: listSourceType, page, size: PAGE_SIZE },
-  );
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const [items, setItems] = useState<CappedPriceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasNext, setHasNext] = useState(false);
+  const reload = useCallback(() => {
+    setLoading(true); setError(null);
+    void getOdooPriceRules(debouncedSearch, (page - 1) * PAGE_SIZE, PAGE_SIZE).then((result) => {
+      setItems(result.items.map((item) => ({ ...item, id: item.id, productId: String(item.productId), priceId: String(item.productId) })));
+      setHasNext(result.hasNext);
+    }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load Odoo price rules.")).finally(() => setLoading(false));
+  }, [debouncedSearch, page]);
+  // Data fetching is intentionally tied to the debounced query and page.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { reload(); }, [reload]);
+  const total = (page - 1) * PAGE_SIZE + items.length + (hasNext ? 1 : 0);
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
@@ -323,36 +211,34 @@ export function CappedPricingPage() {
       </div>
 
       <div className="shrink-0 px-4 pt-3 sm:px-6 sm:pt-4">
-        <div className="inline-flex overflow-hidden rounded-md border border-neutral-200">
-          {(["PROVIDED", "IMPORTED"] as SourceTab[]).map((key) => {
+        <div className="flex flex-wrap items-center gap-3">
+          {(["PROVIDED"] as SourceTab[]).map((key) => {
             const active = tab === key;
             return (
               <button
                 key={key}
                 type="button"
-                onClick={() => {
-                  setTab(key);
-                  setHasChanges(false);
-                  setPage(1);
-                }}
+                onClick={() => { setHasChanges(false); setPage(1); }}
                 aria-pressed={active}
                 className={cn(
                   "flex min-h-11 items-center gap-2 px-4 py-2.5 text-[14px] font-medium transition-colors sm:px-5",
                   active ? "bg-[#b8d9eb] text-black" : "bg-white text-neutral-600 hover:bg-neutral-50",
                 )}
               >
-                {key === "PROVIDED" ? <Cloud size={16} /> : <FileText size={16} />}
                 {TAB_LABELS[key]}
               </button>
             );
           })}
         </div>
-        <h2 className="mt-5 text-[22px] font-normal text-black">{TAB_LABELS[tab]}</h2>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <label className="sr-only" htmlFor="odoo-price-rule-search">Search Odoo price rules</label>
+          <input id="odoo-price-rule-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search product" className="h-11 w-full max-w-md rounded border border-neutral-300 px-3 text-sm" />
+          <button type="button" onClick={reload} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded border border-neutral-300 px-3 text-sm font-medium disabled:opacity-60"><RefreshCw size={15} /> Refresh</button>
+        </div>
+        <p className="mt-3 text-sm text-neutral-600">Read-only Odoo price rules. Edit a product&apos;s current list price below; supplier caps and price-list rule changes stay in Odoo.</p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 pt-3 sm:px-6">
-        {tab === "IMPORTED" ? <CappedPricingImportPanel onImported={reload} /> : null}
-
         <div data-testid="capped-pricing-table" className="min-w-0 xl:min-w-[1050px]">
           <div className="sticky top-0 z-10 hidden items-center rounded-md bg-black py-2 text-[13px] font-bold text-white xl:flex">
             <div className="w-[24%] shrink-0 px-3">Product</div>

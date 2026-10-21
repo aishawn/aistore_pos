@@ -42,6 +42,23 @@ export interface OdooProductCategoryRecord {
   parent_id: [number, string] | false;
 }
 
+export interface OdooPriceRuleRecord {
+  id: string;
+  productId: number;
+  productName: string;
+  sku: string;
+  priceSetName: string;
+  source: string;
+  sourceType: "PROVIDED" | "IMPORTED";
+  startDate: string | null;
+  endDate: string | null;
+  quantity: number;
+  cappedPrice: number | null;
+  currentPrice: number | null;
+  cost: number | null;
+  ruleType: string;
+}
+
 export type OdooProductUpdate = Partial<Pick<OdooProductRecord, "name" | "barcode" | "default_code" | "list_price" | "pos_categ_ids" | "available_in_pos">> & { expectedListPrice?: number };
 
 export interface OdooPosCategoryRecord {
@@ -539,6 +556,15 @@ export async function exportOdooProductsCsv(): Promise<void> {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+export async function getOdooPriceRules(query?: string, offset = 0, limit = 30): Promise<{ items: OdooPriceRuleRecord[]; hasNext: boolean }> {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+  if (query?.trim()) params.set("query", query.trim());
+  const response = await fetchOdooApi(`/api/odoo/pricelist-items?${params.toString()}`, { credentials: "same-origin", cache: "no-store" }, true);
+  const payload = await response.json().catch(() => null) as { items?: OdooPriceRuleRecord[]; hasNext?: boolean; message?: string } | null;
+  if (!response.ok || !payload || !Array.isArray(payload.items)) throw new OdooApiError(payload?.message || `Odoo price rules failed (${response.status})`, response.status);
+  return { items: payload.items, hasNext: Boolean(payload.hasNext) };
 }
 
 export async function updateOdooProduct(productId: number, values: Partial<OdooProductUpdate> & { image_1920?: string }): Promise<void> {

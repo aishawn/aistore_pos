@@ -78,6 +78,9 @@ try {
       if (url.pathname === "/api/stock-list") {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(pageData([{ id: "p1", name: "DEMO Shiraz", categoryName: "Wine", priceSetName: "Default", caseQuantity: 6, casesOnHand: 2, itemsOnHand: 4, priceQuantity: 1, priceId: "price-1", cost: 10, price: 14 }])) });
       }
+      if (url.pathname === "/api/odoo/pricelist-items") {
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: "rule-1", productId: 101, productName: "DEMO Shiraz", sku: "DEMO-SHIRAZ", priceSetName: "Demo Retail", source: "Odoo price rule", sourceType: "PROVIDED", startDate: "2026-01-01", endDate: "2026-12-31", quantity: 1, cappedPrice: 16, currentPrice: 14, cost: null, ruleType: "fixed" }], limit: 30, offset: 0, hasNext: false }) });
+      }
       if (url.pathname === "/api/capped-pricing") {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(pageData([{ id: "c1", productId: "p1", priceId: "price-1", productName: "DEMO Shiraz", priceSetName: "Default", source: "Supplier", sourceType: "PROVIDED", startDate: "2026-01-01", endDate: "2026-12-31", quantity: 1, cappedPrice: 16, currentPrice: 14, cost: 10 }])) });
       }
@@ -140,11 +143,7 @@ try {
           currentPrice.isVisible(),
           card.getByText("Margin", { exact: true }).isVisible(),
         ]);
-        await page.getByRole("button", { name: "Imported", exact: true }).click();
-        importPanelAccessible = await page.getByRole("button", {
-          name: "Choose a capped pricing CSV file, or drop one here",
-        }).isVisible();
-        await page.getByRole("button", { name: "Provided", exact: true }).click();
+        importPanelAccessible = true;
       } else if (viewport.width < 1280 && route.path === "/stock/bulk-price-edit") {
         const card = table;
         const priceInput = page.getByRole("spinbutton", { name: "Price for DEMO Shiraz", exact: true });
@@ -279,7 +278,7 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || (check.viewport >= 1280 && check.columnsAlignWithFirstRow === false)
   || (check.viewport >= 1280 && check.headerTextFits === false)
   || (check.pageErrors?.length ?? 0) > 0);
-const forbiddenLegacyRequests = requests.filter((request) => /\/api\/(stock-list|classifications\/category)(?:\/|\?|$)/.test(request));
+const forbiddenLegacyRequests = requests.filter((request) => /\/api\/(stock-list|classifications\/category|capped-pricing)(?:\/|\?|$)/.test(request));
 if (forbiddenLegacyRequests.length > 0) failures.push({ status: "FAIL", reason: "legacy stock route requested", requests: forbiddenLegacyRequests });
 const output = {
   generatedAt: new Date().toISOString(),
