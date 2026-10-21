@@ -10,13 +10,13 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | 部分通过，身份待核验 | 待验证 | 当前 216 条 Demo 助手问法复测为 **216 PASS / 0 BLOCKED / 0 FAIL**，仅 Assistant API、业务写入 0；Dokploy 已显式配置分类模型并完成普通部署，日志窗口未见 provider 502。只读伴随套件：路由 9/9、surface/auth 11/11、可用性 3/3、指标 9/9、UI 2/2、enabled PASS；功能 13 PASS / 2 BLOCKED、报表 15/16、History/platform 9 PASS / 2 BLOCKED，转写本次因缺 fixture 2 PASS / 2 BLOCKED（合成音频专项历史为 4/4）。Demo 版本接口 frontend/backend SHA 仍为空，不能标记为源码身份已核验；Java 21 同候选 SHA 门禁和真实业务验收仍未完成。 |
+| AI 助手 | 是 | 是 | **216/216 已核验通过** | 待验证 | 在 `64759b4` 已核对运行版本上，216 条 Demo 助手问法为 **216 PASS / 0 BLOCKED / 0 FAIL**，`matchesSourceCommit=true`，仅 Assistant API、业务写入 0；分类模型已显式配置，日志窗口未见 provider 502。只读伴随套件：路由 9/9、surface/auth 11/11、可用性 3/3、指标 9/9、UI 2/2、enabled PASS；功能 13 PASS / 2 BLOCKED、报表 15/16、History/platform 9 PASS / 2 BLOCKED，转写本次因缺 fixture 2 PASS / 2 BLOCKED（合成音频专项历史为 4/4）。真实业务写入验收、隔离环境和长期告警仍未完成。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
 试点决策：**NO-GO**。阻塞：Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例；无已核验的远程 Java 21 同候选 SHA pre-push 构建；aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备；隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成。
 <!-- capability-summary:end -->
 
-**2026-10-22 AI 状态更新：**分类模型配置后，当前 Demo 216 条助手问法为 216/216 PASS；该结果不改变整体试点 NO-GO，因为 runtime SHA、远程 Java 21 同候选构建、隔离业务闭环和恢复演练仍未核验。
+**2026-10-22 AI 状态更新：**分类模型配置后，当前 Demo 216 条助手问法在已核对的 `64759b4` runtime 上为 216/216 PASS；该结果不改变整体试点 NO-GO，因为隔离业务闭环、恢复演练和长期告警仍未完成。
 
 # Orithos POS — capability status
 

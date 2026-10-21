@@ -1,5 +1,11 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 runtime identity 验证
+
+Dokploy 环境已设置 `SOURCE_COMMIT=64759b45f90e27eebd92314e172eccb94a677230`，普通 Compose 部署显示 **Done**。Demo `/api/public/version` 返回 frontend/backend commit 均为该 SHA，构建时间分别为 `2026-10-21T18:52:41.071Z` 与 `2026-10-21T18:52:40Z`。
+
+在这个已核对源码身份的运行版本上重新执行当前 216 条助手问法：**216 PASS / 0 BLOCKED / 0 FAIL**，`matchesSourceCommit=true`，业务写入为 0。证据文件：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_144CASE_CURRENT.json`。此前未核验 runtime 的历史结果仍保留在下文，仅作为历史对照。
+
 ## 2026-10-22 provider 配置复核与完整复测
 
 Dokploy 控制台已保存显式分类模型变量 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus`，并通过 `compose.saveEnvironment` 返回 HTTP 200；随后使用普通 `compose.deploy` 完成部署，未使用 Fresh Volumes。此前剩余的 9 条未知/安全判定用例在模型回退路径上返回 HTTP 502；配置更新后复测为 **9 PASS / 0 BLOCKED / 0 FAIL**。

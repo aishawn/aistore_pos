@@ -46,6 +46,12 @@ Investigate the Price Suggestions HTTP 502 in Cloudflare/origin logs. Validate t
 
 ## AI assistant UAT continuation (2026-10-21)
 
+### 2026-10-22 runtime identity 已核验
+
+Dokploy Compose 环境已设置 `SOURCE_COMMIT=64759b45f90e27eebd92314e172eccb94a677230` 并普通部署完成。Demo 版本端点现在返回 frontend/backend commit 均为 `64759b45f90e27eebd92314e172eccb94a677230`，构建时间约为 `2026-10-21T18:52:40Z`；运行身份与候选 SHA 匹配。
+
+在该已核验运行版本重新执行 216 条完整助手问法，结果 **216 PASS / 0 BLOCKED / 0 FAIL**，`matchesSourceCommit=true`，业务写入为 0。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_144CASE_CURRENT.json`。旧的 unverified 结果继续保留为历史记录，不再作为当前状态。
+
 ### 2026-10-22 provider 配置后复测
 
 Dokploy 环境通过控制台保存 `AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus`，保存请求和普通 Compose 部署均返回 HTTP 200；没有执行 Fresh Volumes。模型配置前，未知/安全判定用例为 HTTP 502；配置后定向复测 **9/9 PASS**。
