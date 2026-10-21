@@ -2099,3 +2099,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Platform Operations 与 AI usage 页的 API 错误态新增页内 Retry，并在请求进行中禁用重复点击；Usage 保留时间窗口切换。
 - Node `24.19.0` + Playwright fixture 在两个页面、390px/1440px 共 `4/4 PASS`：首次错误、Retry 恢复、Usage 窗口切换、`pageErrors=0`、无横向溢出、`blockedWrites=[]`。证据：`docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json`。
 - 这是前端和受控 API fixture 证据；后端健康/指标接口的 Java 21 门禁、线上 runtime SHA 和 app 域登录态验收仍待完成。
+
+## 2026-10-21 Operations/AI Usage 公网只读回归
+
+- 使用管理员环境变量登录 `app.orithos.com.au`，Operations 与 AI usage 在 390px/1440px 共 `4/4 PASS`：HTTP 200、目标标题可见、页面错误 `0`、无横向溢出、非登录 API 写入 `0`。
+- 证据：`docs/UAT_PLATFORM_OPERATIONS_USAGE_ONLINE_2026-10-24.json`。页面内容可见，Operations 的环境/依赖状态和 Usage 的窗口选择均加载；线上没有触发业务写入。
+- 线上版本端点仍为 `frontend.commit=null`、`backend=null`，`builtAt=2026-10-21T13:35:45.867Z`；因此这证明当前公网页面行为，不证明本地 Retry 改动已运行。线上页面当前导航没有显示 Retry，因为本次 API 未注入错误。

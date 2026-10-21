@@ -431,3 +431,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Operations 与 AI usage 错误态新增页内 Retry，并禁止请求期间重复提交。
 - [x] 两页 390/1440 双视口 fixture `4/4 PASS`；覆盖错误恢复、AI usage 时间窗口切换、页面错误、横向溢出和非 GET 写入；证据 `docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json`。
 - [ ] 线上健康探针和 AI usage 的部署 SHA、后端 Java 21 门禁仍未核验。
+
+### 2026-10-21 Operations/AI Usage 公网只读验收
+
+- [x] app 控制台 Operations、AI usage 在 390/1440 两个视口共 `4/4 PASS`；HTTP 200、标题可见、页面错误 0、无横向溢出、无业务写入。
+- [x] Operations 的 runtime/dependency 区域和 AI usage 的窗口选择均可加载；证据 `docs/UAT_PLATFORM_OPERATIONS_USAGE_ONLINE_2026-10-24.json`。
+- [ ] runtime SHA 仍为空，无法证明本地 Retry 优化已部署；线上错误态 Retry 仍需在已识别候选 SHA 上注入/验证。
