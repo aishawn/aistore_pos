@@ -63,7 +63,8 @@ try {
   const composer = dialog.getByPlaceholder("Ask Orithos AI…");
   const voice = dialog.getByRole("button", { name: "Voice input" });
   await composer.waitFor({ state: "visible", timeout: 10000 });
-  await page.waitForTimeout(1200);
+  await page.locator('button[title="Voice transcription is unavailable for this store"]')
+    .waitFor({ state: "visible", timeout: 15000 });
   const result = {
     chatEnabled: !(await composer.isDisabled()),
     voiceDisabled: await voice.isDisabled(),

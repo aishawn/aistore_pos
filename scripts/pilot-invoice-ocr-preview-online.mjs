@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
@@ -10,7 +11,8 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
-const sourceCommit = process.env.PILOT_SOURCE_COMMIT ?? "39e0dc8";
+const sourceCommit = process.env.PILOT_SOURCE_COMMIT
+  ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
@@ -18,6 +20,9 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 const evidence = {
   generatedAt: new Date().toISOString(),
   sourceCommit,
+  worktreeDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim()),
+  deploymentShaVerified: false,
+  runtimeCommit: null,
   target: base,
   scope: "real provider invoice OCR preview only; no supplier, purchase, receipt, inventory, or configuration writes",
   status: "FAIL",
@@ -25,6 +30,7 @@ const evidence = {
   writes: [],
 };
 const record = (name, status, detail) => evidence.checks.push({ name, status, detail });
+const isTransientNetworkError = (value) => /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|TLS connection|secure TLS|ERR_CONNECTION_CLOSED|Client network socket disconnected/i.test(String(value));
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -82,6 +88,10 @@ try {
   record("preview-only write boundary", forbidden.length === 0 ? "PASS" : "FAIL", `unexpected=${forbidden.join(",")}`);
   evidence.providerCode = result.code ?? null;
   evidence.status = evidence.checks.every((check) => check.status !== "FAIL") ? "PASS" : "FAIL";
+} catch (error) {
+  const detail = error instanceof Error ? error.message : "Unexpected failure";
+  evidence.status = isTransientNetworkError(detail) ? "BLOCKED" : "FAIL";
+  record("run", evidence.status, detail);
 } finally {
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
   await context.close();
@@ -95,3 +105,4 @@ fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify(evidence, null, 2));
 if (evidence.status === "FAIL") process.exitCode = 1;
+else if (evidence.status === "BLOCKED") process.exitCode = 2;

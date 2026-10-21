@@ -64,9 +64,11 @@ try {
     record("Disabled AI status copy", "PASS", "Assistant header and composer explain that production AI chat is off before a request is sent.");
   }
 
-  await dialog.getByRole("button", { name: "Open sell", exact: true }).click();
-  await page.waitForURL((url) => url.pathname === "/", { timeout: 15000 });
-  record("Local sell shortcut remains available", "PASS", "The local open-sell command navigated without an AI or business write request.");
+  // The current assistant exposes sell-adjacent navigation through its shared
+  // Quick actions rather than the retired “Open sell” button.
+  await dialog.getByRole("button", { name: "Products", exact: true }).click();
+  await page.waitForURL((url) => url.pathname === "/products", { timeout: 15000 });
+  record("Quick action remains available", "PASS", "The Products shortcut navigated without an AI or business write request.");
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
 } catch (error) {
   record("AI availability UI regression", "FAIL", error instanceof Error ? error.message : "Unexpected failure");

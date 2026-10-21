@@ -46,10 +46,13 @@ try {
     return route.continue();
   });
   for (const width of [320, 390, 1024, 1440]) {
-    const page = await context.newPage({ viewport: { width, height: 900 } });
+    const page = await context.newPage();
+    await page.setViewportSize({ width, height: 900 });
+    const actualViewport = await page.evaluate(() => innerWidth);
+    if (actualViewport !== width) throw new Error(`VIEWPORT_MISMATCH_${actualViewport}_${width}`);
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    const record = (name, ok, evidence = null) => checks.push({ viewport: width, name, status: ok ? "PASS" : "FAIL", evidence });
+    const record = (name, ok, evidence = null) => checks.push({ viewport: width, actualViewport, name, status: ok ? "PASS" : "FAIL", evidence });
     for (const item of routes) {
       try {
         const response = await page.goto(`${base}${item.route}?q=${query}`, { waitUntil: "domcontentloaded", timeout: 60000 });

@@ -150,6 +150,7 @@ try {
   const compactDate = await ask("14,oct sales");
   const explicitDate = await ask("sales on 14 October 2026");
   const chineseDate = await ask("10月14日销售额");
+  const screenshotDateReport = await ask("16 Oct 2026 sales");
   const expectedDate = `${today.slice(0, 4)}-10-14`;
   check("day-month date uses current year", compactDate.intent === "report_sales"
     && compactDate.slots?.from === expectedDate && compactDate.slots?.to === expectedDate,
@@ -160,6 +161,26 @@ try {
   check("Chinese explicit date resolves to the same business day", chineseDate.intent === "report_sales"
     && chineseDate.slots?.from === expectedDate && chineseDate.slots?.to === expectedDate,
   `expected=${expectedDate}; actual=${chineseDate.slots?.from ?? "missing"}`);
+
+  const screenshotDate = "2026-10-16";
+  const overviewOct16 = dashboard30d.trend?.find((row) => isoDate(row.label) === screenshotDate);
+  const assistantOct16 = (screenshotDateReport.table?.rows ?? [])
+    .find((row) => isoDate(row.date) === screenshotDate);
+  check("screenshot date wording resolves to one business day", screenshotDateReport.intent === "report_sales"
+    && screenshotDateReport.slots?.from === screenshotDate && screenshotDateReport.slots?.to === screenshotDate,
+  `expected=${screenshotDate}; actual=${screenshotDateReport.slots?.from ?? "missing"}; answer=${screenshotDateReport.answer ?? "missing"}`);
+  const screenshotDateReconciles = overviewOct16 && assistantOct16
+    && Math.abs(Number(assistantOct16.sales) - Number(overviewOct16.revenue)) < 0.01;
+  checks.push({
+    name: "screenshot date sales total reconciles with overview",
+    status: screenshotDateReconciles ? "PASS" : overviewOct16 && assistantOct16 ? "FAIL" : "BLOCKED",
+    evidence: overviewOct16 && assistantOct16
+      ? `overview=${overviewOct16.revenue}; assistant=${assistantOct16.sales}; date=${screenshotDate}`
+      : `date=${screenshotDate}; overviewRow=${Boolean(overviewOct16)}; assistantRow=${Boolean(assistantOct16)}; comparison requires both source-backed rows`,
+  });
+  if (overviewOct16 && assistantOct16 && !screenshotDateReconciles) {
+    failures.push("screenshot date sales total reconciles with overview");
+  }
 
   const comparison = await ask("Compare sales on 14 Oct with 15 Oct");
   check("unsupported date comparison stays a guided refusal", comparison.intent === "report_adhoc"

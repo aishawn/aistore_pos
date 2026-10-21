@@ -112,6 +112,9 @@ try {
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit,
+  deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   target: base,
   scope: "authenticated read-only table accessibility regression; non-GET API calls blocked",
   checks,

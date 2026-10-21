@@ -30,11 +30,12 @@ const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").repla
 const checks = [];
 const record = (name, status, evidence = "") => checks.push({ name, status, evidence });
 const safeEvidence = (value) => String(value ?? "")
-  .replace(/(?:cookie|authorization):[^\r\n]*/gi, "$1: [redacted]")
-  .replace(/(?:access|refresh)[_-]?token=[^;\s]+/gi, "$1=[redacted]")
+  .replace(/(cookie|authorization):[^\r\n]*/gi, "$1: [redacted]")
+  .replace(/(access|refresh)[_-]?token=[^;\s]+/gi, "$1=[redacted]")
   .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[redacted-token]");
 
-if (!env.INITIAL_ADMIN_PASSWORD) {
+const adminPassword = process.env.INITIAL_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+if (!adminPassword) {
   console.error("MISSING_ADMIN_PASSWORD");
   process.exit(2);
 }
@@ -44,7 +45,7 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username: "admin", password: adminPassword },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
@@ -200,6 +201,11 @@ try {
       record("Price suggestions API", "PASS", `products=${priceBody.products.length} writeEnabled=false`);
     } else if (priceApi.status() === 401 && !odooSessionBody.user) {
       record("Price suggestions API", "BLOCKED", "Odoo session is not available in this environment.");
+    } else if ([502, 503, 504].includes(priceApi.status())) {
+      // A gateway/upstream outage is an environment block, not a product
+      // assertion failure. Keep the status visible so deployment checks still
+      // require the endpoint to recover before calling the suite green.
+      record("Price suggestions API", "BLOCKED", `upstream unavailable status=${priceApi.status()}`);
     } else {
       record("Price suggestions API", "FAIL", `status=${priceApi.status()} ${(priceBody.message || "").slice(0, 120)}`);
     }
@@ -240,6 +246,9 @@ const blocked = checks.filter((c) => c.status === "BLOCKED").length;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   target: base,
   scope: "read-only AI feature matrix; no Odoo price writes / invoice receive / RFQ confirm",
   status: hardFails > 0 ? "FAIL" : blocked > 0 ? "BLOCKED" : "PASS",

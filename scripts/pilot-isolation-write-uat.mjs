@@ -62,6 +62,7 @@ if (!odooDb) {
 if (odooDb !== isolationDb) {
   fail(`Isolation gate refused: ODOO_DATABASE=${odooDb} != ISOLATION_ODOO_DATABASE=${isolationDb}`);
 }
+if (odooDb === "aipos") fail("Use a dedicated UAT database; a local variable cannot approve writes to aipos.");
 if (!password) {
   fail("INITIAL_ADMIN_PASSWORD is required.");
 }
@@ -96,6 +97,7 @@ async function sellOne(page, productNameRegex, paymentLabel, expectedTotal) {
       await cash.fill(expectedTotal.replace("$", ""));
     }
   }
+  if (paymentLabel !== "Cash") await page.getByRole("checkbox", { name: /Payment approved on the external terminal/ }).check();
   const finalise = page.getByRole("button", { name: "Finalise" });
   await finalise.waitFor({ state: "visible" });
   await page.waitForFunction(() => {
@@ -135,6 +137,16 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
 try {
   await login(page);
+  const attestation = await page.request.get(`${base}/api/odoo/uat-context`);
+  const runtime = attestation.ok() ? await attestation.json() : null;
+  const candidate = process.env.SOURCE_COMMIT || "";
+  if (!runtime?.isolated || runtime.database !== isolationDb
+      || !/^[a-f0-9]{40}$/.test(candidate) || runtime.frontendCommit !== candidate || runtime.backendCommit !== candidate) {
+    await browser.close();
+    fail("Target runtime isolation or exact frontend/backend SHA could not be attested. No business writes performed.");
+  }
+  evidence.runtimeCommit = candidate;
+  evidence.runtimeIsolationVerified = true;
   const card = await sellOne(page, /DEMO|PINOT|wine/i, "Card", "$");
   evidence.sales.push({ method: "Card", ...card });
   if (!card.receiptId) fail("Card sale did not expose a receipt id");
@@ -151,8 +163,8 @@ try {
     }
   }
 
-  evidence.result = "PASS";
-  evidence.note = "Isolation gate passed; sales and refunds completed. Confirm stock quantities in Odoo manually if the UI does not surface free_qty.";
+  evidence.result = "PARTIAL";
+  evidence.note = "Sales/refunds completed; stock, payment and GST reconciliation still require separate evidence. This is not full business acceptance.";
 } catch (error) {
   evidence.errors.push(error instanceof Error ? error.message : String(error));
   evidence.result = "FAIL";

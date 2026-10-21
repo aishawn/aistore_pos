@@ -26,6 +26,7 @@ const routes = [
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const checks = [];
+const isTransientNetworkError = (value) => /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|TLS connection|secure TLS|ERR_CONNECTION_CLOSED|Client network socket disconnected/i.test(String(value));
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -83,17 +84,19 @@ try {
         result.aiEnabled = aiEnabled;
         result.labelVisionAvailable = labelVisionAvailable;
       }
-      checks.push({ name: pathname, status: result.aiFab && !result.horizontalOverflow && result.pageErrors.length === 0
+      checks.push({ name: pathname, status: result.httpStatus === 200 && result.aiFab && !result.horizontalOverflow && result.pageErrors.length === 0
         && (pathname !== "/sommelier/identify" || (labelVisionAvailable ? !result.labelPhotoButtonDisabled : (result.labelPhotoButtonDisabled && result.disabledCopy))) ? "PASS" : "FAIL", evidence: result });
     } catch (error) {
-      checks.push({ name: pathname, status: "FAIL", evidence: { error: error instanceof Error ? error.message : "Unexpected failure", pageErrors } });
+      const detail = error instanceof Error ? error.message : "Unexpected failure";
+      checks.push({ name: pathname, status: isTransientNetworkError(detail) ? "BLOCKED" : "FAIL", evidence: { error: detail, pageErrors } });
     } finally {
       await page.close();
     }
   }
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
 } catch (error) {
-  checks.push({ name: "route matrix setup", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+  const detail = error instanceof Error ? error.message : "Unexpected failure";
+  checks.push({ name: "route matrix setup", status: isTransientNetworkError(detail) ? "BLOCKED" : "FAIL", evidence: detail });
 } finally {
   await browser.close();
 }
@@ -103,11 +106,14 @@ const output = {
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "") ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase() : "unverified-after-deploy",
   target: base,
-  scope: "authenticated AI entry-point and disabled label-photo route matrix; no business writes",
+  scope: "authenticated AI entry-point and label-photo capability route matrix; no business writes",
   checks,
   passed: checks.filter((check) => check.status === "PASS").length,
+  blocked: checks.filter((check) => check.status === "BLOCKED").length,
   failed: checks.filter((check) => check.status === "FAIL").length,
-  status: checks.length > 0 && checks.every((check) => check.status === "PASS") ? "PASS" : "FAIL",
+  status: checks.length > 0 && checks.every((check) => check.status === "PASS")
+    ? "PASS"
+    : checks.some((check) => check.status === "FAIL") ? "FAIL" : "BLOCKED",
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)

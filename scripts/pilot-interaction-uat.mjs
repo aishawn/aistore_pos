@@ -427,11 +427,20 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  deployment: process.env.PILOT_DEPLOYMENT_SHA || execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  deployment: /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
+    ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
+    : "unverified-after-deploy",
   scope: "read-only production interactions; product/customer forms validated but not submitted; CSV parsed only in browser and cancelled; no product, customer, sale, refund, RFQ, or register-close writes",
   checks,
 };
-const outputPath = path.join(root, "docs", "UAT_INTERACTION_2026-10-14.json");
+const requestedOutput = process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_INTERACTION_2026-10-14.json";
+const outputPath = path.isAbsolute(requestedOutput)
+  ? requestedOutput
+  : path.join(root, requestedOutput.startsWith(`docs${path.sep}`) || requestedOutput.startsWith("docs/")
+    ? requestedOutput
+    : path.join("docs", requestedOutput));
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: checks.filter((item) => item.status === "PASS").length, failed: checks.filter((item) => item.status === "FAIL").length, checks }));
 if (checks.some((item) => item.status === "FAIL")) process.exitCode = 2;
