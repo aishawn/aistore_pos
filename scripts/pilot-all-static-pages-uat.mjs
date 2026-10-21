@@ -34,6 +34,9 @@ function collect(dir, relative = "") {
 
 const routes = [...new Set(collect(appRoot))].sort();
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
+// The Demo host is a tenant host. Platform operations is intentionally
+// restricted to the control-plane host and must be verified there separately.
+const tenantExpectedUnavailable = new Set(["/platform/operations"]);
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: viewports[0] });
 const login = await context.request.post(`${base}/api/auth/login`, {
@@ -70,8 +73,9 @@ for (const viewport of viewports) {
       await page.waitForTimeout(500);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       const status = response?.status() ?? 0;
-      checks.push({ route, viewport: viewport.width, status, overflow, pageErrors: [...errors] });
-      console.log(`${status === 200 && !overflow && errors.length === 0 ? "PASS" : "FAIL"} ${viewport.width} ${route} ${status}${overflow ? " OVERFLOW" : ""}${errors.length ? ` ERRORS=${errors.length}` : ""}`);
+      const expectedUnavailable = tenantExpectedUnavailable.has(route) && status === 404;
+      checks.push({ route, viewport: viewport.width, status, overflow, pageErrors: [...errors], expectedUnavailable });
+      console.log(`${(status === 200 && !overflow && errors.length === 0) || expectedUnavailable ? "PASS" : "FAIL"} ${viewport.width} ${route} ${status}${expectedUnavailable ? " EXPECTED_TENANT_404" : ""}${overflow ? " OVERFLOW" : ""}${errors.length ? ` ERRORS=${errors.length}` : ""}`);
     } catch (error) {
       checks.push({ route, viewport: viewport.width, status: response?.status() ?? 0, overflow: null, pageErrors: [error instanceof Error ? error.message : String(error)] });
       console.log(`FAIL ${viewport.width} ${route} ${error instanceof Error ? error.message : String(error)}`);
@@ -81,7 +85,8 @@ for (const viewport of viewports) {
 }
 await browser.close();
 
-const failures = checks.filter((check) => check.status !== 200 || check.overflow || check.pageErrors.length);
+const failures = checks.filter((check) => !check.expectedUnavailable && (check.status !== 200 || check.overflow || check.pageErrors.length));
+const expectedUnavailable = checks.filter((check) => check.expectedUnavailable);
 const output = {
   generatedAt: new Date().toISOString(),
   target: base,
@@ -94,6 +99,7 @@ const output = {
   viewports: viewports.map((viewport) => viewport.width),
   checksPassed: checks.length - failures.length,
   checksTotal: checks.length,
+  expectedUnavailable,
   failures,
   result: failures.length ? "FAIL" : "PASS",
 };

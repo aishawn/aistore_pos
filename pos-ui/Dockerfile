@@ -45,6 +45,8 @@ COPY --from=dependencies /app/node_modules ./node_modules
 
 # Copy application source code
 COPY . .
+ARG SOURCE_COMMIT=
+RUN SOURCE_COMMIT="$SOURCE_COMMIT" node -e 'require("fs").writeFileSync("src/lib/build-identity.json", JSON.stringify({service:"orithos-frontend",commit:/^[a-f0-9]{40}$/.test(process.env.SOURCE_COMMIT||"")?process.env.SOURCE_COMMIT:null,builtAt:new Date().toISOString()}))'
 
 # Backend API — read from docker-compose build args / .env
 # NEXT_PUBLIC_API_BASE_URL: leave empty for Docker (browser → same-origin /api).
