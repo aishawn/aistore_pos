@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { RefreshCw, X } from "lucide-react";
 import { fetchOdooRoute, searchOdooRecords, type OdooProductRecord } from "@/lib/odoo-api";
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
@@ -13,6 +14,7 @@ export function OdooBulkPriceEditPage() {
   const [search, setSearch] = useState(params.get("search") ?? "");
   const [offset, setOffset] = useState(0);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
+  const [hasNext, setHasNext] = useState(false);
   const [draft, setDraft] = useState<Record<number, string>>({});
   const [outcomes, setOutcomes] = useState<Record<number, Outcome>>({});
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,7 @@ export function OdooBulkPriceEditPage() {
     try {
       const page = await searchOdooRecords<OdooProductRecord>("products", { query: search, limit: 30, offset });
       if (current !== revision.current) return;
-      setProducts(page.items); setDraft({}); setOutcomes({});
+      setProducts(page.items); setHasNext(Boolean(page.hasNext)); setDraft({}); setOutcomes({});
       const id = Number(params.get("productId"));
       const suggested = Number(params.get("suggestedPrice"));
       const expected = Number(params.get("expectedPrice"));
@@ -94,10 +96,11 @@ export function OdooBulkPriceEditPage() {
     <p className="mt-2 text-sm text-neutral-600">Review Odoo list prices before saving. GST-inclusive shelf prices follow each product&apos;s tax configuration. Register pricelists may override these prices.</p>
     <div className="my-4 flex flex-wrap gap-3">
       <input aria-label="Search bulk price products" value={search} disabled={busy || changed.length > 0 || unresolved} onChange={(event) => { ++revision.current; setSearch(event.target.value); setOffset(0); }} className="h-11 min-w-0 flex-1 rounded border px-3" placeholder="Search product or SKU" />
+      {search.trim() ? <button type="button" aria-label="Clear bulk price filters" disabled={busy || changed.length > 0 || unresolved} onClick={() => { setSearch(""); setOffset(0); }} className="inline-flex min-h-11 items-center gap-1.5 rounded border px-3"><X size={15} aria-hidden="true" /> Clear</button> : null}
       <button type="button" disabled={busy || loading} onClick={() => {
         if ((changed.length || unresolved) && !window.confirm("Discard local edits and reload current Odoo prices? Check pending operations in Odoo first.")) return;
         void load();
-      }} className="min-h-11 rounded border px-3">Refresh</button>
+      }} className="inline-flex min-h-11 items-center gap-1.5 rounded border px-3"><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
     </div>
     {error && <p role="alert" className="my-3 rounded bg-red-50 p-3 text-red-900">{error}</p>}
     {loading ? <p role="status">Loading Odoo prices…</p> : <ul className="divide-y rounded border">
@@ -121,7 +124,7 @@ export function OdooBulkPriceEditPage() {
     <nav aria-label="Product pages" className="mt-4 flex items-center gap-4">
       <button type="button" disabled={offset === 0 || busy || loading || changed.length > 0 || unresolved} onClick={() => setOffset(Math.max(0, offset - 30))} className="min-h-11 rounded border px-3">Previous</button>
       <span>Page {Math.floor(offset / 30) + 1}</span>
-      <button type="button" disabled={products.length < 30 || busy || loading || changed.length > 0 || unresolved} onClick={() => setOffset(offset + 30)} className="min-h-11 rounded border px-3">Next</button>
+      <button type="button" disabled={!hasNext || busy || loading || changed.length > 0 || unresolved} onClick={() => setOffset(offset + 30)} className="min-h-11 rounded border px-3">Next</button>
     </nav>
   </main>;
 }
