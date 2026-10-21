@@ -1,0 +1,72 @@
+{
+  "generatedAt": "2026-10-21T14:25:13.895Z",
+  "sourceCommit": "e7dc67ddcc7c61e5f3b225be84457e142ef914a7",
+  "target": "https://demo.orithos.com.au",
+  "deployment": {
+    "sourceSha": "e7dc67ddcc7c61e5f3b225be84457e142ef914a7",
+    "status": "Done",
+    "demoBuiltAt": "2026-10-21T13:35:45.867Z"
+  },
+  "deploymentShaVerified": true,
+  "runtimeCommitVerified": false,
+  "scope": "authenticated 390px browser read-only; non-GET API requests blocked",
+  "checks": [
+    {
+      "name": "/stock/price-suggestions page loaded",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "/stock/price-suggestions no horizontal overflow",
+      "status": "PASS",
+      "evidence": "390/390px"
+    },
+    {
+      "name": "/stock/price-suggestions API response",
+      "status": "PASS",
+      "evidence": "HTTP 502"
+    },
+    {
+      "name": "/stock/price-suggestions sends a UUID correlation ID",
+      "status": "PASS",
+      "evidence": "048cb0d9-a076-45ab-9990-0e7c0155472e"
+    },
+    {
+      "name": "/stock/price-suggestions request ID shown",
+      "status": "PASS",
+      "evidence": "048cb0d9-a076-45ab-9990-0e7c0155472e · outgoing fallback"
+    },
+    {
+      "name": "/stock/price-suggestions retry sends a new UUID",
+      "status": "PASS",
+      "evidence": "d6a965db-c609-45ae-bf28-b9710969dde4"
+    },
+    {
+      "name": "/stock/price-suggestions retry displays its request ID",
+      "status": "PASS",
+      "evidence": "d6a965db-c609-45ae-bf28-b9710969dde4"
+    },
+    {
+      "name": "/reports/dashboard page loaded",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "/reports/dashboard no horizontal overflow",
+      "status": "PASS",
+      "evidence": "390/390px"
+    },
+    {
+      "name": "/reports/dashboard API response",
+      "status": "PASS",
+      "evidence": "HTTP 200"
+    },
+    {
+      "name": "/reports/dashboard error request ID",
+      "status": "INFO",
+      "evidence": "Successful response; no error request ID is expected."
+    }
+  ],
+  "blockedWrites": [],
+  "status": "PASS"
+}

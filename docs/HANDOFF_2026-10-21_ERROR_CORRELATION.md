@@ -16,10 +16,11 @@ Frontend-only reliability update for Price Suggestions and Reporting Dashboard. 
 - Node 24.19.0 TypeScript check: passed.
 - Targeted ESLint for both components: passed.
 - Local 390px Playwright fixture: 13/13 passed; no page errors, no horizontal overflow, and no business writes. Evidence: `UAT_ODOO_ERROR_CORRELATION_LOCAL_2026-10-24_CURRENT.json` and `screenshots/2026-10-24-odoo-error-correlation-current/`.
-- Live Demo 390px read-only check against the previously deployed runtime: Price Suggestions returned HTTP 502 without sending a correlation ID; Reporting Dashboard returned HTTP 200. No horizontal overflow or business writes. Evidence: `UAT_ODOO_ERROR_CORRELATION_ONLINE_CURRENT.json`.
-- Dokploy was reported successful by the owner, but the Demo version endpoint still reports `frontend.commit=null`, `backend=null`, `builtAt=2026-10-21T12:58:05.809Z`. Runtime SHA is unverified; the online check therefore does not prove these workspace changes are deployed.
+- Dokploy reports the deployment as Done for source SHA `e7dc67ddcc7c61e5f3b225be84457e142ef914a7`; Demo `builtAt=2026-10-21T13:35:45.867Z`. The public version endpoint still has empty frontend/backend commit fields, so runtime commit identity from the app itself remains unavailable.
+- Post-deploy Demo 390px read-only UAT: `11/11 PASS`. Price Suggestions returned HTTP 502, but the request sent a UUID, the error state displayed it, and Retry sent a new UUID which was displayed. Reporting Dashboard returned HTTP 200. No horizontal overflow or business writes. Evidence: `UAT_ODOO_ERROR_CORRELATION_ONLINE_AFTER_E7DC67D.json`.
+- Broader post-deploy checks: `138 routes x 390/1440 = 272/276 PASS`; four failures are `/platform/audit` and `/platform/failures` returning 404 at both widths because those working-tree pages were not in the deployed candidate. Core interactions `14/14 PASS`, settings `26 PASS`, table/accessibility `14/14 PASS`, and `unexpectedWrites=0`. Evidence files are `UAT_ALL_STATIC_PAGES_POST_E7DC67D.json`, `UAT_INTERACTION_POST_E7DC67D.json`, `UAT_SETTINGS_MOBILE_POST_E7DC67D.json`, and `UAT_TABLE_A11Y_ONLINE_POST_E7DC67D.json`.
 - No production build was run locally. Java sources were not changed.
 
 ## Next
 
-Deploy the isolated frontend candidate through the configured Dokploy path, confirm the build and runtime identity, then rerun the live 390px error and retry checks. Investigate the upstream price-suggestions 502 from Cloudflare/origin logs separately.
+Investigate the Price Suggestions HTTP 502 in Cloudflare/origin logs. Validate the `/platform/audit` and `/platform/failures` working-tree pages with isolated fixtures, then pass the Java 21 pre-push gate for their backend dependencies before including them in a deployment. Keep the missing runtime commit fields documented until the app exposes them.

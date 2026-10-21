@@ -86,6 +86,20 @@ try {
         const validOutgoingId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(outgoingRequestId ?? "");
         record(`${spec.path} sends a UUID correlation ID`, validOutgoingId ? "PASS" : "FAIL", outgoingRequestId ?? "missing");
         record(`${spec.path} request ID shown`, Boolean(visibleId && bodyText.includes(visibleId)) ? "PASS" : correlationId || validOutgoingId ? "FAIL" : "BLOCKED", `${visibleId ?? "no response or outgoing correlation ID"}${correlationId ? " · response header" : " · outgoing fallback"}`);
+        if (status >= 500 && await page.getByRole("button", { name: "Retry" }).count()) {
+          const retryRequestPromise = page.waitForRequest((request) => new URL(request.url()).pathname === spec.apiPath);
+          const retryResponsePromise = page.waitForResponse((response) => new URL(response.url()).pathname === spec.apiPath);
+          await page.getByRole("button", { name: "Retry" }).click();
+          const retryRequest = await retryRequestPromise;
+          const retryResponse = await retryResponsePromise;
+          const retryRequestId = retryRequest.headers()["x-correlation-id"] ?? null;
+          const retryResponseId = retryResponse.headers()["x-correlation-id"] ?? null;
+          const retryVisibleId = retryResponseId ?? retryRequestId;
+          const retryBodyText = await page.locator("body").innerText();
+          const validRetryId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(retryRequestId ?? "");
+          record(`${spec.path} retry sends a new UUID`, validRetryId && retryRequestId !== outgoingRequestId ? "PASS" : "FAIL", retryRequestId ?? "missing");
+          record(`${spec.path} retry displays its request ID`, Boolean(retryVisibleId && retryBodyText.includes(retryVisibleId)) ? "PASS" : "FAIL", retryVisibleId ?? "missing");
+        }
       }
     }
     await page.screenshot({ path: path.join(screenshotDir, `${spec.path.split("/").at(-1)}-390.png`), fullPage: true });
@@ -99,11 +113,20 @@ try {
 
 const hardFailures = checks.filter((check) => check.status === "FAIL").length;
 const blocked = checks.filter((check) => check.status === "BLOCKED").length;
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const deploymentSha = process.env.PILOT_DEPLOYMENT_SHA?.toLowerCase() ?? null;
+const deploymentStatus = process.env.PILOT_DEPLOYMENT_STATUS ?? null;
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceCommit,
   target: base,
-  deploymentShaVerified: false,
+  deployment: deploymentSha ? {
+    sourceSha: deploymentSha,
+    status: deploymentStatus,
+    demoBuiltAt: process.env.PILOT_RUNTIME_BUILT_AT ?? null,
+  } : null,
+  deploymentShaVerified: deploymentStatus === "Done" && deploymentSha === sourceCommit,
+  runtimeCommitVerified: false,
   scope: "authenticated 390px browser read-only; non-GET API requests blocked",
   checks,
   blockedWrites,

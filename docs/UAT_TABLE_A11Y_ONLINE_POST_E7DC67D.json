@@ -1,0 +1,134 @@
+{
+  "generatedAt": "2026-10-21T14:28:41.430Z",
+  "sourceCommit": "e7dc67ddcc7c61e5f3b225be84457e142ef914a7",
+  "deployment": "e7dc67ddcc7c61e5f3b225be84457e142ef914a7",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only table accessibility regression; non-GET API calls blocked",
+  "checks": [
+    {
+      "name": "store users 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=1 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": [
+        {
+          "name": "Store users",
+          "headers": [
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "store roles 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "AI metrics 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "Odoo products 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=1 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": [
+        {
+          "name": "Odoo product catalogue",
+          "headers": [
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "stocktake 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "supply chain 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "invoice scan 390px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "store users 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "store roles 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "AI metrics 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "Odoo products 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=1 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": [
+        {
+          "name": "Odoo product catalogue",
+          "headers": [
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col",
+            "col"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "stocktake 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "supply chain 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    },
+    {
+      "name": "invoice scan 1440px",
+      "status": "PASS",
+      "detail": "http=200 tables=0 named=true scoped=true unnamedControls=0 suggestionsAfterClear=0 pageErrors=0",
+      "tables": []
+    }
+  ],
+  "blockedNonGet": [],
+  "unexpectedWrites": [],
+  "status": "PASS"
+}
