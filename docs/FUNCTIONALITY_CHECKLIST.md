@@ -521,3 +521,4 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Odoo save failure/retry fixture `7/7 PASS`; all PATCH calls were intercepted locally and no real Odoo business data was changed.
 - [ ] Online post-deploy verification of these changes and exact runtime SHA remains pending.
 - [ ] Current online baseline is not the new batch: version endpoint is `c4585ad` vs source `91cd5e2`; pricing read-only baseline is `8 PASS / 2 BLOCKED`, with Capped Pricing blocked by the old retired path. Dokploy returned `301`, so post-deploy verification must wait for Source/Git binding correction.
+- [x] Productization route fixture `31/31 PASS`: GST calculations are rounded to cents and price-suggestion pagination asserts the current 10-item page/continuation contract; all network calls intercepted, no live writes.

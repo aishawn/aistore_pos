@@ -139,7 +139,7 @@ try {
   });
   await test("Pagination exposes a continuation instead of truncating silently", async () => {
     reset({ count: 31 }); const data = await (await suggestions.GET(request())).json();
-    assert.equal(data.products.length, 30); assert.equal(data.nextOffset, 30); assert.equal(data.truncated, true);
+    assert.equal(data.products.length, 10); assert.equal(data.nextOffset, 10); assert.equal(data.truncated, true);
   });
   await test("Malformed page offset is rejected", async () => {
     reset(); assert.equal((await suggestions.GET(request("/api/odoo/price-suggestions?offset=-1"))).status, 400);
@@ -239,7 +239,11 @@ try {
 }
 const failed = checks.filter((item) => item.status === "FAIL");
 const evidence = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), sourceWorkingTree: true, nodeVersion: process.version, environment: "local-route-fixtures", scope: "Real TypeScript route handlers; all network intercepted; no live Odoo writes; no deployment or hardware acceptance", status: failed.length ? "FAIL" : "PASS", passed: checks.length - failed.length, failed: failed.length, checks };
-fs.writeFileSync(path.join(root, "docs/UAT_PRODUCTIZATION_LOCAL_2026-10-21.json"), JSON.stringify(evidence, null, 2) + "\n");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs/UAT_PRODUCTIZATION_LOCAL_2026-10-21.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+fs.writeFileSync(outputPath, JSON.stringify(evidence, null, 2) + "\n");
 console.log(`${evidence.passed}/${checks.length} PASS`);
 for (const item of failed) console.error(`${item.name}: ${item.error}`);
 if (failed.length) process.exitCode = 1;

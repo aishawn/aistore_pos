@@ -2272,6 +2272,7 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Local checks passed: Node 24 typecheck, targeted ESLint, `node --check`, and `git diff --check`; no local production build was run. This is a frontend-only batch and does not require the Java 21 backend gate.
 - Pending post-deploy verification: online hasNext pagination, clear controls, Odoo Bulk Price Edit next-page behavior, and live gateway error recovery. No production business writes are authorized for these checks.
 - Pre-deploy online baseline: `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_FRONTEND_BATCH_PENDING.json` returned `8 PASS / 2 BLOCKED / 0 FAIL`; `/api/public/version` still reported runtime `c4585ad`, while source was `91cd5e2`. The two blocks were the old runtime's empty/retired Capped Pricing path. Dokploy webhook returned HTTP `301`, so no further retries were made under the branch-mismatch rule.
+- Productization route regression is now `31/31 PASS` after aligning the fixture with the current Odoo price-suggestion page size (`10`) and rounding tax-inclusive/exclusive totals to cents. This remains local route-fixture evidence with all network calls intercepted and zero live writes.
 
 ## 2026-10-22 latest full AI recheck on `c4585ad`
 

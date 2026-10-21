@@ -83,7 +83,8 @@ function computeSimpleTaxTotals(price: number, taxes: SuggestionTax[]) {
   const totalExcluded = taxes[0].price_include ? price / (1 + rate) : price;
   if (!Number.isFinite(totalExcluded) || !Number.isFinite(totalIncluded)
     || totalExcluded <= 0 || totalIncluded < totalExcluded) return null;
-  return { total_excluded: totalExcluded, total_included: totalIncluded };
+  const cents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+  return { total_excluded: cents(totalExcluded), total_included: cents(totalIncluded) };
 }
 
 export async function GET(request: NextRequest) {
