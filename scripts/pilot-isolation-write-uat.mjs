@@ -26,7 +26,7 @@ function loadEnv() {
 }
 
 const env = loadEnv();
-const isolationDb = (process.env.ISOLATION_ODOO_DATABASE || "").trim();
+const isolationDb = (process.env.ISOLATION_ODOO_DATABASE || env.ISOLATION_ODOO_DATABASE || "").trim();
 const odooDb = (process.env.ODOO_DATABASE || env.ODOO_DATABASE || "").trim();
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;

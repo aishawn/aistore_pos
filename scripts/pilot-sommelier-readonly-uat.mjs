@@ -13,8 +13,9 @@ const env = Object.fromEntries(
       return [line.slice(0, index).trim(), line.slice(index + 1).trim()];
     }),
 );
-const base = "https://demo.orithos.com.au";
-if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
+const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWORD;
+if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const checks = [];
 const record = (name, status, evidence) => checks.push({ name, status, evidence });
@@ -42,7 +43,7 @@ async function request(path, method = "GET", data) {
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username: "admin", password },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));

@@ -220,7 +220,7 @@ try {
     reset({ loseQuantResponse: true }); const response = await stocktake.POST(request("/stocktake", countBody)); assert.equal(response.status, 502); assert.equal((await response.json()).code, 50290); assert.equal(state.writes, 1);
   });
   await test("Runtime version response whitelists public metadata", async () => {
-    reset(); const data = await (await route("public/version").GET()).json();
+    reset(); const data = await (await route("public/version").GET(request("/api/public/version"))).json();
     assert.equal(data.frontend.commit, null); assert.equal(data.backend.commit, "a".repeat(40)); assert.equal("secret" in data.backend, false);
   });
   await test("Local database variables cannot attest a production runtime", async () => {
