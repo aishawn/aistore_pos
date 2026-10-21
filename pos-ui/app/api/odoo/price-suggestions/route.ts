@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
 const HISTORY_DAYS = 28;
-const PAGE_SIZE = 30;
+// Each product may require two Odoo tax computations. Keep the page small
+// enough for the edge request budget; callers can continue with nextOffset.
+const PAGE_SIZE = 10;
 const DEFAULT_MARGIN = 0.3;
 const MIN_MARGIN = 0.05;
 const MAX_MARGIN = 0.8;
