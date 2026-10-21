@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-10-21T04:48:11.385Z",
+  "sourceCommit": "f7a7288fe295ce82f27a5fdbb9e88da32e937e37",
+  "target": "http://demo.localhost:3035",
+  "scope": "Local fixture: first Odoo read returns 401, session recovery returns user, read is replayed; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "Odoo session is recovered before replaying stocktake read",
+      "status": "PASS",
+      "stocktakeReads": 2,
+      "sessionReads": 1
+    },
+    {
+      "name": "recovered page remains usable",
+      "status": "PASS",
+      "errors": []
+    }
+  ]
+}
