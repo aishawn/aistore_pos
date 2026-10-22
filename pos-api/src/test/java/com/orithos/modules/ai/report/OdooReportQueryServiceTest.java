@@ -170,6 +170,7 @@ class OdooReportQueryServiceTest {
         JsonNode request = requests.get(1).path("params");
         assertEquals("product.product", request.path("model").asText());
         assertEquals("search_read", request.path("method").asText());
+        assertEquals("name asc, id asc", request.path("kwargs").path("order").asText());
         assertEquals(List.of("id", "display_name", "free_qty", "qty_available"),
                 MAPPER.convertValue(request.path("kwargs").path("fields"),
                         MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
