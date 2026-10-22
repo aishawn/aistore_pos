@@ -1,5 +1,14 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-22 companion coverage gaps
+
+The read-only companion suite confirms the platform guards and metrics, but
+exposes three functional gaps: text-based sommelier identification produced
+no product, the Odoo-only invoice OCR route is retired with `41001`, and
+report reconciliation has no source rows while live stock is unavailable.
+These are tracked as data/provider or endpoint gaps rather than passing
+results. No business writes were issued.
+
 ## 2026-10-22 latest runner evidence
 
 The retry-enabled full matrix is **244 PASS / 0 BLOCKED / 3 FAIL** across 247

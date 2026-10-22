@@ -1,5 +1,16 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 companion suite result
+
+Availability **3/3**, route **9/9**, surface/auth **11/11**, and metrics **9/9**
+passed. Features were **10 PASS / 1 FAIL / 2 BLOCKED**: sommelier text
+identification returned no product, its dependent checks were blocked, and
+invoice OCR returned retired code `41001`. Reports were **9/16**: sales rows
+were absent for the tested windows, so date reconciliation could not be
+proven; live stock safely returned unavailable. Evidence is recorded in
+`UAT_AI_FEATURES_VERIFY_2026-10-22_E8CAC11_RECHECK.json` and
+`UAT_AI_REPORTS_READONLY_2026-10-22_E8CAC11_RECHECK.json`.
+
 ## 2026-10-22 retry-enabled 247-case regression
 
 The retry-enabled runner completed the current catalogue against

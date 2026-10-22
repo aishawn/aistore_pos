@@ -1,5 +1,23 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 companion AI read-only suite
+
+The current Demo runtime also completed the companion checks: availability
+**3/3 PASS**, route matrix **9/9 PASS**, surface/auth **11/11 PASS**, and
+metrics **9/9 PASS**. The feature matrix returned **10 PASS / 1 FAIL / 2
+BLOCKED**: text sommelier identification returned no product, downstream
+pitch/ask/similar checks could not run, and the retired invoice OCR endpoint
+returned `41001`. Reports returned **9/16**; the four sales reconciliation
+failures are explained by zero source-backed sales rows, while live stock is
+blocked with the safe unavailable response. Evidence:
+`UAT_AI_FEATURES_VERIFY_2026-10-22_E8CAC11_RECHECK.json` and
+`UAT_AI_REPORTS_READONLY_2026-10-22_E8CAC11_RECHECK.json`.
+
+These checks remain read-only and issue no business writes. A report with no
+source rows is a data-availability failure, not a successful zero-sales
+claim; the invoice `41001` path must remain unavailable until an Odoo-native
+replacement is implemented and gated.
+
 ## 2026-10-22 retry-enabled full regression
 
 The updated online runner completed all **247** catalogue cases with
