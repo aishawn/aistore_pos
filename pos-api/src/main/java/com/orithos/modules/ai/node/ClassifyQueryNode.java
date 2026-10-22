@@ -15,6 +15,8 @@ import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.RawIntent;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
 import com.orithos.modules.ai.context.FollowUpSupport;
+import com.orithos.modules.ai.pricing.PricingChatBrief;
+import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import com.orithos.modules.ai.report.OdooReportQueryService;
 import com.orithos.modules.ai.report.ReportAdhocRouter;
 import com.orithos.modules.ai.report.TenantContext;
@@ -51,12 +53,14 @@ public class ClassifyQueryNode implements NodeAction {
     private final AiProperties properties;
     private final OdooReportQueryService reportQueryService;
     private final ObjectProvider<SommelierChatBrief> sommelierChatBrief;
+    private final ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief;
+    private final ObjectProvider<PricingChatBrief> pricingChatBrief;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
                              IntentSanitizeService sanitizeService,
                              AiProperties properties) {
-        this(chatClient, configService, sanitizeService, properties, null, null);
+        this(chatClient, configService, sanitizeService, properties, null, null, null, null);
     }
 
     public ClassifyQueryNode(ChatClient chatClient,
@@ -65,12 +69,25 @@ public class ClassifyQueryNode implements NodeAction {
                              AiProperties properties,
                              OdooReportQueryService reportQueryService,
                              ObjectProvider<SommelierChatBrief> sommelierChatBrief) {
+        this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief, null, null);
+    }
+
+    public ClassifyQueryNode(ChatClient chatClient,
+                             IntentConfigService configService,
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties,
+                             OdooReportQueryService reportQueryService,
+                             ObjectProvider<SommelierChatBrief> sommelierChatBrief,
+                             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
+                             ObjectProvider<PricingChatBrief> pricingChatBrief) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.sanitizeService = sanitizeService;
         this.properties = properties;
         this.reportQueryService = reportQueryService;
         this.sommelierChatBrief = sommelierChatBrief;
+        this.replenishmentChatBrief = replenishmentChatBrief;
+        this.pricingChatBrief = pricingChatBrief;
     }
 
     @Override
@@ -148,16 +165,9 @@ public class ClassifyQueryNode implements NodeAction {
         WorkflowRouteRouter.Override directWorkflow = WorkflowRouteRouter.maybeOverride(question);
         if (directWorkflow != null) {
             log.info("Workflow fast-path route={}", directWorkflow.route());
-            String summary = "Opening the requested workflow.";
-            if ("/sommelier".equals(directWorkflow.route()) && sommelierChatBrief != null) {
-                SommelierChatBrief brief = sommelierChatBrief.getIfAvailable();
-                if (brief != null) {
-                    summary = brief.brief(question, AssistantTenantContext.get());
-                }
-            }
             Map<String, Object> out = new HashMap<>();
             out.put("intent", directWorkflow.intent());
-            out.put("intent_summary", summary);
+            out.put("intent_summary", workflowChatSummary(directWorkflow.route(), question));
             out.put("slots", Map.of());
             out.put("ui_panel", "");
             out.put("ui_view", "");
@@ -189,11 +199,9 @@ public class ClassifyQueryNode implements NodeAction {
 
         Map<String, String> slots = FollowUpSupport.mergeMissingSlots(result.slots(), lastSlots);
         String summary = result.summary();
-        if ("/sommelier".equals(route) && sommelierChatBrief != null) {
-            SommelierChatBrief brief = sommelierChatBrief.getIfAvailable();
-            if (brief != null) {
-                summary = brief.brief(question, AssistantTenantContext.get());
-            }
+        if ("/sommelier".equals(route) || "/stock/replenishment".equals(route)
+                || "/stock/capped-pricing".equals(route)) {
+            summary = workflowChatSummary(route, question);
         }
 
         log.debug("Classified intent={}", intent);
@@ -207,6 +215,33 @@ public class ClassifyQueryNode implements NodeAction {
         out.put("ui_route", route);
         out.put("ui_action", nullToEmpty(result.action()));
         return out;
+    }
+
+    /**
+     * In-chat summary for navigate workflows (restock / pricing / wine). Falls back to a
+     * soft placeholder when the matching brief bean or Odoo data is unavailable.
+     */
+    private String workflowChatSummary(String route, String question) {
+        TenantContext tenant = AssistantTenantContext.get();
+        if ("/sommelier".equals(route) && sommelierChatBrief != null) {
+            SommelierChatBrief brief = sommelierChatBrief.getIfAvailable();
+            if (brief != null) {
+                return brief.brief(question, tenant);
+            }
+        }
+        if ("/stock/replenishment".equals(route) && replenishmentChatBrief != null) {
+            ReplenishmentChatBrief brief = replenishmentChatBrief.getIfAvailable();
+            if (brief != null) {
+                return brief.brief(question, tenant);
+            }
+        }
+        if ("/stock/capped-pricing".equals(route) && pricingChatBrief != null) {
+            PricingChatBrief brief = pricingChatBrief.getIfAvailable();
+            if (brief != null) {
+                return brief.brief(question, tenant);
+            }
+        }
+        return "Opening the requested workflow.";
     }
 
     private static boolean isStockWriteTarget(String question) {

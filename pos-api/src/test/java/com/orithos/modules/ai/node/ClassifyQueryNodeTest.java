@@ -5,8 +5,11 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
+import com.orithos.modules.ai.pricing.PricingChatBrief;
+import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Map;
 import java.util.Optional;
@@ -14,6 +17,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -239,6 +244,60 @@ class ClassifyQueryNodeTest {
         Map<String, Object> result = node.apply(state);
 
         assertEquals("report_adhoc", result.get("intent"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void restockWorkflowUsesChatBriefInsteadOfPlaceholder() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<ReplenishmentChatBrief> replenishmentProvider = mock(ObjectProvider.class);
+        ReplenishmentChatBrief brief = mock(ReplenishmentChatBrief.class);
+        when(replenishmentProvider.getIfAvailable()).thenReturn(brief);
+        when(brief.brief(anyString(), any())).thenReturn(
+                "Top restock suggestions (21d cover): 2 items need order.\n• VB — order 12\nTap below to review quantities and confirm any order.");
+
+        ClassifyQueryNode node = new ClassifyQueryNode(
+                chatClient, config, sanitizer, properties, null, null, replenishmentProvider, null);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("What should I restock?"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("navigate", result.get("intent"));
+        assertEquals("/stock/replenishment", result.get("ui_route"));
+        assertTrue(String.valueOf(result.get("intent_summary")).contains("Top restock suggestions"));
+        assertFalse(String.valueOf(result.get("intent_summary")).contains("Opening the requested workflow"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void pricingWorkflowUsesChatBriefInsteadOfPlaceholder() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<PricingChatBrief> pricingProvider = mock(ObjectProvider.class);
+        PricingChatBrief brief = mock(PricingChatBrief.class);
+        when(pricingProvider.getIfAvailable()).thenReturn(brief);
+        when(brief.brief(anyString(), any())).thenReturn(
+                "Prices that need review (target ≈30% net margin):\n• Shiraz — $24.99 → suggest $27.95\nTap below to open price review. Staff confirm any change on the page.");
+
+        ClassifyQueryNode node = new ClassifyQueryNode(
+                chatClient, config, sanitizer, properties, null, null, null, pricingProvider);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("Which prices to review?"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("navigate", result.get("intent"));
+        assertEquals("/stock/capped-pricing", result.get("ui_route"));
+        assertTrue(String.valueOf(result.get("intent_summary")).contains("Prices that need review"));
+        assertFalse(String.valueOf(result.get("intent_summary")).contains("Opening the requested workflow"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 

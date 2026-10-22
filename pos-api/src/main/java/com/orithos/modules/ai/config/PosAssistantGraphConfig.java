@@ -23,6 +23,8 @@ import com.orithos.modules.ai.report.FillReportSlotsNode;
 import com.orithos.modules.ai.report.OdooReportQueryNode;
 import com.orithos.modules.ai.report.OdooReportQueryService;
 import com.orithos.modules.ai.report.ReportRespondNode;
+import com.orithos.modules.ai.pricing.PricingChatBrief;
+import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import com.orithos.modules.ai.report.ReportTemplateRegistry;
 import com.orithos.modules.ai.sommelier.SommelierChatBrief;
 import org.springframework.ai.chat.client.ChatClient;
@@ -116,11 +118,14 @@ public class PosAssistantGraphConfig {
             OdooReportQueryNode odooReportQueryNode,
             ReportRespondNode reportRespondNode,
             OdooReportQueryService odooReportQueryService,
-            ObjectProvider<SommelierChatBrief> sommelierChatBriefProvider) throws GraphStateException {
+            ObjectProvider<SommelierChatBrief> sommelierChatBriefProvider,
+            ObjectProvider<ReplenishmentChatBrief> replenishmentChatBriefProvider,
+            ObjectProvider<PricingChatBrief> pricingChatBriefProvider) throws GraphStateException {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
                 posAssistantChatClient, intentConfigService, intentSanitizeService, properties,
-                odooReportQueryService, sommelierChatBriefProvider)));
+                odooReportQueryService, sommelierChatBriefProvider,
+                replenishmentChatBriefProvider, pricingChatBriefProvider)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
                 posAssistantChatClient, intentConfigService, properties, posAssistantTools)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)

@@ -36,7 +36,7 @@ public class SommelierChatBrief {
 
     public String brief(String question, TenantContext tenant) {
         if (tenant == null) {
-            return "Open wine recommendations when you are ready.";
+            return "Open wine recommendations when you are ready. Tap below to continue.";
         }
         try {
             RecommendRequest request = fromQuestion(question);
@@ -70,7 +70,7 @@ public class SommelierChatBrief {
             sb.append("\nTap below to open the full wine assistant.");
             return sb.toString();
         } catch (Exception e) {
-            return "Open wine recommendations when you are ready.";
+            return "Open wine recommendations when you are ready. Tap below to continue.";
         }
     }
 
