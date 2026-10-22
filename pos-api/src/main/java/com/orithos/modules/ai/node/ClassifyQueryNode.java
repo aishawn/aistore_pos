@@ -152,7 +152,7 @@ public class ClassifyQueryNode implements NodeAction {
             return shortcutResult(
                     "report_adhoc",
                     "This custom report is not available yet.",
-                    Map.of(), "", "", writeRoute, "");
+                    Map.of(), "", "", "", "");
         }
 
         AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
@@ -277,6 +277,30 @@ public class ClassifyQueryNode implements NodeAction {
         return question.matches(
                 "(?is).*(?:把.+?(?:价格|售价)\\s*(?:改成|调整为|设为)\\s*\\$?\\d+"
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+).*");
+    }
+
+    private static boolean isCustomerWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:customer|client|客户|顾客).*");
+    }
+
+    private static boolean isProductWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:product|item|catalogue|catalog|产品|商品).*");
+    }
+
+    private static boolean isStockMutationTarget(String question) {
+        return question != null && question.matches("(?is).*(?:stock|inventory|receive|收货|库存|盘点).*");
+    }
+
+    private static boolean isInvoiceWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:invoice|bill|发票|账单).*");
+    }
+
+    private static boolean isOrderWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:order|purchase|采购|订单).*");
+    }
+
+    private static boolean isSupplierWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:supplier|vendor|供应商).*");
     }
 
     private static boolean isWriteEntityResult(SanitizedIntent result) {

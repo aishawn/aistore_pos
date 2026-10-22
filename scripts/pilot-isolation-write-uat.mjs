@@ -70,11 +70,22 @@ if (!password) {
 evidence.isolationGate = "pass";
 
 async function login(page) {
-  await page.goto(`${base}/login`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByPlaceholder("Username").fill("admin");
-  await page.getByPlaceholder("Password").fill(password);
-  await page.getByRole("button", { name: "Login" }).click();
-  await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 30000 });
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(`${base}/login`, { waitUntil: "commit", timeout: 20000 });
+      await page.locator('input[name="username"]').waitFor({ state: "visible", timeout: 10000 });
+      await page.locator('input[name="username"]').fill("admin");
+      await page.locator('input[name="password"]').fill(password);
+      await page.getByRole("button", { name: "Login" }).click();
+      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 30000, waitUntil: "commit" });
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(1000 * (attempt + 1));
+    }
+  }
+  throw lastError;
 }
 
 async function waitForTotal(page, amount) {
@@ -137,7 +148,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
 try {
   await login(page);
-  const attestation = await page.request.get(`${base}/api/odoo/uat-context`);
+  const attestation = await page.request.get(`${base}/api/public/uat-context`);
   const runtime = attestation.ok() ? await attestation.json() : null;
   const candidate = process.env.SOURCE_COMMIT || "";
   if (!runtime?.isolated || runtime.database !== isolationDb
