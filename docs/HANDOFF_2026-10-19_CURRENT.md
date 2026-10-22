@@ -2584,3 +2584,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] 仍需在有源销售数据的测试窗口重跑 15 条报表问法，才能完成销售金额对账验收。
 - [x] d0669 companion suite：availability **3/3**、route **9/9**、surface/auth **11/11**、metrics **9/9 PASS**；覆盖 AI 开关、配置、空语音/图片、匿名 401、指标 UI 和无障碍检查。证据：`docs/UAT_AI_AVAILABILITY_D0669_2026-10-22.json`、`docs/UAT_AI_ROUTE_MATRIX_D0669_2026-10-22.json`、`docs/UAT_AI_SURFACE_D0669_2026-10-22.json`、`docs/UAT_AI_METRICS_D0669_2026-10-22.json`。
 
+## 2026-10-22 前端错误恢复与焦点状态批次交接
+
+- 报表错误分支 fixture **2/2 PASS**：`503` 显示错误、Retry 和 Request ID；`401` 显示连接 Odoo；390px 无横向溢出。证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`。
+- Platform Audit/Failures fixture **4/4 PASS**：390/1440px、重试恢复、无页面错误、无横向溢出、无非预期写入。证据：`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。
+- 补货供应商/RFQ 恢复 fixture **60/60 PASS**：初始 `503`、供应商加载失败、数量保持、RFQ 创建失败后的重试均通过。证据：`docs/UAT_REPLENISHMENT_SUPPLIER_RECOVERY_2026-10-22_UI-BATCH.json`。
+- Node 24 typecheck、定向 ESLint、脚本语法和 `git diff --check` 通过；未执行本地 production build、Docker build 或真实业务写入。
+- Dokploy 页面反馈最新部署“成功”，但 Demo `/api/public/version` 当前仍返回 frontend/backend `582b92fb199e312e828a5169cde14105a091f41a`。因此本批次尚未线上验证，不能把运行端点结果归因于当前候选。
+- 下一步：核对 Dokploy Source/Git 的仓库、`main` 分支、根目录 `/` 和 `docker-compose.yml`，再以版本接口精确匹配候选 SHA；匹配后重跑报表、补货和 Platform Audit/Failures 的 390/1440px 只读验收。
+
