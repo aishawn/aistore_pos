@@ -55,6 +55,14 @@ Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
 The served runtime was `c941a617`; runner source was `a63c84fb`, so this is not
 post-fix acceptance.
 
+Root cause: `ClassifyQueryNode` checks `WorkflowRouteRouter.hasWriteIntent`
+before `AssistantFastPathRouter`. The Chinese capability questions contained
+the words “直接下单”, so the write guard returned `unknown` before the help
+fast path could answer. Candidate `601ae0dd` makes the write guard defer to a
+matched `qa` capability question and adds English/Chinese regression cases.
+It has only passed static checks so far; the exact-SHA Java 21 gate is still
+required.
+
 ## 2026-10-22 current AI surface suite
 
 Against the same Demo window, the read-only companion suites reported:

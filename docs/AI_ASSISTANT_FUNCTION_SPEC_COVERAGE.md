@@ -38,6 +38,13 @@ capability variants; one incorrectly navigated to `/orders`. Evidence:
 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
 The runner source was `a63c84fb`, so this is a pre-fix served-runtime result.
 
+Root cause was confirmed in `ClassifyQueryNode`: the write-intent guard ran
+before the help fast path and classified capability questions containing
+“直接下单” as write requests. Candidate `601ae0dd` now lets matched `qa`
+questions bypass that guard and covers English/Chinese variants in
+`WorkflowRouteRouterTest`. Java 21 verification and post-deploy rerun remain
+pending.
+
 The same window's companion suites passed availability 3/3, routes 9/9,
 surface/auth 11/11, enabled gate, metrics 9/9 and UI 2/2. Features were
 14 PASS / 1 BLOCKED because invoice OCR is retired (`41001`); reports were

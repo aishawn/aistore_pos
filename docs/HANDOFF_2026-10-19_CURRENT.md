@@ -180,6 +180,7 @@
 - 后续 `c905902`、`dc465b3` 部署也为 `Error`，详情面板没有返回构建日志。当前 runner 本地审计为 245 条、245 个唯一 ID、0 重复，其中 88 条为禁止写入的 no-route 安全用例；`node --check` 与 `git diff --check` 通过。下一步仍需先取得同候选 SHA 的 Java 21 `mvn -B clean verify` 和匹配的运行 SHA，再执行新增 29 条及完整 245 条线上回归。
 - 之后 `c905902` runtime 成功承载新增 29 条问法回归，结果为 `28 PASS / 0 BLOCKED / 1 FAIL`；唯一失败是 `AI会直接下单吗` 返回 `unknown`。本地已扩展中文帮助正则并新增两条变体用例；目录现为 247 条、247 个唯一 ID、90 条 no-route。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`。当前 runtime/source 仍不匹配，且修复尚未通过同候选 SHA Java 21 门禁。
 - 完整 247 条回归随后在 `c941a617` runtime 上为 `244 PASS / 0 BLOCKED / 3 FAIL`；失败均为中文自动下单能力问法，1 条误导航到 `/orders`。本地候选 `a63c84fb` 已扩展帮助正则和 Java 断言，但尚未通过 Java 21 同 SHA 门禁或部署验收。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`。
+- 根因已确认：`ClassifyQueryNode` 先调用 `WorkflowRouteRouter.hasWriteIntent`，导致“AI会直接下单吗”等能力询问在帮助 fast path 前被判为写入。候选 `601ae0dd` 让匹配到 `qa` 的能力询问绕过写入守卫，并增加中英文回归断言；仍需同 SHA Java 21 门禁和部署后完整 247 条复测。
 
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
@@ -2487,3 +2488,11 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Platform Store detail owner-link copy and operation/setup pagination controls now expose visible keyboard focus states.
 - Register Closure detail Retry now matches the report-list recovery focus treatment.
 - Local typecheck/ESLint verification is pending this small follow-up; no production build or business write is authorized.
+
+## 2026-10-22 部署状态复核
+
+- 用户反馈 Dokploy 最新部署状态为“成功”。
+- Demo `/api/public/version` 当前 frontend/backend 均为 `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`，构建时间为 `2026-10-22T03:49:23Z`。
+- 本地 `HEAD` 与 `origin/main` 均为 `f4d4106488a3177f79c0584f350bc8e8120e5d82`。Dokploy 的“成功”对应旧提交，不能证明 `f4d41064` 的 Platform Store 详情页、Register Closure 详情 Retry 等改动已上线。
+- 后续验收必须先让 Dokploy 运行版本精确变为 `f4d41064`（或记录新的完整 SHA），再执行线上 UI/行为检查；当前只能引用本地证据。
+- 本次没有重试 webhook，也没有执行业务写入。
