@@ -103,9 +103,12 @@ function shortChatLinkLabel(label: string): string {
   return label.replace(/^Open\s+/i, "").trim() || label;
 }
 
+/** Quiet text-link CTA — secondary to the answer; click when interested. */
+const chatNavLinkClassName =
+  "inline-flex min-h-9 cursor-pointer items-center gap-1 rounded-md px-0.5 py-1 text-[12px] font-medium text-[var(--oh-muted)] underline decoration-[var(--oh-border)] underline-offset-2 transition-colors hover:text-[var(--oh-primary)] hover:decoration-[var(--oh-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2";
+
 /**
- * In-chat navigation actions.
- * One clear next step → solid primary; multiple recovery/related links → soft chips.
+ * In-chat navigation actions as quiet text links so the answer stays primary.
  */
 function ChatActionLinks({
   links,
@@ -118,27 +121,14 @@ function ChatActionLinks({
 }) {
   if (links.length === 0) return null;
 
-  if (links.length === 1) {
-    const link = links[0];
-    return (
-      <div className={cn("mt-2.5", className)}>
-        <button
-          type="button"
-          onClick={() => onOpenLink(link.href)}
-          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
-        >
-          {link.label}
-          <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div
       role="group"
-      aria-label="Related pages"
-      className={cn("mt-2.5 flex flex-wrap gap-1.5", className)}
+      aria-label={links.length > 1 ? "Related pages" : undefined}
+      className={cn(
+        "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1",
+        className,
+      )}
     >
       {links.map((link) => (
         <button
@@ -146,9 +136,9 @@ function ChatActionLinks({
           type="button"
           aria-label={link.label}
           onClick={() => onOpenLink(link.href)}
-          className="inline-flex min-h-10 cursor-pointer items-center gap-1 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
+          className={chatNavLinkClassName}
         >
-          {shortChatLinkLabel(link.label)}
+          {links.length === 1 ? link.label : shortChatLinkLabel(link.label)}
           <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
         </button>
       ))}
@@ -1684,7 +1674,6 @@ function DialogueView({
           const cards = msg.cards ?? [];
           const cardRoutes = new Set(cards.map((card) => card.ctaRoute).filter(Boolean));
           const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
-          const primaryCardCtaIndex = cards.findIndex((c) => c.ctaRoute && c.ctaLabel);
           return (
           <div
             key={i}
@@ -1717,10 +1706,7 @@ function DialogueView({
               </span>
             ) : cards.length > 0 ? (
               <div className="space-y-2">
-                {cards.map((card, cardIndex) => {
-                  const isPrimaryCardCta =
-                    Boolean(card.ctaRoute && card.ctaLabel) && cardIndex === primaryCardCtaIndex;
-                  return (
+                {cards.map((card, cardIndex) => (
                   <section
                     key={`${card.type}-${cardIndex}`}
                     aria-label={card.title}
@@ -1758,20 +1744,14 @@ function DialogueView({
                       <button
                         type="button"
                         onClick={() => onOpenLink(card.ctaRoute!)}
-                        className={cn(
-                          "mt-2 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2",
-                          isPrimaryCardCta
-                            ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
-                            : "border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]",
-                        )}
+                        className={cn(chatNavLinkClassName, "mt-1.5")}
                       >
                         {card.ctaLabel}
-                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       </button>
                     ) : null}
                   </section>
-                  );
-                })}
+                ))}
                 {msg.reportId ? (
                   <a
                     href={`/reports/ai/${msg.reportId}`}
