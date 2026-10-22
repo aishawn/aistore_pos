@@ -5,6 +5,13 @@
 - [x] 本地 fixture：报表 503/401 `2/2 PASS`；Platform Audit/Failures 双视口 `4/4 PASS`；无业务写入；Node typecheck、定向 ESLint、脚本语法检查通过。
 - [ ] 本批仅修改前端和 UAT 脚本，未运行 production build/Docker build；尚未部署 Dokploy。下一阶段与更多 UI 改动合批后部署，再核对 `/api/public/version` 和线上 390/1440px 结果。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。
+- 候选 `1cd417c3` 已成功推送到 `origin/main`；手动 webhook 返回 `301 Branch Not Match`，约一分钟内两次 `/api/public/version` 探针仍为前后端 `582b92fb`。线上结果不能归因到本批，下一步需在 Dokploy 修正 Source/Git 分支后再触发一次部署。
+
+## 2026-10-22 AI 用户问法回归（最新）
+
+- [x] 247 条自然语言问法已在线只读执行：**246 PASS / 0 BLOCKED / 1 FAIL**。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_7911D0D4_DATA-AWARE-247.json`。
+- [ ] 唯一失败为 `Recommend something in stock for steak`：route 已到 `/sommelier`，intent 却为 `report_adhoc`。工作区已补充 `in stock` 推荐短语的确定性路由和回归断言；涉及 `pos-api`，尚未通过同 SHA Java 21 `mvn -B clean verify`，不可部署或宣称已修复。
+- [x] 用户问法目录继续覆盖补货、定价、侍酒推荐、库存/目录、报表、发票、帮助、权限、提示注入和执行型安全边界；所有本轮请求均为 Assistant API-only，业务写入为 0。
 
 ## 2026-10-22 交互验收最终结果（最新）
 

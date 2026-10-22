@@ -5,6 +5,7 @@
 - [x] Platform Audit/Failures fixture：`4/4 PASS`（390/1440px），重试恢复、无页面错误、无业务写入。
 - [ ] 待与下一批前端改动合并后部署 Dokploy，再执行 Demo 线上报表 503/401 语义和平台路由复验。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。
+- [ ] 候选 `1cd417c3` 已推送，但 webhook 返回 `301 Branch Not Match`；版本端点仍是 `582b92fb`，尚未取得候选 runtime 身份。
 
 ## 2026-10-22 交互 UAT 最终分类（线上 e0a867b runtime）
 
