@@ -11,7 +11,7 @@ export type OdooRecordType =
   | "sales";
 
 export type OdooSalesStatusFilter = "all" | "completed" | "refunded" | "cancelled" | "draft";
-export type OdooSalesPeriodFilter = "all" | "24h" | "7d" | "30d";
+export type OdooSalesPeriodFilter = "all" | "24h" | "7d" | "30d" | "90d" | "180d";
 
 export interface OdooPage<T> {
   items: T[];

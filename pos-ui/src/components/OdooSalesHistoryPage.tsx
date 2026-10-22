@@ -459,6 +459,8 @@ export function OdooSalesHistoryPage() {
                 <option value="24h">Last 24 hours</option>
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+                <option value="180d">Last 180 days</option>
               </select>
             </label>
             <label className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)]">

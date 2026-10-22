@@ -29,7 +29,7 @@ type OverviewData = {
   timezone: string;
   sampleDataCleared?: boolean;
   sampleDataClearedAt?: string | null;
-  trendGranularity: "hour" | "day";
+  trendGranularity: "hour" | "day" | "week";
   revenue: number;
   grossSales?: number;
   refunds?: number;
@@ -65,6 +65,8 @@ const OVERVIEW_RANGES = [
   { hours: 24, label: "24 hours" },
   { hours: 168, label: "7 days" },
   { hours: 720, label: "30 days" },
+  { hours: 2160, label: "90 days" },
+  { hours: 4320, label: "180 days" },
 ] as const;
 
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";

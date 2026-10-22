@@ -203,10 +203,17 @@ export async function POST(request: NextRequest) {
   }
 
   if (body.period !== undefined) {
-    if (type !== "sales" || !["all", "24h", "7d", "30d"].includes(body.period)) {
+    const periodHours: Record<string, number> = {
+      "24h": 24,
+      "7d": 168,
+      "30d": 720,
+      "90d": 2160,
+      "180d": 4320,
+    };
+    if (type !== "sales" || !["all", ...Object.keys(periodHours)].includes(body.period)) {
       return NextResponse.json({ message: "Sales period filter is invalid" }, { status: 400 });
     }
-    const hours = body.period === "24h" ? 24 : body.period === "7d" ? 168 : body.period === "30d" ? 720 : 0;
+    const hours = periodHours[body.period] ?? 0;
     if (hours) {
       const from = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
       domain.push(["date_order", ">=", from]);
@@ -247,6 +254,14 @@ export async function POST(request: NextRequest) {
       domain.push(["id", "in", companyIds]);
     } else if (type !== "posCategories") {
       domain.push(["company_id", "in", companyIds]);
+    }
+
+    // After sample purge, hide seeded demo POS orders so History matches Reporting.
+    if (type === "sales" && forced.binding?.sampleDataClearedAt) {
+      const companyId = companyIds[0];
+      if (companyId) {
+        domain.push(["!", ["uuid", "=like", `demo-seed-${companyId}-%`]]);
+      }
     }
 
     // Fetch one extra record so the client can render a truthful next-page

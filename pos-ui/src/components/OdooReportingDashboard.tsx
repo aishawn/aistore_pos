@@ -6,6 +6,8 @@ import { Activity, AlertCircle, ArrowUpRight, Clock3, LoaderCircle, RefreshCw, R
 import { fetchOdooRoute } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
 
+type TrendGranularity = "hour" | "day" | "week";
+
 type DashboardData = {
   rangeHours: number;
   from: string;
@@ -13,7 +15,8 @@ type DashboardData = {
   company: string;
   currency: string;
   timezone: string;
-  trendGranularity: "hour" | "day";
+  sampleDataCleared?: boolean;
+  trendGranularity: TrendGranularity;
   revenue: number;
   grossSales: number;
   refunds: number;
@@ -38,7 +41,22 @@ const ranges = [
   { hours: 24, label: "Last 24 hours" },
   { hours: 168, label: "Last 7 days" },
   { hours: 720, label: "Last 30 days" },
+  { hours: 2160, label: "Last 90 days" },
+  { hours: 4320, label: "Last 180 days" },
 ];
+
+const DEFAULT_RANGE_HOURS = 720;
+const MAX_RANGE_HOURS = 4320;
+
+function nextWiderRange(hours: number) {
+  return ranges.find((range) => range.hours > hours) ?? null;
+}
+
+function trendLabelOptions(granularity: TrendGranularity): Intl.DateTimeFormatOptions {
+  return granularity === "hour"
+    ? { hour: "2-digit", minute: "2-digit" }
+    : { day: "2-digit", month: "short" };
+}
 
 function formatMoney(value: number, currency: string) {
   try {
@@ -58,7 +76,7 @@ function formatGroupedDate(value: string, options: Intl.DateTimeFormatOptions) {
 
 export function OdooReportingDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [rangeHours, setRangeHours] = useState(8);
+  const [rangeHours, setRangeHours] = useState(DEFAULT_RANGE_HOURS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
@@ -119,9 +137,11 @@ export function OdooReportingDashboard() {
     const totalRevenue = data.trend.reduce((sum, item) => sum + item.revenue, 0);
     const totalTransactions = data.trend.reduce((sum, item) => sum + item.transactions, 0);
     const peak = data.trend.reduce((highest, item) => item.revenue > highest.revenue ? item : highest, data.trend[0]);
-    const peakLabel = formatGroupedDate(peak.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+    const peakLabel = formatGroupedDate(peak.label, trendLabelOptions(data.trendGranularity));
     return `${data.trend.length} periods with ${formatMoney(totalRevenue, data.currency)} in sales across ${totalTransactions} transactions. Highest period: ${peakLabel} at ${formatMoney(peak.revenue, data.currency)}.`;
   }, [data]);
+  const rangeLabel = ranges.find((item) => item.hours === rangeHours)?.label ?? "this period";
+  const widerRange = nextWiderRange(rangeHours);
 
   if (loading && !data) return <DashboardSkeleton />;
 
@@ -204,7 +224,7 @@ export function OdooReportingDashboard() {
               <p id="sales-trend-summary" className="sr-only">{trendSummary}</p>
               {data.trend.map((item, index) => {
                 const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
-                const label = formatGroupedDate(item.label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
+                const label = formatGroupedDate(item.label, trendLabelOptions(data.trendGranularity));
                 return <div key={`${item.label}-${index}`} role="img" aria-label={`${label}: ${formatMoney(item.revenue, data.currency)}, ${item.transactions} sales`} tabIndex={0} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
                   <div className="oh-type-meta mb-1 w-full min-w-0 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100" title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`}>{formatMoney(item.revenue, data.currency)}</div>
                   <div className="relative mx-auto w-full max-w-14 rounded-t bg-[var(--oh-orange)]/85 transition-colors group-hover:bg-[var(--oh-orange)]" style={{ height: `${percent}%` }} title={`${formatMoney(item.revenue, data.currency)} · ${item.transactions} sales`} />
@@ -213,11 +233,33 @@ export function OdooReportingDashboard() {
               })}
             </div>
             <div className="mt-2 flex justify-between gap-3 text-xs text-[var(--oh-muted)] sm:hidden" aria-hidden="true">
-              <span>{formatGroupedDate(data.trend[0].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
-              <span>{formatGroupedDate(data.trend[data.trend.length - 1].label, data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" })}</span>
+              <span>{formatGroupedDate(data.trend[0].label, trendLabelOptions(data.trendGranularity))}</span>
+              <span>{formatGroupedDate(data.trend[data.trend.length - 1].label, trendLabelOptions(data.trendGranularity))}</span>
             </div>
             </>
-          ) : <div className="grid h-48 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No sales in this period</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Open a register session and complete a sale to see the trend.</p><Link href="/" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link></div></div>}
+          ) : (
+            <div className="grid h-48 place-items-center px-4 text-center">
+              <div>
+                <p className="oh-type-body-strong text-[var(--oh-text)]">No sales in this period</p>
+                <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+                  No completed Odoo POS orders in {rangeLabel}. Shopfront R2 archive receipts are not included in these totals.
+                  {data?.sampleDataCleared ? " Demo sample orders were cleared for this store." : ""}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  {widerRange && rangeHours < MAX_RANGE_HOURS ? (
+                    <button
+                      type="button"
+                      onClick={() => setRangeHours(widerRange.hours)}
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]"
+                    >
+                      Try {widerRange.label}
+                    </button>
+                  ) : null}
+                  <Link href="/" className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Go to Sell</Link>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="flex flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
@@ -231,12 +273,33 @@ export function OdooReportingDashboard() {
                 <div className="min-w-0"><p className="oh-type-body-strong truncate text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p><p className="oh-type-meta mt-1 truncate text-[var(--oh-muted)]">{sale.amount_total < 0 ? "Refund · " : "Sale · "}{sale.partner_id ? sale.partner_id[1] : "Walk-in customer"} · {formatDate(sale.date_order, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone)}</p></div>
                 <span className={`oh-type-body-strong shrink-0 tabular-nums ${sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]"}`}>{formatMoney(sale.amount_total, data.currency)}</span>
               </li>)}
-            </ul> : <div className="grid min-h-44 place-items-center px-4 text-center"><div><p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p><p className="oh-type-label mt-1 text-[var(--oh-muted)]">Completed Odoo POS orders will appear here.</p><Link href="/history/odoo" className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link></div></div>}
+            </ul> : (
+              <div className="grid min-h-44 place-items-center px-4 text-center">
+                <div>
+                  <p className="oh-type-body-strong text-[var(--oh-text)]">No recent sales</p>
+                  <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+                    No completed Odoo POS orders in {rangeLabel}. Widen the period or open sales history for all-time Odoo rows.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    {widerRange ? (
+                      <button
+                        type="button"
+                        onClick={() => setRangeHours(widerRange.hours)}
+                        className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
+                      >
+                        Try {widerRange.label}
+                      </button>
+                    ) : null}
+                    <Link href="/history/odoo" className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">Open sales history</Link>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </div>
 
-      <p className="oh-type-meta inline-flex flex-wrap items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Data through {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}{lastLoadedAt !== null && <> · Loaded {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</>}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds.</p>
+      <p className="oh-type-meta inline-flex flex-wrap items-center gap-2 text-[var(--oh-muted)]"><Clock3 size={14} />Data through {data ? formatDate(data.to, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }, data.timezone) : "—"}{lastLoadedAt !== null && <> · Loaded {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</>}. Sales excludes drafts, cancelled orders, and refunds; net sales deduct refunds. R2 archive is not included.</p>
     </main>
   );
 }

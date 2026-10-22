@@ -9,7 +9,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SESSION_COOKIE = "orithos_odoo_session";
-const ALLOWED_RANGES = new Set([8, 24, 168, 720]);
+// Sliding windows in hours: 8h, 24h, 7d, 30d, 90d, 180d.
+const ALLOWED_RANGES = new Set([8, 24, 168, 720, 2160, 4320]);
+const DEFAULT_RANGE_HOURS = 720;
 
 type RpcResult<T> = { result?: T; error?: { message?: string; data?: { message?: string } } };
 
@@ -134,13 +136,14 @@ async function loadLineExtras(sessionId: string, lineDomain: unknown[], correlat
 }
 
 async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: number, timezone: string, correlationId?: string | null) {
-  const granularity = rangeHours <= 24 ? "hour" : "day";
+  // Hourly for short windows; daily through 30d; weekly for 90d/180d so the chart stays readable.
+  const granularity = rangeHours <= 24 ? "hour" : rangeHours <= 720 ? "day" : "week";
   try {
     const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], [`date_order:${granularity}`]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity };
   } catch (error) {
-    // Odoo versions before 18 do not support hourly date grouping.
-    if (granularity !== "hour") throw error;
+    // Older Odoo builds may lack hour/week date grouping — fall back to day.
+    if (granularity === "day") throw error;
     const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity: "day" };
   }
@@ -152,8 +155,8 @@ export async function GET(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return errorResponse("Odoo session expired", 401, correlationId);
 
-  const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? 8);
-  const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : 8;
+  const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? DEFAULT_RANGE_HOURS);
+  const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : DEFAULT_RANGE_HOURS;
   const end = new Date();
   const start = new Date(end.getTime() - rangeHours * 60 * 60 * 1000);
   const from = start.toISOString().slice(0, 19).replace("T", " ");
