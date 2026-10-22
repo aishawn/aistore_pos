@@ -2602,10 +2602,16 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 下一步：将本批与当前前端候选合并后，在 Dokploy Source/Git 修正并取得 exact runtime SHA，再重跑客户、供应商和采购页面的线上焦点与错误恢复检查。
 - 本轮候选 `71318249` 已推送到 `origin/main`；Dokploy webhook 返回 HTTP `301 Branch Not Match`，未继续重试。Demo 版本接口仍为 frontend/backend `582b92fb199e312e828a5169cde14105a091f41a`，本批未线上验证。
 
+## 2026-10-22 隔离业务闭环首次执行
+
+- 已确认隔离 Odoo 数据库 `aipos_uat` 存在；本地 `ODOO_DATABASE`、`ODOO_DATABASE_UAT` 和 `ISOLATION_ODOO_DATABASE` 均指向 `aipos_uat`。创建脚本未重复创建数据库。
+- 已获授权后启动隔离销售/退款 UAT；隔离门禁通过，但 Demo 登录在 30 秒内未完成，脚本在任何业务写入前停止。证据：`docs/UAT_ISOLATION_WRITE_2026-10-22.json`，`sales=[]`、`refunds=[]`，业务写入为 0。
+- 当前阻断是线上 runtime/登录身份，不是销售或退款业务断言：Demo 版本接口仍为 `582b92fb`，候选为 `76835aeb`；需先让独立 UAT runtime 证明 `aipos_uat` 和 exact SHA，再重跑写入闭环。
+
 ## 2026-10-22 AI 用户问法扩展（本地待门禁）
 
-- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 255 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
-- 本轮新增 “Suggest something for steak”“AI会不会自动下单？”和 “Top up these items to 50 units”等短口语/数量型问法，并补充 Java 路由回归。
+- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 257 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
+- 本轮新增 “Suggest something for steak”“AI会不会自动下单？”、“Top up these items to 50 units”以及中英文分类数量型补货问法，并补充 Java 路由回归。
 - 本地静态检查通过；未运行本地 build/Maven。后端候选必须先通过 exact-SHA Java 21 mvn -B clean verify，再部署并用同 SHA 线上回归。线上旧证据不代表本轮修改已生效。
 
 ## 2026-10-22 252 条 AI 问法线上复测
@@ -2618,6 +2624,7 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 
 - runner 增加 TimeoutError 瞬时失败重试；255 条全量结果为 248 PASS / 0 BLOCKED / 7 FAIL。
 - 7 个失败均来自 Demo 582b92fb 未包含当前源码的稳定路由/能力边界；证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_255-CURRENT-RETRY.json。
+- 新增分类数量型补货问法定向只读结果为 1 PASS / 0 BLOCKED / 1 FAIL；中文保持无路由，英文仍误导航到补货页，证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NEW-REPLENISHMENT-BOUNDARIES.json。Demo runtime 与当前 source SHA 不匹配，不能据此否定工作区修复。
 - 当前仍不可推送 pos-api：缺少 exact-SHA Java 21 mvn -B clean verify 远程门禁。
 
 ## 2026-10-22 AI 配套能力复测

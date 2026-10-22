@@ -705,9 +705,15 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] 当前公网目录只读回归：`44/44 PASS`，覆盖 320/390/1024/1440px、客户/供应商/商品搜索清除、AI 入口焦点陷阱和 Escape 恢复；证据：`docs/UAT_DIRECTORIES_ASSISTANT_ONLINE_2026-10-22_DIRECTORY-FOCUS.json`。
 - [ ] 本批源码尚未取得匹配的 Dokploy runtime SHA；公网回归只作为旧 runtime 基线，不能标记为本批线上验收。
 - [ ] 候选 `71318249` 的 Dokploy webhook 返回 `301 Branch Not Match`；Demo 仍为 `582b92fb`，需修正 Source/Git 后再部署验收。
+
+## 2026-10-22 隔离业务闭环启动
+
+- [x] 已确认 `aipos_uat` 隔离 Odoo 数据库存在，本地隔离变量一致。
+- [x] 隔离销售/退款脚本通过数据库门禁后启动；因线上 Demo 登录超时在写入前停止，`sales=[]`、`refunds=[]`，业务写入为 0。证据：`docs/UAT_ISOLATION_WRITE_2026-10-22.json`。
+- [ ] 需要独立 UAT runtime 同时证明 `aipos_uat`、admin 登录和候选 exact SHA 后，才能继续销售、退款、采购收货、库存、改价和关班写入验收。
 ## AI 助手自然问法回归
 
-- [x] 255 条唯一用户问法目录，包含中英混合、收银员短句、日期/指标变体、能力问答、提示注入和执行型安全用例。
+- [x] 257 条唯一用户问法目录，包含中英混合、收银员短句、日期/指标变体、能力问答、提示注入和执行型安全用例。
 - [x] 新增侍酒推荐自然表达、自动下单能力问答和数量型补货执行拦截的源代码回归断言。
 - [x] node --check、git diff --check 通过。
 - [ ] 运行时回归、Java 21 exact-SHA 门禁和部署身份复核待完成；整体试点仍 NO-GO。

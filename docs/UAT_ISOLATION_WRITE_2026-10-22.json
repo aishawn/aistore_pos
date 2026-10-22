@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-22T08:06:43.501Z",
+  "baseUrl": "https://demo.orithos.com.au",
+  "isolationOdooDatabase": "aipos_uat",
+  "odooDatabase": "aipos_uat",
+  "isolationGate": "pass",
+  "result": "FAIL",
+  "sales": [],
+  "refunds": [],
+  "errors": [
+    "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://demo.orithos.com.au/login\"\n============================================================"
+  ]
+}
