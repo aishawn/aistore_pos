@@ -35,6 +35,7 @@ import {
   type SidebarIcon,
   type SidebarItem,
 } from "@/lib/sidebar-navigation";
+import { useAuth } from "@/lib/auth";
 import { useUnsavedChangesOptional } from "@/lib/unsaved-changes";
 import { cn } from "@/lib/utils";
 
@@ -65,6 +66,7 @@ const SETTINGS_SUB_ICONS: Record<string, LucideIcon> = {
   "/settings/barcodes": Barcode,
   "/settings/pricesets": SlidersHorizontal,
   "/settings/registers-outlets": MapPin,
+  "/reports/ai/metrics": BarChart3,
   "/enterprise": Building2,
 };
 
@@ -112,7 +114,9 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const guardNav = useGuardedNav();
+  const { user } = useAuth();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
+  const navigation = getSidebarNavigation({ isAdmin: Boolean(user?.isAdmin) });
 
   return (
     <aside
@@ -135,7 +139,7 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         <ul className="flex flex-col gap-0.5">
-          {getSidebarNavigation().map((entry) =>
+          {navigation.map((entry) =>
             isGroup(entry) ? (
               <SidebarNavGroup key={entry.label} group={entry} pathname={pathname} guardNav={guardNav} onNavigate={onNavigate} tabIndex={checkoutKeyboard ? -1 : undefined} />
             ) : (

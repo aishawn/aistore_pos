@@ -27,6 +27,8 @@ export interface SidebarGroupItem {
   more?: boolean;
   /** One-line description shown under the label. */
   hint?: string;
+  /** Hidden from the sidebar unless the signed-in user is a store admin. */
+  adminOnly?: boolean;
 }
 
 export interface SidebarGroup {
@@ -67,8 +69,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "inventory",
     items: [
       { label: "Products", href: "/products/odoo" },
-      { label: "Replenishment Plan", href: "/stock/replenishment" },
-      { label: "Price Suggestions", href: "/stock/price-suggestions" },
+      { label: "Replenishment", href: "/stock/replenishment" },
       { label: "Purchases", href: "/purchases/odoo" },
       { label: "Suppliers", href: "/suppliers/odoo" },
     ],
@@ -102,7 +103,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Identify Wine Label", href: "/sommelier/identify" },
       { label: "Price Suggestions", href: "/stock/price-suggestions" },
       { label: "Scan Supplier Invoice", href: "/invoices/scan" },
-      { label: "AI Report Metrics", href: "/reports/ai/metrics" },
     ],
   },
   {
@@ -120,6 +120,13 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Receipts", href: "/settings/receipts" },
       { label: "Hardware", href: "/settings/hardware" },
       { label: "Account", href: "/settings/account" },
+      // Ops health for store admins — not a cashier / Q&A quality surface.
+      {
+        label: "AI query health",
+        href: "/reports/ai/metrics",
+        adminOnly: true,
+        hint: "Admin-only volume, latency, and guard rates",
+      },
     ],
   },
 ];
@@ -141,10 +148,29 @@ export const SIDEBAR_CLASSIC_DEBUG: SidebarGroup[] = [
   },
 ];
 
-export function getSidebarNavigation(): (SidebarItem | SidebarGroup)[] {
+function isSidebarGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
+  return "items" in entry;
+}
+
+/**
+ * Primary store navigation. Pass `isAdmin` so admin-only ops links (e.g. AI
+ * query health) stay out of cashier sidebars.
+ */
+export function getSidebarNavigation(options?: {
+  isAdmin?: boolean;
+}): (SidebarItem | SidebarGroup)[] {
   const showClassic =
     typeof process !== "undefined" &&
     process.env.NEXT_PUBLIC_SHOW_CLASSIC_POS === "true";
-  if (!showClassic) return SIDEBAR_MAIN;
-  return [...SIDEBAR_MAIN, ...SIDEBAR_CLASSIC_DEBUG];
+  const base = showClassic ? [...SIDEBAR_MAIN, ...SIDEBAR_CLASSIC_DEBUG] : SIDEBAR_MAIN;
+  const isAdmin = options?.isAdmin === true;
+  return base
+    .map((entry) => {
+      if (!isSidebarGroup(entry)) return entry;
+      return {
+        ...entry,
+        items: entry.items.filter((item) => !item.adminOnly || isAdmin),
+      };
+    })
+    .filter((entry) => !isSidebarGroup(entry) || entry.items.length > 0);
 }

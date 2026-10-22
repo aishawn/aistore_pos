@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Clock3, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { apiFailureMessage, fetchAiReportMetrics, type AiReportMetrics } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 const windows = [
   { hours: 24, label: "Last 24 hours" },
@@ -11,6 +12,8 @@ const windows = [
 ];
 
 export function AiMetricsPage() {
+  const { user, ready } = useAuth();
+  const isAdmin = Boolean(user?.isAdmin);
   const [hours, setHours] = useState(24);
   const [data, setData] = useState<AiReportMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +21,7 @@ export function AiMetricsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (refresh = false) => {
+    if (!isAdmin) return;
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -29,21 +33,41 @@ export function AiMetricsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [hours]);
+  }, [hours, isAdmin]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!ready) return;
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+    void load();
+  }, [load, ready, isAdmin]);
 
-  if (loading && !data) {
+  if (!ready || (loading && !data && isAdmin)) {
     return <main aria-label="Loading AI metrics" className="grid h-full place-items-center bg-[var(--oh-surface)]"><LoaderCircle className="animate-spin text-[var(--oh-primary)]" /></main>;
+  }
+
+  if (!isAdmin) {
+    return (
+      <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          Only store administrators can view AI query health (volume, latency, and guard rates). This is an ops dashboard — not a Q&amp;A quality review.
+        </div>
+      </main>
+    );
   }
 
   return (
     <main aria-busy={loading || refreshing} className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Orithos AI · Admin</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI query metrics</h1>
-          <p className="oh-type-label mt-1 max-w-2xl text-[var(--oh-muted)]">Read-only report and assistant audit metrics for this store. Questions, answers and generated SQL are intentionally excluded.</p>
+          <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Setup · Store admin</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI query health</h1>
+          <p className="oh-type-label mt-1 max-w-2xl text-[var(--oh-muted)]">
+            Ops view for this store: request volume, AI guard pass/reject rate, latency, and estimated tokens.
+            Not a Q&amp;A quality scorecard — questions, answers, and generated SQL are never shown.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="ai-metrics-window">Metrics window</label>
