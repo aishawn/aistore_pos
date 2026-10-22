@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Eraser, ExternalLink, History, MessageCircle, Mic, Send, X } from "lucide-react";
+import { Eraser, ExternalLink, History, MessageCircle, Mic, Plus, Send, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
@@ -171,6 +171,7 @@ export function SellAiPanel({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyThreads, setHistoryThreads] = useState<AiChatThreadSummary[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(true);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -201,6 +202,20 @@ export function SellAiPanel({
   const restoreFabRef = useRef(false);
 
   useDialogFocus(expanded, collapsePanel, "assistant", inputRef);
+
+  // A mobile assistant is a modal workspace. Keep the page underneath from
+  // scrolling while it is open, then restore the exact previous value.
+  useEffect(() => {
+    if (!expanded || !mobileOnly) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [expanded, mobileOnly]);
 
   useEffect(() => {
     if (expanded) {
@@ -480,6 +495,7 @@ export function SellAiPanel({
     setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
     setThreadId(null);
     setHistoryOpen(false);
+    setQuickActionsOpen(true);
   }
 
   async function openHistory() {
@@ -518,6 +534,7 @@ export function SellAiPanel({
           : [{ role: "assistant", text: greetingText(aiEnabled) }],
       );
       setThreadId(detail.sessionKey);
+      setQuickActionsOpen(false);
       setHistoryOpen(false);
     } catch (e) {
       setHistoryError(aiFailureMessage(e, "chat"));
@@ -537,6 +554,7 @@ export function SellAiPanel({
   async function submitInput() {
     const trimmed = input.trim();
     if (!trimmed || busy || busyRef.current || aiEnabled === false) return;
+    setQuickActionsOpen(false);
     await runIntent(trimmed);
   }
 
@@ -875,6 +893,7 @@ export function SellAiPanel({
   }
 
   function runQuickAction(action: string) {
+    setQuickActionsOpen(false);
     // Route sample questions through the assistant; keep direct navigation available when chat is off.
     if (action === "Today's sales") {
       if (aiEnabled === false) {
@@ -1076,34 +1095,50 @@ export function SellAiPanel({
       ref={floatRef}
       className={cn(
         "pointer-events-none fixed z-[80] flex flex-col items-end",
+        mobileOnly && expanded && "inset-0 h-dvh w-full",
         dragging && "select-none",
       )}
       style={{
-        left: anchor.x,
-        top: anchor.y,
-        transform: "translate(-100%, -100%)",
+        ...(mobileOnly && expanded
+          ? { left: 0, top: 0, transform: "none" }
+          : { left: anchor.x, top: anchor.y, transform: "translate(-100%, -100%)" }),
       }}
     >
+      {mobileOnly && expanded && (
+        <button
+          type="button"
+          aria-label="Close assistant"
+          className="pointer-events-auto fixed inset-0 z-0 cursor-default bg-slate-950/50"
+          onClick={collapsePanel}
+        />
+      )}
       {expanded && (
         <div
           role="dialog"
           aria-labelledby="orithos-ai-assistant-title"
           aria-modal="true"
-          className="pointer-events-auto flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5"
+          className={cn(
+            "pointer-events-auto relative z-10 flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5",
+            mobileOnly && "h-full w-full gap-0",
+          )}
         >
           <div
-            className="flex max-h-[min(72vh,620px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--oh-border)] bg-white"
-            style={{ boxShadow: FLOAT_SHADOW }}
+            className={cn(
+              "flex max-h-[min(72vh,620px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--oh-border)] bg-white",
+              mobileOnly && "h-full max-h-none rounded-none border-0",
+            )}
+            style={{ boxShadow: mobileOnly ? "none" : FLOAT_SHADOW }}
           >
             <div
               className={cn(
                 "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] bg-[var(--oh-orange-light)] px-3.5 py-3",
-                dragging ? "cursor-grabbing" : "cursor-grab",
+                mobileOnly && "pt-[max(0.75rem,env(safe-area-inset-top))]",
+                mobileOnly ? "cursor-default" : dragging ? "cursor-grabbing" : "cursor-grab",
               )}
-              onPointerDown={beginDrag}
-              onPointerMove={onDragMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
+              onPointerDown={mobileOnly ? undefined : beginDrag}
+              onPointerMove={mobileOnly ? undefined : onDragMove}
+              onPointerUp={mobileOnly ? undefined : endDrag}
+              onPointerCancel={mobileOnly ? undefined : endDrag}
             >
               <AiFabIcon size={40} className="pointer-events-none shadow-sm" />
               <div className="min-w-0 flex-1">
@@ -1167,12 +1202,24 @@ export function SellAiPanel({
                   onClear={clearChat}
                   busy={busy}
                   thinkingHint={thinkingHint}
+                  quickActionsOpen={quickActionsOpen}
                 />
               )}
             </div>
 
             <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-between gap-2">
+                {messages.some((message) => message.role === "user") && !quickActionsOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuickActionsOpen(true)}
+                    aria-expanded={quickActionsOpen}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
+                  >
+                    <Plus size={15} />
+                    Quick actions
+                  </button>
+                ) : <span />}
                 {aiEnabled === false ? (
                   <p className="text-[13px] text-[var(--oh-muted)]">Shortcuts still work without AI chat</p>
                 ) : voiceStatus ? (
@@ -1184,9 +1231,13 @@ export function SellAiPanel({
                 )}
               </div>
             </div>
+
+            <div className="border-t border-[var(--oh-border)] bg-white px-3.5 py-2 md:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+              {composer}
+            </div>
           </div>
 
-          <div className="flex w-full items-center gap-2.5">
+          <div className="hidden w-full items-center gap-2.5 md:flex">
             {composer}
             <button
               type="button"
@@ -1319,12 +1370,14 @@ function DialogueView({
   onClear,
   busy,
   thinkingHint,
+  quickActionsOpen,
 }: {
   messages: ChatMessage[];
   onAction: (action: string) => void;
   onClear: () => void;
   busy?: boolean;
   thinkingHint?: string | null;
+  quickActionsOpen: boolean;
 }) {
   const canClear = !busy && messages.length > 1;
   const diagnosticMessages = messages.filter((message) => message.role === "assistant" && message.diagnostics);
@@ -1450,22 +1503,31 @@ function DialogueView({
           </div>
         )}
       </div>
-      <div className="mt-3 shrink-0 border-t border-[var(--oh-border)] pt-3">
-        <p className="mb-2 text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
+      {quickActionsOpen ? <QuickActions onAction={onAction} /> : null}
+    </div>
+  );
+}
+
+function QuickActions({ onAction }: { onAction: (action: string) => void }) {
+  return (
+    <div className="mt-3 shrink-0 border-t border-[var(--oh-border)] pt-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
           Quick actions
         </p>
-        <div className="flex flex-wrap gap-2">
-          {QUICK_ACTIONS.map((action) => (
-            <button
-              key={action}
-              type="button"
-              onClick={() => onAction(action)}
-              className="cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
-            >
-              {action}
-            </button>
-          ))}
-        </div>
+        <span className="text-[11px] text-[var(--oh-muted)]">Try a shortcut</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {QUICK_ACTIONS.map((action) => (
+          <button
+            key={action}
+            type="button"
+            onClick={() => onAction(action)}
+            className="min-h-11 cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
+          >
+            {action}
+          </button>
+        ))}
       </div>
     </div>
   );
