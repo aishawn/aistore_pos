@@ -212,7 +212,9 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Delete this supplier"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Receive this stock"));
 
-        assertFalse(WorkflowRouteRouter.hasWriteIntent("Upload this supplier bill"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Upload this supplier bill"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("How many supplier bills did we receive?"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("How many invoices did we receive?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Which prices need checking?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What did we send suppliers last week?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What should we buy before the weekend?"));
