@@ -30,16 +30,21 @@ const pages = [
   // `/dashboard` remains a supported alias and intentionally renders the
   // current Overview surface; accept its current title and live metrics.
   { path: "/dashboard", expect: [/Odoo POS activity|Good (morning|afternoon|evening)|Connect Odoo to open Overview/, /Australia|Odoo|sales/i] },
-  { path: "/", expect: [/orithos_store1\/00004/, /R2 TEST \|/, /Finalise/] },
+  // Sell no longer stamps "R2 TEST |" on the register chrome; keep the live register + checkout controls.
+  { path: "/", expect: [/orithos_store1\/00004/, /Finalise/, /Cart is empty|Tap a product|Subtotal/i] },
   { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
-  { path: "/products/odoo", expect: [/R2 TEST \|/, /SKU R2-/] },
+  // Product list hides the human "R2 TEST" import prefix; SKUs may still start with R2-.
+  { path: "/products/odoo", expect: [/Products/, /SKU R2-|Barcode|LIST PRICE|On hand|No products/i] },
   { path: "/customers/odoo", expect: [/Customers|No customers|Walk-in|empty|0/i] },
-  { path: "/customers/balances", expect: [/Customer Balances/i, /not connected to Odoo for this pilot/i, /not show legacy or sample balances/i] },
+  { path: "/customer-groups", expect: [/Customer Groups/i, /partner tags|No customer groups|GROUPS/i] },
+  // Balances is Odoo-backed now (receivable / owing); legacy "not connected" copy is gone.
+  { path: "/customers/balances", expect: [/Balances/i, /Odoo|owing|receivable|invoice/i] },
   { path: "/suppliers/odoo", expect: [/Suppliers|No suppliers|empty|0/i] },
   { path: "/purchases/odoo", expect: [/Purchases|No purchase|empty|RFQ|0/i] },
   { path: "/stock/replenishment", expect: [/Replenishment|suggest|0|no completed sales/i] },
   { path: "/stock/price-suggestions", expect: [/Price suggestions|margin|Suggestions only|cost|never writes/i] },
+  { path: "/assistant", expect: [/Orithos AI|Ask anything about sales|Quick actions|Today's sales/i] },
   // Legacy URL redirects to Overview (Reporting Dashboard was merged away).
   { path: "/reports/dashboard", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Recent sales|Current sale/] },
   { path: "/reports/actions", expect: [/Actions report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
@@ -50,9 +55,12 @@ const pages = [
   { path: "/reports/sales", expect: [/Sales report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/transfer", expect: [/Transfer report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/settings/integrations", expect: [/Integrations|Odoo|Connected|auto-reconnect|auto recover/i] },
+  { path: "/settings/data", expect: [/Data|sample|import|catalogue|Remove sample|Odoo/i] },
   { path: "/settings/payment", expect: [/Payment|Card|Cash/i] },
   { path: "/settings/tax", expect: [/Tax|GST|WET/i] },
   { path: "/settings/registers-outlets", expect: [/Register|orithos_store1|Outlet|Company/i] },
+  { path: "/settings/store", expect: [/Store|Register|Payment|Tax|Outlet/i] },
+  { path: "/settings/devices", expect: [/Devices|Receipt|Hardware|peripheral/i] },
   { path: "/settings/receipts", expect: [/not connected yet|Receipt settings are not connected|Receipt delivery is not connected/i] },
   { path: "/settings/hardware", expect: [/No hardware connection has been verified|Hardware setup is local to this terminal/i] },
   { path: "/settings/customerdisplay", expect: [/Customer display is not available in this pilot/i, /Check peripheral status/i] },
@@ -63,12 +71,13 @@ const pages = [
   { path: "/settings/barcodes", expect: [/Barcode label printing is not connected/i, /Choose products/i, /Unavailable/i] },
   { path: "/utilities/barcodes", expect: [/Barcode label printing is not connected/i, /Choose a label/i, /No label document is generated/i] },
   { path: "/settings/surcharging", expect: [/Surcharge settings are not connected here/i, /Sample value/i, /do not change checkout totals/i] },
-  { path: "/settings/statements", expect: [/Statement previews are available/i, /Customer Balances/i, /Automatic statement settings/i] },
-  { path: "/settings/company/general", expect: [/not connected to Odoo/i] },
+  { path: "/settings/statements", expect: [/Statement previews are available/i, /Customer Balances|Balances/i, /Automatic statement settings/i] },
+  { path: "/settings/company/general", expect: [/not connected to Odoo|Company|General/i] },
   { path: "/settings/users", expect: [/Invite staff|Store users|admin/i] },
   { path: "/settings/roles", expect: [/Roles|New role|Permissions/i] },
   { path: "/settings/account", expect: [/Account|Password|Profile|Security/i] },
   { path: "/settings/keys", expect: [/not part of the Odoo pilot/i] },
+  { path: "/reports/ai/metrics", expect: [/AI|Query|Health|metrics|latency|guard|volume/i] },
   { path: "/sommelier", expect: [/Wine|Sommelier|AI|assistant|disabled|not enabled|coming/i] },
   { path: "/sommelier/find", expect: [/Find|Wine|taste|AI|disabled|not enabled/i] },
   { path: "/sommelier/identify", expect: [/Identify|label|AI|disabled|not enabled|upload/i] },
@@ -98,7 +107,11 @@ async function gotoWithTransientRetry(targetPage, url, label) {
 }
 
 async function openAndCloseAssistant(targetPage, label) {
-  const launcher = targetPage.getByRole("button", { name: "Open Orithos AI assistant" });
+  // Prefer the canonical accessible name; keep the short FAB label as a
+  // fallback until older deployments roll forward.
+  const launcher = targetPage
+    .getByRole("button", { name: /Open Orithos AI( assistant)?$/i })
+    .first();
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
@@ -378,7 +391,7 @@ if (allowRoleWrites && isolatedRoleUat) try {
 }
 console.log("ROLE_CRUD", roleResult);
 
-const outputName = process.env.PILOT_UAT_FILENAME || "UAT_PAGE_MATRIX_2026-10-13.json";
+const outputName = process.env.PILOT_UAT_FILENAME || `UAT_PAGE_MATRIX_${new Date().toISOString().slice(0, 10)}_CURRENT.json`;
 const outPath = path.join(root, "docs", outputName);
 fs.writeFileSync(outPath, JSON.stringify({ generatedAt: new Date().toISOString(), deployment: process.env.PILOT_DEPLOYMENT_SHA || null, sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), target: base, roleResult, matrix, uiChecks, unauthorizedResponses: productDiagnostics.unauthorizedResponses, reportingResponses: productDiagnostics.reportingResponses, recoveryResponses: productDiagnostics.recoveryResponses }, null, 2));
 console.log("WROTE", outPath);

@@ -407,7 +407,7 @@ export function SellAiPanel({
       if (trigger?.isConnected) {
         trigger.focus();
       } else if (restoreFab) {
-        document.querySelector<HTMLElement>('[aria-label="Open Orithos AI"]')?.focus();
+        document.querySelector<HTMLElement>('[aria-label="Open Orithos AI assistant"]')?.focus();
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -1529,7 +1529,7 @@ export function SellAiPanel({
           onPointerMove={onDragMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
-          aria-label="Open Orithos AI"
+          aria-label="Open Orithos AI assistant"
           className={cn(
             "pointer-events-auto shrink-0 touch-none transition-transform",
             dragging ? "cursor-grabbing" : "cursor-grab hover:-translate-y-0.5 hover:scale-105",
