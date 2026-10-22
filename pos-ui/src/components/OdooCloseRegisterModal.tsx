@@ -26,7 +26,7 @@ export function OdooCloseRegisterModal({
   return (
     <div
       role="presentation"
-      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-3 sm:p-4"
+      className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-2 sm:p-4 md:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) requestClose();
       }}
@@ -35,7 +35,7 @@ export function OdooCloseRegisterModal({
         role="dialog"
         aria-modal="true"
         aria-label="Close register"
-        className="flex max-h-[min(90dvh,720px)] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl"
+        className="flex h-[min(94dvh,960px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl"
       >
         <OdooCloseRegisterForm
           variant="modal"
