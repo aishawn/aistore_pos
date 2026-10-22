@@ -1506,3 +1506,4 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 修复 `962cbbc6` 的 Java 作用域错误，并恢复明确写入请求的 fail-closed 契约。
 - 候选仅存在本地，未通过 Java 21 exact-SHA gate，未推送、未部署。
 - 线上运行版本仍为 `582b92fb`。
+- 本地候选在 `3a9c47da` 后追加 `192fedb7`，包含目录问法和隔离 UAT 稳定性修正；尚未推送或部署。

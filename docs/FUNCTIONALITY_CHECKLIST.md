@@ -811,3 +811,4 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Java 21 `mvn -B clean verify` exact-SHA gate。
 - [ ] 推送、Dokploy 部署、线上安全问法复验。
 
+- [x] 候选追加 `192fedb7`：目录问法规范化、隔离 UAT 登录重试和上下文探针。

@@ -2774,3 +2774,4 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] `3a9c47da` 尚未通过 Java 21 `mvn -B clean verify`，因此未推送、未部署。
 - [ ] 当前线上仍为 `582b92fb`；Dokploy Source/Git 的 `301 Branch Not Match` 仍未修正。
 
+- 本地候选已追加 `192fedb7`：产品总数问法规范化、隔离写入 UAT 登录/上下文探针修正；候选仍未通过 Java 21 gate，未推送。
