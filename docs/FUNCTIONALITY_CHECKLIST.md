@@ -775,3 +775,10 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Dokploy 部署后 9 条失败问法和完整 AI 目录线上复验。
 - [x] 旧 runtime 安全边界定向复测已留证：`0 PASS / 9 FAIL / 0 BLOCKED`，无业务写入；该结果用于部署后对照。
 
+## 2026-10-22 前端批次部署核验
+
+- [x] 前端/UI 批次提交 `84d23803` 已推送。
+- [ ] Dokploy webhook：`301 Branch Not Match`，未形成构建。
+- [x] 线上版本探针仍为 `582b92fb`，因此本批尚未线上验证。
+- [ ] 修正 Dokploy Source/Git 后再部署并重跑 UI/AI 只读验收。
+

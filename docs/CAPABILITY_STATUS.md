@@ -1474,3 +1474,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 尚未完成 Java 21 exact-SHA Maven gate，不能推送或宣称线上生效。
 - 最近线上基线仍记录为 9 条安全边界 FAIL；部署后必须逐条复验。
 - 定向基线证据：`docs/UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`，旧 runtime `582b92fb`，`0/9/0`（PASS/FAIL/BLOCKED），无业务写入。
+## 2026-10-22 前端批次发布状态
+
+- 前端/UI 批次提交 `84d23803` 已推送，但 Dokploy 返回 `301 Branch Not Match`，尚未构建或部署。
+- `/api/public/version` 仍返回前后端 `582b92fb`；线上验证不能归因到 `84d23803`。
+- 发布阻断属于 Dokploy Source/Git 绑定，不是前端 typecheck 或脚本语法失败。
+

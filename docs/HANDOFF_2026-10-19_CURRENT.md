@@ -2729,3 +2729,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] 部署前需复测 9 条安全边界问法，以及完整 AI 问法目录；业务写入保持 0。
 - 定向线上基线证据：`docs/UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`，旧 runtime `582b92fb` 为 `0 PASS / 9 FAIL / 0 BLOCKED`，Assistant API-only，业务写入 `0`。
 
+## 2026-10-22 前端批次部署尝试
+
+- [x] 前端/UI 与 UAT 文档批次已整理为提交 `84d23803`，不包含 `pos-api` 改动；已推送 `origin/main`。
+- [ ] Dokploy webhook 对该提交返回 HTTP `301 Branch Not Match`；按规则停止重试，未把 webhook 返回当作构建成功。
+- [x] 部署后版本探针仍为前后端 `582b92fb`，确认 `84d23803` 尚未上线。
+- [ ] 需在 Dokploy Source/Git 核对仓库 `aishawn/aistore_pos`、分支 `main`、根目录 `/`、Compose `docker-compose.yml`，修正后再触发一次部署。
+

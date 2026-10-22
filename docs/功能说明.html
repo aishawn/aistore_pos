@@ -757,3 +757,12 @@
       <li>旧 runtime 定向基线为 0 PASS / 9 FAIL / 0 BLOCKED，证据 <code>UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json</code>；该失败仍待新候选部署后对照。</li>
     </ul>
   </section>
+  <section id="handoff-2026-10-22-ui-deploy" class="content-section">
+    <h2>2026-10-22 前端批次部署核验</h2>
+    <ul>
+      <li>前端/UI 与 UAT 文档批次提交 <code>84d23803</code> 已推送，未包含后端改动。</li>
+      <li>Dokploy webhook 返回 <code>301 Branch Not Match</code>，已停止重试；这不是构建成功证据。</li>
+      <li>线上版本仍为 <code>582b92fb</code>，所以本批尚未进行线上效果验收。</li>
+      <li>需修正仓库、分支、根目录和 Compose 文件绑定后再部署。</li>
+    </ul>
+  </section>
