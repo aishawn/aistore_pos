@@ -45,6 +45,12 @@ questions bypass that guard and covers English/Chinese variants in
 `WorkflowRouteRouterTest`. Java 21 verification and post-deploy rerun remain
 pending.
 
+The next served runtime `e8cac11e` returned **241 PASS / 3 BLOCKED / 3 FAIL**
+on the full catalogue. Product lookup was temporarily blocked by three 502 or
+timeout responses; the remaining three failures were the same Chinese
+capability questions. Its image build used `mvn clean package -DskipTests`, so
+it is not Java 21 gate evidence.
+
 The same window's companion suites passed availability 3/3, routes 9/9,
 surface/auth 11/11, enabled gate, metrics 9/9 and UI 2/2. Features were
 14 PASS / 1 BLOCKED because invoice OCR is retired (`41001`); reports were

@@ -63,6 +63,12 @@ matched `qa` capability question and adds English/Chinese regression cases.
 It has only passed static checks so far; the exact-SHA Java 21 gate is still
 required.
 
+The later served runtime `e8cac11e` full run returned **241 PASS / 3 BLOCKED /
+3 FAIL**. The three blocks were transient product lookup 502/timeout responses;
+the three failures remained the Chinese capability questions. Runtime identity
+matched `e8cac11e`, but its Dokploy Dockerfile used `mvn clean package
+-DskipTests`, which is not the required Java 21 `mvn -B clean verify` gate.
+
 ## 2026-10-22 current AI surface suite
 
 Against the same Demo window, the read-only companion suites reported:
