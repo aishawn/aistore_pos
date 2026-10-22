@@ -40,6 +40,8 @@
 <!-- capability-summary:start -->
 <section class="section" id="current-capability-summary"><h2>当前能力摘要 · 2026-10-23</h2><p>由统一状态清单生成；本摘要优先于后续历史记录。线上只读通过不代表真实业务验收。</p><div class="table-wrap"><table><thead><tr><th>能力</th><th>已实现</th><th>本地验证</th><th>线上只读验证</th><th>真实业务验收</th><th>边界</th></tr></thead><tbody><tr><td>库存与定价界面</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>线上只读 8/8；证据对应 9027428，当前运行 SHA 未核验，真实价格写入待验收。</td></tr><tr><td>盘点与搜索保护</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>搜索修复在工作区；库存调整未验收，正式租户须显式绑定库存位置。</td></tr><tr><td>GST 净毛利与 Odoo 改价</td><td>是</td><td>是</td><td>待验证</td><td>待验证</td><td>工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。</td></tr><tr><td>收银退款与结果恢复</td><td>是</td><td>是</td><td>待验证</td><td>待验证</td><td>工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。</td></tr><tr><td>采购收货</td><td>是</td><td>是</td><td>待验证</td><td>待验证</td><td>本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。</td></tr><tr><td>AI 助手</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>已核验 Demo runtime frontend/backend SHA 为 3edd72d84f514856923c0c0d50b01fe7b015e120，与本次 runner sourceCommit 匹配。完整 216 条助手问法 216 PASS / 0 BLOCKED / 0 FAIL，代表性 smoke 5/5 PASS；请求仅调用助手 API，业务写入为 0。只读功能专项仍需分别关注价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入。</td></tr><tr><td>两租户交付</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。</td></tr></tbody></table></div><p>试点决策：<strong>NO-GO</strong>。真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。</p></section>
 <!-- capability-summary:end -->
+      <section class="section" id="ai-252-recheck-2026-10-22"><h2>AI 助手完整问法回归 · 252 条（本地目录现为 255 条）</h2><p>最新扩展目录在 Demo 上完成只读复测：<strong>248 PASS / 0 BLOCKED / 4 FAIL</strong>。证据：<code>UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_252-CURRENT.json</code>。</p><ul class="list"><li>失败集中在库存条件侍酒推荐、两条“AI 会不会下单”能力问答，以及英文数量型补货执行问法。</li><li>随后新增的 3 条订单能力问法在旧 runtime 上为 0 PASS / 0 BLOCKED / 3 FAIL；没有业务写入。</li><li>所有请求仅调用 Assistant API，业务写入为 0；没有销售、采购、收货、调价或库存调整。</li><li>本地源码已补确定性路由、能力问答和写意图 fail-closed 守卫，但 Demo runtime 582b92fb 与当前 source SHA 不匹配；必须完成 Java 21 exact-SHA 门禁和同 SHA 部署后复测。</li></ul><p class="callout">当前 AI 与交易闭环仍保持 NO-GO。线上旧 runtime 的失败不能直接代表当前未部署源码。</p></section>
+      <section class="section" id="ai-companion-current-goal"><h2>AI 配套能力复测 · 2026-10-22</h2><p>Availability 3/3、route 9/9、surface/auth 11/11、metrics 9/9、UI 2/2 和 capability gates 均通过；chat 已开启，voice 明确不可用。</p><ul class="list"><li>Features 14 PASS / 1 BLOCKED：Odoo-only 下旧 OCR 接口返回 41001。</li><li>Reports 15/16：实时库存数据源不可用，页面显示安全提示。</li><li>History/platform 9 PASS / 2 BLOCKED：缺第二门店与 platform-operator 凭据；transcription 2 PASS / 2 BLOCKED：缺英/中文音频 fixture。</li><li>本轮所有检查为只读，业务写入为 0；证据文件为 <code>UAT_AI_*_2026-10-22_CURRENT-GOAL.json</code>。</li></ul></section>
 
       <section class="section" id="frontend-ui-batch-2026-10-22"><h2>前端错误恢复与焦点状态批次 · 2026-10-22</h2><p>本批次补齐报表、补货、商品目录及 RFQ 弹窗的错误恢复语义和键盘焦点状态。报表与补货只有 Odoo <code>401</code> 才显示连接引导；临时 <code>503</code> 保留错误信息、Retry 和 Request ID，不误导用户重新连接。Platform Audit/Failures 将告警接口故障作为非阻断伴随状态。</p><ul class="list"><li>报表错误分支 fixture：<strong>2/2 PASS</strong>，覆盖 <code>503</code> 错误态与 <code>401</code> 连接引导，390px 无横向溢出；证据：<code>UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json</code>。</li><li>Platform Audit/Failures fixture：<strong>4/4 PASS</strong>，覆盖 390/1440px、Retry 恢复、无页面错误、无预期写入；证据：<code>UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json</code>。</li><li>补货供应商与 RFQ 恢复 fixture：<strong>60/60 PASS</strong>，覆盖初始 503、供应商加载失败、数量保持、RFQ 创建失败后的重试；证据：<code>UAT_REPLENISHMENT_SUPPLIER_RECOVERY_2026-10-22_UI-BATCH.json</code>。</li><li>Node 24 typecheck、目标 ESLint、脚本语法和 diff check 通过；未运行本地 production build，未执行真实业务写入。</li></ul><p class="callout">当前线上 Demo 版本接口仍返回 frontend/backend <code>582b92fb199e312e828a5169cde14105a091f41a</code>。Dokploy 页面反馈部署成功，但尚未证明上述候选已进入运行镜像；需以版本接口精确匹配候选 SHA 后，才能进行线上 UI 验收。</p></section>
 
@@ -450,6 +452,16 @@
       <li>本地 Webpack 浏览器夹具在 390px 和 1440px 通过 12/12；覆盖价格建议预填、人工确认、写入结果只读对账、未知结果阻止重试、无页面错误和无横向溢出。证据：<code>orithopos-master/docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json</code>。</li>
       <li>Node 24 typecheck、目标 ESLint、脚本语法检查通过；夹具拦截全部 API，业务写入为 0，未运行本地 production build。</li>
       <li>该批次尚未完成 Dokploy runtime SHA 回读和线上页面复验。试点仍保持 NO-GO，待隔离业务写入、Odoo 对账、备份恢复、设备和离线 POS 验收完成。</li>
+    </ul>
+  </section>
+
+  <section id="handoff-2026-10-22-directory-focus" class="content-section">
+    <h2>2026-10-22 客户、供应商与采购目录焦点一致性</h2>
+    <ul>
+      <li>客户、供应商和采购订单目录的错误 Retry、移动端订单引用、客户联系方式、客户弹窗底部动作、采购收货确认动作均补充可见键盘焦点状态。</li>
+      <li>当前公网目录只读浏览器回归在 320/390/1024/1440px 共 <strong>44/44 PASS</strong>，覆盖商品、客户、供应商搜索和清除、AI 入口焦点陷阱与 Escape 恢复；页面 JS 错误为 0。</li>
+      <li>回归脚本拦截了 8 个非允许写请求，未提交模型或业务写入；该结果属于当前公网旧 runtime 基线，不能证明本批源码已部署。</li>
+      <li>本批 Node 24 typecheck、三文件定向 ESLint、脚本语法检查和 diff check 通过；未运行本地 production build。</li>
     </ul>
   </section>
   <section id="handoff-2026-10-22-platform-invoice" class="content-section">

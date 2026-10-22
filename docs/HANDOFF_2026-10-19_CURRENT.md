@@ -2593,3 +2593,30 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Dokploy 页面反馈最新部署“成功”，但 Demo `/api/public/version` 当前仍返回 frontend/backend `582b92fb199e312e828a5169cde14105a091f41a`。因此本批次尚未线上验证，不能把运行端点结果归因于当前候选。
 - 下一步：核对 Dokploy Source/Git 的仓库、`main` 分支、根目录 `/` 和 `docker-compose.yml`，再以版本接口精确匹配候选 SHA；匹配后重跑报表、补货和 Platform Audit/Failures 的 390/1440px 只读验收。
 
+## 2026-10-22 客户、供应商与采购目录焦点批次
+
+- 客户目录错误 Retry、桌面联系方式、客户弹窗 Cancel/Submit；采购订单错误 Retry、移动端订单引用、收货弹窗 Go back/Refresh receipt status/Confirm receive；供应商目录错误 Retry，均已补充可见键盘焦点状态。
+- 当前公网目录只读浏览器回归在 320/390/1024/1440px 共 **44/44 PASS**，覆盖商品、客户、供应商搜索和清除、AI 入口焦点陷阱与 Escape 恢复；页面 JS 错误为 0。证据：`docs/UAT_DIRECTORIES_ASSISTANT_ONLINE_2026-10-22_DIRECTORY-FOCUS.json`。
+- 脚本拦截 8 个非允许写请求，未提交模型或业务写入。该结果属于旧 runtime 基线，不能证明本批源码已部署。
+- Node 24 typecheck、三文件定向 ESLint、`node --check` 和 `git diff --check` 通过；未运行本地 production build。
+- 下一步：将本批与当前前端候选合并后，在 Dokploy Source/Git 修正并取得 exact runtime SHA，再重跑客户、供应商和采购页面的线上焦点与错误恢复检查。
+
+## 2026-10-22 AI 用户问法扩展（本地待门禁）
+
+- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 255 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
+- 本轮新增 “Suggest something for steak”“AI会不会自动下单？”和 “Top up these items to 50 units”等短口语/数量型问法，并补充 Java 路由回归。
+- 本地静态检查通过；未运行本地 build/Maven。后端候选必须先通过 exact-SHA Java 21 mvn -B clean verify，再部署并用同 SHA 线上回归。线上旧证据不代表本轮修改已生效。
+
+## 2026-10-22 252 条 AI 问法线上复测
+
+- 完整目录结果为 248 PASS / 0 BLOCKED / 4 FAIL，证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_252-CURRENT.json。
+- 失败集中在 Demo 旧 runtime 的四条新增边界问法；所有请求为 Assistant API-only，业务写入为 0。
+- 当前源码已包含对应确定性路由/写意图守卫，但未完成 Java 21 exact-SHA 门禁和匹配部署；下一步应先完成门禁，再用同 SHA 重跑 252 条目录。
+
+## 2026-10-22 AI 配套能力复测
+
+- Availability 3/3、route 9/9、surface/auth 11/11、metrics 9/9、UI 2/2 和 capability gates 均通过。
+- Features 的旧 OCR 接口保持 41001 安全阻断；Reports 的唯一阻断为实时库存数据源不可用。
+- History/platform 及 transcription 的阻断来自缺少第二门店/platform operator 凭据和语音 fixture，不应误判为代码失败。
+- 本轮无业务写入；完整证据集中在 docs/UAT_AI_*_2026-10-22_CURRENT-GOAL.json。
+

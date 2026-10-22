@@ -695,3 +695,18 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Price Suggestions 390px DOM audit: no overflow and all visible page-content controls exposed `focus-visible` styling.
 - [x] Interaction suite: `10 PASS / 4 FAIL`; failures are product catalogue, sales-history data, and replenishment loading timeouts, with no business writes.
 - [ ] Complete sales-history and replenishment behavior coverage still requires populated Odoo read-only data; do not treat timeout results as UI focus regressions.
+
+## 2026-10-22 客户、供应商与采购目录焦点批次
+
+- [x] 客户目录错误 Retry、桌面联系方式、客户弹窗 Cancel/Submit 补充可见 `focus-visible` 状态。
+- [x] 采购订单错误 Retry、移动端订单引用、收货弹窗 Go back/Refresh receipt status/Confirm receive 补充可见 `focus-visible` 状态。
+- [x] 供应商目录错误 Retry 补充可见 `focus-visible` 状态；已有新增供应商弹窗动作保持一致。
+- [x] Node 24 `npm run typecheck`、三文件定向 ESLint、`node --check` 和 `git diff --check` 通过；未运行 production build，未执行业务写入。
+- [x] 当前公网目录只读回归：`44/44 PASS`，覆盖 320/390/1024/1440px、客户/供应商/商品搜索清除、AI 入口焦点陷阱和 Escape 恢复；证据：`docs/UAT_DIRECTORIES_ASSISTANT_ONLINE_2026-10-22_DIRECTORY-FOCUS.json`。
+- [ ] 本批源码尚未取得匹配的 Dokploy runtime SHA；公网回归只作为旧 runtime 基线，不能标记为本批线上验收。
+## AI 助手自然问法回归
+
+- [x] 255 条唯一用户问法目录，包含中英混合、收银员短句、日期/指标变体、能力问答、提示注入和执行型安全用例。
+- [x] 新增侍酒推荐自然表达、自动下单能力问答和数量型补货执行拦截的源代码回归断言。
+- [x] node --check、git diff --check 通过。
+- [ ] 运行时回归、Java 21 exact-SHA 门禁和部署身份复核待完成；整体试点仍 NO-GO。

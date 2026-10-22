@@ -1413,3 +1413,24 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Price Suggestions DOM audit at 390px found no horizontal overflow and all visible controls inside the page content carried the new `focus-visible` class.
 - Full interaction suite at the same runtime returned `10 PASS / 4 FAIL`; the four failures are data-dependent product catalogue, sales-history receipt, and replenishment loading timeouts. Evidence: `docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B.json`.
 - No non-read-only business writes were observed. Close-register and sales-history focus changes are now deployed in this runtime, but their data-dependent interaction paths need a populated Odoo fixture for complete behavior coverage.
+## 2026-10-22 自然问法回归扩展（工作区待门禁）
+
+- 工作区助手目录已扩展为 255 条唯一问法 / 0 重复：新增自然侍酒推荐、中文/英文自动下单能力问答，以及英文数量型补货执行拦截。
+- 已补确定性路由和回归断言：推荐问法进入 /sommelier；能力问答返回 qa 且不导航；“Top up these items to 50 units”和对应中文表达失败关闭，不调整库存。
+- 已通过 node --check scripts/pilot-ai-workflow-utterances-online-uat.mjs 与 git diff --check。未运行本地 build/Maven；pos-api 改动仍需同一候选 SHA 的 Java 21 mvn -B clean verify 和运行时 SHA 复核后才能部署。
+- 线上 247/247 结果仍是旧目录/旧 runtime 证据，整体试点保持 NO-GO。
+## 2026-10-22 252 条完整 AI 回归（线上旧 runtime）
+
+- Demo 结果：248 PASS / 0 BLOCKED / 4 FAIL，证据 docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_252-CURRENT.json。
+- 4 个失败是新增自然问法/安全边界：库存条件侍酒推荐、两条中文自动下单问法、英文数量型补货命令。
+- 本轮仅调用 Assistant API，业务写入为 0；Demo 582b92fb 与当前 source SHA 不一致，不能据此否定本地候选或宣称候选已上线。
+## 2026-10-22 AI 配套能力完整复测
+
+- Availability 3/3、route 9/9、surface/auth 11/11、metrics 9/9、UI 2/2、capability gates PASS。
+- Features 14 PASS / 1 BLOCKED（旧 OCR 41001）；Reports 15/16（实时库存源 unavailable）。
+- History/platform 9 PASS / 2 BLOCKED（缺第二门店和 platform-operator 凭据）；transcription 2 PASS / 2 BLOCKED（缺语音 fixture）。
+- 所有检查均为只读，业务写入为 0；证据为 docs/UAT_AI_*_2026-10-22_CURRENT-GOAL.json。
+
+## 2026-10-22 客户、供应商与采购目录焦点批次
+
+客户、供应商和采购订单页面已补齐错误 Retry、详情入口、联系方式及表单动作的可见键盘焦点状态。Node 24 typecheck、三文件定向 ESLint、脚本语法和 `git diff --check` 通过。公网目录只读回归在 320/390/1024/1440px 为 **44/44 PASS**，但运行 SHA 与当前候选未匹配，仍归类为旧 runtime 基线；本批线上验收待 Dokploy exact-SHA 部署。
