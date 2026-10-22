@@ -1501,3 +1501,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - `ClassifyQueryNode` 的作用域错误已清除；明确写入请求保持 `unknown + 空 route`。
 - 测试契约和前端静态检查已同步；后端 Java 21 exact-SHA gate 尚未执行。
 - 该批未推送、未部署；线上仍不能引用为已生效能力。
+## 2026-10-22 后端候选 `3a9c47da`
+
+- 修复 `962cbbc6` 的 Java 作用域错误，并恢复明确写入请求的 fail-closed 契约。
+- 候选仅存在本地，未通过 Java 21 exact-SHA gate，未推送、未部署。
+- 线上运行版本仍为 `582b92fb`。

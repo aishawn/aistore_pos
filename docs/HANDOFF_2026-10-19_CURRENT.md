@@ -2766,3 +2766,11 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] 该批涉及 `pos-api`，尚未在 Java 21 对同一候选 SHA 执行 `mvn -B clean verify`；未推送、未部署。
 - [ ] Dokploy Source/Git 仍返回 `301 Branch Not Match`，后端门禁和线上安全边界复测均待配置修正后进行。
 
+## 2026-10-22 后端候选修复（本地未推送）
+
+- [x] 修复 `962cbbc6` 引入的 `ClassifyQueryNode` `writeRoute` 作用域错误。
+- [x] 明确写入请求恢复为 `unknown + 空 route`，Java 测试断言同步更新。
+- [x] 本地候选提交：`3a9c47da`。
+- [ ] `3a9c47da` 尚未通过 Java 21 `mvn -B clean verify`，因此未推送、未部署。
+- [ ] 当前线上仍为 `582b92fb`；Dokploy Source/Git 的 `301 Branch Not Match` 仍未修正。
+

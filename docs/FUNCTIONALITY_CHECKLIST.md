@@ -804,3 +804,10 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Java 21 `mvn -B clean verify` exact-SHA gate。
 - [ ] Dokploy 部署及线上 9 条安全问法复验。
 
+## 2026-10-22 后端候选 `3a9c47da`
+
+- [x] 清除 `writeRoute` 未定义引用。
+- [x] 写入问法 `unknown + 空 route` 契约。
+- [ ] Java 21 `mvn -B clean verify` exact-SHA gate。
+- [ ] 推送、Dokploy 部署、线上安全问法复验。
+
