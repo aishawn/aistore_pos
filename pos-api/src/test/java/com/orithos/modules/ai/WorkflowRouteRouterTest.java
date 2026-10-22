@@ -79,6 +79,7 @@ class WorkflowRouteRouterTest {
         assertRoute("Which prices look off?", "/stock/capped-pricing");
         assertRoute("Should I raise the Shiraz price?", "/stock/capped-pricing");
         assertRoute("Which prices need attention?", "/stock/capped-pricing");
+        assertRoute("Suggest a price for Shiraz", "/stock/capped-pricing");
         assertRoute("哪些商品价格不对", "/stock/capped-pricing");
         assertRoute("Recommend a red wine under $30", "/sommelier");
         assertRoute("Something light under 25 dollars", "/sommelier");
@@ -91,6 +92,9 @@ class WorkflowRouteRouterTest {
         assertRoute("What wine goes with steak?", "/sommelier");
         assertRoute("Pair a wine with lamb", "/sommelier");
         assertRoute("Recommend something for steak", "/sommelier");
+        assertRoute("Recommend something in stock for steak", "/sommelier");
+        assertRoute("Suggest something for steak", "/sommelier");
+        assertRoute("Can you suggest something in stock for steak?", "/sommelier");
         assertRoute("What should I serve with lamb?", "/sommelier");
         assertRoute("牛排配什么酒", "/sommelier");
         assertRoute("红酒配牛排", "/sommelier");
@@ -99,6 +103,7 @@ class WorkflowRouteRouterTest {
         assertRoute("Upload this supplier bill", "/invoices/scan");
         assertRoute("Scan this supplier bill", "/invoices/scan");
         assertRoute("Can you read this bill?", "/invoices/scan");
+        assertRoute("Can you check this invoice?", "/invoices/scan");
         assertRoute("Scan this bill", "/invoices/scan");
         assertRoute("Scan invoice", "/invoices/scan");
         assertRoute("Upload an invoice", "/invoices/scan");
@@ -130,6 +135,8 @@ class WorkflowRouteRouterTest {
         assertNull(WorkflowRouteRouter.maybeOverride("Import this invoice"));
         assertNull(WorkflowRouteRouter.maybeOverride("Send this supplier bill"));
         assertNull(WorkflowRouteRouter.maybeOverride("开始处理这张发票"));
+        assertNull(WorkflowRouteRouter.maybeOverride("直接把这些商品补到50件"));
+        assertNull(WorkflowRouteRouter.maybeOverride("Top up these items to 50 units"));
         assertNull(WorkflowRouteRouter.maybeOverride("Create customer group"));
         assertNull(WorkflowRouteRouter.maybeOverride("Import gift cards"));
         assertNull(WorkflowRouteRouter.maybeOverride("编辑价目表"));
@@ -192,6 +199,14 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("设置这些价格"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("把这些建议下单"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("直接把价格改了"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("直接把这些商品补到50件"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("把啤酒补到50件"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Top up these items to 50 units"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Top up all beer to 50 units"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Restock all beer to 50 units"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Order 50 units of beer"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Set Shiraz to 29.99"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("把 Shiraz 价格改成 29.99"));
 
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Upload this supplier bill"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Which prices need checking?"));

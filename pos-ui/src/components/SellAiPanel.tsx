@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Eraser, ExternalLink, History, MessageCircle, Mic, Plus, Send, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
@@ -170,6 +170,19 @@ function polishAssistantAnswer(text: string, intent?: string): string {
   return raw;
 }
 
+/** Map current route to a coarse surface hint for the assistant (never a tenant key). */
+function surfaceFromPath(pathname: string | null | undefined): string {
+  const path = (pathname || "/").toLowerCase();
+  if (path.startsWith("/products")) return "products";
+  if (path.startsWith("/stock")) return "stock";
+  if (path.startsWith("/customers")) return "customers";
+  if (path.startsWith("/reports") || path.startsWith("/ai/reports")) return "reports";
+  if (path.startsWith("/sommelier")) return "sommelier";
+  if (path.startsWith("/invoices")) return "invoices";
+  if (path === "/" || path.startsWith("/sell")) return "sell";
+  return "";
+}
+
 /** Extract product-ish name from “把啤酒补到50件” / “top up beer to 50”. */
 function extractRestockProductHint(text: string): string {
   const zh = text.match(/把\s*(.+?)\s*(?:补到|补足|补至|加到)\s*\d+/);
@@ -259,6 +272,7 @@ export function SellAiPanel({
   const sell = useOptionalSellScreen();
   const ai = useOptionalAiAssistant();
   const router = useRouter();
+  const pathname = usePathname();
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: ENABLED_GREETING },
@@ -757,7 +771,7 @@ export function SellAiPanel({
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const hardTimeout = window.setTimeout(() => controller?.abort(), 45_000);
     try {
-      const result = await askAssistant(text, threadId, controller?.signal);
+      const result = await askAssistant(text, threadId, controller?.signal, surfaceFromPath(pathname));
       setThreadId(result.threadId);
       const outcome = await dispatchIntent(result);
       if (outcome.kind !== "messaged") {

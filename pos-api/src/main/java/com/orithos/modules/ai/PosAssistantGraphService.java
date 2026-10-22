@@ -5,6 +5,9 @@ import com.alibaba.cloud.ai.graph.NodeOutput;
 import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.state.StateSnapshot;
 import com.orithos.config.CorrelationIdContext;
+import com.orithos.modules.ai.context.FollowUpSupport;
+import com.orithos.modules.ai.context.StoreContextPack;
+import com.orithos.modules.ai.context.StoreContextPackAssembler;
 import com.orithos.modules.ai.dto.ReportTable;
 import com.orithos.modules.ai.dto.UiAction;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -34,21 +37,30 @@ public class PosAssistantGraphService {
     private final CompiledGraph posAssistantGraph;
     private final AiReportSnapshotService snapshotService;
     private final AiConversationMemory conversationMemory;
+    private final StoreContextPackAssembler contextPackAssembler;
     private final AiProperties properties;
 
     public PosAssistantGraphService(CompiledGraph posAssistantGraph,
                                     AiReportSnapshotService snapshotService,
                                     AiConversationMemory conversationMemory,
+                                    StoreContextPackAssembler contextPackAssembler,
                                     AiProperties properties) {
         this.posAssistantGraph = posAssistantGraph;
         this.snapshotService = snapshotService;
         this.conversationMemory = conversationMemory;
+        this.contextPackAssembler = contextPackAssembler;
         this.properties = properties;
     }
 
     public AssistantResult ask(String question, String threadId, TenantContext tenant) {
+        return ask(question, threadId, tenant, null);
+    }
+
+    public AssistantResult ask(String question, String threadId, TenantContext tenant, String surface) {
         String effectiveThreadId = resolveThreadId(threadId, tenant);
         String history = conversationMemory.formatHistory(effectiveThreadId);
+        StoreContextPack pack = contextPackAssembler.assemble(
+                tenant, effectiveThreadId, FollowUpSupport.normalizeSurface(surface));
 
         RunnableConfig config = RunnableConfig.builder()
                 .threadId(effectiveThreadId)
@@ -57,6 +69,10 @@ public class PosAssistantGraphService {
         Map<String, Object> initialState = new HashMap<>();
         initialState.put("question", question);
         initialState.put("conversation_history", history == null ? "" : history);
+        initialState.put("store_context", pack.promptSummary());
+        initialState.put("last_intent", pack.lastIntent());
+        initialState.put("last_slots", pack.lastSlots());
+        initialState.put("ui_surface", pack.surface());
         initialState.put(CorrelationIdContext.STATE_KEY, CorrelationIdContext.current());
         if (tenant != null) {
             initialState.put("vendor_id", tenant.vendorId());
@@ -99,7 +115,8 @@ public class PosAssistantGraphService {
             String intent = stringValue(data, "intent");
             Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
 
-            conversationMemory.append(effectiveThreadId, question, intent, answer);
+            conversationMemory.append(effectiveThreadId, question, intent, answer, slots);
+            conversationMemory.saveLastSlots(effectiveThreadId, intent, slots);
 
             return new AssistantResult(
                     effectiveThreadId,

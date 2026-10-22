@@ -21,10 +21,13 @@ import com.orithos.modules.ai.node.ClassifyQueryNode;
 import com.orithos.modules.ai.node.GenerateResponseNode;
 import com.orithos.modules.ai.report.FillReportSlotsNode;
 import com.orithos.modules.ai.report.OdooReportQueryNode;
+import com.orithos.modules.ai.report.OdooReportQueryService;
 import com.orithos.modules.ai.report.ReportRespondNode;
 import com.orithos.modules.ai.report.ReportTemplateRegistry;
+import com.orithos.modules.ai.sommelier.SommelierChatBrief;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -68,6 +71,10 @@ public class PosAssistantGraphConfig {
             HashMap<String, KeyStrategy> strategies = new HashMap<>();
             strategies.put("question", new ReplaceStrategy());
             strategies.put("conversation_history", new ReplaceStrategy());
+            strategies.put("store_context", new ReplaceStrategy());
+            strategies.put("last_intent", new ReplaceStrategy());
+            strategies.put("last_slots", new ReplaceStrategy());
+            strategies.put("ui_surface", new ReplaceStrategy());
             strategies.put(CorrelationIdContext.STATE_KEY, new ReplaceStrategy());
             strategies.put("intent", new ReplaceStrategy());
             strategies.put("intent_summary", new ReplaceStrategy());
@@ -107,10 +114,13 @@ public class PosAssistantGraphConfig {
             PosAssistantTools posAssistantTools,
             FillReportSlotsNode fillReportSlotsNode,
             OdooReportQueryNode odooReportQueryNode,
-            ReportRespondNode reportRespondNode) throws GraphStateException {
+            ReportRespondNode reportRespondNode,
+            OdooReportQueryService odooReportQueryService,
+            ObjectProvider<SommelierChatBrief> sommelierChatBriefProvider) throws GraphStateException {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
-                posAssistantChatClient, intentConfigService, intentSanitizeService, properties)));
+                posAssistantChatClient, intentConfigService, intentSanitizeService, properties,
+                odooReportQueryService, sommelierChatBriefProvider)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
                 posAssistantChatClient, intentConfigService, properties, posAssistantTools)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)

@@ -124,6 +124,74 @@ public class OdooReportQueryService {
         }
     }
 
+    /**
+     * Count sellable POS products for the vendor company. Read-only; returns null when
+     * Odoo is unavailable so callers can fall back to a catalogue CTA.
+     */
+    public Integer countSellableProducts(TenantContext tenant) {
+        if (tenant == null || !configured()) {
+            return null;
+        }
+        Vendor vendor = vendorMapper.findById(tenant.vendorId());
+        if (vendor == null || vendor.getOdooCompanyId() == null
+                || vendor.getOdooCompanyId() <= 0
+                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+            return null;
+        }
+        try {
+            long companyId = vendor.getOdooCompanyId();
+            String sessionId = authenticate();
+            ZoneId timezone = cachedTimezone(companyId);
+            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
+            return searchCount(sessionId, "product.product", productDomain(companyId), context);
+        } catch (Exception e) {
+            log.warn("AI product count failed vendorId={} causeType={}",
+                    tenant.vendorId(), e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /**
+     * Search sellable products by name fragment. Never invents rows; empty list on miss.
+     */
+    public List<Map<String, Object>> searchProducts(TenantContext tenant, String query, int limit) {
+        if (tenant == null || query == null || query.isBlank() || !configured()) {
+            return List.of();
+        }
+        Vendor vendor = vendorMapper.findById(tenant.vendorId());
+        if (vendor == null || vendor.getOdooCompanyId() == null
+                || vendor.getOdooCompanyId() <= 0
+                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+            return List.of();
+        }
+        int capped = Math.max(1, Math.min(limit <= 0 ? 8 : limit, MAX_LIST_ROWS));
+        try {
+            long companyId = vendor.getOdooCompanyId();
+            String sessionId = authenticate();
+            ZoneId timezone = cachedTimezone(companyId);
+            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
+            List<Object> domain = productDomain(companyId);
+            domain.add(List.of("name", "ilike", query.trim()));
+            List<Map<String, Object>> products = searchRead(sessionId, "product.product", domain,
+                    List.of("id", "display_name", "list_price", "qty_available"), context, capped,
+                    "display_name asc");
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Map<String, Object> product : products) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", product.get("id"));
+                row.put("name", product.getOrDefault("display_name", ""));
+                row.put("list_price", decimal(product.get("list_price")));
+                row.put("quantity", decimal(product.get("qty_available")));
+                rows.add(row);
+            }
+            return rows;
+        } catch (Exception e) {
+            log.warn("AI product search failed vendorId={} causeType={}",
+                    tenant.vendorId(), e.getClass().getSimpleName());
+            return List.of();
+        }
+    }
+
     public ZoneId businessTimezone(TenantContext tenant) {
         if (tenant == null || !tenant.canQueryReport() || !configured()) return AustraliaTime.ZONE;
         Vendor vendor = vendorMapper.findById(tenant.vendorId());
@@ -383,6 +451,40 @@ public class OdooReportQueryService {
         kwargs.put("order", order);
         kwargs.put("context", context);
         return convertRows(call(session, model, "search_read", List.of(domain), kwargs));
+    }
+
+    private int searchCount(String session, String model, List<Object> domain,
+                            Map<String, Object> context) throws Exception {
+        Map<String, Object> kwargs = new LinkedHashMap<>();
+        kwargs.put("context", context);
+        JsonNode result = callScalar(session, model, "search_count", List.of(domain), kwargs);
+        if (result == null || !result.isNumber()) {
+            throw new OdooReportFailure("ODOO_INVALID_RESPONSE", null, "", "", model, "search_count",
+                    result == null ? "MISSING" : result.getNodeType().name());
+        }
+        return result.asInt();
+    }
+
+    private JsonNode callScalar(String session, String model, String method,
+                                List<?> args, Map<String, Object> kwargs) throws Exception {
+        ObjectNode params = objectMapper.createObjectNode();
+        params.put("model", model);
+        params.put("method", method);
+        params.set("args", objectMapper.valueToTree(args));
+        params.set("kwargs", objectMapper.valueToTree(kwargs));
+        JsonNode root = objectMapper.readTree(post("/web/dataset/call_kw", params, session).body());
+        if (root.hasNonNull("error")) {
+            JsonNode error = root.path("error");
+            JsonNode code = error.path("code");
+            String rpcCode = code.isNumber() ? code.asText() : "";
+            String rpcType = simpleExceptionName(error.path("data").path("name").asText(""));
+            throw new OdooReportFailure("ODOO_RPC_ERROR", null, rpcCode, rpcType, model, method, "");
+        }
+        JsonNode result = root.get("result");
+        if (result == null || result.isNull()) {
+            throw new OdooReportFailure("ODOO_INVALID_RESPONSE", null, "", "", model, method, "MISSING");
+        }
+        return result;
     }
 
     private List<Map<String, Object>> convertRows(JsonNode rows) {

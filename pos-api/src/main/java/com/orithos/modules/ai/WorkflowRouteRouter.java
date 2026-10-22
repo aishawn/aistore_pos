@@ -17,22 +17,22 @@ public final class WorkflowRouteRouter {
             "top up(?: (?:stock|inventory))?|what needs a reorder|帮我看(?:看)?哪些要补货",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PRICING = Pattern.compile(
-            "which prices|which prices need(?: checking| review)|price review|price check|pricing|reprice|which products? should (?:i|we) reprice|which products? need(?: a)? price check|which items? need(?:s)? (?:a )?price review|show (?:me )?(?:the )?price suggestions?|raise the price|lower the price|should (?:i|we) (?:raise|lower|change) .*price|prices? need attention|price suggestion|pricing suggestion|pricing recommendations|what should (?:i|we) charge|how much should (?:i|we) charge|what should (?:i|we) price|what price should (?:i|we) set|review prices|调价|定价|价格建议|改价|价格调整|哪些价格需要复核|哪些商品需要复核价格|哪些商品需要改价|哪些商品价格不对",
+            "which prices|which prices need(?: checking| review)|price review|price check|pricing|reprice|which products? should (?:i|we) reprice|which products? need(?: a)? price check|which items? need(?:s)? (?:a )?price review|show (?:me )?(?:the )?price suggestions?|raise the price|lower the price|should (?:i|we) (?:raise|lower|change) .*price|prices? need attention|price suggestion|pricing suggestion|pricing recommendations|suggest(?: a)? price(?: for .*)?|what should (?:i|we) charge|how much should (?:i|we) charge|what should (?:i|we) price|what price should (?:i|we) set|review prices|调价|定价|价格建议|改价|价格调整|哪些价格需要复核|哪些商品需要复核价格|哪些商品需要改价|哪些商品价格不对",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PRICING_NATURAL = Pattern.compile(
             "prices? look(?:s)? off|what is a fair price for|which prices? need attention",
             Pattern.CASE_INSENSITIVE);
     /** Recommend / pair — not bare "red wine" (that often means a sales report). */
     private static final Pattern SOMMELIER = Pattern.compile(
-            "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine(?:\\s+for .*)?|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine(?:\\s+for .*)?|recommend (?:something|a bottle) for .*|what should i serve with .*|pair(?:ing)? .*wine|"
+            "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine(?:\\s+for .*)?|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine(?:\\s+for .*)?|recommend (?:something|a bottle)(?: in stock)? for .*|what should i serve with .*|pair(?:ing)? .*wine|"
                     + "what wine|wine recommendation|food pairing|"
-                    + "(?:red|white|rose|sparkling)? ?wine for .*|something (?:light|fresh|crisp) under .*|"
+                    + "(?:red|white|rose|sparkling)? ?wine for .*|suggest something(?: in stock)? for .*|something (?:light|fresh|crisp) under .*|"
                     + "suggest a wine|recommend a wine|find me (?:a )?wine|"
                     + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|红酒配牛排|白酒配海鲜|"
                     + "配餐|搭配.*酒|.*配.*酒|适合.*酒|清爽.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE = Pattern.compile(
-            "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you read (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|supplier bill|supplier document|发票|供应商单据|供应商账单|读取.*单据|识别.*发票|上传.*发票|上传.*账单|拍照.*(?:发票|账单)",
+            "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you (?:read|check) (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|supplier bill|supplier document|发票|供应商单据|供应商账单|读取.*单据|识别.*发票|上传.*发票|上传.*账单|拍照.*(?:发票|账单)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_NATURAL = Pattern.compile(
             "snap (?:this|an?|the) (?:supplier )?(?:invoice|bill)",
@@ -66,7 +66,18 @@ public final class WorkflowRouteRouter {
                     + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|设置这些价格|修改这些价格)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_ZH = Pattern.compile(
-            "把这些建议下单|直接把价格改了",
+            "把这些建议下单|直接把价格改了|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern DIRECT_EXECUTION_EN = Pattern.compile(
+            "(?:top up|restock|replenish|bring)\\s+(?:these|the)\\s+(?:items|products|lines|stock)\\s+(?:to|up to)\\s*\\d+\\s*(?:units?|items?|cases?|bottles?)?|"
+                    + "(?:top up|restock|replenish|bring)\\s+(?:all(?:\\s+the)?|the)?\\s*[a-z][a-z -]*\\s+(?:to|up to)\\s*\\d+\\s*(?:units?|items?|cases?|bottles?)?",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern NUMERIC_PURCHASE_EXECUTION = Pattern.compile(
+            "\\b(?:order|buy|purchase)\\s+\\d+\\s+(?:units?|items?|cases?|bottles?)\\s+of\\s+[a-z][a-z0-9 -]*\\b",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern NUMERIC_PRICE_EXECUTION = Pattern.compile(
+            "\\b(?:set|change|raise|lower|update|apply)\\s+(?:the\\s+)?[a-z][a-z0-9 -]*?(?:\\s+price)?\\s*(?:to|at)\\s*\\$?\\d+(?:\\.\\d{1,2})?\\b|"
+                    + "(?:直接\\s*)?把.+?(?:价格|售价)\\s*(?:改成|调整为|设为)\\s*\\$?\\d+(?:\\.\\d{1,2})?",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SUPPLIER_LOOKUP = Pattern.compile(
             "(?:show|open|view|list|search|find|look up|check)(?:\\s+me)?\\s+(?:the\\s+)?suppliers?|"
@@ -116,6 +127,7 @@ public final class WorkflowRouteRouter {
 
     public static Override maybeOverride(String question) {
         if (question == null || question.isBlank()) return null;
+        if (hasWriteIntent(question)) return null;
         String normalized = question.trim().toLowerCase(Locale.ROOT);
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {
             return new Override("navigate", "/suppliers/odoo");
@@ -180,7 +192,11 @@ public final class WorkflowRouteRouter {
         String normalized = question.trim().toLowerCase(Locale.ROOT);
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
         if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return false;
-        if (INVOICE_MUTATION.matcher(normalized).find() || DIRECT_EXECUTION_ZH.matcher(normalized).find()) return true;
+        if (INVOICE_MUTATION.matcher(normalized).find()
+                || DIRECT_EXECUTION_ZH.matcher(normalized).find()
+                || DIRECT_EXECUTION_EN.matcher(normalized).find()
+                || NUMERIC_PRICE_EXECUTION.matcher(normalized).find()
+                || NUMERIC_PURCHASE_EXECUTION.matcher(normalized).find()) return true;
         if (EXPLICIT_EXECUTION.matcher(normalized).find()
                 && (REPLENISHMENT.matcher(normalized).find()
                 || PRICING.matcher(normalized).find()

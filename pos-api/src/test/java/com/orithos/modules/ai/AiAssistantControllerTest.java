@@ -56,7 +56,7 @@ class AiAssistantControllerTest {
         ObjectProvider<PosAssistantGraphService> graph = mock(ObjectProvider.class);
         PosAssistantGraphService service = mock(PosAssistantGraphService.class);
         when(graph.getIfAvailable()).thenReturn(service);
-        when(service.ask(eq("What should I reorder?"), isNull(), any(TenantContext.class)))
+        when(service.ask(eq("What should I reorder?"), isNull(), any(TenantContext.class), isNull()))
                 .thenThrow(new IllegalStateException("provider request id=secret-123",
                         new IllegalArgumentException("api-key=private-value")));
         TenantContext tenant = new TenantContext(42L, 7L, 3L, java.util.List.of(3L),

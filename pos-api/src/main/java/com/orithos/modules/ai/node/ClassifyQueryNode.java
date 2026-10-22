@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.AssistantFastPathRouter;
+import com.orithos.modules.ai.AssistantTenantContext;
 import com.orithos.modules.ai.DashScopeModelRouting;
 import com.orithos.modules.ai.WorkflowRouteRouter;
 import com.orithos.modules.ai.configstore.AiIntent;
@@ -13,14 +14,20 @@ import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.RawIntent;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
+import com.orithos.modules.ai.context.FollowUpSupport;
+import com.orithos.modules.ai.report.OdooReportQueryService;
 import com.orithos.modules.ai.report.ReportAdhocRouter;
+import com.orithos.modules.ai.report.TenantContext;
+import com.orithos.modules.ai.sommelier.SommelierChatBrief;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -42,31 +49,80 @@ public class ClassifyQueryNode implements NodeAction {
     private final IntentConfigService configService;
     private final IntentSanitizeService sanitizeService;
     private final AiProperties properties;
+    private final OdooReportQueryService reportQueryService;
+    private final ObjectProvider<SommelierChatBrief> sommelierChatBrief;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
                              IntentSanitizeService sanitizeService,
                              AiProperties properties) {
+        this(chatClient, configService, sanitizeService, properties, null, null);
+    }
+
+    public ClassifyQueryNode(ChatClient chatClient,
+                             IntentConfigService configService,
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties,
+                             OdooReportQueryService reportQueryService,
+                             ObjectProvider<SommelierChatBrief> sommelierChatBrief) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.sanitizeService = sanitizeService;
         this.properties = properties;
+        this.reportQueryService = reportQueryService;
+        this.sommelierChatBrief = sommelierChatBrief;
     }
 
     @Override
     public Map<String, Object> apply(OverAllState state) {
         String question = state.value("question", String.class)
                 .orElseThrow(() -> new IllegalStateException("question is required"));
+        String lastIntent = optionalString(state, "last_intent");
+        Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
 
         // Explicit write requests must never reach a shortcut or the model.
         // Both paths can otherwise produce a harmless-looking read-only route
         // for words such as “submit”, “save” or “receive”.
         if (WorkflowRouteRouter.hasWriteIntent(question)) {
             log.info("Write-intent request kept in guided flow");
+            boolean stockTarget = isStockWriteTarget(question);
+            boolean priceTarget = isPriceWriteTarget(question);
+            String summary = stockTarget
+                    ? "I cannot change stock quantities from chat. Open replenishment to review suggestions — staff confirm any order on the page."
+                    : priceTarget
+                    ? "I cannot change prices from chat. Open price review to check suggestions — staff confirm any change on the page."
+                    : "I can help review this, but I cannot perform that business action from chat.";
+            String route = stockTarget ? "/stock/replenishment"
+                    : priceTarget ? "/stock/capped-pricing"
+                    : "";
+            // Keep intent unknown when there is no page CTA so existing fail-closed
+            // contracts stay stable; navigate only when a guided page is offered.
             return shortcutResult(
-                    "unknown",
-                    "I can help review this, but I cannot perform that business action from chat.",
-                    Map.of(), "", "", "", "");
+                    route.isEmpty() ? "unknown" : "navigate",
+                    summary,
+                    Map.of(), "", "", route, "");
+        }
+
+        // Relative follow-ups reuse the previous report intent ("and yesterday?").
+        if (FollowUpSupport.isRelativeFollowUp(question)
+                && FollowUpSupport.isReportIntent(lastIntent)
+                && !"report_adhoc".equals(lastIntent)) {
+            log.info("Follow-up fast-path intent={}", lastIntent);
+            Map<String, String> slots = FollowUpSupport.mergeMissingSlots(Map.of(), lastSlots);
+            return shortcutResult(lastIntent, "Follow-up report", slots, "", "", "", "");
+        }
+
+        // Product catalogue count before other product lookup shortcuts.
+        if (isProductCountUtterance(question)) {
+            log.info("Product-count fast-path (skipped classify LLM)");
+            return productCountShortcut(new AssistantFastPathRouter.Match(
+                    "navigate",
+                    "Open Products to browse the catalogue.",
+                    Map.of(),
+                    "/products",
+                    "products",
+                    "",
+                    ""));
         }
 
         // Explicit unsupported comparisons should keep their guided refusal even
@@ -92,9 +148,16 @@ public class ClassifyQueryNode implements NodeAction {
         WorkflowRouteRouter.Override directWorkflow = WorkflowRouteRouter.maybeOverride(question);
         if (directWorkflow != null) {
             log.info("Workflow fast-path route={}", directWorkflow.route());
+            String summary = "Opening the requested workflow.";
+            if ("/sommelier".equals(directWorkflow.route()) && sommelierChatBrief != null) {
+                SommelierChatBrief brief = sommelierChatBrief.getIfAvailable();
+                if (brief != null) {
+                    summary = brief.brief(question, AssistantTenantContext.get());
+                }
+            }
             Map<String, Object> out = new HashMap<>();
             out.put("intent", directWorkflow.intent());
-            out.put("intent_summary", "Opening the requested workflow.");
+            out.put("intent_summary", summary);
             out.put("slots", Map.of());
             out.put("ui_panel", "");
             out.put("ui_view", "");
@@ -105,8 +168,9 @@ public class ClassifyQueryNode implements NodeAction {
 
         IntentConfigService.Snapshot snap = configService.getSnapshot();
         String system = snap.promptContent(IntentConfigService.PROMPT_CLASSIFY, FALLBACK_CLASSIFY_PROMPT);
-        String history = state.value("conversation_history", String.class).orElse("");
-        String userPrompt = buildUserPrompt(snap, question, history);
+        String history = optionalString(state, "conversation_history");
+        String storeContext = optionalString(state, "store_context");
+        String userPrompt = buildUserPrompt(snap, question, history, storeContext);
 
         RawIntent raw = callModel(system, userPrompt);
         SanitizedIntent result = sanitizeService.sanitize(raw);
@@ -123,17 +187,89 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Forced intent {} -> {} for explicit workflow request", result.intent(), intent);
         }
 
+        Map<String, String> slots = FollowUpSupport.mergeMissingSlots(result.slots(), lastSlots);
+        String summary = result.summary();
+        if ("/sommelier".equals(route) && sommelierChatBrief != null) {
+            SommelierChatBrief brief = sommelierChatBrief.getIfAvailable();
+            if (brief != null) {
+                summary = brief.brief(question, AssistantTenantContext.get());
+            }
+        }
+
         log.debug("Classified intent={}", intent);
 
         Map<String, Object> out = new HashMap<>();
         out.put("intent", intent);
-        out.put("intent_summary", result.summary());
-        out.put("slots", result.slots());
+        out.put("intent_summary", summary);
+        out.put("slots", slots);
         out.put("ui_panel", nullToEmpty(result.panel()));
         out.put("ui_view", nullToEmpty(result.view()));
         out.put("ui_route", route);
         out.put("ui_action", nullToEmpty(result.action()));
         return out;
+    }
+
+    private static boolean isStockWriteTarget(String question) {
+        if (question == null) {
+            return false;
+        }
+        return question.matches(
+                "(?is).*(?:把.+?(?:补到|补足|补至|加到)\\s*\\d+"
+                        + "|(?:top up|restock|replenish|bring)\\b.+?(?:to|up to)\\s*\\d+"
+                        + "|\\border\\s+\\d+\\s+(?:units?|bottles?|cases?)\\b).*");
+    }
+
+    private static boolean isPriceWriteTarget(String question) {
+        if (question == null) {
+            return false;
+        }
+        return question.matches(
+                "(?is).*(?:把.+?(?:价格|售价)\\s*(?:改成|调整为|设为)\\s*\\$?\\d+"
+                        + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+).*");
+    }
+
+    private static String optionalString(OverAllState state, String key) {
+        Optional<String> value = state.value(key, String.class);
+        return value == null ? "" : value.orElse("");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, String> optionalStringMap(OverAllState state, String key) {
+        Optional<Object> value = state.value(key);
+        if (value == null || value.isEmpty() || !(value.get() instanceof Map<?, ?> raw)) {
+            return Map.of();
+        }
+        Map<String, String> out = new HashMap<>();
+        raw.forEach((k, v) -> {
+            if (k != null && v != null) {
+                out.put(k.toString(), v.toString());
+            }
+        });
+        return out;
+    }
+
+    private Map<String, Object> productCountShortcut(AssistantFastPathRouter.Match fast) {
+        TenantContext tenant = AssistantTenantContext.get();
+        Integer count = null;
+        if (reportQueryService != null && tenant != null) {
+            count = reportQueryService.countSellableProducts(tenant);
+        }
+        String summary = count != null
+                ? "This store has " + count + " sellable products in the catalogue. Open Products to browse."
+                : (fast.summary() == null || fast.summary().isBlank()
+                ? "Open Products to browse the catalogue."
+                : fast.summary());
+        return shortcutResult("navigate", summary, Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
+    }
+
+    private static boolean isProductCountUtterance(String question) {
+        if (question == null) {
+            return false;
+        }
+        String q = question.trim().toLowerCase();
+        return q.contains("多少产品") || q.contains("多少商品") || q.contains("产品总数")
+                || q.contains("商品总数") || q.contains("how many product") || q.contains("product count")
+                || q.contains("total products") || q.contains("how many sku");
     }
 
     private static Map<String, Object> shortcutResult(
@@ -223,7 +359,8 @@ public class ClassifyQueryNode implements NodeAction {
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question, String history) {
+    private static String buildUserPrompt(IntentConfigService.Snapshot snap, String question,
+                                          String history, String storeContext) {
         String intentLines = snap.intents().stream()
                 .map(i -> "- " + i.getCode() + ": " + hint(i))
                 .collect(Collectors.joining("\n"));
@@ -247,6 +384,9 @@ public class ClassifyQueryNode implements NodeAction {
         String historyBlock = (history == null || history.isBlank())
                 ? ""
                 : "Recent conversation (for relative follow-ups like \"and yesterday?\"):\n" + history + "\n\n";
+        String contextBlock = (storeContext == null || storeContext.isBlank())
+                ? ""
+                : storeContext.trim() + "\n\n";
 
         return """
                 Allowed intents:
@@ -254,9 +394,9 @@ public class ClassifyQueryNode implements NodeAction {
 
                 Allowed slots:
                 %s
-                %sUser utterance:
+                %s%sUser utterance:
                 """
-                .formatted(intentLines, slotLines, historyBlock)
+                .formatted(intentLines, slotLines, contextBlock, historyBlock)
                 + """
                 ---
                 %s

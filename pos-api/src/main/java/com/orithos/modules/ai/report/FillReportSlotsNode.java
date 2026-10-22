@@ -2,12 +2,14 @@ package com.orithos.modules.ai.report;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.orithos.modules.ai.context.FollowUpSupport;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class FillReportSlotsNode implements NodeAction {
@@ -29,6 +31,8 @@ public class FillReportSlotsNode implements NodeAction {
     @Override
     public Map<String, Object> apply(OverAllState state) {
         Map<String, String> slots = new HashMap<>(ReportGraphState.slots(state));
+        Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
+        slots = new HashMap<>(FollowUpSupport.mergeMissingSlots(slots, lastSlots));
         String question = ReportGraphState.string(state, "question");
         String intent = ReportGraphState.string(state, "intent");
         String category = ReportTemplateRegistry.sanitizeCategory(slots.get("category"));
@@ -65,6 +69,20 @@ public class FillReportSlotsNode implements NodeAction {
                 out.put("sql_error", "QUOTA_EXCEEDED");
             }
         }
+        return out;
+    }
+
+    private static Map<String, String> optionalStringMap(OverAllState state, String key) {
+        Optional<Object> value = state.value(key);
+        if (value == null || value.isEmpty() || !(value.get() instanceof Map<?, ?> raw)) {
+            return Map.of();
+        }
+        Map<String, String> out = new HashMap<>();
+        raw.forEach((k, v) -> {
+            if (k != null && v != null) {
+                out.put(k.toString(), v.toString());
+            }
+        });
         return out;
     }
 }

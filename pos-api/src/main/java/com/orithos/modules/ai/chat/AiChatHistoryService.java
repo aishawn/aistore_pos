@@ -1,9 +1,11 @@
 package com.orithos.modules.ai.chat;
 
 import com.orithos.common.BusinessException;
+import com.orithos.modules.ai.AiConversationMemory;
 import com.orithos.modules.ai.report.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
@@ -18,12 +20,16 @@ public class AiChatHistoryService {
     private static final Logger log = LoggerFactory.getLogger(AiChatHistoryService.class);
     private static final int MAX_THREADS = 40;
     private static final int MAX_MESSAGES = 200;
+    private static final int REHYDRATE_TURNS = 12;
     private static final int TITLE_MAX = 80;
 
     private final AiChatHistoryMapper mapper;
+    private final ObjectProvider<AiConversationMemory> conversationMemory;
 
-    public AiChatHistoryService(AiChatHistoryMapper mapper) {
+    public AiChatHistoryService(AiChatHistoryMapper mapper,
+                                ObjectProvider<AiConversationMemory> conversationMemory) {
         this.mapper = mapper;
+        this.conversationMemory = conversationMemory;
     }
 
     public void appendTurn(TenantContext tenant, String sessionKey, String question,
@@ -102,6 +108,7 @@ public class AiChatHistoryService {
             row.put("createdAt", m.getCreatedAt());
             msgOut.add(row);
         }
+        rehydrateActiveContext(thread.getSessionKey(), messages);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("id", thread.getId());
         body.put("sessionKey", thread.getSessionKey());
@@ -109,6 +116,41 @@ public class AiChatHistoryService {
         body.put("updatedAt", thread.getUpdatedAt());
         body.put("messages", msgOut);
         return body;
+    }
+
+    /**
+     * Rebuild Redis short-term memory from durable history so follow-ups work
+     * after the Redis TTL expires.
+     */
+    private void rehydrateActiveContext(String sessionKey, List<AiChatMessage> messages) {
+        AiConversationMemory memory = conversationMemory.getIfAvailable();
+        if (memory == null || sessionKey == null || sessionKey.isBlank()
+                || messages == null || messages.isEmpty()) {
+            return;
+        }
+        List<AiConversationMemory.Turn> turns = new ArrayList<>();
+        String pendingQuestion = null;
+        for (AiChatMessage message : messages) {
+            if (message == null || message.getRole() == null) {
+                continue;
+            }
+            if ("user".equalsIgnoreCase(message.getRole())) {
+                pendingQuestion = message.getTextContent();
+            } else if ("assistant".equalsIgnoreCase(message.getRole()) && pendingQuestion != null) {
+                turns.add(new AiConversationMemory.Turn(
+                        pendingQuestion,
+                        message.getIntent() == null ? "" : message.getIntent(),
+                        message.getTextContent() == null ? "" : message.getTextContent()));
+                pendingQuestion = null;
+            }
+        }
+        if (turns.isEmpty()) {
+            return;
+        }
+        if (turns.size() > REHYDRATE_TURNS) {
+            turns = turns.subList(turns.size() - REHYDRATE_TURNS, turns.size());
+        }
+        memory.rehydrate(sessionKey, turns);
     }
 
     private static String titleFrom(String question) {

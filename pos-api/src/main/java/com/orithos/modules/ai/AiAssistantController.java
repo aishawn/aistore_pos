@@ -81,7 +81,7 @@ public class AiAssistantController {
 
         PosAssistantGraphService.AssistantResult result;
         try {
-            result = service.ask(request.question(), request.threadId(), tenant);
+            result = service.ask(request.question(), request.threadId(), tenant, request.surface());
         } catch (BusinessException e) {
             auditService.recordAssistant(tenant, "unknown", false, elapsedMs(startedAt), request.question(), null);
             throw e;

@@ -101,6 +101,61 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void stockWriteIntentOffersReplenishmentCtaWithoutClassifier() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("把啤酒补到50件"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("navigate", result.get("intent"));
+        assertEquals("/stock/replenishment", result.get("ui_route"));
+        assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("cannot change stock"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void productCountUtteranceSkipsClassifierAndOpensProducts() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("一共有多少产品"));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("navigate", result.get("intent"));
+        assertEquals("/products", result.get("ui_route"));
+        assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void relativeFollowUpReusesLastReportIntent() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("那昨天呢"));
+        when(state.value("last_intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("last_slots")).thenReturn(Optional.of(Map.of("category", "beer")));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("report_sales", result.get("intent"));
+        assertEquals(Map.of("category", "beer"), result.get("slots"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void unsupportedAdhocReportSkipsClassifierWhenProviderIsUnavailable() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);

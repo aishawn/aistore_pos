@@ -47,9 +47,13 @@ public class ReportRespondNode implements NodeAction {
         if (rows == null || rows.isEmpty()) {
             return switch (intent == null ? "" : intent) {
                 case "report_stock" -> "No matching stock found. Check the product name or catalogue spelling.";
-                case "report_dead_stock" -> "No dead-stock items found for the selected period.";
+                case "report_dead_stock" -> "No dead-stock items found for the selected period."
+                        + " Try asking for dead stock last 60 days if you want a wider window.";
                 default -> "No completed sales found for " + rangeText(from, to)
-                        + ". Try a wider range, for example: sales last 7 days.";
+                        + ". Try a wider range — for example ask: sales last 7 days"
+                        + (from != null && !from.isBlank() && from.equals(to)
+                        ? ", or yesterday / last week."
+                        : ".");
             };
         }
         return switch (intent == null ? "" : intent) {

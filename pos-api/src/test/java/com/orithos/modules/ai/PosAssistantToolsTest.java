@@ -50,4 +50,21 @@ class PosAssistantToolsTest {
         String body = tools.lookupSales("2026-10-20", "2026-10-20");
         assertTrue(body.contains("12.50"));
     }
+
+    @Test
+    void countProductsUsesTenantContext() {
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of("ROLE_ADMIN"));
+        AssistantTenantContext.set(tenant);
+        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        when(query.countSellableProducts(tenant)).thenReturn(42);
+        PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
+        assertTrue(tools.countProducts().contains("42"));
+    }
+
+    @Test
+    void searchProductsRequiresName() {
+        AssistantTenantContext.set(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of("ROLE_ADMIN")));
+        PosAssistantTools tools = new PosAssistantTools(mock(OdooReportQueryService.class), new ReportPeriodResolver());
+        assertTrue(tools.searchProducts(" ").startsWith("NEED_PRODUCT"));
+    }
 }

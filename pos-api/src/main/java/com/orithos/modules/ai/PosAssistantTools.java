@@ -56,6 +56,39 @@ public class PosAssistantTools {
         ), "Average ticket");
     }
 
+    @Tool(description = "Count sellable products in the current store catalogue. Use for 'how many products' questions.")
+    public String countProducts() {
+        TenantContext tenant = AssistantTenantContext.get();
+        if (tenant == null) {
+            return "NO_STORE: sign in to a store first.";
+        }
+        Integer count = queryService.countSellableProducts(tenant);
+        if (count == null) {
+            return "Product count unavailable. Open Products to browse the catalogue.";
+        }
+        return "Sellable products in catalogue: " + count;
+    }
+
+    @Tool(description = "Search products by name in the current store catalogue. Read-only.")
+    public String searchProducts(
+            @ToolParam(description = "Product name fragment to search") String productName) {
+        if (productName == null || productName.isBlank()) {
+            return "NEED_PRODUCT: tell me which product name to search.";
+        }
+        TenantContext tenant = AssistantTenantContext.get();
+        if (tenant == null) {
+            return "NO_STORE: sign in to a store first.";
+        }
+        List<Map<String, Object>> rows = queryService.searchProducts(tenant, productName.trim(), 8);
+        if (rows.isEmpty()) {
+            return "No catalogue matches for \"" + productName.trim() + "\".";
+        }
+        return rows.stream()
+                .map(row -> row.getOrDefault("name", "") + " qty=" + row.getOrDefault("quantity", "")
+                        + " price=" + row.getOrDefault("list_price", ""))
+                .collect(Collectors.joining(" | "));
+    }
+
     private String runReport(String intent, Map<String, String> slots, String label) {
         TenantContext tenant = AssistantTenantContext.get();
         if (tenant == null) {

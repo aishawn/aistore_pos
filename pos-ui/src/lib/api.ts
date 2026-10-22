@@ -842,12 +842,14 @@ export function askAssistant(
   question: string,
   threadId?: string | null,
   signal?: AbortSignal,
+  surface?: string | null,
 ): Promise<AssistantResponse> {
   return api.post<AssistantResponse>(
     "/api/ai/assistant",
     {
       question,
       threadId: threadId || undefined,
+      surface: surface || undefined,
     },
     { signal },
   );

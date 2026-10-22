@@ -23,7 +23,7 @@ class ReportRespondNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("No completed sales found for 2026-10-20. Try a wider range, for example: sales last 7 days.", result.get("answer"));
+        assertEquals("No completed sales found for 2026-10-20. Try a wider range — for example ask: sales last 7 days, or yesterday / last week.", result.get("answer"));
         verify(auditService).record(state);
     }
 
@@ -75,7 +75,9 @@ class ReportRespondNodeTest {
 
         OverAllState deadStock = state("", List.of());
         when(deadStock.value("intent", String.class)).thenReturn(Optional.of("report_dead_stock"));
-        assertEquals("No dead-stock items found for the selected period.", node.apply(deadStock).get("answer"));
+        assertEquals("No dead-stock items found for the selected period."
+                        + " Try asking for dead stock last 60 days if you want a wider window.",
+                node.apply(deadStock).get("answer"));
     }
 
     @Test

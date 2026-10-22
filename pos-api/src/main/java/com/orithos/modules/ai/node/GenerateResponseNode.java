@@ -53,12 +53,14 @@ public class GenerateResponseNode implements NodeAction {
         String system = configService.getSnapshot()
                 .promptContent(IntentConfigService.PROMPT_RESPOND, FALLBACK_RESPOND);
         String history = state.value("conversation_history", String.class).orElse("");
+        String storeContext = state.value("store_context", String.class).orElse("");
 
         String userPrompt = """
-                Intent: %s
+                %sIntent: %s
                 Intent summary: %s
                 %sQuestion: %s
                 """.formatted(
+                storeContext == null || storeContext.isBlank() ? "" : storeContext.trim() + "\n\n",
                 intent,
                 summary,
                 history == null || history.isBlank() ? "" : "Recent conversation:\n" + history + "\n",
