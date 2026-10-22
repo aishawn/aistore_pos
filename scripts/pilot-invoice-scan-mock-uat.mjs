@@ -106,7 +106,7 @@ try {
   if (!(await page.getByRole("img", { name: "Invoice preview" }).count())) throw new Error("Uploaded image preview was not shown");
   if (await save.count() !== 0) throw new Error("Invoice preview unexpectedly exposes a received-order save button after scanning");
   await page.getByRole("link", { name: "Open Odoo Purchases" }).waitFor({ timeout: 10000 });
-  await page.getByRole("link", { name: "Open Replenishment Plan" }).waitFor({ timeout: 10000 });
+  await page.getByRole("link", { name: "Open Replenishment" }).waitFor({ timeout: 10000 });
   const cases = page.locator('input[aria-label="Cases for line 1"]:visible');
   await cases.fill("3");
   if (await cases.inputValue() !== "3") throw new Error("Line quantity was not editable before leaving preview");

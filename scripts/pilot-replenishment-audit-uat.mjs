@@ -40,7 +40,7 @@ try {
   });
 
   await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByRole("heading", { name: "Replenishment plan" }).waitFor({ timeout: 20000 });
+  await page.getByRole("heading", { name: "Replenishment" }).waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: /Create draft RFQ/ }).click();
   const dialog = page.getByRole("dialog", { name: "Review draft RFQ" });
   await dialog.waitFor({ timeout: 10000 });

@@ -114,7 +114,7 @@ export function ScanInvoicePage() {
       if (e instanceof ApiError && e.code === 41001) {
         setInvoiceWorkflowRetired(true);
         setInvoiceVisionAvailable(false);
-        setError("Invoice photo capture is not available in this Odoo-only store. Continue in Odoo Purchases or the Replenishment Plan.");
+        setError("Invoice photo capture is not available in this Odoo-only store. Continue in Odoo Purchases or Replenishment.");
       } else {
         setError(apiFailureMessage(e, "Could not read that invoice photo.", "Please sign in again."));
       }
@@ -180,7 +180,7 @@ export function ScanInvoicePage() {
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-            OCR is preview-only. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.
+            OCR is preview-only. Use Odoo Purchases or Replenishment to create and receive inventory; this page does not write a received order.
             {invoiceWorkflowRetired && " Invoice photo capture is retired for this Odoo-only store."}
             {availabilityMessage}
             {capabilityError && (
@@ -345,7 +345,7 @@ export function ScanInvoicePage() {
           <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Review the OCR preview, then continue in Odoo for purchasing and receiving." : "Choose an invoice image to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Link href="/purchases/odoo" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Open Odoo Purchases</Link>
-            <Link href="/stock/replenishment" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Replenishment Plan</Link>
+            <Link href="/stock/replenishment" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Replenishment</Link>
           </div>
         </div>
       </footer>

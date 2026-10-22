@@ -74,7 +74,7 @@ try {
       record("served replenishment page exposes initial-failure retry", hasRetry);
       if (hasRetry) {
         await retry.click();
-        await page.getByRole("heading", { name: "Replenishment plan", exact: true }).waitFor({ timeout: 60000 });
+        await page.getByRole("heading", { name: "Replenishment", exact: true }).waitFor({ timeout: 60000 });
         record("retry recovers real Odoo read", true);
       }
       record("no page errors or viewport overflow", errors.length === 0 && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), errors);

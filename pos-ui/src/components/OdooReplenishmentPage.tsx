@@ -2,7 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CalendarRange, Check, Clock3, ExternalLink, LoaderCircle, RefreshCw, ShoppingCart, Store, X } from "lucide-react";
+import {
+  AlertCircle,
+  CalendarRange,
+  Check,
+  CircleHelp,
+  Clock3,
+  ExternalLink,
+  LoaderCircle,
+  RefreshCw,
+  Search,
+  ShoppingCart,
+  Store,
+  X,
+} from "lucide-react";
 import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq, type OdooSupplierOption } from "@/lib/odoo-api";
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 import { getOdooPosBootstrap } from "@/lib/odoo-api";
@@ -44,6 +57,8 @@ type ReplenishmentData = {
   generatedAt: string;
 };
 
+type ListFilter = "suggestions" | "out_of_stock" | "all";
+
 const coverageOptions = [7, 14, 21, 28, 42];
 const number = new Intl.NumberFormat("en-AU", { maximumFractionDigits: 1 });
 const MAX_RFQ_LINES = 100;
@@ -51,15 +66,27 @@ const MAX_RFQ_QUANTITY = 100_000;
 
 type DraftRfqLine = { productId: number; name: string; unit: string; suggestedQuantity: number; quantity: number; reason: string };
 
+function trendLabel(product: ReplenishmentProduct, periodDays: number) {
+  if (product.trend === "new") return <span className="rounded-full bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">New demand</span>;
+  if (product.trend === "up") return <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">↑ {number.format(product.trendPercent ?? 0)}%</span>;
+  if (product.trend === "down") return <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">↓ {number.format(Math.abs(product.trendPercent ?? 0))}%</span>;
+  if (product.trend === "steady") return <span className="text-sm text-[var(--oh-text-secondary)]">Steady</span>;
+  return <span className="text-sm text-[var(--oh-muted)]" title={`Trend · ${periodDays}d`}>—</span>;
+}
+
 export function OdooReplenishmentPage() {
   const [data, setData] = useState<ReplenishmentData | null>(null);
   const [coverageDays, setCoverageDays] = useState(21);
-  const [showAll, setShowAll] = useState(false);
+  const [listFilter, setListFilter] = useState<ListFilter>("suggestions");
+  const [query, setQuery] = useState("");
+  const [showMoreColumns, setShowMoreColumns] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastLoadedAt, setLastLoadedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [needsConnection, setNeedsConnection] = useState(false);
+  const [methodOpen, setMethodOpen] = useState(false);
   const [rfqOpen, setRfqOpen] = useState(false);
   const [rfqLoadingSuppliers, setRfqLoadingSuppliers] = useState(false);
   const [rfqSubmitting, setRfqSubmitting] = useState(false);
@@ -75,10 +102,14 @@ export function OdooReplenishmentPage() {
   const requestRevision = useRef(0);
   const rfqSupplierRevision = useRef(0);
   const rfqSupplierRef = useRef<HTMLSelectElement>(null);
+  const methodCloseRef = useRef<HTMLButtonElement>(null);
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
 
   useDialogFocus(rfqOpen, () => {
     if (!rfqSubmitting) setRfqOpen(false);
   }, rfqLoadingSuppliers ? "rfq-loading" : "rfq-ready", rfqSupplierRef);
+
+  useDialogFocus(methodOpen, () => setMethodOpen(false), "method-help", methodCloseRef, helpButtonRef);
 
   useEffect(() => {
     setAuditEntries(readReplenishmentAudit());
@@ -95,14 +126,13 @@ export function OdooReplenishmentPage() {
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
-        // A gateway outage is retryable; only an expired or missing session
-        // should send the operator to the Odoo connection setup.
         setNeedsConnection(response.status === 401);
         throw new Error(message || `Could not load the replenishment plan (${response.status}).`);
       }
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Odoo returned an incomplete replenishment plan.");
       setNeedsConnection(false);
       setData(payload);
+      setSelectedIds(new Set(payload.products.filter((product) => product.suggestedQuantity > 0).map((product) => product.id)));
       try {
         const bootstrap = await getOdooPosBootstrap();
         if (revision !== requestRevision.current) return;
@@ -127,7 +157,6 @@ export function OdooReplenishmentPage() {
   useEffect(() => { void load(); }, [load]);
 
   const suggestedItems = useMemo(() => data?.products.filter((product) => product.suggestedQuantity > 0) ?? [], [data]);
-  const visibleItems = showAll ? data?.products ?? [] : suggestedItems;
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = suggestedItems.filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
@@ -135,20 +164,73 @@ export function OdooReplenishmentPage() {
     () => (data?.products ?? []).some((product) => looksLikeR2ImportMarker(product.name) || looksLikeR2ImportMarker(product.sku)),
     [data],
   );
+
+  const filteredItems = useMemo(() => {
+    const base = data?.products ?? [];
+    const byFilter = listFilter === "suggestions"
+      ? base.filter((product) => product.suggestedQuantity > 0)
+      : listFilter === "out_of_stock"
+        ? base.filter((product) => product.onHand <= 0 && product.soldUnits > 0)
+        : base;
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return byFilter;
+    return byFilter.filter((product) => {
+      const label = friendlyProductName(product.name).toLowerCase();
+      return label.includes(normalized)
+        || product.name.toLowerCase().includes(normalized)
+        || product.sku.toLowerCase().includes(normalized);
+    });
+  }, [data, listFilter, query]);
+
+  const selectedSuggested = useMemo(
+    () => suggestedItems.filter((product) => selectedIds.has(product.id)),
+    [suggestedItems, selectedIds],
+  );
+  const selectedCount = Math.min(selectedSuggested.length, MAX_RFQ_LINES);
   const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
   const planCoverageDays = data?.coverageDays ?? coverageDays;
-  const canCreateRfq = suggestedItems.length > 0 && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
+  const planReady = Boolean(data) && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
+  const canCreateRfq = planReady && selectedSuggested.length > 0;
+
+  const visibleSelectableIds = useMemo(
+    () => filteredItems.filter((product) => product.suggestedQuantity > 0).map((product) => product.id),
+    [filteredItems],
+  );
+  const allVisibleSelected = visibleSelectableIds.length > 0 && visibleSelectableIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = visibleSelectableIds.some((id) => selectedIds.has(id));
+
+  function toggleSelectAllVisible() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) {
+        for (const id of visibleSelectableIds) next.delete(id);
+      } else {
+        for (const id of visibleSelectableIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectProduct(productId: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }
 
   function openRfqDialog() {
     if (!canCreateRfq) return;
-    setRfqLines(suggestedItems.slice(0, MAX_RFQ_LINES).map((product) => ({
+    const lines = selectedSuggested.slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
       name: friendlyProductName(product.name),
       unit: product.unit,
       suggestedQuantity: product.suggestedQuantity,
       quantity: product.suggestedQuantity,
       reason: product.reason || product.reasonParts?.join(" ") || "",
-    })));
+    }));
+    setRfqLines(lines);
     setRfqSupplierId("");
     setRfqError(null);
     setCreatedRfq(null);
@@ -228,6 +310,8 @@ export function OdooReplenishmentPage() {
     }
   }
 
+  const tableColSpan = (showMoreColumns ? 9 : 5) + 1;
+
   if (loading && !data) return <ReplenishmentSkeleton />;
 
   if (needsConnection && !data) return (
@@ -245,7 +329,7 @@ export function OdooReplenishmentPage() {
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section role="alert" className="w-full max-w-lg rounded-xl border border-red-200 bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
         <AlertCircle className="mx-auto text-red-700" size={30} />
-        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the replenishment plan</h1>
+        <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load replenishment</h1>
         <p className="mt-2 text-sm leading-6 text-red-800">{error}</p>
         <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button>
       </section>
@@ -253,12 +337,26 @@ export function OdooReplenishmentPage() {
   );
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment plan</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock velocity rules — not the chat model. Draft RFQs require human approval — nothing auto-orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment</h1>
+            <button
+              ref={helpButtonRef}
+              type="button"
+              onClick={() => setMethodOpen(true)}
+              aria-label="How this estimate works"
+              className="grid h-9 w-9 place-items-center rounded-md text-[var(--oh-muted)] outline-none hover:bg-[var(--oh-paper)] hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+            >
+              <CircleHelp size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">
+            Rule-based reorder suggestions · draft RFQs only · nothing auto-orders.
+            {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
+          </p>
           {showR2DisplayNote && (
             <p className="mt-1 text-xs text-[var(--oh-muted)]">
               Import prefixes such as R2 TEST are hidden in product names; SKUs may still start with R2- for reconciliation.
@@ -277,84 +375,307 @@ export function OdooReplenishmentPage() {
         </div>
       </header>
 
-      {data && (loading || refreshing) && <p role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Updating replenishment plan…</p>}
+      {data && (loading || refreshing) && <p role="status" aria-live="polite" className="inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Updating replenishment…</p>}
 
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error} The plan below is the last successful result and may be out of date.</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       {data && data.products.length > 0 && !hasRecentSales && <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><p><strong>No recent sales found.</strong> There are no completed POS sales in the last {data.historyDays} days, so this plan cannot forecast demand. Zero suggested orders does not mean stock is sufficient.</p></div><Link href="/history/odoo" className="shrink-0 font-semibold text-amber-950 underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800">Review Odoo sales history</Link></div>}
 
-      {createdRfq && <div role={createdRfq.auditSaved ? "status" : "alert"} className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm ${createdRfq.auditSaved ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-300 bg-amber-50 text-amber-950"}`}><span><strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed. {createdRfq.warning || (createdRfq.auditSaved ? "Internal approval audit saved to Odoo chatter." : "")}</span><a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">Open in Odoo <ExternalLink size={14} /></a></div>}
+      {createdRfq && (
+        <div
+          role={createdRfq.auditSaved ? "status" : "alert"}
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-md border px-4 py-3 text-sm ${createdRfq.auditSaved ? "border-emerald-200 bg-emerald-50 text-emerald-950" : "border-amber-300 bg-amber-50 text-amber-950"}`}
+        >
+          <span>
+            <strong>{createdRfq.name}</strong> created as a draft RFQ for {createdRfq.supplier}. It has not been sent or confirmed.{" "}
+            {createdRfq.warning || (createdRfq.auditSaved ? "Internal approval audit saved to Odoo chatter." : "")}
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/purchases/odoo"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+            >
+              View in Purchases
+            </Link>
+            <a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">
+              Open in Odoo <ExternalLink size={14} />
+            </a>
+          </div>
+        </div>
+      )}
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <SummaryCard title="Products to replenish" value={number.format(suggestedItems.length)} detail={`of ${number.format(data?.products.length ?? 0)} POS products`} />
-        <SummaryCard title="Suggested units" value={number.format(totalSuggestedUnits)} detail={`Across a ${planCoverageDays}-day target`} />
-        <div className="col-span-2 sm:col-span-1"><SummaryCard title="Out of stock with demand" value={number.format(outOfStockWithDemand)} detail={`Sold in the last ${data?.historyDays ?? 56} days`} /></div>
+      <section aria-label="Replenishment summary" className="flex flex-wrap items-baseline gap-x-5 gap-y-1 rounded-lg border border-[var(--oh-border)] bg-white px-4 py-3 text-sm shadow-[var(--oh-shadow-card)]">
+        <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(suggestedItems.length)}</span> <span className="text-[var(--oh-muted)]">to replenish</span></p>
+        <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(totalSuggestedUnits)}</span> <span className="text-[var(--oh-muted)]">suggested units · {planCoverageDays}d</span></p>
+        <p><span className="font-semibold tabular-nums text-[var(--oh-text)]">{number.format(outOfStockWithDemand)}</span> <span className="text-[var(--oh-muted)]">out of stock with demand</span></p>
+        <p className="text-[var(--oh-muted)]">{number.format(data?.products.length ?? 0)} POS products in plan</p>
       </section>
 
       <section className="flex shrink-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-        <header className="flex flex-col items-stretch gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5 xl:flex-row xl:items-center xl:justify-between">
-          <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">{showAll ? "All POS products" : "Replenishment suggestions"}</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Demand trend compares the latest {data?.periodDays ?? 28} days with the previous period.</p></div>
-          <div className="flex flex-col items-stretch gap-2 xl:flex-row xl:items-center"><button type="button" onClick={openRfqDialog} disabled={!canCreateRfq} className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{Math.min(suggestedItems.length, MAX_RFQ_LINES)}</span></button>
-            <button type="button" onClick={() => setShowAll((value) => !value)} aria-pressed={showAll} className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:bg-[var(--oh-orange-light)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">{showAll ? "Show suggestions only" : "Show all products"}</button></div>
+        <header className="flex flex-col gap-3 border-b border-[var(--oh-border)] px-4 py-3 md:px-5">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--oh-text)]">
+                {listFilter === "all" ? "All POS products" : listFilter === "out_of_stock" ? "Out of stock with demand" : "Replenishment suggestions"}
+              </h2>
+              <p className="mt-1 text-xs text-[var(--oh-muted)]">
+                {filteredItems.length} shown · {selectedSuggested.length} selected for RFQ
+                {selectedSuggested.length > MAX_RFQ_LINES ? ` (first ${MAX_RFQ_LINES} used)` : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openRfqDialog}
+              disabled={!canCreateRfq}
+              className="inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white outline-none hover:bg-[var(--oh-primary-hover)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ShoppingCart size={16} /> Create draft RFQ <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-xs">{selectedCount}</span>
+            </button>
+          </div>
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <label className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+              <Search size={16} className="shrink-0 text-[var(--oh-muted)]" aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search product or SKU"
+                aria-label="Search product or SKU"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]"
+              />
+              {query ? (
+                <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="grid h-8 w-8 place-items-center rounded text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+                  <X size={14} />
+                </button>
+              ) : null}
+            </label>
+            <label className="grid w-full gap-1 text-xs font-medium text-[var(--oh-muted)] lg:w-[200px] lg:flex-none">
+              Filter
+              <select
+                value={listFilter}
+                onChange={(event) => setListFilter(event.target.value as ListFilter)}
+                aria-label="Filter replenishment list"
+                className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+              >
+                <option value="suggestions">Suggestions only</option>
+                <option value="out_of_stock">Out of stock with demand</option>
+                <option value="all">All products</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowMoreColumns((value) => !value)}
+              aria-pressed={showMoreColumns}
+              className="inline-flex h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] lg:self-end"
+            >
+              {showMoreColumns ? "Fewer columns" : "More columns"}
+            </button>
+          </div>
         </header>
+
         <div className="divide-y divide-[var(--oh-border)] xl:hidden">
-          {loading && !data ? <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></div>
-            : !visibleItems.length ? <p className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</p>
-              : visibleItems.map((product) => {
-                const label = friendlyProductName(product.name);
-                const skuShort = truncateSku(product.sku);
-                return <article key={product.id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]" title={product.name}>{label}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p></div>
-                  {product.suggestedQuantity > 0 ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">No order</span>}
+          {!filteredItems.length ? (
+            <p className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
+              {data?.products.length
+                ? query.trim()
+                  ? "No products match this search."
+                  : listFilter === "suggestions"
+                    ? "No products need replenishment for this coverage target."
+                    : listFilter === "out_of_stock"
+                      ? "No out-of-stock products with recent demand."
+                      : "No POS products were returned by Odoo."
+                : "No POS products were returned by Odoo."}
+            </p>
+          ) : filteredItems.map((product) => {
+            const label = friendlyProductName(product.name);
+            const skuShort = truncateSku(product.sku);
+            const selectable = product.suggestedQuantity > 0;
+            const checked = selectedIds.has(product.id);
+            return (
+              <article key={product.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={!selectable}
+                    onChange={() => toggleSelectProduct(product.id)}
+                    aria-label={`Select ${label} for draft RFQ`}
+                    className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--oh-border)] text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-40"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]" title={product.name}>{label}</h3>
+                        <p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p>
+                      </div>
+                      {product.suggestedQuantity > 0
+                        ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span>
+                        : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">No order</span>}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
+                      <Metric label={`Sold · ${data?.historyDays}d`} value={number.format(product.soldUnits)} />
+                      <Metric label="On hand" value={number.format(product.onHand)} danger={product.onHand <= 0 && product.soldUnits > 0} />
+                      {showMoreColumns && (
+                        <>
+                          <Metric label="Forecast / day" value={number.format(product.unitsPerDay)} />
+                          <Metric label="Forecast stock" value={number.format(product.forecastStock)} />
+                          <Metric label="Stock cover" value={product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`} />
+                          <div>
+                            <p className="text-xs text-[var(--oh-muted)]">Trend · {data?.periodDays}d</p>
+                            <div className="mt-1">{trendLabel(product, data?.periodDays ?? 28)}</div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      aria-expanded={expandedReasonId === product.id}
+                      onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)}
+                      className="mt-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+                    >
+                      {expandedReasonId === product.id ? "Hide explanation" : "Explain suggestion"}
+                    </button>
+                    {expandedReasonId === product.id && (
+                      <div className="mt-2 space-y-2 text-sm leading-5 text-[var(--oh-text-secondary)]">
+                        {!showMoreColumns && (
+                          <dl className="grid grid-cols-2 gap-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs">
+                            <div><dt className="text-[var(--oh-muted)]">Forecast / day</dt><dd className="mt-0.5 tabular-nums">{number.format(product.unitsPerDay)}</dd></div>
+                            <div><dt className="text-[var(--oh-muted)]">Forecast stock</dt><dd className="mt-0.5 tabular-nums">{number.format(product.forecastStock)}</dd></div>
+                            <div><dt className="text-[var(--oh-muted)]">Stock cover</dt><dd className="mt-0.5 tabular-nums">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</dd></div>
+                            <div><dt className="text-[var(--oh-muted)]">Trend · {data?.periodDays}d</dt><dd className="mt-0.5">{trendLabel(product, data?.periodDays ?? 28)}</dd></div>
+                          </dl>
+                        )}
+                        <ul className="ml-1 list-disc space-y-1 pl-4">
+                          {(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => <li key={part}>{part}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
-                  <Metric label={`Sold · ${data?.historyDays}d`} value={number.format(product.soldUnits)} />
-                  <Metric label="Forecast / day" value={number.format(product.unitsPerDay)} />
-                  <Metric label="On hand" value={number.format(product.onHand)} danger={product.onHand <= 0 && product.soldUnits > 0} />
-                  <Metric label="Forecast stock" value={number.format(product.forecastStock)} />
-                  <Metric label="Stock cover" value={product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`} />
-                  <div><p className="text-xs text-[var(--oh-muted)]">Trend · {data?.periodDays}d</p><div className="mt-1">{product.trend === "new" ? <span className="rounded-full bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800">New demand</span> : product.trend === "up" ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">↑ {number.format(product.trendPercent ?? 0)}%</span> : product.trend === "down" ? <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">↓ {number.format(Math.abs(product.trendPercent ?? 0))}%</span> : product.trend === "steady" ? <span className="text-sm text-[var(--oh-text-secondary)]">Steady</span> : <span className="text-sm text-[var(--oh-muted)]">—</span>}</div></div>
-                </div>
-                <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="mt-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">{expandedReasonId === product.id ? "Hide explanation" : "Explain suggestion"}</button>
-                {expandedReasonId === product.id && <ul className="ml-1 list-disc space-y-1 pl-4 text-sm leading-5 text-[var(--oh-text-secondary)]">{(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => <li key={part}>{part}</li>)}</ul>}
-              </article>;
-              })}
+              </article>
+            );
+          })}
         </div>
+
         <div className="hidden min-h-0 flex-1 overflow-auto xl:block xl:min-h-[104px]">
-        <table aria-label="Replenishment recommendations" className="w-full min-w-[980px] border-collapse text-left text-sm">
+          <table aria-label="Replenishment recommendations" className={`w-full border-collapse text-left text-sm ${showMoreColumns ? "min-w-[980px]" : "min-w-[720px]"}`}>
             <thead className="sticky top-0 bg-[#f7f8f8] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-              <tr><th scope="col" className="px-4 py-3">Product</th><th scope="col" className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th><th scope="col" className="px-4 py-3 text-right">Forecast / day</th><th scope="col" className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th><th scope="col" className="px-4 py-3 text-right">On hand</th><th scope="col" className="px-4 py-3 text-right">Forecast stock</th><th scope="col" className="px-4 py-3 text-right">Stock cover</th><th scope="col" className="px-4 py-3 text-right">Suggested order</th><th scope="col" className="px-4 py-3">Why</th></tr>
+              <tr>
+                <th scope="col" className="w-12 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    ref={(element) => {
+                      if (element) element.indeterminate = someVisibleSelected && !allVisibleSelected;
+                    }}
+                    onChange={toggleSelectAllVisible}
+                    disabled={!visibleSelectableIds.length}
+                    aria-label="Select all visible suggestions for draft RFQ"
+                    className="h-4 w-4 rounded border-[var(--oh-border)] text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-40"
+                  />
+                </th>
+                <th scope="col" className="px-4 py-3">Product</th>
+                <th scope="col" className="px-4 py-3 text-right">Sold · {data?.historyDays}d</th>
+                {showMoreColumns && (
+                  <>
+                    <th scope="col" className="px-4 py-3 text-right">Forecast / day</th>
+                    <th scope="col" className="px-4 py-3 text-right">Trend · {data?.periodDays}d</th>
+                  </>
+                )}
+                <th scope="col" className="px-4 py-3 text-right">On hand</th>
+                {showMoreColumns && (
+                  <>
+                    <th scope="col" className="px-4 py-3 text-right">Forecast stock</th>
+                    <th scope="col" className="px-4 py-3 text-right">Stock cover</th>
+                  </>
+                )}
+                <th scope="col" className="px-4 py-3 text-right">Suggested order</th>
+                <th scope="col" className="px-4 py-3">Why</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-[var(--oh-border)]">
-              {loading && !data ? <tr><td colSpan={9} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
-                : !visibleItems.length ? <tr><td colSpan={9} className="px-4 py-5 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
-                  : visibleItems.map((product) => {
-                    const label = friendlyProductName(product.name);
-                    const skuShort = truncateSku(product.sku);
-                    return <tr key={product.id} className="hover:bg-sky-50/40">
-                    <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span></td>
+              {!filteredItems.length ? (
+                <tr>
+                  <td colSpan={tableColSpan} className="px-4 py-5 text-center text-[var(--oh-muted)]">
+                    {data?.products.length
+                      ? query.trim()
+                        ? "No products match this search."
+                        : listFilter === "suggestions"
+                          ? "No products need replenishment for this coverage target."
+                          : listFilter === "out_of_stock"
+                            ? "No out-of-stock products with recent demand."
+                            : "No POS products were returned by Odoo."
+                      : "No POS products were returned by Odoo."}
+                  </td>
+                </tr>
+              ) : filteredItems.map((product) => {
+                const label = friendlyProductName(product.name);
+                const skuShort = truncateSku(product.sku);
+                const selectable = product.suggestedQuantity > 0;
+                return (
+                  <tr key={product.id} className="hover:bg-sky-50/40">
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(product.id)}
+                        disabled={!selectable}
+                        onChange={() => toggleSelectProduct(product.id)}
+                        aria-label={`Select ${label} for draft RFQ`}
+                        className="h-4 w-4 rounded border-[var(--oh-border)] text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-40"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span>
+                      <span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span>
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.unitsPerDay)}</td>
-                    <td className="px-4 py-3 text-right">{product.trend === "new" ? <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">New demand</span> : product.trend === "up" ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">↑ {number.format(product.trendPercent ?? 0)}%</span> : product.trend === "down" ? <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">↓ {number.format(Math.abs(product.trendPercent ?? 0))}%</span> : product.trend === "steady" ? <span className="text-xs text-[var(--oh-muted)]">Steady</span> : <span className="text-xs text-[var(--oh-muted)]">—</span>}</td>
+                    {showMoreColumns && (
+                      <>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.unitsPerDay)}</td>
+                        <td className="px-4 py-3 text-right">{trendLabel(product, data?.periodDays ?? 28)}</td>
+                      </>
+                    )}
                     <td className={`px-4 py-3 text-right tabular-nums ${product.onHand <= 0 && product.soldUnits > 0 ? "font-semibold text-red-700" : "text-[var(--oh-text-secondary)]"}`}>{number.format(product.onHand)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Odoo forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
-                    <td className="px-4 py-3 text-right">{product.suggestedQuantity > 0 ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="text-xs text-[var(--oh-muted)]">No order</span>}</td>
+                    {showMoreColumns && (
+                      <>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]" title="Odoo forecast quantity includes scheduled incoming and outgoing stock moves">{number.format(product.forecastStock)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</td>
+                      </>
+                    )}
+                    <td className="px-4 py-3 text-right">
+                      {product.suggestedQuantity > 0
+                        ? <span className="inline-flex min-w-16 justify-center rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">{number.format(product.suggestedQuantity)} {product.unit}</span>
+                        : <span className="text-xs text-[var(--oh-muted)]">No order</span>}
+                    </td>
                     <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">
-                      <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">
+                      <button
+                        type="button"
+                        aria-expanded={expandedReasonId === product.id}
+                        onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)}
+                        className="inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+                      >
                         {expandedReasonId === product.id ? "Hide" : "Explain"}
                       </button>
                       {expandedReasonId === product.id && (
-                        <ul className="mt-2 max-w-xs list-disc space-y-1 pl-4 text-left text-[var(--oh-text-secondary)]">
-                          {(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => (
-                            <li key={part}>{part}</li>
-                          ))}
-                        </ul>
+                        <div className="mt-2 max-w-xs space-y-2 text-left text-[var(--oh-text-secondary)]">
+                          {!showMoreColumns && (
+                            <dl className="grid grid-cols-2 gap-2 rounded-md bg-[var(--oh-surface)] px-2 py-1.5 text-xs">
+                              <div><dt className="text-[var(--oh-muted)]">Forecast / day</dt><dd className="mt-0.5 tabular-nums">{number.format(product.unitsPerDay)}</dd></div>
+                              <div><dt className="text-[var(--oh-muted)]">Forecast stock</dt><dd className="mt-0.5 tabular-nums">{number.format(product.forecastStock)}</dd></div>
+                              <div><dt className="text-[var(--oh-muted)]">Stock cover</dt><dd className="mt-0.5 tabular-nums">{product.daysOfStock === null ? "—" : `${number.format(product.daysOfStock)} days`}</dd></div>
+                              <div><dt className="text-[var(--oh-muted)]">Trend</dt><dd className="mt-0.5">{trendLabel(product, data?.periodDays ?? 28)}</dd></div>
+                            </dl>
+                          )}
+                          <ul className="list-disc space-y-1 pl-4">
+                            {(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => (
+                              <li key={part}>{part}</li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
                     </td>
-                  </tr>;
-                  })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -378,7 +699,10 @@ export function OdooReplenishmentPage() {
                       {" · "}{entry.lines.length} lines · {adopted} kept as suggested · {edited} edited · cover {entry.coverageDays}d
                     </p>
                   </div>
-                  <a href={entry.rfqUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Open RFQ <ExternalLink size={12} /></a>
+                  <div className="flex items-center gap-3">
+                    <Link href="/purchases/odoo" className="inline-flex items-center text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Purchases</Link>
+                    <a href={entry.rfqUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--oh-orange-dark)] hover:underline">Open RFQ <ExternalLink size={12} /></a>
+                  </div>
                 </li>
               );
             })}
@@ -386,12 +710,32 @@ export function OdooReplenishmentPage() {
         </section>
       )}
 
-      <section className="rounded-md border border-[var(--oh-border)] bg-white px-4 py-3 text-xs leading-5 text-[var(--oh-muted)]">
-        <p className="font-semibold text-[var(--oh-text-secondary)]">How this estimate works</p>
-        <p className="mt-1">Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {planCoverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.</p>
-      </section>
-
       <p className="inline-flex items-center gap-2 text-xs text-[var(--oh-muted)]"><Clock3 size={14} />Generated {data ? formatOdooDateTime(data.generatedAt, storeTimezone) : "—"}.</p>
+
+      {methodOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setMethodOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="method-title" className="my-auto w-full max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl md:p-6">
+            <header className="flex items-start justify-between gap-3">
+              <h2 id="method-title" className="text-lg font-semibold text-[var(--oh-text)]">How this estimate works</h2>
+              <button
+                ref={methodCloseRef}
+                type="button"
+                onClick={() => setMethodOpen(false)}
+                aria-label="Close"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <p className="mt-3 text-sm leading-6 text-[var(--oh-text-secondary)]">
+              Forecast daily demand combines the most recent {data?.periodDays ?? 28} days (70%) with the previous {data?.periodDays ?? 28} days (30%); if one period has no sales, the other period is used. Suggested order = max(0, forecast daily demand × {planCoverageDays}-day coverage − forecast stock), rounded up to a whole unit. Forecast stock comes from Odoo and includes scheduled incoming and outgoing stock moves, helping avoid ordering units already on the way. This estimate does not account for supplier lead times, pack sizes, holidays or store-specific events. Use Explain on each row for the exact inputs behind a suggestion.
+            </p>
+            <footer className="mt-5 flex justify-end">
+              <button type="button" onClick={() => setMethodOpen(false)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>
+            </footer>
+          </section>
+        </div>
+      )}
 
       {rfqOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !rfqSubmitting) setRfqOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="rfq-title" className="my-auto flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-2xl">
@@ -409,7 +753,7 @@ export function OdooReplenishmentPage() {
               </label>
               {rfqSupplierError && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span>{rfqSupplierError}</span><button type="button" onClick={() => void loadRfqSuppliers()} disabled={rfqLoadingSuppliers} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60"><RefreshCw size={15} /> Retry suppliers</button></div>}
               <div className="overflow-hidden rounded-lg border border-[var(--oh-border)]">
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#f7f8f8] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><span>Suggested products</span><span>{selectedRfqLines.length} selected</span></div>
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#f7f8f8] px-3 py-2 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><span>Selected products</span><span>{selectedRfqLines.length} with quantity</span></div>
                 <div className="max-h-[38dvh] divide-y divide-[var(--oh-border)] overflow-y-auto">
                   {rfqLines.map((line) => <div key={line.productId} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(96px,120px)] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_140px_140px]">
                     <div className="min-w-0"><p className="break-words text-sm font-medium text-[var(--oh-text)]">{line.name}</p><p className="text-xs text-[var(--oh-muted)]">Suggested {number.format(line.suggestedQuantity)} {line.unit}</p></div>
@@ -418,10 +762,10 @@ export function OdooReplenishmentPage() {
                     </label>
                     <p className="hidden text-right text-sm text-[var(--oh-muted)] sm:block">{line.unit}</p>
                   </div>)}
-                  {!rfqLines.length && <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No replenishment suggestions to add.</p>}
+                  {!rfqLines.length && <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No products selected for this RFQ.</p>}
                 </div>
               </div>
-              {suggestedItems.length > MAX_RFQ_LINES && <p className="text-xs leading-5 text-amber-900">This RFQ includes the top {MAX_RFQ_LINES} suggestions. Create another RFQ for the remaining products.</p>}
+              {selectedSuggested.length > MAX_RFQ_LINES && <p className="text-xs leading-5 text-amber-900">This RFQ includes the first {MAX_RFQ_LINES} selected suggestions. Create another RFQ for the remaining products.</p>}
               <div className="rounded-md bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]"><p className="font-semibold text-[var(--oh-text-secondary)]">Draft only</p><p className="mt-1">This creates an Odoo RFQ in draft status. It will not email the supplier or confirm an order. Review the supplier prices, taxes, delivery dates and quantities in Odoo before sending.</p></div>
               {rfqError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{rfqError}</p>}
             </div>
@@ -438,23 +782,15 @@ export function OdooReplenishmentPage() {
 
 function ReplenishmentSkeleton() {
   return (
-    <main aria-busy="true" aria-label="Loading replenishment plan" className="flex h-full min-h-0 flex-col gap-5 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+    <main aria-busy="true" aria-label="Loading replenishment" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
-        <div className="grid gap-2"><span className="h-3 w-40 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-64 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-96 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
+        <div className="grid gap-2"><span className="h-3 w-40 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-48 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-80 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
         <div className="h-11 w-64 animate-pulse rounded-md bg-[var(--oh-border)]" />
       </header>
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">{Array.from({ length: 3 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />)}</section>
+      <div className="h-12 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
       <section className="min-h-0 flex-1 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
     </main>
   );
-}
-
-function SummaryCard({ title, value, detail }: { title: string; value: string; detail: string }) {
-  return <article className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-    <p className="text-sm font-medium text-[var(--oh-muted)]">{title}</p>
-    <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums text-[var(--oh-text)]">{value}</p>
-    <p className="mt-1 text-xs text-[var(--oh-muted)]">{detail}</p>
-  </article>;
 }
 
 function Metric({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {

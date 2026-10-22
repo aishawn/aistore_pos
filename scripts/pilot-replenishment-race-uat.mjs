@@ -45,7 +45,7 @@ try {
   await context.route("**/api/odoo/pos-bootstrap*", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ configs: [] }) }));
   const page = await context.newPage();
   await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByRole("heading", { name: "Replenishment plan" }).waitFor({ timeout: 30000 });
+  await page.getByRole("heading", { name: "Replenishment" }).waitFor({ timeout: 30000 });
   await page.getByText(/REPLENISHMENT-21D/).waitFor({ timeout: 30000 });
   await page.getByLabel("Coverage target").selectOption("7");
   for (let attempt = 0; attempt < 50 && !requests.some((request) => request.days === 7); attempt += 1) await page.waitForTimeout(10);

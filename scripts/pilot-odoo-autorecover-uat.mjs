@@ -83,7 +83,7 @@ try {
   record("Odoo browser session cleared", "PASS", "Same-origin session DELETE succeeded; this only clears the Odoo session cookie/session.");
 
   await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByRole("heading", { name: "Replenishment plan" }).waitFor({ timeout: 30000 });
+  await page.getByRole("heading", { name: "Replenishment" }).waitFor({ timeout: 30000 });
   if (await page.getByRole("heading", { name: "Connect Odoo to plan replenishment" }).count()) {
     throw new Error("The first Odoo-backed page after session removal still asks the user to connect manually");
   }

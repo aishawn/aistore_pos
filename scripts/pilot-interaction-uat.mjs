@@ -390,11 +390,11 @@ try {
     const coverage = page.locator("#coverage-days");
     await coverage.waitFor({ timeout: 15000 });
     await coverage.selectOption("7");
-    await page.getByText("Across a 7-day target", { exact: true }).waitFor({ timeout: 15000 });
+    await page.getByText(/suggested units · 7d/).waitFor({ timeout: 15000 });
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     if (dimensions.document > dimensions.viewport) throw new Error(`Mobile replenishment overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
     if (await page.locator("main table").isVisible().catch(() => false)) throw new Error("Mobile replenishment should show product cards instead of the wide table");
-    await page.getByRole("button", { name: "Show all products" }).click();
+    await page.getByLabel("Filter replenishment list").selectOption("all");
     await page.getByRole("heading", { name: "All POS products" }).waitFor({ timeout: 10000 });
     const emptyReplenishment = page.getByText(/No POS products were returned by Odoo\./).first();
     const emptyReplenishmentVisible = await emptyReplenishment.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
