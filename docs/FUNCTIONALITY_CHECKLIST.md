@@ -529,6 +529,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Invoice preview availability and scan retry flow remain read-only; mock fixture passed with zero business writes. Evidence: `docs/UAT_INVOICE_SCAN_MOCK_2026-10-22_CURRENT.json`.
 - [ ] Platform alert backend persistence/status actions are present in candidate `14b8d81`, but remain unverified because the Java 21 exact-SHA `mvn -B clean verify` gate has no recorded result.
 - [ ] Candidate `f5a2948` is not present in Demo runtime; webhook returned HTTP `301` and `/api/public/version` remains `3edd72d84f514856923c0c0d50b01fe7b015e120`.
+- [x] Stock List export/category retry controls have visible keyboard focus styles; responsive stock/pricing fixture `15/15 PASS`, five viewports, `blockedWrites=0`. Evidence: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
 ## 2026-10-22 Dokploy 成功部署后复核
 
 - [x] Demo 前后端运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` 一致；证据 `UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。

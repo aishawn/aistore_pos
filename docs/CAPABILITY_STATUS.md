@@ -1250,3 +1250,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - **Not verified:** backend alert persistence/status code is present in `14b8d81`, but no same-SHA Java 21 `mvn -B clean verify` result is recorded. The frontend fallback is compatible with the current runtime.
 - **Deployment follow-up:** frontend candidate `f5a2948` was pushed, but Dokploy returned HTTP `301`; Demo still reports runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`. Keep these checks local-only until Source/Git binding is corrected and the runtime SHA matches.
 
+## 2026-10-22 Stock List focus consistency
+
+- **Implemented and locally verified:** Stock List export failure retry and category retry controls now have visible keyboard focus outlines. Responsive stock/pricing fixture `15/15 PASS` across five viewports with zero blocked writes: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
+- **Online status:** not deployed; the current Demo runtime remains `3edd72d84f514856923c0c0d50b01fe7b015e120`.
+

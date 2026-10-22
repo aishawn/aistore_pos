@@ -110,12 +110,33 @@ try {
         ? await page.getByRole("textbox", { name: "Search bulk price products" }).isVisible()
           && await page.getByRole("spinbutton", { name: "Price for DEMO Shiraz", exact: true }).isVisible()
         : null;
+      const costManagement = route.path === "/stock/list"
+        ? await page.locator('input[aria-label="Cost for DEMO Shiraz"]:visible').first().evaluate((input) => {
+          const style = getComputedStyle(input);
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) return { fits: false, description: "" };
+          context.font = style.font;
+          const availableWidth = input.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight);
+          const descriptionId = input.getAttribute("aria-describedby");
+          return {
+            fits: context.measureText(input.placeholder).width <= availableWidth + 1,
+            placeholder: input.placeholder,
+            textWidth: context.measureText(input.placeholder).width,
+            availableWidth,
+            description: descriptionId ? document.getElementById(descriptionId)?.textContent?.trim() ?? "" : "",
+          };
+        })
+        : null;
       let clearFiltersAccessible = null;
       if (route.path === "/stock/list") {
         const searchBox = page.getByRole("textbox", { name: "Search stock products" });
         await searchBox.fill("Shiraz");
         const clear = page.getByRole("button", { name: "Clear stock list filters" });
         clearFiltersAccessible = await clear.isVisible();
+        clearFiltersAccessible = clearFiltersAccessible
+          && (await clear.getAttribute("class"))?.includes("focus-visible:outline")
+          && (await page.getByRole("button", { name: "Export to CSV" }).getAttribute("class"))?.includes("focus-visible:outline");
         await clear.click();
         clearFiltersAccessible = clearFiltersAccessible && (await searchBox.inputValue()) === "";
       } else if (route.path === "/stock/capped-pricing") {
@@ -128,10 +149,11 @@ try {
       } else if (route.path === "/stock/bulk-price-edit") {
         const searchBox = page.getByRole("textbox", { name: "Search bulk price products" });
         await searchBox.fill("Shiraz");
-        const clear = page.getByRole("button", { name: "Clear bulk price filters" });
+        const clear = page.getByRole("button", { name: "Clear product search" });
         clearFiltersAccessible = await clear.isVisible();
         await clear.click();
-        clearFiltersAccessible = clearFiltersAccessible && (await searchBox.inputValue()) === "";
+        clearFiltersAccessible = clearFiltersAccessible && (await searchBox.inputValue()) === ""
+          && !(await page.getByRole("button", { name: "Clear product search" }).isVisible().catch(() => false));
       }
       const table = route.path === "/stock/bulk-price-edit"
         ? page.locator("ul").filter({ hasText: "DEMO Shiraz" }).first()
@@ -253,6 +275,7 @@ try {
         headingVisible: await heading.isVisible(),
         productCountText,
         controlsAccessible,
+        costManagement,
         clearFiltersAccessible,
         sampleRowVisible: await sampleRow.isVisible(),
         mobileCardFields,
@@ -286,6 +309,8 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.headingVisible === false
   || (check.productCountText != null && !check.productCountText.endsWith("1 Product"))
   || check.controlsAccessible === false
+  || check.costManagement?.fits === false
+  || (check.costManagement && check.costManagement.description !== "Cost is managed in purchasing.")
   || check.sampleRowVisible === false
   || check.mobileCardFields === false
   || check.clearFiltersAccessible === false

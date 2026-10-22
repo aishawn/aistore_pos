@@ -42,7 +42,10 @@ function num(v?: number | null) {
 }
 
 function cellInput(className?: string) {
-  return `h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20 ${className ?? ""}`;
+  return cn(
+    "h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20",
+    className,
+  );
 }
 
 function Toggle({
@@ -192,15 +195,17 @@ function StockListRowEditor({
       </div>
       <div className="w-[8%] shrink-0 px-2">
         <div className="relative">
-          <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+          {row.cost != null ? <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span> : null}
           <input
-            className={cellInput("pl-5")}
+            className={cellInput(row.cost != null ? "pl-5" : "px-1")}
             aria-label={`Cost for ${row.name}`}
+            aria-describedby={row.cost == null ? `stock-cost-managed-desktop-${row.id}` : undefined}
             aria-busy={saving}
             aria-invalid={saveError ? true : undefined}
             disabled={saving || row.cost == null}
             readOnly={row.cost == null}
-            placeholder={row.cost == null ? "Managed in purchasing" : undefined}
+            placeholder={row.cost == null ? "Managed" : undefined}
+            title={row.cost == null ? "Managed in purchasing" : saveError ?? undefined}
             value={cost}
             onChange={(e) => {
               setCost(e.target.value);
@@ -208,6 +213,7 @@ function StockListRowEditor({
             }}
             onBlur={() => void save()}
           />
+          {row.cost == null ? <span id={`stock-cost-managed-desktop-${row.id}`} className="sr-only">Cost is managed in purchasing.</span> : null}
         </div>
       </div>
       <div className="w-[8%] shrink-0 px-2">
@@ -269,7 +275,7 @@ function StockListRowEditor({
       </dl>
       <div className="grid grid-cols-2 gap-3">
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-quantity-${row.id}`}>Price quantity</label><input id={`stock-quantity-${row.id}`} type="number" min="1" step="1" className={cellInput("text-center")} aria-label={`Price quantity for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled value={quantity} readOnly /></div>
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-cost-${row.id}`} className={cellInput("pl-5")} aria-label={`Cost for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving || row.cost == null} readOnly={row.cost == null} placeholder={row.cost == null ? "Managed in purchasing" : undefined} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative">{row.cost != null ? <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span> : null}<input id={`stock-cost-${row.id}`} className={cellInput(row.cost != null ? "pl-5" : "px-1")} aria-label={`Cost for ${row.name}`} aria-describedby={row.cost == null ? `stock-cost-managed-mobile-${row.id}` : undefined} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving || row.cost == null} readOnly={row.cost == null} placeholder={row.cost == null ? "Managed" : undefined} title={row.cost == null ? "Managed in purchasing" : saveError ?? undefined} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div>{row.cost == null ? <span id={`stock-cost-managed-mobile-${row.id}`} className="sr-only">Cost is managed in purchasing.</span> : null}</div>
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-price-${row.id}`}>Price</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-price-${row.id}`} className={cellInput("pl-5")} aria-label={`Price for ${row.name}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={price} onChange={(e) => { setPrice(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-profit-${row.id}`}>Profit %</label><div className="relative"><input id={`stock-profit-${row.id}`} className={cn(cellInput("pr-6 text-right"), Number(profit) < 0 ? "border-red-200 bg-red-50 font-semibold text-[var(--oh-danger)]" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]")} aria-label={`Profit margin for ${row.name}`} value={profit} readOnly /><span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500">%</span></div></div>
       </div>
@@ -396,7 +402,7 @@ function StockListPageInner() {
       {exportError && (
         <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800 md:px-6">
           <span>{exportError}</span>
-          <button type="button" onClick={() => void onExport()} disabled={exporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+          <button type="button" onClick={() => void onExport()} disabled={exporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
             <ExportIcon size={15} /> Retry export
           </button>
         </div>
@@ -405,7 +411,7 @@ function StockListPageInner() {
       {categoryError && (
         <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950 md:px-6">
           <span>Could not load categories: {categoryError}</span>
-          <button type="button" onClick={reloadCategories} disabled={categoriesLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 disabled:opacity-60">
+          <button type="button" onClick={reloadCategories} disabled={categoriesLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
             <RefreshCw size={15} /> Retry categories
           </button>
         </div>

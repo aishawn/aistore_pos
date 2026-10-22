@@ -2346,3 +2346,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Demo `/api/public/version` returned HTTP 200 but still reports frontend/backend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120` (built at `2026-10-22T01:11:39.175Z` / `2026-10-22T00:55:56Z`). The platform fallback and invoice JSX fix are therefore not online-verified.
 - [ ] Dokploy Source/Git binding must be corrected before another deployment attempt: repository `aishawn/aistore_pos`, branch `main`, root `/`, compose file `docker-compose.yml`.
 
+## 2026-10-22 Stock List focus consistency follow-up
+
+- [x] Stock List export failure retry and category retry actions now expose visible `focus-visible` outlines, matching the existing search-clear control and shared admin actions.
+- [x] Responsive stock/pricing fixture passed **15/15** across 320/390/768/1024/1440px with the new Export CSV and Clear Filters focus assertions, no page errors, no overflow, and `blockedWrites=0`. Evidence: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
+- [x] Node 24 typecheck, targeted ESLint, `node --check`, and `git diff --check` passed. No local production build was run.
+
