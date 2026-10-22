@@ -19,6 +19,7 @@ import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
+import { friendlyProductName } from "@/lib/product-display-name";
 
 type OverviewData = {
   rangeHours: number;
