@@ -587,3 +587,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Manage Cash Retry and Stocktake/Express Stocktake recovery, clear, add, remove, and review actions now expose visible keyboard focus states.
 - [x] Existing local Odoo Stocktake fixture passed all five viewports (`320/390/768/1024/1440`) with no overflow/page errors; count-boundary fixture passed `20/20`, with zero real business writes. Evidence summary: `docs/UAT_STOCKTAKE_CASH_FOCUS_LOCAL_2026-10-22.json`.
 - [ ] Demo verification remains pending until Dokploy accepts the grouped candidate and `/api/public/version` matches its exact SHA.
+### 2026-10-22 stocktake/cash deployment status
+
+- [x] Candidate `3bc4b9f` pushed after the Settings and stocktake/cash batches were consolidated.
+- [ ] Dokploy returned HTTP `301` (`Branch Not Match`) again; no retry. Online verification remains pending Source/Git correction and exact runtime SHA.

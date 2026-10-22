@@ -2434,3 +2434,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Manage Cash Retry and Stocktake/Express Stocktake clear, recovery, add/remove, and review actions now expose visible keyboard focus states.
 - Local behavioral checks passed: Odoo Stocktake fixture across five viewports, count-boundary fixture `20/20`, zero real writes, no page errors or overflow. Typecheck, targeted ESLint, script syntax, and diff checks also passed. Evidence: `docs/UAT_STOCKTAKE_CASH_FOCUS_LOCAL_2026-10-22.json`.
 - No production build was run. Online verification remains pending the Dokploy Source/Git correction and exact runtime SHA.
+## 2026-10-22 stocktake/cash deployment status
+
+- [x] Candidate `3bc4b9f` is pushed and includes the grouped Settings work plus Stocktake, Express Stocktake, and Manage Cash focus-state improvements.
+- [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. This is the same Source/Git binding blocker, not an application test failure.
+- [ ] Demo `/api/public/version` remains on the older runtime; the new stocktake/cash and Settings batches are not online-verified.

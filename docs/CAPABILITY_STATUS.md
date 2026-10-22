@@ -1301,3 +1301,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Stocktake and Express Stocktake recovery/clear/add/remove/review actions plus Manage Cash Retry now have consistent visible keyboard focus states.
 - Local behavioral evidence remains strong: Stocktake five-viewport fixture PASS, count-boundary `20/20 PASS`, zero real business writes, no page errors or overflow. Summary evidence: `docs/UAT_STOCKTAKE_CASH_FOCUS_LOCAL_2026-10-22.json`.
 - Online status is pending; current Dokploy branch binding still returns `301`.
+## 2026-10-22 stocktake/cash deployment status
+
+- Candidate `3bc4b9f` is pushed, but Dokploy again returned HTTP `301` (`Branch Not Match`).
+- Stocktake, cash, and grouped Settings focus improvements remain local-only until the Demo runtime reports the candidate SHA.
