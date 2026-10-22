@@ -633,3 +633,18 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Platform Store detail owner-link copy and operation/setup pagination controls now have visible keyboard focus states.
 - [x] Register closure detail Retry now matches the report-list recovery focus treatment.
 - [ ] These latest UI changes remain online-unverified while Demo stays on an older runtime and Dokploy webhook returns `301`.
+
+### 2026-10-22 deployment status recheck
+
+- [x] Dokploy deployment was reported successful by the user.
+- [x] Demo version endpoint readback: frontend/backend `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`.
+- [ ] Current candidate `f4d4106488a3177f79c0584f350bc8e8120e5d82` is not the running SHA; latest Platform Store detail and Register Closure detail changes remain pending online verification.
+- [ ] Next gate: confirm Dokploy source is `aishawn/aistore_pos`, branch `main`, root `/`, compose `docker-compose.yml`, then redeploy and read `/api/public/version` again before claiming acceptance.
+
+### 2026-10-22 Price Suggestions focus batch
+
+- [x] Candidate `f2e7d659` adds visible focus states to Price Suggestions refresh/retry, export, links, filters, explanation and pagination controls.
+- [x] Local Price Suggestions fixture: `PASS`, `failed=0`, `writes=0` (`docs/UAT_PRICE_SUGGESTIONS_FOCUS_LOCAL_2026-10-22.json`).
+- [x] Local stock/pricing responsive fixture: `15/15 PASS`, `blockedWrites=0` (`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_CURRENT.json`).
+- [x] Online old-runtime Settings recheck recorded `BLOCKED` users layout at 390/1440px, with no business writes (`docs/UAT_SETTINGS_MOBILE_2026-10-22_E8CAC11_RECHECK.json`).
+- [ ] Online verification of `f2e7d659` remains pending exact runtime SHA.

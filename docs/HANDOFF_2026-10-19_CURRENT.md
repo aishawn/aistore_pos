@@ -2498,3 +2498,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 本地 `HEAD` 与 `origin/main` 均为 `f4d4106488a3177f79c0584f350bc8e8120e5d82`。Dokploy 的“成功”对应旧提交，不能证明 `f4d41064` 的 Platform Store 详情页、Register Closure 详情 Retry 等改动已上线。
 - 后续验收必须先让 Dokploy 运行版本精确变为 `f4d41064`（或记录新的完整 SHA），再执行线上 UI/行为检查；当前只能引用本地证据。
 - 本次没有重试 webhook，也没有执行业务写入。
+
+## 2026-10-22 Price Suggestions 优化与验证
+
+- 实际生效组件 `pos-ui/src/components/OdooPriceSuggestionsPage.tsx` 已为 Refresh、Retry、CSV 导出、Bulk price edit、Products、筛选、解释、商品深链和分页控件补充可见键盘焦点状态。
+- 候选提交：`f2e7d659d02f3ffb3a32259028a29953b6689e23`。
+- 本地 Price Suggestions fixture：`PASS`，`failed=0`，`writes=0`；库存/定价响应式 fixture：`15/15 PASS`，`blockedWrites=0`。
+- Demo 旧 runtime 的 Settings 复验仍为 `BLOCKED`：390px 缺少用户卡片，1440px 缺少完整 staff 表头。当前源码的 `app/settings/users/page.tsx` 已存在对应移动卡片与六列语义表格，因此该结果归因于旧部署，不归因于当前源码。
+- 本批次未运行本地 production build；未执行销售、退款、采购、库存、现金或关班写入。
+- 下一步：推送候选后触发一次 Dokploy，读取完整前后端 SHA；只有 runtime 精确匹配候选后，才重跑 Price Suggestions、Settings、全站和 AI 只读套件。

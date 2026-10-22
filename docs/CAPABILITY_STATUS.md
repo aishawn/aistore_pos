@@ -1360,3 +1360,11 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Dokploy was reported successful, but Demo `/api/public/version` reports frontend/backend `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`.
 - Repository `HEAD` and `origin/main` are `f4d4106488a3177f79c0584f350bc8e8120e5d82`; the latest Platform Store detail and Register Closure detail focus changes remain local-only / online-unverified.
 - Do not attribute any online result from `e8cac11` to `f4d41064`. Re-run release identity and targeted UI checks after Dokploy serves `f4d41064`.
+
+## 2026-10-22 Price Suggestions focus batch
+
+- Candidate `f2e7d659` adds visible keyboard focus states to Price Suggestions recovery, export, navigation, product links, explanation, and pagination controls.
+- Local Price Suggestions fixture passed with `status=PASS`, `failed=0`, and `writes=0`: `docs/UAT_PRICE_SUGGESTIONS_FOCUS_LOCAL_2026-10-22.json`.
+- Local Stock/Price responsive fixture passed `15/15` with `blockedWrites=0`: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_CURRENT.json`.
+- Demo Settings recheck on the active old runtime remains `BLOCKED` at `/settings/users` (missing mobile cards and desktop staff headers); this does not contradict the current `app/settings/users` source. Evidence: `docs/UAT_SETTINGS_MOBILE_2026-10-22_E8CAC11_RECHECK.json`.
+- Candidate is not online-verified until Demo `/api/public/version` reports the exact deployed SHA.
