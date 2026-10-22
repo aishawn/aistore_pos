@@ -16,4 +16,18 @@ public record AssistantCard(
         String ctaLabel,
         String ctaRoute,
         AssistantCardCta cta
-) {}
+) {
+    /** Binary/source compatibility for callers compiled against the original card shape. */
+    public AssistantCard(String type,
+                         String title,
+                         String summary,
+                         List<Map<String, Object>> items,
+                         String source,
+                         String generatedAt,
+                         String emptyReason,
+                         String status,
+                         String ctaLabel,
+                         String ctaRoute) {
+        this(type, title, summary, items, source, generatedAt, emptyReason, status, ctaLabel, ctaRoute, null);
+    }
+}

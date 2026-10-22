@@ -127,4 +127,14 @@ class PosAssistantGraphServiceCardTest {
         assertEquals("Open replenishment", replenishment.ctaLabel());
         assertEquals("Open Sommelier", sommelier.ctaLabel());
     }
+
+    @Test
+    void keepsLegacyTenArgumentCardConstructionValid() {
+        AssistantCard card = new AssistantCard(
+                "pricing", "Price review", "summary", List.of(), "odoo", "now", null,
+                "ready", "Open price review", "/stock/capped-pricing");
+
+        assertEquals("/stock/capped-pricing", card.ctaRoute());
+        assertEquals(null, card.cta());
+    }
 }
