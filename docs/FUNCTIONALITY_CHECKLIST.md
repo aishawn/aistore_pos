@@ -704,6 +704,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Node 24 `npm run typecheck`、三文件定向 ESLint、`node --check` 和 `git diff --check` 通过；未运行 production build，未执行业务写入。
 - [x] 当前公网目录只读回归：`44/44 PASS`，覆盖 320/390/1024/1440px、客户/供应商/商品搜索清除、AI 入口焦点陷阱和 Escape 恢复；证据：`docs/UAT_DIRECTORIES_ASSISTANT_ONLINE_2026-10-22_DIRECTORY-FOCUS.json`。
 - [ ] 本批源码尚未取得匹配的 Dokploy runtime SHA；公网回归只作为旧 runtime 基线，不能标记为本批线上验收。
+- [ ] 候选 `71318249` 的 Dokploy webhook 返回 `301 Branch Not Match`；Demo 仍为 `582b92fb`，需修正 Source/Git 后再部署验收。
 ## AI 助手自然问法回归
 
 - [x] 255 条唯一用户问法目录，包含中英混合、收银员短句、日期/指标变体、能力问答、提示注入和执行型安全用例。

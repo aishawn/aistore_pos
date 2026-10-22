@@ -2600,6 +2600,7 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 脚本拦截 8 个非允许写请求，未提交模型或业务写入。该结果属于旧 runtime 基线，不能证明本批源码已部署。
 - Node 24 typecheck、三文件定向 ESLint、`node --check` 和 `git diff --check` 通过；未运行本地 production build。
 - 下一步：将本批与当前前端候选合并后，在 Dokploy Source/Git 修正并取得 exact runtime SHA，再重跑客户、供应商和采购页面的线上焦点与错误恢复检查。
+- 本轮候选 `71318249` 已推送到 `origin/main`；Dokploy webhook 返回 HTTP `301 Branch Not Match`，未继续重试。Demo 版本接口仍为 frontend/backend `582b92fb199e312e828a5169cde14105a091f41a`，本批未线上验证。
 
 ## 2026-10-22 AI 用户问法扩展（本地待门禁）
 
@@ -2612,6 +2613,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 完整目录结果为 248 PASS / 0 BLOCKED / 4 FAIL，证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_252-CURRENT.json。
 - 失败集中在 Demo 旧 runtime 的四条新增边界问法；所有请求为 Assistant API-only，业务写入为 0。
 - 当前源码已包含对应确定性路由/写意图守卫，但未完成 Java 21 exact-SHA 门禁和匹配部署；下一步应先完成门禁，再用同 SHA 重跑 252 条目录。
+
+## 2026-10-22 255 条重试修正版
+
+- runner 增加 TimeoutError 瞬时失败重试；255 条全量结果为 248 PASS / 0 BLOCKED / 7 FAIL。
+- 7 个失败均来自 Demo 582b92fb 未包含当前源码的稳定路由/能力边界；证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_255-CURRENT-RETRY.json。
+- 当前仍不可推送 pos-api：缺少 exact-SHA Java 21 mvn -B clean verify 远程门禁。
 
 ## 2026-10-22 AI 配套能力复测
 

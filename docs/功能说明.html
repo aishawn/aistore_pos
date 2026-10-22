@@ -462,6 +462,7 @@
       <li>当前公网目录只读浏览器回归在 320/390/1024/1440px 共 <strong>44/44 PASS</strong>，覆盖商品、客户、供应商搜索和清除、AI 入口焦点陷阱与 Escape 恢复；页面 JS 错误为 0。</li>
       <li>回归脚本拦截了 8 个非允许写请求，未提交模型或业务写入；该结果属于当前公网旧 runtime 基线，不能证明本批源码已部署。</li>
       <li>本批 Node 24 typecheck、三文件定向 ESLint、脚本语法检查和 diff check 通过；未运行本地 production build。</li>
+      <li>候选 <code>71318249</code> 已推送；Dokploy webhook 返回 HTTP <code>301 Branch Not Match</code>，Demo 仍运行 <code>582b92fb</code>，本批线上验证待 Source/Git 修正。</li>
     </ul>
   </section>
   <section id="handoff-2026-10-22-platform-invoice" class="content-section">
