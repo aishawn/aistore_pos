@@ -38,6 +38,13 @@ capability variants; one incorrectly navigated to `/orders`. Evidence:
 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
 The runner source was `a63c84fb`, so this is a pre-fix served-runtime result.
 
+The same window's companion suites passed availability 3/3, routes 9/9,
+surface/auth 11/11, enabled gate, metrics 9/9 and UI 2/2. Features were
+14 PASS / 1 BLOCKED because invoice OCR is retired (`41001`); reports were
+15/16 with the live stock source safely unavailable. No business writes were
+issued. Missing audio fixtures, second-store/operator credentials and an
+isolated admin-guard target remain explicit test prerequisites.
+
 ## 2026-10-24 latest served-runtime coverage
 
 The current executable catalogue contains **247 unique cases**. The served

@@ -55,6 +55,27 @@ Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
 The served runtime was `c941a617`; runner source was `a63c84fb`, so this is not
 post-fix acceptance.
 
+## 2026-10-22 current AI surface suite
+
+Against the same Demo window, the read-only companion suites reported:
+
+- availability **3/3 PASS**;
+- route matrix **9/9 PASS**;
+- surface/auth **11/11 PASS**;
+- enabled gate **PASS**;
+- metrics **9/9 PASS**;
+- UI **2/2 PASS**;
+- features **14 PASS / 1 BLOCKED** because the retired invoice OCR route returns
+  business code `41001`;
+- reports **15/16**, with only the live stock source blocked and the safe
+  unavailable message shown.
+
+Evidence files use the `UAT_AI_*_2026-10-22_CURRENT-FULL.json` suffix. No
+business writes were issued. Transcription remains pending audio fixtures;
+cross-store/platform checks remain pending the required extra credentials, and
+the admin permission guard remains isolated-only because it creates temporary
+users or roles.
+
 ## 2026-10-24 latest online recheck
 
 The executable catalogue has since expanded to **247 unique cases** with

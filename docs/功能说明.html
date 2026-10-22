@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f4">
+  <title>Orithos POS 功能说明</title>
+  <style>
+    :root{color-scheme:light;--ink:#202a27;--muted:#65716c;--line:#dce3de;--paper:#fff;--canvas:#f5f7f4;--green:#226b50;--green-bg:#e5f2ea;--amber:#845c11;--amber-bg:#fbf1d9;--red:#98453f;--red-bg:#f8e9e7;--blue:#335c78;--blue-bg:#eaf1f6;--shadow:0 14px 36px rgba(28,48,38,.06)}
+    *{box-sizing:border-box}html{overflow-x:hidden;scroll-behavior:smooth;scroll-padding-top:28px}body{margin:0;overflow-x:hidden;background:var(--canvas);color:var(--ink);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}a{color:var(--green);text-decoration:none}a:hover{text-decoration:underline}.layout{max-width:1380px;margin:0 auto;padding:28px;display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px}.side{position:sticky;top:22px;height:calc(100vh - 44px);overflow:auto;border-right:1px solid var(--line);padding:4px 18px 24px 0}.brand{font-size:13px;font-weight:800;letter-spacing:0;color:var(--green);text-transform:uppercase}.side h2{font-size:17px;margin:5px 0 20px}.side nav{display:grid;gap:3px}.side nav a{color:#59665f;padding:7px 10px;border-radius:4px;font-size:13px}.side nav a:hover,.side nav a.active{background:#e8eee9;color:var(--ink);text-decoration:none}.side-note{margin-top:24px;padding:12px;border-left:3px solid #94b6a0;color:var(--muted);font-size:12px}.main{min-width:0}.toolbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px}.button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:4px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}.button:hover{border-color:#8da69a}.hero{background:#e9f0eb;border-top:4px solid var(--green);padding:36px 42px 30px;margin-bottom:20px}.eyebrow{font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase}.hero h1{font-size:34px;line-height:1.25;margin:8px 0 12px}.hero p{max-width:760px;color:#4e5d55;margin:0}.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:22px;color:#53625a;font-size:12px}.section{background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:26px 30px;margin-bottom:16px;box-shadow:var(--shadow)}.section h2{font-size:21px;line-height:1.35;margin:0 0 13px}.section h3{font-size:15px;margin:19px 0 7px}.section p{margin:8px 0;color:#435049}.section-intro{color:var(--muted)!important;margin-top:-5px!important}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tile{border:1px solid var(--line);border-radius:4px;padding:15px 16px;background:#fff}.tile h3{margin:0 0 4px;font-size:15px}.tile p{font-size:13px;color:var(--muted);margin:4px 0 0}.tile-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.badge{display:inline-flex;align-items:center;white-space:nowrap;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700;line-height:1.6}.done{background:var(--green-bg);color:var(--green)}.pending{background:var(--amber-bg);color:var(--amber)}.planned{background:var(--blue-bg);color:var(--blue)}.missing{background:var(--red-bg);color:var(--red)}.filterbar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:14px 0 16px}.filterbar span{font-size:12px;color:var(--muted);margin-right:3px}.filterbar button{border:1px solid var(--line);border-radius:3px;background:#fff;color:#4d5a53;font:inherit;font-size:12px;padding:5px 9px;cursor:pointer}.filterbar button[aria-pressed="true"]{background:#263c32;color:white;border-color:#263c32}.flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:16px 0}.step{flex:1;min-width:120px;background:#f2f6f3;border:1px solid #dce7df;padding:11px 12px;border-radius:3px;font-size:12px}.step strong{display:block;font-size:13px;color:#284638}.step em{font-style:normal;color:var(--muted)}.arrow{align-self:center;color:#87958c}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;vertical-align:top;padding:10px 11px;border-bottom:1px solid var(--line)}th{background:#f4f7f4;font-weight:700;color:#3f4e45}td{color:#4c5952}.callout{border-left:3px solid #d2a349;background:#fbf7eb;padding:12px 15px;color:#594c2d;font-size:13px;margin:14px 0}.callout.red{border-color:#c6766e;background:#fcf1ef;color:#68433f}.callout.green{border-color:#76a98a;background:#eff7f1;color:#345442}.list{padding-left:20px;color:#46544c}.list li{padding:3px 0}.small{font-size:12px;color:var(--muted)}.footer{padding:16px 2px 30px;color:var(--muted);font-size:12px}.hidden{display:none!important}
+    @media(max-width:850px){.layout{display:block;padding:14px}.side{position:static;height:auto;min-width:0;border-right:0;border-bottom:1px solid var(--line);padding:0 0 12px;margin-bottom:14px}.side nav{display:flex;min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;gap:2px}.side nav a{white-space:nowrap}.side-note{display:none}.hero{padding:26px 22px}.hero h1{font-size:28px}.section{padding:20px}.grid{grid-template-columns:1fr}.toolbar{position:sticky;top:0;background:var(--canvas);z-index:2;padding:6px 0}.arrow{display:none}}
+    @media screen and (max-width:850px){#latest-progress thead{display:none}#latest-progress table,#latest-progress tbody{display:block}#latest-progress tbody{display:grid;gap:12px}#latest-progress tr{display:block;border:1px solid var(--line);border-radius:4px;padding:12px}#latest-progress td{display:block;padding:6px 0;border:0;overflow-wrap:anywhere}#latest-progress td:first-child{font-size:15px;font-weight:700;color:var(--ink)}#latest-progress td:last-child{border-top:1px solid var(--line);margin-top:5px;padding-top:10px}#latest-progress .badge{white-space:normal}}
+    @media print{body{background:#fff;font-size:11pt}.layout{display:block;max-width:none;padding:0}.side,.toolbar,.filterbar{display:none!important}.hero,.section{box-shadow:none;border:1px solid #bbb;break-inside:avoid}.hero{background:#eef3ef;padding:22px}.section{padding:18px;margin-bottom:10px}.grid{grid-template-columns:repeat(2,1fr)}a{color:inherit}.main{width:100%}}
+    .ops-card{min-width:0;overflow-wrap:anywhere}.ops-card .tile-head{align-items:flex-start;flex-wrap:wrap}.ops-card dl{margin:12px 0 0;font-size:13px}.ops-card dt{margin-top:10px;font-weight:700;color:var(--ink)}.ops-card dd{margin:3px 0 0;color:var(--muted)}.ops-records code{overflow-wrap:anywhere}.ops-roadmap{list-style:none;padding:0}.ops-roadmap li{border-left:3px solid var(--line);padding:5px 0 14px 16px}.ops-roadmap strong{display:block;color:var(--ink)}
+    @media screen and (max-width:850px){.ops-section thead{display:none}.ops-section table,.ops-section tbody{display:block}.ops-section tbody{display:grid;gap:12px}.ops-section tr{display:block;border:1px solid var(--line);border-radius:4px;padding:12px}.ops-section td{display:block;padding:6px 0;border:0;overflow-wrap:anywhere}.ops-section td:first-child{font-size:15px;font-weight:700;color:var(--ink)}.ops-section td::before{font-weight:700;color:var(--ink)}#platform-admin td:nth-child(2)::before{content:'当前基础：'}#platform-admin td:nth-child(3)::before{content:'状态与缺口：'}#operations-records td:nth-child(2)::before{content:'必需信息：'}#operations-records td:nth-child(3)::before{content:'查询与关联：'}.ops-section .badge{white-space:normal}}
+    @media print{.ops-section{break-inside:auto}.ops-card,.ops-roadmap li{break-inside:avoid}.ops-section .grid{display:block}.ops-card{margin-bottom:12px}.ops-section tr{break-inside:avoid}.ops-section thead{display:table-header-group}#capabilities .hidden{display:block!important}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="side">
+      <div class="brand">ORITHOS · RETAIL</div>
+      <h2>功能说明</h2>
+      <nav aria-label="文档章节">
+        <a href="#ai-verified-2026-10-24">最新 AI 验证</a>
+        <a href="#ai-ops-loop">AI 运维与定价闭环</a>
+        <a href="#summary">产品概览</a><a href="#latest-progress">最新进展与验证</a><a href="#status">能力状态总表</a><a href="#platform-admin">平台管理员后台</a><a href="#operations-records">关键记录与追溯</a><a href="#operations-roadmap">运维迭代路线图</a><a href="#tenant">租户与开店</a><a href="#pos">收银与班次</a><a href="#catalog">商品与客户</a><a href="#pricing">智能定价与促销</a><a href="#stock">库存与采购</a><a href="#reports">报表与审计</a><a href="#ai">AI 能力</a><a href="#security">权限与数据边界</a><a href="#limits">限制与上线条件</a>
+      </nav>
+      <div class="side-note">本说明依据项目代码、线上验收交接与能力状态记录整理。演示环境通过不等于正式门店验收。</div>
+    </aside>
+    <main class="main">
+      <div class="toolbar"><button class="button" type="button" onclick="window.print()" aria-label="打印或保存为 PDF">打印 / 保存 PDF</button></div>
+      <header class="hero" id="summary">
+        <div class="eyebrow">Product guide · Australia</div>
+        <h1>Orithos POS 功能说明</h1>
+        <p>面向澳洲独立酒类与特色杂货零售的门店销售和管理系统。当前试点以 Odoo 作为商品、销售、库存、采购和报表的业务事实源；前端提供租户管理、门店收银、运营工具与可选 AI 辅助能力。</p>
+        <div class="meta"><span>文档版本：1.2</span><span>状态基线：2026-10-22 SHA 绑定线上证据</span><span>币种与税务：AUD / GST 配置</span><span>使用对象：店主、收银员、门店管理员、平台管理员、运维和支持人员</span></div>
+        <p class="small">平台运维分析更新：2026-10-22；核验范围为源码检查、Dokploy 控制台部署核对、运行版本接口和认证只读回归。未执行生产销售、退款、采购、收货、库存调整、调价或关班写入。</p>
+      </header>
+<!-- capability-summary:start -->
+<section class="section" id="current-capability-summary"><h2>当前能力摘要 · 2026-10-23</h2><p>由统一状态清单生成；本摘要优先于后续历史记录。线上只读通过不代表真实业务验收。</p><div class="table-wrap"><table><thead><tr><th>能力</th><th>已实现</th><th>本地验证</th><th>线上只读验证</th><th>真实业务验收</th><th>边界</th></tr></thead><tbody><tr><td>库存与定价界面</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>线上只读 8/8；证据对应 9027428，当前运行 SHA 未核验，真实价格写入待验收。</td></tr><tr><td>盘点与搜索保护</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>搜索修复在工作区；库存调整未验收，正式租户须显式绑定库存位置。</td></tr><tr><td>GST 净毛利与 Odoo 改价</td><td>是</td><td>是</td><td>待验证</td><td>待验证</td><td>工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。</td></tr><tr><td>收银退款与结果恢复</td><td>是</td><td>是</td><td>待验证</td><td>待验证</td><td>工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。</td></tr><tr><td>采购收货</td><td>是</td><td>是</td><td>待验证</td><td>待验证</td><td>本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。</td></tr><tr><td>AI 助手</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>已核验 Demo runtime frontend/backend SHA 为 3edd72d84f514856923c0c0d50b01fe7b015e120，与本次 runner sourceCommit 匹配。完整 216 条助手问法 216 PASS / 0 BLOCKED / 0 FAIL，代表性 smoke 5/5 PASS；请求仅调用助手 API，业务写入为 0。只读功能专项仍需分别关注价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入。</td></tr><tr><td>两租户交付</td><td>是</td><td>是</td><td>是</td><td>待验证</td><td>公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。</td></tr></tbody></table></div><p>试点决策：<strong>NO-GO</strong>。真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。</p></section>
+<!-- capability-summary:end -->
+
+      <section class="section" id="ai-verified-2026-10-24"><h2>AI 助手问法与当前版本续验 · 2026-10-24</h2><p>新增问法目录 <code>orithopos-master/docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md</code>，按门店实际说法覆盖补货、定价、推荐、查货、销售报表、发票、帮助、权限、提示注入和立即执行类请求。每条用例同时检查意图、页面/回答边界、日期和商品槽位、数据不可用提示及业务写入。</p><p>Demo 代理已恢复到匿名 <code>401</code> 边界。完整 216 条助手回归为 <strong>216 PASS / 0 BLOCKED / 0 FAIL</strong>，代表性 smoke 为 <strong>5/5 PASS</strong>，只调用 Assistant API，业务写入为 0。证据：<code>UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_HEAD-3FC821C.json</code>、<code>UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-24_CURRENT.json</code>。runner source 为 <code>3fc821cde40f70bb05857909ac0f505a8e56a014</code>，公网运行 frontend/backend 为 <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>，source/runtime 尚未匹配。</p><p>伴随只读结果：Availability 3/3、Routes 9/9、Surface/Auth 11/11、Metrics 9/9、UI 2/2、能力降级 PASS；Features 14 PASS + 发票 OCR <code>41001</code> BLOCKED；Reports 15/16（实时库存不可用）；History/Platform 9 PASS + 2 BLOCKED；转写 2 PASS + 2 BLOCKED（未提供音频 fixture）。</p><p>发票页面现在识别 Odoo-only 模式下已退役的 Classic <code>/api/orders/receives/scan</code> 返回码 <code>41001</code>，停止无效重试并引导 Odoo Purchases/Replenishment。真正迁移到 Odoo 原生发票流程仍需 Java 21 同候选 SHA 验证和隔离业务写入验收。</p></section>
+
+      <section class="section" id="ai-verified-2026-10-23"><h2>AI 助手运行版本回归 · 2026-10-23</h2><p>Demo 前端与后端运行 SHA 均为 <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>，与本次测试源码一致。当前 216 条自然语言问法全量通过：<strong>216 PASS / 0 BLOCKED / 0 FAIL</strong>；覆盖补货、定价、推荐、发票、门店问数、报表、目录查询、执行安全边界、提示注入和未知输入。代表性跨功能 smoke 为 <strong>5/5 PASS</strong>。</p><p>测试仅调用助手 API，<code>writeRequests=none: assistant API only</code>，没有销售、库存、采购、收货、价格或收银写入。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json</code>、<code>orithopos-master/docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-23.json</code>。价格建议、实时库存报表、真实 OCR 字段、跨店凭据和隔离业务写入仍按独立验收门槛处理。</p></section>
+
+      <div class="callout green"><strong>当前线上基线：</strong>Demo `/api/public/version` 已核对前端和后端运行 SHA 均为 <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>，与本地 main 一致。SHA 证据：<code>orithopos-master/docs/UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json</code>。同 SHA 助手自然问法为 <strong>216/216 PASS</strong>；库存/定价四页只读布局检查 8 PASS，Capped Pricing 两个视口因未配置 Odoo price rules 而 BLOCKED，业务写请求 0。定价复验：<code>orithopos-master/docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_SUCCESS_RECHECK.json</code>。本地尚未部署 UI 批次：Stock List 成本管理标签与 Odoo Bulk Price Edit 搜索清除交互五视口 <strong>15/15 PASS</strong>，Price Suggestions 人工确认/未知结果恢复 <strong>12/12 PASS</strong>。证据：<code>orithopos-master/docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_COST-LABEL-PASS.json</code>、<code>orithopos-master/docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_BATCH_RECHECK.json</code>。旧段落保留为历史记录。</div>
+
+      <section class="section" id="ai-latest-verified-2026-10-22"><h2>最新 AI 验证覆盖 · 2026-10-22</h2><p>本段覆盖历史记录，作为当前验证状态的优先说明；历史结果保留用于比较，不代表当前运行版本。</p><p>Demo 当前运行前后端为 <code>c4585ad</code>。完整认证问法目录 <strong>216/216 PASS</strong>、<strong>0 BLOCKED</strong>、<strong>0 FAIL</strong>，仅调用 Assistant API，未发送销售、退款、采购、收货、库存、调价、付款或关班业务写入。完整证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-RECHECK-C4585AD.json</code>。</p><p>串行伴随验收：可用性 <strong>3/3 PASS</strong>、路由 <strong>9/9 PASS</strong>、Surface/Auth <strong>11/11 PASS</strong>、Metrics <strong>9/9 PASS</strong>、功能 <strong>14 PASS / 0 FAIL / 1 BLOCKED</strong>。唯一功能阻断为发票 OCR API 返回 <code>410/41001</code>（路由不可用或已退役），因此发票扫描入口应显示不可用状态，不得宣称可提取或自动收货。证据：<code>orithopos-master/docs/UAT_AI_FEATURES_ONLINE_2026-10-22-SERIAL.json</code>。</p><p>运行版本已通过 Dokploy Web 普通 Deploy 核对，部署状态为 Done，backend/frontend/mysql/r2-sync 已构建，MySQL/Redis 健康。GitHub 最新提交若仅为文档证据提交，不改变应用镜像中的业务代码；仍需以 <code>/api/public/version</code> 的运行 SHA 绑定结果为准。</p></section>
+
+      <section class="section" id="ai-uat-latest-2026-10-22"><h2>AI 助手测试进展 · 2026-10-22</h2><p>可执行问法目录已审计为 <strong>216 条唯一 ID</strong>，覆盖补货、定价、酒类推荐、发票识别、门店问数、商品/客户查询、执行型安全边界、提示注入、空数据、权限和语音变体。代表性 smoke 选取补货、定价、推荐、发票和今日销售各一条；首次配置误用了不存在的 ID，测试脚本现会列出具体缺失 ID。</p><p>修正后的代表性 smoke 连续重试三次登录，Demo 仍返回 HTTP 502（<code>LOGIN_FAILED_502</code>），尚未进入助手 API，因此本轮为 <strong>0 PASS / 1 BLOCKED / 0 FAIL</strong>，没有业务写入。该结果是登录可用性阻断，不是问法路由结论。诊断记录显示最终响应来自 Cloudflare，内容类型为 HTML，没有关联 ID；匿名 auth/config/assistant 探针也全部返回 502，证据：<code>orithopos-master/docs/UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json</code>。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-DIAGNOSTIC.json</code>。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RETRY2.json</code>。随后执行的完整 216 条目录也在登录阶段被同样阻断，证据为 <code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-217.json</code>。</p><p>当前仍不宣称 AI 工作树修复已部署：公网版本接口没有前后端 SHA；pos-api 改动必须先通过 Java 21 对同候选 SHA 的 <code>mvn -B clean verify</code>。登录恢复后按测试计划重跑代表性 smoke、失败边界子集和完整 216 条目录。</p></section>
+
+      <section class="section" id="ai-full-iteration-2026-10-21"><h2>AI 助手完整问法与功能回归 · 2026-10-21</h2><p>工作流目录现有 <strong>213 条唯一用例</strong>，覆盖销售/营收、库存、补货、价格、酒类推荐、发票识别、商品/客户查找、帮助、执行意图保护及安全边界。完整 Demo 回归 <strong>75 PASS / 113 BLOCKED / 25 FAIL</strong>；113 条均为脱敏 <code>50210</code>。25 条失败包括 18 条路由不符（执行意图、历史报表边界、中文批量改价）和 7 条日期销售回复缺少 <code>AUD</code>/正确单日措辞。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-213-CURRENT.json</code>。</p><p>只读专项：features <strong>13/14</strong>（价格建议 Cloudflare 502）、reports <strong>15/16</strong>（实时库存安全不可用）、availability <strong>3/3</strong>、route <strong>9/9</strong>、surface/auth <strong>11/11</strong>、UI <strong>2/2</strong>、metrics <strong>9/9</strong>、Sommelier <strong>10/10</strong>、合成发票 OCR <strong>6/6</strong>、合成语音转写 <strong>4/4</strong>、AI enablement 与 voice fallback gate 均通过、History/platform <strong>9 PASS / 2 BLOCKED</strong>（缺第二门店用户与平台 operator 凭据）。AI stock RPC <strong>4 PASS / 5 BLOCKED / 1 INFO</strong>；测试公司/仓库上下文没有匹配商品，尚不能判断权限根因。Admin guard 未运行，因为会创建临时用户/角色。</p><p>日期销售专项为 <strong>0 PASS / 5 BLOCKED / 7 FAIL</strong>；7 条成功响应识别了报告意图及日期，但币种和单日文案断言失败。线上版本接口 <code>frontend.commit=null</code>、<code>backend=null</code>，无法确认运行源码身份。助手调用可能产生审计/usage 事件；没有销售、采购、收货、库存、改价或收银业务写入。</p><p>工作树 formatter 已加入 <code>AUD</code> 并修复 day/sale 单复数；测试补足英文口语、澳洲日月日期和中文问法。UAT 脚本语法、证据 JSON 与 <code>git diff --check</code> 通过；未运行本地 Maven/build，Java 单测和 Java 21 同候选 SHA 远程门禁未完成，不能将工作树修复说成已部署。详情见 <code>orithopos-master/docs/AI_ASSISTANT_TEST_PLAN.md</code>、<code>orithopos-master/docs/AI_ASSISTANT_TEST_MATRIX.md</code>、<code>orithopos-master/docs/AI_ASSISTANT_FUNCTION_SPEC_COVERAGE.md</code> 和 <code>orithopos-master/docs/HANDOFF_2026-10-19_CURRENT.md</code>。</p></section>
+
+      <section class="section" id="ai-utterance-safety-latest"><h2>AI 执行型问法专项 · 2026-10-21</h2><p>当前工作区目录已扩展到 <strong>194 条唯一用例</strong>：174 条只读问法与 20 条写入意图保护问法。新增 <code>Place the purchase order</code>、<code>Buy these items now</code>、<code>Apply these prices</code>、<code>下单采购这些商品</code>、<code>执行补货</code>、<code>执行调价</code>，以及通用的 <code>Submit the purchase order</code>、<code>Confirm this order</code>、<code>Save these price changes</code>、<code>提交采购订单</code>、<code>确认这些订单</code>、<code>保存价格变更</code>。这些问法预期均返回引导式响应，不应静默进入补货或定价页面。</p><p>最新完整 Demo 基线仍是上一轮 188 条的 <strong>76 PASS / 94 BLOCKED / 18 FAIL</strong>；4 条阻断为脱敏代码 <code>50210</code>，18 条失败来自未核验旧 runtime 的安全和历史边界。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-188CASE_CURRENT.json</code>。请求只调用助手 API，业务写入为 0；194 条目录需在 Java 21 远程门禁、部署与 runtime SHA 核验后重跑。</p></section>
+
+      <section class="section" id="ai-utterance-latest-baseline"><h2>AI 问法完整矩阵最新基线 · 2026-10-21</h2><p>188 条自然语言用例已在 Demo 执行，结果为 <strong>76 PASS / 94 BLOCKED / 18 FAIL</strong>。94 条阻断均为脱敏代码 <code>50210</code>；18 条失败集中在未核验旧 runtime 的执行型问法与定价、补货、发票历史边界。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-188CASE_CURRENT.json</code>。</p><p><code>sourceCommit=83a6044f8770f8ba67b8dec7deff67dee17fe2aa</code>，<code>deployment=unverified-after-deploy</code>，请求仅调用助手 API，业务写入为 0。必须完成 Java 21 远程门禁、同 SHA 部署和 runtime SHA 核验后，才能判断当前源码修复是否已上线。</p></section>
+
+      <section class="section" id="ai-execution-language-recheck"><h2>AI 通用执行措辞专项复测 · 2026-10-21</h2><p>新增 6 条采购订单提交/确认和价格变更保存问法（中英文）线上结果为 <strong>0 PASS / 6 BLOCKED / 0 FAIL</strong>，全部返回脱敏代码 <code>50210</code>，没有产生业务写入或误路由。证据：<code>orithopos-master/docs/UAT_AI_WRITE_INTENT_GUARDS_ONLINE_2026-10-21-6GENERIC.json</code>。</p><p>这只证明当前请求被服务阻断，不能证明工作区 fail-closed 修复已部署；仍需 Java 21 同 SHA 门禁、Dokploy 部署和 runtime SHA 核验。</p></section>
+
+      <section class="section" id="ai-194-baseline"><h2>AI 问法 194 条最新基线 · 2026-10-21</h2><p>完整目录线上结果为 <strong>76 PASS / 100 BLOCKED / 18 FAIL</strong>。新增 6 条通用订单/价格执行问法全部返回脱敏代码 <code>50210</code>，没有新增误路由或业务写入；18 条失败与上一轮相同，仍属于未核验旧 runtime 的安全与历史边界。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-194CASE_CURRENT.json</code>。</p><p>当前 <code>sourceCommit=d9c562292ebab5eea66d9b3c34b4ba45006e1f4b</code>，<code>deployment=unverified-after-deploy</code>。后端修复仍需 Java 21 同 SHA 门禁和运行版本核验。</p></section>
+
+      <section class="section" id="release-identity-latest"><h2>运行版本身份复核 · 2026-10-21</h2><p><code>/api/public/version</code> 返回 HTTP 200，前端服务为 <code>orithos-frontend</code>，构建时间为 <code>2026-10-21T08:19:13.701Z</code>；但 <code>frontend.commit=null</code>、<code>backend=null</code>。健康入口在未登录状态返回预期的 <code>40100</code>。</p><p>本地与 <code>origin/main</code> 均为 <code>d9c562292ebab5eea66d9b3c34b4ba45006e1f4b</code>，因此只能确认前端构建可见，不能确认后端候选或完整 runtime 已部署。证据：<code>orithopos-master/docs/UAT_RELEASE_IDENTITY_2026-10-21_CURRENT.json</code>。</p></section>
+
+      <section class="section" id="assistant-runtime-identity">
+        <h2>AI 助手问法测试 · 2026-10-21</h2>
+        <p>新增在线 UAT 版本身份采集：每轮问法检查前读取公开版本端点，记录 HTTP 状态、前后端构建信息及与源码 SHA 的匹配状态，不保存版本响应正文。</p>
+        <p>只读 smoke 问法 <code>Restock list please</code> 返回 <strong>1/1 PASS</strong>，正确进入 <code>/stock/replenishment</code>，业务写入为 0。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_RUNTIME_IDENTITY_SMOKE.json</code>。</p>
+        <p>对上一轮全部 25 条失败问法进行定向复测，结果为 <strong>0 PASS / 0 BLOCKED / 25 FAIL</strong>：7 条执行型问法仍误进入只读流程，10 条历史/报表问法仍误路由，中文批量改价仍打开封顶价页，7 条单日销售回复仍缺少 AUD 和正确单日措辞。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_PREVIOUS-FAILS_RECHECK_2026-10-21.json</code>。</p>
+        <p>随后完成当前目录全量复跑，JSON 权威字段为 <strong>216/216</strong> 条，结果仍是 <strong>75 PASS / 116 BLOCKED / 25 FAIL</strong>，四类失败数量不变。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-217-CURRENT-RECHECK.json</code>（文件名沿用 runner 迭代名，不能按文件名把目录计为 217 条）。</p>
+        <p>配套 AI 专项续验：可用性 3/3、路由 9/9、surface/auth 11/11、AI UI 2/2、侍酒 10/10、发票 OCR 6/6、指标 9/9、英/中文合成转写 4/4；功能 13/14（价格建议上游 502）、报表 15/16（实时库存不可用）。首次转写因缺少样本为 2 PASS / 2 BLOCKED，补齐临时英/中文音频后完整复测 4/4 PASS。所有检查无业务写入。</p>
+        <p>History/Platform 为 9 PASS / 2 BLOCKED（缺第二门店用户和 platform-operator 凭据）；Odoo stock RPC 为 4 PASS / 5 BLOCKED / 1 INFO，阻塞项均是测试公司/仓库范围没有匹配行，未扩大租户或仓库范围。</p>
+        <p>AI Java 源码隐私扫描覆盖 113 个文件，未发现直接把 question、prompt、answer、response 或 utterance 插入 logger 的调用；运行容器日志仍需 Java 21 门禁和部署后复核。</p>
+        <p>验收文档已同步当前助手入口：使用 <strong>Products</strong>、<strong>What should I restock?</strong> 和 <strong>Check stock</strong>，不再把已从快捷面板移除的 “Open sell” 作为 AI 快捷入口。</p>
+        <div class="callout"><strong>线上版本仍无法归属到当前源码。</strong>版本端点 HTTP 200，但前端与后端 commit 均为空；前端构建时间为 <code>2026-10-21T13:35:45.867Z</code>，早于本次检查。运行身份匹配为 false。216 条全量问法结果仍是 <strong>75 PASS / 116 BLOCKED / 25 FAIL</strong>，单条通过不能代表全量通过或证明最新代码已部署。</div>
+      </section>
+      <section class="section" id="latest-progress">
+        <p><strong>2026-10-22 runtime 身份已核验：</strong>Dokploy 已设置 <code>SOURCE_COMMIT=64759b45f90e27eebd92314e172eccb94a677230</code> 并完成普通部署。Demo 版本端点返回 frontend/backend commit 均匹配该 SHA；在这个运行版本上 216 条 AI 问法为 <strong>216 PASS / 0 BLOCKED / 0 FAIL</strong>，业务写入 0。此前的未核验运行结果仅保留为历史记录。</p>
+        <p><strong>2026-10-22 AI provider 复测：</strong>Dokploy 已显式配置分类模型 <code>AI_DASHSCOPE_CLASSIFY_MODEL=qwen-plus</code> 并完成普通 Compose 部署；此前未知/安全判定的 9 条 HTTP 502 已复测为 <strong>9/9 PASS</strong>。当前 216 条 AI 问法完整复测为 <strong>216 PASS / 0 BLOCKED / 0 FAIL</strong>，请求仅使用 Assistant API，业务写入 0。Demo backend <code>builtAt=2026-10-21T18:24:30Z</code>，但 frontend/backend runtime SHA 仍为空，不能把本次响应归属为已核验源码版本。伴随套件的功能、报表、History/Platform 和转写阻断分别保留在测试计划中，原因是上游依赖、缺少账号或缺少音频 fixture。</p>
+        <h2>最新进展与验证 · 2026-10-21</h2><p><strong>dfe74b0 UAT 工具扩展：</strong>12 个 AI 与只读验收脚本覆盖能力门禁、报表、路由、182 条问法、目录、交互、OCR、隔离写入、设置和可访问性；Node24 语法检查 12/12 通过。该提交不改变应用运行代码，线上复验仍等待 Dokploy 分支修正。</p><p><strong>5f3976a 补货元数据追踪补齐：</strong>补货建议的商品与公司元数据 RPC 已补齐 correlation ID。TypeScript 检查通过，未执行真实补货或 RFQ 写入；Dokploy 分支绑定仍待修正。</p><p><strong>6812e40 补货关联追踪：</strong>补货建议路由的 Odoo session、销量和商品 RPC 已纳入 correlation ID 传播。仅修改前端，未执行真实补货或 RFQ 写入；Dokploy 分支绑定仍待修正。</p><p><strong>b37e6b3 Price Suggestions 关联追踪：</strong>价格建议页面的 Odoo session、商品、销售、税务和税额计算 RPC 统一携带 correlation ID。TypeScript 检查通过，未执行真实价格写入；Dokploy 分支绑定仍阻止线上构建。</p><p><strong>运营只读复验与工具固化：</strong>新增租户审计、版本身份、产品化路由、AI stock RPC、ASR 和运营 UAT 工具，8/8 脚本语法通过。Demo 运营只读重试后 Odoo session、盘点/补货读取与故障恢复 13/13 PASS，业务写入 0；首轮登录 404 证据保留。该测试工具提交尚未获得 Dokploy runtime 身份。</p><p><strong>43ade21 关联追踪批次：</strong>报价、POS bootstrap、采购列表、销售详情和现金操作已将请求关联 ID 传递到 Odoo RPC。Node24 类型检查、产品化路由 31/31 和脚本语法检查通过，未执行真实业务写入。Dokploy 仍被 <code>Branch Not Match</code> 阻塞，本批尚无线上构建身份。</p><p><strong>19b1293 前端可靠性批次：</strong>已推送结账恢复、采购/收货未知结果保护、Odoo 错误关联 ID、平台 Operations 与盘点/目录恢复。Node24 类型检查、定向 ESLint、产品化路由 31/31、UI 12/12、采购 40/40、盘点 39/39、补货 60/60 通过。Dokploy webhook 仍为 <code>301 Branch Not Match</code>，版本端点构建时间未变化，19b1293 尚未上线；定价线上重试 8/8 PASS 属于当前旧 runtime。后端 Java21 门禁与真实 Odoo 闭环继续待完成。</p><p><strong>版本端点复核更新：</strong>纯前端候选 <code>83a6044</code> 已推送；公网 <code>/api/public/version</code> 现返回 200，前端服务和构建时间可读。Dokploy 未注入 <code>SOURCE_COMMIT</code>，前端 commit 仍为空，后端服务仍为空；webhook 返回 <code>301 Branch Not Match</code>。因此只确认前端端点上线，完整双服务 runtime SHA、后端 Java 21 门禁和真实 Odoo 写入仍待完成。</p><p><strong>Dokploy 成功后最新线上复验：</strong>定价四页在 390/1440px 共 <strong>8/8 PASS</strong>；全站 136 路由双视口共 <strong>272/272 PASS</strong>。Demo 租户域名上的 <code>/platform/operations</code> 404 是预期的控制平面隔离，已单独记录为 expectedUnavailable。AI 功能只读矩阵为 <strong>13 PASS / 1 BLOCKED / 0 FAIL</strong>，唯一阻断是价格建议上游 502，页面可用且提供 Retry。所有请求均未执行业务写入。<a href="../orithopos-master/docs/UAT_ALL_STATIC_PAGES_AFTER_DEPLOY_2026-10-21_HONEST.json">全站证据</a> · <a href="../orithopos-master/docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-19.json">定价证据</a> · <a href="../orithopos-master/docs/UAT_AI_FEATURES_VERIFY_AFTER_DEPLOY_2026-10-21.json">AI 证据</a>。<code>/api/public/version</code> 仍未提供 runtime SHA，真实 Odoo 写入和后端 Java 21 门禁继续待完成。</p><h3>AI 问法完整复测与写入意图 fail-closed 修复</h3><p>当前 182 条目录在 Demo 重新执行结果为 <strong>76 PASS / 90 BLOCKED / 16 FAIL</strong>；90 条 BLOCKED 均为脱敏代码 50210，16 条 FAIL 中 5 条为写入意图仍被旧 runtime 导航到补货、定价或发票扫描，其余为已知报表/历史边界。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_182CASE_RECHECK.json</code>。请求仅调用助手 API，业务写入 0。</p><p>复测发现源码原先只阻止确定性路由覆盖，写入问法仍会进入模型分类。现已在 <code>ClassifyQueryNode</code> 模型调用前将明确的提交、保存、收货、删除、导入、发送、开始等执行型请求 fail-closed 为引导式 <code>unknown</code>，并新增节点回归覆盖 8 条安全问法。该后端修复尚未部署，需先通过 Java 21 远程 <code>mvn -B clean verify</code> 并核对运行 SHA。</p><p>同轮 AI 专项只读复核：features <strong>13 PASS / 1 BLOCKED / 0 FAIL</strong>（价格建议接口上游 502，页面提供 Retry）；surface/auth <strong>11/11</strong>、route <strong>9/9</strong>、metrics <strong>9/9</strong>（390/1440px）、AI UI <strong>2/2</strong>；reports <strong>15 PASS / 1 BLOCKED / 0 FAIL</strong>（实时库存安全提示）。对应证据均为 <code>*_CURRENT_RECHECK.json</code>，runtime SHA 尚未核验。</p><p>AI availability UAT 已同步当前助手结构，使用共享 Quick action <code>Products</code> 替代已退役的 “Open sell” 定位器，复测 <strong>3/3 PASS</strong>；证据：<code>orithopos-master/docs/UAT_AI_AVAILABILITY_2026-10-21_CURRENT_RECHECK.json</code>。</p>
+        <p><strong>新批次已推送 main：<code>f7a7288</code>。</strong>盘点搜索、采购收货和补货保护共 158 项本地检查通过，包含 3 个前端文件；后端文件树未变化。Dokploy 构建与实际运行 SHA 尚未核验，真实业务写入未验收。</p>`r`n        <p><strong>新增前端修复：<code>c0368b9</code>。</strong>通用 Odoo 只读请求遇 401 会先恢复会话再安全重放；采购详情页使用头部 AI 入口，避免浮层遮挡收货按钮。本地证据：会话恢复 2/2、盘点搜索 39/39、采购布局 3/3。已推送 main，待 Dokploy 部署后进行线上冷入口复验。</p>`r`n        <p><strong>线上续验已完成。</strong> c0368b9 后 Demo 盘点只读 12/12、采购列表 AI 布局 390/1440 共 2/2、目录与助手实际视口 44/44；非 GET 请求均拦截且无业务写入。真实运行 SHA 仍未核验，采购详情/收货因无可点击真实订单暂未验证。</p>`r`n        <p><strong>全站复验已完成。</strong> Demo 135 条路由在 390/1440px 共 270/270 通过；交互 14/14、设置双视口和表格可访问性 14/14 通过，业务写入为 0。全站脚本已加入连接中断有限重试。</p>`r`n        <p>定价批次 <code>9027428</code> 已完成 Demo 双视口验收：Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions 共 8/8 通过；无横向溢出、页面错误或业务写入。真实价格保存仍需隔离 Odoo 验收。</p>`r`n        <p>盘点冷入口未预热 Odoo session 直接进入 Demo，已验证自动恢复并显示库存位置（1/1 PASS）；非 GET 请求为 0。运行 SHA 仍需 Dokploy/版本端点补证。</p>`r`n        <p>用户确认 Dokploy 部署成功，但 checkout/runtime SHA 仍未取得。冷入口盘点/补货脚本记录 1 次 Odoo session 401；显式完成 session warmup 后，390/1440px 线上只读搜索与补货 Retry 共 13/13 通过（<a href="../orithopos-master/docs/UAT_OPERATIONS_RUNTIME_DEMO_2026-10-21_WARM_SESSION.json">证据</a>），业务写入 0。采购弹窗 AI 入口遮挡已在本地 40/40 修复，尚未推送。</p>
+        <p class="section-intro">本节更新当前迭代状态。下方较早的测试结果保留为历史基线；页面可用、本地模拟通过、真实业务闭环和运行版本核验分别记录。</p>
+        <p><strong>Platform 运维前端验收：</strong>Audit、Failures 和门店详情 provisioning history 页面在桌面与 390px fixture 中通过表格/时间线、搜索、分页、刷新、步骤状态和移动布局检查，均无横向溢出或页面错误；新增控制面导航的移动端溢出已修复。后端审计/失败/provisioning 接口仍在 Java 21 门禁前的未提交批次（当前 62 个 Java/资源/测试文件），暂不计为线上功能。线上版本端点尚未提供 frontend/backend commit。</p>
+        <div class="callout green"><strong>库存定价新布局已在线观察到。</strong>前端批次 <code>1897d8b</code> 已推送 main，店主确认 Dokploy 成功。首次 Demo 复核为 4/8；随后复核为 <strong>8/8 PASS</strong>，手机字段卡片、宽搜索框、顶部 AI 入口均出现。部署完整 SHA 与运行 SHA 尚未独立核验。</div>
+        <div class="table-wrap"><table><thead><tr><th>功能范围</th><th>本轮进展与证据</th><th>状态边界</th></tr></thead><tbody>
+          <tr><td>库存列表、封顶价、批量改价、价格建议</td><td>Demo 390/1440px 四页共 8/8 通过；批量改价手机搜索宽度由 110px 变为 342px，字段卡片可见。无页面 JS 错误、无业务写入。<a href="../orithopos-master/docs/UAT_UI_BATCH_DEMO_RUNTIME_RECHECK_2026-10-21_1897D8B.json">线上证据</a></td><td><span class="badge done">线上只读通过</span><br>真实价格写入与 POS 规则生效待隔离验收。</td></tr>
+          <tr><td>盘点页面与门店绑定</td><td>Demo 390/1440px 的登录、Odoo 会话、位置读取、搜索语义、顶部 AI 和布局共 12/12 通过。搜索 wine 为空，仅验证空结果语义。<a href="../orithopos-master/docs/UAT_STOCKTAKE_DEMO_RUNTIME_BASELINE_2026-10-21_1897D8B.json">线上证据</a></td><td><span class="badge pending">库存写入关闭</span><br>门店无明确库存位置绑定，使用唯一仓库回退；未执行库存调整。</td></tr>
+          <tr><td>盘点搜索数据保护</td><td>修复改词后仍可操作旧结果的问题；立即隐藏旧商品、撤销旧请求、同步等待/展开状态并清除旧错误。修复前有效矩阵 18 PASS / 15 FAIL；修复后扩展矩阵 39/39 通过，含快速改回原词与等待时 Enter。<a href="../orithopos-master/docs/UAT_STOCKTAKE_SEARCH_RACE_LOCAL_2026-10-21_FULL.json">本地证据</a></td><td><span class="badge pending">已推送 f7a7288，待线上验收</span><br>390/1024/1440px，API 全部由 fixture 接管。</td></tr>
+          <tr><td>盘点原有保护回归</td><td>40 项上限、清空确认、失败保留和重试 20/20；320/390/768/1024/1440px 布局及模拟提交 5/5。Node 24 TypeScript、定向 ESLint 通过，无本地 build。</td><td><span class="badge done">本地交互通过</span><br>模拟提交不能替代真实 Odoo 库存验收。</td></tr>
+          <tr><td>目录与 AI 助手</td><td>真实 Demo 的商品/客户/供应商搜索深链、空结果、清空恢复，以及顶部助手五条快捷问句、焦点圈定、Escape 返回，共 44/44 通过；按浏览器实际宽度覆盖 320/390/1024/1440px，页面 JS 错误 0。<a href="../orithopos-master/docs/UAT_DIRECTORIES_ASSISTANT_DEMO_2026-10-21_ACTUAL_VIEWPORTS.json">线上证据</a></td><td><span class="badge done">线上交互通过</span><br>没有提交模型问题或业务写入；模型回答质量和目录增删改不在此轮范围。</td></tr>
+          <tr><td>采购确认与收货</td><td>确认/收货请求中阻止 Escape 关闭，锁定已提交数量；失败保留编辑及重试负载。收货成功提示在详情刷新后保留；刷新失败仍显示已收货，重试只读取详情。390/1024/1440px 共 34/34 通过。<a href="../orithopos-master/docs/UAT_PURCHASE_BUSY_LOCAL_2026-10-21_RELEASE.json">本地证据</a></td><td><span class="badge pending">新前端批次，待线上验收</span><br>请求全部拦截，未确认真实采购或收货。</td></tr>
+          <tr><td>补货计划与供应商恢复</td><td>供应商可原地重试且保留修改数量；初始计划读取失败可重试；覆盖天数更新中或失败时禁止使用旧建议创建草稿，计划说明使用数据实际天数。320/390/1024/1440px 共 60/60 通过。<a href="../orithopos-master/docs/UAT_REPLENISHMENT_PLAN_RECOVERY_LOCAL_2026-10-21_RELEASE.json">本地证据</a></td><td><span class="badge pending">新前端批次，待线上验收</span><br>仅 fixture 创建草稿，真实 RFQ 和收货仍需隔离闭环。</td></tr>
+        </tbody></table></div>
+        <h3>接下来必须完成</h3>
+        <ol class="list"><li>取得 Dokploy checkout 与运行完整 SHA、构建日志和容器健康，确认验收对应的版本。</li><li>目录与 AI 线上交互矩阵已通过；继续覆盖销售、采购、报表和设置的异常恢复，并合批发布新盘点搜索修复。</li><li>在批准的隔离 Odoo 环境验证销售/退款/现金关班、采购收货、价格保存与库存调整闭环。</li><li>后端候选必须先在远程 Java 21 对同一候选 SHA 跑通 <code>mvn -B clean verify</code> 再推送。真实设备、真实票据/语音和离线能力仍待验。</li></ol>
+        <p class="small">盘点搜索、采购收货与补货保护已合批推送，避免逐项部署增加 Dokploy 缓存。详见<a href="../orithopos-master/docs/RELEASE_OPERATIONS_UI_BATCH_2026-10-21.md">本批发布说明</a>、<a href="../orithopos-master/docs/HANDOFF_2026-10-19_CURRENT.md">当前交接</a>与<a href="../orithopos-master/docs/FUNCTIONALITY_CHECKLIST.md">功能测试清单</a>。整体试点仍未放行。</p>
+      </section>
+
+      <section class="section">
+        <h2>产品概览</h2>
+        <p>Orithos 将柜台结账与门店日常运营放在同一工作界面中。平台层负责租户注册和门店初始化；门店层通过 Odoo 会话处理交易及库存业务。Spring/MySQL Classic POS 代码仍保留在仓库作参考，不是当前试点写入路径。</p>
+        <div class="flow" aria-label="系统业务结构">
+          <div class="step"><strong>平台控制面</strong><em>注册、租户、Outlet / Register 初始化</em></div><div class="arrow" aria-hidden="true">›</div>
+          <div class="step"><strong>门店工作台</strong><em>收银、商品、客户、库存、采购、报表</em></div><div class="arrow" aria-hidden="true">›</div>
+          <div class="step"><strong>Odoo 业务核心</strong><em>销售、付款、库存和采购记录</em></div>
+        </div>
+      </section>
+
+      <section class="section" id="status">
+        <h2>能力状态总表</h2>
+        <p class="section-intro">状态卡片用于快速筛选，后续明细与平台章节说明核验范围；由统一状态清单生成的当前摘要优先于历史记录。页面存在、只读回归通过、业务写入验收和正式部署验证分别记录，不合并为一个“已完成”。平台运维规划统一归入“规划中”，已有基础但未完成线上核验的能力归入“待验证”。</p>
+        <div class="filterbar" role="group" aria-label="按状态筛选能力"><span>筛选状态</span><button type="button" data-filter="all" aria-pressed="true">全部</button><button type="button" data-filter="done" aria-pressed="false">已验收</button><button type="button" data-filter="pending" aria-pressed="false">待验证</button><button type="button" data-filter="planned" aria-pressed="false">规划中</button></div>
+        <div class="grid" id="capabilities">
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>平台门店与账号管理</h3><span class="badge pending">源码已有，待线上核验</span></div><p>门店列表/详情、启停、试用延期、店主账号恢复和 Odoo 初始化已有实现；登录后的当前版本及权限仍需专项验收。<a href="#platform-admin">查看平台现状</a>。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>AI 用量与版本识别基础</h3><span class="badge pending">部分实现</span></div><p>已有 AI 聚合、审计与版本识别源码；完整依赖健康、实际成本及运行版本一致性尚未验收。<a href="#platform-admin">查看基础与缺口</a>。</p></article>
+           <article class="tile" data-status="planned"><div class="tile-head"><h3>AI 运维与质量闭环</h3><span class="badge planned">规划新增</span></div><p>补充单次事件追踪、脱敏反馈、模型/提示版本、真实费用、质量指标和定价证据；不默认留存完整问答，也不把未经授权的网页价格作为生产事实。</p></article>
+<article class="tile" data-status="pending"><div class="tile-head"><h3>P0 · 运维追溯与排障</h3><span class="badge pending">部分本地实现，待验证</span></div><p>平台操作审计、门店时间线、初始化阶段历史、请求关联及故障聚合检索已有本地实现；数据库迁移、Java 21 构建、部署和线上验收未完成。<a href="#operations-roadmap">按阶段实施</a>。</p></article>
+          <article class="tile" data-status="planned"><div class="tile-head"><h3>P1 / P2 · 运维闭环与运营</h3><span class="badge planned">规划新增</span></div><p>告警处理、发布记录、备份恢复记录、分级权限、AI 成本及客户支持；新增能力均未列为已上线。</p></article>
+          <article class="tile" data-status="done"><div class="tile-head"><h3>租户注册与初始化</h3><span class="badge done">已验收</span></div><p>注册后自动登录并进入租户；可配置 Outlet、Register、绑定 Odoo company，并初始化演示目录。</p></article>
+          <article class="tile" data-status="done"><div class="tile-head"><h3>POS 销售与收款</h3><span class="badge done">已验收</span></div><p>开班、商品搜索、购物车、现金或模拟 Card 收款、GST、找零、现金凑整和收据。</p></article>
+          <article class="tile" data-status="done"><div class="tile-head"><h3>退款与现金管理</h3><span class="badge done">已验收</span></div><p>销售历史退款、库存恢复、现金收入与支出已在隔离验收链路中验证；Demo 线上只读。</p></article>
+          <article class="tile" data-status="done"><div class="tile-head"><h3>租户数据隔离</h3><span class="badge done">已验收</span></div><p>商品、库存及 Odoo company 按租户隔离；跨租户访问拒绝和租户删除已验收。</p></article>
+          <article class="tile" data-status="done"><div class="tile-head"><h3>库存查询</h3><span class="badge done">已验收</span></div><p>Odoo 门店库存读取和库存列表已接入；库存调整/盘点写入另行受控。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>商品目录管理</h3><span class="badge pending">待部署验证</span></div><p>商品查询、分类、详情、创建/编辑和导入导出页面存在；最新修改尚未用运行 SHA 完成线上核对。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>智能定价建议</h3><span class="badge pending">待部署验证</span></div><p>按成本、销量、库存和目标毛利生成建议价，支持筛选和 CSV 导出；writeEnabled=false，不自动改价。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>价格管理</h3><span class="badge pending">待业务验收</span></div><p>批量改价、限价、阶梯价和价目表入口存在；真实价格写入及生效规则需隔离环境验证。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>采购与收货</h3><span class="badge pending">待验证</span></div><p>代码与页面可用性不代表流程验收完成；供应商创建、采购确认、部分/全部收货仍需隔离公司闭环验证。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>交班现金盘点</h3><span class="badge pending">待验证</span></div><p>关班入口已接入；实际现金盘点、差异计算及错误差异拦截尚缺完整线上证据。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>AI 助手与自然语言问数</h3><span class="badge pending">部分验证</span></div><p>只读问法目录 216 条，覆盖销售/库存问数、补货、价格复核、酒类推荐、发票、导航和写操作安全边界。最新完整 Demo 运行：75 PASS、116 BLOCKED（全部为脱敏 50210）、25 FAIL（7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符）。新增 3 条“sell on [date]”问法也返回 50210，未获得在线路由结论。25 条失败均已映射到本地 Java 回归断言，但 Java 测试尚未执行。旁路只读结果：Features 13/14、Reports 15/16（实时库存不可用）、Availability 3/3、Route 9/9、Surface/Auth 11/11、UI 2/2、Metrics 9/9、Sommelier 10/10、合成发票 OCR 6/6、英/中文 ASR 4/4、History/Platform 9 PASS / 2 BLOCKED（缺跨店/operator 账号）。Demo frontend/backend SHA 为空，不能认定本地改动已部署。在线助手调用未写业务数据，但可能产生 AI usage/audit 记录。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-216-CURRENT-CONTINUATION.json</code>。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>发票 OCR</h3><span class="badge pending">样张已验证</span></div><p>合成澳洲发票样张已在线验证供应商、票号/日期、明细、GST 与总额识别；真实供应商票据格式仍需扩展验收。仅提供识别预览和字段复核，不会自动创建采购或收货。</p></article>
+          <article class="tile" data-status="pending"><div class="tile-head"><h3>实体支付与门店外设</h3><span class="badge pending">待现场验证</span></div><p>当前 Card 验收为 Odoo 模拟支付，不代表实体 EFTPOS、打印机或钱箱已联调。</p></article>
+          <article class="tile" data-status="planned"><div class="tile-head"><h3>离线收银与恢复同步</h3><span class="badge planned">规划 / 未验收</span></div><p>尚未验证断网交易、恢复同步、幂等去重和支付终端离线策略；不得承诺离线可售。</p></article>
+          <article class="tile" data-status="planned"><div class="tile-head"><h3>分单收款与视频防损</h3><span class="badge planned">规划中</span></div><p>分单收款未实现验收；摄像头/NVR 事件关联与防损工作台属于后续能力。</p></article>
+        </div>
+      </section>
+
+      <section class="section" id="inventory">
+        <h2>完整功能明细</h2>
+        <p class="section-intro">以下明细与上方状态卡片使用同一口径。状态以“能力状态总表”筛选结果为准；本表不再单独创造第二套状态。</p>
+        <div class="table-wrap"><table><thead><tr><th>业务域</th><th>已核对功能</th><th>入口示例</th><th>状态</th><th>证据边界</th></tr></thead><tbody>
+          <tr><td>租户平台</td><td>注册、租户列表/详情、启停、试用延期、店主账号恢复、AI 使用量、Odoo 初始化和删除</td><td><code>/signup</code>、<code>/platform/stores</code>、<code>/platform/usage</code></td><td><span class="badge pending">源码已有，待线上核验</span></td><td>注册、初始化、隔离和删除保留历史证据；不代表当前平台全部操作及运行版本已验收，见平台章节。</td></tr>
+          <tr><td>平台运维</td><td>P0 审计/追踪/健康/门店档案；P1 告警/发布/恢复记录/分级权限/AI 成本；P2 客户支持</td><td><a href="#platform-admin">平台管理员后台</a>、<a href="#operations-records">记录规范</a></td><td><span class="badge pending">部分本地实现</span></td><td>操作审计、故障聚合、门店初始化时间线及健康/版本页已有工作区实现；迁移、Java 21 门禁和线上验收仍待完成。</td></tr>
+          <tr><td>收银</td><td>Odoo Register、扫码/搜索、客户选择、购物车、支付前校验、销售历史、退款、关班、Manage Cash</td><td><code>/</code>、<code>/history/odoo</code>、<code>/close</code>、<code>/manage-cash</code></td><td><span class="badge pending">部分验证</span></td><td>销售/退款链路已验收；现金实盘盘点和差异关班待补。</td></tr>
+          <tr><td>商品目录</td><td>Odoo 商品查询、分类、详情、创建/编辑、合并、CSV 导入/导出</td><td><code>/products/odoo</code></td><td><span class="badge pending">待部署验证</span></td><td>旧线上目录基线存在；最新分类、表单和边界修复需核对运行 SHA。</td></tr>
+          <tr><td>库存查询</td><td>Odoo 门店库存列表、商品库存读取</td><td><code>/stock/list</code></td><td><span class="badge done">已验收</span></td><td>只读页面回归通过；不等于库存调整或盘点写入通过。</td></tr>
+          <tr><td>智能定价</td><td>按目标毛利产生含 GST 建议售价；用 Odoo 成本、售价、近 28 天销量和库存生成状态/解释；支持目标毛利选择、搜索、筛选、全量查看、CSV 导出</td><td><code>/stock/price-suggestions</code></td><td><span class="badge pending">待部署验证</span></td><td>旧线上只读回归通过；建议页 writeEnabled=false，最新运行 SHA 未核实。</td></tr>
+          <tr><td>价格管理</td><td>批量价格编辑、按数量阶梯价、Price Set；限价记录、当前价修改、CSV 导入</td><td><code>/stock/bulk-price-edit</code>、<code>/stock/capped-pricing</code>、<code>/pricelists</code></td><td><span class="badge pending">待业务验收</span></td><td>页面/只读回归存在；真实价格写入和 POS 生效优先级仍需隔离验收。</td></tr>
+          <tr><td>促销与营销</td><td>促销列表、促销分类；礼品卡列表/导入；忠诚度与销售活动相关设置</td><td><code>/promotions</code>、<code>/promotion/categories</code>、<code>/giftcards</code></td><td><span class="badge pending">待业务验收</span></td><td>页面存在；促销计算、礼品卡核销未列入已验收主链路。</td></tr>
+          <tr><td>客户</td><td>客户目录、创建/编辑/详情、客户组、合并、客户付款、余额与对账单</td><td><code>/customers/odoo</code>、<code>/customers/balances</code></td><td><span class="badge pending">部分验证</span></td><td>目录只读基线通过；付款/余额写入需隔离验证。</td></tr>
+          <tr><td>供应商与采购</td><td>供应商目录/编辑/分配；采购单、详情、手工采购、收货、退货、调拨、贷项</td><td><code>/suppliers/odoo</code>、<code>/purchases/odoo</code>、<code>/orders</code></td><td><span class="badge pending">待业务验收</span></td><td>基础页面和部分 mock/只读通过；完整采购收货待隔离验证。</td></tr>
+          <tr><td>补货</td><td>门店补货建议、商品级解释、供应商选择与草稿 RFQ；提交前数量校验和审计</td><td><code>/stock/replenishment</code></td><td><span class="badge pending">部分验证</span></td><td>规则建议可用；真实 RFQ 创建/审批需隔离环境验证。</td></tr>
+          <tr><td>库存盘点</td><td>Odoo 盘点、40 项录入上限、清空确认和差异复核；外部盘点另行验收</td><td><code>/stock/list</code>、<code>/stock/stocktake</code>、<code>/stock/external-stocktake</code></td><td><span class="badge pending">受限验证</span></td><td>最新线上只读 12/12；无明确库存位置绑定时写入关闭。搜索竞态修复本地 39/39，待合批发布。</td></tr>
+          <tr><td>报表</td><td>Overview、销售/日周月、库存、采购、调拨、杂项、操作、关班、收藏报表、AI 报表快照和 AI 指标</td><td><code>/overview</code>、<code>/reports/dashboard</code>、<code>/reports/*</code></td><td><span class="badge pending">待部署验证</span></td><td>旧线上只读基线通过；最新 Odoo 时区和运行版本待核。</td></tr>
+          <tr><td>侍酒助手</td><td>自然语言找酒、偏好推荐、酒标识别、相似酒款/酒款详情</td><td><code>/sommelier</code>、<code>/sommelier/find</code>、<code>/sommelier/identify</code></td><td><span class="badge pending">部分验证</span></td><td>旧线上只读回归通过；真实图片和最新租户上下文待验。</td></tr>
+          <tr><td>发票扫描</td><td>图片上传、OCR 预览、字段复核、识别失败重试</td><td><code>/invoices/scan</code></td><td><span class="badge pending">样张验证</span></td><td>合成澳洲发票识别与预览边界通过；真实票据格式待扩展；不落采购单。</td></tr>
+          <tr><td>系统设置</td><td>公司/门店/Register、员工/角色权限、税率、支付方式、小票、硬件、集成、条码、货币、时间、数据导入等</td><td><code>/settings/*</code></td><td><span class="badge pending">页面已具备</span></td><td>设置页面齐备；各配置组合需按客户环境验收。</td></tr>
+          <tr><td>工具与运营</td><td>条码工具、未来成本/价格、供应商连接、媒体、邮件日志、回收站、客户/商品 utilities</td><td><code>/utilities/*</code>、<code>/media</code></td><td><span class="badge pending">辅助入口</span></td><td>条码工具明确未接真实打印设备；utilities 不展示假业务数据。</td></tr>
+          <tr><td>设备与离线</td><td>EFTPOS、打印机、钱箱、客显、断网销售和恢复同步</td><td><code>/settings/hardware</code></td><td><span class="badge planned">规划 / 未验收</span></td><td>硬件现场联调、离线 POS 和恢复同步均未验收。</td></tr>
+        </tbody></table></div>
+        <p class="small">路径是核对用的代表入口，不是角色授权承诺。少数 Classic/MySQL 页面仅供历史参考或调试；生产试点必须使用 Odoo 路径，禁止双写。</p>
+      </section>
+
+      <section class="section ops-section" id="platform-admin">
+        <h2>平台管理员后台</h2>
+        <p class="section-intro">面向平台管理员、运维和支持人员，优先回答“谁操作、影响哪家店、运行哪个版本、哪里失败、如何处理”。工作区已有服务端操作审计、门店初始化阶段历史、故障聚合检索及运行健康基础；本轮新增告警去重、确认和关闭接口及故障页操作区，仍需部署后核验。</p>
+        <p>平台入口为 <a href="https://app.orithos.com.au/" target="_blank" rel="noreferrer">app.orithos.com.au</a>，管理全部租户；门店子域名提供各自的收银及经营工作台。两者的菜单和授权范围分别管理，平台汇总默认不展示顾客资料或 AI 对话正文。</p>
+        <div class="callout"><strong>核验边界 · 2026-10-21：</strong>线上未登录访问跳转至登录页，目标为 <code>/platform/stores</code>。未执行平台登录后的操作验收；以下现状依据工作区源码，版本识别等部分内容仍为本地改动，不能据此认定已部署。</div>
+        <h3>已有基础与可复用能力</h3>
+        <div class="table-wrap"><table><caption class="small">平台现状核对；各项均需按实际运行版本补充线上证据</caption><thead><tr><th>能力</th><th>源码现状</th><th>状态与缺口</th></tr></thead><tbody>
+          <tr><td>门店管理与操作审计</td><td>列表搜索、状态过滤、详情、启停、试用延期、删除；店主恢复/重邀；Odoo 绑定与初始化重试。工作区新增服务端审计和门店详情操作时间线。</td><td><span class="badge pending">本地源码已实现，待构建/部署/线上核验</span><br>仅覆盖列明的租户操作；不代表全平台权限/配置变更均已接入。</td></tr>
+           <tr><td>AI 用量</td><td>平台与门店聚合请求数、允许率、延迟、估算 token；平台页不展示问答正文。</td><td><span class="badge pending">部分实现</span><br>允许率不能直接视为业务成功率；尚需能力/意图、模型/提示版本、错误类别、真实 token/费用、反馈和单次事件关联。</td></tr>
+          <tr><td>安全事件与审计</td><td>安全事件 API、AI 报表/助手审计已有代码；补货历史保存在浏览器本地，最多 40 条。</td><td><span class="badge pending">部分实现</span><br>不构成统一服务端审计；需核对采集覆盖、来源可信度、权限及持久化。</td></tr>
+          <tr><td>健康与版本</td><td>工作区新增平台 Operations 页；前后端显示完整 SHA/构建时间，MySQL 与 Redis 执行只读探测，Odoo/AI 标明未探测状态。</td><td><span class="badge pending">部分本地实现</span><br>待 Java 21 远程构建及线上核验；Odoo/AI 连通探测、历史趋势和发布工作台未实现。</td></tr>
+          <tr><td>备份与告警</td><td>现有运维手册规定每日数据库备份、至少 14 天保留、季度恢复演练及若干告警项；故障指纹现在可生成去重告警并进入处理状态。</td><td><span class="badge pending">告警源码已实现，待部署核验</span><br>备份状态、通知渠道和自动规则仍未接入；手册要求不等于任务已配置成功。</td></tr>
+        </tbody></table></div>
+        <h3>P0 · 首先补齐排障与追溯</h3>
+        <div class="grid">
+<article class="tile ops-card"><div class="tile-head"><h3>统一操作审计</h3><span class="badge pending">本地源码已实现，待线上核验</span></div><p>让关键操作可查询、可解释，并定位责任人与影响对象。</p><dl><dt>当前基础</dt><dd>工作区有服务端持久化审计、门店详情时间线及跨门店查询 API/平台 Audit 页面本地实现；查询只读现有平台管理审计表。</dd><dt>已覆盖与待补</dt><dd>已覆盖租户启停、删除、延期、店主恢复/重邀/bootstrap、Odoo 绑定和初始化重试；记录原因、脱敏摘要、操作人、结果及错误类型。全平台检索支持门店、时间、操作、结果、操作者/请求 ID 查询和分页；权限/其他配置变更覆盖仍待接入。</dd><dt>验收条件</dt><dd>部署后核对成功、失败、事务回滚及重试事件；确认普通角色无法读取，跨门店筛选和分页准确，审计写入失败能被发现。接口与 UI 尚未线上验收。</dd></dl></article>
+<article class="tile ops-card"><div class="tile-head"><h3>故障与请求追踪</h3><span class="badge pending">本地实现，待迁移与验证</span></div><p>从一次报错定位到受影响门店和失败环节，聚合同类故障。</p><dl><dt>当前基础</dt><dd>已有请求 ID 的跨层传递基础；新增全局异常记录和平台 Failures 页，按环境、运行 SHA、门店、HTTP/API 状态、路由及异常类型聚合。当前捕获意外 HTTP 5xx 与服务失败码（例如 502xx），忽略普通校验、权限拒绝和已识别的数据重复错误。查询支持门店、时间、状态、错误码、路由、错误摘要、请求 ID 和 SHA。</dd><dt>待补能力与记录</dt><dd>新增表依赖 <code>migration_platform_failure_events.sql</code>；远程 Java 21 门禁、数据库迁移、部署、端到端 correlation ID 验证及剩余直连 RPC 审计未完成。当前持久化单次故障后以指纹聚合，不含自动告警、负责人和处理结论；尚未配置 30 天保留清理任务；数据库不可用时会记录服务端留痕失败日志。</dd><dt>验收条件</dt><dd>在获批环境验证 HTTP 5xx 和服务错误码均可查，普通 4xx 不制造故障噪声；同类问题按版本/门店聚合，代表请求 ID 可回到日志；确认查询鉴权、参数脱敏、聚合计数正确，采集失败可发现并在投产前配置保留清理。</dd></dl></article>
+          <article class="tile ops-card"><div class="tile-head"><h3>健康与运行版本</h3><span class="badge pending">部分本地实现，待线上核验</span></div><p>确认当前运行版本和依赖是否可用，为发布与排障提供依据。</p><dl><dt>当前基础</dt><dd>新增平台 Operations 页，显示前后端构建身份，实时探测 MySQL/Redis；Odoo 显示配置未验证，AI 显示禁用/配置未验证状态。</dd><dt>待补能力与记录</dt><dd>仍需远程构建及线上版本核验；补充 Odoo/AI 可控连通性探测、依赖历史趋势和发布工作台。当前不进行有副作用或可能计费的探测。</dd><dt>验收条件</dt><dd>断连、未配置、未启用和版本未知分别可见；检查依赖超时表现、权限隔离、构建时间及 SHA 与实际运行镜像一致，不暴露连接串或密钥。</dd></dl></article>
+          <article class="tile ops-card"><div class="tile-head"><h3>门店运维档案</h3><span class="badge pending">本地实现，待迁移与验证</span></div><p>在现有门店详情中集中查看开通进度和后续故障。</p><dl><dt>当前基础</dt><dd>已有租户状态、负责人、Odoo 绑定、初始化错误及重试入口；工作区新增每次初始化尝试及预检、认证、公司、仓库、POS、会计、可选样例数据和绑定保存阶段历史。</dd><dt>待补能力与记录</dt><dd>运行数据库尚未执行 <code>migration_tenant_provision_attempts.sql</code>；Java 21 门禁、部署和线上权限/页面验证待完成。异常终止的 IN_PROGRESS 记录还需在后续故障页提供超时识别与处置。</dd><dt>验收条件</dt><dd>失败重试不覆盖旧记录，成功后仍可追溯历史；各阶段时间与结果正确、错误摘要脱敏；表缺失或采集失败显式暴露；每条记录属于明确租户，跨门店关联错误会被阻止。</dd></dl></article>
+        </div>
+        <h3>P1 · 建立运维处理闭环</h3>
+        <div class="grid">
+          <article class="tile ops-card"><div class="tile-head"><h3>告警与事故处理</h3><span class="badge pending">P1 · 源码已实现，待部署核验</span></div><p>让异常有人跟进，并保留从发现到关闭的处理过程。</p><dl><dt>当前基础</dt><dd>故障记录按环境、服务、门店和运行 SHA 计算稳定 fingerprint；新增 <code>platform_alert</code> 表、告警查询接口和 Failures 页确认/关闭操作。</dd><dt>待补能力与记录</dt><dd>当前状态为 OPEN、ACKNOWLEDGED、RESOLVED，记录负责人、处理说明、首次/最近时间、次数、请求 ID 和运行 SHA；通知规则、等级、备份过期和错误激增阈值仍待接入。</dd><dt>验收条件</dt><dd>重复事件合并，确认/关闭写入平台审计，关闭后复发自动重新打开；未授权操作被服务端拒绝，部署后核对迁移、权限和线上状态。</dd></dl></article>
+          <article class="tile ops-card"><div class="tile-head"><h3>发布与迭代记录</h3><span class="badge planned">P1 · 规划新增</span></div><p>让需求和缺陷能追溯到实际运行版本及验收结论。</p><dl><dt>当前基础</dt><dd>已有 Git 提交、交接文档及 UAT 文件，运行版本证据仍需对齐。</dd><dt>待补能力与记录</dt><dd>关联需求/缺陷、修复提交、候选 SHA、部署编号、前后端运行 SHA、验证环境、UAT 证据和发布结论。</dd><dt>验收条件</dt><dd>分别展示已实现、本地通过、已部署、线上通过；SHA 缺失或不一致明确提示，失败发布不进入已验收状态。</dd></dl></article>
+          <article class="tile ops-card"><div class="tile-head"><h3>备份与恢复记录</h3><span class="badge planned">P1 · 规划新增</span></div><p>确认备份是否可用，并证明曾经成功恢复。</p><dl><dt>当前基础</dt><dd>已有每日备份、保留期限和恢复演练手册，实际执行状态待核验。</dd><dt>待补能力与记录</dt><dd>展示 Odoo 数据库、filestore 与 MySQL 备份时间、对象标识、大小、校验结果、过期时间及演练环境/结论；首期提供状态和操作指引。</dd><dt>验收条件</dt><dd>缺失、失败或过期状态可见；隔离恢复后核对数据库和附件，记录恢复耗时及一致性证据。无证据显示未核验。</dd></dl></article>
+          <article class="tile ops-card"><div class="tile-head"><h3>权限与账号安全</h3><span class="badge planned">P1 · 规划新增</span></div><p>为不同运维职责授予所需权限，追踪敏感操作。</p><dl><dt>当前基础</dt><dd>平台操作员与门店管理员已有边界，店主账号恢复已有入口。</dd><dt>待补能力与记录</dt><dd>区分只读运维、支持人员、平台管理员；补齐登录异常、会话撤销、敏感操作确认与授权变更审计。</dd><dt>验收条件</dt><dd>前后端同时限制权限；只读角色不能变更，支持角色仅能执行获授权动作，门店管理员不能访问全平台记录；撤销会话后旧会话失效。</dd></dl></article>
+          <article class="tile ops-card"><div class="tile-head"><h3>AI 质量与成本</h3><span class="badge planned">P1 · 扩展现有用量</span></div><p>判断各项 AI 能力是否可靠，以及每家店的实际使用成本。</p><dl><dt>当前基础</dt><dd>已有请求数、允许率、延迟和字符推算 token，尚非完整质量及账单指标。</dd><dt>待补能力与记录</dt><dd>按能力/模型/门店记录成功、拒绝、失败原因、实际 token、估算费用、计价版本和预算；关联脱敏评估与回归结果。</dd><dt>验收条件</dt><dd>允许率与业务成功率分别展示；缺实际 token 或价格时标未知，估算费用与真实账单区分；达到预算按预设规则限流或降级并留痕。</dd></dl></article>
+        </div>
+        <h3>P2 · 扩展客户支持与运营</h3>
+        <article class="tile ops-card"><div class="tile-head"><h3>客户支持与运营</h3><span class="badge planned">P2 · 规划新增</span></div><p>将门店反馈连接到故障处理与产品迭代。</p><dl><dt>当前基础</dt><dd>已有门店联系信息、试用状态和延期能力，缺统一支持工单。</dd><dt>待补能力与记录</dt><dd>工单关联门店、故障、请求和版本，记录沟通摘要、负责人、优先级、处理进度、试用到期与活跃概况；套餐及计费后续单独扩展。</dd><dt>验收条件</dt><dd>从工单可追溯修复版本和验证结果，关闭需处理结论；活跃指标注明来源和时间窗，不用 AI 请求数代替整体门店活跃。</dd></dl></article>
+        <p class="small">源码与规则依据：<a href="../orithopos-master/AGENTS.md">项目约束</a>；<a href="../orithopos-master/pos-ui/src/components/platform/PlatformShell.tsx">平台菜单与权限边界</a>；<a href="../orithopos-master/pos-api/src/main/java/com/orithos/tenant/AdminTenantController.java">租户管理</a>；<a href="../orithopos-master/pos-ui/app/platform/operations/page.tsx">运行健康页</a>；<a href="../orithopos-master/pos-api/src/main/java/com/orithos/tenant/PlatformOperationsController.java">健康探测 API</a>；<a href="../orithopos-master/pos-ui/app/platform/usage/page.tsx">AI 用量页</a>；<a href="../orithopos-master/pos-api/src/main/java/com/orithos/modules/utility/SecurityEventController.java">安全事件</a>；<a href="../orithopos-master/pos-api/src/main/java/com/orithos/modules/ai/report/AiReportAuditService.java">AI 审计</a>；<a href="../orithopos-master/pos-ui/src/lib/replenishment-audit.ts">浏览器补货历史</a>；<a href="../orithopos-master/pos-ui/app/api/public/version/route.ts">版本识别</a>；<a href="../orithopos-master/docs/SCALE_OPS_RUNBOOK.md">运维手册</a>。源码链接仅用于核对实现基础。</p>
+      </section>
+
+      <section class="section ops-section ops-records" id="operations-records">
+        <h2>关键记录与追溯</h2>
+        <p class="section-intro">以下为目标记录规范。操作审计、初始化尝试及服务故障记录已有本地实现，数据库迁移和线上核验未完成；告警处理与工单仍待落地。“记录关键信息”采用有目的的结构化留痕；不默认保存完整请求、所有个人资料或模型对话。</p>
+        <h3>每条记录需要回答什么</h3>
+        <div class="table-wrap"><table><thead><tr><th>记录类别</th><th>必需信息</th><th>查询与关联方式</th></tr></thead><tbody>
+          <tr><td>公共字段</td><td>事件 ID、UTC 时间、环境、服务与版本、租户/门店、操作人或系统任务、动作、对象、结果、耗时、错误码、请求关联 ID。</td><td>按门店、时间、操作人、动作、结果、错误码、版本和关联 ID 查询；全平台事件明确标记平台范围，未知字段显式标未知。</td></tr>
+          <tr><td>操作审计</td><td>操作原因、脱敏前后摘要、关联 Odoo 单据 ID；权限/配置变更注明影响范围，失败与拒绝注明原因。</td><td>从门店时间线定位动作，再关联具体请求与业务单据；操作人和租户从可信服务端上下文取得。</td></tr>
+          <tr><td>故障记录</td><td>脱敏错误摘要、首次与最近时间、出现次数、影响门店/服务、关联请求、负责人和处理结论。</td><td>记录意外 HTTP 5xx 与服务失败码，并按运行 SHA/门店/路由/状态/异常类型聚合；告警 fingerprint 支持确认、关闭和复发重开。普通 4xx 校验与权限拒绝不纳入故障。</td></tr>
+          <tr><td>初始化与任务</td><td>任务 ID、触发人、每次尝试、步骤起止时间、状态、错误摘要和关联资源 ID。</td><td>重试追加记录，不覆盖前次失败；查询每家门店的初始化进度及卡点。</td></tr>
+          <tr><td>发布与验收</td><td>需求/缺陷 ID、候选与部署版本、运行 SHA、构建结果、验证目标、读写范围、证据位置及结论。</td><td>关联故障发生版本与修复版本；本地 fixture、线上只读和真实业务验收分别记录。</td></tr>
+          <tr><td>告警与恢复</td><td>告警规则与触发时间、确认/处理/关闭记录；备份对象、有效期、校验及恢复演练结果。</td><td>告警可跳转故障/门店；恢复记录引用具体备份及隔离环境证据。</td></tr>
+        </tbody></table></div>
+        <h3>持久化、保留与访问</h3>
+        <ul class="list">
+          <li><strong>服务端留痕：</strong>平台审计服务端持久化，支持跨设备查询；浏览器本地最多 40 条的补货历史仅作辅助，不能作为正式审计。历史记录不提供普通编辑或删除入口，补充说明另行追加。</li>
+          <li><strong>采集失败可见：</strong>日志或审计写入失败应产生可监测状态并进入告警，不能静默丢失；业务与 Odoo 结果分别记录，不能因日志失败自动重放交易。告警状态变更本身写入平台审计。</li>
+          <li><strong>脱敏与最小化：</strong>密码、API Key、Cookie、会话令牌、重置链接令牌、支付敏感信息不入日志；平台默认不展示顾客资料及 AI 对话正文，现有 AI 报表审计正文的访问和保留需专项核对。</li>
+          <li><strong>保留建议：</strong>技术日志在线 30 天、操作审计在线 365 天；到期按策略清理并保留清理执行记录。备份沿用每日执行、至少保留 14 天及季度恢复演练要求。以上是建议默认值和手册要求，均不宣称已配置，也不替代业务单据保存要求。</li>
+          <li><strong>授权与查询：</strong>全平台检索限授权平台人员，门店只可访问自己的记录；导出同样鉴权、脱敏并留痕。平台显示 UTC 或显式所选时区；门店业务日期按 Odoo 公司/门店时区解释。</li>
+          <li><strong>事实源：</strong>Odoo 保存销售、付款、库存和采购事实；运维只记录摘要、状态和单据关联，不建立第二套业务账本。只有追溯记录不能证明真实业务对账已通过。</li>
+        </ul>
+        <div class="callout green"><strong>目标闭环：</strong>发现异常 → 按门店与请求定位 → 关联运行版本和关键操作 → 指派处理并保留过程 → 按修复版本验证 → 留下证据后关闭；复发可重新打开。</div>
+      </section>
+
+      <section class="section ops-section" id="operations-roadmap">
+        <h2>运维迭代路线图</h2>
+        <p class="section-intro">以下是后台开发顺序与当前进度；各阶段形成可独立评审和验证的交付，不承诺未经核验的上线状态。</p>
+        <ol class="ops-roadmap">
+          <li><strong>阶段 1 · P0 统一记录与关联标识</strong>租户操作审计、门店详情时间线、初始化尝试/阶段历史及部分请求关联 ID 已在本地工作区；主要 Odoo 写入链路和 AI 调用已传递关联标识。新增追踪代码强制依赖持久化服务，追踪写入失败显式报错；Java 测试源码已补充，尚未执行。仍需补齐其余 Next 直连 Odoo 路由、远程 Java 21 同 SHA 门禁、数据库迁移、部署和线上核验。交付门槛：成功、失败、回滚和采集失败均能定位，运行版本与证据相符。</li>
+          <li><strong>阶段 2 · P0 运维查询页面</strong>门店审计时间线、跨门店操作审计检索、初始化尝试阶段时间线、故障聚合检索和基础健康/运行版本页已有本地实现。初始化历史及故障查询分别依赖 <code>migration_tenant_provision_attempts.sql</code> 与 <code>migration_platform_failure_events.sql</code>，部署前必须执行并核对。交付门槛：从一条错误找到门店、调用环节、操作与版本；未知、超时和采集失败状态明确显示，并完成线上权限与响应时延核验。</li>
+          <li><strong>阶段 3 · P1 告警处理与分级权限</strong>告警指纹去重、确认、负责人/处理说明、关闭和复发重开已在工作区源码实现；通知规则、分级权限和备份类触发器仍待补齐。交付门槛：重复事件不重复轰炸，未授权操作被服务端拒绝，处理全过程可追溯并完成线上核验。</li>
+          <li><strong>阶段 4 · P1 发布、恢复与 AI 管理</strong>串联需求/缺陷、提交、部署、运行身份及 UAT；接入备份状态和隔离恢复演练记录；扩展 AI 质量、实际 token、费用估算与预算。交付门槛：发布结论有版本证据，备份可恢复有演练证据，AI 估算和账单分别呈现。</li>
+          <li><strong>阶段 5 · P2 客户支持与运营</strong>关联工单、沟通摘要、故障和修复版本，补充试用到期、活跃概况。交付门槛：反馈可追溯至修复与验收；套餐与计费另行立项。</li>
+        </ol>
+        <h3>后续实现与放行约束</h3>
+        <ul class="list"><li>延续 Next.js、Java 21 / Spring Boot、现有平台权限边界与 Odoo 事实源；后续各批次先明确接口、事件模型、索引、迁移及兼容策略。</li><li>首批提供记录、查询和诊断；一键部署、生产恢复及交易重放不在首批范围，故障重试也不能绕过业务幂等与人工确认。</li><li>审计表、故障表和告警表分别由 <code>migration_platform_admin_audit.sql</code>、<code>migration_platform_failure_events.sql</code> 与 <code>migration_platform_alerts.sql</code> 创建；部署新后端前必须核对迁移结果，不能把页面可达当作迁移成功。</li><li>本地 Java 21 <code>mvn -B clean verify</code> 已通过 280 项测试；推送/部署后仍需核对候选 SHA、运行身份和告警接口。</li><li>线上检查默认只读；启停、角色修改、业务写入及恢复演练在获批隔离环境执行。跨租户越权、日志脱敏、版本缺失、依赖断连、审计采集失败和告警复发均列入验收。</li></ul>
+        <p class="small">本次更新只说明工作区新增的本地代码和迁移要求；不代表已完成构建、部署或线上操作验收。</p>
+      </section>
+
+      <section class="section" id="tenant">
+        <h2>租户与门店开通</h2>
+        <p>平台控制面支持新租户注册和初始化。每个租户进入独立门店工作空间，并与自己的 Odoo 公司、仓库及 POS 配置绑定。</p>
+        <div class="flow"><div class="step"><strong>1 · 注册</strong><em>创建租户并登录</em></div><div class="arrow">›</div><div class="step"><strong>2 · 设置门店</strong><em>配置 Outlet 和 Register 数量</em></div><div class="arrow">›</div><div class="step"><strong>3 · 绑定业务环境</strong><em>创建或连接 Odoo 公司、仓库和 POS</em></div><div class="arrow">›</div><div class="step"><strong>4 · 准备目录</strong><em>导入或初始化商品后开始配置</em></div></div>
+        <p class="small">平台控制面与门店工作台是不同入口。线上演示站用于验证和演示，不应视为正式客户生产环境。</p>
+      </section>
+
+      <section class="section" id="pos">
+        <h2>收银与班次</h2>
+        <div class="grid">
+          <article class="tile"><h3>开班与商品录入</h3><p>收银员打开 Register 会话后，可搜索或扫码添加商品，调整购物车数量并移除商品。挂单/恢复等边界需按当前部署版本核实。</p></article>
+          <article class="tile"><h3>计价与税额</h3><p>价格由 Odoo 计价规则提供。门店以 AUD 结算；GST 和小票金额按配置计算。现金支付可按 5¢ 规则凑整，Card 模拟支付保持精确金额。</p></article>
+          <article class="tile"><h3>收款与收据</h3><p>支持现金收款、找零和 Odoo payment method 模拟 Card 收款。交易可回读销售单、付款方式、税额和库存扣减记录。</p></article>
+          <article class="tile"><h3>退款与关班</h3><p>可从销售历史发起整单退款，退款后恢复库存。关班会关闭 POS session；实际现金盘点和差异阻止规则仍需现场闭环验收。</p></article>
+        </div>
+        <div class="callout">年龄核验应作为门店操作提示和管理流程的一部分。各州/领地的法定义务应由门店根据适用法规确认；系统提示不构成法律意见。</div>
+      </section>
+
+      <section class="section" id="catalog">
+        <h2>商品、客户与定价</h2>
+        <ul class="list"><li>商品目录通过 Odoo 查询和维护；酒类行业属性包括酒精度、容量、产区和年份，依赖商品数据完整度。</li><li>客户功能包含目录、客户组、客户资料、客户付款与余额/对账单入口；有余额或付款相关写入时须另行验收。</li><li>交易价格由 Odoo 价目表/计价规则提供。跨币种价格和赊销目前不作为已完成能力。</li></ul>
+      </section>
+
+      <section class="section" id="pricing">
+        <h2>智能定价与促销</h2>
+        <p>“Price Suggestions”是当前项目中最接近智能定价的功能。它是规则化毛利建议，不是自动定价模型：根据门店 Odoo 商品的成本、当前售价、历史销量和库存，按目标毛利计算含 GST 的建议货架价，并展示建议状态与原因。</p>
+        <div class="grid">
+          <article class="tile"><div class="tile-head"><h3>建议参数</h3><span class="badge done">页面已实现</span></div><p>目标毛利档位可选 20%、25%、30%、35%、40%；数据包含 28 天销量回看。缺成本的商品不会猜测成本，也不会给出虚构价格。</p></article>
+          <article class="tile"><div class="tile-head"><h3>审阅与导出</h3><span class="badge done">页面已实现</span></div><p>可搜索商品/SKU、按状态过滤、查看全部商品或仅看需处理项，并导出当前筛选结果 CSV。</p></article>
+          <article class="tile"><div class="tile-head"><h3>应用建议</h3><span class="badge pending">人工操作</span></div><p>建议页的 writeEnabled=false，不会写入 Odoo 售价。店员/管理员需核查后转到商品编辑或 Bulk Price Edit 手动应用；从建议一键带入批量编辑仍不是已验收闭环。</p></article>
+          <article class="tile"><div class="tile-head"><h3>限价与促销</h3><span class="badge pending">独立能力</span></div><p>Capped Pricing 可查看限价来源/期限/数量并修改当前价，也有 CSV 导入；促销与价目表是独立配置。配置写入、生效优先级及 POS 实际结算结果需按隔离环境验证。</p></article>
+        </div>
+        <div class="callout">因此可以准确描述为“规则驱动的智能定价建议 + 人工审核应用”，不能描述为“AI 自动调价”或“建议一键自动同步售价”。建议页线上只读回归记录覆盖 4 个价格/库存页面、390px 与 1440px 视口且拦截了非 GET 请求；该证据没有验证真实价格写入，也未核实运行容器 SHA。</div>
+      </section>
+
+      <section class="section" id="stock">
+        <h2>库存、采购与补货</h2>
+        <p>库存数量以 Odoo 门店仓库为准。POS 成交扣减库存，整单退款恢复库存。库存列表与盘点入口之外，项目还包含外部盘点导入/导出、供应商商品导入和未来成本/价格工具。盘点写入和库存调整涉及实际业务数据，必须在获批的隔离环境完成验收。</p>
+        <div class="table-wrap"><table><thead><tr><th>能力</th><th>当前说明</th><th>状态</th></tr></thead><tbody>
+          <tr><td>库存列表与查询</td><td>从 Odoo 读取商品和库存；页面只读通过不代表库存调整流程已验收。</td><td><span class="badge done">已接入</span></td></tr>
+          <tr><td>采购订单 / 供应商</td><td>有相关页面和 Odoo 连接能力；真实创建、供应商校验和收货链路待隔离测试。</td><td><span class="badge pending">待验证</span></td></tr>
+          <tr><td>可解释补货</td><td>按规则给出商品级建议和理由；经人工确认后形成草稿 RFQ，不自动下单。</td><td><span class="badge pending">需完整验收</span></td></tr>
+          <tr><td>跨门店调拨</td><td>依赖多地点、仓库和权限配置；尚无足够证据纳入已验收能力。</td><td><span class="badge planned">未确认</span></td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section class="section" id="reports">
+        <h2>报表、审计与运营</h2>
+        <ul class="list"><li>门店报表和 Overview 页面已接入；销售、税额和库存数据来源于 Odoo 业务记录。</li><li>退款、现金进出、租户初始化等关键操作可通过业务单据或验收记录追溯。</li><li>AI 价格建议、OCR 和问数均不应绕过员工确认自动写入价格、采购或库存。</li><li>试点运营仍需要建立补货采纳率、改量、缺货天数，以及 AI 延迟、成功率和成本等指标。</li></ul>
+      </section>
+
+      <section class="section" id="ai">
+        <h2>AI 辅助能力</h2>
+        <div class="grid">
+          <article class="tile"><h3>门店助手 / 问数</h3><p>可通过文字或语音输入查询和获取操作引导。报表问数使用受限的只读数据访问；自然语言覆盖范围和线上可用性受模型配置影响。</p></article>
+          <article class="tile"><h3>侍酒与商品推荐</h3><p>根据顾客偏好、搭配或酒款信息，从门店目录中辅助推荐。建议由员工判断后向顾客介绍。</p></article>
+          <article class="tile"><h3>发票识别预览</h3><p>上传有效图片后提取发票字段供员工核对。当前流程保持 preview-only，不自动创建供应商、采购单或收货记录。</p></article>
+          <article class="tile"><h3>价格与补货建议</h3><p>提供只读建议和解释，最终修改由有权限的员工在业务系统中确认。AI 服务开关、模型权限与成本配置会影响可用性。</p></article>
+        </div>
+        <h3>2026-10-21 Demo 历史只读基线（166 条线上基线；当时目录 182 条）</h3>
+        <div class="table-wrap"><table><thead><tr><th>专项</th><th>结果</th><th>当前结论</th></tr></thead><tbody>
+          <tr><td>自然语言问法矩阵</td><td>174 条只读基线：76 PASS / 87 BLOCKED / 11 FAIL</td><td>87 条均返回 50210；11 条误路由仍来自当前 Demo 运行版本的定价历史、发票存在/数量、批量改价入口和补货支出历史。Demo runtime SHA 未核验，不能归因到当前源码。当前目录另含 8 条写入意图保护问法。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-174CASE-CURRENT.json</code>。</td></tr>
+          <tr><td>日期销售与金额对账</td><td>16 Oct 2026：单日解析 PASS；助手 12.99 = Overview 12.99</td><td>截图中的金额与同门店、同日期概览一致。</td></tr>
+          <tr><td>AI 能力、入口、指标、UI</td><td>较早基线：Surface/Auth 11/11；Features 14/14；Routes 9/9；Metrics 9/9</td><td>较早曾缺少 “What should I restock?” 快捷问句；最新四视口目录/助手 44/44 已确认五条快捷问句、顶部入口与焦点恢复可用，见“最新进展与验证”。模型路由与回答质量仍另行验收。</td></tr>
+          <tr><td>侍酒、发票 OCR、语音</td><td>Sommelier 10/10；合成发票 OCR 6/6；英/中文合成 ASR 4/4</td><td>侍酒推荐价格/库存与 Odoo 一致；OCR 提取供应商、日期、两条商品、GST/总额并通过 preview-only 边界；真实格式、口音和设备仍需额外覆盖。</td></tr>
+          <tr><td>本地 AI 界面 fixture</td><td>实体动作/目录、语音交互、能力与焦点、价格建议均 PASS；价格建议写请求 0</td><td>只验证被 fixture 接管的界面行为，不代表真实模型或 Odoo 数据路径。</td></tr>
+          <tr><td>报表、库存与历史隔离</td><td>本轮 Reports 15 PASS / 1 BLOCKED；Stock RPC 历史 9 PASS / 1 INFO；History 历史 9 PASS / 2 BLOCKED</td><td>AI 实时库存报表仍安全提示暂不可用；跨门店用户和平台操作员账号缺失。</td></tr>
+          <tr><td>新增自然问法（待部署）</td><td>补货、价格复核、酒类搭配共 8 条；本地目录 182 条且 ID 唯一</td><td><code>What do we need to buy?</code>、<code>补货清单</code>、<code>Which prices need checking?</code>、<code>红酒配牛排</code> 等已加入工作流路由、<code>ClassifyQueryNodeTest</code> 和只读 UAT 目录。Demo 专项复测 4 PASS / 4 BLOCKED / 0 FAIL，BLOCKED 均为 50210；需 Java 21 门禁及运行 SHA 核验后复测。</td></tr>
+          <tr><td>写入意图路由保护（待部署）</td><td>补货提交、价格保存、发票收货/删除等 8 条负向用例</td><td>确定性路由现在会把执行型请求留在引导/确认流程，不会静默打开只读补货、定价或 OCR 页面；测试覆盖 <code>WorkflowRouteRouterTest</code>，需在隔离写入环境和已核验 runtime 上复测。</td></tr>
+          <tr><td>写入意图线上专项</td><td>0 PASS / 3 BLOCKED / 5 FAIL</td><td>当前 Demo 仍把 5 条执行型问法静默导航到补货、定价或 OCR 页面；3 条返回 50210。证据：<code>UAT_AI_WRITE_INTENT_GUARDS_ONLINE_2026-10-21-8CASE.json</code>，runtime SHA 未核验。</td></tr>
+        </tbody></table></div>
+          <div class="callout red"><strong>线上问题尚未关闭。</strong> 最新完整 209 条问法复测为 79 PASS / 112 BLOCKED / 18 FAIL；BLOCKED 均为脱敏 50210，18 条误路由为 7 条执行意图、10 条历史/报表边界和中文批量改价入口。Demo runtime SHA 未核实，不能证明工作区本地修复已经部署。助手请求可能生成 AI 审计/用量记录；未执行销售、采购、收货、库存或价格写入。Admin 配置写入保护专项未在 Demo 执行，因为脚本会创建临时用户/角色。</div>
+        <div class="callout green">AI 是辅助工具。价格、采购、退款、收货和库存调整仍由授权员工检查并确认；系统不以模型输出自动判定顾客或员工存在不当行为。</div>
+        <h3>2026-10-21 问法扩展（当前工作树）</h3>
+        <div class="callout blue">AI 助手工作流目录现有 209 条唯一用例：176 条读/帮助/导航、25 条执行意图保护、8 条注入/未知安全。新增了“哪些商品该买”“Show me items to order”“What price should I set for Shiraz?”以及“帮我看下哪些要补货”“Which prices look off?”等门店口语；“Set these prices now”“Change these prices”“设置这些价格”“把这些建议下单”会进入引导/确认边界，不会静默保存价格或提交采购。新增源码仍待 Java 21 同 SHA 远程验证、部署和运行版本核验，旧 Demo 结果不能替代当前源码证据。</div>
+        <div class="callout">2026-10-21 新增 8 条问法的 Demo 只读检查为 <strong>3 PASS / 5 BLOCKED / 0 FAIL</strong>：补货和价格短句中 3 条按预期路由，其余 5 条返回脱敏 <code>50210</code>；请求仅调用助手 API，业务写入为 0。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_NEW-8CASES-CURRENT.json</code>。Demo runtime SHA 仍未核验。</div>
+        <div class="callout">同轮 AI 只读专项复核：功能 <strong>13 PASS / 1 BLOCKED</strong>（价格建议上游 502）、路由 <strong>9/9 PASS</strong>、表面/权限 <strong>11/11 PASS</strong>、UI <strong>2/2 PASS</strong>，报表 <strong>15/16</strong>（实时库存源不可用）。证据文件使用 <code>UAT_*_2026-10-21_CURRENT-ITERATION.json</code> 后缀；未执行业务写入，runtime SHA 仍未核验。</div>
+        <div class="callout">价格建议 API 诊断返回 Cloudflare HTML <code>502</code>（933ms、无 JSON 和 correlation ID）；DashScope 最小生成探针 HTTP 200。应先检查 Cloudflare/Dokploy origin 链路。AI 库存问数后端服务账号仍不可用，虽然浏览器 Odoo session 能读取目录库存字段；两条凭据/上下文不同，后端 company/warehouse 权限尚待定位。</div>
+        <div class="callout">最新 AI 功能只读专项为 <strong>13 PASS / 1 BLOCKED / 0 FAIL</strong>：助手、ASR 空输入、侍酒推荐、图片空输入、发票预览边界、补货页和匿名权限通过；价格建议 API 因上游 HTTP 502 阻断。发票探针仅作为 INFO，provider 可达但探针图不含发票字段。证据：<code>UAT_AI_FEATURES_VERIFY_2026-10-21_CURRENT-CONTINUATION.json</code>。</div>
+        <div class="callout">报表专项最新为 <strong>15/16 PASS</strong>：销售日期、Overview 对账、权限和错误态通过；实时库存源仍不可用，助手返回安全 unavailable 提示。证据：<code>UAT_AI_REPORTS_READONLY_2026-10-21_CURRENT-CONTINUATION-2.json</code>。</div>
+        <div class="callout">路由专项 <strong>9/9 PASS</strong>，AI 表面/权限专项 <strong>11/11 PASS</strong>：配置、触发词、intent/slot、产品查询、语音/图片空输入及匿名 401 保护均通过。证据：<code>UAT_AI_ROUTE_MATRIX_ONLINE_2026-10-21_CURRENT-CONTINUATION-2.json</code>、<code>UAT_AI_SURFACE_ONLINE_2026-10-21_CURRENT-CONTINUATION-2.json</code>。</div>
+        <div class="callout">AI UI 专项 <strong>2/2 PASS</strong>（390px / 1440px）：推荐卡片、商品识别、助手发送入口、底部安全区和页面错误检查均通过。证据：<code>UAT_AI_UI_ONLINE_2026-10-21_CURRENT-CONTINUATION-2.json</code>。</div>
+      </section>
+
+      <section class="section ops-section" id="ai-ops-loop">
+        <h2>AI 运维与定价推荐闭环</h2>
+        <p class="section-intro">本节是 2026-10-22 的规划更新，说明后台应如何记录 AI 使用、发现问题并验证迭代效果。除已明确标为“部分实现”的聚合指标外，均不得视为已经上线。</p>
+        <div class="callout"><strong>目标闭环：</strong>请求 → 结果 → 用户反馈 → 质量分组 → 缺陷/任务 → 修复版本 → 回归测试 → 发布后对比。AI 输出始终是辅助建议，不能绕过 Odoo 权限、人工确认或操作审计。</div>
+        <h3>后台要查看什么</h3>
+        <div class="table-wrap"><table><thead><tr><th>页面/视图</th><th>用途</th><th>应展示的脱敏信息</th><th>状态</th></tr></thead><tbody>
+          <tr><td>AI Usage</td><td>看整体使用量、延迟、失败和成本趋势</td><td>时间、门店、能力、意图、模型、提示版本、成功/拒答/失败、P50/P95、估算与真实 token、费用估算、预算状态</td><td><span class="badge pending">已有聚合，需扩展</span></td></tr>
+          <tr><td>AI Events</td><td>从一次失败定位到门店、请求和运行版本</td><td>事件 ID、UTC 时间、环境、角色、关联 ID、输入/输出哈希、参数摘要、结果数量、错误类别、运行 SHA、告警链接</td><td><span class="badge planned">规划新增</span></td></tr>
+          <tr><td>AI Quality</td><td>比较能力和版本是否变好</td><td>有帮助/无帮助、采纳/修改/拒绝、数据不准、意图错误、响应慢、解释不足、权限问题、空结果和数据源不可用</td><td><span class="badge planned">规划新增</span></td></tr>
+          <tr><td>Pricing Evidence</td><td>解释每个建议价的事实来源</td><td>成本、税规则、目标毛利、销量/库存窗口、市场来源、采集时间、含税状态、规格匹配度、置信度、过期状态</td><td><span class="badge planned">规划新增</span></td></tr>
+        </tbody></table></div>
+        <h3>记录边界与隐私</h3>
+        <ul class="list">
+          <li>默认只保留脱敏事件、哈希、意图、参数摘要、结果指标和错误类别，不保存完整问题、SQL、AI 回复或对话正文。</li>
+          <li>质量排查需要正文时，使用短期、需授权、自动脱敏、加密、限时删除的采样，并记录访问审计。</li>
+          <li>密码、API Key、Cookie、会话令牌、重置链接、支付敏感信息和不必要的顾客资料禁止进入日志。</li>
+          <li>AI 事件写入失败必须进入平台告警；不能因为指标服务失败而静默丢失记录。</li>
+          <li>技术日志建议在线保留 30 天，操作审计建议在线保留 365 天；这些是规划默认值，不代表已经配置。</li>
+        </ul>
+        <h3>定价推荐怎么参考</h3>
+        <p>第一阶段采用可解释的规则计算，不能把大模型当作售价事实源：以 Odoo 成本、当前售价和税规则为基础，结合近 28/56 天销量、库存周转、缺货风险和采购成本变化，输出价格区间、目标毛利和原因。任何写入 Odoo 的动作都必须人工确认、权限校验并产生审计记录。</p>
+        <div class="table-wrap"><table><thead><tr><th>市场数据来源</th><th>用途</th><th>限制</th><th>状态</th></tr></thead><tbody>
+          <tr><td>授权价格 API/供应商数据</td><td>作为竞品价格辅助信号</td><td>保存来源、采集时间、币种、GST 状态、规格匹配度和失效时间</td><td><span class="badge planned">优先接入</span></td></tr>
+          <tr><td>管理员 CSV/人工采集</td><td>先建立可控的市场价格基线</td><td>导入前校验商品、单位、币种、税状态和采集时间</td><td><span class="badge planned">首期可交付</span></td></tr>
+          <tr><td>允许访问的白名单网页</td><td>低频试验，不作为唯一事实源</td><td>遵守站点条款、频率限制和页面变化；来源失效或过期时自动降级</td><td><span class="badge planned">受限试验</span></td></tr>
+        </tbody></table></div>
+        <div class="callout red"><strong>不能宣称的能力：</strong>当前价格建议是内部成本/毛利规则建议，不代表已经抓取 Woolworths、Coles、Dan Murphy’s 等大型超市实时价格，也不代表已经完成市场竞争分析。没有有效市场数据时必须明确显示“仅内部规则”。</div>
+        <h3>分阶段实施与验收</h3>
+        <ol class="ops-roadmap">
+          <li><strong>P0 · 单次追踪与反馈</strong><span>统一事件字段、错误码、关联 ID、运行版本和脱敏采样；AI Usage、Failures、Audit 可互相跳转。验收：一次失败可定位到门店、能力、错误、版本和告警。</span></li>
+          <li><strong>P1 · 质量、成本与定价证据</strong><span>增加模型/提示版本、真实 provider token、费用、预算、反馈和 Pricing Evidence；市场价格先支持授权来源或 CSV。验收：无市场数据、过期数据或 Odoo 异常时安全降级。</span></li>
+          <li><strong>P1 · AI 功能专项补强</strong><span>补货采纳效果、OCR 字段置信度/人工修正、报表数据新鲜度、模型配额和失败告警。验收：每个能力有成功率、错误类别、采纳率和回归集。</span></li>
+          <li><strong>P2 · 持续优化</strong><span>提示版本灰度、离线评测、多模型成本路由、门店策略和工单关联。验收：发布前后质量、成本、延迟和业务结果可对比。</span></li>
+        </ol>
+        <p class="small">规划接口方向：<code>/api/platform/ai/usage</code>、<code>/events</code>、<code>/quality</code>、<code>/events/{id}/feedback</code>、<code>/pricing-evidence</code>、<code>/market-prices/import</code>、<code>/versions</code>。这些接口尚未因此文档更新而宣称存在；开发时仍需复用平台权限、租户隔离、Odoo 事实源和 Java 21 验证门禁。</p>
+      </section>
+
+      <section class="section" id="security">
+        <h2>权限与数据边界</h2>
+        <ul class="list"><li>业务事实源为 Odoo；Classic Spring/MySQL 路径不得与 Odoo 双写，也不是当前门店试点的写入来源。</li><li>租户和 Odoo company 上下文用于隔离商品、库存及交易访问；访问控制仍应结合实际部署配置验收。</li><li>线上 Demo 的验证遵循只读纪律；业务写入应使用获批的隔离数据库或 TEST company。</li><li>凭证、API Key、Cookie、真实客户标识和环境文件不得放入说明文档或对外截图。</li></ul>
+      </section>
+
+      <section class="section" id="limits">
+        <h2>限制与上线条件</h2>
+        <div class="callout red"><strong>当前不能据此宣称生产就绪。</strong> 最近交接记录仍有现金实盘关班、采购收货、有效发票 OCR、NLQ 配置、设备联调、离线交易及运行版本核验等缺口。线上演示通过与本地代码检查都不能替代现场验收。</div>
+        <div class="table-wrap"><table><thead><tr><th>项目</th><th>当前边界</th></tr></thead><tbody>
+          <tr><td>离线 POS</td><td>未验证断网销售与自动同步；网络恢复、幂等和卡支付离线能力均不可承诺。</td></tr>
+          <tr><td>实体设备</td><td>未完成真实 EFTPOS、收据打印机、钱箱的现场联调。</td></tr>
+          <tr><td>付款能力</td><td>线上 Card 验收为模拟收款；分单收款未完成验收；跨币种和赊销未完成。</td></tr>
+          <tr><td>采购 / 关班</td><td>相关入口已存在，但采购收货和现金实盘关班还需隔离环境完整验收。</td></tr>
+          <tr><td>AI 上线</td><td>须确认模型区域/权限、服务配置、运行版本、质量/延迟/成本及降级策略。</td></tr>
+          <tr><td>发布身份</td><td>每次放行应核对 Dokploy 构建日志、容器运行 SHA、健康状态并按该 SHA 复跑回归。</td></tr>
+        </tbody></table></div>
+        <h3>建议试点验收顺序</h3>
+        <div class="flow"><div class="step"><strong>环境与权限</strong><em>核实租户、公司、密钥和运行版本</em></div><div class="arrow">›</div><div class="step"><strong>收银闭环</strong><em>开班 → 销售 → 退款 → 现金盘点关班</em></div><div class="arrow">›</div><div class="step"><strong>库存采购</strong><em>供应商 → RFQ → 收货 → 库存核对</em></div><div class="arrow">›</div><div class="step"><strong>现场设备与 AI</strong><em>外设实测，AI 单独评估和限额</em></div></div>
+        <p class="small">资料来源：项目交接快照、功能能力记录、项目现状评估及仓库实现说明。该文档用于产品功能沟通，不构成法律、税务或支付合规意见。</p>
+      </section>
+      <footer class="footer">Orithos POS · 功能说明 · 文档更新 2026-10-22 · AI 运维与定价闭环规划已补充 · Dokploy SOURCE_COMMIT 仍以线上核验为准</footer>
+      <section class="section" id="readonly-followup-2026-10-21"><h2>公网只读续验 · 2026-10-21</h2>
+        <p>本轮 AI 路由矩阵 <strong>9/9 PASS</strong>、Sommelier 只读 <strong>10/10 PASS</strong>、运营只读 <strong>3/3 PASS</strong>。AI 报表为 <strong>15/16</strong>，唯一阻断是库存实时数据源不可用；没有销售、采购、库存、价格、现金或关班写入。证据：<code>orithopos-master/docs/UAT_AI_ROUTE_MATRIX_2026-10-19.json</code>、<code>orithopos-master/docs/UAT_SOMMELIER_REGRESSION_2026-10-13.json</code>、<code>orithopos-master/docs/UAT_OPS_READONLY_2026-10-13.json</code>、<code>orithopos-master/docs/UAT_AI_REPORTS_READONLY_ONLINE.json</code>。</p>
+        <p><code>testHarnessCommit=d9c5622</code>，但 <code>deploymentShaVerified=false</code>、<code>runtimeCommit=null</code>；这些结果是公网只读行为证据，不是 Dokploy 运行版本证明。Dokploy 的 <code>AiProviderConfig</code> 编译错误需先核对 Source/Git checkout、40 位 <code>SOURCE_COMMIT</code> 和无缓存构建。</p>
+        <p>平台门店详情 UI 还修复了 provisioning history 阶段耗时对带时区时间重复追加 <code>Z</code> 的问题；Node 24 typecheck、定向 ESLint 和 diff check 通过，仍待后端门禁及部署后验收。</p>
+        <p>Platform Audit/Failures 页面同步修复了带时区时间解析和快速筛选/翻页的旧响应覆盖问题；本地 typecheck、定向 ESLint 和 diff check 通过，仍属于未提交 WIP。</p>
+        <p>Audit/Failures 日期筛选现在拒绝开始时间晚于结束时间，列表时间统一标注 UTC，减少运营审计时的歧义。</p>
+        <p>390px 浏览器 fixture 已验证反向日期校验、无额外 API 查询、无横向溢出和 0 个页面错误；证据为 <code>UAT_PLATFORM_FILTER_VALIDATION_LOCAL_2026-10-21.json</code>，仍属于本地 fixture。</p>
+        <p>日期错误同时关联 <code>aria-invalid</code> 和 <code>aria-describedby</code>，辅助技术可以读取对应错误提示。</p>
+        <p>Failures 页面在 390px fixture 下也通过相同校验：无额外查询、<code>aria-invalid=true</code>、无横向溢出。</p>
+        <p>Audit 页面复验得到 <code>aria-invalid=true</code> 和 <code>aria-describedby=audit-date-range-error</code>，同样无额外查询或横向溢出。</p>
+        <p>价格建议页面使用 Node 24 重跑五视口 fixture（320/390/768/1024/1440），搜索、筛选、空态、CSV、深链、AI 入口全部通过，写入为 0。证据：<code>UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-21_RECHECK_CURRENT.json</code>；对应 HEAD 为 <code>5afdf2c</code>，公网 runtime SHA 尚未核验。</p>
+        <p>库存定价响应式 fixture 已适配当前 Odoo Bulk Price Edit 页面并串行复验 <strong>15/15 PASS</strong>；Bulk Price Edit 未确认结果保护也通过，只读回查且不自动重试。证据：<code>UAT_STOCK_PRICING_RESPONSIVE_LOCAL_2026-10-21_RECHECK_CURRENT.json</code>、<code>UAT_BULK_PRICE_EDIT_SAVE_GUARD_LOCAL_2026-10-21_RECHECK_CURRENT.json</code>。</p>
+        <p>门店端续验新增三项本地 fixture：采购详情 AI 入口 <strong>3/3 PASS</strong>、补货供应商恢复 <strong>60/60 PASS</strong>、盘点搜索竞态 <strong>39/39 PASS</strong>。证据分别为 <code>UAT_PURCHASE_AI_PLACEMENT_LOCAL_2026-10-21_CURRENT.json</code>、<code>UAT_REPLENISHMENT_SUPPLIER_RECOVERY_LOCAL_2026-10-21_CURRENT.json</code>、<code>UAT_STOCKTAKE_SEARCH_RACE_LOCAL_2026-10-21_CURRENT.json</code>；均为本地请求拦截、业务写入 0，不等同于公网部署验收。</p>
+        <p>2026-10-24 公网只读续验：全站页面矩阵 <strong>272/276 PASS</strong>（4 个失败均为未部署 Platform Audit/Failures 的 404），定价四页双视口 <strong>8/8 PASS</strong>、交互 <strong>14/14 PASS</strong>、设置 <strong>28/28 PASS</strong>、表格/可访问性 <strong>14/14 PASS</strong>，业务写入均为 0。证据见 <code>UAT_ALL_STATIC_PAGES_2026-10-24_CURRENT_CONTINUATION.json</code>、<code>UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-24_CURRENT_CONTINUATION.json</code>、<code>UAT_INTERACTION_2026-10-24_CURRENT_CONTINUATION.json</code>、<code>UAT_SETTINGS_MOBILE_2026-10-24_CURRENT_CONTINUATION.json</code>、<code>UAT_TABLE_A11Y_ONLINE_2026-10-24_CURRENT_CONTINUATION.json</code>。</p>
+        <p>AI/运营续验：Sommelier <strong>10/10 PASS</strong>、运营只读 <strong>3/3 PASS</strong>；AI features 为 <strong>13 PASS / 1 BLOCKED</strong>（价格建议上游 502，OCR 探针仅 INFO），AI 报表为 <strong>15/16</strong>（实时库存数据源不可用）。这些阻断已保留为限制，未执行销售、采购、库存、价格、现金或关班写入。</p>
+        <p>价格建议和报表 Odoo 代理现在会在错误响应中保留合法 <code>X-Correlation-ID</code>，本地未登录错误路径 <strong>2/2 PASS</strong>。证据：<code>UAT_ODOO_ERROR_CORRELATION_LOCAL_2026-10-24.json</code>；真实 Odoo 会话下的上游 502 仍待部署后复核。</p>
+        <p>价格建议和报表页面在网关错误状态现在显示 <code>Request ID</code>；本地 390px 502 fixture <strong>7/7 PASS</strong>、页面错误 0、横向溢出 0、业务写入 0。截图：<code>docs/screenshots/2026-10-24-odoo-error-correlation/</code>；证据：<code>UAT_ODOO_ERROR_CORRELATION_LOCAL_2026-10-24_UI.json</code>。代码 <code>d729d91</code> 已推送，Dokploy 仍返回 301，尚未确认部署。</p>
+        <p>Dokploy 最新部署页面反馈为“成功”，但当前版本端点仍未提供 frontend/backend runtime SHA（均为 <code>null</code>），所以发布身份仍待核对。</p>
+        <p>2026-10-21 Odoo 错误态续验：Dokploy 面板显示部署成功，但 Demo 版本端点 <code>builtAt=2026-10-21T12:58:05.809Z</code> 且前后端 SHA 为空。390px 只读浏览器检查中，价格建议 API 返回 <code>502</code> 且请求没有发送 <code>X-Correlation-ID</code>；报表 API 返回 <code>200</code>。工作区已改为请求前生成并发送 UUID，缺少响应 ID 时展示该 ID；本地 fixture 覆盖首次错误及 Retry，<strong>13/13 PASS</strong>。证据：<code>orithopos-master/docs/UAT_ODOO_ERROR_CORRELATION_LOCAL_2026-10-24_CURRENT.json</code>、<code>orithopos-master/docs/UAT_ODOO_ERROR_CORRELATION_ONLINE_CURRENT.json</code>。这轮改动未获线上运行版本证据。</p>
+        <p>部署后续验收：Dokploy 将 <code>e7dc67ddcc7c61e5f3b225be84457e142ef914a7</code> 标记为 <strong>Done</strong>，Demo builtAt 为 <code>2026-10-21T13:35:45.867Z</code>，但 version endpoint 仍未返回 runtime commit SHA。错误关联 ID 与 Retry 线上 <strong>11/11 PASS</strong>；价格建议 API 仍 502，错误页现能显示请求 ID，报表 API 200。全站 138 路由双视口 <strong>272/276 PASS</strong>，交互 <strong>14/14</strong>、设置 <strong>26/26</strong>、表格/可访问性 <strong>14/14</strong>；写入为 0。四项全站失败为未部署的 <code>/platform/audit</code>、<code>/platform/failures</code> 在 390px 和 1440px 返回 404。证据文件在 <code>orithopos-master/docs/UAT_*_POST_E7DC67D.json</code>。</p>
+        <p>前端代理批次 <code>b211284</code> 已推送并观察到 Demo 构建时间更新；部署后定价四页双视口 <strong>8/8 PASS</strong>、业务写入 0，价格建议上游 502 仍待 Odoo/provider 侧处理。价格建议和报表未登录错误现在保留请求关联 ID，便于线上日志定位。</p>
+        <p>AI 专项续测发现价格建议 API 的 <code>502</code> 返回由 Cloudflare 提供的 HTML（<code>text/html</code>，约 933ms），无 JSON 错误和 <code>X-Correlation-ID</code>；目前无法确认请求已到达 Next.js/Odoo 逻辑，应先核对 Cloudflare 到 Dokploy origin 的路径和边缘/源站日志，不据此修改定价计算。DashScope 最小生成健康探针 <strong>HTTP 200</strong>，仅代表基础 provider 可达。证据：<code>UAT_AI_FEATURES_VERIFY_2026-10-21_PRICE-DIAGNOSTIC.json</code>、<code>UAT_AI_DASHSCOPE_HEALTH_2026-10-21_CURRENT-ITERATION.json</code>。</p>
+        <p>AI 库存问数仍不可用：浏览器 Odoo session 的商品目录能读到库存字段，但助手报表使用后端 Odoo service account 和 company/warehouse context，返回安全 unavailable。两条数据链路不同，仍需核查后端账号权限和 Odoo RPC 日志；不把库存页面可读当作 AI 问数通过。全程没有业务数据写入，Demo runtime SHA 仍未核实。</p>
+        <p>平台运维页本地续验：Failures 错误态新增页内 Retry，Audit/Failures 在 390px 和 1440px 的受控 API fixture 共 <strong>4/4 PASS</strong>；首次错误、Retry 恢复、页面错误 0、无横向溢出、非 GET 写入 0。证据：<code>orithopos-master/docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-24.json</code>。该结果只证明前端交互，后端 Java 21 门禁、数据库迁移、Dokploy 部署和 app 域登录态验收仍未完成。</p>
+        <p>真实 Demo 管理列表只读回归：Purchases、Mail Log、Trashed Items 和 Platform Stores 在 390px/1440px 共 <strong>8/8 PASS</strong>；HTTP 200、标题、搜索空态/清除、Stores 创建入口和无横向溢出均通过，业务写入 0。证据：<code>orithopos-master/docs/UAT_ADMIN_LIST_BATCH_2026-10-17.json</code> 与 <code>docs/screenshots/2026-10-17-admin-list-batch/</code>。该证据的 source/deployment SHA 为空，仍不能证明当前工作区候选已上线。</p>
+        <p>平台 Operations 与 AI usage 错误恢复已优化：错误态提供页内 Retry，并在请求期间禁用重复点击。受控 fixture 在 390px/1440px 共 <strong>4/4 PASS</strong>，覆盖首次错误、恢复、AI usage 时间窗口切换、页面错误 0、无横向溢出和非 GET 写入 0。证据：<code>orithopos-master/docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json</code>。后端门禁、线上部署身份和 app 域验收仍待完成。</p>
+        <p>公网只读回归：app 控制台 Operations 与 AI usage 在 390px/1440px 共 <strong>4/4 PASS</strong>；HTTP 200、标题可见、页面错误 0、无横向溢出、无业务写入，runtime/dependency 区域和 AI usage 时间窗口均加载。证据：<code>orithopos-master/docs/UAT_PLATFORM_OPERATIONS_USAGE_ONLINE_2026-10-24.json</code>。版本端点仍未提供 frontend/backend SHA，因此不能证明本地 Retry 改动已部署。</p>
+        <p>2026-10-22 自动构建后的复核发现控制面登录接口连续返回 <strong>HTTP 502</strong>，Audit/Failures/Operations/AI usage 共 8 个认证检查均被阻断，未把它们计为页面通过或失败。Demo <code>/api/public/version</code> 的 builtAt 已更新为 <code>2026-10-21T15:56:09.064Z</code>，但 frontend/backend SHA 仍为空；需先核对 Dokploy/Cloudflare 源站日志和容器健康。证据：<code>orithopos-master/docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json</code>。</p>
+        <p>GitHub 连接恢复后，提交 <code>3a2ca5f</code> 已推送到 <code>origin/main</code>，但 Demo builtAt 未继续变化，且控制面登录仍返回 <strong>HTTP 502</strong>。因此当前不能确认该提交已被 Dokploy checkout 或运行；需先解决 Source/Git、容器健康和登录接口问题。</p>
+        <p>随后远端提交 <code>1c36a11</code> 修复 SecurityConfig bean cycle，Demo builtAt 更新为 <code>2026-10-21T16:14:31.063Z</code>；但 app 登录仍返回 HTTP 502，四个平台页面的 8 项认证检查继续 BLOCKED。当前仍需 backend 启动/依赖日志和 runtime SHA 证据。</p>
+        <p>前端批次 <code>ff32021</code> 已完成并推送：统一列表错误态 Retry 防重复提交并显示加载状态；Capped Pricing 与 Bulk Price Edit 的移动端标题、筛选区和输入控件触控尺寸已优化，并补齐分页标签语义。Node <code>24.19.0</code> typecheck、目标 ESLint 通过；库存定价响应式 <strong>15/15 PASS</strong>、价格建议、平台四页错误恢复和实体目录/写入意图保护 fixture 均通过，业务写入为 0。证据：<code>orithopos-master/docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-19.json</code>、<code>UAT_PRICE_SUGGESTIONS_LOCAL_2026-10-19.json</code>、<code>UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-24.json</code>、<code>UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json</code>、<code>UAT_AI_ENTITY_INVALID_OP_LOCAL.json</code>。</p>
+        <p>本批只改前端，没有运行本地 production build；线上验证仍受 app 登录 HTTP 502 和 runtime SHA 缺失阻断。Dokploy 面板的“成功”不替代构建日志、容器健康和源码身份核对，待登录恢复后再复跑定价、平台和全站双视口验收。</p>
+        <p>本批推送后 Dokploy webhook 只调用一次并返回 HTTP 301，按发布规则停止重试；Demo 定价线上脚本同样在登录 HTTP 502 阶段阻断，没有产生业务写入。下一步先核对 Dokploy Source/Git（仓库、main、根目录和 Compose 文件）及 backend 容器日志，再继续线上验收。</p>
+        <p>最新 Dokploy deployment <code>3845bf2</code> 已显示 Done，Compose 成功部署，backend started，MySQL/Redis healthy。线上平台四页 <strong>8/8 PASS</strong>，全站静态页面 <strong>276/276 PASS</strong>，交互 <strong>14/14 PASS</strong>，表格/可访问性 <strong>14/14 PASS</strong>，均无业务写入。</p>
+        <p>定价复核为 <strong>0 FAIL / 6 BLOCKED / 2 可继续</strong>：Stock List/Capped Pricing 仍调用已退役 Classic POS API，Price Suggestions 上游为 Cloudflare 502；AI features 为 <strong>13 PASS / 2 BLOCKED / 0 FAIL</strong>，发票 OCR 探针返回 410/41001。AI 全量工作流为 <strong>179 PASS / 37 BLOCKED / 0 FAIL</strong>，阻断项保留为 provider/Odoo 数据限制。</p>
+        <p>版本端点仍返回 frontend/backend commit 为 <code>null</code>；构建日志的 <code>SOURCE_COMMIT</code> 为空，Maven/frontend 层为缓存命中。因此当前可确认“部署成功且线上页面可复核”，仍不能确认 runtime SHA 已绑定到候选源码。</p>
+        <p>最新文档部署 <code>a4740ff</code> 与前一项 backend schema 部署均显示 Done；平台四页再次 <strong>8/8 PASS</strong>。backend builtAt 更新为 <code>2026-10-21T18:24:30Z</code>，但 frontend/backend commit 仍为空，exact-SHA 绑定继续待完成。</p>
+      </section>
+    <section class="section" id="stock-list-odoo-2026-10-22"><h2>库存列表 Odoo 迁移 · 2026-10-22</h2>
+      <p>Stock List 已改用 Odoo 商品与分类数据桥接，支持搜索、分类筛选、仅显示有库存、分页、移动端卡片、桌面表格和 Odoo 商品 CSV 导出；不再请求已退役的 Classic POS <code>/api/stock-list</code> 或分类接口。</p>
+      <p>商品名称和 Odoo list price 编辑使用门店范围受控的 <code>/api/odoo/products/:id</code>，带原价并发校验。Odoo 未提供采购成本时页面明确标为采购侧管理，不虚构成本也不写入成本。</p>
+      <p>本地 Node <code>24.19.0</code> typecheck、定向 ESLint、脚本语法和 diff check 通过；库存定价响应式浏览器 fixture <strong>15/15 PASS</strong>，业务写入 <code>0</code>，旧 Classic POS 请求 <code>0</code>。证据：<code>orithopos-master/docs/UAT_STOCK_LIST_ODOO_LOCAL_2026-10-22.json</code>。</p>
+      <p>部署后复验已完成：Dokploy deployment <code>c031989a36554083d376984e4eb151cfa2b4de25</code> 为 <strong>Done</strong>，frontend/backend runtime SHA 均匹配；Demo 390px/1440px <strong>2/2 PASS</strong>，无页面错误、横向溢出或业务写入，旧 Stock List/分类请求为 <code>0</code>，Odoo CSV 导出下载 <code>demo-products.csv</code> 通过。证据：<code>orithopos-master/docs/UAT_STOCK_LIST_ODOO_ONLINE_2026-10-22_C031989.json</code>。</p>
+      <p>同批定价页面总体验收为 <strong>6 PASS / 2 BLOCKED / 0 FAIL</strong>；Capped Pricing 仍依赖已退役 Classic POS API，下一步迁移 Odoo price-list item 工作流。</p>
+    </section>
+    <section class="section" id="pricing-ux-odoo-pagination-2026-10-22"><h2>库存与定价体验优化 · 2026-10-22</h2>
+      <p>库存列表的 Odoo records 代理现在返回真实 <code>hasNext</code> 分页信号，前端不再把“当前页刚好满页”误当成总数；最后一页显示准确数量，仍有下一页时显示 “+”。这项改动只增加只读数据元信息，不改变 Odoo 商品数据。</p>
+      <p>Stock List、Capped Pricing 和 Odoo Bulk Price Edit 增加统一的清除筛选/搜索操作，支持键盘操作、最小 44px 触控高度和 aria 标签；Bulk Price Edit 的 Next 按钮改用 Odoo 返回的 <code>hasNext</code>，避免空白下一页。</p>
+      <p>本地验证：Node <code>24.19.0</code> typecheck、目标 ESLint、脚本语法检查通过；五视口库存/定价 fixture <strong>15/15 PASS</strong>，清除筛选、移动布局、列对齐、AI 入口和页面错误均通过，业务写入 <code>0</code>。Odoo 保存失败/重试 fixture <strong>7/7 PASS</strong>，两次 PATCH 均由 fixture 拦截，未写入真实 Odoo。证据：<code>orithopos-master/docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FILTERS_FINAL.json</code>、<code>orithopos-master/docs/UAT_STOCK_PRICING_SAVE_GUARD_LOCAL_2026-10-22_ODOO.json</code>。</p>
+      <p>线上部署后仍需复核分页信号、清除筛选和 Bulk Price Edit 空态；本轮不执行销售、退款、采购、收货、库存、价格或现金业务写入。</p>
+      <p>补充产品化路由回归：真实 TypeScript route handler fixture <strong>31/31 PASS</strong>；价格建议分页按每页 10 条返回 continuation，GST/含税金额统一按分舍入，权限、租户公司范围、采购收货结果确认、库存调整边界和价格保存未知结果均通过。网络全部拦截，未产生线上业务写入。证据：<code>orithopos-master/docs/UAT_PRODUCTIZATION_LOCAL_2026-10-21.json</code>。</p>
+    </section>
+    </main>
+  </div>
+  <section id="handoff-2026-10-22" class="content-section">
+    <h2>2026-10-22 交接更新：Bulk Price Edit 键盘可访问性</h2>
+    <ul>
+      <li>已为 Refresh、Save reviewed prices、Previous、Next 增加可见的 focus-visible 键盘焦点样式。</li>
+      <li>本地 Webpack 浏览器夹具在 390px 和 1440px 通过 12/12；覆盖价格建议预填、人工确认、写入结果只读对账、未知结果阻止重试、无页面错误和无横向溢出。证据：<code>orithopos-master/docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json</code>。</li>
+      <li>Node 24 typecheck、目标 ESLint、脚本语法检查通过；夹具拦截全部 API，业务写入为 0，未运行本地 production build。</li>
+      <li>该批次尚未完成 Dokploy runtime SHA 回读和线上页面复验。试点仍保持 NO-GO，待隔离业务写入、Odoo 对账、备份恢复、设备和离线 POS 验收完成。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-platform-invoice" class="content-section">
+    <h2>2026-10-22 交接更新：平台失败与发票预览</h2>
+    <ul>
+      <li>Platform Failures 将告警接口作为可选伴随能力；告警接口不可用时，失败分组仍正常显示，并给出非阻断提示。</li>
+      <li>本地 Audit/Failures 浏览器夹具在 390px、1440px 通过 4/4，覆盖重试恢复、告警接口 404 回退、无页面错误、无横向溢出和零写请求。证据：<code>orithopos-master/docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_ALERT-FALLBACK.json</code>。</li>
+      <li>发票预览页已修复 JSX 能力提示解析问题；mock UAT 验证能力重试、扫描重试、预览编辑、Odoo 跳转和零业务写入。证据：<code>orithopos-master/docs/UAT_INVOICE_SCAN_MOCK_2026-10-22_CURRENT.json</code>。</li>
+      <li>前端 typecheck、目标 ESLint 和脚本语法检查通过；未运行本地 production build。平台告警后端提交 <code>14b8d81</code> 已在共享 main，但尚无 Java 21 同 SHA 验证日志，不能标记为已验证。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-deploy-f5a2948" class="content-section">
+    <h2>2026-10-22 部署状态：f5a2948</h2>
+    <ul>
+      <li>前端批次 <code>f5a2948</code> 已推送到 main，包含平台失败页告警回退、发票预览 JSX 修复和对应验收证据。</li>
+      <li>Dokploy webhook 返回 HTTP 301，未重试；Demo 版本接口仍报告 frontend/backend 为 <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>，本批尚未线上验收。</li>
+      <li>再次部署前须核对 Dokploy Source/Git：仓库 <code>aishawn/aistore_pos</code>、分支 <code>main</code>、根目录 <code>/</code>、Compose 文件 <code>docker-compose.yml</code>。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-stock-focus" class="content-section">
+    <h2>2026-10-22 交接更新：Stock List 焦点一致性</h2>
+    <ul>
+      <li>Stock List 的导出失败重试和分类加载重试按钮已补充可见键盘焦点样式。</li>
+      <li>库存/定价响应式夹具在 320、390、768、1024、1440px 通过 15/15，包含导出和清除筛选焦点断言，阻断写入为 0。证据：<code>orithopos-master/docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json</code>。</li>
+      <li>本批仍未线上验证，Demo runtime 仍为 <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-deploy-a5511fc" class="content-section">
+    <h2>2026-10-22 当前部署身份：a5511fc</h2>
+    <ul>
+      <li>当前 main 为 <code>a5511fc</code>，包含前端优化和平台告警相关提交。</li>
+      <li>Dokploy webhook 返回 HTTP 301，未重试；Demo frontend 仍为 <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>，backend runtime 为 <code>null</code>。</li>
+      <li>平台告警后端提交 <code>14b8d81</code>、<code>09af7a6</code> 尚无同 SHA Java 21 <code>mvn -B clean verify</code> 证据，不能标记为已部署。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-platform-focus" class="content-section">
+    <h2>2026-10-22 交接更新：登录与平台操作焦点</h2>
+    <ul>
+      <li>登录主按钮、现金录入提交、Platform Operations/AI Usage 刷新和重试操作已统一增加可见键盘焦点样式。</li>
+      <li>平台本地夹具在 390px、1440px 通过 4/4，覆盖重试恢复、焦点样式、无页面错误、无溢出和零非 GET 请求。证据：<code>orithopos-master/docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-22_FOCUS-CONTROLS.json</code>。</li>
+      <li>登录页 390px 浏览器 smoke 通过：Login 按钮可见、焦点样式存在、无横向溢出。</li>
+      <li>Demo 尚未包含本批改动，当前 runtime frontend 为 <code>3edd72d...</code>、backend 为 <code>null</code>。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-online-table-a11y" class="content-section">
+    <h2>2026-10-22 Demo 线上表格可访问性复验</h2>
+    <ul>
+      <li>当前 Demo runtime 的只读表格/可访问性套件通过 14/14，unexpectedWrites 为 0；证据：<code>orithopos-master/docs/UAT_TABLE_A11Y_ONLINE_2026-10-22_CURRENT_RUNTIME.json</code>。</li>
+      <li>该结果只代表当前线上旧 runtime，不代表本地尚未部署的焦点样式提交已线上生效。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-deploy-a37ef77" class="content-section">
+    <h2>2026-10-22 部署状态：a37ef77</h2>
+    <ul>
+      <li>当前 main 候选 <code>a37ef77</code> 已推送并与 origin/main 对齐。</li>
+      <li>Dokploy webhook 返回 HTTP 301，未重试；Demo 版本接口返回 frontend/backend <code>3edd72d84f514856923c0c0d50b01fe7b015e120</code>，本批尚未上线。</li>
+      <li>线上 14/14 表格可访问性结果只代表旧 runtime，不能归因到本地新提交。</li>
+    </ul>
+  </section>
+  <script>
+    const filters = document.querySelectorAll('[data-filter]');
+    const tiles = document.querySelectorAll('#capabilities [data-status]');
+    filters.forEach((button) => button.addEventListener('click', () => {
+      filters.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      const status = button.dataset.filter;
+      tiles.forEach((tile) => tile.classList.toggle('hidden', status !== 'all' && tile.dataset.status !== status));
+    }));
+    const links = [...document.querySelectorAll('.side nav a')];
+    const sections = links.map((link) => document.querySelector(link.getAttribute('href')));
+    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => {
+      if (entry.isIntersecting) links.forEach((link) => link.classList.toggle('active', link.hash === `#${entry.target.id}`));
+    }), { rootMargin: '-15% 0px -75% 0px' });
+    sections.forEach((section) => section && observer.observe(section));
+  </script>
+</body>
+</html>
+
+
+
+  <section id="handoff-2026-10-22-settings-data-focus" class="content-section">
+    <h2>2026-10-22 交接更新：Settings Data 键盘焦点</h2>
+    <ul>
+      <li>Settings Data 的 Retry、Remove sample data、Import products、Export products 和 Download template 控件已补充可见 <code>focus-visible</code> 焦点样式，业务行为不变。</li>
+      <li>本地 typecheck、目标 ESLint 和 diff check 通过；源码级五控件焦点断言通过，未运行 production build，也未发起业务写入。证据：<code>orithopos-master/docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>完整 Settings 移动脚本在既有 <code>/settings/users</code> 移动卡片断言处阻断，不能记为整套通过；本批仍未线上验证，需以 Demo 版本接口精确 SHA 匹配后再升级状态。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-settings-data-deploy" class="content-section">
+    <h2>2026-10-22 Settings Data 部署身份</h2>
+    <ul>
+      <li>候选提交 <code>fb67f43</code> 已推送到 <code>origin/main</code>。</li>
+      <li>Dokploy webhook 返回 HTTP 301（<code>Branch Not Match</code>），按规则未重试；再次部署前核对仓库、分支、根目录和 Compose 文件。</li>
+      <li>Demo 版本接口仍报告 frontend/backend 为 <code>a5511fc...</code>，Settings Data 焦点改动尚未线上验证。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-settings-users-focus" class="content-section">
+    <h2>2026-10-22 Settings Users 键盘焦点</h2>
+    <ul>
+      <li>用户管理页的角色重试、邀请、邀请/重置链接复制、移动端重置和桌面端重置操作已统一补充可见 <code>focus-visible</code> 焦点样式，按钮触控高度保持至少 44px。</li>
+      <li>本地 typecheck、目标 ESLint 和 diff check 通过；源码证据检查 7 个按钮，未运行 production build，也未发起业务写入。证据：<code>orithopos-master/docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>本批与 Settings Data 焦点改动合并等待下一次部署；Demo 线上验证须以 exact SHA 匹配为前提。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-24-ai-natural-expansion" class="content-section">
+    <h2>2026-10-24 AI 助手自然问法扩展与路由修复</h2>
+    <ul>
+      <li>助手 runner 已扩展到 <strong>245 条唯一问法</strong>，新增收银员短句、中文夹英文、日期/混合报表、库存与供应商目录，以及立即下单/收货/改价安全边界。</li>
+      <li>Demo 新增 29 条问法只读回归为 <strong>22 PASS / 0 BLOCKED / 7 FAIL</strong>。失败集中在定价建议、葡萄酒推荐、交易笔数、供应商目录和 AI 能力说明；证据：<code>UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NATURAL-EXPANSION.json</code>。</li>
+      <li>工作区已补充确定性路由与 Java 回归断言。候选提交 <code>7f92d1b</code> 已进入共享 <code>main</code> 历史，但 Dokploy 对当前 <code>a1063d3</code> 的部署状态为 Error，Demo 仍运行 <code>a5511fc</code>；必须先取得同候选 SHA 的 Java 21 <code>mvn -B clean verify</code> 结果和匹配 runtime，当前不把修复标为线上通过。</li>
+      <li>本轮所有在线请求仅调用 Assistant API，<code>writeRequests=none: assistant API only</code>，未执行销售、采购、收货、调价、库存调整、退款或关班写入。</li>
+      <li>随后 Dokploy 对 <code>c905902</code>、<code>dc465b3</code> 和 <code>a8ca52c</code> 的部署也返回 <strong>Error</strong>；部署详情面板没有返回构建日志行。该结果只能说明部署诊断/构建仍未恢复，不能作为路由修复的通过或失败结论。</li>
+      <li>本地 runner 结构审计为 <strong>245 条 / 245 个唯一 ID / 0 重复</strong>，其中 <strong>88 条</strong>为 no-route 安全用例；<code>node --check</code> 与 <code>git diff --check</code> 通过。新增路由仍需同候选 SHA Java 21 门禁和匹配 runtime 后再做线上回归。</li>
+      <li>随后对当前服务的 <code>c905902</code> runtime 执行新增 29 条问法回归，结果为 <strong>28 PASS / 0 BLOCKED / 1 FAIL</strong>；唯一失败是中文能力问法 <code>AI会直接下单吗</code> 返回 <code>unknown</code>。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json</code>。</li>
+      <li>本地问法目录已扩展为 <strong>247 条 / 247 个唯一 ID / 0 重复</strong>，no-route 安全用例为 <strong>90 条</strong>。中文帮助正则和两条回归用例已补充，仍等待同候选 SHA 的 Java 21 门禁与线上复验。</li>
+      <li>完整 247 条只读回归在 Demo runtime <code>c941a617</code> 上为 <strong>244 PASS / 0 BLOCKED / 3 FAIL</strong>；3 条失败均为中文“AI 是否自动下单”能力边界，其中 1 条误导航到 <code>/orders</code>。证据：<code>orithopos-master/docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json</code>。本地候选 <code>a63c84fb</code> 尚未部署验收。</li>
+      <li>同一运行窗口的只读套件：availability <strong>3/3</strong>、route <strong>9/9</strong>、surface/auth <strong>11/11</strong>、enabled gate <strong>PASS</strong>、metrics <strong>9/9</strong>、UI <strong>2/2</strong>；features <strong>14 PASS / 1 BLOCKED</strong>（OCR 旧接口 <code>41001</code>），reports <strong>15/16</strong>（实时库存源不可用但安全降级）。未执行业务写入；转写、跨店/平台和 admin guard 仍受 fixture、账号或隔离环境前置条件限制。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-settings-roles-focus" class="content-section">
+    <h2>2026-10-22 Roles &amp; Permissions 键盘焦点</h2>
+    <ul>
+      <li>角色页的页面重试、权限重试、移动/桌面编辑删除以及角色编辑器取消/保存操作已统一补充可见键盘焦点样式。</li>
+      <li>本地 typecheck、目标 ESLint 和 diff check 通过；源码证据覆盖 9 个按钮，未运行 production build，也未发起业务写入。证据：<code>orithopos-master/docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>与 Settings Data、Settings Users 一起等待下一次有效部署；线上验证必须以 exact runtime SHA 为准。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-settings-core-focus" class="content-section">
+    <h2>2026-10-22 核心 Settings 键盘焦点</h2>
+    <ul>
+      <li>Account 保存、Payment 重试、Registers &amp; Outlets 重试和 Tax 重试操作已统一补充可见键盘焦点样式。</li>
+      <li>本地 typecheck、目标 ESLint 和 diff check 通过；未运行 production build，也未发起业务写入。证据：<code>orithopos-master/docs/UAT_SETTINGS_CORE_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>该批与其他 Settings 改动合并等待有效部署，线上状态仍需 exact runtime SHA 验证。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-settings-deploy-grouped" class="content-section">
+    <h2>2026-10-22 Settings 聚合批次部署状态</h2>
+    <ul>
+      <li>Settings Data、Users、Roles、Account、Payment、Registers &amp; Outlets 和 Tax 焦点一致性改动已聚合到候选 <code>0a1a19c</code> 并推送。</li>
+      <li>Dokploy webhook 再次返回 HTTP 301（<code>Branch Not Match</code>），未重试；下一次部署前必须核对 Source/Git 绑定。</li>
+      <li>Demo 仍未回读到该候选 exact SHA，因此本批暂记为本地已验证、线上待验证。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-stocktake-cash-focus" class="content-section">
+    <h2>2026-10-22 盘点与现金操作键盘焦点</h2>
+    <ul>
+      <li>Manage Cash 重试、Stocktake/Express Stocktake 的清除、恢复、添加、删除和 Review and apply 操作已补充可见键盘焦点样式。</li>
+      <li>本地盘点夹具在 320/390/768/1024/1440px 全部通过，数量边界夹具 20/20 PASS，零真实业务写入、无页面错误和横向溢出。证据：<code>orithopos-master/docs/UAT_STOCKTAKE_CASH_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>未运行 production build；线上验证仍等待 Dokploy 分支绑定修正。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-stocktake-cash-deploy" class="content-section">
+    <h2>2026-10-22 盘点/现金批次部署状态</h2>
+    <ul>
+      <li>候选 <code>3bc4b9f</code> 已推送，包含 Settings 聚合批次及盘点、Express Stocktake、Manage Cash 焦点改进。</li>
+      <li>Dokploy webhook 再次返回 HTTP 301（<code>Branch Not Match</code>），未重试；这是同一 Source/Git 绑定阻断。</li>
+      <li>Demo runtime 仍是旧 SHA，本批尚未线上验证。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-reports-utilities-focus" class="content-section">
+    <h2>2026-10-22 报表与工具页恢复焦点</h2>
+    <ul>
+      <li>Register Closures、日/周/月销售报表、Mail Log、Trashed Items 和 Vendor Connections 的 Retry 操作已统一补充可见键盘焦点样式。</li>
+      <li>本地 typecheck、目标 ESLint 和 diff check 通过；既有 Clear search/Clear filters 行为保持不变，未运行 production build，也未发起业务写入。证据：<code>orithopos-master/docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>线上验证仍等待 Dokploy Source/Git 绑定修正。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-reports-utilities-deploy" class="content-section">
+    <h2>2026-10-22 报表/工具批次部署状态</h2>
+    <ul>
+      <li>候选 <code>876f8b3</code> 已推送，包含 Settings、盘点/现金和报表/工具页恢复焦点改进。</li>
+      <li>Dokploy webhook 再次返回 HTTP 301（<code>Branch Not Match</code>），未重试；线上行为不能归因于该候选。</li>
+      <li>Demo runtime 仍为旧 SHA，待 Source/Git 修正后再做线上验收。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-entry-platform-focus" class="content-section">
+    <h2>2026-10-22 注册、商品与平台操作焦点</h2>
+    <ul>
+      <li>注册向导、密码重置、商品菜单/批量删除、平台门店重试及平台审计 Search/Clear/Retry 操作已补充可见键盘焦点样式。</li>
+      <li>本地 Platform Audit/Failures 夹具在 390/1440px 通过 4/4，商品详情重试夹具通过，零写入、无页面错误和溢出。证据：<code>orithopos-master/docs/UAT_ENTRY_PLATFORM_FOCUS_LOCAL_2026-10-22.json</code>。</li>
+      <li>未运行 production build；线上验证仍等待 exact runtime SHA。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-entry-platform-deploy" class="content-section">
+    <h2>2026-10-22 入口/平台批次部署状态</h2>
+    <ul>
+      <li>候选 <code>d2346f9</code> 已推送，包含 Settings、盘点/现金、报表/工具和注册/平台焦点改进。</li>
+      <li>Dokploy webhook 返回 HTTP 301（<code>Branch Not Match</code>），未重试；Demo runtime 仍早于该候选。</li>
+      <li>线上验收等待 Source/Git 修正及版本端点 exact SHA 匹配。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-runtime-c905902" class="content-section">
+    <h2>2026-10-22 运行版本与平台复验</h2>
+    <ul>
+      <li>Demo 版本接口现报告 frontend/backend runtime 为 <code>c905902f4020180095646cdeeaf638d78a0ded2d</code>；最新源码为 <code>177eea3d</code>，两者尚未对齐。</li>
+      <li>Platform Operations、Usage、Audit、Failures 在 390/1440px 通过 8/8 只读检查，无页面错误、横向溢出或非 GET 请求。证据：<code>orithopos-master/docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json</code>。</li>
+      <li>Settings、盘点/现金、报表/工具和入口/平台最新焦点批次仍未线上验证；设置套件在旧 runtime 的用户卡片断言处阻断。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-platform-store-settings-diagnostics" class="content-section">
+    <h2>2026-10-22 门店详情与设置验收诊断</h2>
+    <ul>
+      <li>Platform Store 详情页的状态、试用、店主、Odoo、删除和刷新操作已补充可见键盘焦点样式。</li>
+      <li>Settings 移动验收脚本现在会保留结构化 BLOCKED 结果，不再因旧 runtime 缺少用户卡片/表头而异常终止；c905902 runtime 记录 26 项通过、2 项阻断。证据：<code>orithopos-master/docs/UAT_SETTINGS_MOBILE_2026-10-22_RUNTIME-C905902-BLOCKED.json</code>。</li>
+      <li>最新源码仍等待有效 Dokploy 部署，未把旧 runtime 结果归因到新代码。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-platform-detail-deploy" class="content-section">
+    <h2>2026-10-22 门店详情批次部署状态</h2>
+    <ul>
+      <li>候选 <code>1df9b718</code> 已推送，包含门店详情焦点改进和 Settings 阻断诊断。</li>
+      <li>Dokploy webhook 返回 HTTP 301（<code>Branch Not Match</code>），未重试。</li>
+      <li>Demo runtime 仍为 <code>c905902...</code>，门店详情改动尚未线上验证。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-runtime-queue-followup" class="content-section">
+    <h2>2026-10-22 运行队列跟进</h2>
+    <ul>
+      <li>Demo runtime 从 <code>c905902...</code> 更新到 <code>c941a617...</code>，说明部署队列有推进，但仍不是最新应用候选。</li>
+      <li>当前 webhook 仍返回 HTTP 301（<code>Branch Not Match</code>），本轮未继续重试。</li>
+      <li>最新门店详情及后续 UI 批次仍需 exact runtime SHA 匹配后再宣称线上生效。</li>
+    </ul>
+  </section>

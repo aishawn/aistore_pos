@@ -38,6 +38,13 @@ automatic-order capability boundary; one old route incorrectly opened
 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
 The local candidate is `a63c84fb`, so the result remains a pre-fix baseline.
 
+The companion read-only checks for this runtime were availability **3/3**,
+routes **9/9**, surface/auth **11/11**, enabled gate **PASS**, metrics **9/9**,
+UI **2/2**, features **14 PASS / 1 BLOCKED** (`41001` retired OCR route), and
+reports **15/16** (live stock source blocked). These results are recorded in
+the `UAT_AI_*_2026-10-22_CURRENT-FULL.json` evidence files and contain no
+business writes.
+
 ## 2026-10-24 latest online recheck
 
 The runner catalogue now contains **247 unique cases**. The recorded 216/216
