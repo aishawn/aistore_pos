@@ -395,7 +395,7 @@ function ProductsPageInner() {
               aria-expanded={menuOpen}
               aria-haspopup="dialog"
               aria-label="Menu"
-              className="relative flex h-10 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-orange)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-orange-hover)]"
+              className="relative flex h-10 items-center gap-2 rounded-[var(--oh-radius)] bg-[var(--oh-orange)] px-3 text-[13px] font-semibold uppercase tracking-wide text-white transition-colors hover:bg-[var(--oh-orange-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               {menuOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
               Menu
@@ -475,7 +475,7 @@ function ProductsPageInner() {
           type="button"
           onClick={() => { setActionError(null); setBatchDeleting(true); }}
           disabled={!hasSelection}
-          className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#c62828] disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-[var(--oh-radius)] bg-[var(--oh-danger)] px-3 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-[#c62828] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           Batch Delete{hasSelection ? ` (${selectedIds.size})` : ""}
         </button>

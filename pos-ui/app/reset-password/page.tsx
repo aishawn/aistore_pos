@@ -168,7 +168,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="mt-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 font-bold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-70"
+                  className="mt-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 font-bold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
                 >
                   {busy && <LoaderCircle size={16} className="animate-spin" />}
                   {busy ? "Saving…" : isInvite ? "Activate account" : "Update password"}

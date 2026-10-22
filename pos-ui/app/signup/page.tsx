@@ -337,7 +337,7 @@ export default function SignupPage() {
                     {outlets.length > 1 && (
                       <button
                         type="button"
-                        className="text-xs font-semibold text-rose-700 hover:underline"
+                        className="text-xs font-semibold text-rose-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                         onClick={() => setOutlets((rows) => rows.filter((_, i) => i !== index))}
                       >
                         Remove
@@ -371,7 +371,7 @@ export default function SignupPage() {
                 type="button"
                 disabled={outlets.length >= 5}
                 onClick={() => setOutlets((rows) => [...rows, { name: "", registerCount: 1 }])}
-                className="min-h-10 rounded-md border border-dashed border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] disabled:opacity-50"
+                className="min-h-10 rounded-md border border-dashed border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
               >
                 Add outlet
               </button>
@@ -433,7 +433,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={goBack}
                 disabled={busy}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-[var(--oh-border-strong)] bg-white text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-70"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-[var(--oh-border-strong)] bg-white text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-70"
               >
                 Back
               </button>
@@ -443,7 +443,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={goNext}
                 disabled={busy || (step === 1 && available === false)}
-                className="inline-flex min-h-11 flex-[2] items-center justify-center rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex min-h-11 flex-[2] items-center justify-center rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
               >
                 Next
               </button>
@@ -452,7 +452,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={() => void onSubmit()}
                 disabled={busy}
-                className="inline-flex min-h-11 flex-[2] items-center justify-center rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex min-h-11 flex-[2] items-center justify-center rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
               >
                 {busy ? "Creating store…" : "Create store and enter"}
               </button>
