@@ -59,10 +59,10 @@ public final class WorkflowRouteRouter {
                     + "新增|添加|创建|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern ENTITY_WRITE = Pattern.compile(
-            "(?:create|add|edit|update|delete|remove|merge|import|upload|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b|"
-                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b.*\\b(?:create|add|edit|update|delete|remove|merge|import|upload|save|confirm|approve|submit|send|publish)\\b|"
-                    + "(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存)|"
-                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存).*?(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|保存|确认|批准|提交|发送|发布)",
+            "(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b|"
+                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b.*\\b(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b|"
+                    + "(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存)|"
+                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存).*?(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布)",
             Pattern.CASE_INSENSITIVE);
     /** Imperative purchase/price wording must fail closed before model routing. */
     private static final Pattern EXPLICIT_EXECUTION = Pattern.compile(
