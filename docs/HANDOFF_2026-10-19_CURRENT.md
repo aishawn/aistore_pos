@@ -2397,3 +2397,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`. Evidence: `docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json`. No production build was run and no business write was sent.
 - The authenticated Settings mobile script was attempted against Demo but timed out on an existing `/settings/users` mobile-card selector. Record that suite as blocked; do not infer a Settings Data failure from it.
 - This batch is not online-verified. Read `/api/public/version` after deployment and require an exact candidate SHA match before upgrading its status.
+## 2026-10-22 Settings Data deployment follow-up
+
+- [x] Candidate `fb67f43` was pushed to `origin/main`; Settings Data focus evidence and handoff updates are included.
+- [ ] Dokploy Compose webhook returned HTTP `301` (`Branch Not Match`); no retry was sent. Before the next deploy, verify repository `aishawn/aistore_pos`, branch `main`, root `/`, and `docker-compose.yml`.
+- [ ] Demo `/api/public/version` still reports frontend/backend `a5511fc689a8b4c871c0bacda15713afbd86b44f`, so `fb67f43` is not online-verified.

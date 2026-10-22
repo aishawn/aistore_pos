@@ -558,3 +558,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Local source accessibility evidence: `docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json`; Node 24 typecheck, targeted ESLint, and `git diff --check` passed. No production build was run and no business write was issued.
 - [ ] The broader authenticated Settings mobile script was attempted but stopped at an existing `/settings/users` mobile-card assertion timeout; this is a blocked regression check, not evidence against Settings Data.
 - [ ] The focus batch is not online-verified. Demo `/api/public/version` must match the candidate SHA before claiming deployment.
+### 2026-10-22 Settings Data deployment identity
+
+- [x] Candidate `fb67f43` pushed to `origin/main`.
+- [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Dokploy Source/Git binding must be checked before another deployment.
+- [ ] Demo runtime remains `a5511fc...`; Settings Data focus changes remain local-only.

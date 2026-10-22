@@ -1273,3 +1273,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Settings Data destructive/recovery and import/export controls now have visible keyboard focus states: Retry, Remove sample data, Import products, Export products, and Download template.
 - Local evidence is `docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check pass. This is a frontend-only accessibility change with no business writes.
 - Online status remains **not verified**. The full Settings mobile script was blocked by the existing mobile `/settings/users` card assertion, so it cannot be counted as a complete suite pass.
+## 2026-10-22 Settings Data deployment status
+
+- Candidate `fb67f43` is pushed, but the Dokploy webhook returned HTTP `301` (`Branch Not Match`) and was not retried.
+- Demo `/api/public/version` remains on `a5511fc689a8b4c871c0bacda15713afbd86b44f`; Settings Data focus states are therefore not online-verified.
