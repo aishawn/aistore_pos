@@ -24,9 +24,16 @@ cases / 245 unique IDs / 0 duplicates**, including **88 explicit no-route
 safety cases**. Static checks passed with `node --check` and `git diff --check`;
 no live business write was issued.
 
+The follow-up 29-case run against served runtime `c905902` returned **28 PASS
+/ 0 BLOCKED / 1 FAIL**. The only failure was `AI会直接下单吗` (`unknown`
+instead of `qa`); the local candidate now adds flexible Chinese help matching
+and two regression utterances. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`.
+Runtime/source did not match, so this result does not certify the local fix.
+
 ## 2026-10-24 latest online recheck
 
-The runner catalogue now contains **245 unique cases**. The recorded 216/216
+The runner catalogue now contains **247 unique cases**. The recorded 216/216
 online result below covers the previous catalogue; the 29 natural-language
 additions are contract tests pending a fresh run after source/runtime identity
 verification.

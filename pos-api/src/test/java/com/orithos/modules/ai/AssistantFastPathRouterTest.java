@@ -209,7 +209,7 @@ class AssistantFastPathRouterTest {
 
     @Test
     void answersCommonHelpQuestionsWithoutTheClassifier() {
-        for (String question : new String[]{"Help", "What can you do?", "How can you help?", "What data do you use for suggestions?", "AI会直接下单吗", "你能做什么？", "你能帮我什么？"}) {
+        for (String question : new String[]{"Help", "What can you do?", "How can you help?", "What data do you use for suggestions?", "AI会直接下单吗", "AI 能自动下采购单吗", "AI会提交采购订单吗", "你能做什么？", "你能帮我什么？"}) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);
             assertEquals("qa", match.intent(), question);

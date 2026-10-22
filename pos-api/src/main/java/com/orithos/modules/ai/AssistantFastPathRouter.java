@@ -102,7 +102,8 @@ public final class AssistantFastPathRouter {
             "^(?:help|what can you do|what are you able to do|what can i ask you|how can you help|"
                     + "what does the assistant do|what data do you use for suggestions|"
                     + "will you (?:place|submit) orders?|(?:can|will) you (?:directly )?(?:place|submit) (?:an )?order|"
-                    + "你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么|ai会直接下单吗|ai会自动下单吗)[?.!。！？]*$",
+                    + "你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么|"
+                    + "ai\\s*(?:会|能)\\s*(?:直接|自动)?\\s*(?:下单|提交采购订单)\\s*吗)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
             "^(?:how many (?:transactions?|tickets?|orders?) did we have (?:today|yesterday)|"

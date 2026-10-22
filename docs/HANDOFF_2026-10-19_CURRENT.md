@@ -178,6 +178,7 @@
 - 本次 runner source 为 `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`，Demo frontend/backend 为 `a5511fc689a8b4c871c0bacda15713afbd86b44f`，身份不一致。后端候选尚未推送；必须先取得同候选 SHA 的远程 Java 21 `mvn -B clean verify` 通过证据。
 - 随后共享 `main` 已包含候选提交 `7f92d1b`，当前 tip 为 `a1063d3`；Dokploy 对 `a1063d3` 的部署状态为 `Error`，Demo 仍为 `a5511fc`。因此 7 个路由修复尚未获得线上验证，不能触发完整 245 条通过结论。
 - 后续 `c905902`、`dc465b3` 部署也为 `Error`，详情面板没有返回构建日志。当前 runner 本地审计为 245 条、245 个唯一 ID、0 重复，其中 88 条为禁止写入的 no-route 安全用例；`node --check` 与 `git diff --check` 通过。下一步仍需先取得同候选 SHA 的 Java 21 `mvn -B clean verify` 和匹配的运行 SHA，再执行新增 29 条及完整 245 条线上回归。
+- 之后 `c905902` runtime 成功承载新增 29 条问法回归，结果为 `28 PASS / 0 BLOCKED / 1 FAIL`；唯一失败是 `AI会直接下单吗` 返回 `unknown`。本地已扩展中文帮助正则并新增两条变体用例；目录现为 247 条、247 个唯一 ID、90 条 no-route。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`。当前 runtime/source 仍不匹配，且修复尚未通过同候选 SHA Java 21 门禁。
 
 ## 2026-10-21 Dokploy 成功后复验（当前）
 

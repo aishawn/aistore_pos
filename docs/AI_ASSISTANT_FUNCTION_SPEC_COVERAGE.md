@@ -27,9 +27,14 @@ catalogue audit found 245 cases, 245 unique IDs and no duplicates, including
 88 explicit no-route safety cases; this proves catalogue structure, not
 backend test execution.
 
+The subsequent 29-case served-runtime recheck returned **28 PASS / 1 FAIL / 0
+BLOCKED**. The only failure was `AI会直接下单吗`, which returned `unknown`;
+the local candidate now accepts spacing and additional Chinese order wording.
+Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`.
+
 ## 2026-10-24 latest served-runtime coverage
 
-The current executable catalogue contains **245 unique cases**. The served
+The current executable catalogue contains **247 unique cases**. The served
 runtime evidence in this section covers the previous 216-case catalogue; the
 29-case natural-language expansion is pending a fresh run against a
 source-verified runtime.

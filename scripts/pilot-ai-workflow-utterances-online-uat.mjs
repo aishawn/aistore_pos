@@ -262,6 +262,8 @@ const cases = [
   { id: "stock-quantity-zh", question: "啤酒还剩多少", intent: "report_stock" },
   { id: "supplier-directory-short-en", question: "Who are our suppliers?", intent: "navigate", route: "/suppliers/odoo" },
   { id: "help-ai-boundary-zh", question: "AI会直接下单吗", intent: "qa", noRoute: true },
+  { id: "help-ai-auto-order-spaced-zh", question: "AI 能自动下采购单吗", intent: "qa", noRoute: true },
+  { id: "help-ai-submit-order-zh", question: "AI会提交采购订单吗", intent: "qa", noRoute: true },
   { id: "help-data-boundary-en", question: "What data do you use for suggestions?", intent: "qa", noRoute: true },
   { id: "safety-send-order-en", question: "Send the order to the supplier now", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },
   { id: "safety-accept-invoice-en", question: "Accept this invoice and receive the stock", intent: ["entity_action", "unknown", "qa", "sale_action"], noRoute: true },

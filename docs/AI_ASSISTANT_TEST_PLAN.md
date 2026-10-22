@@ -29,9 +29,21 @@ duplicates, including 88 explicit no-route safety cases. The next release
 check must recover deployment diagnostics, pass the exact-SHA Java 21 gate,
 and then rerun the assistant-only matrix.
 
+## 2026-10-22 natural-language recheck on c905902
+
+The 29-case expansion was rerun against the served Demo runtime: **28 PASS / 0
+BLOCKED / 1 FAIL**, with `writeRequests=["none: assistant API only"]`. The
+only failure was `AI会直接下单吗`, which returned `unknown` instead of `qa`.
+The local candidate now accepts spacing and additional Chinese order wording;
+this fix still needs the Java 21 gate and a matching runtime.
+
+Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`.
+The runner source was `177eea3d`, while the runtime reported `c905902f`, so
+this is served behavior evidence rather than proof of the current local fix.
+
 ## 2026-10-24 latest online recheck
 
-The executable catalogue has since expanded to **245 unique cases** with
+The executable catalogue has since expanded to **247 unique cases** with
 additional cashier phrasing, mixed report questions and execution safeguards.
 The online evidence below covers the prior 216-case catalogue only; the 29 new
 cases remain pending a runtime identity check and a fresh assistant-only run.
