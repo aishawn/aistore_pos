@@ -525,6 +525,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Odoo Bulk Price Edit action buttons (Refresh, Save, Previous, Next) have visible keyboard focus outlines; local productization fixture `12/12 PASS` including focus assertions. Evidence: `docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json`.
 - [ ] The keyboard-focus batch has not yet been verified on the deployed Demo runtime; read `/api/public/version` after deployment.
 - [ ] Deployment attempt for candidate `cfd6967` returned Dokploy webhook HTTP `301`; Demo remains on runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`.
+- [x] Platform Failures degrades gracefully when operational alerts are unavailable; local Audit/Failures fixture `4/4 PASS` across mobile and desktop, with zero writes. Evidence: `docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_ALERT-FALLBACK.json`.
+- [x] Invoice preview availability and scan retry flow remain read-only; mock fixture passed with zero business writes. Evidence: `docs/UAT_INVOICE_SCAN_MOCK_2026-10-22_CURRENT.json`.
+- [ ] Platform alert backend persistence/status actions remain unverified and unpushed pending the Java 21 exact-SHA backend gate.
 ## 2026-10-22 Dokploy 成功部署后复核
 
 - [x] Demo 前后端运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` 一致；证据 `UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。

@@ -8,6 +8,7 @@ import { useApi, useApiList } from "@/hooks/useApi";
 import { SelectChevronIcon } from "@/components/icons";
 import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import {
+  ApiError,
   apiFailureMessage,
   fetchAiClientConfig,
   scanInvoiceImage,
@@ -48,6 +49,7 @@ export function ScanInvoicePage() {
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [assistantAvailable, setAssistantAvailable] = useState<boolean | null>(null);
   const [invoiceVisionAvailable, setInvoiceVisionAvailable] = useState<boolean | null>(null);
+  const [invoiceWorkflowRetired, setInvoiceWorkflowRetired] = useState(false);
   const [capabilityError, setCapabilityError] = useState(false);
   const [capabilityLoading, setCapabilityLoading] = useState(true);
   const scanRevision = useRef(0);
@@ -109,7 +111,13 @@ export function ScanInvoicePage() {
       });
     } catch (e) {
       if (revision !== scanRevision.current) return;
-      setError(apiFailureMessage(e, "Could not read that invoice photo.", "Please sign in again."));
+      if (e instanceof ApiError && e.code === 41001) {
+        setInvoiceWorkflowRetired(true);
+        setInvoiceVisionAvailable(false);
+        setError("Invoice photo capture is not available in this Odoo-only store. Continue in Odoo Purchases or the Replenishment Plan.");
+      } else {
+        setError(apiFailureMessage(e, "Could not read that invoice photo.", "Please sign in again."));
+      }
     } finally {
       if (revision === scanRevision.current) setLoading(false);
     }
@@ -152,6 +160,18 @@ export function ScanInvoicePage() {
     });
   }
 
+  const availabilityMessage = capabilityError
+    ? " Could not check invoice AI availability — refresh and try again."
+    : aiEnabled === null || invoiceVisionAvailable === null
+      ? " Checking invoice AI availability…"
+      : aiEnabled === false
+        ? " Store AI is off — upload is unavailable."
+        : invoiceVisionAvailable === false
+          ? ` Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead.${assistantAvailable ? " Orithos AI assistant remains available for questions." : ""}`
+          : aiEnabled === true
+            ? " Store AI is on — photos are read for preview only."
+            : "";
+
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
@@ -161,17 +181,8 @@ export function ScanInvoicePage() {
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
             OCR is preview-only. Use Odoo Purchases or the Replenishment Plan to create and receive inventory; this page does not write a received order.
-            {capabilityError
-              ? " Could not check invoice AI availability — refresh and try again."
-              : aiEnabled === null || invoiceVisionAvailable === null
-                ? " Checking invoice AI availability…"
-                : aiEnabled === false
-              ? " Store AI is off — upload is unavailable."
-              : invoiceVisionAvailable === false
-                 ? ` Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead.${assistantAvailable ? " Orithos AI assistant remains available for questions." : ""}`
-                : aiEnabled === true
-                  ? " Store AI is on — photos are read for preview only."
-                  : ""}
+            {invoiceWorkflowRetired && " Invoice photo capture is retired for this Odoo-only store."}
+            {availabilityMessage}
             {capabilityError && (
               <button
                 type="button"
@@ -210,7 +221,7 @@ export function ScanInvoicePage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                disabled={loading || capabilityError || aiEnabled === null || invoiceVisionAvailable === null || aiEnabled === false || invoiceVisionAvailable === false}
+                disabled={loading || capabilityError || aiEnabled === null || invoiceVisionAvailable === null || aiEnabled === false || invoiceVisionAvailable === false || invoiceWorkflowRetired}
                 className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
               >
                 {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}
@@ -243,14 +254,14 @@ export function ScanInvoicePage() {
           {error && (
             <div role="alert" className="flex flex-col gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800 sm:flex-row sm:items-center sm:justify-between">
               <span>{error}</span>
-              <button
+              {!invoiceWorkflowRetired && <button
                 type="button"
                 onClick={() => selectedFile && void scanFile(selectedFile)}
                 disabled={loading || !selectedFile}
                 className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
               >
                 {loading ? "Reading invoice…" : "Retry scan"}
-              </button>
+              </button>}
             </div>
           )}
 

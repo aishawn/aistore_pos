@@ -28,8 +28,13 @@ type FailureGroup = {
   latestCorrelationId: string | null;
   runtimeCommit: string | null;
 };
+type PlatformAlert = {
+  fingerprint: string; status: "OPEN" | "ACKNOWLEDGED" | "RESOLVED"; assignee: string | null;
+  acknowledgementNote: string | null; resolutionNote: string | null; occurrenceCount: number;
+  lastSeenAt: string; latestCorrelationId: string | null; runtimeCommit: string | null;
+};
 
-type Filters = { q: string; tenantId: string; httpStatus: string; errorCode: string; from: string; to: string };
+type Filters = { q: string; tenantId: string; httpStatus: string; errorCode: string; from: string; to: string; alertStatus: string };
 type Applied = Omit<Filters, "from" | "to"> & { from?: string; to?: string };
 const PAGE_SIZE = 50;
 
@@ -58,13 +63,16 @@ function relatedAuditHref(correlationId: string | null): string | null {
 
 export default function PlatformFailuresPage() {
   const { user, ready } = useAuth();
-  const [filters, setFilters] = useState<Filters>({ q: "", tenantId: "", httpStatus: "", errorCode: "", from: localDate(7), to: localDate(0) });
-  const [applied, setApplied] = useState<Applied>({ q: "", tenantId: "", httpStatus: "", errorCode: "", from: toIso(localDate(7)), to: toIso(localDate(0)) });
+  const [filters, setFilters] = useState<Filters>({ q: "", tenantId: "", httpStatus: "", errorCode: "", from: localDate(7), to: localDate(0), alertStatus: "" });
+  const [applied, setApplied] = useState<Applied & { alertStatus?: string }>({ q: "", tenantId: "", httpStatus: "", errorCode: "", from: toIso(localDate(7)), to: toIso(localDate(0)), alertStatus: "" });
   const [page, setPage] = useState(1);
   const [data, setData] = useState<Page<FailureGroup> | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<Page<PlatformAlert> | null>(null);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<string | null>(null);
   const requestSequence = useRef(0);
 
   const load = useCallback(async (refresh = false) => {
@@ -91,6 +99,24 @@ export default function PlatformFailuresPage() {
           ? `${cause.message}${cause.correlationId ? ` · Request ID ${cause.correlationId}` : ""}`
           : "Could not load platform failures.");
       }
+      if (sequence === requestSequence.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
+      return;
+    }
+    try {
+      const alertPage = await api.get<Page<PlatformAlert>>("/api/admin/alerts", {
+        status: applied.alertStatus || undefined, tenantId: applied.tenantId || undefined, page: 1, size: 100,
+      });
+      if (sequence === requestSequence.current) {
+        setAlerts(alertPage);
+        setAlertsError(null);
+      }
+    } catch (cause) {
+      if (sequence === requestSequence.current) {
+        setAlertsError(cause instanceof ApiError ? cause.message : "Operational alerts are temporarily unavailable.");
+      }
     } finally {
       if (sequence === requestSequence.current) {
         setLoading(false);
@@ -116,14 +142,14 @@ export default function PlatformFailuresPage() {
   }
 
   function clearFilters() {
-    const cleared: Filters = { q: "", tenantId: "", httpStatus: "", errorCode: "", from: "", to: "" };
+    const cleared: Filters = { q: "", tenantId: "", httpStatus: "", errorCode: "", from: "", to: "", alertStatus: "" };
     setFilters(cleared);
-    setApplied({ q: "", tenantId: "", httpStatus: "", errorCode: "" });
+    setApplied({ q: "", tenantId: "", httpStatus: "", errorCode: "", alertStatus: "" });
     setError(null);
     setPage(1);
   }
 
-  const hasFilters = Boolean(applied.q || applied.tenantId || applied.httpStatus || applied.errorCode || applied.from || applied.to);
+  const hasFilters = Boolean(applied.q || applied.tenantId || applied.httpStatus || applied.errorCode || applied.from || applied.to || applied.alertStatus);
   const invalidDateRange = Boolean(filters.from && filters.to && new Date(filters.from).getTime() > new Date(filters.to).getTime());
   const group = (item: FailureGroup, compact = false) => (
     <article key={item.fingerprint} className={compact ? "border-b border-[var(--oh-border)] py-4" : "min-w-0"}>
@@ -164,12 +190,15 @@ export default function PlatformFailuresPage() {
           <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">App error code<input inputMode="numeric" value={filters.errorCode} onChange={(event) => setFilters((current) => ({ ...current, errorCode: event.target.value.replace(/\D/g, "").slice(0, 9) }))} className="mt-1 min-h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm" placeholder="Any" /></label>
           <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">From<input type="datetime-local" value={filters.from} aria-invalid={invalidDateRange} aria-describedby={invalidDateRange ? "failures-date-range-error" : undefined} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} className="mt-1 min-h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-2" /></label>
           <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">To<input type="datetime-local" value={filters.to} aria-invalid={invalidDateRange} aria-describedby={invalidDateRange ? "failures-date-range-error" : undefined} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} className="mt-1 min-h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-2" /></label>
-          <div className="flex gap-2 xl:col-span-2"><button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white"><Search size={16} aria-hidden="true" />Search</button><button type="button" onClick={clearFilters} disabled={!hasFilters} aria-label="Clear failure filters" title="Clear filters" className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] disabled:opacity-40"><X size={16} aria-hidden="true" /></button></div>
+          <label className="block text-[13px] font-medium text-[var(--oh-text-secondary)]">Alert status<select value={filters.alertStatus} onChange={(event) => setFilters((current) => ({ ...current, alertStatus: event.target.value }))} className="mt-1 min-h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm"><option value="">All alerts</option><option value="OPEN">Open</option><option value="ACKNOWLEDGED">Acknowledged</option><option value="RESOLVED">Resolved</option></select></label>
+          <div className="flex gap-2 xl:col-span-2"><button type="submit" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><Search size={16} aria-hidden="true" />Search</button><button type="button" onClick={clearFilters} disabled={!hasFilters} aria-label="Clear failure filters" title="Clear filters" className="grid size-11 place-items-center rounded-md border border-[var(--oh-border)] text-[var(--oh-text-secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-40"><X size={16} aria-hidden="true" /></button></div>
         </form>
       )}
-      actions={<AdminSecondaryButton onClick={() => void load(true)} disabled={loading}><RefreshCw size={16} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Refresh</AdminSecondaryButton>}
+      actions={<AdminSecondaryButton onClick={() => void load(true)} disabled={loading} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Refresh</AdminSecondaryButton>}
     >
-      {error ? <div id={invalidDateRange ? "failures-date-range-error" : undefined} role="alert" className="mb-3 flex flex-wrap items-start justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900"><span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</span><button type="button" onClick={() => void load(true)} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:opacity-50"><RefreshCw size={14} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Retry</button></div> : null}
+      {error ? <div id={invalidDateRange ? "failures-date-range-error" : undefined} role="alert" className="mb-3 flex flex-wrap items-start justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900"><span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</span><button type="button" onClick={() => void load(true)} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={14} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Retry</button></div> : null}
+      {alertsError ? <p role="status" className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">Operational alerts are unavailable; failure groups remain available. {alertsError}</p> : null}
+      {alerts ? <section className="mb-5 border-y border-[var(--oh-border)] bg-white"><div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-3"><h2 className="text-sm font-semibold">Operational alerts</h2><span className="text-xs text-[var(--oh-muted)]">Deduplicated by failure fingerprint</span></div>{alerts.items.length === 0 ? <p className="px-3 py-5 text-sm text-[var(--oh-muted)]">No alerts in this state.</p> : <div className="divide-y divide-[var(--oh-border)]">{alerts.items.map((alert) => <div key={alert.fingerprint} className="flex flex-wrap items-center gap-3 px-3 py-3 text-sm"><span className={`rounded border px-2 py-0.5 text-xs font-semibold ${alert.status === "OPEN" ? "border-rose-200 bg-rose-50 text-rose-800" : alert.status === "ACKNOWLEDGED" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>{alert.status}</span><span className="font-mono text-xs text-[var(--oh-text-secondary)]">{alert.fingerprint.slice(0, 12)}…</span><span className="text-xs text-[var(--oh-muted)]">{alert.occurrenceCount} occurrences · {dateTime(alert.lastSeenAt)}</span>{alert.assignee ? <span className="text-xs">Owner: {alert.assignee}</span> : null}<div className="ml-auto flex gap-2">{alert.status === "OPEN" ? <button type="button" disabled={processing === alert.fingerprint} onClick={async () => { const note = window.prompt("Acknowledgement note"); if (!note) return; setProcessing(alert.fingerprint); try { await api.post(`/api/admin/alerts/${alert.fingerprint}`, { status: "ACKNOWLEDGED", note }); await load(true); } catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not acknowledge alert."); } finally { setProcessing(null); } }} className="rounded border border-[var(--oh-border)] px-2 py-1 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Acknowledge</button> : null}{alert.status !== "RESOLVED" ? <button type="button" disabled={processing === alert.fingerprint} onClick={async () => { const note = window.prompt("Resolution note"); if (!note) return; setProcessing(alert.fingerprint); try { await api.post(`/api/admin/alerts/${alert.fingerprint}`, { status: "RESOLVED", note }); await load(true); } catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not resolve alert."); } finally { setProcessing(null); } }} className="rounded border border-emerald-300 px-2 py-1 text-xs font-semibold text-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Resolve</button> : null}</div></div>)}</div>}</section> : null}
       {loading && !data ? <div role="status" className="grid place-items-center border-y border-[var(--oh-border)] py-16 text-[var(--oh-muted)]"><LoaderCircle size={20} className="animate-spin" /></div> : data?.items.length === 0 ? <div role="status" className="border-y border-[var(--oh-border)] py-12 text-center text-sm text-[var(--oh-muted)]">{hasFilters ? "No failures match these filters." : "No server failures recorded."}</div> : data ? <>
         <div className="hidden overflow-x-auto border-y border-[var(--oh-border)] bg-white md:block"><table className="w-full min-w-[1120px] border-collapse text-sm"><thead className="bg-[var(--oh-surface)] text-left text-xs text-[var(--oh-text-secondary)]"><tr>{["Failure", "Store", "Occurrences", "First seen", "Last seen", "Last duration", "Latest request ID", "Runtime SHA"].map((heading) => <th key={heading} className="px-3 py-3 font-semibold">{heading}</th>)}</tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{data.items.map((item) => <tr key={`${item.fingerprint}-${item.tenantId ?? "platform"}`} className="align-top"><td className="min-w-64 px-3 py-3"><div className="flex flex-wrap items-center gap-2"><span className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-800">HTTP {item.httpStatus}</span><span className="text-xs font-semibold">{item.errorType}</span>{item.errorCode != null ? <span className="text-xs text-rose-700">Code {item.errorCode}</span> : null}</div><p className="mt-2 break-all font-mono text-xs text-[var(--oh-text-secondary)]">{item.httpMethod} {item.requestPath}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{item.environment} · {item.service}</p>{item.errorSummary ? <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold text-[var(--oh-primary)]">Sanitized summary</summary><p className="mt-1 break-words text-xs text-[var(--oh-text-secondary)]">{item.errorSummary}</p></details> : null}</td><td className="px-3 py-3">{item.tenantId ? <Link href={`/platform/stores/${item.tenantId}`} className="font-medium text-[var(--oh-primary)] hover:underline">{item.tenantName || item.tenantSlug || `Store ${item.tenantId}`}</Link> : "Platform"}<div className="text-xs text-[var(--oh-muted)]">{item.tenantSlug || ""}</div></td><td className="px-3 py-3 tabular-nums">{item.occurrences}</td><td className="whitespace-nowrap px-3 py-3 text-xs">{dateTime(item.firstSeenAt)}</td><td className="whitespace-nowrap px-3 py-3 text-xs">{dateTime(item.lastSeenAt)}</td><td className="whitespace-nowrap px-3 py-3 text-xs">{item.latestDurationMs == null ? "Unknown" : `${item.latestDurationMs} ms`}</td><td className="max-w-44 break-all px-3 py-3 font-mono text-[11px]">{item.latestCorrelationId || "Unknown"}</td><td className="max-w-44 break-all px-3 py-3 font-mono text-[11px]">{item.runtimeCommit || "Unknown"}</td></tr>)}</tbody></table></div>
         <div className="divide-y divide-[var(--oh-border)] md:hidden">{data.items.map((item) => group(item, true))}</div>

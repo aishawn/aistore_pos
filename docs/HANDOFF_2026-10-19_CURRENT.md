@@ -34,6 +34,13 @@
 
 ## 2026-10-24 公网只读全站续验
 
+## 2026-10-24 AI 用户问法与发票入口修复
+
+- 新增 `docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md`，按门店真实问法覆盖补货、定价、推荐/查货、销售报表、发票识别、帮助、权限和提示注入；每类同时定义同义表达、数据不可用、权限限制和执行型问法边界。
+- 新增线上只读证据：AI metrics **9/9 PASS**（390/1440px）、AI UI **2/2 PASS**、能力降级门禁 **PASS**；History/Platform **9 PASS / 2 BLOCKED**（缺第二门店与 platform-operator 凭据）；转写 **2 PASS / 2 BLOCKED**（本轮未提供音频 fixture）。上述检查均无业务写入。
+- 定位到 Odoo-only 模式下 `/api/orders/receives/scan` 被 `OdooOnlyModeFilter` 正确返回 `41001`，但前端此前仍允许上传并提供无效重试。`ScanInvoicePage` 现在识别 `41001`，显示 Odoo Purchases/Replenishment 引导并禁用上传与重试；未放开 Classic POS 路径。
+- 该前端修复已通过 `npm run typecheck`、`node --check scripts/pilot-ai-workflow-utterances-online-uat.mjs` 和 `git diff --check`；未运行本地 build/Maven。后端 OCR 迁移仍需独立 Java 21 同候选 SHA 门禁和隔离业务验收。
+
 - [x] 全站页面矩阵 `272/276 PASS`；唯一失败为 `/platform/audit`、`/platform/failures` 在两个视口返回 404。证据 `docs/UAT_ALL_STATIC_PAGES_2026-10-24_CURRENT_CONTINUATION.json`。
 - [x] 定价四页双视口 `8/8 PASS`，`blockedWrites=0`；证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-24_CURRENT_CONTINUATION.json`。
 - [x] 全站页面矩阵主体通过；交互 `14/14 PASS`，设置 `28/28 PASS`，表格/可访问性 `14/14 PASS` 且 `unexpectedWrites=0`。证据分别为 `docs/UAT_INTERACTION_2026-10-24_CURRENT_CONTINUATION.json`、`docs/UAT_SETTINGS_MOBILE_2026-10-24_CURRENT_CONTINUATION.json`、`docs/UAT_TABLE_A11Y_ONLINE_2026-10-24_CURRENT_CONTINUATION.json`。
@@ -2323,4 +2330,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Commit `cfd6967` was pushed to `origin/main`.
 - [ ] The provided Dokploy Compose webhook returned HTTP `301`; no retry was sent under the branch-mismatch rule.
 - [x] Demo `/api/public/version` was read successfully at HTTP 200 and still reports frontend/backend `3edd72d84f514856923c0c0d50b01fe7b015e120`, so the new keyboard-focus batch is not deployed. Verify Dokploy Source/Git repository `aishawn/aistore_pos`, branch `main`, repository root `/`, and compose file `docker-compose.yml` before the next ordinary Deploy action.
+
+## 2026-10-22 platform failures and invoice preview follow-up
+
+- [x] Platform Failures now treats the operational-alert endpoint as an optional companion. If `/api/admin/alerts` is unavailable, failure groups still load and the page shows a non-blocking alert-status message.
+- [x] Platform Audit/Failures local browser fixture passed **4/4** at 390px and 1440px with alert endpoint fallback, retry recovery, no page errors, no overflow, and zero non-GET requests. Evidence: `docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_ALERT-FALLBACK.json`.
+- [x] Invoice preview JSX was simplified by computing the availability message before render; Node 24 typecheck now passes. Invoice mock UAT passed with capability retry, scan retry, preview editing, Odoo links, no received-order save action, and zero business writes: `docs/UAT_INVOICE_SCAN_MOCK_2026-10-22_CURRENT.json`.
+- [x] Targeted ESLint for Platform Failures, Scan Invoice, and Stock List plus both UAT script syntax checks passed. No local production build was run.
+- [ ] The platform alert backend changes currently present in the worktree have not been pushed because the Java 21 same-candidate `mvn -B clean verify` gate is still required. The frontend fallback is safe against an older runtime.
 

@@ -62,6 +62,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
         const data = routeName === "audit" ? auditFixture : failureFixture;
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data }) });
       }
+      if (routeName === "failures" && url.pathname === "/api/admin/alerts") {
+        return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ code: 40400, message: "Alerts endpoint unavailable in this runtime", data: null }) });
+      }
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data: [] }) });
     });
     await page.goto(`${base}/platform/${routeName}?__uat=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -75,6 +78,16 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await retry.click();
     const expectedText = routeName === "audit" ? "Owner Reinvited" : "UpstreamUnavailable";
     await page.waitForFunction((text) => document.body.innerText.includes(text), expectedText, { timeout: 30000 });
+    if (routeName === "failures") {
+      await page.getByText(/Operational alerts are unavailable/).waitFor({ state: "visible", timeout: 5000 });
+      for (const name of ["Search", "Clear failure filters", "Refresh", "Retry"]) {
+        const button = page.getByRole("button", { name, exact: true });
+        if (await button.count()) {
+          const className = await button.first().getAttribute("class");
+          if (!className?.includes("focus-visible:outline")) throw new Error(`MISSING_FOCUS_STYLE_${name}`);
+        }
+      }
+    }
     const metrics = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
@@ -85,6 +98,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
 }
 await browser.close();
 const evidence = { generatedAt: new Date().toISOString(), target: base, scope: "local browser fixture; platform APIs intercepted; no writes", status: results.every((item) => item.retryRecovered && item.pageErrors.length === 0 && !item.overflow) && blockedWrites.length === 0 ? "PASS" : "FAIL", checks: results, blockedWrites };
-const output = path.join(root, "docs", "UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-24.json");
+const output = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-24.json");
+fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify(evidence, null, 2));

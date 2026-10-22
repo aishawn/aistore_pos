@@ -1243,3 +1243,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - **Implemented and locally verified:** Refresh, Save reviewed prices, Previous, and Next now show visible `focus-visible` outlines. The local Webpack fixture passed `12/12` at mobile and desktop widths with zero intercepted business writes: `docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json`.
 - **Not yet online-verified:** the latest Dokploy status was reported as successful by the owner, but the deployed commit SHA and `/api/public/version` response were not supplied. Keep this change local-only until exact runtime identity is read back.
 
+## 2026-10-22 platform failure fallback and invoice preview
+
+- **Implemented and locally verified:** Platform Failures keeps failure groups usable when the optional `/api/admin/alerts` endpoint returns an error, and displays a non-blocking status message. Audit/Failures fixture: `4/4 PASS`, 390/1440px, zero writes.
+- **Implemented and locally verified:** Invoice preview availability text now parses cleanly and the mock invoice flow passes capability retry, scan retry, editable preview fields, Odoo handoff links, and zero business writes.
+- **Not deployed:** backend alert persistence/status code remains unpushed until the exact candidate passes Java 21 `mvn -B clean verify`. The frontend fallback is compatible with the current runtime.
+
