@@ -39,4 +39,17 @@ class PosAssistantGraphServiceCardTest {
         assertEquals("No price suggestions need review right now.", card.emptyReason());
         assertTrue(card.items().isEmpty());
     }
+
+    @Test
+    void mapsUnavailableSommelierBriefWithoutInventingItems() {
+        List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
+                "navigate",
+                new UiAction("sommelier", "recommend", "/sommelier", "navigate"),
+                "Live wine recommendations are unavailable right now. Retry or open Sommelier.");
+
+        AssistantCard card = cards.getFirst();
+        assertEquals("unavailable", card.status());
+        assertEquals("Live data is unavailable", card.emptyReason());
+        assertTrue(card.items().isEmpty());
+    }
 }
