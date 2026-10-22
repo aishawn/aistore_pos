@@ -2346,6 +2346,13 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Demo `/api/public/version` returned HTTP 200 but still reports frontend/backend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120` (built at `2026-10-22T01:11:39.175Z` / `2026-10-22T00:55:56Z`). The platform fallback and invoice JSX fix are therefore not online-verified.
 - [ ] Dokploy Source/Git binding must be corrected before another deployment attempt: repository `aishawn/aistore_pos`, branch `main`, root `/`, compose file `docker-compose.yml`.
 
+### Deployment result for current `main` (`a5511fc`)
+
+- [x] Stock List focus batch and the prior frontend/alert commits are present on `origin/main`; current HEAD is `a5511fc`.
+- [ ] Dokploy webhook returned HTTP `301`; no retry was sent.
+- [x] Demo `/api/public/version` returned HTTP 200 with frontend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120` and backend runtime `null`. This does not verify any current `main` commit and the backend identity is incomplete.
+- [ ] Backend commits `14b8d81` and `09af7a6` still have no recorded same-SHA Java 21 `mvn -B clean verify` result. Do not treat the current Compose state as a successful backend deployment.
+
 ## 2026-10-22 Stock List focus consistency follow-up
 
 - [x] Stock List export failure retry and category retry actions now expose visible `focus-visible` outlines, matching the existing search-clear control and shared admin actions.

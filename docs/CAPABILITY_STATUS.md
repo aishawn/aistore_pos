@@ -1254,4 +1254,5 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - **Implemented and locally verified:** Stock List export failure retry and category retry controls now have visible keyboard focus outlines. Responsive stock/pricing fixture `15/15 PASS` across five viewports with zero blocked writes: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
 - **Online status:** not deployed; the current Demo runtime remains `3edd72d84f514856923c0c0d50b01fe7b015e120`.
+- **Latest runtime check:** current `main` is `a5511fc`; webhook returned HTTP `301`, Demo frontend remains `3edd72d84f514856923c0c0d50b01fe7b015e120`, and backend runtime is `null`. Backend alert commits `14b8d81`/`09af7a6` remain without same-SHA Java 21 verification evidence.
 
