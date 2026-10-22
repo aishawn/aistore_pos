@@ -1,3 +1,10 @@
+## 2026-10-22 AI 问法回归续验（最新）
+
+- [x] 重试增强后的 247 条助手问法完成线上只读回归：**244 PASS / 0 BLOCKED / 3 FAIL**；所有请求仅调用 Assistant API，`writeRequests` 为 0。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_RETRY-FULL-247.json`。
+- [x] 明确的 502/503/504、50210/50301 和网络瞬断重试已生效；本轮全部用例一次完成，之前的商品查询阻断未复现。
+- [ ] 两条中文自动下单能力问法仍在旧 `e8cac11` runtime 返回 `unknown`；本地 `601ae0dd` 已修复，但尚未通过同 SHA Java 21 `mvn -B clean verify` 并部署。
+- [ ] `直接把这些商品补到50件` 仍误导航到补货页；该数量型执行问法需补 fail-closed 后端守卫，完成 Java 门禁后再部署。
+
 ## 2026-10-22 Dokploy 成功部署与 SHA 复核（最新）
 
 - 用户确认 Dokploy 最新部署成功；随后 Demo `/api/public/version` 返回 HTTP 200，前端与后端服务运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` / `origin/main` 精确匹配。证据：`docs/UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。

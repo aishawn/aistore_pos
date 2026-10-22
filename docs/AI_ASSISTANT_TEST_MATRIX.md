@@ -1,5 +1,22 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 retry-enabled 247-case regression
+
+The retry-enabled runner completed the current catalogue against
+`https://demo.orithos.com.au`: **244 PASS / 0 BLOCKED / 3 FAIL**. Each request
+was Assistant API-only; `writeRequests` remained `none: assistant API only`.
+Transient 502/503/504, 50210/50301 and network retry handling removed the
+earlier product-lookup blocks; every case completed on the first attempt in
+this run. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_RETRY-FULL-247.json`.
+
+The three remaining failures are deployment and boundary items, not transient
+availability: `AI会直接下单吗` and `AI会提交采购订单吗` still return
+`unknown`, while `直接把这些商品补到50件` navigates to replenishment instead
+of failing closed. The local candidate `601ae0dd` already fixes the first
+capability-question ordering issue; the quantity-based execution guard still
+needs a Java 21 `mvn -B clean verify` candidate before any backend deployment.
+
 ## 2026-10-24 natural-language expansion result
 
 The 29 newly added cashier-style cases returned **22 PASS / 0 BLOCKED / 7

@@ -1,5 +1,21 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 retry-enabled full regression
+
+The updated online runner completed all **247** catalogue cases with
+**244 PASS / 0 BLOCKED / 3 FAIL**. It retries only transient proxy/provider
+responses and records `attempts`; this run had no business writes and all
+cases completed on attempt 1. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_RETRY-FULL-247.json`.
+
+The remaining checks are: Chinese capability questions must answer the
+read-only `qa` boundary, and quantity-based imperative replenishment such as
+`直接把这些商品补到50件` must not navigate to a workflow. These are kept as
+explicit regression cases before deployment. Do not call the current online
+result post-fix acceptance: Demo still serves the older `e8cac11` runtime and
+the candidate backend requires the exact-SHA Java 21 `mvn -B clean verify`
+gate first.
+
 ## 2026-10-24 natural-language expansion regression
 
 The new 29-case expansion was executed against `https://demo.orithos.com.au`:

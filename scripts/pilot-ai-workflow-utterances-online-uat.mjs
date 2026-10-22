@@ -358,19 +358,27 @@ try {
 
   for (const item of selectedCases) {
     let response;
+    let body = {};
     let requestError = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    let attempts = 0;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      attempts = attempt + 1;
       try {
         response = await context.request.post(`${base}/api/ai/assistant`, {
           data: { question: item.question },
           headers: { Origin: base },
         });
+        body = await response.json().catch(() => ({}));
+        if (isUnavailable(response.status(), body.code) && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          continue;
+        }
         break;
       } catch (error) {
         requestError = error;
         const detail = redactError(error instanceof Error ? error.message : "Unexpected failure");
-        if (attempt === 0 && /ECONNRESET|ETIMEDOUT/i.test(detail)) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        if (attempt < 2 && /ECONNRESET|ETIMEDOUT/i.test(detail)) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
           continue;
         }
         break;
@@ -384,11 +392,10 @@ try {
         question: item.question,
         status: blocked ? "BLOCKED" : "FAIL",
         expected: { intent: item.intent, route: item.route ?? null, query: item.query ?? null, noRoute: item.noRoute === true },
-        evidence: { errorType: requestError instanceof Error ? requestError.name : "UnknownError", error: detail },
+        evidence: { attempts, errorType: requestError instanceof Error ? requestError.name : "UnknownError", error: detail },
       });
       continue;
     }
-    const body = await response.json().catch(() => ({}));
     const data = body.data ?? {};
     const route = data.ui?.route ?? null;
     const query = data.slots?.query ?? null;
@@ -418,6 +425,7 @@ try {
       },
       evidence: {
         httpStatus: response.status(),
+        attempts,
         code: body.code,
         intent: data.intent ?? null,
         route,

@@ -1,5 +1,19 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-22 latest runner evidence
+
+The retry-enabled full matrix is **244 PASS / 0 BLOCKED / 3 FAIL** across 247
+unique utterances. It verifies the transient-error retry behavior and keeps
+`writeRequests` at zero because the suite calls only the Assistant API.
+Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_RETRY-FULL-247.json`.
+
+Coverage gaps are explicit: two Chinese automatic-order capability questions
+still need the deployed `601ae0dd` fast-path fix, and a numeric imperative
+replenishment request (`直接把这些商品补到50件`) needs a fail-closed write
+guard. No backend claim is made until the exact candidate passes Java 21
+`mvn -B clean verify` and the public runtime SHA matches.
+
 ## 2026-10-24 natural-language expansion gap report
 
 The new 29-case online probe produced **22 PASS / 7 FAIL / 0 BLOCKED** with no
