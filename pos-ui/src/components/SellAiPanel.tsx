@@ -874,6 +874,7 @@ export function SellAiPanel({
           : entity.includes("product") || entity.includes("item") || entity.includes("catalog") ? "/products"
             : entity.includes("invoice") || entity.includes("bill") ? "/invoices/scan"
               : entity.includes("order") || entity.includes("purchase") ? "/orders"
+                : entity.includes("supplier") || entity.includes("vendor") ? "/suppliers/odoo"
                 : "/stock/replenishment";
         return { kind: "deferred", href };
       }
@@ -1674,6 +1675,13 @@ function DialogueView({
                       <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--oh-text-secondary)]">
                         {card.summary}
                       </p>
+                    ) : null}
+                    {card.items && card.items.length > 0 ? (
+                      <ul className="mt-1 space-y-0.5 text-[12px] text-[var(--oh-text-secondary)]">
+                        {card.items.slice(0, 3).map((item, itemIndex) => (
+                          <li key={itemIndex}>• {String(item.label ?? item.name ?? item.title ?? "")}</li>
+                        ))}
+                      </ul>
                     ) : null}
                     {card.emptyReason ? (
                       <p className="mt-1 text-[12px] text-[var(--oh-muted)]">{card.emptyReason}</p>

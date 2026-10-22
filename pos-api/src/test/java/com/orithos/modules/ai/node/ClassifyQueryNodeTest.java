@@ -98,15 +98,14 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            assertEquals("unknown", result.get("intent"), question);
-            assertEquals("", result.get("ui_route"), question);
+            assertEquals("guided_action", result.get("intent"), question);
         }
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
     @Test
-    void stockWriteIntentOffersReplenishmentCtaWithoutClassifier() {
+    void stockWriteIntentFailsClosedWithoutRouteOrClassifier() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -117,9 +116,33 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("navigate", result.get("intent"));
+        assertEquals("guided_action", result.get("intent"));
         assertEquals("/stock/replenishment", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("cannot change stock"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void entityWriteIntentUsesGuidedActionAndPageCta() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        for (String[] sample : new String[][] {
+                {"Create a customer", "/customers"},
+                {"编辑这个产品", "/products"},
+                {"Receive this stock", "/stock/replenishment"}
+        }) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(sample[0]));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("guided_action", result.get("intent"), sample[0]);
+            assertEquals(sample[1], result.get("ui_route"), sample[0]);
+        }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
@@ -135,7 +158,7 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("navigate", result.get("intent"));
+        assertEquals("product_count", result.get("intent"));
         assertEquals("/products", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);

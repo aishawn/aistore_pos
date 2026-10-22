@@ -8,6 +8,7 @@ import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.context.FollowUpSupport;
 import com.orithos.modules.ai.context.StoreContextPack;
 import com.orithos.modules.ai.context.StoreContextPackAssembler;
+import com.orithos.modules.ai.dto.AssistantCard;
 import com.orithos.modules.ai.dto.ReportTable;
 import com.orithos.modules.ai.dto.UiAction;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -114,6 +116,7 @@ public class PosAssistantGraphService {
             String answer = stringValue(data, "answer");
             String intent = stringValue(data, "intent");
             Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
+            List<AssistantCard> cards = cardsFor(intent, ui, answer);
 
             conversationMemory.append(effectiveThreadId, question, intent, answer, slots);
             conversationMemory.saveLastSlots(effectiveThreadId, intent, slots);
@@ -126,7 +129,8 @@ public class PosAssistantGraphService {
                     slots,
                     ui,
                     table,
-                    reportId
+                    reportId,
+                    cards
             );
         } finally {
             AssistantTenantContext.clear();
@@ -180,6 +184,67 @@ public class PosAssistantGraphService {
         return value == null ? null : value.toString();
     }
 
+    private static List<AssistantCard> cardsFor(String intent, UiAction ui, String answer) {
+        String route = ui == null ? null : ui.route();
+        String type = "product_count".equals(intent) ? "product_count"
+                : "/sommelier".equals(route) ? "sommelier"
+                : "/stock/replenishment".equals(route) ? "replenishment" : null;
+        if (type == null) return List.of();
+
+        String text = answer == null ? "" : answer;
+        String lower = text.toLowerCase(java.util.Locale.ROOT);
+        boolean unavailable = answer == null || lower.contains("unavailable")
+                || lower.contains("not available") || lower.contains("暂不可用")
+                || lower.contains("无法取得") || lower.contains("sign in")
+                || lower.contains("not bound") || lower.contains("permission")
+                || lower.contains("没有权限");
+        boolean empty = !unavailable && (lower.contains("no restock")
+                || lower.contains("could not pick")
+                || lower.contains("no matching")
+                || lower.contains("没有推荐") || lower.contains("no prices need")
+                || lower.contains("no recommendation"));
+        String title = switch (type) {
+            case "product_count" -> "Product catalogue";
+            case "sommelier" -> "Wine recommendations";
+            default -> "Replenishment suggestions";
+        };
+        String routeTarget = "product_count".equals(type) ? "/products"
+                : "/sommelier".equals(route) ? "/sommelier" : "/stock/replenishment";
+        List<Map<String, Object>> items = cardItems(type, answer);
+        return List.of(new AssistantCard(
+                type,
+                title,
+                cardSummary(answer, items),
+                items,
+                "sommelier".equals(type) ? "catalogue" : "odoo",
+                Instant.now().toString(),
+                unavailable ? "Live data is unavailable" : empty ? "No matching recommendations" : null,
+                unavailable ? "unavailable" : empty ? "empty" : "ready",
+                "product_count".equals(type) ? "Open products" : "Open workflow",
+                routeTarget));
+    }
+
+    private static List<Map<String, Object>> cardItems(String type, String answer) {
+        if (answer == null || answer.isBlank() || "product_count".equals(type)) return List.of();
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (String line : answer.split("\\R")) {
+            String trimmed = line.trim();
+            if (!trimmed.startsWith("•")) continue;
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("label", trimmed.substring(1).trim());
+            items.add(item);
+            if (items.size() == 3) break;
+        }
+        return items;
+    }
+
+    private static String cardSummary(String answer, List<Map<String, Object>> items) {
+        if (answer == null) return "";
+        if (items.isEmpty()) return answer;
+        return answer.lines().map(String::trim).filter(line -> !line.startsWith("•"))
+                .findFirst().orElse(answer);
+    }
+
     private static String emptyToNull(String v) {
         return v == null || v.isBlank() ? null : v;
     }
@@ -192,6 +257,7 @@ public class PosAssistantGraphService {
             Map<String, String> slots,
             UiAction ui,
             ReportTable table,
-            Long reportId
+            Long reportId,
+            List<AssistantCard> cards
     ) {}
 }

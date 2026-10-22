@@ -207,6 +207,10 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Order 50 units of beer"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Set Shiraz to 29.99"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("把 Shiraz 价格改成 29.99"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Create a customer"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("编辑这个产品"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Delete this supplier"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Receive this stock"));
 
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Upload this supplier bill"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Which prices need checking?"));

@@ -58,6 +58,12 @@ public final class WorkflowRouteRouter {
             "\\b(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish)\\b|"
                     + "新增|添加|创建|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern ENTITY_WRITE = Pattern.compile(
+            "(?:create|add|edit|update|delete|remove|merge|import|upload|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b|"
+                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b.*\\b(?:create|add|edit|update|delete|remove|merge|import|upload|save|confirm|approve|submit|send|publish)\\b|"
+                    + "(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存)|"
+                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存).*?(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|保存|确认|批准|提交|发送|发布)",
+            Pattern.CASE_INSENSITIVE);
     /** Imperative purchase/price wording must fail closed before model routing. */
     private static final Pattern EXPLICIT_EXECUTION = Pattern.compile(
             "\\b(?:place|send|create|approve|apply|execute|finalize|commit)\\s+(?:the\\s+)?(?:purchase\\s+)?(?:order|replenishment|restock|suggestions?|prices?)\\b|"
@@ -192,11 +198,15 @@ public final class WorkflowRouteRouter {
         String normalized = question.trim().toLowerCase(Locale.ROOT);
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
         if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return false;
+        boolean historicalQuestion = normalized.matches(
+                "^(?:what|how|did|were|was)\\b.*\\b(?:today|yesterday|last|past|previous|week|month)\\b.*$");
+        if (historicalQuestion && !EXPLICIT_EXECUTION.matcher(normalized).find()) return false;
         if (INVOICE_MUTATION.matcher(normalized).find()
                 || DIRECT_EXECUTION_ZH.matcher(normalized).find()
                 || DIRECT_EXECUTION_EN.matcher(normalized).find()
                 || NUMERIC_PRICE_EXECUTION.matcher(normalized).find()
-                || NUMERIC_PURCHASE_EXECUTION.matcher(normalized).find()) return true;
+                || NUMERIC_PURCHASE_EXECUTION.matcher(normalized).find()
+                || ENTITY_WRITE.matcher(normalized).find()) return true;
         if (EXPLICIT_EXECUTION.matcher(normalized).find()
                 && (REPLENISHMENT.matcher(normalized).find()
                 || PRICING.matcher(normalized).find()

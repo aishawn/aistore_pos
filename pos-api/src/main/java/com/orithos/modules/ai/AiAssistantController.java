@@ -106,7 +106,8 @@ public class AiAssistantController {
                 result.slots(),
                 result.ui(),
                 result.table(),
-                result.reportId()
+                result.reportId(),
+                result.cards()
         ));
     }
 

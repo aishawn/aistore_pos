@@ -1,6 +1,7 @@
 package com.orithos.modules.ai.dto;
 
 import java.util.Map;
+import java.util.List;
 
 public record AssistantResponse(
         String threadId,
@@ -10,5 +11,6 @@ public record AssistantResponse(
         Map<String, String> slots,
         UiAction ui,
         ReportTable table,
-        Long reportId
+        Long reportId,
+        List<AssistantCard> cards
 ) {}

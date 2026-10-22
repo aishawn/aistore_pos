@@ -104,20 +104,22 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Write-intent request kept in guided flow");
             boolean stockTarget = isStockWriteTarget(question);
             boolean priceTarget = isPriceWriteTarget(question);
-            String summary = stockTarget
-                    ? "I cannot change stock quantities from chat. Open replenishment to review suggestions — staff confirm any order on the page."
-                    : priceTarget
-                    ? "I cannot change prices from chat. Open price review to check suggestions — staff confirm any change on the page."
-                    : "I can help review this, but I cannot perform that business action from chat.";
-            String route = stockTarget ? "/stock/replenishment"
+            String writeRoute = isInvoiceWriteTarget(question) ? "/invoices/scan"
+                    : (stockTarget || isStockMutationTarget(question)) ? "/stock/replenishment"
                     : priceTarget ? "/stock/capped-pricing"
-                    : "";
-            // Keep intent unknown when there is no page CTA so existing fail-closed
-            // contracts stay stable; navigate only when a guided page is offered.
+                    : isCustomerWriteTarget(question) ? "/customers"
+                    : isProductWriteTarget(question) ? "/products"
+                    : isSupplierWriteTarget(question) ? "/suppliers/odoo"
+                    : isOrderWriteTarget(question) ? "/orders" : "";
+            String summary = stockTarget
+                    ? "I cannot change stock quantities from chat. Open replenishment yourself to review suggestions and confirm any order on the page."
+                    : priceTarget
+                    ? "I cannot change prices from chat. Open price review yourself to check suggestions and confirm any change on the page."
+                    : "I can help review this, but I cannot perform that business action from chat.";
             return shortcutResult(
-                    route.isEmpty() ? "unknown" : "navigate",
+                    "guided_action",
                     summary,
-                    Map.of(), "", "", route, "");
+                    Map.of(), "", "", writeRoute, "");
         }
 
         // Relative follow-ups reuse the previous report intent ("and yesterday?").
@@ -133,8 +135,8 @@ public class ClassifyQueryNode implements NodeAction {
         if (isProductCountUtterance(question)) {
             log.info("Product-count fast-path (skipped classify LLM)");
             return productCountShortcut(new AssistantFastPathRouter.Match(
-                    "navigate",
-                    "Open Products to browse the catalogue.",
+                    "product_count",
+                    "Live product count is unavailable right now. Open Products to browse or try again shortly.",
                     Map.of(),
                     "/products",
                     "products",
@@ -184,6 +186,19 @@ public class ClassifyQueryNode implements NodeAction {
 
         RawIntent raw = callModel(system, userPrompt);
         SanitizedIntent result = sanitizeService.sanitize(raw);
+        if (isWriteEntityResult(result)) {
+            return shortcutResult("guided_action",
+                    "I can guide this change, but saving business data must be completed and confirmed on the page.",
+                    Map.of(), "", "", guidedRouteForTarget(result.slots().get("entity")), "");
+        }
+        if ("sale_action".equals(result.intent())
+                && ("Create Customer".equalsIgnoreCase(result.action())
+                || "Create Product".equalsIgnoreCase(result.action()))) {
+            String route = "Create Customer".equalsIgnoreCase(result.action()) ? "/customers" : "/products";
+            return shortcutResult("guided_action",
+                    "I can guide this creation, but saving business data must be completed and confirmed on the page.",
+                    Map.of(), "", "", route, "");
+        }
         WorkflowRouteRouter.Override workflow = WorkflowRouteRouter.maybeOverride(question);
         String intent = workflow == null
                 ? ReportAdhocRouter.maybeOverride(question, result.intent())
@@ -263,6 +278,49 @@ public class ClassifyQueryNode implements NodeAction {
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+).*");
     }
 
+    private static boolean isCustomerWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:customer|client|客户|顾客).*");
+    }
+
+    private static boolean isProductWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:product|item|catalogue|catalog|产品|商品).*");
+    }
+
+    private static boolean isStockMutationTarget(String question) {
+        return question != null && question.matches("(?is).*(?:stock|inventory|receive|收货|库存|盘点).*");
+    }
+
+    private static boolean isInvoiceWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:invoice|bill|发票|账单).*");
+    }
+
+    private static boolean isOrderWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:order|purchase|采购|订单).*");
+    }
+
+    private static boolean isSupplierWriteTarget(String question) {
+        return question != null && question.matches("(?is).*(?:supplier|vendor|供应商).*");
+    }
+
+    private static boolean isWriteEntityResult(SanitizedIntent result) {
+        if (result == null || !"entity_action".equals(result.intent())) return false;
+        String op = result.slots().get("op");
+        return op != null && op.matches("(?i)(create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|confirm|approve|save|submit|send|publish)");
+    }
+
+    private static String guidedRouteForTarget(String target) {
+        if (target == null) return "";
+        return switch (target.toLowerCase(java.util.Locale.ROOT)) {
+            case "customer", "client" -> "/customers";
+            case "product", "item", "catalogue", "catalog" -> "/products";
+            case "invoice", "bill" -> "/invoices/scan";
+            case "supplier", "vendor" -> "/suppliers/odoo";
+            case "order", "purchase" -> "/orders";
+            case "stock", "inventory" -> "/stock/replenishment";
+            default -> "";
+        };
+    }
+
     private static String optionalString(OverAllState state, String key) {
         Optional<String> value = state.value(key, String.class);
         return value == null ? "" : value.orElse("");
@@ -285,16 +343,29 @@ public class ClassifyQueryNode implements NodeAction {
 
     private Map<String, Object> productCountShortcut(AssistantFastPathRouter.Match fast) {
         TenantContext tenant = AssistantTenantContext.get();
+        if (tenant == null) {
+            return shortcutResult("product_count",
+                    "Sign in to a store to read the live product total. Open Products to browse.",
+                    Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
+        }
+        if (tenant.requireOutletId() == null) {
+            return shortcutResult("product_count",
+                    "Your account is not bound to a store, so the live product total is unavailable. Open Products to check the catalogue.",
+                    Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
+        }
+        if (!tenant.canQueryReport()) {
+            return shortcutResult("product_count",
+                    "You do not have permission to query the live product total. Open Products to browse the catalogue.",
+                    Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
+        }
         Integer count = null;
-        if (reportQueryService != null && tenant != null) {
+        if (reportQueryService != null) {
             count = reportQueryService.countSellableProducts(tenant);
         }
         String summary = count != null
                 ? "This store has " + count + " sellable products in the catalogue. Open Products to browse."
-                : (fast.summary() == null || fast.summary().isBlank()
-                ? "Open Products to browse the catalogue."
-                : fast.summary());
-        return shortcutResult("navigate", summary, Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
+                : "Live product count is unavailable right now. Open Products to browse or try again shortly.";
+        return shortcutResult("product_count", summary, Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
     }
 
     private static boolean isProductCountUtterance(String question) {
@@ -304,7 +375,9 @@ public class ClassifyQueryNode implements NodeAction {
         String q = question.trim().toLowerCase();
         return q.contains("多少产品") || q.contains("多少商品") || q.contains("产品总数")
                 || q.contains("商品总数") || q.contains("how many product") || q.contains("product count")
-                || q.contains("total products") || q.contains("how many sku");
+                || q.contains("total products") || q.contains("how many sku")
+                || q.contains("catalogue size") || q.contains("catalog size")
+                || q.contains("how many items do we have");
     }
 
     private static Map<String, Object> shortcutResult(
@@ -439,9 +512,9 @@ public class ClassifyQueryNode implements NodeAction {
 
                 Reply with JSON only:
                 {"intent":"...","summary":"one-line","query":null,"route":null,"view":null,"panel":null,"action":null,"entity":null,"op":null,"from":null,"to":null,"days":null,"category":null}
-                Use null for unused slots. For Inventory/Customer CRUD use intent entity_action with entity+op (+query for search/edit/delete).
-                Creating a user/customer (创建一个用户/客户) → intent entity_action, entity=customer, op=create (query optional; client prefills required fields).
-                Creating a product (创建商品/产品) → intent entity_action, entity=product, op=create (query optional; client prefills required fields, user clicks Save).
+                Use null for unused slots. Use entity_action only for read-only list/search/view requests. Any create, edit, delete, import, receive, save, confirm, price change, or inventory adjustment must use guided_action with a page route; the assistant never writes business data.
+                Creating a user/customer (创建一个用户/客户) → intent guided_action, entity=customer, op=create (query optional; page collects required fields and user confirms Save).
+                Creating a product (创建商品/产品) → intent guided_action, entity=product, op=create (query optional; page collects required fields and user confirms Save).
                 For sales/quantity/stock/dead-stock/average-ticket questions use report_* intents (not qa). Dates as YYYY-MM-DD when known.
                 Ticket counts (几笔订单 / how many tickets) → report_aov (tickets field). Rankings / mixed metrics / day-vs-day → report_adhoc.
                 Prefer the nearest report_* template over report_adhoc when one fits.
