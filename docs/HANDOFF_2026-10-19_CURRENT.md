@@ -2556,4 +2556,5 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] 数据感知 runner 完成 247 条问法：**232 PASS / 15 BLOCKED / 0 FAIL**。15 条全部是固定日期销售问法，响应明确表示没有完成销售记录；已记录 `dataUnavailable=true`，不再误报为路由失败。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_D0669F94_DATA-AWARE-247.json`。
 - [x] 其余路由、意图、帮助和安全边界断言全部通过；Assistant API-only，业务写入为 0。
 - [ ] 仍需在有源销售数据的测试窗口重跑 15 条报表问法，才能完成销售金额对账验收。
+- [x] d0669 companion suite：availability **3/3**、route **9/9**、surface/auth **11/11**、metrics **9/9 PASS**；覆盖 AI 开关、配置、空语音/图片、匿名 401、指标 UI 和无障碍检查。证据：`docs/UAT_AI_AVAILABILITY_D0669_2026-10-22.json`、`docs/UAT_AI_ROUTE_MATRIX_D0669_2026-10-22.json`、`docs/UAT_AI_SURFACE_D0669_2026-10-22.json`、`docs/UAT_AI_METRICS_D0669_2026-10-22.json`。
 

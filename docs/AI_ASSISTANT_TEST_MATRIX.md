@@ -1,5 +1,13 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 d0669 companion suite
+
+Availability, route, surface/auth, and metrics checks are **3/3**, **9/9**,
+**11/11**, and **9/9 PASS** respectively. The checks cover enabled state,
+configuration records, product lookup, empty voice/image guards, anonymous
+401 boundaries, metrics UI at 390/1440px, and accessibility headers. No
+business writes were issued.
+
 ## 2026-10-22 d0669 data-aware result
 
 After adding an explicit no-sales/no-source-data classification, the deployed

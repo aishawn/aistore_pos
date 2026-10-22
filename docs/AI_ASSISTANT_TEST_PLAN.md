@@ -1,5 +1,15 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 d0669 companion suite
+
+Current runtime companion checks passed: availability **3/3**, route matrix
+**9/9**, surface/auth **11/11**, and metrics **9/9**. Evidence files:
+`UAT_AI_AVAILABILITY_D0669_2026-10-22.json`,
+`UAT_AI_ROUTE_MATRIX_D0669_2026-10-22.json`,
+`UAT_AI_SURFACE_D0669_2026-10-22.json`, and
+`UAT_AI_METRICS_D0669_2026-10-22.json`. These checks are read-only and issue
+no business writes.
+
 ## 2026-10-22 d0669 data-aware regression
 
 The runner now distinguishes an explicit no-data response from a routing
