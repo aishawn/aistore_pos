@@ -434,7 +434,7 @@ try {
         id: item.id,
         question: item.question,
         status: blocked ? "BLOCKED" : "FAIL",
-        expected: { intent: item.intent, route: item.route ?? null, query: item.query ?? null, noRoute: item.noRoute === true },
+        expected: { intent: item.writeGuided ? "guided_action" : item.intent, route: item.route ?? null, query: item.query ?? null, noRoute: item.noRoute === true || item.writeGuided === true },
         evidence: { attempts, errorType: requestError instanceof Error ? requestError.name : "UnknownError", error: detail },
       });
       continue;
@@ -447,11 +447,12 @@ try {
     const intentMatches = Array.isArray(item.intent)
       ? item.intent.includes(data.intent)
       : data.intent === item.intent;
+    const expectedIntent = item.writeGuided ? "guided_action" : item.intent;
     const passed = response.ok()
       && body.code === 0
-      && intentMatches
+      && (item.writeGuided ? data.intent === expectedIntent : intentMatches)
       && (item.route ? route === item.route : true)
-      && (item.writeGuided ? data.intent === "guided_action" && (route === null || route.startsWith("/")) : true)
+      && (item.writeGuided ? route === null : true)
       && (item.noRoute && !item.writeGuided ? route === null : true)
       && (item.query ? query === item.query : true)
       && answerChecks.every(Boolean);
@@ -462,10 +463,10 @@ try {
       question: item.question,
       status: passed ? "PASS" : blocked ? "BLOCKED" : "FAIL",
       expected: {
-        intent: item.intent,
+        intent: expectedIntent,
         route: item.route ?? null,
         query: item.query ?? null,
-        noRoute: item.noRoute === true,
+        noRoute: item.noRoute === true || item.writeGuided === true,
         ...(item.writeGuided ? { writeGuided: true } : {}),
         ...(item.answerIncludes ? { answerIncludes: item.answerIncludes } : {}),
       },

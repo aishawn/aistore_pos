@@ -757,3 +757,21 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] `pos-api` 候选仍需 Java 21 `mvn -B clean verify`；未通过前禁止推送或 Dokploy 部署。
 - 证据：`docs/UAT_AI_GATES_2026-10-22_287_CURRENT-GOAL.json`。
 
+## 2026-10-22 快速复验
+
+- [x] 前端 `npm run typecheck`
+- [x] 关键 UAT 脚本 `node --check`（4/4）
+- [x] 线上 `/api/public/version` HTTP 200，记录 runtime SHA `582b92fb`
+- [x] AI availability 3/3、capability gates PASS
+- [ ] 完整 AI 问法回归：本轮超时中止，沿用最近完整证据，不新增通过结论
+- [ ] Java 21 exact-SHA Maven gate、候选部署、部署后全量复验
+
+## 2026-10-22 AI 写入安全边界修复
+
+- [x] 明确写入问法（改价、补货、下单）返回 `unknown`，不带业务页 route。
+- [x] 只读补货/价格建议导航逻辑保持不变。
+- [x] 前端 typecheck、AI UAT 脚本语法检查、diff check。
+- [ ] Java 21 `mvn -B clean verify` exact-SHA gate。
+- [ ] Dokploy 部署后 9 条失败问法和完整 AI 目录线上复验。
+- [x] 旧 runtime 安全边界定向复测已留证：`0 PASS / 9 FAIL / 0 BLOCKED`，无业务写入；该结果用于部署后对照。
+

@@ -1459,3 +1459,18 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 静态验证：Node 24 TypeScript 通过，目标 ESLint 通过；未运行 production build。
 - 独立 tenant dev 实例 `demo.localhost:3200` 已恢复；AI 面板禁用态焦点/ESC 五视口 `5/5 PASS`，价格产品化 `12/12 PASS`，库存/定价响应式 `15/15 PASS`，报表恢复 `2/2 PASS`。AI 开启态快捷问法请求契约仍需单独修正。
 - 当前公网版本仍需以 `/api/public/version` 的实际 SHA 为准；本批尚未部署。
+## 2026-10-22 快速复验
+
+- 前端 TypeScript：PASS。
+- UAT 脚本语法：PASS（4/4）。
+- 线上版本探针：PASS（HTTP 200），当前 runtime 为 `582b92fb`。
+- AI availability：3/3 PASS；capability gates PASS。
+- 完整 287 条问法：本轮未完成，不能宣称通过；既有证据仍是唯一可引用结果。
+- 发布门禁：未通过。原因是当前工作区尚未形成经 Java 21 `mvn -B clean verify` 验证的同 SHA 候选，且线上 SHA 不是当前工作区。
+## 2026-10-22 AI 写入安全边界修复
+
+- 当前源码已将明确改价/补货/下单问法统一为 `guided_action + 空 route`，返回安全引导而不是执行结果。
+- 本地静态验证：前端 typecheck PASS；AI UAT 脚本语法 3/3 PASS；diff check PASS。
+- 尚未完成 Java 21 exact-SHA Maven gate，不能推送或宣称线上生效。
+- 最近线上基线仍记录为 9 条安全边界 FAIL；部署后必须逐条复验。
+- 定向基线证据：`docs/UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`，旧 runtime `582b92fb`，`0/9/0`（PASS/FAIL/BLOCKED），无业务写入。

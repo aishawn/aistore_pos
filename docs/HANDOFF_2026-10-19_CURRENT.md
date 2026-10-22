@@ -2696,10 +2696,36 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Availability UAT 现在覆盖 AI 开启时先生成 `Open products` 按钮、再点击完成导航的真实路径；未改变产品逻辑。
 - 当前状态仍为 **NO-GO**。`pos-api` 变更未通过同一候选 SHA 的远程 Java 21 `mvn -B clean verify` 门禁，不得据此推送或宣称线上生效。
 
+## 2026-10-22 AI 结果卡片链路修复
+
+- [x] 补齐 `AssistantCard` 从 `PosAssistantGraphService`、`AssistantResponse`、Controller 到 `api.ts` 和 `SellAiPanel` 的完整链路；卡片显示状态、摘要、空/不可用原因和 CTA，并过滤重复的普通导航 CTA。
+- [x] `pos-ui npm run typecheck` 通过；未运行 production build。
+- [ ] 卡片链路尚未在 Demo exact-SHA runtime 验证。当前 Demo 仍为 `582b92fb...`，后端改动必须先通过同候选 SHA 的远程 Java 21 `mvn -B clean verify`。
+
 ## 2026-10-22 AI 路由候选基线（最新补充）
 
 - [x] 当前工作区 AI 问法目录为 `287` 条；线上只读抽样执行 `5` 条，结果 `2 PASS / 3 FAIL / 0 BLOCKED`，请求仅调用 Assistant API，业务写入 `0`。
 - [ ] 失败项为中文产品总数、英文 `catalogue size` 和英文数值改价安全边界；线上 runtime 仍是旧 `582b92fb`，不能把这些失败当作当前工作区代码结论。
 - [ ] 当前 `pos-api` 有未提交 AI 路由/上下文/卡片改动；必须先对完整候选 SHA 在 Java 21 环境运行 `mvn -B clean verify`，再推送和部署。
 - 证据：`docs/UAT_AI_QA_BASELINE_PRE_DEPLOY_2026-10-22.json`、`docs/UAT_AI_GATES_2026-10-22_287_CURRENT-GOAL.json`。
+
+## 2026-10-22 快速复验（本轮）
+
+- [x] `pos-ui` `npm run typecheck`：通过。
+- [x] 关键 UAT 脚本 `node --check`：4/4 通过。
+- [x] Demo `/api/public/version`：HTTP 200；前后端均为 `582b92fb199e312e828a5169cde14105a091f41a`。
+- [x] Demo AI availability：3/3 PASS；capability gates：PASS（聊天可用、语音明确不可用）。
+- [ ] 287 条完整问法本轮未形成新结果：线上脚本运行超时后已中止，不能计为通过；继续沿用最近完整证据。
+- [ ] 当前工作区仍有后端 AI WIP 与大量未提交文档/证据，未构造可部署候选；本轮未运行 production build、Docker build 或 Maven。
+- 结论：线上可访问且基础 AI 门禁通过，但 runtime 仍未绑定当前工作区，整体试点继续 **NO-GO**。下一步是整理候选 SHA，Java 21 同 SHA `mvn -B clean verify`，再部署并核验版本端点。
+
+## 2026-10-22 AI 写入安全边界修复（当前工作区）
+
+- [x] 定位线上问法回归的 9 个失败：明确改价、补货、下单请求被误返回业务页 route。
+- [x] `ClassifyQueryNode` 对 `WorkflowRouteRouter.hasWriteIntent(...)` 命中的请求统一 fail-closed：intent=`guided_action`、`ui_route` 为空，仅返回解释性摘要；只读“查看补货/价格建议”仍保留正常导航。
+- [x] 同步更新 `ClassifyQueryNodeTest` 契约：直接写入请求无 route；产品总数使用 `product_count` intent。
+- [x] `pos-ui` `npm run typecheck`、3 个 AI UAT 脚本 `node --check`、`git diff --check` 通过。
+- [ ] 本批包含 `pos-api`，尚未在 Java 21 对同一候选 SHA 执行 `mvn -B clean verify`；未推送、未部署，线上仍不能归因到此修复。
+- [ ] 部署前需复测 9 条安全边界问法，以及完整 AI 问法目录；业务写入保持 0。
+- 定向线上基线证据：`docs/UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`，旧 runtime `582b92fb` 为 `0 PASS / 9 FAIL / 0 BLOCKED`，Assistant API-only，业务写入 `0`。
 

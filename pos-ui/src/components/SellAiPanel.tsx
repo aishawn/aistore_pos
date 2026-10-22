@@ -12,6 +12,7 @@ import {
   fetchAiClientConfig,
   transcribeAudio,
   ApiError,
+  type AssistantCard,
   type AiChatThreadSummary,
   type AssistantResponse,
 } from "@/lib/api";
@@ -80,6 +81,7 @@ interface ChatMessage {
   text: string;
   table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
   reportId?: number | null;
+  cards?: AssistantCard[] | null;
   /** Preferred: one or more in-chat action buttons (navigate only on tap). */
   links?: ChatCta[] | null;
   /** @deprecated prefer links — kept for single-CTA call sites */
@@ -183,19 +185,6 @@ function surfaceFromPath(pathname: string | null | undefined): string {
   return "";
 }
 
-/** Extract product-ish name from “把啤酒补到50件” / “top up beer to 50”. */
-function extractRestockProductHint(text: string): string {
-  const zh = text.match(/把\s*(.+?)\s*(?:补到|补足|补至|加到)\s*\d+/);
-  if (zh?.[1]) return zh[1].replace(/^(?:这些|那些|全部的?|所有的?)/, "").trim();
-  const en = text.match(
-    /(?:top up|restock|replenish|bring)\s+(?:all\s+)?(?:the\s+)?(.+?)\s+(?:to|up to)\s*\d+/i,
-  );
-  if (en?.[1]) {
-    return en[1].replace(/^(?:these|those|the)\s+(?:items?|products?|lines?|stock)\s*/i, "").trim();
-  }
-  return "";
-}
-
 const ENABLED_GREETING =
   "Hi, I'm the Orithos AI assistant. Ask about sales or stock, or try restock suggestions, price reviews, wine matches, or invoice capture.";
 const DISABLED_GREETING =
@@ -248,6 +237,7 @@ const DISPATCHABLE_AI_INTENTS = new Set([
   "search_customer",
   "search_product",
   "entity_action",
+  "guided_action",
   "report_sales",
   "report_qty",
   "report_aov",
@@ -420,13 +410,6 @@ export function SellAiPanel({
     else openWorkspace("/", "Open the sell screen when you are ready.");
   }
 
-  function pushGuidedReply(text: string, links: ChatCta[]) {
-    setMessages((prev) => [
-      ...prev,
-      { role: "assistant", text, links, cta: links[0] ?? null },
-    ]);
-  }
-
   function tryLocalWorkspaceIntent(text: string): boolean {
     const t = text.trim();
     const productWithQuery = t.match(/^(?:查询产品|查找产品|产品查询)\s+(.+)$/);
@@ -457,44 +440,6 @@ export function SellAiPanel({
       )
     ) {
       openStockLookup("");
-      return true;
-    }
-    // Catalogue size — no ad-hoc report yet; guide to the product list.
-    if (
-      /^(?:一共有多少(?:个)?(?:产品|商品)|有多少(?:个)?(?:产品|商品)|产品总数|商品总数|产品有多少|商品有多少|how many products?(?: (?:do we have|are there|in (?:the )?(?:catalogue|catalog|store))?)?|product count|total products?)[?.!。！？]*$/i.test(
-        t,
-      )
-    ) {
-      pushGuidedReply(
-        "I cannot return a live product total in chat yet. Open Products to browse the catalogue, or Check stock for on-hand quantities.",
-        [
-          { label: "Open products", href: "/products" },
-          { label: "Open stock list", href: "/stock/list" },
-        ],
-      );
-      return true;
-    }
-    // Imperative stock writes stay fail-closed; offer the review workflow instead.
-    if (
-      /(?:直接\s*)?把.+?(?:补到|补足|补至|加到)\s*\d+\s*(?:件|个|瓶|箱)?/i.test(t) ||
-      /(?:top up|restock|replenish|bring)\s+.+\s+(?:to|up to)\s*\d+/i.test(t)
-    ) {
-      const hint = extractRestockProductHint(t);
-      const links: ChatCta[] = [
-        { label: "Open replenishment", href: "/stock/replenishment" },
-      ];
-      if (hint) {
-        links.unshift({
-          label: `Find “${hint}” in stock`,
-          href: `/stock/list?q=${encodeURIComponent(hint)}`,
-        });
-      }
-      pushGuidedReply(
-        hint
-          ? `I cannot change “${hint}” stock from chat. Review stock or replenishment, then staff confirm any order in the page.`
-          : "I cannot change stock quantities from chat. Open replenishment to review suggestions, then staff confirm any order.",
-        links,
-      );
       return true;
     }
     return false;
@@ -804,6 +749,7 @@ export function SellAiPanel({
               text: answerText,
               table: result.table ?? null,
               reportId: result.reportId ?? null,
+              cards: result.cards ?? null,
               cta,
               links: cta ? [cta] : recoveryLinks.length ? recoveryLinks : null,
               diagnostics: {
@@ -921,6 +867,16 @@ export function SellAiPanel({
     }
 
     if (intent === "entity_action") {
+      const operation = String(slots.op ?? "").toLowerCase();
+      if (/^(create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|confirm|approve|save|submit|send|publish)$/.test(operation)) {
+        const entity = String(slots.entity ?? "").toLowerCase();
+        const href = entity.includes("customer") || entity.includes("client") ? "/customers"
+          : entity.includes("product") || entity.includes("item") || entity.includes("catalog") ? "/products"
+            : entity.includes("invoice") || entity.includes("bill") ? "/invoices/scan"
+              : entity.includes("order") || entity.includes("purchase") ? "/orders"
+                : "/stock/replenishment";
+        return { kind: "deferred", href };
+      }
       await handleEntityAction(slots.entity, slots.op, slots.query);
       return { kind: "messaged" };
     }
@@ -947,12 +903,10 @@ export function SellAiPanel({
     if (intent === "sale_action" && ui.action) {
       const action = ui.action;
       if (action === "Create Customer") {
-        await handleEntityAction("customer", "create", slots.query);
-        return { kind: "messaged" };
+        return { kind: "deferred", href: "/customers" };
       }
       if (action === "Create Product") {
-        await handleEntityAction("product", "create", slots.query);
-        return { kind: "messaged" };
+        return { kind: "deferred", href: "/products" };
       }
       setPendingAction(action);
     }
@@ -1662,6 +1616,9 @@ function DialogueView({
       <div className="space-y-2.5 pb-1">
         {messages.map((msg, i) => {
           const links = messageLinks(msg);
+          const cards = msg.cards ?? [];
+          const cardRoutes = new Set(cards.map((card) => card.ctaRoute).filter(Boolean));
+          const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
           return (
           <div
             key={i}
@@ -1692,6 +1649,48 @@ function DialogueView({
                     : "Click to open the full report in a new page"}
                 </span>
               </span>
+            ) : cards.length > 0 ? (
+              <div className="space-y-2">
+                {cards.map((card, cardIndex) => (
+                  <section
+                    key={`${card.type}-${cardIndex}`}
+                    aria-label={card.title}
+                    className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <strong className="text-[13px] text-[var(--oh-text)]">{card.title}</strong>
+                      <span className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                        card.status === "unavailable"
+                          ? "bg-rose-50 text-rose-700"
+                          : card.status === "empty"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-emerald-50 text-emerald-700",
+                      )}>
+                        {card.status === "unavailable" ? "Unavailable" : card.status === "empty" ? "No match" : "Ready"}
+                      </span>
+                    </div>
+                    {card.summary ? (
+                      <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--oh-text-secondary)]">
+                        {card.summary}
+                      </p>
+                    ) : null}
+                    {card.emptyReason ? (
+                      <p className="mt-1 text-[12px] text-[var(--oh-muted)]">{card.emptyReason}</p>
+                    ) : null}
+                    {card.ctaRoute && card.ctaLabel ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenLink(card.ctaRoute!)}
+                        className="mt-2 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
+                      >
+                        {card.ctaLabel}
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
+                      </button>
+                    ) : null}
+                  </section>
+                ))}
+              </div>
             ) : (
               msg.text
             )}
@@ -1730,9 +1729,9 @@ function DialogueView({
                 )}
               </div>
             )}
-            {msg.role === "assistant" && links.length > 0 ? (
+            {msg.role === "assistant" && fallbackLinks.length > 0 ? (
               <div className="mt-2.5 flex flex-col gap-2">
-                {links.map((link) => (
+                {fallbackLinks.map((link) => (
                   <button
                     key={`${link.href}-${link.label}`}
                     type="button"

@@ -730,3 +730,30 @@
       <li>pos-api 仍需同一候选 SHA 的远程 Java 21 <code>mvn -B clean verify</code>；在 exact SHA 部署和复测完成前，项目保持 NO-GO。</li>
     </ul>
   </section>
+  <section id="handoff-2026-10-22-ai-cards" class="content-section">
+    <h2>2026-10-22 AI 结果卡片链路</h2>
+    <ul>
+      <li>AI 结果卡片已接通后端结果、公开响应 DTO、前端 API 类型和助手消息渲染。</li>
+      <li>卡片展示标题、状态、摘要、空/不可用原因和工作流 CTA；当普通 CTA 指向同一路径时自动去重。</li>
+      <li>前端 typecheck 通过；Demo exact-SHA 尚未验证，项目仍保持 NO-GO。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-quick-recheck" class="content-section">
+    <h2>2026-10-22 快速复验</h2>
+    <ul>
+      <li>前端 TypeScript 检查通过；4 个关键 UAT 脚本语法检查通过。</li>
+      <li>Demo 版本探针 HTTP 200，前后端运行 SHA 均为 <code>582b92fb</code>；AI availability 3/3、capability gates 通过。</li>
+      <li>完整 287 条问法本轮因运行超时中止，不能计为通过；最近完整证据继续作为基线。</li>
+      <li>当前工作区尚未形成 Java 21 exact-SHA 门禁通过的可部署候选，整体试点继续 NO-GO。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-write-safety" class="content-section">
+    <h2>2026-10-22 AI 写入安全边界修复</h2>
+    <ul>
+      <li>明确改价、补货、下单请求现在返回 <code>unknown</code> 且不带业务页 route，避免产生“已执行”的误导；仅返回解释性摘要。</li>
+      <li>只读的补货建议、价格复核和侍酒推荐仍可正常导航。</li>
+      <li>前端 TypeScript、AI UAT 脚本语法和 diff 检查通过；后端尚未完成 Java 21 exact-SHA 门禁，尚未部署。</li>
+      <li>部署后必须复验最近 9 条安全边界失败问法及完整问法目录，业务写入保持为 0。</li>
+      <li>旧 runtime 定向基线为 0 PASS / 9 FAIL / 0 BLOCKED，证据 <code>UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json</code>；该失败仍待新候选部署后对照。</li>
+    </ul>
+  </section>

@@ -14,6 +14,12 @@
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
 试点决策：**NO-GO**。阻塞：真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。
+
+## 2026-10-22 当前增量
+
+- AI 明确写入请求已在工作区恢复为 `unknown + 空 route` 的 fail-closed 行为；旧 runtime 定向基线仍为 9 条 FAIL，证据 `UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`。
+- 前端 typecheck、AI UAT 脚本语法检查和 diff check 通过；后端改动尚未完成 Java 21 exact-SHA `mvn -B clean verify`，不得推送或部署。
+- 本增量不改变 NO-GO 决策；部署后需复验 9 条安全边界、完整 AI 问法和隔离 Odoo 业务闭环。
 <!-- capability-summary:end -->
 
 # Orithos POS 试点放行清单
