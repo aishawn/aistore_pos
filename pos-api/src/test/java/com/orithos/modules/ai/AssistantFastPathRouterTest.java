@@ -209,11 +209,24 @@ class AssistantFastPathRouterTest {
 
     @Test
     void answersCommonHelpQuestionsWithoutTheClassifier() {
-        for (String question : new String[]{"Help", "What can you do?", "How can you help?", "你能做什么？", "你能帮我什么？"}) {
+        for (String question : new String[]{"Help", "What can you do?", "How can you help?", "What data do you use for suggestions?", "AI会直接下单吗", "你能做什么？", "你能帮我什么？"}) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);
             assertEquals("qa", match.intent(), question);
             assertEquals("", match.route(), question);
+        }
+    }
+
+    @Test
+    void routesTransactionCountsToAverageTicketTemplate() {
+        for (String question : new String[]{
+                "How many transactions did we have today?",
+                "How many tickets did we have yesterday?",
+                "今天有多少笔交易"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_aov", match.intent(), question);
         }
     }
 

@@ -77,7 +77,12 @@ class WorkflowRouteRouterTest {
         assertRoute("What price should I set for Shiraz?", "/stock/capped-pricing");
         assertRoute("What is a fair price for Shiraz?", "/stock/capped-pricing");
         assertRoute("Which prices look off?", "/stock/capped-pricing");
+        assertRoute("Should I raise the Shiraz price?", "/stock/capped-pricing");
+        assertRoute("Which prices need attention?", "/stock/capped-pricing");
+        assertRoute("哪些商品价格不对", "/stock/capped-pricing");
         assertRoute("Recommend a red wine under $30", "/sommelier");
+        assertRoute("Something light under 25 dollars", "/sommelier");
+        assertRoute("聚会想要清爽一点的酒", "/sommelier");
         assertRoute("Suggest a wine for dinner", "/sommelier");
         assertRoute("Recommend wine for steak", "/sommelier");
         assertRoute("Suggest white wine for a party", "/sommelier");
@@ -104,6 +109,7 @@ class WorkflowRouteRouterTest {
         assertRoute("Read this supplier invoice", "/invoices/scan");
         assertRoute("上传这张账单", "/invoices/scan");
         assertRoute("上传供应商发票", "/invoices/scan");
+        assertRoute("Who are our suppliers?", "/suppliers/odoo");
     }
 
     @Test

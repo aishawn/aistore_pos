@@ -19,7 +19,7 @@ public final class ReportAdhocRouter {
     /** Ticket / order counts are available via average-ticket (includes tickets). */
     private static final Pattern TICKET_COUNT = Pattern.compile(
             "几笔|笔订单|笔单|订单数|单数|多少单|"
-                    + "how many tickets|how many orders|ticket count|number of (?:tickets|orders|sales)",
+                    + "how many tickets|how many orders|how many transactions|ticket count|transaction count|number of (?:tickets|orders|sales|transactions)",
             Pattern.CASE_INSENSITIVE
     );
 

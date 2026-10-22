@@ -1,5 +1,94 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-24 natural-language expansion regression
+
+The new 29-case expansion was executed against `https://demo.orithos.com.au`:
+**22 PASS / 0 BLOCKED / 7 FAIL**. The run was assistant-API-only and recorded
+`writeRequests=["none: assistant API only"]`. The seven failures are actionable
+routing gaps, not provider outages: pricing advice (`Should I raise the Shiraz
+price?`, `哪些商品价格不对`), two wine recommendation phrasings, transaction
+count, supplier directory phrasing, and `AI会直接下单吗` capability help.
+
+The working tree now adds deterministic routes and regression assertions for all
+seven cases. The run source was `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`
+while the Demo frontend/backend runtime was `a5511fc689a8b4c871c0bacda15713afbd86b44f`;
+`matchesSourceCommit=false`. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NATURAL-EXPANSION.json`.
+The backend candidate remains unpushed until the same SHA passes the remote
+Java 21 `mvn -B clean verify` gate.
+
+## 2026-10-24 latest online recheck
+
+The executable catalogue has since expanded to **245 unique cases** with
+additional cashier phrasing, mixed report questions and execution safeguards.
+The online evidence below covers the prior 216-case catalogue only; the 29 new
+cases remain pending a runtime identity check and a fresh assistant-only run.
+
+The Demo proxy recovered to the expected anonymous boundary (`401` JSON on
+`/api/auth/me`, `/api/ai/config/client`, and `/api/ai/assistant`). The complete
+216-case catalogue then returned **216 PASS / 0 BLOCKED / 0 FAIL** in
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_HEAD-3FC821C.json`, with no
+business writes. The five-case representative smoke also returned **5/5 PASS**
+in `UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-24_CURRENT.json`.
+
+The runner recorded source `3fc821cde40f70bb05857909ac0f505a8e56a014`, while
+the public version endpoint reported frontend/backend runtime
+`3edd72d84f514856923c0c0d50b01fe7b015e120`; `matchesSourceCommit=false`. These
+are valid served-runtime behavior results, but they do not prove the latest
+source is deployed.
+
+Current read-only companion results: availability **3/3**, routes **9/9**,
+surface/auth **11/11**, metrics **9/9**, UI **2/2**, capability fallback
+**PASS**; features **14 PASS / 1 BLOCKED** because invoice OCR returns
+`41001`; reports **15/16** because the live stock report source is unavailable;
+History/Platform **9 PASS / 2 BLOCKED** because cross-store/operator
+credentials are unavailable; transcription **2 PASS / 2 BLOCKED** because no
+audio fixtures were supplied. No business writes were issued.
+
+## 2026-10-24 current-head regression and user test catalogue
+
+The user-facing test catalogue is now maintained in
+`docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md`. It covers likely store
+phrasing for replenishment, pricing, recommendations, stock lookup, reports,
+invoice capture, help, permissions, prompt injection and execution-intent
+safety. Each case defines the expected intent/route, preserved query or date
+slots, unavailable-source behavior and zero-write boundary.
+
+The complete 216-case run at source `f5a294844f160433d5dd3c88f385aa3aa650dc93`
+returned **216 PASS / 0 BLOCKED / 0 FAIL**, with
+`writeRequests=["none: assistant API only"]`. A subsequent run after source
+advanced to `700abe24a74ccf32fa05a76b389d446d8fbc1263` was blocked before
+login because the Demo proxy returned HTTP 502 for `/api/auth/me`,
+`/api/ai/config/client`, and `/api/ai/assistant`; it generated no assistant
+requests. The latest source is now
+`9c199bdf000ff881f41b890ff05ba77e67a0489c` after documentation/evidence-only
+commits; a retry at that head was blocked by the same proxy condition. The
+216-pass result is therefore valid for its recorded application source but does
+not establish the current Demo runtime identity.
+Blocked retry evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-RETRY.json`.
+
+The invoice UI now recognizes the Odoo-only `41001` response from the retired
+Classic `/api/orders/receives/scan` route, explains the limitation, points to
+Odoo Purchases/Replenishment, and suppresses a futile retry. Migrating invoice
+capture to an Odoo-native workflow remains a separate backend task requiring
+the Java 21 same-candidate-SHA gate and isolated write acceptance.
+
+## 2026-10-23 verified full regression
+
+The deployed Demo runtime is now identified as frontend/backend
+`3edd72d84f514856923c0c0d50b01fe7b015e120`, matching the source commit captured
+by the runner. The current executable catalog completed **216 PASS / 0
+BLOCKED / 0 FAIL** across replenishment, pricing, recommendations, invoice
+capture, store questions, reports, entity lookup, safety boundaries and
+unknown-input cases. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json`.
+
+The five-case representative smoke also passed **5/5**. Both runs used the
+assistant API only and recorded `writeRequests=["none: assistant API only"]`;
+no sales, inventory, purchase, receiving, pricing or register writes were
+issued. Runtime identity is verified for this run; the remaining product-level
+gaps are tracked separately in the companion feature/report tests.
+
 ## 2026-10-22 runtime identity 验证
 
 Dokploy 环境已设置 `SOURCE_COMMIT=64759b45f90e27eebd92314e172eccb94a677230`，普通 Compose 部署显示 **Done**。Demo `/api/public/version` 返回 frontend/backend commit 均为该 SHA，构建时间分别为 `2026-10-21T18:52:41.071Z` 与 `2026-10-21T18:52:40Z`。

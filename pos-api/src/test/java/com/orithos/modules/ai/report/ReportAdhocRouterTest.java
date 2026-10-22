@@ -14,6 +14,8 @@ class ReportAdhocRouterTest {
                 ReportAdhocRouter.maybeOverride("昨天有几笔订单", "report_qty"));
         assertEquals("report_aov",
                 ReportAdhocRouter.maybeOverride("how many tickets yesterday", "report_sales"));
+        assertEquals("report_aov",
+                ReportAdhocRouter.maybeOverride("How many transactions did we have today?", "report_adhoc"));
         assertFalse(ReportAdhocRouter.shouldUseNl2Sql("how many tickets yesterday"));
     }
 

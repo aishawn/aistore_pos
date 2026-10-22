@@ -1,5 +1,94 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-24 natural-language expansion gap report
+
+The new 29-case online probe produced **22 PASS / 7 FAIL / 0 BLOCKED** with no
+business writes. The failures exposed missing deterministic handling for
+pricing advice, non-keyword wine recommendations, transaction-count wording,
+the supplier question `Who are our suppliers?`, and the Chinese capability
+question `AI会直接下单吗`.
+
+The worktree now contains fixes in `WorkflowRouteRouter`,
+`AssistantFastPathRouter` and `ReportAdhocRouter`, plus focused Java regression
+tests. Because the candidate changes `pos-api`, they remain unpushed until an
+exact-SHA Java 21 `mvn -B clean verify` gate is available. Demo runtime
+`a5511fc689a8b4c871c0bacda15713afbd86b44f` did not match runner source
+`3418c44ee8e3ce3d283725a2b47c6df20fa2e785`.
+
+## 2026-10-24 latest served-runtime coverage
+
+The current executable catalogue contains **245 unique cases**. The served
+runtime evidence in this section covers the previous 216-case catalogue; the
+29-case natural-language expansion is pending a fresh run against a
+source-verified runtime.
+
+The recovered Demo proxy completed **216/216** assistant cases and a **5/5**
+cross-capability smoke with zero business writes. The source/runtime identity
+was not aligned: runner source was `3fc821cde40f70bb05857909ac0f505a8e56a014`
+and the public runtime reported `3edd72d84f514856923c0c0d50b01fe7b015e120`.
+The result proves the served routing behavior for that runtime, not deployment
+of the latest source.
+
+Read-only capability coverage in the same recovery window: availability 3/3,
+route matrix 9/9, surface/auth 11/11, metrics 9/9, UI 2/2 and capability
+fallback PASS. Product boundaries remain explicit: invoice OCR is BLOCKED by
+retired route `41001`, live stock report is safely unavailable, cross-store and
+operator checks lack credentials, and transcription fixtures were not supplied.
+
+## 2026-10-24 user-facing test coverage
+
+The likely store questions and their acceptance boundaries are catalogued in
+`docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md`. The catalogue separates
+read-only advice from execution requests, distinguishes current reports from
+workflow navigation, and requires honest unavailable states for missing Odoo
+data, provider failures, permissions and retired routes.
+
+Current evidence: source `f5a294844f160433d5dd3c88f385aa3aa650dc93` completed
+216/216 assistant cases with zero business writes. The next current-head probe
+at source `700abe24a74ccf32fa05a76b389d446d8fbc1263` was blocked before login
+by three HTTP 502 proxy responses, so it has no function-level verdict. The
+current source is now `9c199bdf000ff881f41b890ff05ba77e67a0489c` after
+documentation/evidence-only commits; its retry was blocked by the same proxy
+condition.
+
+## 2026-10-23 verified full regression
+
+The deployed frontend and backend both report SHA
+`3edd72d84f514856923c0c0d50b01fe7b015e120`, matching the runner source commit.
+All **216/216** executable assistant cases passed, including workflow routing,
+reports, entity search, safety guards, prompt-injection rejection and unknown
+input. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json`.
+The run was assistant-API-only with zero business writes.
+
+## 2026-10-22 representative smoke
+
+The representative case selection was corrected to use IDs that exist in the
+executable catalog. The two corrected runs were blocked by Demo login HTTP 502
+(`LOGIN_FAILED_502`) before any assistant request, yielding **0 PASS / 1
+BLOCKED / 0 FAIL** with no business writes. Evidence:
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22.json` and
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RERUN.json`. No function
+coverage conclusion should be drawn from this blocked run.
+
+The executable catalog audit now reports **216 unique case IDs**. The runner's
+login probe retries transient 502/503/504 responses three times before
+classifying the run as unavailable; this changes test robustness only, not
+assistant routing behavior.
+
+The retry-enabled smoke still stopped at login with HTTP 502 after all three
+attempts (`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RETRY2.json`).
+The full current-catalog selection was blocked at the same login boundary before any
+function was exercised (`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-217.json`).
+The diagnostic evidence identifies the final response as Cloudflare HTTP 502
+with HTML content and no correlation header after three login attempts; it does
+not exercise any AI function (`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-DIAGNOSTIC.json`).
+
+Anonymous probes of auth, AI config, and assistant endpoints all returned 502
+as well (`UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json`), so no function-level
+online verdict is possible until the backend proxy recovers.
+The runner records these proxy checks before login in
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-PROXY-INTEGRATED.json`.
+
 ## Runtime identity probe
 
 The online runner now stores `/api/public/version` status, frontend/backend commit and build-time fields, plus whether both runtime commits match source HEAD. Smoke evidence `UAT_AI_WORKFLOW_RUNTIME_IDENTITY_SMOKE.json` records `Restock list please` as **1/1 PASS** to `/stock/replenishment`, while runtime commit fields were null and `matchesSourceCommit=false`. This improves attribution diagnostics; it does not change the full catalog verdict or confirm deployment of current code.

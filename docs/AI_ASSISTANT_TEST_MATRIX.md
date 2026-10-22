@@ -1,5 +1,107 @@
 # AI Assistant Test Matrix
 
+## 2026-10-24 natural-language expansion result
+
+The 29 newly added cashier-style cases returned **22 PASS / 0 BLOCKED / 7
+FAIL** against the Demo runtime. Failures were deterministic route/help gaps in
+pricing, sommelier recommendations, transaction counts, supplier lookup and AI
+capability explanation. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NATURAL-EXPANSION.json`.
+
+The source/runtime identities were `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`
+and `a5511fc689a8b4c871c0bacda15713afbd86b44f`; they do not match. The fixes
+are present in the worktree with regression assertions, but are not yet a
+deployed result. No business writes were issued.
+
+## 2026-10-24 latest online recheck
+
+The runner catalogue now contains **245 unique cases**. The recorded 216/216
+online result below covers the previous catalogue; the 29 natural-language
+additions are contract tests pending a fresh run after source/runtime identity
+verification.
+
+The Demo proxy returned its expected anonymous `401` boundary and the current
+served runtime completed the full assistant catalogue **216/216 PASS** plus a
+representative smoke **5/5 PASS**. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_HEAD-3FC821C.json` and
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-24_CURRENT.json`.
+
+The runner source was `3fc821cde40f70bb05857909ac0f505a8e56a014`; the public
+version endpoint reported runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`,
+so source/runtime identity remains mismatched. Companion evidence is recorded
+in the `*_2026-10-24_CURRENT-RECHECK.json` files: availability 3/3, routes 9/9,
+surface/auth 11/11, metrics 9/9, UI 2/2, capability fallback PASS, features
+14 PASS + OCR 41001 BLOCKED, reports 15/16 with live stock unavailable,
+History/Platform 9 PASS + 2 BLOCKED, and transcription 2 PASS + 2 BLOCKED.
+
+The user-facing utterance catalogue is maintained in
+[`AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md`](AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md).
+It groups likely store phrasing into replenishment, pricing, recommendations,
+reports, invoice capture, help, permission, and adversarial cases. The
+executable 245-case runner is the current regression source; the latest
+completed online evidence still covers 216 cases, and this document
+also records the broader manual and failure-state contract.
+
+## 2026-10-24 focused acceptance update
+
+- Metrics: **9/9 PASS** at 390px and 1440px; no business writes.
+- AI UI: **2/2 PASS**; no page errors, composer and voice capability states
+  remain consistent.
+- Capability fallback: **PASS**; chat remains available while unavailable voice
+  is disabled, with no writes.
+- History/platform: **9 PASS / 2 BLOCKED** because second-store and
+  platform-operator credentials are not available.
+- Transcription: **2 PASS / 2 BLOCKED** because this run had no audio fixtures;
+  the blocked status is fixture absence, not provider failure.
+- Invoice capture: the current Odoo-only deployment returns `41001` for the
+  retired Classic scan endpoint. The frontend now converts this into an
+  actionable Odoo workflow message and suppresses futile retry/upload actions.
+
+The latest current-head full-run retry was blocked before login by HTTP 502 on
+the auth/config/assistant proxy probes; evidence is
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-RETRY.json`. It contains
+no assistant calls and no business writes. The last complete 216-case PASS is
+kept with its own recorded source SHA and must not be presented as a verified
+runtime result for later commits.
+
+## 2026-10-23 verified full regression
+
+The Demo runtime now reports matching frontend/backend SHA
+`3edd72d84f514856923c0c0d50b01fe7b015e120`. The complete current catalog is
+**216/216 PASS**, with zero blocked cases, assertion failures, or business
+writes. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json`.
+The representative cross-functional smoke is **5/5 PASS** in
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-23.json`.
+
+## 2026-10-22 representative smoke
+
+The first smoke configuration referenced nonexistent case IDs and was rejected
+by the runner before login. It was corrected to five catalog IDs spanning
+replenishment, pricing, recommendations, invoice capture, and daily sales.
+Both corrected attempts stopped at the Demo login boundary with HTTP 502
+(`LOGIN_FAILED_502`), so they produced **0 PASS / 1 BLOCKED / 0 FAIL** and no
+assistant requests or business writes. Evidence:
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22.json` and
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RERUN.json`.
+
+Local catalog audit: the executable runner currently contains **216 unique
+case IDs**. Counts from the earlier 216-case Demo run are retained as
+historical runtime evidence. The login probe now retries transient 502/503/504
+responses up to three times before recording a block.
+
+The retry-enabled representative smoke still received HTTP 502 on all three
+login attempts; see `UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-RETRY2.json`.
+The full current-catalog run was blocked at the same login boundary before any
+case executed; see `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_FULL-217.json`.
+The diagnostic smoke records Cloudflare as the server, HTML content type, no
+correlation header, and three login attempts in
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-DIAGNOSTIC.json`.
+Anonymous `/api/auth/me`, `/api/ai/config/client`, and `/api/ai/assistant`
+probes also returned 502, so the current block is shared by the backend proxy,
+not a single utterance. Evidence: `UAT_AI_BACKEND_PROXY_HEALTH_2026-10-22.json`.
+The same probes are now part of runner setup and are recorded in
+`UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-22-PROXY-INTEGRATED.json`.
+
 Scope: cashier assistant, voice input, reporting, wine assistant, invoice OCR, configuration and saved reports. All live checks must be read-only unless they use an approved isolated Odoo test database. Fixture-based checks prove UI behavior only, not provider quality or production data correctness.
 
 ## Runtime identity diagnostic smoke (2026-10-21)

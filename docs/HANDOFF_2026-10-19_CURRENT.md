@@ -171,6 +171,12 @@
 - `docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md` 已同步每类问法的预期意图、路由、槽位、不可用状态和零业务写入边界。
 - 既有 Demo 证据 `216/216 PASS` 只覆盖旧目录；新增 29 条尚未在线执行，需先核对 frontend/backend runtime SHA，再以 assistant API-only 方式回归。当前不运行本地 build，不执行真实销售、采购、收货、改价、库存调整、退款或关班写入。
 
+## 2026-10-24 AI 新增问法回归与路由修复
+
+- 新增 29 条自然问法已在 Demo 执行，结果 **22 PASS / 0 BLOCKED / 7 FAIL**；证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NATURAL-EXPANSION.json`。所有请求仅调用 Assistant API，业务写入为 0。
+- 7 个失败已定位：定价建议 2 条、酒类推荐 2 条、交易笔数 1 条、供应商目录 1 条、AI 是否直接下单 1 条。工作区已补 `WorkflowRouteRouter`、`AssistantFastPathRouter`、`ReportAdhocRouter` 规则和对应 Java 回归断言。
+- 本次 runner source 为 `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`，Demo frontend/backend 为 `a5511fc689a8b4c871c0bacda15713afbd86b44f`，身份不一致。后端候选尚未推送；必须先取得同候选 SHA 的远程 Java 21 `mvn -B clean verify` 通过证据。
+
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
 用户确认 Dokploy 最新部署成功。本轮只读线上验收已完成：
@@ -2407,3 +2413,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Settings Users now gives all seven user-management buttons visible keyboard focus states: role retry, invite, copy invite/reset links, and mobile/desktop reset-link actions.
 - Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`; evidence `docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json`. No production build or business write was run.
 - This is grouped with the pending Settings Data focus batch for the next deployment. Online verification remains pending until Dokploy accepts the exact candidate SHA.
+## 2026-10-22 Roles and Permissions focus follow-up
+
+- Roles & Permissions retry, permission retry, edit/delete, and role-editor Cancel/Save controls now expose visible keyboard focus states at both responsive layouts.
+- Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`; evidence `docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json`. No production build or business write was run.
+- This is grouped with Settings Data and Settings Users for the next deployment; exact runtime SHA verification remains pending.

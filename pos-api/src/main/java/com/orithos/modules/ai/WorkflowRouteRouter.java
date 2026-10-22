@@ -17,19 +17,19 @@ public final class WorkflowRouteRouter {
             "top up(?: (?:stock|inventory))?|what needs a reorder|帮我看(?:看)?哪些要补货",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PRICING = Pattern.compile(
-            "which prices|which prices need(?: checking| review)|price review|price check|pricing|reprice|which products? should (?:i|we) reprice|which products? need(?: a)? price check|which items? need(?:s)? (?:a )?price review|show (?:me )?(?:the )?price suggestions?|raise the price|lower the price|price suggestion|pricing suggestion|pricing recommendations|what should (?:i|we) charge|how much should (?:i|we) charge|what should (?:i|we) price|what price should (?:i|we) set|review prices|调价|定价|价格建议|改价|价格调整|哪些价格需要复核|哪些商品需要复核价格|哪些商品需要改价",
+            "which prices|which prices need(?: checking| review)|price review|price check|pricing|reprice|which products? should (?:i|we) reprice|which products? need(?: a)? price check|which items? need(?:s)? (?:a )?price review|show (?:me )?(?:the )?price suggestions?|raise the price|lower the price|should (?:i|we) (?:raise|lower|change) .*price|prices? need attention|price suggestion|pricing suggestion|pricing recommendations|what should (?:i|we) charge|how much should (?:i|we) charge|what should (?:i|we) price|what price should (?:i|we) set|review prices|调价|定价|价格建议|改价|价格调整|哪些价格需要复核|哪些商品需要复核价格|哪些商品需要改价|哪些商品价格不对",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PRICING_NATURAL = Pattern.compile(
-            "prices? look(?:s)? off|what is a fair price for",
+            "prices? look(?:s)? off|what is a fair price for|which prices? need attention",
             Pattern.CASE_INSENSITIVE);
     /** Recommend / pair — not bare "red wine" (that often means a sales report). */
     private static final Pattern SOMMELIER = Pattern.compile(
             "recommend(?: a)? (?:red|white|rose|sparkling)? ?wine(?:\\s+for .*)?|suggest(?: a)? (?:red|white|rose|sparkling)? ?wine(?:\\s+for .*)?|recommend (?:something|a bottle) for .*|what should i serve with .*|pair(?:ing)? .*wine|"
                     + "what wine|wine recommendation|food pairing|"
-                    + "(?:red|white|rose|sparkling)? ?wine for .*|"
+                    + "(?:red|white|rose|sparkling)? ?wine for .*|something (?:light|fresh|crisp) under .*|"
                     + "suggest a wine|recommend a wine|find me (?:a )?wine|"
                     + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|红酒配牛排|白酒配海鲜|"
-                    + "配餐|搭配.*酒|.*配.*酒|适合.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐",
+                    + "配餐|搭配.*酒|.*配.*酒|适合.*酒|清爽.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE = Pattern.compile(
             "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you read (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|supplier bill|supplier document|发票|供应商单据|供应商账单|读取.*单据|识别.*发票|上传.*发票|上传.*账单|拍照.*(?:发票|账单)",
@@ -70,7 +70,7 @@ public final class WorkflowRouteRouter {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SUPPLIER_LOOKUP = Pattern.compile(
             "(?:show|open|view|list|search|find|look up|check)(?:\\s+me)?\\s+(?:the\\s+)?suppliers?|"
-                    + "(?:supplier|suppliers)\\s+(?:list|directory|lookup)|"
+                    + "(?:supplier|suppliers)\\s+(?:list|directory|lookup)|who are (?:our|the) suppliers?|"
                     + "供应商(?:列表|目录|查询)|(?:查看|打开|查询|搜索)供应商",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern ORDER_LOOKUP = Pattern.compile(

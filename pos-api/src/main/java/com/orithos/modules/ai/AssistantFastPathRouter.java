@@ -100,7 +100,14 @@ public final class AssistantFastPathRouter {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern HELP = Pattern.compile(
             "^(?:help|what can you do|what are you able to do|what can i ask you|how can you help|"
-                    + "what does the assistant do|你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么)[?.!。！？]*$",
+                    + "what does the assistant do|what data do you use for suggestions|"
+                    + "will you (?:place|submit) orders?|(?:can|will) you (?:directly )?(?:place|submit) (?:an )?order|"
+                    + "你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么|ai会直接下单吗|ai会自动下单吗)[?.!。！？]*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern TICKET_COUNT = Pattern.compile(
+            "^(?:how many (?:transactions?|tickets?|orders?) did we have (?:today|yesterday)|"
+                    + "(?:today|yesterday)\\s+(?:transaction|ticket|order) count|今天(?:有)?多少笔(?:交易|订单)|"
+                    + "今天几笔(?:交易|订单)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_REPORT = Pattern.compile(
             "^(?:do we have (?:any )?invoices?|any invoices?|are there (?:any )?invoices?|"
@@ -312,7 +319,17 @@ public final class AssistantFastPathRouter {
         if (HELP.matcher(normalized).matches()) {
             return new Match(
                     "qa",
-                    "I can help with sales, stock, products, replenishment, pricing, wine recommendations and invoice previews.",
+                    "I can help with sales, stock, products, replenishment, pricing, wine recommendations and invoice previews. I only prepare suggestions and previews; staff confirm business actions.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
+        if (TICKET_COUNT.matcher(normalized).matches()) {
+            return new Match(
+                    "report_aov",
+                    "Transaction count",
                     Map.of(),
                     "",
                     "",
