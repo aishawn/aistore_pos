@@ -24,9 +24,6 @@ export function AiFloatHost() {
     if (getUiMode() === "mobile" && pathname === "/m") {
       setExpanded(false);
     }
-    if (pathname === "/reports/dashboard") {
-      setExpanded(false);
-    }
   }, [pathname, setExpanded]);
 
   return (

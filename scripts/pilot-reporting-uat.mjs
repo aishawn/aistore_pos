@@ -63,17 +63,17 @@ try {
 
   const initialResponsePromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
-    return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "8" && response.ok();
+    return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "720" && response.ok();
   }, { timeout: 60000 });
-  await page.goto(`${base}/reports/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
   const initialResponse = await initialResponsePromise;
   const initialData = await initialResponse.json();
   const initialMetrics = readMetrics(initialData, "INITIAL_REPORT");
-  await page.getByRole("heading", { name: "Reporting Dashboard" }).waitFor({ timeout: 60000 });
-  await page.getByRole("region", { name: "Sales summary" }).waitFor({ timeout: 30000 });
+  await page.getByRole("heading", { name: /Good (morning|afternoon|evening)/ }).waitFor({ timeout: 60000 });
+  await page.getByRole("region", { name: /Odoo summary/ }).waitFor({ timeout: 30000 });
   const initialAlert = (await page.getByRole("alert").allTextContents()).map((text) => text.trim()).filter(Boolean);
   if (initialAlert.length) throw new Error(`INITIAL_REPORT_ERROR: ${initialAlert.join(" | ")}`);
-  for (const label of ["Net sales", "Sales", "Refunds", "Net tax"]) await page.getByText(label, { exact: true }).waitFor({ timeout: 10000 });
+  for (const label of ["Odoo net sales", "Sales", "Refunds", "Net tax"]) await page.getByText(label, { exact: true }).waitFor({ timeout: 10000 });
   if (initialMetrics.recentRefunds > 0 && !(await page.locator("li").filter({ hasText: /Refund ·/ }).count())) {
     throw new Error("RECENT_REFUNDS_NOT_LABELED");
   }
@@ -83,16 +83,16 @@ try {
     const url = new URL(response.url());
     return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "24" && response.ok();
   }, { timeout: 30000 });
-  await page.getByLabel("Reporting period").selectOption("24");
+  await page.getByRole("button", { name: "24 hours", exact: true }).click();
   const rangeResponse = await updated;
   if (!rangeResponse.ok()) throw new Error(`RANGE_RELOAD_HTTP_${rangeResponse.status()}`);
   const rangeData = await rangeResponse.json();
   const rangeMetrics = readMetrics(rangeData, "RANGE_REPORT");
-  await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
+  await page.getByText(/Odoo POS activity · 24 hours/).waitFor({ timeout: 15000 });
   rangeDashboard = (await page.locator("#main-content").innerText()).replace(/\s+/g, " ").slice(0, 1200);
   const rangeAlert = (await page.getByRole("alert").allTextContents()).map((text) => text.trim()).filter(Boolean);
   if (rangeAlert.length) throw new Error(`RANGE_REPORT_ERROR: ${rangeAlert.join(" | ")}`);
-  reportMetrics = { last8Hours: initialMetrics, last24Hours: rangeMetrics };
+  reportMetrics = { last30Days: initialMetrics, last24Hours: rangeMetrics };
 } catch (error) {
   failure = error instanceof Error ? error.message : "UNEXPECTED_FAILURE";
 } finally {
@@ -103,7 +103,7 @@ try {
 const output = {
   generatedAt: new Date().toISOString(),
   deployment: execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  scope: "read-only reporting dashboard UAT; no model call or business writes",
+  scope: "read-only Overview (merged reporting) UAT; no model call or business writes",
   autoRecoverConfigured: sessionStatus?.autoRecoverConfigured === true,
   reportingResponses,
   initialDashboard,

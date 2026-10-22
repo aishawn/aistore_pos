@@ -415,30 +415,29 @@ try {
     return `At 390px, replenishment showed product cards without overflow (${dimensions.document}px); coverage changed to 7 days; no-sales state remains explicitly qualified.`;
   });
 
-  await check("Reporting period selector reloads Odoo dashboard", async () => {
+  await check("Overview period buttons reload Odoo dashboard", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`${base}/reports/dashboard`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const range = page.locator("#dashboard-range");
-    await range.waitFor({ timeout: 15000 });
-    await page.getByRole("region", { name: "Sales summary" }).waitFor({ timeout: 30000 });
+    await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.getByRole("group", { name: "Odoo sales reporting range" }).waitFor({ timeout: 15000 });
+    await page.getByRole("region", { name: /Odoo summary/ }).waitFor({ timeout: 30000 });
     const updatedRange = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.pathname === "/api/odoo/reporting-dashboard" && url.searchParams.get("hours") === "24" && response.ok();
     }, { timeout: 30000 });
-    await range.selectOption("24");
+    await page.getByRole("button", { name: "24 hours", exact: true }).click();
     const rangeResponse = await updatedRange;
     const rangeData = await rangeResponse.json();
-    await page.getByText(/Last 24 hours ·/).waitFor({ timeout: 15000 });
+    await page.getByText(/Odoo POS activity · 24 hours/).waitFor({ timeout: 15000 });
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
-    if (dimensions.document > dimensions.viewport) throw new Error(`Mobile reporting dashboard overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
+    if (dimensions.document > dimensions.viewport) throw new Error(`Mobile overview overflows horizontally: ${dimensions.document}px > ${dimensions.viewport}px`);
     const chartMarks = page.locator('[role="img"][aria-label]');
     if (rangeData.trend?.length) {
-      if (await chartMarks.count() !== rangeData.trend.length) throw new Error("Reporting trend marks do not match the returned data");
+      if (await chartMarks.count() !== rangeData.trend.length) throw new Error("Overview trend marks do not match the returned data");
     } else {
       if (Number(rangeData.transactions) !== 0 || Number(rangeData.refundTransactions) !== 0) {
-        throw new Error("Reporting trend is empty despite sales or refunds in the selected period");
+        throw new Error("Overview trend is empty despite sales or refunds in the selected period");
       }
-      await page.getByText("No sales in this period", { exact: true }).waitFor({ timeout: 10000 });
+      await page.getByText("No Odoo sales in this period", { exact: true }).waitFor({ timeout: 10000 });
     }
     const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
     await launcher.waitFor({ timeout: 10000 });

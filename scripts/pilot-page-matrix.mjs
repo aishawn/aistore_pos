@@ -29,7 +29,7 @@ const pages = [
   { path: "/overview", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Current sale/] },
   // `/dashboard` remains a supported alias and intentionally renders the
   // current Overview surface; accept its current title and live metrics.
-  { path: "/dashboard", expect: [/Odoo POS activity|Reporting Dashboard|No sales in the last 24 hours|Connect Odoo to open Overview/, /Australia|Odoo|sales/i] },
+  { path: "/dashboard", expect: [/Odoo POS activity|Good (morning|afternoon|evening)|Connect Odoo to open Overview/, /Australia|Odoo|sales/i] },
   { path: "/", expect: [/orithos_store1\/00004/, /R2 TEST \|/, /Finalise/] },
   { path: "/history/odoo", expect: [/Sales History/, /\b\d{2,}-\d-\d{6}\b|No Odoo sales are available for this account\./] },
   { path: "/close", expect: [/orithos_store1\/00004/, /Close register/] },
@@ -40,7 +40,8 @@ const pages = [
   { path: "/purchases/odoo", expect: [/Purchases|No purchase|empty|RFQ|0/i] },
   { path: "/stock/replenishment", expect: [/Replenishment|suggest|0|no completed sales/i] },
   { path: "/stock/price-suggestions", expect: [/Price suggestions|margin|Suggestions only|cost|never writes/i] },
-  { path: "/reports/dashboard", expect: [/Reporting|Sales|transaction|\$/i] },
+  // Legacy URL redirects to Overview (Reporting Dashboard was merged away).
+  { path: "/reports/dashboard", expect: [/Good (morning|afternoon|evening)/, /Sales trend|Recent sales|Current sale/] },
   { path: "/reports/actions", expect: [/Actions report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/advanced", expect: [/Advanced report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
   { path: "/reports/inventory", expect: [/Inventory report/i, /Static preview · no live Odoo data/i, /Example filters/i, /No sample rows are available in this preview/i] },
@@ -94,6 +95,29 @@ async function gotoWithTransientRetry(targetPage, url, label) {
     }
   }
   throw new Error(`${label} navigation failed without a result`);
+}
+
+async function openAndCloseAssistant(targetPage, label) {
+  const launcher = targetPage.getByRole("button", { name: "Open Orithos AI assistant" });
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await launcher.waitFor({ state: "visible", timeout: 15000 });
+      await launcher.click();
+      const assistant = targetPage.getByRole("dialog", { name: "Orithos AI assistant" });
+      await assistant.waitFor({ state: "visible", timeout: 20000 });
+      await assistant.getByRole("button", { name: "Close assistant" }).click();
+      await assistant.waitFor({ state: "hidden", timeout: 10000 });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) {
+        await targetPage.keyboard.press("Escape").catch(() => {});
+        await targetPage.waitForTimeout(attempt * 1000);
+      }
+    }
+  }
+  throw new Error(`${label} failed after 3 attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 const browser = await chromium.launch({ headless: true });
@@ -209,14 +233,11 @@ for (const entry of pages) {
   }
   if (entry.path === "/reports/dashboard") {
     try {
-      const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
-      await launcher.waitFor({ timeout: 10000 });
-      await launcher.click();
-      await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
-      await page.getByRole("button", { name: "Close assistant" }).click();
-      uiChecks.push({ name: "Reporting AI entry and panel interaction", status: "PASS", evidence: "The reporting header entry opens and closes the assistant without submitting a prompt." });
+      if (!page.url().includes("/overview")) throw new Error(`Expected redirect to /overview, landed on ${page.url()}`);
+      await openAndCloseAssistant(page, "Overview AI entry");
+      uiChecks.push({ name: "Legacy reporting URL redirects to Overview", status: "PASS", evidence: " /reports/dashboard lands on Overview and the assistant opens/closes." });
     } catch (error) {
-      uiChecks.push({ name: "Reporting AI entry and panel interaction", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+      uiChecks.push({ name: "Legacy reporting URL redirects to Overview", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
     }
   }
   matrix.push({
@@ -242,10 +263,10 @@ for (const entry of pages) {
   if (entry.path === "/customers/odoo") {
     try {
       const launcher = page.getByRole("button", { name: "Open Orithos AI assistant" });
-      await launcher.waitFor({ timeout: 10000 });
+      await launcher.waitFor({ state: "visible", timeout: 15000 });
       await launcher.click();
-      const assistant = page.locator('[role="dialog"][aria-label="Orithos AI assistant"]');
-      await assistant.waitFor({ state: "visible", timeout: 10000 });
+      const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
+      await assistant.waitFor({ state: "visible", timeout: 20000 });
       if (await launcher.getAttribute("aria-expanded") !== "true") throw new Error("The customer-page assistant launcher did not report its open state");
       await assistant.getByRole("button", { name: "Close assistant" }).click();
       await assistant.waitFor({ state: "hidden", timeout: 10000 });
@@ -287,10 +308,20 @@ await page.setViewportSize({ width: 1440, height: 900 });
 
 // Roles: exercise permission assignment through the UI, verify the stored
 // grant through the API, and always clean up the unique test role.
-let roleResult = "SKIP";
+let roleResult = "SKIP_UNSAFE_WRITE_GATE";
 let temporaryRoleId;
 let roleName;
-try {
+const allowRoleWrites = process.env.PILOT_ALLOW_ROLE_WRITES === "true";
+let isolatedRoleUat = false;
+if (allowRoleWrites) {
+  const isolationResponse = await context.request.get(`${base}/api/public/uat-context`).catch(() => null);
+  const isolationBody = await isolationResponse?.json().catch(() => null);
+  isolatedRoleUat = isolationResponse?.ok() === true
+    && isolationBody?.isolated === true
+    && [isolationBody.database, isolationBody.db, isolationBody.odooDatabase].includes("aipos_uat");
+  if (!isolatedRoleUat) roleResult = "SKIP_ISOLATION_NOT_PROVEN";
+}
+if (allowRoleWrites && isolatedRoleUat) try {
   roleName = `Pilot UAT ${Date.now().toString().slice(-6)}`;
   await gotoWithTransientRetry(page, `${base}/settings/roles`, "roles settings");
   await page.getByRole("button", { name: /New role/i }).click();

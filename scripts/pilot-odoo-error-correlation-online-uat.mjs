@@ -18,7 +18,7 @@ const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs
 const screenshotDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-24-odoo-error-correlation-online");
 const routes = [
   { path: "/stock/price-suggestions", heading: "Price suggestions", apiPath: "/api/odoo/price-suggestions" },
-  { path: "/reports/dashboard", heading: "Reporting dashboard", apiPath: "/api/odoo/reporting-dashboard" },
+  { path: "/overview", heading: "Overview could not load", apiPath: "/api/odoo/reporting-dashboard" },
 ];
 const browser = await chromium.launch({ headless: true });
 const checks = [];

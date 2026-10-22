@@ -815,7 +815,7 @@ Statuses:
 - 商品与客户：目录、详情、编辑、新建、CSV 预览导入、分类/供应商分配、合并工作区、图片展示、客户付款/账单/销售历史。
 - 采购与库存：供应商、RFQ、收货/退货/调拨表单、补货计划、库存列表、盘点、外部盘点、采购周期、批量调价和封顶价。
 - 平台与设置：店铺列表/详情、租户恢复、价目表、角色权限、用户、Outlet/Register、税率、收据、支付和公司设置。
-- 报表与 AI：Odoo Overview、Reporting Dashboard、销售/采购/库存等页面；AI 助手和 Sommelier 的页面状态、权限和匿名鉴权保护。
+- 报表与 AI：Odoo Overview（已合并原 Reporting Dashboard）、销售/采购/库存等页面；AI 助手和 Sommelier 的页面状态、权限和匿名鉴权保护。 `/reports/dashboard` 重定向到 `/overview`。
 
 ### 尚未完成或尚未验收
 
@@ -1114,7 +1114,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 | Capability | Status | Notes |
 |---|---|---|
-| Odoo reporting dashboard | Accepted | `/reports/dashboard` browser UAT pass; 2026-10-16 refinements add a layout-preserving skeleton, retryable first-load and refresh failure states, explicit data-through vs loaded timestamps, and hide comparisons on low prior-period baselines. Commit `83815f2` is deployed and authenticated read-only smoke passed. |
+| Odoo Overview (merged reporting) | Accepted (source) | Reporting Dashboard merged into `/overview` (Net tax, open registers, recent sales). `/reports/dashboard` redirects to Overview. Sidebar Reporting group removed. Deploy + Demo SHA verification still required before claiming production. |
 | Cashier assistant / NL reports | In progress | Spring Graph NLQ is live in the latest public read-only matrix: assistant product lookup and chat composer passed; deterministic report/workflow fast paths now cover common sales and quantity ranges without the classifier, including Chinese best-selling rankings. AI report results now have a functional column visibility menu with export/totals following visible columns. Provider routing for `qwen3.8-flash` is covered by `10facb6`. Report RO password and formal report SQL acceptance remain outstanding. Java 21 gate currently passes 233 tests. |
 | Wine / sommelier assistant | In progress | Odoo remains authoritative; public read-only matrix passed identify, recommend, pitch, ask and similar flows. Register-specific warehouse context, tax/pricelist customer totals and real label photo extraction remain unverified. |
 | Video loss-prevention AI | Planned | Explicitly post-MVP |

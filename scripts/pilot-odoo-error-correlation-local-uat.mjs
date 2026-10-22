@@ -52,7 +52,7 @@ try {
 
   for (const item of [
     { path: "/stock/price-suggestions", heading: "Price suggestions" },
-    { path: "/reports/dashboard", heading: "Odoo reporting" },
+    { path: "/overview", heading: "Overview could not load" },
   ]) {
     const page = await context.newPage();
     const errors = [];

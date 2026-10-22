@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Archive,
   ArrowRight,
+  ArrowUpRight,
   BarChart3,
   LoaderCircle,
   Package,
@@ -18,8 +19,18 @@ import {
 import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
+import { formatOdooDateTime, formatOdooGroupedDate, formatStoreEpoch } from "@/lib/odoo-date";
 import { friendlyProductName } from "@/lib/product-display-name";
+
+type RecentSale = {
+  id: number;
+  name: string;
+  pos_reference: string | false;
+  date_order: string;
+  amount_total: number;
+  partner_id: [number, string] | false;
+  session_id: [number, string] | false;
+};
 
 type OverviewData = {
   rangeHours: number;
@@ -40,6 +51,7 @@ type OverviewData = {
   itemsSold: number;
   openRegisters: number;
   trend: { label: string; revenue: number; transactions: number }[];
+  recentSales: RecentSale[];
   topProducts: { id: number; name: string; qty: number; revenue: number }[];
   byCategory: { name: string; revenue: number; share: number }[];
   compare: {
@@ -148,6 +160,7 @@ export function OrithosOverviewPage() {
   const [r2ArchiveUnavailable, setR2ArchiveUnavailable] = useState(false);
   const [r2RetryKey, setR2RetryKey] = useState(0);
   const [sampleDataActive, setSampleDataActive] = useState(false);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const requestRevision = useRef(0);
   const greeting = useMemo(() => greetingForTimezone(data?.timezone ?? "Australia/Adelaide"), [data?.timezone]);
 
@@ -168,20 +181,28 @@ export function OrithosOverviewPage() {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
+    setRequestId(null);
     try {
       // Establish or restore the browser's Odoo cookie before loading the
       // dashboard, so the first report request does not need a 401 retry.
       await getOdooSessionStatus();
       if (revision !== requestRevision.current) return;
+      const correlationId = crypto.randomUUID();
+      setRequestId(correlationId);
       const response = await fetchOdooRoute(`/api/odoo/reporting-dashboard?hours=${hours}`, {
         credentials: "same-origin",
         cache: "no-store",
+        headers: { "X-Correlation-ID": correlationId },
       });
+      if (revision !== requestRevision.current) return;
+      setRequestId(response.headers.get("x-correlation-id") || correlationId);
       const payload = await response.json().catch(() => null) as OverviewData | { message?: string } | null;
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
-        setNeedsConnection(response.status === 401 || response.status === 503);
+        // Temporary Odoo outages stay retryable; only a missing/expired session
+        // should send the operator to Integrations.
+        setNeedsConnection(response.status === 401);
         throw new Error(message || `Could not load overview (${response.status}).`);
       }
       if (!payload || !("revenue" in payload) || !Array.isArray(payload.trend)) {
@@ -192,6 +213,7 @@ export function OrithosOverviewPage() {
       setData({
         ...payload,
         itemsSold: Number(payload.itemsSold ?? 0),
+        recentSales: Array.isArray(payload.recentSales) ? payload.recentSales as RecentSale[] : [],
         topProducts: Array.isArray(payload.topProducts) ? payload.topProducts : [],
         byCategory: Array.isArray(payload.byCategory) ? payload.byCategory : [],
         compare: payload.compare ?? {
@@ -293,12 +315,15 @@ export function OrithosOverviewPage() {
   if (error && !data) {
     return (
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
-        <section role="alert" className="max-w-lg rounded-lg border border-red-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+        <section role="alert" className="w-full max-w-lg rounded-lg border border-red-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
           <AlertCircle className="mx-auto text-red-700" size={28} />
           <h1 className="mt-4 text-lg font-semibold text-[var(--oh-text)]">Overview could not load</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{error}</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+            {error}
+            {requestId ? <span className="mt-2 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}
+          </p>
           <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">
-            <RefreshCw size={15} /> Try again
+            <RefreshCw size={15} /> Retry
           </button>
         </section>
       </main>
@@ -342,7 +367,13 @@ export function OrithosOverviewPage() {
 
           {error && (
             <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-900">
-              <span className="flex items-start gap-2"><AlertCircle size={15} className="mt-0.5 shrink-0" />{error} The overview below is the last successful result and may be out of date.</span>
+              <span className="flex min-w-0 items-start gap-2">
+                <AlertCircle size={15} className="mt-0.5 shrink-0" />
+                <span>
+                  {error} The overview below is the last successful result and may be out of date.
+                  {requestId ? <span className="mt-1 block break-all font-mono text-[11px] text-red-800/80">Request ID: {requestId}</span> : null}
+                </span>
+              </span>
               <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-red-300 bg-white px-2.5 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} Retry</button>
             </div>
           )}
@@ -361,7 +392,7 @@ export function OrithosOverviewPage() {
             </section>
           )}
 
-          <section aria-label={`${rangeLabel} Odoo summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label={`${rangeLabel} Odoo summary`} className="grid shrink-0 gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <KpiCard
               title="Odoo net sales"
               value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")}
@@ -391,6 +422,18 @@ export function OrithosOverviewPage() {
               delta={data && data.compare.itemsSold >= 5 ? data.compare.itemsSoldDeltaPct : null}
               comparisonMessage={data && data.compare.itemsSold < 5 ? "Prior activity too small to compare" : undefined}
               icon={<Archive size={15} />}
+            />
+            <KpiCard
+              title="Net tax"
+              value={formatMoney(data?.tax ?? 0, data?.currency ?? "AUD")}
+              detail="Sales tax less refunded tax"
+              icon={<ArrowUpRight size={15} />}
+            />
+            <KpiCard
+              title="Open registers"
+              value={new Intl.NumberFormat("en-AU").format(data?.openRegisters ?? 0)}
+              detail="Across the current Odoo company"
+              icon={<Store size={15} />}
             />
           </section>
 
@@ -531,9 +574,50 @@ export function OrithosOverviewPage() {
             </section>
           </div>
 
+          <section className="flex min-h-0 shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-3 py-2">
+              <div>
+                <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Recent sales &amp; refunds</h2>
+                <p className="oh-type-meta text-[var(--oh-muted)]">Latest completed Odoo POS orders · {rangeLabel}</p>
+              </div>
+              <Link href="/history/odoo" className="oh-type-meta inline-flex min-h-11 items-center gap-1 px-2 font-semibold text-[var(--oh-primary)] hover:underline">
+                View all <ArrowUpRight size={14} />
+              </Link>
+            </div>
+            {data?.recentSales.length ? (
+              <ul className="divide-y divide-[var(--oh-border)]">
+                {data.recentSales.slice(0, 8).map((sale) => (
+                  <li key={sale.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="oh-type-label truncate font-semibold text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p>
+                      <p className="oh-type-meta mt-0.5 truncate text-[var(--oh-muted)]">
+                        {sale.amount_total < 0 ? "Refund · " : "Sale · "}
+                        {sale.partner_id ? sale.partner_id[1] : "Walk-in customer"}
+                        {" · "}
+                        {formatOdooDateTime(sale.date_order, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <span className={cn("oh-type-label shrink-0 font-semibold tabular-nums", sale.amount_total < 0 ? "text-[var(--oh-danger)]" : "text-[var(--oh-text)]")}>
+                      {formatMoney(sale.amount_total, data.currency)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="grid place-items-center px-3 py-5 text-center">
+                <div>
+                  <p className="oh-type-label font-medium text-[var(--oh-text)]">No recent sales</p>
+                  <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Widen the period or open sales history for all Odoo rows.</p>
+                  <Link href="/history/odoo" className="oh-type-label mt-2 inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
+                    Open sales history
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+
           <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">
-            Open registers: {data?.openRegisters ?? 0}.{" "}
-            <Link href="/reports/dashboard" className="font-semibold text-[var(--oh-primary)] hover:underline">Reporting</Link>
+            Times use the store timezone ({data?.timezone ?? "Australia/Adelaide"}). Net sales deduct refunds; R2 archive is not included in Odoo totals.
           </p>
         </div>
 

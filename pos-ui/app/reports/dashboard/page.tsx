@@ -1,8 +1,8 @@
+import { redirect } from "next/navigation";
+
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 
-import { OdooReportingDashboard } from "@/components/OdooReportingDashboard";
-
+/** Former Reporting Dashboard — merged into Overview. */
 export default function ReportingDashboardPage() {
-  return <OdooReportingDashboard />;
+  redirect("/overview");
 }

@@ -34,8 +34,8 @@ for (const scenario of [
     if (url.pathname === "/api/odoo/session") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ user: { id: 1, name: "Odoo Fixture", username: "admin" }, autoRecoverConfigured: false }) });
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ code: 0, message: "OK", data: null }) });
   });
-  await page.goto(`${base}/reports/dashboard?__uat=reporting-error-${scenario.status}`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  const expectedHeading = scenario.expectConnectionPrompt ? "Connect Odoo to view live reports" : "Could not load the reporting dashboard";
+  await page.goto(`${base}/overview?__uat=reporting-error-${scenario.status}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const expectedHeading = scenario.expectConnectionPrompt ? "Connect Odoo to open Overview" : "Overview could not load";
   await page.getByRole("heading", { name: expectedHeading, exact: true }).waitFor({ timeout: 30000 });
   const body = await page.locator("body").innerText();
   const retryVisible = await page.getByRole("button", { name: "Retry", exact: true }).isVisible().catch(() => false);

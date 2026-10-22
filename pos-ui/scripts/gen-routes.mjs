@@ -24,7 +24,7 @@ const ROUTES = [
   ["Promotions", "/promotions"],
   ["Shelf Tickets", "/tickets"],
   ["Media Centre", "/media"],
-  ["Reporting Dashboard", "/reports/dashboard"],
+  ["Overview", "/overview"],
   ["Security Centre", "/security"],
   ["Sales Reports", "/reports/sales"],
   ["Inventory Reports", "/reports/inventory"],

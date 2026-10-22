@@ -1,3 +1,21 @@
+## 2026-10-23 Overview 合并 Reporting Dashboard（本轮最新）
+
+- [x] 产品决策：保留 `/overview` 为唯一经营看板；去掉侧栏 Reporting 分组与独立 Reporting Dashboard 页。
+- [x] Overview 并入原 Dashboard 独有块：Net tax、Open registers KPI、Recent sales & refunds；503 仅 Retry（不再误导去 Connect）；请求带 correlation ID。
+- [x] `/reports/dashboard` → redirect `/overview`；Favourites / date-time / AI placement / UAT 脚本已改指向 Overview。
+- [x] 删除 `OdooReportingDashboard.tsx`；API `/api/odoo/reporting-dashboard` 仍由 Overview 使用。
+- [ ] 待 `pos-ui` typecheck 后合批部署；Demo runtime SHA 核对前不得宣称线上已合并。Sales History 仍独立保留。整体仍 **NO-GO**。
+
+## 2026-10-23 Customer Odoo 页面本地验证（本轮最新）
+
+- [x] 修复 `OdooCustomerGroupsPage.tsx` 列表分页 JSX 多余闭合标签；刷新依赖改为 effect 显式监听，定向 ESLint 零 warning/error。
+- [x] `/customer-groups` 接入 Odoo 客户分类页；非管理员只读，管理员可新建、改名、删除；Customer 目录空分组提示改为真实的 Odoo 管理路径。
+- [x] 客户目录 Playwright fixture：**10/10 PASS**（390/1440px），覆盖读目录、无横向溢出、创建失败保留输入重试、价目表与分组关联 payload；4 个模拟写请求全部由 fixture 截获，生产写入 0。证据：`docs/UAT_CUSTOMER_DIRECTORY_LOCAL_2026-10-23_CURRENT.json`。
+- [x] 客户分组 Playwright fixture：**9/9 PASS**（管理员 390/1440px CRUD、员工 390px 无写入口）；6 个模拟 CRUD 请求全部由 fixture 截获，生产写入 0。证据：`docs/UAT_CUSTOMER_GROUPS_LOCAL_2026-10-23_CURRENT.json`；截图：`docs/screenshots/2026-10-23-customer-groups-local/`。
+- [x] 前端 `npm run typecheck`、目标文件 ESLint、两份 UAT 脚本 `node --check` 与目标文件 `git diff --check` 通过；截图已人工查看。
+- [ ] 未运行单测、生产 build 或 Docker build（本轮遵守不本地 build）；Node 为 22.22.2，项目要求 24+，需在 Node 24 CI 重复 typecheck/lint/UAT。
+- [ ] 两份 UAT 测试源 SHA 为 `d62b596eeebd3135aa105645fc841a01407121de`；测试后 HEAD 前进到 `110f5852181864541ed5d8d47e4f23f22cedade5`（只调整 Close Register 模态尺寸）。Demo 前后端仍为 `b4719e7c51c2ffebdcd8b0916e7186480c55201d`，工作树 dirty，线上未验证本轮功能。因工作树同时含 `pos-api` 改动，必须先冻结候选，再在 Java 21 对完全相同 SHA 运行 `mvn -B clean verify`；完成后方能推送/部署并重跑线上验收。整体仍 **NO-GO**。
+
 ## 2026-10-23 Close Register 模态入口（源码）
 
 - [x] 抽出 `OdooCloseRegisterForm`（`page` / `modal`）；`/close` 仍为全页。

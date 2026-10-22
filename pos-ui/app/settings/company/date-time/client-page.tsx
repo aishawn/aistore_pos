@@ -51,7 +51,7 @@ export default function DateTimeSettingsClient() {
               </li>
             ))}
           </ul>
-          <Link href="/reports/dashboard" className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">View reporting periods <ArrowRight size={15} aria-hidden="true" /></Link>
+          <Link href="/overview" className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">View Overview periods <ArrowRight size={15} aria-hidden="true" /></Link>
         </section>
       </div>
     </CompanySettingsScaffold>

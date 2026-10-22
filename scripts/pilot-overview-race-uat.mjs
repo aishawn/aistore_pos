@@ -43,6 +43,7 @@ function payload(hours) {
     itemsSold: hours,
     openRegisters: 0,
     trend: [{ label: "2026-10-18T00:00:00Z", revenue: hours, transactions: hours }],
+    recentSales: [],
     topProducts: [],
     byCategory: [],
     compare: { revenue: 0, transactions: 0, itemsSold: 0, revenueDeltaPct: null, transactionsDeltaPct: null, itemsSoldDeltaPct: null, averageSaleDeltaPct: null },

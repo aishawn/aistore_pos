@@ -78,13 +78,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     ],
   },
   {
-    label: "Reporting",
-    icon: "reporting",
-    items: [
-      { label: "Reporting Dashboard", href: "/reports/dashboard" },
-    ],
-  },
-  {
     label: "Orithos AI",
     icon: "sommelier",
     items: [
