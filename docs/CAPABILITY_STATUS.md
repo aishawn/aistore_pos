@@ -1473,9 +1473,21 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 本地静态验证：前端 typecheck PASS；AI UAT 脚本语法 3/3 PASS；diff check PASS。
 - 尚未完成 Java 21 exact-SHA Maven gate，不能推送或宣称线上生效。
 - 最近线上基线仍记录为 9 条安全边界 FAIL；部署后必须逐条复验。
+
+## 2026-10-22 当前目标完整问法回归
+
+- 当前目录实际为 **290** 条唯一问法；Demo Assistant API-only 回归结果为 **221 PASS / 53 BLOCKED / 16 FAIL**，`writeRequests` 为 `none: assistant API only`。
+- 证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-GOAL-RERUN.json`。
+- 16 条失败集中在旧 runtime `582b92fb` 未包含当前源码的 `guided_action` 安全边界和 `product_count` 快捷路径；当前源码为 `1df2aeb6...`，runtime/source 不一致。
+- 试点继续保持 **NO-GO**：尚无同候选 SHA 的 Java 21 `mvn -B clean verify` 门禁和部署后完整复验。
 - 定向基线证据：`docs/UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`，旧 runtime `582b92fb`，`0/9/0`（PASS/FAIL/BLOCKED），无业务写入。
 ## 2026-10-22 前端批次发布状态
 
 - 前端/UI 批次提交 `84d23803` 已推送，但 Dokploy 返回 `301 Branch Not Match`，尚未构建或部署。
 - `/api/public/version` 仍返回前后端 `582b92fb`；线上验证不能归因到 `84d23803`。
 - 发布阻断属于 Dokploy Source/Git 绑定，不是前端 typecheck 或脚本语法失败。
+## 2026-10-22 前端可访问性复验
+
+- AI Quick actions 的控制关系已补齐；本地 5 视口 `5/5 PASS`，价格建议产品化 fixture `12/12 PASS`。
+- TypeScript 与定向 ESLint 通过；所有 fixture 请求无业务写入。
+- 证据：`docs/UAT_AI_FOCUS_LOCAL_2026-10-22_RECHECK.json`。线上仍未验证，等待 Dokploy Source/Git 修正。

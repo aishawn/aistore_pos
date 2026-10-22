@@ -2729,10 +2729,25 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] 部署前需复测 9 条安全边界问法，以及完整 AI 问法目录；业务写入保持 0。
 - 定向线上基线证据：`docs/UAT_AI_WRITE_SAFETY_BASELINE_2026-10-22.json`，旧 runtime `582b92fb` 为 `0 PASS / 9 FAIL / 0 BLOCKED`，Assistant API-only，业务写入 `0`。
 
+## 2026-10-22 完整问法回归（当前目标）
+
+- [x] 使用当前 290 条唯一问法目录完成 Demo Assistant API-only 回归：`221 PASS / 53 BLOCKED / 16 FAIL`，业务写入为 0。
+- [x] 新证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-GOAL-RERUN.json`。
+- [ ] 16 个 FAIL 来自旧 runtime `582b92fb` 尚未包含当前源码的 `guided_action` / `product_count` 语义；当前源码候选为 `1df2aeb6...`，两者不匹配，不能据此宣称当前代码线上失败或通过。
+- [ ] 下一步仍是整理干净候选、取得同 SHA Java 21 `mvn -B clean verify` 证据，部署后核对 `/api/public/version`，再重跑完整目录及 companion UAT。
+
 ## 2026-10-22 前端批次部署尝试
 
 - [x] 前端/UI 与 UAT 文档批次已整理为提交 `84d23803`，不包含 `pos-api` 改动；已推送 `origin/main`。
 - [ ] Dokploy webhook 对该提交返回 HTTP `301 Branch Not Match`；按规则停止重试，未把 webhook 返回当作构建成功。
 - [x] 部署后版本探针仍为前后端 `582b92fb`，确认 `84d23803` 尚未上线。
 - [ ] 需在 Dokploy Source/Git 核对仓库 `aishawn/aistore_pos`、分支 `main`、根目录 `/`、Compose `docker-compose.yml`，修正后再触发一次部署。
+
+## 2026-10-22 前端可访问性复验
+
+- [x] 修复 AI Quick actions 控制区域缺少 `id`、展开态 `aria-expanded` 和 `aria-controls` 的问题。
+- [x] 正确 tenant host + Webpack dev fixture：AI disabled/focus/accessibility `5/5 PASS`（320/390/768/1024/1440），无 AI/转写请求、无业务写入。证据：`docs/UAT_AI_FOCUS_LOCAL_2026-10-22_RECHECK.json`。
+- [x] 价格建议产品化 fixture `12/12 PASS`（390/1440），无业务写入。
+- [x] `npm run typecheck` 与定向 ESLint 通过。
+- [ ] 本批仍需 Dokploy Source/Git 修正后线上验证；当前 webhook 仍为 `301 Branch Not Match`。
 

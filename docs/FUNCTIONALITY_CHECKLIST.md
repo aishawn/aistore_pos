@@ -782,3 +782,11 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] 线上版本探针仍为 `582b92fb`，因此本批尚未线上验证。
 - [ ] 修正 Dokploy Source/Git 后再部署并重跑 UI/AI 只读验收。
 
+## 2026-10-22 前端可访问性复验
+
+- [x] AI Quick actions `aria-expanded` / `aria-controls` / controlled region。
+- [x] AI disabled/focus fixture：`5/5 PASS`，五种视口。
+- [x] 价格建议产品化 fixture：`12/12 PASS`，390/1440px。
+- [x] TypeScript、定向 ESLint、脚本语法检查。
+- [ ] Dokploy 线上 UI 验证，受 Source/Git `301 Branch Not Match` 阻断。
+

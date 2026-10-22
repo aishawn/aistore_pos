@@ -1399,7 +1399,10 @@ export function SellAiPanel({
             </div>
 
             {quickActionsOpen ? (
-              <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2.5">
+              <div
+                id="orithos-ai-quick-actions"
+                className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2.5"
+              >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
                     Quick actions
@@ -1407,6 +1410,8 @@ export function SellAiPanel({
                   <button
                     type="button"
                     onClick={() => setQuickActionsOpen(false)}
+                    aria-expanded={true}
+                    aria-controls="orithos-ai-quick-actions"
                     className="inline-flex min-h-10 items-center rounded-lg px-2 text-[13px] font-medium text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]"
                   >
                     Hide
@@ -1423,6 +1428,7 @@ export function SellAiPanel({
                     type="button"
                     onClick={() => setQuickActionsOpen(true)}
                     aria-expanded={false}
+                    aria-controls="orithos-ai-quick-actions"
                     className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
                   >
                     <Plus size={15} />
