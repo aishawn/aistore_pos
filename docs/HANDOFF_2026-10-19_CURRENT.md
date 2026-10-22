@@ -2535,3 +2535,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 定价/库存只读套件为 `8 PASS / 4 BLOCKED / 0 FAIL`，`blockedWrites=0`；Price Suggestions 在 390/1440px 通过，证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_RUNTIME-E0A867B.json`。
 - 交互套件为 `10 PASS / 4 FAIL`。失败均为旧数据条件下商品目录、销售历史和补货加载超时；没有页面错误或业务写入，证据 `docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B.json`。
 - 这次确认了 Price Suggestions 和关班/销售历史焦点批次已进入线上 runtime；关班/销售历史的完整数据路径仍需有数据的 Odoo 只读环境补测。
+## 2026-10-22 e0 runtime AI recheck（最新）
+
+- [x] Demo `/api/public/version` 当前前后端均为 `e0a867b0387c7760c1dfc1bea9a5c374debb0930`。
+- [x] 247 条只读问法复测结果：**188 PASS / 44 BLOCKED / 15 FAIL**；44 条在三次重试后仍返回 `50210`，15 条为固定日期销售问法没有源数据行。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_FULL-247.json`。
+- [x] `writeRequests` 仍为 `none: assistant API only`，没有销售、采购、收货、库存、调价、退款或关班写入。
+- [ ] 该结果是当前 runtime 的 provider/数据可用性基线；runner source 为文档提交 `c1669e53`，不能作为 AI 后端修复已部署的证明。候选 `601ae0dd` 仍需同 SHA Java 21 `mvn -B clean verify` 和匹配 runtime。
+

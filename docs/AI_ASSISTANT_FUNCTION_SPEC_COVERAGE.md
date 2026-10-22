@@ -1,5 +1,13 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-22 e0 runtime coverage
+
+The current version-bound full run is **188 PASS / 44 BLOCKED / 15 FAIL**.
+`50210` blocks persisted after three retries, while dated sales failures had
+no source-backed rows. This separates provider/data availability from route
+assertions; no business writes were issued. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_FULL-247.json`.
+
 ## 2026-10-22 companion coverage gaps
 
 The read-only companion suite confirms the platform guards and metrics, but

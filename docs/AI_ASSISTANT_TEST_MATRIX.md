@@ -1,5 +1,16 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 e0 runtime full recheck
+
+The current runtime `e0a867b0387c7760c1dfc1bea9a5c374debb0930` returned
+**188 PASS / 44 BLOCKED / 15 FAIL** for the 247-case catalogue. All 44 blocks
+were `50210` after three attempts; the 15 failures were dated sales queries
+with no source rows. `writeRequests` remained `none: assistant API only`.
+Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_FULL-247.json`.
+
+This is a current runtime availability/data baseline, not proof that the local
+AI route fixes are deployed.
+
 ## 2026-10-22 companion suite result
 
 Availability **3/3**, route **9/9**, surface/auth **11/11**, and metrics **9/9**

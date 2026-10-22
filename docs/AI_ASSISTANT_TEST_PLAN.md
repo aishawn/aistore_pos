@@ -1,5 +1,21 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 e0a867b0 runtime recheck
+
+The full 247-case matrix was rerun against the currently served runtime
+`e0a867b0387c7760c1dfc1bea9a5c374debb0930`: **188 PASS / 44 BLOCKED / 15
+FAIL**. The 44 blocked cases returned business code `50210` after three
+transient retries, covering help, safety-boundary and other assistant calls;
+the 15 deterministic failures are dated sales questions whose source-backed
+rows are absent. The suite remained Assistant API-only with zero business
+writes. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_FULL-247.json`.
+
+The runner source was the documentation-only `c1669e53` and was intentionally
+not treated as an AI backend fix. The runtime is version-bound for this
+observation, but provider availability and source data still need recovery
+before the route candidate can be accepted.
+
 ## 2026-10-22 companion AI read-only suite
 
 The current Demo runtime also completed the companion checks: availability
