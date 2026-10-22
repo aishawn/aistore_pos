@@ -145,6 +145,7 @@ class ClassifyQueryNodeTest {
                 {"下单啤酒 12 箱", "/orders"},
                 {"保存这些价格建议", "/stock/capped-pricing"},
                   {"Set these prices now", "/stock/capped-pricing"},
+                  {"Apply the new prices", "/stock/capped-pricing"},
                   {"Change these prices", "/stock/capped-pricing"},
                   {"设置这些价格", "/stock/capped-pricing"},
                 {"直接把价格改了", "/stock/capped-pricing"},
