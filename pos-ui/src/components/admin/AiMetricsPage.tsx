@@ -63,7 +63,7 @@ export function AiMetricsPage() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Setup · Store admin</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI query health</h1>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">AI Query Health</h1>
           <p className="oh-type-label mt-1 max-w-2xl text-[var(--oh-muted)]">
             Ops view for this store: request volume, AI guard pass/reject rate, latency, and estimated tokens.
             Not a Q&amp;A quality scorecard — questions, answers, and generated SQL are never shown.

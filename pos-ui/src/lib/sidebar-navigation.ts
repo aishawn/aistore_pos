@@ -122,7 +122,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Account", href: "/settings/account" },
       // Ops health for store admins — not a cashier / Q&A quality surface.
       {
-        label: "AI query health",
+        label: "AI Query Health",
         href: "/reports/ai/metrics",
         adminOnly: true,
         hint: "Admin-only volume, latency, and guard rates",

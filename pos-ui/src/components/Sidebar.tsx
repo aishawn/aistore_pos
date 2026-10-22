@@ -12,21 +12,10 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  ArrowRightLeft,
-  Keyboard,
-  Mail,
-  CreditCard,
   Percent,
-  Monitor,
-  Printer,
-  Barcode,
-  SlidersHorizontal,
-  MapPin,
-  Building2,
   Wine,
   ScanLine,
   LayoutDashboard,
-  type LucideIcon,
 } from "lucide-react";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import {
@@ -49,25 +38,6 @@ const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?
   reporting: BarChart3,
   settings: Settings,
   marketing: Percent,
-};
-
-/** Per-item icons for the Settings sub-menu (matches Shopfront Setup drawer). */
-const SETTINGS_SUB_ICONS: Record<string, LucideIcon> = {
-  "/settings": Settings,
-  "/settings/company/general": Settings,
-  "/settings/account": ArrowRightLeft,
-  "/settings/keys": Keyboard,
-  "/settings/statements": Mail,
-  "/settings/payment": CreditCard,
-  "/settings/tax": Percent,
-  "/settings/customerdisplay": Monitor,
-  "/settings/surcharging": CreditCard,
-  "/settings/hardware": Printer,
-  "/settings/barcodes": Barcode,
-  "/settings/pricesets": SlidersHorizontal,
-  "/settings/registers-outlets": MapPin,
-  "/reports/ai/metrics": BarChart3,
-  "/enterprise": Building2,
 };
 
 function isGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
@@ -245,22 +215,21 @@ function SidebarNavGroup({
         <ul id={submenuId} className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
           {group.items.map((item) => {
             const active = subItemActive(item.href, pathname, group.items);
-            const SubIcon = SETTINGS_SUB_ICONS[item.href];
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   tabIndex={tabIndex}
+                  title={item.hint}
                   onClick={(event) => {
                     guardNav(event, item.href);
                     if (!event.defaultPrevented) onNavigate?.();
                   }}
                   className={cn(
-                    "oh-type-label relative flex gap-2 rounded-md px-2 py-2 font-medium transition-colors",
-                    item.hint ? "items-start whitespace-normal" : "items-center whitespace-nowrap",
+                    "oh-type-label relative flex items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 font-medium transition-colors",
                     active
                       ? "bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
-                      : "text-[var(--oh-sidebar-text)] hover:text-[var(--oh-sidebar-text-hover)]",
+                      : "text-[var(--oh-sidebar-text)] hover:bg-[var(--oh-sidebar-active-bg)] hover:text-[var(--oh-sidebar-text-hover)]",
                   )}
                 >
                   {active && (
@@ -275,24 +244,8 @@ function SidebarNavGroup({
                         active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--oh-primary)]",
                       )}
                     />
-                  ) : SubIcon ? (
-                    <SubIcon
-                      size={14}
-                      strokeWidth={1.75}
-                      className={cn(
-                        "shrink-0",
-                        active ? "text-[var(--oh-sidebar-active)]" : "text-[var(--oh-primary)]",
-                      )}
-                    />
                   ) : null}
-                  {item.hint ? (
-                    <span className="min-w-0">
-                      <span className="block">{item.more ? "More" : item.label}</span>
-                      <span className="mt-0.5 block text-[12px] font-normal leading-4 text-[var(--oh-muted)]">
-                        {item.hint}
-                      </span>
-                    </span>
-                  ) : item.more ? "More" : item.label}
+                  {item.more ? "More" : item.label}
                 </Link>
               </li>
             );
