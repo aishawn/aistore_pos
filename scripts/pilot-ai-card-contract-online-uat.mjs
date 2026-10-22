@@ -58,6 +58,9 @@ try {
       && Boolean(card)
       && card.status !== "unavailable"
       && card.ctaRoute === item.route
+      && card.cta?.route === item.route
+      && typeof card.cta?.label === "string"
+      && card.cta?.label === card.ctaLabel
       && (!item.answerPattern || item.answerPattern.test(String(data.answer ?? "")))
       && Array.isArray(data.writeRequests)
       && data.writeRequests.length === 0;
