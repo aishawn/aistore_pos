@@ -231,12 +231,14 @@ public class PosAssistantGraphService {
                 : "/stock/capped-pricing".equals(route) ? "/stock/capped-pricing"
                 : "/stock/replenishment";
         List<Map<String, Object>> items = cardItems(type, answer);
+        String source = "sommelier".equals(type) ? "catalogue"
+                : "guided_action".equals(type) ? "assistant" : "odoo";
         return List.of(new AssistantCard(
                 type,
                 title,
                 cardSummary(answer, items),
                 items,
-                "sommelier".equals(type) ? "catalogue" : "odoo",
+                source,
                 Instant.now().toString(),
                 unavailable ? "Live data is unavailable"
                         : empty ? emptyReason(type) : null,

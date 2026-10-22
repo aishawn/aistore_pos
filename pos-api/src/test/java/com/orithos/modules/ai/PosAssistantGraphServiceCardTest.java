@@ -77,6 +77,7 @@ class PosAssistantGraphServiceCardTest {
         AssistantCard card = cards.getFirst();
         assertEquals("guided_action", card.type());
         assertEquals("ready", card.status());
+        assertEquals("assistant", card.source());
         assertEquals("/products", card.ctaRoute());
         assertEquals("Open workflow", card.ctaLabel());
         assertEquals(List.of(), card.items());
