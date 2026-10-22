@@ -2318,3 +2318,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] This UI batch is local-only until Dokploy deployment completes and Demo `/api/public/version` is read back. The user-reported Dokploy status is successful, but no SHA was supplied, so runtime identity and online page verification remain pending.
 - [ ] Remaining release gates are unchanged: isolated Odoo transaction/reconciliation, second-tenant isolation, backup recovery, device/offline POS, live price suggestions, and live inventory AI report.
 
+### Deployment result for `cfd6967`
+
+- [x] Commit `cfd6967` was pushed to `origin/main`.
+- [ ] The provided Dokploy Compose webhook returned HTTP `301`; no retry was sent under the branch-mismatch rule.
+- [x] Demo `/api/public/version` was read successfully at HTTP 200 and still reports frontend/backend `3edd72d84f514856923c0c0d50b01fe7b015e120`, so the new keyboard-focus batch is not deployed. Verify Dokploy Source/Git repository `aishawn/aistore_pos`, branch `main`, repository root `/`, and compose file `docker-compose.yml` before the next ordinary Deploy action.
+

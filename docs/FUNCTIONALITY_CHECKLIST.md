@@ -524,6 +524,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Productization route fixture `31/31 PASS`: GST calculations are rounded to cents and price-suggestion pagination asserts the current 10-item page/continuation contract; all network calls intercepted, no live writes.
 - [x] Odoo Bulk Price Edit action buttons (Refresh, Save, Previous, Next) have visible keyboard focus outlines; local productization fixture `12/12 PASS` including focus assertions. Evidence: `docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json`.
 - [ ] The keyboard-focus batch has not yet been verified on the deployed Demo runtime; read `/api/public/version` after deployment.
+- [ ] Deployment attempt for candidate `cfd6967` returned Dokploy webhook HTTP `301`; Demo remains on runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`.
 ## 2026-10-22 Dokploy 成功部署后复核
 
 - [x] Demo 前后端运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` 一致；证据 `UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。
