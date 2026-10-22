@@ -44,8 +44,21 @@ public class StoreContextPackAssembler {
         if (tenant == null) {
             return emptyPack(surface);
         }
-        CachedMeta meta = vendorMeta(tenant.vendorId());
-        ZoneId zone = reportQueryService.businessTimezone(tenant);
+        CachedMeta meta = null;
+        try {
+            meta = vendorMeta(tenant.vendorId());
+        } catch (RuntimeException ignored) {
+            // A vendor lookup outage must not make the assistant unavailable.
+        }
+        ZoneId zone = AustraliaTime.ZONE;
+        try {
+            ZoneId resolved = reportQueryService.businessTimezone(tenant);
+            if (resolved != null) {
+                zone = resolved;
+            }
+        } catch (RuntimeException ignored) {
+            // Keep the store-safe default when Odoo metadata cannot be read.
+        }
         AiConversationMemory.LastSlots last = conversationMemory.loadLastSlots(threadId);
         return new StoreContextPack(
                 tenant.vendorId(),
