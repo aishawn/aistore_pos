@@ -2550,3 +2550,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [ ] 该结果是当前 runtime 的 provider/数据可用性基线；runner source 为文档提交 `c1669e53`，不能作为 AI 后端修复已部署的证明。候选 `601ae0dd` 仍需同 SHA Java 21 `mvn -B clean verify` 和匹配 runtime。
 - [x] 三条快速门禁随后为 **1 PASS / 2 BLOCKED**：补货问法正常进入 `/stock/replenishment`；能力帮助遇到 HTTP 502，采购订单执行边界返回 `50210`，均未产生业务写入。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_SMOKE-3.json`。
 
+## 2026-10-22 d0669 data-aware AI regression（最新）
+
+- [x] 推送后 Demo 前后端运行 SHA 均为 `d0669f94956e2faf6dfbdf7bfa266dd810a51473`。
+- [x] 数据感知 runner 完成 247 条问法：**232 PASS / 15 BLOCKED / 0 FAIL**。15 条全部是固定日期销售问法，响应明确表示没有完成销售记录；已记录 `dataUnavailable=true`，不再误报为路由失败。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_D0669F94_DATA-AWARE-247.json`。
+- [x] 其余路由、意图、帮助和安全边界断言全部通过；Assistant API-only，业务写入为 0。
+- [ ] 仍需在有源销售数据的测试窗口重跑 15 条报表问法，才能完成销售金额对账验收。
+

@@ -1,5 +1,13 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-22 data-aware acceptance
+
+The deployed d0669 runtime completed **232 PASS / 15 BLOCKED / 0 FAIL** across
+247 cases. The blocked set is limited to dated sales questions with no source
+rows; route, intent, safety and help assertions otherwise passed. The runner
+records `dataUnavailable` for these responses rather than calling them route
+failures. No business writes were issued.
+
 ## 2026-10-22 e0 runtime coverage
 
 The current version-bound full run is **188 PASS / 44 BLOCKED / 15 FAIL**.

@@ -283,6 +283,7 @@ const writeRequests = [];
 let loginDiagnostics = null;
 let proxyHealth = [];
 const isUnavailable = (httpStatus, code) => [502, 503, 504].includes(httpStatus) || [50210, 50301].includes(code);
+const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable/i.test(answer);
 const redactError = (value) => String(value)
   .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
   .replace(/(?:access|refresh)_token=[^;\s]+/gi, "access_token=[redacted]")
@@ -411,7 +412,8 @@ try {
       && (item.noRoute ? route === null : true)
       && (item.query ? query === item.query : true)
       && answerChecks.every(Boolean);
-    const blocked = !passed && isUnavailable(response.status(), body.code);
+    const dataUnavailable = !passed && isDataUnavailableAnswer(answer);
+    const blocked = !passed && (isUnavailable(response.status(), body.code) || dataUnavailable);
     checks.push({
       id: item.id,
       question: item.question,
@@ -431,6 +433,7 @@ try {
         route,
         correlationId: response.headers()["x-correlation-id"] ?? null,
         ...(answerChecks.length ? { answerChecks } : {}),
+        ...(dataUnavailable ? { dataUnavailable: true } : {}),
         ...(item.query ? { query } : {}),
       },
     });

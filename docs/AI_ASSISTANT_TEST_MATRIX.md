@@ -1,5 +1,13 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 d0669 data-aware result
+
+After adding an explicit no-sales/no-source-data classification, the deployed
+d0669 runtime returned **232 PASS / 15 BLOCKED / 0 FAIL** for all 247 cases.
+The 15 blocks are the dated sales cases with no completed sales rows; there
+are no remaining deterministic routing failures in this run. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_D0669F94_DATA-AWARE-247.json`.
+
 ## 2026-10-22 e0 smoke follow-up
 
 The focused smoke was **1 PASS / 2 BLOCKED / 0 FAIL**: replenishment routed

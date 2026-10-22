@@ -1,5 +1,17 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 d0669 data-aware regression
+
+The runner now distinguishes an explicit no-data response from a routing
+failure. Against deployed runtime `d0669f94956e2faf6dfbdf7bfa266dd810a51473`,
+the 247-case matrix is **232 PASS / 15 BLOCKED / 0 FAIL**. All 15 blocks are
+dated sales questions whose answer says no completed sales were found; every
+other intent, route and safety assertion passed. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_D0669F94_DATA-AWARE-247.json`.
+
+This keeps data readiness separate from assistant correctness. The suite is
+still Assistant API-only and records zero business writes.
+
 ## 2026-10-22 e0 smoke follow-up
 
 A three-case read-only smoke separates the current runtime behavior: the
