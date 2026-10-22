@@ -35,15 +35,25 @@ public class PlatformFailureEventService {
             "(?i)(/(?:reset(?:-password)?|password-reset|bootstrap|invite|token)/)[^/]+");
 
     private final PlatformFailureEventMapper mapper;
+    private final PlatformAlertService alerts;
     private final BuildIdentityController buildIdentity;
     private final String environment;
 
     public PlatformFailureEventService(PlatformFailureEventMapper mapper,
                                        BuildIdentityController buildIdentity,
+                                       PlatformAlertService alerts,
                                        @Value("${RUNTIME_ENVIRONMENT:unknown}") String environment) {
         this.mapper = mapper;
         this.buildIdentity = buildIdentity;
+        this.alerts = alerts;
         this.environment = environment;
+    }
+
+    /** Compatibility constructor for focused failure-capture tests that do not exercise alerts. */
+    public PlatformFailureEventService(PlatformFailureEventMapper mapper,
+                                       BuildIdentityController buildIdentity,
+                                       String environment) {
+        this(mapper, buildIdentity, null, environment);
     }
 
     @Transactional
@@ -72,6 +82,10 @@ public class PlatformFailureEventService {
                     httpStatus, errorCode, errorType == null ? "UnknownException" : errorType,
                     safeSummary(error.getMessage()), durationMs, LocalDateTime.now(ZoneOffset.UTC));
             if (mapper.insert(record) != 1) throw new IllegalStateException("Failure event was not inserted");
+            if (alerts != null) {
+                alerts.record(fingerprint, record.environment(), record.service(), record.tenantId(),
+                        record.correlationId(), record.runtimeCommit(), record.occurredAt());
+            }
         } catch (RuntimeException persistenceError) {
             log.error("Platform failure event could not be persisted correlationId={} failureType={} captureErrorType={}",
                     CorrelationIdContext.current(), error == null ? "unknown" : error.getClass().getSimpleName(),
