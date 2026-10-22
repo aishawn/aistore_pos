@@ -1381,3 +1381,11 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Targeted typecheck, ESLint, and diff checks passed. No production build or business write was run.
 - Demo old-runtime interaction baseline recorded `10 PASS / 4 FAIL`; failures were product catalogue, sales-history data, and replenishment loading timeouts. Evidence: `docs/UAT_INTERACTION_2026-10-22_OLD-RUNTIME-RECHECK.json`.
 - This baseline is not exact-SHA evidence for `bc33d480`; Demo still reports `e8cac11`.
+
+## 2026-10-22 exact-SHA deployment verification: e0a867b0
+
+- Demo `/api/public/version` now reports frontend/backend `e0a867b0387c7760c1dfc1bea9a5c374debb0930`; release identity evidence passed: `docs/UAT_RELEASE_IDENTITY_2026-10-22_RUNTIME-E0A867B.json`.
+- Pricing/stock read-only suite at this runtime returned `8 PASS / 4 BLOCKED / 0 FAIL`, `blockedWrites=0`; Price Suggestions passed both 390px and 1440px layout checks. Evidence: `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_RUNTIME-E0A867B.json`.
+- Price Suggestions DOM audit at 390px found no horizontal overflow and all visible controls inside the page content carried the new `focus-visible` class.
+- Full interaction suite at the same runtime returned `10 PASS / 4 FAIL`; the four failures are data-dependent product catalogue, sales-history receipt, and replenishment loading timeouts. Evidence: `docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B.json`.
+- No non-read-only business writes were observed. Close-register and sales-history focus changes are now deployed in this runtime, but their data-dependent interaction paths need a populated Odoo fixture for complete behavior coverage.

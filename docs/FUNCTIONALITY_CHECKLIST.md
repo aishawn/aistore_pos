@@ -661,3 +661,11 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Typecheck, targeted ESLint, and diff check passed; no local production build or business write.
 - [x] Old Demo interaction baseline: `10 PASS / 4 FAIL`; evidence `docs/UAT_INTERACTION_2026-10-22_OLD-RUNTIME-RECHECK.json`.
 - [ ] Exact-SHA online verification remains pending; current Demo runtime is still `e8cac11`.
+
+### 2026-10-22 exact-SHA deployment verification: e0a867b0
+
+- [x] `/api/public/version` matched frontend/backend `e0a867b0387c7760c1dfc1bea9a5c374debb0930`; release identity `PASS`.
+- [x] Pricing/stock read-only suite: `8 PASS / 4 BLOCKED / 0 FAIL`, `blockedWrites=0`; Price Suggestions passed 390/1440 layout checks.
+- [x] Price Suggestions 390px DOM audit: no overflow and all visible page-content controls exposed `focus-visible` styling.
+- [x] Interaction suite: `10 PASS / 4 FAIL`; failures are product catalogue, sales-history data, and replenishment loading timeouts, with no business writes.
+- [ ] Complete sales-history and replenishment behavior coverage still requires populated Odoo read-only data; do not treat timeout results as UI focus regressions.

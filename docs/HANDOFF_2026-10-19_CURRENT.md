@@ -2528,3 +2528,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 候选提交：`bc33d48077345b13c44fdfc2de6376fd64403ff4`。
 - 本地 typecheck、定向 ESLint、diff check 通过；未运行 production build，未写入业务数据。
 - Demo 旧 runtime 交互基线为 `10 PASS / 4 FAIL`，失败集中在商品目录、销售历史数据和补货加载，证据 `docs/UAT_INTERACTION_2026-10-22_OLD-RUNTIME-RECHECK.json`。该结果不能归因到 `bc33d480`。
+
+## 2026-10-22 e0a867b0 线上验收
+
+- Demo 版本接口 frontend/backend 均精确匹配 `e0a867b0387c7760c1dfc1bea9a5c374debb0930`；证据 `docs/UAT_RELEASE_IDENTITY_2026-10-22_RUNTIME-E0A867B.json`，release identity 为 PASS。
+- 定价/库存只读套件为 `8 PASS / 4 BLOCKED / 0 FAIL`，`blockedWrites=0`；Price Suggestions 在 390/1440px 通过，证据 `docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_RUNTIME-E0A867B.json`。
+- 交互套件为 `10 PASS / 4 FAIL`。失败均为旧数据条件下商品目录、销售历史和补货加载超时；没有页面错误或业务写入，证据 `docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B.json`。
+- 这次确认了 Price Suggestions 和关班/销售历史焦点批次已进入线上 runtime；关班/销售历史的完整数据路径仍需有数据的 Odoo 只读环境补测。
