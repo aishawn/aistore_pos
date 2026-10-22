@@ -1,3 +1,10 @@
+## 2026-10-22 最新 AI 回归摘要
+
+- [x] Demo AI 只读回归：247 条自然问法 `247/247 PASS`；availability 3/3、route 9/9、surface/auth 11/11、metrics 9/9、AI UI 2/2。
+- [ ] Features `14 PASS / 1 BLOCKED`（旧 OCR `41001`）；Reports `15/16`（实时库存源不可用但安全提示正确）；History/platform `9 PASS / 2 BLOCKED`；transcription `2 PASS / 2 BLOCKED`。
+- [x] 本轮无销售、采购、收货、库存、调价、退款或关班写入。证据：`docs/UAT_*_2026-10-22_POST-ROUTE.json`。
+- [ ] Demo runtime `582b92fb` 未与当前 source/HEAD 绑定，不能作为最新候选部署验收；整体仍 NO-GO。
+
 ## 2026-10-22 报表与 Odoo 空态 UI 批次（本地待部署）
 
 - [x] Odoo 报表临时 `503` 与未连接 `401` 分支：`2/2 PASS`；503 保留 Retry/Request ID，401 显示连接引导，390px 无横向溢出。

@@ -6,7 +6,7 @@
 - [x] 本地 fixture：报表 503/401 `2/2 PASS`；Platform Audit/Failures 双视口 `4/4 PASS`；无业务写入；Node typecheck、定向 ESLint、脚本语法检查通过。
 - [ ] 本批仅修改前端和 UAT 脚本，未运行 production build/Docker build；尚未部署 Dokploy。下一阶段与更多 UI 改动合批后部署，再核对 `/api/public/version` 和线上 390/1440px 结果。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。
-- 候选 `1cd417c3` 已成功推送到 `origin/main`；手动 webhook 返回 `301 Branch Not Match`，约一分钟内两次 `/api/public/version` 探针仍为前后端 `582b92fb`。线上结果不能归因到本批，下一步需在 Dokploy 修正 Source/Git 分支后再触发一次部署。
+- GitHub 远端仍为 `1cd417c3`，本地 main 已有文档提交至 `bbac6c72`，但两次 push 因网络连接失败未同步；手动 webhook 曾返回 `301 Branch Not Match`，版本探针仍为前后端 `582b92fb`。线上结果不能归因到本批，需先修正 Dokploy Source/Git 分支并恢复 GitHub 推送。
 
 ## 2026-10-22 AI 配套回归（最新）
 

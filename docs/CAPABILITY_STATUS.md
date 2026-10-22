@@ -1,3 +1,10 @@
+## 2026-10-22 最新 AI 线上只读状态
+
+- Demo runtime `582b92fb`：自然语言问法 **247/247 PASS**；availability **3/3**、route **9/9**、surface/auth **11/11**、metrics **9/9**、AI UI **2/2**。
+- Features **14 PASS / 1 BLOCKED**（旧发票 OCR `41001`）；Reports **15/16**（实时库存源 unavailable，销售日期、AUD、时区和 Odoo 对账通过）。Capability gates 聊天可用、语音明确禁用；History/platform **9 PASS / 2 BLOCKED**，transcription **2 PASS / 2 BLOCKED**。
+- 证据：`docs/UAT_*_2026-10-22_POST-ROUTE.json`。测试全为只读，业务写入为 0。
+- 运行时与 runner source `1cd417c3`、当前 HEAD `bbac6c72` 均未绑定，不能把本轮结果当作最新候选部署证明。整体仍 **NO-GO**。
+
 ## 2026-10-22 报表与 Odoo 空态 UI 批次（本地待部署）
 
 - 报表 Dashboard 对 Odoo `503` 临时故障现在保留 Retry 和 Request ID，并显示可恢复错误；只有 `401` 会显示连接 Odoo 引导，避免把网关故障误判为配置缺失。
