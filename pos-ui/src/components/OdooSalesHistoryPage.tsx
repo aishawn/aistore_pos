@@ -471,12 +471,12 @@ export function OdooSalesHistoryPage() {
                 <option value="draft">Draft</option>
               </select>
             </label>
-            <button type="button" onClick={exportVisibleSales} disabled={!items.length || loading} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50" title="Export the currently visible sales rows as CSV">
+            <button type="button" onClick={exportVisibleSales} disabled={!items.length || loading} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50" title="Export the currently visible sales rows as CSV">
               <Download size={16} /> Export visible
             </button>
           </div>
 
-          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadSales()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadSales()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <R2ArchivePanel query={debouncedQuery} />
 
@@ -619,13 +619,13 @@ export function OdooSalesHistoryPage() {
           {refundAlreadyRecorded && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">A refund has already been recorded for one or more items. Additional refunds are unavailable from this full-sale refund flow.</p>}
           {refundMessage && <p role="status" className="receipt-print-hidden mt-4 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">{refundMessage}</p>}
           <footer className="receipt-print-hidden mt-6 flex flex-col gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
-            <button type="button" onClick={closeSale} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] sm:w-auto">Close</button>
+            <button type="button" onClick={closeSale} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:w-auto">Close</button>
             {(canRefund || pendingRefund.current) && (
               <button
                 type="button"
                 onClick={requestRefundConfirmation}
                 disabled={refundBusy}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-800 hover:bg-red-100 disabled:opacity-50 sm:w-auto"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-800 hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-50 sm:w-auto"
               >
                 {refundBusy ? <LoaderCircle size={16} className="animate-spin" /> : <RotateCcw size={16} />}
                 {refundBusy ? "Checking…" : pendingRefund.current ? "Check saved refund" : "Refund full sale"}
@@ -636,7 +636,7 @@ export function OdooSalesHistoryPage() {
                 Open the original Odoo register session to refund this sale.
               </p>
             )}
-            <button type="button" onClick={() => window.print()} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] sm:w-auto"><Printer size={16} /> Print receipt</button>
+            <button type="button" onClick={() => window.print()} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:w-auto"><Printer size={16} /> Print receipt</button>
           </footer>
         </section>}
       </div>}
