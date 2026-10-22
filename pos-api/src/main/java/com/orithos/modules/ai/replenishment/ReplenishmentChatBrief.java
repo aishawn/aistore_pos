@@ -1,5 +1,6 @@
 package com.orithos.modules.ai.replenishment;
 
+import com.orithos.modules.ai.AssistantDisplayText;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -34,15 +35,15 @@ public class ReplenishmentChatBrief {
             StringBuilder sb = new StringBuilder();
             sb.append("Top restock suggestions (").append(plan.coverageDays()).append("d cover): ")
                     .append(plan.itemsNeedingOrder()).append(" item")
-                    .append(plan.itemsNeedingOrder() == 1 ? "" : "s").append(" need order.");
+                    .append(plan.itemsNeedingOrder() == 1 ? "" : "s").append(" need order.\n");
             for (ReplenishmentSuggestion item : plan.top()) {
-                sb.append("\n• ").append(item.name())
+                sb.append("\n• ").append(AssistantDisplayText.productName(item.name()))
                         .append(" — order ").append(formatQty(item.suggestedQuantity()));
                 if (item.daysOfStock() != null) {
                     sb.append(" (≈").append(formatDays(item.daysOfStock())).append("d left)");
                 }
             }
-            sb.append("\nTap below to review quantities and confirm any order.");
+            sb.append("\n\nTap below to review quantities and confirm any order.");
             return sb.toString();
         } catch (Exception e) {
             return "Open replenishment to review suggestions. Tap below when you are ready.";

@@ -1669,7 +1669,7 @@ function DialogueView({
               "max-w-[92%] rounded-[var(--oh-radius)] px-3.5 py-2.5 text-[14px] leading-relaxed",
               msg.role === "user"
                 ? "ml-auto bg-[var(--oh-primary)] text-white"
-                : "mr-auto border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text)] shadow-sm",
+                : "mr-auto whitespace-pre-wrap border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text)] shadow-sm",
             )}
           >
             {msg.role === "assistant" && msg.reportId ? (

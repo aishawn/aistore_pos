@@ -28,9 +28,9 @@ class ReplenishmentChatBriefTest {
         String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
 
         assertTrue(text.contains("Top restock suggestions (21d cover): 5 items need order."));
-        assertTrue(text.contains("VB Cans — order 24 (≈3.0d left)"));
-        assertTrue(text.contains("Shiraz — order 12"));
-        assertTrue(text.contains("Tap below to review quantities"));
+        assertTrue(text.contains("\n• VB Cans — order 24 (≈3.0d left)"));
+        assertTrue(text.contains("\n• Shiraz — order 12"));
+        assertTrue(text.contains("\n\nTap below to review quantities"));
         assertFalse(text.contains("Opening the requested workflow"));
     }
 

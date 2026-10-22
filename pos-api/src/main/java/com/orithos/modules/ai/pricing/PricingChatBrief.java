@@ -1,10 +1,9 @@
 package com.orithos.modules.ai.pricing;
 
+import com.orithos.modules.ai.AssistantDisplayText;
 import com.orithos.modules.ai.report.TenantContext;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-
-import java.util.Locale;
 
 /**
  * Builds a short in-chat price-review summary so navigate intents return
@@ -34,28 +33,24 @@ public class PricingChatBrief {
             }
             int targetPct = (int) Math.round(review.marginTarget() * 100);
             StringBuilder sb = new StringBuilder();
-            sb.append("Prices that need review (target ≈").append(targetPct).append("% net margin):");
+            sb.append("Prices that need review (target ≈").append(targetPct).append("% net margin):\n");
             for (PriceReviewItem item : review.top()) {
-                sb.append("\n• ").append(item.name());
+                sb.append("\n• ").append(AssistantDisplayText.productName(item.name()));
                 if (item.currentPrice() != null && item.suggestedPrice() != null) {
-                    sb.append(" — $").append(money(item.currentPrice()))
-                            .append(" → suggest $").append(money(item.suggestedPrice()));
+                    sb.append(" — $").append(AssistantDisplayText.money(item.currentPrice()))
+                            .append(" → suggest $").append(AssistantDisplayText.money(item.suggestedPrice()));
                 } else if (item.currentPrice() != null) {
-                    sb.append(" — $").append(money(item.currentPrice()))
+                    sb.append(" — $").append(AssistantDisplayText.money(item.currentPrice()))
                             .append(" (").append(statusLabel(item.status())).append(')');
                 } else {
                     sb.append(" — ").append(statusLabel(item.status()));
                 }
             }
-            sb.append("\nTap below to open price review. Staff confirm any change on the page.");
+            sb.append("\n\nTap below to open price review. Staff confirm any change on the page.");
             return sb.toString();
         } catch (Exception e) {
             return "Open price review when you are ready. Tap below — staff confirm any change on the page.";
         }
-    }
-
-    private static String money(double value) {
-        return String.format(Locale.ROOT, "%.2f", value);
     }
 
     private static String statusLabel(String status) {

@@ -26,8 +26,8 @@ class PricingChatBriefTest {
         String text = new PricingChatBrief(client).brief("Which prices to review?", tenant);
 
         assertTrue(text.contains("Prices that need review"));
-        assertTrue(text.contains("Shiraz Reserve — $24.99 → suggest $27.95"));
-        assertTrue(text.contains("Tap below to open price review"));
+        assertTrue(text.contains("\n• Shiraz Reserve — $24.99 → suggest $27.95"));
+        assertTrue(text.contains("\n\nTap below to open price review"));
         assertTrue(text.contains("Staff confirm"));
     }
 

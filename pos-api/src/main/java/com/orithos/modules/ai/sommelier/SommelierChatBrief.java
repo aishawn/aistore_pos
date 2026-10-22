@@ -1,5 +1,6 @@
 package com.orithos.modules.ai.sommelier;
 
+import com.orithos.modules.ai.AssistantDisplayText;
 import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.sommelier.dto.RecommendCard;
 import com.orithos.modules.ai.sommelier.dto.RecommendRequest;
@@ -53,21 +54,21 @@ public class SommelierChatBrief {
                 sb.append(" (").append(request.wineType()).append(')');
             }
             if (request.budgetMax() != null) {
-                sb.append(" under $").append(request.budgetMax().stripTrailingZeros().toPlainString());
+                sb.append(" under $").append(AssistantDisplayText.money(request.budgetMax()));
             }
-            sb.append(':');
+            sb.append(":\n");
             int n = Math.min(3, response.recommendations().size());
             for (int i = 0; i < n; i++) {
                 RecommendCard card = response.recommendations().get(i);
                 String badge = card.badge() == null || card.badge().isBlank() ? "Pick" : card.badge();
-                sb.append("\n• ").append(badge)
-                        .append(": ").append(card.name() == null ? "Wine" : card.name());
+                String name = AssistantDisplayText.productName(card.name());
+                sb.append("\n• ").append(badge).append(" — ").append(name);
                 BigDecimal price = card.sellPrice() != null ? card.sellPrice() : card.listPrice();
                 if (price != null) {
-                    sb.append(" — $").append(price.stripTrailingZeros().toPlainString());
+                    sb.append(" — $").append(AssistantDisplayText.money(price));
                 }
             }
-            sb.append("\nTap below to open the full wine assistant.");
+            sb.append("\n\nTap below to open the full wine assistant.");
             return sb.toString();
         } catch (Exception e) {
             return "Open wine recommendations when you are ready. Tap below to continue.";
