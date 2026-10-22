@@ -69,6 +69,11 @@ the three failures remained the Chinese capability questions. Runtime identity
 matched `e8cac11e`, but its Dokploy Dockerfile used `mvn clean package
 -DskipTests`, which is not the required Java 21 `mvn -B clean verify` gate.
 
+The focused product lookup retry then returned **4/4 PASS** on the same runtime:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_PRODUCT-RETRY.json`.
+The three full-run blocks are therefore recorded as transient availability
+observations, not routing failures.
+
 ## 2026-10-22 current AI surface suite
 
 Against the same Demo window, the read-only companion suites reported:

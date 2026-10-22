@@ -51,6 +51,11 @@ timeout responses; the remaining three failures were the same Chinese
 capability questions. Its image build used `mvn clean package -DskipTests`, so
 it is not Java 21 gate evidence.
 
+A focused retry of the four product lookup phrasings returned **4/4 PASS**;
+the earlier three blocks were transient gateway/timeout observations rather
+than stable route gaps. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_PRODUCT-RETRY.json`.
+
 The same window's companion suites passed availability 3/3, routes 9/9,
 surface/auth 11/11, enabled gate, metrics 9/9 and UI 2/2. Features were
 14 PASS / 1 BLOCKED because invoice OCR is retired (`41001`); reports were

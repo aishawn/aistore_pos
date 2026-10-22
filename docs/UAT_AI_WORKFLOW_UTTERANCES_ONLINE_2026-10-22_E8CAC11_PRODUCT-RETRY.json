@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-10-22T04:12:30.330Z",
+  "sourceCommit": "ae11a20286b5afc372b51114da4d135c12868d4a",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "e8cac11ea1284f57dcb5ff4c6d203011ba10b79d",
+    "frontendBuiltAt": "2026-10-22T03:54:07.095Z",
+    "backendCommit": "e8cac11ea1284f57dcb5ff4c6d203011ba10b79d",
+    "backendBuiltAt": "2026-10-22T03:54:07Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 247,
+  "selectedCount": 4,
+  "selectedIds": [
+    "product-lookup-conversational-find-en",
+    "product-lookup-conversational-look-en",
+    "product-lookup-zh",
+    "product-lookup-search-zh"
+  ],
+  "checks": [
+    {
+      "id": "product-lookup-conversational-find-en",
+      "question": "Can you find Shiraz?",
+      "status": "PASS",
+      "expected": {
+        "intent": "search_product",
+        "route": "/products",
+        "query": "Shiraz",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "correlationId": "c777e8a2-766a-4ef5-b88c-40dd5b3613e7",
+        "query": "Shiraz"
+      }
+    },
+    {
+      "id": "product-lookup-conversational-look-en",
+      "question": "Please look for VB Cans",
+      "status": "PASS",
+      "expected": {
+        "intent": "search_product",
+        "route": "/products",
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "correlationId": "f133271d-24d5-46c7-9954-52c30f95a0d9",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "product-lookup-zh",
+      "question": "帮我搜一下 Shiraz",
+      "status": "PASS",
+      "expected": {
+        "intent": "search_product",
+        "route": "/products",
+        "query": "Shiraz",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "correlationId": "0c296baf-c472-4ceb-8e2c-a18d1938dda3",
+        "query": "Shiraz"
+      }
+    },
+    {
+      "id": "product-lookup-search-zh",
+      "question": "帮我查一下 Shiraz",
+      "status": "PASS",
+      "expected": {
+        "intent": "search_product",
+        "route": "/products",
+        "query": "Shiraz",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "correlationId": "bd278dc3-61dc-4b8b-970c-151f90bc5aad",
+        "query": "Shiraz"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 4,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

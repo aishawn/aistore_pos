@@ -182,6 +182,7 @@
 - 完整 247 条回归随后在 `c941a617` runtime 上为 `244 PASS / 0 BLOCKED / 3 FAIL`；失败均为中文自动下单能力问法，1 条误导航到 `/orders`。本地候选 `a63c84fb` 已扩展帮助正则和 Java 断言，但尚未通过 Java 21 同 SHA 门禁或部署验收。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`。
 - 根因已确认：`ClassifyQueryNode` 先调用 `WorkflowRouteRouter.hasWriteIntent`，导致“AI会直接下单吗”等能力询问在帮助 fast path 前被判为写入。候选 `601ae0dd` 让匹配到 `qa` 的能力询问绕过写入守卫，并增加中英文回归断言；仍需同 SHA Java 21 门禁和部署后完整 247 条复测。
 - `e8cac11e` runtime 的最新完整回归为 `241 PASS / 3 BLOCKED / 3 FAIL`；3 条商品查询为 502/超时，3 条中文能力问法仍失败。该 runtime 的 Dockerfile 使用 `mvn clean package -DskipTests`，不满足项目要求的 Java 21 `mvn -B clean verify` 门禁。候选 `601ae0dd` 仍未部署。
+- 随后商品查询专项重试为 `4/4 PASS`，确认前述 3 个 BLOCKED 为暂时性网关/超时，不是稳定路由失败。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_PRODUCT-RETRY.json`。
 
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
