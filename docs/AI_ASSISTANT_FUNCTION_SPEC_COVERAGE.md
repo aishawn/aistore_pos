@@ -32,6 +32,12 @@ BLOCKED**. The only failure was `AI会直接下单吗`, which returned `unknown`
 the local candidate now accepts spacing and additional Chinese order wording.
 Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`.
 
+The full 247-case run against served runtime `c941a617` returned **244 PASS / 3
+FAIL / 0 BLOCKED**. The failures are limited to three Chinese automatic-order
+capability variants; one incorrectly navigated to `/orders`. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
+The runner source was `a63c84fb`, so this is a pre-fix served-runtime result.
+
 ## 2026-10-24 latest served-runtime coverage
 
 The current executable catalogue contains **247 unique cases**. The served

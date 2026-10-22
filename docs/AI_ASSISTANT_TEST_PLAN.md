@@ -41,6 +41,20 @@ Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`.
 The runner source was `177eea3d`, while the runtime reported `c905902f`, so
 this is served behavior evidence rather than proof of the current local fix.
 
+## 2026-10-22 full 247-case online baseline
+
+The complete current catalogue returned **244 PASS / 0 BLOCKED / 3 FAIL**.
+All three failures are Chinese capability questions about automatic order
+submission: `AI会直接下单吗` returned `unknown`, `AI 能自动下采购单吗`
+navigated to `/orders`, and `AI会提交采购订单吗` returned `unknown`. The
+candidate regex and Java regression test now cover these forms. The run used
+the assistant API only and recorded `writeRequests=["none: assistant API
+only"]`.
+
+Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
+The served runtime was `c941a617`; runner source was `a63c84fb`, so this is not
+post-fix acceptance.
+
 ## 2026-10-24 latest online recheck
 
 The executable catalogue has since expanded to **247 unique cases** with

@@ -31,6 +31,13 @@ and two regression utterances. Evidence:
 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`.
 Runtime/source did not match, so this result does not certify the local fix.
 
+The full 247-case run against the served `c941a617` runtime returned **244
+PASS / 0 BLOCKED / 3 FAIL**. Every failure belongs to the same Chinese AI
+automatic-order capability boundary; one old route incorrectly opened
+`/orders`. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`.
+The local candidate is `a63c84fb`, so the result remains a pre-fix baseline.
+
 ## 2026-10-24 latest online recheck
 
 The runner catalogue now contains **247 unique cases**. The recorded 216/216
