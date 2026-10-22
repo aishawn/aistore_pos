@@ -1261,3 +1261,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - **Implemented and locally verified:** Login, Manage Cash, Platform Operations and AI Usage primary/retry controls now show visible keyboard focus states. Platform fixture `4/4 PASS`; login 390px smoke passed with no overflow.
 - **Online status:** not verified; Demo runtime identity remains frontend `3edd72d...`, backend `null`.
 
+## 2026-10-22 Demo table accessibility recheck
+
+- Current Demo runtime table/accessibility read-only suite passed `14/14`, with `unexpectedWrites=0`. Evidence: `docs/UAT_TABLE_A11Y_ONLINE_2026-10-22_CURRENT_RUNTIME.json`.
+- This is old-runtime evidence only; it does not upgrade local focus changes to online-verified status.
+

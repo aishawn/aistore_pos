@@ -532,6 +532,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Stock List export/category retry controls have visible keyboard focus styles; responsive stock/pricing fixture `15/15 PASS`, five viewports, `blockedWrites=0`. Evidence: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
 - [ ] Current `main` is `a5511fc`, but Dokploy returned HTTP `301`; Demo frontend remains `3edd72d84f514856923c0c0d50b01fe7b015e120` and backend runtime is `null`.
 - [x] Login, Manage Cash, Platform Operations and AI Usage primary/retry actions have visible keyboard focus styles; platform fixture `4/4 PASS`, and login 390px smoke passed.
+- [x] Current Demo runtime table/accessibility read-only suite `14/14 PASS`; `unexpectedWrites=0`. Evidence: `docs/UAT_TABLE_A11Y_ONLINE_2026-10-22_CURRENT_RUNTIME.json`.
 ## 2026-10-22 Dokploy 成功部署后复核
 
 - [x] Demo 前后端运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` 一致；证据 `UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。

@@ -36,6 +36,13 @@
 
 ## 2026-10-24 AI 用户问法与发票入口修复
 
+## 2026-10-24 Demo AI proxy recovery and full recheck
+
+- Demo anonymous probes recovered to the expected `401` JSON boundary. The full 216-case assistant catalogue passed **216/216**, and the representative five-case smoke passed **5/5**; both used Assistant API only and issued no business writes.
+- Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_HEAD-3FC821C.json` and `UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-24_CURRENT.json`.
+- Runner source was `3fc821cde40f70bb05857909ac0f505a8e56a014`; `/api/public/version` reported frontend/backend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`, so `matchesSourceCommit=false`. Treat this as served-runtime verification only.
+- Companion results: availability 3/3, route 9/9, surface/auth 11/11, metrics 9/9, UI 2/2 and capability fallback PASS; features 14 PASS + invoice OCR `41001` BLOCKED; reports 15/16 with live stock unavailable; History/Platform 9 PASS + 2 BLOCKED; transcription 2 PASS + 2 BLOCKED for missing fixtures.
+
 - 新增 `docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md`，按门店真实问法覆盖补货、定价、推荐/查货、销售报表、发票识别、帮助、权限和提示注入；每类同时定义同义表达、数据不可用、权限限制和执行型问法边界。
 - 新增线上只读证据：AI metrics **9/9 PASS**（390/1440px）、AI UI **2/2 PASS**、能力降级门禁 **PASS**；History/Platform **9 PASS / 2 BLOCKED**（缺第二门店与 platform-operator 凭据）；转写 **2 PASS / 2 BLOCKED**（本轮未提供音频 fixture）。上述检查均无业务写入。
 - 定位到 Odoo-only 模式下 `/api/orders/receives/scan` 被 `OdooOnlyModeFilter` 正确返回 `41001`，但前端此前仍允许上传并提供无效重试。`ScanInvoicePage` 现在识别 `41001`，显示 Odoo Purchases/Replenishment 引导并禁用上传与重试；未放开 Classic POS 路径。
@@ -2359,6 +2366,11 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Platform Operations/Usage local fixture passed **4/4** at 390px and 1440px with retry recovery, focus assertions, no page errors, no overflow, and zero non-GET requests. Evidence: `docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
 - [x] Login page direct browser check passed at 390px: Login button visible, focus style present, and document width did not overflow the viewport.
 - [x] Node 24 typecheck and targeted ESLint passed; no local production build was run.
+
+## 2026-10-22 current Demo runtime table accessibility recheck
+
+- [x] Demo read-only table/accessibility suite passed **14/14** on the current runtime; `unexpectedWrites=0`. Four non-GET requests were intercepted by the suite's safe-path guard. Evidence: `docs/UAT_TABLE_A11Y_ONLINE_2026-10-22_CURRENT_RUNTIME.json`.
+- [ ] This evidence describes the currently running frontend `3edd72d...` and does not verify the un-deployed local commits `3fc821c` or `7400123`.
 
 ## 2026-10-22 Stock List focus consistency follow-up
 
