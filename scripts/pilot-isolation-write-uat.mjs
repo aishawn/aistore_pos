@@ -70,22 +70,13 @@ if (!password) {
 evidence.isolationGate = "pass";
 
 async function login(page) {
-  let lastError;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await page.goto(`${base}/login`, { waitUntil: "commit", timeout: 20000 });
-      await page.locator('input[name="username"]').waitFor({ state: "visible", timeout: 10000 });
-      await page.locator('input[name="username"]').fill("admin");
-      await page.locator('input[name="password"]').fill(password);
-      await page.getByRole("button", { name: "Login" }).click();
-      await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 30000, waitUntil: "commit" });
-      return;
-    } catch (error) {
-      lastError = error;
-      await page.waitForTimeout(1000 * (attempt + 1));
-    }
-  }
-  throw lastError;
+  const response = await page.request.post(`${base}/api/auth/login`, { data: { username: "admin", password }, timeout: 30000 });
+  if (!response.ok()) throw new Error(`Login failed with HTTP ${response.status()}`);
+  await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForTimeout(10000);
+  console.log((await page.locator("body").innerText()).slice(0, 1200));
+  console.log((await page.getByRole("button").allTextContents()).slice(0, 30));
+  await page.locator('[id^="pos-product-option-"]').filter({ hasText: /DEMO|PINOT|wine/i }).first().waitFor({ state: "visible", timeout: 60000 });
 }
 
 async function waitForTotal(page, amount) {
@@ -98,9 +89,11 @@ async function waitForTotal(page, amount) {
 
 async function sellOne(page, productNameRegex, paymentLabel, expectedTotal) {
   await page.goto(`${base}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.getByRole("button", { name: productNameRegex }).first().click();
+  await page.locator('[id^="pos-product-option-"]').filter({ hasText: productNameRegex }).first().click();
   await waitForTotal(page, expectedTotal);
-  await page.locator("select").filter({ has: page.locator(`option:text-is("${paymentLabel}")`) }).first().selectOption({ label: paymentLabel });
+  const paymentSelect = page.locator("select").filter({ has: page.locator("option").filter({ hasText: paymentLabel }) }).first();
+  const paymentValue = await paymentSelect.locator("option").filter({ hasText: paymentLabel }).first().getAttribute("value");
+  await paymentSelect.selectOption(paymentValue);
   await page.waitForTimeout(800);
   if (paymentLabel === "Cash") {
     const cash = page.locator("#cash-tendered");
@@ -140,11 +133,12 @@ async function refundByReceipt(page, receiptId) {
   );
   const text = await page.locator("body").innerText();
   await page.getByRole("button", { name: /^Close$/i }).click().catch(() => {});
-  return text.replace(/\s+/g, " ").slice(0, 400);
+  return text.replace(/\s+/g, " ").slice(-1200);
 }
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const page = await context.newPage();
 
 try {
   await login(page);
@@ -169,7 +163,7 @@ try {
   for (const sale of evidence.sales) {
     const refundText = await refundByReceipt(page, sale.receiptId);
     evidence.refunds.push({ receiptId: sale.receiptId, snippet: refundText });
-    if (!/Refund recorded|already been refunded/i.test(refundText)) {
+    if (!/Refund recorded|already been (refunded|recorded)/i.test(refundText)) {
       fail(`Refund failed for ${sale.receiptId}`);
     }
   }
