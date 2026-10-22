@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -55,6 +56,7 @@ public class OdooPriceSuggestionClient {
     private final String username;
     private final String password;
 
+    @Autowired
     public OdooPriceSuggestionClient(
             ObjectMapper objectMapper,
             VendorMapper vendorMapper,
