@@ -628,3 +628,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] Demo runtime advanced to `c941a617...`; this confirms deployment queue movement but not the latest application candidate.
 - [ ] Current source/runtime alignment is still missing; Platform Store detail and later UI batches remain online-unverified.
+### 2026-10-22 Platform detail pagination and closure detail focus
+
+- [x] Platform Store detail owner-link copy and operation/setup pagination controls now have visible keyboard focus states.
+- [x] Register closure detail Retry now matches the report-list recovery focus treatment.
+- [ ] These latest UI changes remain online-unverified while Demo stays on an older runtime and Dokploy webhook returns `301`.

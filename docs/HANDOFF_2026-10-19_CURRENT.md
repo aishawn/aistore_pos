@@ -2482,3 +2482,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Demo `/api/public/version` advanced from `c905902...` to `c941a617ed390679105a780e57c86786157f7470`; this is still an older documentation/runtime candidate and does not contain the Platform Store detail code from `bf3d675f`.
 - Dokploy webhook for the current candidate continues to return HTTP `301` (`Branch Not Match`); no further retry was sent this turn.
 - Local branch contains two unpushed documentation commits because GitHub connections reset during push. The remote application code remains at least through `bf3d675f`.
+## 2026-10-22 Platform detail pagination and closure detail focus
+
+- Platform Store detail owner-link copy and operation/setup pagination controls now expose visible keyboard focus states.
+- Register Closure detail Retry now matches the report-list recovery focus treatment.
+- Local typecheck/ESLint verification is pending this small follow-up; no production build or business write is authorized.

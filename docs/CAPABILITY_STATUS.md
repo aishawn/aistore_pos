@@ -1349,3 +1349,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Demo runtime now reports `c941a617...`, still older than the latest application source. Treat this as deployment movement only, not feature verification.
 - The current webhook remains blocked by `301 Branch Not Match`; no additional retry was sent.
+## 2026-10-22 Platform detail pagination and closure detail focus
+
+- Platform Store detail copy/pagination controls and Register Closure detail Retry now have consistent visible keyboard focus states.
+- Online status remains pending exact runtime alignment.
