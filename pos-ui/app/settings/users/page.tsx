@@ -212,7 +212,7 @@ export default function UsersSettingsPage() {
               {rolesState.error ? (
                 <span role="alert" className="flex flex-wrap items-center gap-2 font-normal text-red-800">
                   <span>Could not load staff roles: {rolesState.error}</span>
-                  <button type="button" onClick={rolesState.reload} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold text-red-900 hover:bg-red-50"><RefreshCw size={13} /> Retry</button>
+                  <button type="button" onClick={rolesState.reload} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold text-red-900 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={13} /> Retry</button>
                 </span>
               ) : roles.length === 0 && !rolesState.loading ? (
                 <span className="font-normal text-[var(--oh-muted)]">Create a role first in <a href="/settings/roles" className="font-semibold text-[var(--oh-primary)] underline">Roles &amp; Permissions</a>. Administrators can still be invited below.</span>
@@ -238,7 +238,7 @@ export default function UsersSettingsPage() {
                 <button
                   type="button"
                   onClick={() => void copyText(lastInviteUrl, "invite")}
-                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold"
+                  className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                 >
                   {copied === "invite" ? <Check size={16} /> : <Copy size={16} />}
                   {copied === "invite" ? "Copied" : "Copy link"}
@@ -250,7 +250,7 @@ export default function UsersSettingsPage() {
               <button
                 type="submit"
                 disabled={inviteBusy}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"
               >
                 {inviteBusy && <LoaderCircle size={16} className="animate-spin" />}
                 {inviteBusy ? "Creating invite…" : "Send invite"}
@@ -280,7 +280,7 @@ export default function UsersSettingsPage() {
               <button
                 type="button"
                 onClick={() => void copyText(lastResetUrl, "reset")}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
               >
                 {copied === "reset" ? <Check size={16} /> : <Copy size={16} />}
                 {copied === "reset" ? "Copied" : "Copy link"}
@@ -301,7 +301,7 @@ export default function UsersSettingsPage() {
             ) : error ? (
               <div role="alert" className="flex flex-wrap items-center justify-between gap-3 py-8 text-sm text-red-800">
                 <span>{error}</span>
-                <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50"><RefreshCw size={15} /> Retry</button>
+                <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry</button>
               </div>
             ) : users.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No users yet. Invite the first teammate above.</p>
@@ -345,7 +345,7 @@ export default function UsersSettingsPage() {
                           type="button"
                           disabled={busy}
                           onClick={() => void issueReset(staff.id)}
-                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60"
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"
                         >
                           {busy ? <LoaderCircle size={15} className="animate-spin" /> : <KeyRound size={15} />}
                           {busy ? "Creating reset link…" : "Create reset link"}
@@ -387,7 +387,7 @@ export default function UsersSettingsPage() {
                               type="button"
                               disabled={actionBusyId === String(staff.id)}
                               onClick={() => void issueReset(staff.id)}
-                              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-xs font-semibold hover:bg-[var(--oh-surface)] disabled:opacity-60"
+                              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border-strong)] px-3 text-xs font-semibold hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
                             >
                               {actionBusyId === String(staff.id) ? <LoaderCircle size={14} className="animate-spin" /> : <KeyRound size={14} />}
                               Reset link

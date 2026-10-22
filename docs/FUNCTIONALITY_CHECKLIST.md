@@ -563,3 +563,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Candidate `fb67f43` pushed to `origin/main`.
 - [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Dokploy Source/Git binding must be checked before another deployment.
 - [ ] Demo runtime remains `a5511fc...`; Settings Data focus changes remain local-only.
+### 2026-10-22 Settings Users focus consistency
+
+- [x] Settings Users roles retry, invite, copy-link, reset-link, mobile reset, and desktop reset controls now expose visible `focus-visible` outlines; all seven buttons retain 44px minimum touch sizing.
+- [x] Local source evidence: `docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check passed. No production build or business write.
+- [ ] Online verification remains pending. The prior Settings script was blocked by the old runtime's mobile user-card assertion; rerun after exact candidate SHA deployment.

@@ -2402,3 +2402,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Candidate `fb67f43` was pushed to `origin/main`; Settings Data focus evidence and handoff updates are included.
 - [ ] Dokploy Compose webhook returned HTTP `301` (`Branch Not Match`); no retry was sent. Before the next deploy, verify repository `aishawn/aistore_pos`, branch `main`, root `/`, and `docker-compose.yml`.
 - [ ] Demo `/api/public/version` still reports frontend/backend `a5511fc689a8b4c871c0bacda15713afbd86b44f`, so `fb67f43` is not online-verified.
+## 2026-10-22 Settings Users focus follow-up
+
+- Settings Users now gives all seven user-management buttons visible keyboard focus states: role retry, invite, copy invite/reset links, and mobile/desktop reset-link actions.
+- Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`; evidence `docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json`. No production build or business write was run.
+- This is grouped with the pending Settings Data focus batch for the next deployment. Online verification remains pending until Dokploy accepts the exact candidate SHA.

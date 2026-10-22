@@ -1277,3 +1277,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Candidate `fb67f43` is pushed, but the Dokploy webhook returned HTTP `301` (`Branch Not Match`) and was not retried.
 - Demo `/api/public/version` remains on `a5511fc689a8b4c871c0bacda15713afbd86b44f`; Settings Data focus states are therefore not online-verified.
+## 2026-10-22 Settings Users keyboard focus follow-up
+
+- Settings Users now provides consistent visible keyboard focus for role retry, invite, copy invite/reset links, and both mobile/desktop reset-link actions.
+- Local evidence: `docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json`; seven buttons checked, typecheck/ESLint/diff checks pass, no business writes.
+- Demo verification is pending because the current runtime is older than the candidate and the previous settings suite stopped at its mobile user-card assertion.
