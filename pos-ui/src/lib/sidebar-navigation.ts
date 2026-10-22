@@ -97,12 +97,12 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Orithos AI",
     icon: "sommelier",
     items: [
-      { label: "Wine Assistant", href: "/sommelier", hint: "Find a wine or identify a label" },
-      { label: "Find a Wine", href: "/sommelier/find", hint: "Recommend in-stock bottles by budget and taste" },
-      { label: "Identify Wine Label", href: "/sommelier/identify", hint: "Search by name, barcode, or label photo" },
-      { label: "Price Suggestions", href: "/stock/price-suggestions", hint: "Suggested shelf prices. You apply changes" },
-      { label: "Scan Supplier Invoice", href: "/invoices/scan", hint: "Preview only. Does not create a purchase" },
-      { label: "AI Report Metrics", href: "/reports/ai/metrics", hint: "Admin-only query health and latency" },
+      { label: "Wine Assistant", href: "/sommelier" },
+      { label: "Find a Wine", href: "/sommelier/find" },
+      { label: "Identify Wine Label", href: "/sommelier/identify" },
+      { label: "Price Suggestions", href: "/stock/price-suggestions" },
+      { label: "Scan Supplier Invoice", href: "/invoices/scan" },
+      { label: "AI Report Metrics", href: "/reports/ai/metrics" },
     ],
   },
   {
