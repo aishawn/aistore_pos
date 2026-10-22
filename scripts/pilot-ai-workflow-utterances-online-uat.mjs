@@ -364,6 +364,7 @@ let loginDiagnostics = null;
 let proxyHealth = [];
 const isUnavailable = (httpStatus, code) => [502, 503, 504].includes(httpStatus) || [50210, 50301].includes(code);
 const isDataUnavailableAnswer = (answer) => /no completed sales found|could not read live stock data|source-backed rows? unavailable/i.test(answer);
+const isTransientNetworkError = (value) => /ECONNRESET|ECONNREFUSED|ETIMEDOUT|TimeoutError|timeout|socket hang up|disconnected before secure TLS/i.test(String(value));
 const redactError = (value) => String(value)
   .replace(/cookie:\s*[^\r\n]*/gi, "cookie: [redacted]")
   .replace(/(?:access|refresh)_token=[^;\s]+/gi, "access_token=[redacted]")
@@ -458,7 +459,7 @@ try {
       } catch (error) {
         requestError = error;
         const detail = redactError(error instanceof Error ? error.message : "Unexpected failure");
-        if (attempt < 2 && /ECONNRESET|ETIMEDOUT|TimeoutError|timeout/i.test(detail)) {
+        if (attempt < 2 && isTransientNetworkError(detail)) {
           await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
           continue;
         }
@@ -467,7 +468,7 @@ try {
     }
     if (!response) {
       const detail = redactError(requestError instanceof Error ? requestError.message : "Request failed");
-      const blocked = /ECONNRESET|ETIMEDOUT|TimeoutError|timeout/i.test(detail);
+      const blocked = isTransientNetworkError(detail);
       checks.push({
         id: item.id,
         question: item.question,
