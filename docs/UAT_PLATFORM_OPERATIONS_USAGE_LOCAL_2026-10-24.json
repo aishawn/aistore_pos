@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-10-21T17:11:22.574Z",
+  "generatedAt": "2026-10-22T01:45:00.625Z",
+  "sourceCommit": "working-tree",
   "target": "http://app.localhost:3035",
-  "scope": "local browser fixture; platform APIs intercepted; no writes",
+  "scope": "local browser fixture; platform APIs intercepted; no live business writes",
   "status": "PASS",
   "checks": [
     {
@@ -9,6 +10,7 @@
       "viewport": 390,
       "attempts": 3,
       "retryRecovered": true,
+      "focusControls": true,
       "pageErrors": [],
       "scrollWidth": 390,
       "viewportWidth": 390,
@@ -19,6 +21,7 @@
       "viewport": 390,
       "attempts": 4,
       "retryRecovered": true,
+      "focusControls": true,
       "pageErrors": [],
       "scrollWidth": 390,
       "viewportWidth": 390,
@@ -29,6 +32,7 @@
       "viewport": 1440,
       "attempts": 3,
       "retryRecovered": true,
+      "focusControls": true,
       "pageErrors": [],
       "scrollWidth": 1440,
       "viewportWidth": 1440,
@@ -39,6 +43,7 @@
       "viewport": 1440,
       "attempts": 4,
       "retryRecovered": true,
+      "focusControls": true,
       "pageErrors": [],
       "scrollWidth": 1440,
       "viewportWidth": 1440,

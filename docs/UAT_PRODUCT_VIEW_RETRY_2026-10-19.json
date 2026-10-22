@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-20T13:09:38.853Z",
-  "sourceCommit": "8f58868ceb46e2afabec23382bcf48ecc2348638",
-  "environment": "live-read-only-injected",
-  "deployment": "unverified-after-deploy",
-  "target": "https://demo.orithos.com.au",
+  "generatedAt": "2026-10-22T03:11:39.038Z",
+  "sourceCommit": "72f605a3b3d9e5bbd6bd625c353b16386c1d10bb",
+  "environment": "local-dev-fixtures",
+  "deployment": "not-applicable-local-dev",
+  "target": "http://demo.localhost:3035",
   "scope": "read-only product detail GET failure injection; one GET returns 503; verifies Retry progress lock; no business writes",
   "checks": [
     {

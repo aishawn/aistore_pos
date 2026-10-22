@@ -1,38 +1,43 @@
 {
-  "generatedAt": "2026-10-21T07:26:37.861Z",
-  "sourceCommit": "83a6044f8770f8ba67b8dec7deff67dee17fe2aa",
+  "generatedAt": "2026-10-22T00:44:00.575Z",
+  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
   "sourceWorkingTree": true,
   "environment": "local-browser-fixtures",
-  "target": "http://demo.localhost:3035",
+  "target": "http://127.0.0.1:3037",
   "scope": "All browser APIs intercepted; only fixture PATCH/GET; no real business writes",
-  "status": "PASS",
-  "passed": 12,
-  "failed": 0,
+  "status": "FAIL",
+  "passed": 2,
+  "failed": 10,
   "checks": [
     {
       "width": 390,
       "name": "Suggestion tax and net margin labels",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Fixture Shiraz', { exact: true }) to be visible\u001b[22m\n"
     },
     {
       "width": 390,
       "name": "Suggestion prefill requires manual confirmation",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Bulk edit this product' })\u001b[22m\n"
     },
     {
       "width": 390,
       "name": "Lost write response reconciles by GET without replay",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.check: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('checkbox', { name: 'I have reviewed these changes.' })\u001b[22m\n"
     },
     {
       "width": 390,
       "name": "A confirmed row can be edited again",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('spinbutton', { name: 'Price for Fixture Shiraz' })\u001b[22m\n"
     },
     {
       "width": 390,
       "name": "Unconfirmed results block further writes and retain input",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.check: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('checkbox', { name: 'I have reviewed these changes.' })\u001b[22m\n"
     },
     {
       "width": 390,
@@ -42,27 +47,32 @@
     {
       "width": 1440,
       "name": "Suggestion tax and net margin labels",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Fixture Shiraz', { exact: true }) to be visible\u001b[22m\n"
     },
     {
       "width": 1440,
       "name": "Suggestion prefill requires manual confirmation",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.click: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Bulk edit this product' })\u001b[22m\n"
     },
     {
       "width": 1440,
       "name": "Lost write response reconciles by GET without replay",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.check: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('checkbox', { name: 'I have reviewed these changes.' })\u001b[22m\n"
     },
     {
       "width": 1440,
       "name": "A confirmed row can be edited again",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.fill: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('spinbutton', { name: 'Price for Fixture Shiraz' })\u001b[22m\n"
     },
     {
       "width": 1440,
       "name": "Unconfirmed results block further writes and retain input",
-      "status": "PASS"
+      "status": "FAIL",
+      "error": "locator.check: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('checkbox', { name: 'I have reviewed these changes.' })\u001b[22m\n"
     },
     {
       "width": 1440,

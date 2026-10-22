@@ -1,19 +1,32 @@
 {
-  "generatedAt": "2026-10-20T17:19:29.313Z",
-  "sourceCommit": "435ec476e5dd6ed1408b462eee88c7bf6b7718c5",
+  "generatedAt": "2026-10-22T00:43:31.537Z",
+  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
-  "checks": 1,
-  "passed": 0,
-  "failed": 1,
-  "failures": [
-    {
-      "failure": "LOGIN_FAILED_390"
-    }
-  ],
+  "checks": 2,
+  "passed": 2,
+  "failed": 0,
+  "failures": [],
   "results": [
     {
-      "failure": "LOGIN_FAILED_390"
+      "viewport": 390,
+      "recommendationCards": 3,
+      "identifyItems": 48,
+      "assistantAvailable": true,
+      "transcriptionAvailable": true,
+      "sendButton": true,
+      "fabSafeBottom": true,
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "recommendationCards": 3,
+      "identifyItems": 48,
+      "assistantAvailable": true,
+      "transcriptionAvailable": true,
+      "sendButton": true,
+      "fabSafeBottom": true,
+      "pageErrors": []
     }
   ]
 }

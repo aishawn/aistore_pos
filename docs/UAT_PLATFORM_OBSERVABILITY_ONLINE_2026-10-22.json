@@ -1,122 +1,115 @@
 {
-  "generatedAt": "2026-10-21T16:04:06.652Z",
-  "sourceCommit": "70cc2347ee01d6e2d054059fb48f575c3c71700b",
+  "generatedAt": "2026-10-22T03:15:26.402Z",
+  "sourceCommit": "177eea3d91be2d74ac22f049b46467cb19adddc4",
   "deployment": "unverified-after-deploy",
   "target": "https://app.orithos.com.au",
   "scope": "authenticated read-only platform observability UI; no business writes",
-  "status": "FAIL",
+  "status": "PASS",
   "checks": [
     {
       "route": "/platform/operations",
       "viewport": 390,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1792638907711",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/usage",
       "viewport": 390,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1792638911151",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/audit",
       "viewport": 390,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/audit?__uat=1792638912539",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/failures",
       "viewport": 390,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/failures?__uat=1792638913962",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/operations",
       "viewport": 1440,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/operations?__uat=1792638916057",
+      "headingVisible": true,
       "pageErrors": [],
-      "apiResponses": [],
+      "apiResponses": [
+        {
+          "path": "/api/admin/operations/health",
+          "status": 200
+        }
+      ],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/usage",
       "viewport": 1440,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/usage?__uat=1792638920261",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/audit",
       "viewport": 1440,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/audit?__uat=1792638921721",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     },
     {
       "route": "/platform/failures",
       "viewport": 1440,
-      "status": null,
-      "authStatus": 502,
-      "authCode": null,
-      "finalUrl": null,
-      "headingVisible": false,
+      "status": 200,
+      "finalUrl": "https://app.orithos.com.au/platform/failures?__uat=1792638923116",
+      "headingVisible": true,
       "pageErrors": [],
       "apiResponses": [],
       "nonGet": [],
-      "noHorizontalOverflow": false
+      "noHorizontalOverflow": true
     }
   ],
   "runtimeVersion": {
     "frontend": {
       "service": "orithos-frontend",
-      "commit": null,
-      "builtAt": "2026-10-21T15:56:09.064Z"
+      "commit": "c905902f4020180095646cdeeaf638d78a0ded2d",
+      "builtAt": "2026-10-22T03:12:22.738Z"
     },
-    "backend": null
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "c905902f4020180095646cdeeaf638d78a0ded2d",
+      "builtAt": "2026-10-22T03:12:22Z"
+    }
   }
 }

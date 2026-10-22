@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T04:56:39.030Z",
-  "sourceCommit": "115bdedf3d6cf4cca563cccba24c39d5c9b5474b",
+  "generatedAt": "2026-10-21T18:41:50.481Z",
+  "sourceCommit": "fc5b7367b033394b3c1c09ca5ab8b7e0ccefc146",
   "target": "https://demo.orithos.com.au",
   "scope": "AI enablement gate + price suggestions surface; production AI flip still requires Dokploy secrets",
   "status": "PASS",
@@ -8,7 +8,7 @@
     {
       "name": "local env AI_ENABLED",
       "status": "INFO",
-      "evidence": "false"
+      "evidence": "true"
     },
     {
       "name": "local env DashScope key present",
@@ -23,17 +23,47 @@
     {
       "name": "remote AI enabled flag",
       "status": "INFO",
-      "evidence": "enabled=false http=200"
+      "evidence": "enabled=true http=200"
     },
     {
       "name": "price suggestions reachable",
-      "status": "BLOCKED",
-      "evidence": "page not on this deployment yet or auth redirected"
+      "status": "PASS",
+      "evidence": "https://demo.orithos.com.au/stock/price-suggestions"
     },
     {
-      "name": "enabled model smoke",
-      "status": "BLOCKED",
-      "evidence": "remote AI_ENABLED=false — complete AI_PRODUCTION_ENABLEMENT.md before Phase 3"
+      "name": "price suggestions read-only copy",
+      "status": "PASS",
+      "evidence": "orithos Overview Register Stock Products Replenishment Plan Price Suggestions Purchases Suppliers Customers Reporting Orithos AI Wine Assistant Find a wine or identify a label Find a Wine Recommend in-stock bottles by bu"
+    },
+    {
+      "name": "price suggestions product search",
+      "status": "PASS",
+      "evidence": "Search control accepts product/SKU query"
+    },
+    {
+      "name": "price suggestions status filter",
+      "status": "PASS",
+      "evidence": "Status filter is available on the live page"
+    },
+    {
+      "name": "assistantAvailable flag",
+      "status": "INFO",
+      "evidence": "true"
+    },
+    {
+      "name": "enabled NLQ API",
+      "status": "PASS",
+      "evidence": "intent=search_product"
+    },
+    {
+      "name": "enabled chat composer",
+      "status": "PASS",
+      "evidence": "composer ready"
+    },
+    {
+      "name": "find wine with AI on",
+      "status": "PASS",
+      "evidence": "page loaded"
     },
     {
       "name": "no product price writes observed",

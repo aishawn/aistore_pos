@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-20T20:09:49.462Z",
-  "sourceCommit": "60a03947dcd810b72fc383f65366da109d9a7c79",
+  "generatedAt": "2026-10-22T00:28:37.479Z",
+  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated AI availability UI and local shortcut; no business writes",
   "checks": [
@@ -15,9 +15,9 @@
       "evidence": "Assistant composer is enabled while store AI is on; no prompt was submitted by this check."
     },
     {
-      "name": "Local sell shortcut remains available",
+      "name": "Quick action remains available",
       "status": "PASS",
-      "evidence": "The local open-sell command navigated without an AI or business write request."
+      "evidence": "The Products shortcut navigated without an AI or business write request."
     }
   ],
   "passed": 3,

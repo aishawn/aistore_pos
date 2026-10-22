@@ -1,12 +1,13 @@
 {
-  "generatedAt": "2026-10-21T08:27:34.624Z",
-  "sourceCommit": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "generatedAt": "2026-10-22T00:12:38.355Z",
+  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
   "target": "https://demo.orithos.com.au",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated pricing and stock pages; non-GET API calls blocked; no business writes",
-  "status": "PASS",
+  "status": "BLOCKED",
   "passed": 8,
   "failed": 0,
+  "blocked": 2,
   "checks": [
     {
       "route": "/stock/list",
@@ -29,8 +30,10 @@
       "tableColumnsDoNotOverlap": true,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": true,
+      "dataBlocked": false,
+      "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/stock-list-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/stock-list-390.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -40,8 +43,8 @@
       "loadingComplete": true,
       "noHorizontalOverflow": true,
       "mobileTableScroll": false,
-      "mobileCardFields": true,
-      "mobileCardWidth": 342,
+      "mobileCardFields": false,
+      "mobileCardWidth": 366,
       "mobileContentWidth": null,
       "mobileSearchWidth": null,
       "aiEntryPlacement": {
@@ -53,8 +56,10 @@
       "tableColumnsDoNotOverlap": true,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": true,
+      "dataBlocked": true,
+      "blockedReason": "",
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/capped-pricing-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/capped-pricing-390.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -67,7 +72,7 @@
       "mobileCardFields": null,
       "mobileCardWidth": 324,
       "mobileContentWidth": null,
-      "mobileSearchWidth": 267.75,
+      "mobileSearchWidth": 246.75,
       "aiEntryPlacement": {
         "headerVisible": true,
         "floatingEntryHidden": true
@@ -77,8 +82,10 @@
       "tableColumnsDoNotOverlap": null,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": null,
+      "dataBlocked": false,
+      "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/bulk-price-edit-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/bulk-price-edit-390.png"
     },
     {
       "route": "/stock/price-suggestions",
@@ -101,8 +108,10 @@
       "tableColumnsDoNotOverlap": null,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": null,
+      "dataBlocked": false,
+      "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/price-suggestions-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/price-suggestions-390.png"
     },
     {
       "route": "/stock/list",
@@ -122,8 +131,10 @@
       "tableColumnsDoNotOverlap": true,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": true,
+      "dataBlocked": false,
+      "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/stock-list-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/stock-list-1440.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -143,8 +154,10 @@
       "tableColumnsDoNotOverlap": true,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": true,
+      "dataBlocked": true,
+      "blockedReason": "",
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/capped-pricing-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/capped-pricing-1440.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -164,8 +177,10 @@
       "tableColumnsDoNotOverlap": null,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": null,
+      "dataBlocked": false,
+      "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/bulk-price-edit-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/bulk-price-edit-1440.png"
     },
     {
       "route": "/stock/price-suggestions",
@@ -185,8 +200,10 @@
       "tableColumnsDoNotOverlap": null,
       "columnsAlignWithFirstRow": null,
       "headerTextFits": null,
+      "dataBlocked": false,
+      "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-pricing-reliability-online/price-suggestions-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/price-suggestions-1440.png"
     }
   ],
   "blockedWrites": []

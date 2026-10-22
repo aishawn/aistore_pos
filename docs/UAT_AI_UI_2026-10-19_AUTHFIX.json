@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T08:28:14.542Z",
-  "sourceCommit": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "generatedAt": "2026-10-21T18:42:46.806Z",
+  "sourceCommit": "fc5b7367b033394b3c1c09ca5ab8b7e0ccefc146",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
   "checks": 2,

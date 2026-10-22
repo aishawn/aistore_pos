@@ -1,26 +1,131 @@
 {
-  "generatedAt": "2026-10-19T10:48:09.211Z",
-  "sourceCommit": "1639c44c8284d3c99c78e8c4832765222a08b62b",
+  "generatedAt": "2026-10-21T22:20:48.181Z",
+  "sourceCommit": "ab6c0e664dd922b53c9318f252a1648b231db083",
   "environment": "local-dev-fixtures",
   "target": "http://demo.localhost:3035",
-  "scope": "AI capability gate UI; chat enabled while transcription is unavailable; no model or business writes",
+  "scope": "AI capability gate UI; chat on/off and voice unavailable at 320/390/768/1024/1440; all API writes intercepted",
   "status": "PASS",
   "checks": [
     {
+      "viewport": 320,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 320,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice input is disabled for this store",
+      "pageErrors": []
+    },
+    {
       "viewport": 390,
-      "chatEnabled": true,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 390,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice input is disabled for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 768,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 768,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice input is disabled for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 1024,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice transcription is unavailable for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 1024,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
+      "voiceDisabled": true,
+      "voiceTitle": "Voice input is disabled for this store",
+      "pageErrors": []
+    },
+    {
+      "viewport": 1440,
+      "expectedChatAvailable": true,
+      "expectedVoiceTitle": "Voice transcription is unavailable for this store",
+      "chatDisabled": false,
       "voiceDisabled": true,
       "voiceTitle": "Voice transcription is unavailable for this store",
       "pageErrors": []
     },
     {
       "viewport": 1440,
-      "chatEnabled": true,
+      "expectedChatAvailable": false,
+      "expectedVoiceTitle": "Voice input is disabled for this store",
+      "chatDisabled": true,
       "voiceDisabled": true,
-      "voiceTitle": "Voice transcription is unavailable for this store",
+      "voiceTitle": "Voice input is disabled for this store",
       "pageErrors": []
     }
   ],
+  "assistantRequests": 25,
+  "assistantQuestions": [
+    "Today's sales",
+    "What should I restock?",
+    "Which prices should I review?",
+    "Recommend a red wine under $30",
+    "Scan this supplier invoice",
+    "Today's sales",
+    "What should I restock?",
+    "Which prices should I review?",
+    "Recommend a red wine under $30",
+    "Scan this supplier invoice",
+    "Today's sales",
+    "What should I restock?",
+    "Which prices should I review?",
+    "Recommend a red wine under $30",
+    "Scan this supplier invoice",
+    "Today's sales",
+    "What should I restock?",
+    "Which prices should I review?",
+    "Recommend a red wine under $30",
+    "Scan this supplier invoice",
+    "Today's sales",
+    "What should I restock?",
+    "Which prices should I review?",
+    "Recommend a red wine under $30",
+    "Scan this supplier invoice"
+  ],
+  "questionContractPasses": true,
   "transcriptionRequests": 0,
   "interceptedWrites": []
 }

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T09:03:27.466Z",
-  "testHarnessCommit": "d9c562292ebab5eea66d9b3c34b4ba45006e1f4b",
+  "generatedAt": "2026-10-22T00:33:04.596Z",
+  "testHarnessCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
   "target": "https://demo.orithos.com.au",
   "deploymentShaVerified": false,
   "runtimeCommit": null,
@@ -22,22 +22,22 @@
     {
       "name": "today uses store business date",
       "status": "PASS",
-      "evidence": "timezone=Australia/Adelaide; expected=2026-10-21; actual=2026-10-21"
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-22; actual=2026-10-22"
     },
     {
       "name": "empty today agrees with 24-hour overview",
       "status": "PASS",
-      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-21. Try a wider range, for example: sales last 7 days."
+      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-22. Try a wider range, for example: sales last 7 days."
     },
     {
       "name": "7-day sales report returns rows",
       "status": "PASS",
-      "evidence": "answer=Sales for 2026-10-15 to 2026-10-21 total 2328.16 (2 day(s)).; rows=2"
+      "evidence": "answer=Sales for 2026-10-16 to 2026-10-22 total AUD 12.99 (1 day).; rows=1"
     },
     {
       "name": "30-day sales report returns rows",
       "status": "PASS",
-      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-22 to 2026-10-21 total 16536.98 (7 day(s)).; rows=7"
+      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-23 to 2026-10-22 total AUD 16536.98 (7 days).; rows=7"
     },
     {
       "name": "day-month date uses current year",
@@ -47,7 +47,7 @@
     {
       "name": "compact and explicit dates return the same report",
       "status": "PASS",
-      "evidence": "compact=Sales for 2026-10-14 total 4014.36 (1 day(s)).; explicit=Sales for 2026-10-14 total 4014.36 (1 day(s))."
+      "evidence": "compact=Sales for 2026-10-14 total AUD 4014.36 (1 day).; explicit=Sales for 2026-10-14 total AUD 4014.36 (1 day)."
     },
     {
       "name": "Chinese explicit date resolves to the same business day",
@@ -57,7 +57,7 @@
     {
       "name": "screenshot date wording resolves to one business day",
       "status": "PASS",
-      "evidence": "expected=2026-10-16; actual=2026-10-16; answer=Sales for 2026-10-16 total 12.99 (1 day(s))."
+      "evidence": "expected=2026-10-16; actual=2026-10-16; answer=Sales for 2026-10-16 total AUD 12.99 (1 day)."
     },
     {
       "name": "screenshot date sales total reconciles with overview",
@@ -92,7 +92,7 @@
     {
       "name": "report execution uses Odoo source",
       "status": "PASS",
-      "evidence": "requestsByPath={\"assistant:unknown\":153,\"assistant:navigate\":101,\"odoo\":34,\"assistant:report_sales\":19,\"assistant:report_stock\":13,\"assistant:report_adhoc\":10,\"unsupported\":10,\"assistant:search_product\":4,\"assistant:report_qty\":2,\"assistant:qa\":1}"
+      "evidence": "requestsByPath={\"assistant:navigate\":95,\"odoo\":56,\"assistant:report_sales\":35,\"assistant:unknown\":33,\"assistant:report_adhoc\":30,\"unsupported\":30,\"assistant:report_stock\":20,\"assistant:search_product\":10,\"assistant:qa\":4,\"assistant:search_customer\":4,\"assistant:report_qty\":1}"
     }
   ],
   "failures": [],

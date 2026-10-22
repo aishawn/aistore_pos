@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-21T18:36:52.974Z",
-  "sourceCommit": "a4740ff1a038ffbe59888a4d149fd556caf3810f",
+  "generatedAt": "2026-10-21T20:09:39.557Z",
+  "sourceCommit": "c4585adc47b33af8b3c814de534252d6599dadb5",
   "worktreeDirty": true,
   "deployment": "unverified-after-deploy",
   "target": "https://demo.orithos.com.au",
   "runtimeIdentity": {
     "httpStatus": 200,
-    "frontendCommit": null,
-    "frontendBuiltAt": "2026-10-21T17:42:25.986Z",
-    "backendCommit": null,
-    "backendBuiltAt": "2026-10-21T18:24:30Z",
+    "frontendCommit": "06342c65f36e2ded8b7f082815a255acc1635c50",
+    "frontendBuiltAt": "2026-10-21T20:02:28.556Z",
+    "backendCommit": "06342c65f36e2ded8b7f082815a255acc1635c50",
+    "backendBuiltAt": "2026-10-21T20:02:28Z",
     "matchesSourceCommit": false
   },
   "config": {
@@ -36,7 +36,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "67a9e2ed-90b2-4304-a71f-51e11b211751"
+        "correlationId": "d12472e2-29e6-4405-b2dd-41642c11a2b6"
       }
     },
     {
@@ -54,7 +54,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "2caabbbc-45ac-4e8a-bfef-1955eb17cee3"
+        "correlationId": "172f1d4f-6fe9-4872-bf0d-11d193838f36"
       }
     },
     {
@@ -72,7 +72,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "bc5809fb-f171-4c2b-ad9b-0e88a0021d31"
+        "correlationId": "17f2af24-943c-41f9-80b3-f344f9e1085d"
       }
     },
     {
@@ -90,7 +90,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "f34d5ed1-6dd3-40f0-9991-80d7ffd8d723"
+        "correlationId": "6bf133e8-ac38-4ee7-8e37-b110c72e9041"
       }
     },
     {
@@ -108,7 +108,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "2a04652a-d4bd-4bfc-9b5d-9e808508225e"
+        "correlationId": "2fb18e8d-3ba3-42b8-870a-369c6e175309"
       }
     },
     {
@@ -126,7 +126,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "6d67fe6e-83bc-4e40-977e-0731f0e4e7de"
+        "correlationId": "d64c7f7c-7e05-4dbf-97a1-baeaea5bad92"
       }
     },
     {
@@ -144,7 +144,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "3cfdc96b-e56c-46bd-bff3-7a4b3c2bb1d1"
+        "correlationId": "5fc1b4f2-0749-467e-85c2-fe4f5bb5abff"
       }
     },
     {
@@ -162,7 +162,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "de9865e4-fcc4-4c89-ab1b-5e5bcea8af8b"
+        "correlationId": "e38acacb-3392-4186-bcfc-40a26ce0495f"
       }
     },
     {
@@ -180,7 +180,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "238e8e0f-8fab-4172-b671-7644b284f574"
+        "correlationId": "5040f041-6117-427d-8835-ca7591532ba0"
       }
     },
     {
@@ -198,7 +198,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "16cd70f3-9902-4d66-8c97-8635e34ec8b1"
+        "correlationId": "06e98930-f248-421a-a426-030640629803"
       }
     },
     {
@@ -216,7 +216,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "c118996a-a913-48ef-b98d-73dc4aae1801"
+        "correlationId": "90c17168-3375-4428-a00e-05645e1f1b8a"
       }
     },
     {
@@ -234,7 +234,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "8aca86c2-0639-4eba-8569-222ea11c19d2"
+        "correlationId": "48b1bbf2-6098-497d-b21e-1162137d83a7"
       }
     },
     {
@@ -252,7 +252,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "349530a7-4ee4-4bd8-a361-32a755adb1de"
+        "correlationId": "af10a756-e178-4318-a6fb-6155fba68b5b"
       }
     },
     {
@@ -275,7 +275,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "73a70edd-a749-4cd5-9768-907eb05ed16f"
+        "correlationId": "1fc45c51-e7bf-4a99-9098-5f5f0fd06d57"
       }
     },
     {
@@ -298,7 +298,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "64e9076e-494e-46f1-a91c-ef9bacc3add5"
+        "correlationId": "e1951d2a-0856-429b-88b3-0be7abc7b654"
       }
     },
     {
@@ -321,7 +321,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "417f9521-9b41-478b-b6dc-3295507884a2"
+        "correlationId": "53697df0-cc9e-4eda-823c-aca44602c18a"
       }
     },
     {
@@ -344,7 +344,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "18edfd2a-9e2e-4d9d-93d4-6793aad2d25e"
+        "correlationId": "8cf7c503-7052-4a06-9cd5-238e2ad77cee"
       }
     },
     {
@@ -367,7 +367,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "24692f08-e2fd-4c64-b51b-816615c02003"
+        "correlationId": "88f808b3-bb0d-4bd8-8ba4-5b72f4add687"
       }
     },
     {
@@ -390,7 +390,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "0026196c-1cc6-4c7e-a48b-5e870406b7d7"
+        "correlationId": "e4a02635-a2f1-4b2d-a1ff-a100f0248cd1"
       }
     },
     {
@@ -413,7 +413,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "c844c740-642e-49dd-aa1b-f11d7f7131cc"
+        "correlationId": "bad04fed-4458-41e5-b538-eb5ce54a812a"
       }
     },
     {
@@ -436,7 +436,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "85791591-b14b-4727-9935-cf29bfdfd394"
+        "correlationId": "ece17427-6892-427b-86ae-f471e275096c"
       }
     },
     {
@@ -459,7 +459,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "4468059b-5236-42ec-8ed4-64f08647a0f6"
+        "correlationId": "a6d03c5f-e214-4217-afaa-69ce15d4a7f1"
       }
     },
     {
@@ -482,7 +482,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "9408cfca-e49e-4657-8b24-fef06a8a0420"
+        "correlationId": "f1eb9473-1da3-45fe-9626-ae8946be4eee"
       }
     },
     {
@@ -505,7 +505,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "fcc0c759-0199-46b3-8cf6-99a9eeab480c"
+        "correlationId": "24dfcbf4-1b8a-4e06-913c-8b337086badf"
       }
     },
     {
@@ -528,7 +528,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "fa1142ee-e3b3-4bb1-979c-3d02dc0a388a"
+        "correlationId": "c0541e87-bf8c-4289-ae38-8231695da752"
       }
     },
     {
@@ -551,7 +551,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "c69e46bd-9980-4965-966a-825bfd2acca4"
+        "correlationId": "21219bef-727f-43e8-afe9-8d5be908ea18"
       }
     },
     {
@@ -574,7 +574,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "eeacd02f-6ca0-419d-975c-e7a770754cb4"
+        "correlationId": "724fac6e-731d-4fb7-a834-ce61042576b7"
       }
     },
     {
@@ -597,7 +597,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "a1dc9f94-ac7d-48b7-9b46-305575b4cb38"
+        "correlationId": "cf60e327-eb8c-4a0e-8473-12b705947466"
       }
     },
     {
@@ -620,7 +620,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "0ff5c115-c1aa-42d7-a23d-89cb78a9ef78"
+        "correlationId": "4e6f68d6-ae17-4013-8cc6-4e588cbf17b2"
       }
     },
     {
@@ -643,7 +643,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "cdf0feea-a638-4a79-8795-9a7d8a115b8a"
+        "correlationId": "4eb6a081-d101-4a56-a2af-100bac98e66f"
       }
     },
     {
@@ -666,7 +666,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "4a420810-1ff5-4c39-8f71-17cfef0bf843"
+        "correlationId": "b4d17d86-af38-484b-bb88-9a0cc08a2e36"
       }
     },
     {
@@ -689,7 +689,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "f8a0d69e-b166-49d1-88a9-32a0d6e262c6"
+        "correlationId": "b425d65c-38a8-4df5-82f3-f46eb5a11e8e"
       }
     },
     {
@@ -712,7 +712,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "b0da5b94-605e-4815-80da-e63455d0522e"
+        "correlationId": "bf5c2ab4-802f-4b64-a652-a109d13ce810"
       }
     },
     {
@@ -735,7 +735,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "63a85e2d-5ed4-426c-a711-7d808a36ea11"
+        "correlationId": "b571bc43-6f22-474d-b22d-36f68b30237b"
       }
     },
     {
@@ -758,7 +758,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "f5df4c28-fe77-436a-9aca-a8166a33ece0"
+        "correlationId": "40c12881-2839-4741-8814-a61de954e852"
       }
     },
     {
@@ -781,7 +781,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "59dd22ce-5edd-47bc-bf87-79a0cc7be73c"
+        "correlationId": "5c11796d-c708-4bd7-9280-54603ef4654d"
       }
     },
     {
@@ -804,7 +804,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "c5d1a39c-d4c9-4a9d-a645-9318ed7c706e"
+        "correlationId": "6b358da0-ee73-4b44-89ed-be5ca6bf613e"
       }
     },
     {
@@ -827,7 +827,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "6a2957e0-06d3-4ad5-8f82-f400d47a6c86"
+        "correlationId": "3233ee89-3fd5-4dc7-839a-af5f67e9b4e4"
       }
     },
     {
@@ -845,7 +845,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "56cf8eef-2ba0-4048-a7e7-360cffde37cd"
+        "correlationId": "702d40b5-8167-4660-8cd5-d24842840223"
       }
     },
     {
@@ -863,7 +863,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "7dc13ff3-31a1-4d9b-9e82-d241b1733762"
+        "correlationId": "20996b03-6592-45a8-abe1-7f739a9a9c11"
       }
     },
     {
@@ -881,7 +881,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "f0c32022-55fa-4745-af07-999138b20a25"
+        "correlationId": "d15f89e9-4e9f-4374-bb0f-a5011874c453"
       }
     },
     {
@@ -899,7 +899,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "f49c6fdb-8a69-4cac-98dc-78c6fd1ce2eb"
+        "correlationId": "149e046e-66b9-412d-b2ce-c1d5469c058a"
       }
     },
     {
@@ -917,7 +917,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "fb1ca3f9-e86f-4409-b773-02625492989f"
+        "correlationId": "0c0f584c-27f4-4ca7-9b90-090ee2601202"
       }
     },
     {
@@ -935,7 +935,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "edf02cfc-fae0-4c77-bc0e-80b64099d710"
+        "correlationId": "f33ca84a-c9c5-4765-853a-4b8ceb23fed6"
       }
     },
     {
@@ -953,7 +953,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "1b55aea7-a94a-42a0-839b-d495209dece3"
+        "correlationId": "164f238b-3691-487e-9080-560311b77294"
       }
     },
     {
@@ -971,7 +971,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "85bdc242-0fbf-4104-9ca2-a2a657faa99b"
+        "correlationId": "eca11077-0d52-4139-9880-7f71d5aba489"
       }
     },
     {
@@ -989,7 +989,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "9e6dd20f-953f-4af7-a34b-b48aa1c56eec"
+        "correlationId": "2fa037e3-f7e1-48d1-8203-e59914b4cdb4"
       }
     },
     {
@@ -1007,7 +1007,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "fe24df02-0cc5-4908-a9f8-78499c29ab32"
+        "correlationId": "ff6b0b70-2450-475b-aae0-868534c00c41"
       }
     },
     {
@@ -1025,7 +1025,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "e32cfe7a-699f-4a4d-b2f4-afa51fd06e58"
+        "correlationId": "371e21cf-0c2e-429f-ba4b-9c52dc5bbeab"
       }
     },
     {
@@ -1043,7 +1043,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "509baaee-e374-4628-a096-a7e685e23c10"
+        "correlationId": "9626e87a-a5b5-4fd5-9e3d-55b2c5e41c7f"
       }
     },
     {
@@ -1061,7 +1061,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "de3abc04-dd4b-454b-b679-6cad41e27433"
+        "correlationId": "b4780874-8d0b-4d42-b001-5cbc91e5d216"
       }
     },
     {
@@ -1079,7 +1079,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "2e7887b6-bab8-4632-aa74-72f347e9b4fd"
+        "correlationId": "7b599359-e9e7-4af0-9777-b0406b9926fb"
       }
     },
     {
@@ -1097,7 +1097,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "0cea5350-1544-498f-a3ad-927d498a70eb"
+        "correlationId": "d39283bb-7699-4369-9924-cd7fd8b506f7"
       }
     },
     {
@@ -1115,7 +1115,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "16921b94-a8cc-4f54-a01f-2ef950edde61"
+        "correlationId": "ce0922bf-ac09-4235-8770-161bad1d5b63"
       }
     },
     {
@@ -1133,7 +1133,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "493d2b88-d6f3-46d5-bd5e-e5573fa86407"
+        "correlationId": "4af67c89-ad2c-46a5-8267-f7cd1c5a854a"
       }
     },
     {
@@ -1151,7 +1151,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "a1bc1ced-ca88-46a1-b395-347ade0fb575"
+        "correlationId": "a83322e2-71e7-4f28-9e21-ae88274297ca"
       }
     },
     {
@@ -1169,7 +1169,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "e5b8bb7f-3b00-4719-ae1f-1819118a7dbb"
+        "correlationId": "21c401c3-aa86-42c3-9807-0c47dab8cc85"
       }
     },
     {
@@ -1187,7 +1187,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "21961ab7-4fa0-4fe5-86bf-d10596170fab"
+        "correlationId": "2531f262-7ce6-4ac8-801e-c4c132ee1ec0"
       }
     },
     {
@@ -1205,7 +1205,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/replenishment",
-        "correlationId": "4fabebcb-f357-412c-9123-30571ae5547f"
+        "correlationId": "bdeb9ce8-a693-450a-9b4f-941095ae207a"
       }
     },
     {
@@ -1223,7 +1223,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "80efc173-637f-48cc-804c-14992059f418"
+        "correlationId": "99e76d3c-e12d-4652-8093-fd8fccbd0a4b"
       }
     },
     {
@@ -1241,7 +1241,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "befb1d15-7e05-487e-9ad9-ace067ab7478"
+        "correlationId": "1503afa7-0c1d-40e9-95ee-e5564d45ab22"
       }
     },
     {
@@ -1259,7 +1259,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "86e68faa-2709-48ce-8ee1-f236a3cc3ca3"
+        "correlationId": "f5c8f034-43fe-4e1c-a314-97bad5023f0b"
       }
     },
     {
@@ -1277,7 +1277,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "2a474269-b848-4792-98ae-8b5e4d8c61a1"
+        "correlationId": "a161fad8-ef84-45bf-b2f4-a1c49ee73171"
       }
     },
     {
@@ -1295,7 +1295,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "1cab4c25-d0f7-41fe-95bb-6806ab13b0e5"
+        "correlationId": "c60a2036-5351-42be-a1c8-84710b260440"
       }
     },
     {
@@ -1313,7 +1313,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "22d3a7f5-4350-43d0-a832-957b56505134"
+        "correlationId": "47f31548-8e34-4bc0-a49e-5b7a896fd3f7"
       }
     },
     {
@@ -1331,7 +1331,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "48b81d08-7805-4bfa-9c3f-390cf8e3cc2a"
+        "correlationId": "532c7a07-d197-411c-86ee-ea084aba16d4"
       }
     },
     {
@@ -1349,7 +1349,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "9bb54b28-ccd1-4356-9833-e98ab9244dd6"
+        "correlationId": "f09afa92-2f42-48fb-bbcd-3d405363ea90"
       }
     },
     {
@@ -1367,7 +1367,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "d0761539-f278-4172-8fd5-b9acbe6d2b3c"
+        "correlationId": "7de350f2-4606-430e-a3d3-64f63282af80"
       }
     },
     {
@@ -1385,7 +1385,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "d6814b8f-4a0d-4f70-9ec8-90177a0f8ea3"
+        "correlationId": "89448082-62c1-4797-862d-de85b57fa1ea"
       }
     },
     {
@@ -1403,7 +1403,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "34251ac8-5af1-4de3-a61f-85144fe67506"
+        "correlationId": "21160b19-226e-4bf4-8d3b-59a06afa14e0"
       }
     },
     {
@@ -1421,7 +1421,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "69442bd7-eb5e-4d92-8282-9102c63a2c19"
+        "correlationId": "65637022-0669-48af-b811-2d967012a05f"
       }
     },
     {
@@ -1439,7 +1439,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/capped-pricing",
-        "correlationId": "fe174693-e784-4877-84f4-8c8964979bf1"
+        "correlationId": "c6227968-f6fc-4c29-82ae-dc26cfc08071"
       }
     },
     {
@@ -1457,7 +1457,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "89fb93bd-535c-46ba-8d0e-874dfffb0772"
+        "correlationId": "7da8df89-0d26-4b74-bbbd-b5b7b27f2749"
       }
     },
     {
@@ -1475,7 +1475,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "b9182094-5df4-4e0c-b5cb-369e7834c91b"
+        "correlationId": "08adc322-5cfa-454b-b0e6-866d1c3c5cec"
       }
     },
     {
@@ -1493,7 +1493,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "974a24d7-9561-40aa-b7f7-bca10c1be92a"
+        "correlationId": "1ef2596d-6dfc-4435-a4fe-974ea9a01ab3"
       }
     },
     {
@@ -1511,7 +1511,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "d1fc70a6-0111-4b46-aae4-395df3a55c53"
+        "correlationId": "1c2c6589-0187-411c-b47d-c7316805e175"
       }
     },
     {
@@ -1529,7 +1529,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "af7466b7-624e-48af-8d9d-c36c613ae74c"
+        "correlationId": "eb2c0435-e5d5-464a-95ba-6511c5f17b4f"
       }
     },
     {
@@ -1547,7 +1547,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "c930c7ab-ff22-49a1-b5b4-69f37ef7f548"
+        "correlationId": "d59b9724-98ba-409b-b252-4f6455f17762"
       }
     },
     {
@@ -1565,7 +1565,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "67a3ed06-f527-499c-adaf-9be4b033f4d1"
+        "correlationId": "814f81cc-ffd0-49d8-a30b-ba7f1fb9c1b7"
       }
     },
     {
@@ -1583,7 +1583,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "4a9ff65c-85ca-4363-b1cc-ec6732a52041"
+        "correlationId": "319a14fb-1256-4f9e-a187-3bd4d826f6ae"
       }
     },
     {
@@ -1601,7 +1601,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/sommelier",
-        "correlationId": "c7c6030f-e2ab-45a2-815d-6a269756fe3c"
+        "correlationId": "1c240dfe-0311-4d3c-9e2d-56bf08d0accf"
       }
     },
     {
@@ -1619,7 +1619,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "18e287a7-448e-4bc0-84b8-454e3fc40594"
+        "correlationId": "98b45f86-8132-47b7-90c0-9e2a96de06e2"
       }
     },
     {
@@ -1637,7 +1637,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "5016330c-85b5-40dd-9ecc-e4cb86dfa1b3"
+        "correlationId": "82caf845-cb1a-4147-b081-27d18cade4d3"
       }
     },
     {
@@ -1655,7 +1655,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "05d93d3f-acf8-41fd-8a31-d9a04f1a540b"
+        "correlationId": "a0a9deb4-65b3-451b-8317-4daa3efabd89"
       }
     },
     {
@@ -1673,7 +1673,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "353cef30-b658-4aed-8160-d0353e3d3296"
+        "correlationId": "a570b755-b5d1-4bfa-80fe-621e1aa470f8"
       }
     },
     {
@@ -1691,7 +1691,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "c492e905-1512-40a6-8df8-c038f57df9fb"
+        "correlationId": "3669854f-f8ec-4b62-82c4-84798627545f"
       }
     },
     {
@@ -1709,7 +1709,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "df059e84-5c61-4458-ad36-e81d6732e08c"
+        "correlationId": "8f85e407-ae96-474d-8036-0d8d5c8d52e2"
       }
     },
     {
@@ -1727,7 +1727,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "da150a34-ea68-463a-8e91-8964dd33cfa0"
+        "correlationId": "9f15d3fc-a780-47f2-995f-2e3d0a6e4a4c"
       }
     },
     {
@@ -1745,7 +1745,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "6946d636-696d-4581-a571-c5f34beda62a"
+        "correlationId": "c41f22e6-bd97-4a89-b2db-cb222e97cde0"
       }
     },
     {
@@ -1763,7 +1763,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "d8a16e8b-e6be-44b1-9647-b921f163ad87"
+        "correlationId": "299189cd-b12c-4062-9740-2e3db5729258"
       }
     },
     {
@@ -1781,7 +1781,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "aefc3132-323b-42cf-b8b1-0e7765befdff"
+        "correlationId": "e608d727-deba-482d-98a5-46eb9cad95b5"
       }
     },
     {
@@ -1799,7 +1799,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "031449a1-a954-422a-b2ca-7d4586afb31d"
+        "correlationId": "46635bda-7bd6-433d-8c7b-c782b2b15cc7"
       }
     },
     {
@@ -1817,7 +1817,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "de4aaf56-0dd9-4fa9-92d9-7ccab0f4d2b6"
+        "correlationId": "219483d9-7453-4621-9a4b-d2559d3750af"
       }
     },
     {
@@ -1835,7 +1835,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/invoices/scan",
-        "correlationId": "304795ce-cc96-43fc-8d81-e18fe2d1508f"
+        "correlationId": "02a059de-0361-40c6-aabe-59abe868552a"
       }
     },
     {
@@ -1853,7 +1853,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "060eb8d1-74ac-4847-848f-35beaeadd79f"
+        "correlationId": "cc7eafcd-e735-48c7-a179-4094c43374b9"
       }
     },
     {
@@ -1871,7 +1871,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "c44354b5-ed21-4a75-9876-f40d7d4f448a"
+        "correlationId": "15727f80-2f39-4f8c-80eb-b9ce24e2761f"
       }
     },
     {
@@ -1889,7 +1889,7 @@
         "code": 0,
         "intent": "report_qty",
         "route": null,
-        "correlationId": "b0c4187e-25c2-451b-ac70-64b1c32e5d82"
+        "correlationId": "dc8366cd-7138-4c56-bf27-65c77c295678"
       }
     },
     {
@@ -1907,7 +1907,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "54a0ad69-dcf4-4844-90eb-58505b414885"
+        "correlationId": "81b24ad0-1a06-4e58-bf6e-a1722c2d970c"
       }
     },
     {
@@ -1925,7 +1925,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "52b8e445-5112-4916-9d1a-8d868b888915"
+        "correlationId": "037c975c-8740-4d03-a39d-664c196f5ce1"
       }
     },
     {
@@ -1943,7 +1943,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "ee97ad86-42f5-446e-be4b-ffb30dc0456a"
+        "correlationId": "8b61ddda-e991-4f43-8aee-1fa0f3622046"
       }
     },
     {
@@ -1961,7 +1961,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "a508feb1-9d81-4602-9b0f-75f2d9eba199"
+        "correlationId": "9f707249-c577-46e8-9323-db8677fdb4a8"
       }
     },
     {
@@ -1979,7 +1979,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "bf1ec1b0-074e-4a6c-939e-69b252eed926"
+        "correlationId": "a129df8d-0dff-4b00-9a98-088ce204e7de"
       }
     },
     {
@@ -1997,7 +1997,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "28c441f5-ee28-450e-a69b-ed507b4b5a31"
+        "correlationId": "91ba5f3c-caa4-45e1-a47b-ed39c1721614"
       }
     },
     {
@@ -2015,7 +2015,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "b5ead436-1b7e-4541-8034-451554b83791"
+        "correlationId": "7081416b-6ba5-404f-8ca0-6fe8a1d3534f"
       }
     },
     {
@@ -2033,7 +2033,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "9b5106b6-2f34-4e51-9cbb-02f3e0428caa"
+        "correlationId": "ac724a15-37ef-4260-843e-89c9743f6b0c"
       }
     },
     {
@@ -2051,7 +2051,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "801272de-d009-4d33-b574-11267eb5bf85"
+        "correlationId": "77c4b688-4a9b-48c3-994f-baa73f1de754"
       }
     },
     {
@@ -2069,7 +2069,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "f35dd2c7-8cac-4362-8489-53424d34f5d7"
+        "correlationId": "185dff62-0a77-47a9-ae83-acbb7f724d15"
       }
     },
     {
@@ -2087,7 +2087,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "d6f5a43b-dc68-42fb-a6d3-503c7cd798f3"
+        "correlationId": "915fc540-6e17-4a93-bce3-4b7c8f7f0bc2"
       }
     },
     {
@@ -2105,7 +2105,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "7b8dcbd7-d23e-4cb8-97dd-dfef48edf64f"
+        "correlationId": "87ae717e-0131-43e9-9a59-f599ffa84fa0"
       }
     },
     {
@@ -2123,7 +2123,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "66295afb-8fe7-4331-bb64-ad4f32b99f41"
+        "correlationId": "69a06e8a-09ab-4f72-8951-0fecbaeb31a1"
       }
     },
     {
@@ -2141,7 +2141,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "4900901a-1dc0-431c-951d-417a5d1122b9"
+        "correlationId": "46d07c68-a1b4-4449-b81a-b04b7b024020"
       }
     },
     {
@@ -2159,7 +2159,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "243ba2e3-b505-46b6-940c-0bf59ca641d3"
+        "correlationId": "2bc26d43-d8a2-4708-85bc-c5c56041c013"
       }
     },
     {
@@ -2177,7 +2177,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "131b27ce-7078-4d28-80bd-96b37a93e204"
+        "correlationId": "8bb44c5e-f82d-4c45-9694-1e7bd661e481"
       }
     },
     {
@@ -2195,7 +2195,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "1a1749d5-5398-4c77-8895-bc6c25ffb78c"
+        "correlationId": "ab3ec7a9-da73-40aa-b447-c6642518458d"
       }
     },
     {
@@ -2213,7 +2213,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "617e3d22-efda-4311-8713-986337183c31"
+        "correlationId": "bf76df30-665e-484a-a8f2-55e5da6dc8aa"
       }
     },
     {
@@ -2231,7 +2231,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "d1302034-bc56-4a78-8c45-986a864be40e"
+        "correlationId": "9abbe385-cbcd-4b10-abf9-7b945df68667"
       }
     },
     {
@@ -2249,7 +2249,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "5c22a224-1518-4fae-95bb-aec8096002e8"
+        "correlationId": "57448125-3287-4f2d-b137-a0327f7b5243"
       }
     },
     {
@@ -2267,7 +2267,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "569eb9f4-d8fb-469b-bfa9-820ac5a53bd3"
+        "correlationId": "05ce33e0-a529-42ad-982c-0698a4af3322"
       }
     },
     {
@@ -2285,7 +2285,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "d9105f3f-d6f1-4a92-bccd-3014eb14a483"
+        "correlationId": "98d56b6c-f2e9-488d-93cd-763d955d2fc7"
       }
     },
     {
@@ -2303,7 +2303,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "a623a1f2-8c44-4298-ae62-c43bb99b5e23",
+        "correlationId": "971fbea9-fe40-4345-b6db-1a39675a3db2",
         "query": "DEMO"
       }
     },
@@ -2322,7 +2322,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "439f1e5b-1c33-4b6b-b3be-24f1bd10c089",
+        "correlationId": "3282f637-d199-4ca0-be1c-2c4d474cc502",
         "query": "VB Cans"
       }
     },
@@ -2341,7 +2341,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "91e4beb6-45e3-455b-8a18-b73c76687f26",
+        "correlationId": "5a52e1e4-dd0d-4ae7-b5e9-f4f25cafc3db",
         "query": "Shiraz"
       }
     },
@@ -2360,7 +2360,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "a0f48d91-654b-425a-a794-ad168530fb19",
+        "correlationId": "6afe8ef8-e6db-43f6-b283-07453de93a36",
         "query": "Shiraz"
       }
     },
@@ -2379,7 +2379,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "bc80eb60-5d93-46c0-80a4-b2ecd7f3bc67",
+        "correlationId": "ae46e923-b6fa-4165-8b7f-8a41beb33281",
         "query": "Shiraz"
       }
     },
@@ -2398,7 +2398,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "f2992e1e-072c-4512-ba54-c0b9c1cca82d",
+        "correlationId": "21afda92-1df5-4b21-a4f6-c72e4947056e",
         "query": "VB Cans"
       }
     },
@@ -2417,7 +2417,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "fb2a7250-d43a-4b4c-b3c1-a490ece097c8",
+        "correlationId": "a60a136b-0ee7-4636-8ebb-bb16eed49f09",
         "query": "Shiraz"
       }
     },
@@ -2436,7 +2436,7 @@
         "code": 0,
         "intent": "search_product",
         "route": "/products",
-        "correlationId": "ed2bedc2-fee3-4508-8329-b714779a245f",
+        "correlationId": "f727e4d7-9069-4639-9f87-ad7fa3603b10",
         "query": "Shiraz"
       }
     },
@@ -2455,7 +2455,7 @@
         "code": 0,
         "intent": "search_customer",
         "route": null,
-        "correlationId": "1cdb94aa-d867-427a-8b98-9850dc8b3349",
+        "correlationId": "2bae7895-39b6-4a5d-a160-e75e32177c0f",
         "query": "Alex Example"
       }
     },
@@ -2474,7 +2474,7 @@
         "code": 0,
         "intent": "search_customer",
         "route": null,
-        "correlationId": "1da34454-b670-4bc3-8e87-aa79e34e0b02",
+        "correlationId": "3b9849e5-3298-4c63-b157-0bf797f85e1d",
         "query": "Alex Example"
       }
     },
@@ -2493,7 +2493,7 @@
         "code": 0,
         "intent": "search_customer",
         "route": null,
-        "correlationId": "a5edf2dd-c73e-4c46-b349-8ae859da7799",
+        "correlationId": "b05c4403-055c-4a68-976a-a45e5c6e27fc",
         "query": "Alex Example"
       }
     },
@@ -2512,7 +2512,7 @@
         "code": 0,
         "intent": "search_customer",
         "route": null,
-        "correlationId": "7dd81493-81bc-4137-b9b5-cb517634a559"
+        "correlationId": "bb09d8ff-d987-482a-bac4-d9bafc8c5946"
       }
     },
     {
@@ -2530,7 +2530,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/suppliers/odoo",
-        "correlationId": "e07d1fd9-498e-40d8-b649-ab11c7dfef4a"
+        "correlationId": "0583752d-2346-468c-b197-348fb657c889"
       }
     },
     {
@@ -2548,7 +2548,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/suppliers/odoo",
-        "correlationId": "4e230672-761d-4613-9f08-11be3c40cc25"
+        "correlationId": "5d13a5c7-dbae-4d96-87a5-2cec3b1e4ff3"
       }
     },
     {
@@ -2566,7 +2566,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/suppliers/odoo",
-        "correlationId": "61d2bb19-3c9b-4f2f-8062-4bb6666445da"
+        "correlationId": "1c9eede6-67c4-4a7e-9fc5-d74aca602178"
       }
     },
     {
@@ -2584,7 +2584,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/orders",
-        "correlationId": "e6c60ead-1b48-4cad-b9b7-4c12e7c22f07"
+        "correlationId": "32b1d2d6-12ef-445a-a660-e4dd1557dc09"
       }
     },
     {
@@ -2602,7 +2602,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/orders",
-        "correlationId": "dc962aa9-39ec-4a59-9bba-2617a860191a"
+        "correlationId": "fb8fc2b3-44ed-43be-b5a4-3e6695fa18ba"
       }
     },
     {
@@ -2620,7 +2620,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/orders",
-        "correlationId": "f259a27f-6f94-4b65-a6ca-be6922165223"
+        "correlationId": "a80cfbf8-1456-4c93-9d36-8d8ae3ec435a"
       }
     },
     {
@@ -2638,7 +2638,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stocktake",
-        "correlationId": "fc576c77-846b-4f11-be70-775f3e12cb8c"
+        "correlationId": "4367d667-bea8-40b2-b6ee-205c57bab998"
       }
     },
     {
@@ -2656,7 +2656,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stocktake",
-        "correlationId": "8b53d82c-5696-468f-8fc3-a74f7b4a5756"
+        "correlationId": "4da15f94-eb56-4a6c-9af1-88dc388298ec"
       }
     },
     {
@@ -2674,7 +2674,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stocktake",
-        "correlationId": "f66b7f46-cdaa-4116-928a-7224280c6c20"
+        "correlationId": "77514cc8-251b-4d71-8f16-fc250b15aa42"
       }
     },
     {
@@ -2692,7 +2692,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/classifications",
-        "correlationId": "826c3a95-45e4-444f-868f-bcb437cead7a"
+        "correlationId": "1d108a0a-351f-479c-b093-dcdc03ad6832"
       }
     },
     {
@@ -2710,7 +2710,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/classifications",
-        "correlationId": "ef652697-373a-4646-8e57-d483a09c24fe"
+        "correlationId": "34923913-8534-46b9-9719-5f76065c613f"
       }
     },
     {
@@ -2728,7 +2728,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/customer-groups",
-        "correlationId": "a2b5a9fd-cec2-4e80-a42e-d5f79527e8cf"
+        "correlationId": "a28a4e1d-a651-4aa0-92ec-e20dd46479b1"
       }
     },
     {
@@ -2746,7 +2746,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/customer-groups",
-        "correlationId": "357c6606-76d4-405d-8ea8-ce832869c7ee"
+        "correlationId": "1e85f1ea-3721-43a3-82a3-40e76fd0cfb7"
       }
     },
     {
@@ -2764,7 +2764,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/pricelists",
-        "correlationId": "ce595fe3-23d1-4901-8be6-b4d93be23977"
+        "correlationId": "baeff9ef-65d0-4858-8338-82775d49c669"
       }
     },
     {
@@ -2782,7 +2782,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/pricelists",
-        "correlationId": "8b238172-05fc-4967-850d-4af3006f37d1"
+        "correlationId": "15577b72-ac8d-4a1e-9646-ee45757237ee"
       }
     },
     {
@@ -2800,7 +2800,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/giftcards",
-        "correlationId": "85bd635c-7db2-4b44-a33e-9acf2ce30a2a"
+        "correlationId": "8bb4aa09-cf92-45e7-a8bb-4f03bfac22d9"
       }
     },
     {
@@ -2818,7 +2818,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/giftcards",
-        "correlationId": "b8edd139-f69c-4a2d-a679-db24589fb264"
+        "correlationId": "25fca3a1-0218-4c79-a9b9-a0f0d2aae88e"
       }
     },
     {
@@ -2836,7 +2836,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/buying-periods",
-        "correlationId": "6b809418-5c75-4f32-a9df-3d1da9a6d150"
+        "correlationId": "1235c3a9-2fd0-4046-8584-9d17527689f5"
       }
     },
     {
@@ -2854,7 +2854,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/buying-periods",
-        "correlationId": "bf189c05-b893-4a85-9da2-6e8821d04559"
+        "correlationId": "9740dc6b-5d8d-42ed-b45a-caf46f366189"
       }
     },
     {
@@ -2872,7 +2872,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/customers/balances",
-        "correlationId": "9c05ed6c-79f7-4fcc-86c9-448374e7f78d"
+        "correlationId": "f6d0ed07-1846-4e05-9c37-8254ddde6a35"
       }
     },
     {
@@ -2890,7 +2890,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/customers/balances",
-        "correlationId": "95f55ca9-9dae-4314-a1ff-83af3831b916"
+        "correlationId": "3ac74731-6727-4101-bb9f-47d887b0195f"
       }
     },
     {
@@ -2908,7 +2908,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/bulk-price-edit",
-        "correlationId": "92eabd07-024d-4519-ba92-ec88efcdd9e6"
+        "correlationId": "5a3f810f-020c-4e15-a0b6-13b6ce46966f"
       }
     },
     {
@@ -2926,7 +2926,7 @@
         "code": 0,
         "intent": "navigate",
         "route": "/stock/bulk-price-edit",
-        "correlationId": "50354f66-8dc5-4350-a47c-c8fd965263c0"
+        "correlationId": "c563e7a1-0835-4e5d-8acf-e2306af784ad"
       }
     },
     {
@@ -2944,7 +2944,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "f6b0b2b5-2efe-48f0-b76b-c09a2aaf27e1",
+        "correlationId": "c867c260-4857-4425-a1ed-0584f01bb8e7",
         "query": "Carlton Draught"
       }
     },
@@ -2963,7 +2963,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "e031e9ff-abad-4fe0-8151-8e9e9c28fa33",
+        "correlationId": "c048ae49-9d44-4c48-bc91-2d53ca9ab4ba",
         "query": "VB Cans"
       }
     },
@@ -2982,7 +2982,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "0d2cae6e-d1ca-4d99-8562-2efbc0f1db2e",
+        "correlationId": "821bd444-4861-4b3f-9fc9-dfe95bfc349a",
         "query": "VB Cans"
       }
     },
@@ -3001,7 +3001,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "1d357b84-0c26-42a5-8d9c-09f91a619ea7",
+        "correlationId": "13267f16-d676-4574-99bb-3c8acb40276b",
         "query": "VB Cans"
       }
     },
@@ -3020,7 +3020,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "a3fa1323-7a2a-401b-a14f-d5cc0988c3eb",
+        "correlationId": "4baa0425-b4eb-45ab-b287-161eaca0bdfe",
         "query": "VB Cans"
       }
     },
@@ -3039,7 +3039,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "ff2e34b3-0445-4505-af9b-f0ca80467db3",
+        "correlationId": "ee5bbd11-5e03-4ec0-9962-2f802a196694",
         "query": "VB Cans"
       }
     },
@@ -3058,7 +3058,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "d58cc542-869d-4da2-b7ca-f07780a83388",
+        "correlationId": "225a9c3d-7f61-4e68-b880-6da1a9aa41c4",
         "query": "VB Cans"
       }
     },
@@ -3077,7 +3077,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "5c6a30c5-62e4-4bb9-bda2-635ca11125f6",
+        "correlationId": "2960a131-f6eb-4643-b968-b71c853fe84f",
         "query": "VB Cans"
       }
     },
@@ -3096,7 +3096,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "6f67d85c-71ab-45f4-82af-ee1113c4a3ac",
+        "correlationId": "d173e900-8b76-454c-9869-958e605942e6",
         "query": "VB Cans"
       }
     },
@@ -3115,7 +3115,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "a562c423-8b3e-4179-bd3d-a76a2221b7e6",
+        "correlationId": "21a4240d-f4ad-46ec-a433-49e3e8d98d80",
         "query": "VB Cans"
       }
     },
@@ -3134,7 +3134,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "687447b9-96ce-4975-93c2-f8a9d18b8263",
+        "correlationId": "c8eaacd1-616b-44e7-a3d4-d244b6d2fe9f",
         "query": "VB Cans"
       }
     },
@@ -3153,7 +3153,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "ce306ca1-ffbf-4591-96b0-a4384918d19f",
+        "correlationId": "d378512b-2bb6-4166-b861-706d1f5b4640",
         "query": "VB Cans"
       }
     },
@@ -3172,7 +3172,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "f12367b3-5938-41ea-ace5-d6e1839da922",
+        "correlationId": "91c2b398-ebdb-4151-8c2a-a72fd2bd05c8",
         "query": "VB Cans"
       }
     },
@@ -3191,14 +3191,14 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "1636252b-5765-4f2c-8c15-1be2a8b2d30f",
+        "correlationId": "f1b20fa3-2f94-4592-a00c-319359bacb2b",
         "query": "VB Cans"
       }
     },
     {
       "id": "stock-lookup-natural-zh",
       "question": "帮我查下 VB Cans 还剩几件",
-      "status": "PASS",
+      "status": "BLOCKED",
       "expected": {
         "intent": "report_stock",
         "route": null,
@@ -3206,18 +3206,17 @@
         "noRoute": false
       },
       "evidence": {
-        "httpStatus": 200,
-        "code": 0,
-        "intent": "report_stock",
+        "httpStatus": 502,
+        "intent": null,
         "route": null,
-        "correlationId": "a664cfa8-017b-4761-adf5-7c161b2e5655",
-        "query": "VB Cans"
+        "correlationId": null,
+        "query": null
       }
     },
     {
       "id": "stock-list-zh-no-product",
       "question": "查询库存",
-      "status": "PASS",
+      "status": "BLOCKED",
       "expected": {
         "intent": "navigate",
         "route": "/stock/list",
@@ -3225,17 +3224,16 @@
         "noRoute": false
       },
       "evidence": {
-        "httpStatus": 200,
-        "code": 0,
-        "intent": "navigate",
-        "route": "/stock/list",
-        "correlationId": "854d9731-97d1-4ce1-9a93-14e3c47c90a1"
+        "httpStatus": 502,
+        "intent": null,
+        "route": null,
+        "correlationId": null
       }
     },
     {
       "id": "date-sales-zh",
       "question": "10月14日销售额",
-      "status": "PASS",
+      "status": "BLOCKED",
       "expected": {
         "intent": "report_sales",
         "route": null,
@@ -3243,17 +3241,16 @@
         "noRoute": false
       },
       "evidence": {
-        "httpStatus": 200,
-        "code": 0,
-        "intent": "report_sales",
+        "httpStatus": 502,
+        "intent": null,
         "route": null,
-        "correlationId": "fe03ed37-4b32-4e1d-a260-b66d2e409241"
+        "correlationId": null
       }
     },
     {
       "id": "date-sales-en",
       "question": "sales on 14 October 2026",
-      "status": "PASS",
+      "status": "BLOCKED",
       "expected": {
         "intent": "report_sales",
         "route": null,
@@ -3261,17 +3258,16 @@
         "noRoute": false
       },
       "evidence": {
-        "httpStatus": 200,
-        "code": 0,
-        "intent": "report_sales",
+        "httpStatus": 502,
+        "intent": null,
         "route": null,
-        "correlationId": "e74c5995-096f-440d-9cb0-350ff1640479"
+        "correlationId": null
       }
     },
     {
       "id": "date-sales-screenshot-en",
       "question": "16 Oct 2026 sales",
-      "status": "PASS",
+      "status": "BLOCKED",
       "expected": {
         "intent": "report_sales",
         "route": null,
@@ -3284,44 +3280,30 @@
         ]
       },
       "evidence": {
-        "httpStatus": 200,
-        "code": 0,
-        "intent": "report_sales",
+        "httpStatus": 502,
+        "intent": null,
         "route": null,
-        "correlationId": "e323f977-2aa6-4adb-9b7b-20613392518d",
+        "correlationId": null,
         "answerChecks": [
-          true,
-          true,
-          true
+          false,
+          false,
+          false
         ]
       }
     },
     {
       "id": "date-sales-takings-en",
       "question": "How much did we take on 16 Oct 2026?",
-      "status": "PASS",
+      "status": "FAIL",
       "expected": {
         "intent": "report_sales",
         "route": null,
         "query": null,
-        "noRoute": true,
-        "answerIncludes": [
-          "Sales for 2026-10-16",
-          "AUD ",
-          "(1 day)."
-        ]
+        "noRoute": true
       },
       "evidence": {
-        "httpStatus": 200,
-        "code": 0,
-        "intent": "report_sales",
-        "route": null,
-        "correlationId": "490a9230-6f01-46fd-8b5b-78cee6e78a06",
-        "answerChecks": [
-          true,
-          true,
-          true
-        ]
+        "errorType": "TimeoutError",
+        "error": "apiRequestContext.post: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - → POST https://demo.orithos.com.au/api/ai/assistant\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.7339.16 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - Origin: https://demo.orithos.com.au\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 51\u001b[22m\n\u001b[2m    - cookie: [redacted]\n"
       }
     },
     {
@@ -3344,7 +3326,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "1c54137b-64af-407c-89e3-68a5701b03f5",
+        "correlationId": "434cc1a4-44ef-4555-9a1e-29e97d1bccc5",
         "answerChecks": [
           true,
           true,
@@ -3372,7 +3354,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "b7d828ab-e408-4bfa-b537-a33e664e0ca2",
+        "correlationId": "3298666d-bd7b-4f4e-a4b1-4028593782ca",
         "answerChecks": [
           true,
           true,
@@ -3400,7 +3382,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "8c3f0e16-f83a-47e7-98c4-1368c1fe317b",
+        "correlationId": "b4ed7d94-a771-4ef5-8beb-7b9395fb61bc",
         "answerChecks": [
           true,
           true,
@@ -3428,7 +3410,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "77db4716-3256-4c4f-9593-de65df2c4ba1",
+        "correlationId": "699eb0cd-4a58-46bc-9364-23a973577c5e",
         "answerChecks": [
           true,
           true,
@@ -3456,7 +3438,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "873f974a-05df-4a7e-8001-3ef18b17227b",
+        "correlationId": "a7a8354b-4cff-4ced-9e8b-aaf7f668b0f9",
         "answerChecks": [
           true,
           true,
@@ -3484,7 +3466,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "e591f8ce-85c3-4fb6-8feb-17a4d4d84d7f",
+        "correlationId": "7771f9df-baac-4065-a974-2f84c16303c3",
         "answerChecks": [
           true,
           true,
@@ -3512,7 +3494,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "f491964a-6ead-4ea2-9d30-28d5951d779d",
+        "correlationId": "f44f942f-0bc8-498f-8ccb-beb10e095931",
         "answerChecks": [
           true,
           true,
@@ -3540,7 +3522,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "fabbd2b0-5541-40cb-b928-81a540abbdea",
+        "correlationId": "7f1ee52c-c951-4c52-a68c-d52eec55455f",
         "answerChecks": [
           true,
           true,
@@ -3568,7 +3550,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "45ef9c42-9d35-4d4d-8593-d3b0fd2ad187",
+        "correlationId": "cac50146-dc3e-4d69-b7aa-ee1b218ff7bc",
         "answerChecks": [
           true,
           true,
@@ -3596,7 +3578,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "87ed3dad-f389-4437-b192-89a4604b7ff8",
+        "correlationId": "5d13d65d-a984-4582-9535-ae68339887e4",
         "answerChecks": [
           true,
           true,
@@ -3624,7 +3606,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "404ddbb0-97b9-4fc4-b230-630721c9136d",
+        "correlationId": "50142d56-3fe2-46fb-a35d-452d64e9d226",
         "answerChecks": [
           true,
           true,
@@ -3652,7 +3634,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "cdb48aa9-c681-45ad-b353-f2c51b681fa3",
+        "correlationId": "d7839ae2-8277-4e2a-a014-76275a315437",
         "answerChecks": [
           true,
           true,
@@ -3680,7 +3662,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "d029e4c4-c073-4d4a-acb0-e5b4b9fef7ff",
+        "correlationId": "3373168a-9bde-44ef-b9bd-b7fbd5469d43",
         "answerChecks": [
           true,
           true,
@@ -3703,7 +3685,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "85a9b607-121b-40d5-8990-09f500e3db27"
+        "correlationId": "0a071495-6243-4e5f-a465-c3c79a46052a"
       }
     },
     {
@@ -3721,7 +3703,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "82b0bda1-282d-415b-a62c-a6dbb6cf62a7"
+        "correlationId": "450c540f-2dbe-4977-b9bc-6b0fcbb7e414"
       }
     },
     {
@@ -3739,7 +3721,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "cf546b77-7228-4d5d-ae8a-701b729f7c2d"
+        "correlationId": "539f2e24-2bbb-44fd-80a9-c59d0053df4b"
       }
     },
     {
@@ -3757,7 +3739,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "9d17ef5e-8935-4655-89c4-f9c9551f4c29"
+        "correlationId": "f567b03b-cf0c-42fe-a40f-a36933079a6b"
       }
     },
     {
@@ -3775,7 +3757,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "735ba0fa-6e18-4e68-a204-d52dc7d7d8c3"
+        "correlationId": "98510535-71a3-4ca4-a68d-cbdfd767ffcb"
       }
     },
     {
@@ -3793,7 +3775,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "d47f7bdb-d27b-4c65-ae4c-828b63a96bab"
+        "correlationId": "c94da02c-6c68-4ffa-ac58-332b37d1929f"
       }
     },
     {
@@ -3811,7 +3793,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "8054beef-0182-42b3-9ecc-efd1869d1379"
+        "correlationId": "f917c95d-c39c-4bb3-80aa-8eae6d8706cc"
       }
     },
     {
@@ -3829,7 +3811,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "91ddfde9-52c5-4371-a067-eb01fe1a5ee3"
+        "correlationId": "caa076c0-4a94-4edc-a388-e128eba30da8"
       }
     },
     {
@@ -3847,7 +3829,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "5d258a37-7b23-41e9-952a-39bf0a8239d6"
+        "correlationId": "fec402b6-1336-4723-821e-b7906e045157"
       }
     },
     {
@@ -3865,7 +3847,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "df8cf4f8-cc42-4a80-bddb-1929090b351e"
+        "correlationId": "04c6da1a-f8af-4341-a28e-c3013e52fa04"
       }
     },
     {
@@ -3883,7 +3865,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "6a61e2b9-3371-4cfd-a53b-d6cd38880369"
+        "correlationId": "37449d43-bcb4-459d-97f6-bc7873abc876"
       }
     },
     {
@@ -3901,7 +3883,7 @@
         "code": 0,
         "intent": "report_sales",
         "route": null,
-        "correlationId": "85a25012-60e3-47f3-a3c7-f1766a8024ae"
+        "correlationId": "2203c527-3e74-4c77-81d0-9229030592e5"
       }
     },
     {
@@ -3919,7 +3901,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "5ae48b0e-4e29-4219-ba57-98cfaf4d855f",
+        "correlationId": "e05ce9ce-7809-435d-8da7-5df602456a98",
         "query": "VB Cans"
       }
     },
@@ -3938,7 +3920,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "a4d0fdfb-3c00-43c6-adec-be516393410d",
+        "correlationId": "b4ba5bd8-a9b9-46e7-9a53-c643144aca4e",
         "query": "VB Cans"
       }
     },
@@ -3957,7 +3939,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "18a7794e-f4a6-4860-bade-e5e0ec817d5d",
+        "correlationId": "e348ff29-3ce9-4cf2-9c56-20973b8b24f4",
         "query": "VB Cans"
       }
     },
@@ -3976,7 +3958,7 @@
         "code": 0,
         "intent": "report_stock",
         "route": null,
-        "correlationId": "ee8b6213-2cbc-4662-a40a-93226efcf013",
+        "correlationId": "6021cab3-799c-4eff-bda7-8df9d340dd67",
         "query": "VB Cans"
       }
     },
@@ -3995,7 +3977,7 @@
         "code": 0,
         "intent": "qa",
         "route": null,
-        "correlationId": "212d52b0-bd1e-429e-98fe-8eed27b693b4"
+        "correlationId": "1d24e6e3-2de0-4fef-a8cf-e5e750dd0c5a"
       }
     },
     {
@@ -4013,7 +3995,7 @@
         "code": 0,
         "intent": "qa",
         "route": null,
-        "correlationId": "7fd28db1-b237-409b-a01c-b55d271ca45e"
+        "correlationId": "ccc4a459-6aa4-4d2f-ab39-502901f01f45"
       }
     },
     {
@@ -4031,7 +4013,7 @@
         "code": 0,
         "intent": "qa",
         "route": null,
-        "correlationId": "65aa9c74-154e-4021-a48c-4a2979856057"
+        "correlationId": "4b062837-ba83-4440-9743-8df3a23e69ab"
       }
     },
     {
@@ -4049,7 +4031,7 @@
         "code": 0,
         "intent": "qa",
         "route": null,
-        "correlationId": "40a27127-fcc7-456c-a837-872f2578db26"
+        "correlationId": "c563a681-0316-41a7-94c3-7fc633774db5"
       }
     },
     {
@@ -4067,7 +4049,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "c4087484-2d28-4694-aa30-7389642eb339"
+        "correlationId": "a2e7de89-3009-472d-bfee-dac34938820a"
       }
     },
     {
@@ -4088,7 +4070,7 @@
         "code": 0,
         "intent": "report_adhoc",
         "route": null,
-        "correlationId": "5414eaf6-d7eb-4fad-ba12-afeeaa58645c"
+        "correlationId": "a82ba0c9-843f-48cb-bb76-5fa9fd92724b"
       }
     },
     {
@@ -4106,7 +4088,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "dd8230c8-369e-40d2-bee2-8dcc30b24396"
+        "correlationId": "6c405560-a028-434b-9a08-04743cedd1ca"
       }
     },
     {
@@ -4124,7 +4106,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "932a8d11-2be4-4843-a709-feb9b6bf9866"
+        "correlationId": "ec297da8-4300-48b1-9f2f-f030b9e25c84"
       }
     },
     {
@@ -4142,7 +4124,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "a0c36b2c-59b5-409c-9ce0-8014bfcc6b9d"
+        "correlationId": "962fa3da-a429-4aff-a264-81015dea9179"
       }
     },
     {
@@ -4160,7 +4142,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "1325e1dc-267a-436f-a3cd-3ba0cf597ac7"
+        "correlationId": "e252a334-6d5f-491d-98b5-4c5a3f62c71e"
       }
     },
     {
@@ -4178,7 +4160,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "15824ae0-6b6c-4958-8f98-1ce4f59c9602"
+        "correlationId": "3180e27d-aea7-4172-ae87-b41b8c0a82c8"
       }
     },
     {
@@ -4196,7 +4178,7 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "98d39b4a-fd61-4152-a091-d9e19b8e6fea"
+        "correlationId": "33ec8c63-c1c8-43e0-acc5-e18d3bdd336a"
       }
     },
     {
@@ -4214,15 +4196,15 @@
         "code": 0,
         "intent": "unknown",
         "route": null,
-        "correlationId": "7854213b-74ac-45e1-86e4-641d76d6b3c1"
+        "correlationId": "19955f87-5e07-4d2d-9eea-a30821006557"
       }
     }
   ],
   "writeRequests": [
     "none: assistant API only"
   ],
-  "passed": 216,
-  "blocked": 0,
-  "failed": 0,
-  "status": "PASS"
+  "passed": 210,
+  "blocked": 5,
+  "failed": 1,
+  "status": "FAIL"
 }

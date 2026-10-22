@@ -1,5 +1,5 @@
 <!-- capability-summary:start -->
-## 当前能力摘要（自动生成 · 2026-10-21）
+## 当前能力摘要（自动生成 · 2026-10-23）
 
 来源：`docs/capability-status.json`。以下摘要优先于本文件后续历史记录；线上只读通过不等于部署身份已核验或真实业务验收。
 
@@ -10,10 +10,10 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | 待验证 | 待验证 | 问法目录 216 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。 |
+| AI 助手 | 是 | 是 | 是 | 待验证 | 已核验 Demo runtime frontend/backend SHA 为 3edd72d84f514856923c0c0d50b01fe7b015e120，与本次 runner sourceCommit 匹配。完整 216 条助手问法 216 PASS / 0 BLOCKED / 0 FAIL，代表性 smoke 5/5 PASS；请求仅调用助手 API，业务写入为 0。只读功能专项仍需分别关注价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
-试点决策：**NO-GO**。阻塞：Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例；无已核验的远程 Java 21 同候选 SHA pre-push 构建；aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备；隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成。
+试点决策：**NO-GO**。阻塞：真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。
 <!-- capability-summary:end -->
 
 # Orithos POS 试点放行清单

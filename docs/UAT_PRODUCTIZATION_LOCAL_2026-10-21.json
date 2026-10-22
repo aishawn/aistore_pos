@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T09:48:54.802Z",
-  "sourceCommit": "5afdf2cb6816f76c82b43b028b4bfd019fff061f",
+  "generatedAt": "2026-10-21T20:55:06.626Z",
+  "sourceCommit": "0ef8ac34ece6303f540e7d02674ad7c14c072c7f",
   "sourceWorkingTree": true,
   "nodeVersion": "v22.22.2",
   "environment": "local-route-fixtures",

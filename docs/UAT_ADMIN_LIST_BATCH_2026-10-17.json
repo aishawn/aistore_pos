@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T15:22:27.523Z",
+  "generatedAt": "2026-10-21T18:02:55.715Z",
   "sourceCommit": null,
   "deployment": null,
   "scope": "authenticated read-only admin list visual regression; no business writes",
@@ -14,9 +14,90 @@
     1440
   ],
   "checks": 8,
-  "passed": 8,
-  "failed": 0,
-  "failures": [],
+  "passed": 4,
+  "failed": 4,
+  "failures": [
+    {
+      "host": "https://demo.orithos.com.au",
+      "route": "/utilities/mail-log",
+      "viewport": 390,
+      "status": 200,
+      "heading": "Mail Log",
+      "expectedHeading": "Mail Log",
+      "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
+          "createVisible": true,
+          "cleared": false,
+          "passed": false
+        }
+      ],
+      "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-mail-log-390.png"
+    },
+    {
+      "host": "https://demo.orithos.com.au",
+      "route": "/utilities/trashed-items",
+      "viewport": 390,
+      "status": 200,
+      "heading": "Trashed Items",
+      "expectedHeading": "Trashed Items",
+      "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
+          "createVisible": true,
+          "cleared": false,
+          "passed": false
+        }
+      ],
+      "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-trashed-items-390.png"
+    },
+    {
+      "host": "https://demo.orithos.com.au",
+      "route": "/utilities/mail-log",
+      "viewport": 1440,
+      "status": 200,
+      "heading": "Mail Log",
+      "expectedHeading": "Mail Log",
+      "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
+          "createVisible": true,
+          "cleared": false,
+          "passed": false
+        }
+      ],
+      "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-mail-log-1440.png"
+    },
+    {
+      "host": "https://demo.orithos.com.au",
+      "route": "/utilities/trashed-items",
+      "viewport": 1440,
+      "status": 200,
+      "heading": "Trashed Items",
+      "expectedHeading": "Trashed Items",
+      "noHorizontalOverflow": true,
+      "interactiveChecks": [
+        {
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
+          "createVisible": true,
+          "cleared": false,
+          "passed": false
+        }
+      ],
+      "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-trashed-items-1440.png"
+    }
+  ],
   "results": [
     {
       "host": "https://demo.orithos.com.au",
@@ -39,12 +120,12 @@
       "noHorizontalOverflow": true,
       "interactiveChecks": [
         {
-          "emptyStateVisible": true,
-          "clearVisible": true,
-          "visibleClearText": true,
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
           "createVisible": true,
-          "cleared": true,
-          "passed": true
+          "cleared": false,
+          "passed": false
         }
       ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-mail-log-390.png"
@@ -59,12 +140,12 @@
       "noHorizontalOverflow": true,
       "interactiveChecks": [
         {
-          "emptyStateVisible": true,
-          "clearVisible": true,
-          "visibleClearText": true,
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
           "createVisible": true,
-          "cleared": true,
-          "passed": true
+          "cleared": false,
+          "passed": false
         }
       ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-trashed-items-390.png"
@@ -110,12 +191,12 @@
       "noHorizontalOverflow": true,
       "interactiveChecks": [
         {
-          "emptyStateVisible": true,
-          "clearVisible": true,
-          "visibleClearText": true,
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
           "createVisible": true,
-          "cleared": true,
-          "passed": true
+          "cleared": false,
+          "passed": false
         }
       ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-mail-log-1440.png"
@@ -130,12 +211,12 @@
       "noHorizontalOverflow": true,
       "interactiveChecks": [
         {
-          "emptyStateVisible": true,
-          "clearVisible": true,
-          "visibleClearText": true,
+          "emptyStateVisible": false,
+          "clearVisible": false,
+          "visibleClearText": false,
           "createVisible": true,
-          "cleared": true,
-          "passed": true
+          "cleared": false,
+          "passed": false
         }
       ],
       "screenshot": "docs/screenshots/2026-10-17-admin-list-batch/utilities-trashed-items-1440.png"
