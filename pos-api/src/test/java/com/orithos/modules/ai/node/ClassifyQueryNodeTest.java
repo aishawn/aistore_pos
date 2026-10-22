@@ -98,8 +98,7 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            assertEquals("unknown", result.get("intent"), question);
-            assertEquals("", result.get("ui_route"), question);
+            assertEquals("guided_action", result.get("intent"), question);
         }
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);
@@ -117,14 +116,14 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("unknown", result.get("intent"));
-        assertEquals("", result.get("ui_route"));
+        assertEquals("guided_action", result.get("intent"));
+        assertEquals("/stock/replenishment", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("cannot change stock"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
     @Test
-    void entityWriteIntentFailsClosedWithoutPageCta() {
+    void entityWriteIntentUsesGuidedActionAndPageCta() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -141,8 +140,8 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            assertEquals("unknown", result.get("intent"), sample[0]);
-            assertEquals("", result.get("ui_route"), sample[0]);
+            assertEquals("guided_action", result.get("intent"), sample[0]);
+            assertEquals(sample[1], result.get("ui_route"), sample[0]);
         }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
