@@ -111,7 +111,7 @@ function markTone(name: string) {
 }
 
 function friendlyName(name: string) {
-  return name.replace(/^\[[^\]]+\]\s*/u, "").replace(/^DEMO\s*[|·\-–—]\s*/iu, "").trim() || name;
+  return friendlyProductName(name);
 }
 
 function Delta({ value, comparisonMessage }: { value: number | null | undefined; comparisonMessage?: string }) {
