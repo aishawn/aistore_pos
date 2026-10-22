@@ -13,7 +13,7 @@ public final class ReportAdhocRouter {
 
     private static final Set<String> OVERRIDE_FROM = Set.of(
             "report_sales", "report_qty", "report_aov", "report_stock", "report_dead_stock",
-            "qa", "unknown", "navigate"
+            "qa", "unknown", "navigate", "report_adhoc"
     );
 
     /** Ticket / order counts are available via average-ticket (includes tickets). */
