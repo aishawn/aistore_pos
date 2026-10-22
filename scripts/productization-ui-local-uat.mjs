@@ -8,7 +8,7 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
 if (!new URL(base).hostname.endsWith(".localhost") && !["localhost", "127.0.0.1"].includes(new URL(base).hostname)) throw new Error("This fixture UAT is local-only.");
-const screenshotDir = path.join(root, "docs/screenshots/2026-10-21-productization");
+const screenshotDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-21-productization");
 fs.mkdirSync(screenshotDir, { recursive: true });
 const checks = [];
 const browser = await chromium.launch({ headless: true });
@@ -69,6 +69,9 @@ try {
       assert.equal(await page.getByRole("spinbutton", { name: "Price for Fixture Shiraz" }).inputValue(), "15.75");
       assert.equal(await page.getByRole("button", { name: "Save reviewed prices" }).isDisabled(), true);
       assert.equal(writeCount, 0); assert.equal(classicCalls, 0);
+      for (const name of ["Refresh", "Previous", "Next", "Save reviewed prices"]) {
+        assert.match(await page.getByRole("button", { name }).getAttribute("class"), /focus-visible:outline/);
+      }
       await page.screenshot({ path: path.join(screenshotDir, `bulk-review-${width}.png`), fullPage: true });
     });
     await check("Lost write response reconciles by GET without replay", async () => {
@@ -100,7 +103,11 @@ try {
 } finally { await browser.close(); }
 const failed = checks.filter((item) => item.status === "FAIL");
 const report = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), sourceWorkingTree: true, environment: "local-browser-fixtures", target: base, scope: "All browser APIs intercepted; only fixture PATCH/GET; no real business writes", status: failed.length ? "FAIL" : "PASS", passed: checks.length - failed.length, failed: failed.length, checks };
-fs.writeFileSync(path.join(root, "docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-21.json"), JSON.stringify(report, null, 2) + "\n");
+const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-21.json");
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+fs.writeFileSync(outputPath, JSON.stringify(report, null, 2) + "\n");
 console.log(`${report.passed}/${checks.length} PASS`);
 for (const item of failed) console.error(`${item.width} ${item.name}: ${item.error}`);
 if (failed.length) process.exitCode = 1;

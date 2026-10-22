@@ -522,3 +522,22 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Online post-deploy verification of these changes and exact runtime SHA remains pending.
 - [ ] Current online baseline is not the new batch: version endpoint is `c4585ad` vs source `91cd5e2`; pricing read-only baseline is `8 PASS / 2 BLOCKED`, with Capped Pricing blocked by the old retired path. Dokploy returned `301`, so post-deploy verification must wait for Source/Git binding correction.
 - [x] Productization route fixture `31/31 PASS`: GST calculations are rounded to cents and price-suggestion pagination asserts the current 10-item page/continuation contract; all network calls intercepted, no live writes.
+- [x] Odoo Bulk Price Edit action buttons (Refresh, Save, Previous, Next) have visible keyboard focus outlines; local productization fixture `12/12 PASS` including focus assertions. Evidence: `docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json`.
+- [ ] The keyboard-focus batch has not yet been verified on the deployed Demo runtime; read `/api/public/version` after deployment.
+## 2026-10-22 Dokploy 成功部署后复核
+
+- [x] Demo 前后端运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` 一致；证据 `UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。
+- [x] 库存/定价四页 390/1440px 线上只读页面与布局检查：8 PASS、0 FAIL；业务 API 写入拦截数 0。证据 `UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_SUCCESS_RECHECK.json`。
+- [ ] Capped Pricing 两个视口的数据验收仍阻断：门店未配置 Odoo price rules，页面显示空状态。不能将空状态计为真实规则、筛选或改价流程通过。
+- [x] 同 SHA 助手自然问法 216/216 PASS；运营只读交互 13/13 PASS。助手 API 可能产生审计/usage 记录，但没有业务写入。
+- [x] 本地未部署 UI 改进：Stock List 成本管理状态标签完整适配 320/390/768/1024/1440px，并提供完整屏幕阅读器说明；Odoo Bulk Price Edit 搜索清除按钮名称精确且有键盘焦点状态。库存/定价五视口 UI fixture 15/15，价格建议确认与失败恢复 fixture 12/12；证据 `UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_COST-LABEL-PASS.json`、`UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_BATCH_RECHECK.json`。
+- [ ] 新 UI 改动尚未部署线上；当前 `3edd72d` runtime 不包含这些本地差异。
+- [ ] AI Stock RPC 仍有 5 项 BLOCKED（测试公司/仓库查询无匹配行）；AI 实时库存报表、价格建议上游可用性及真实业务写入闭环未完成。
+- [ ] 试点仍 NO-GO：跨租户授权、第二租户运营账号、备份恢复、设备现场验收以及隔离环境销售/退款/采购收货/库存/价格/关班对账尚未完成。
+
+### 2026-10-23 AI assistant runtime verification
+
+- [x] Demo frontend/backend runtime SHA `3edd72d84f514856923c0c0d50b01fe7b015e120` matches the source commit used by the UAT runner.
+- [x] Complete assistant utterance catalog: `216/216 PASS`, `0 BLOCKED`, `0 FAIL`; representative smoke: `5/5 PASS`.
+- [x] Assistant-only run issued zero sales, inventory, purchase, receiving, pricing or register writes. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json`.
+- [ ] Real Odoo transaction acceptance and companion feature gaps remain separate release gates.

@@ -1,5 +1,11 @@
+## 2026-10-22 本地前端 UI 批次（尚未部署）
+
+- Stock List 的采购成本只读状态在五种视口完整显示，aria-describedby 提供完整管理说明；Odoo Bulk Price Edit 的清除搜索按钮名称与实际行为一致。
+- 本地浏览器 fixture：库存/定价 15/15、价格建议人工确认和未知结果恢复 12/12；Node 24 typecheck、目标 ESLint、脚本语法检查通过。全部 API 请求由 fixture 拦截，没有真实业务写入。
+- 本批仅本地未提交前端差异，不改变当前 `3edd72d` 已核验运行版本；尚未部署或完成线上复验。
+
 <!-- capability-summary:start -->
-## 当前能力摘要（自动生成 · 2026-10-21）
+## 当前能力摘要（自动生成 · 2026-10-23）
 
 来源：`docs/capability-status.json`。以下摘要优先于本文件后续历史记录；线上只读通过不等于部署身份已核验或真实业务验收。
 
@@ -10,10 +16,10 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | **216/216 已核验通过** | 待验证 | 在 `64759b4` 已核对运行版本上，216 条 Demo 助手问法为 **216 PASS / 0 BLOCKED / 0 FAIL**，`matchesSourceCommit=true`，仅 Assistant API、业务写入 0；分类模型已显式配置，日志窗口未见 provider 502。只读伴随套件：路由 9/9、surface/auth 11/11、可用性 3/3、指标 9/9、UI 2/2、enabled PASS；功能 13 PASS / 2 BLOCKED、报表 15/16、History/platform 9 PASS / 2 BLOCKED，转写本次因缺 fixture 2 PASS / 2 BLOCKED（合成音频专项历史为 4/4）。真实业务写入验收、隔离环境和长期告警仍未完成。 |
+| AI 助手 | 是 | 是 | 是 | 待验证 | 已核验 Demo runtime frontend/backend SHA 为 3edd72d84f514856923c0c0d50b01fe7b015e120，与本次 runner sourceCommit 匹配。完整 216 条助手问法 216 PASS / 0 BLOCKED / 0 FAIL，代表性 smoke 5/5 PASS；请求仅调用助手 API，业务写入为 0。只读功能专项仍需分别关注价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
-试点决策：**NO-GO**。阻塞：Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例；无已核验的远程 Java 21 同候选 SHA pre-push 构建；aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备；隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成。
+试点决策：**NO-GO**。阻塞：真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。
 <!-- capability-summary:end -->
 
 **2026-10-22 AI 状态更新：**分类模型配置后，当前 Demo 216 条助手问法在已核对的 `64759b4` runtime 上为 216/216 PASS；该结果不改变整体试点 NO-GO，因为隔离业务闭环、恢复演练和长期告警仍未完成。
@@ -1231,4 +1237,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - This improves the online AI behavior evidence but does not change the pilot
   decision: release identity, isolated write UAT, Odoo reconciliation, backup
   recovery and durable alert handling remain outstanding.
+
+## 2026-10-22 Bulk Price Edit accessibility follow-up
+
+- **Implemented and locally verified:** Refresh, Save reviewed prices, Previous, and Next now show visible `focus-visible` outlines. The local Webpack fixture passed `12/12` at mobile and desktop widths with zero intercepted business writes: `docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json`.
+- **Not yet online-verified:** the latest Dokploy status was reported as successful by the owner, but the deployed commit SHA and `/api/public/version` response were not supplied. Keep this change local-only until exact runtime identity is read back.
 

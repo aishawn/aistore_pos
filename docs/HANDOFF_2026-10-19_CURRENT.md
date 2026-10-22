@@ -1,3 +1,13 @@
+## 2026-10-22 Dokploy 成功部署与 SHA 复核（最新）
+
+- 用户确认 Dokploy 最新部署成功；随后 Demo `/api/public/version` 返回 HTTP 200，前端与后端服务运行 SHA 均为 `3edd72d84f514856923c0c0d50b01fe7b015e120`，与本地 `main` / `origin/main` 精确匹配。证据：`docs/UAT_RELEASE_IDENTITY_2026-10-22_SUCCESS_RECHECK.json`。
+- 已重新执行库存/定价四页线上只读验收，覆盖 390/1440px 共 **8 项**。页面加载、移动端布局、无横向溢出及无 JS 错误均通过；结果 **8 PASS / 0 FAIL / 2 BLOCKED**。两项阻断均为 Capped Pricing 页面没有配置 Odoo price rules，数据为空，不能验收真实价格规则流程。证据：`docs/UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-22_SUCCESS_RECHECK.json`；截图：`docs/screenshots/2026-10-22-pricing-success-recheck/`。
+- UAT 拦截的业务写请求为 **0**。此前同 SHA 的助手自然问法 **216/216 PASS**（仅调用 Assistant API），运营只读交互 **13/13 PASS**；AI Stock RPC 仍为 **4 PASS / 5 BLOCKED / 0 FAIL / 1 INFO**，阻断项因测试公司/仓库上下文无匹配商品行。
+- 本地未部署 UI 批次：Bulk Price Edit 的 Odoo 清除搜索按钮现在使用准确的 `Clear product search` accessible name 和 focus-visible 状态；Stock List 对成本由采购管理的商品使用窄列可读标签 `Managed`，完整说明通过 tooltip 和 `aria-describedby` 保留。五视口 Stock List/Capped Pricing/Odoo Bulk Price Edit fixture **15/15 PASS**，含成本占位符宽度和描述断言；价格建议预填/人工确认/丢失响应只读对账/未知结果阻止重试 fixture **12/12 PASS**。证据：`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_COST-LABEL-PASS.json`、`docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_BATCH_RECHECK.json`。Node 24 typecheck、目标 ESLint、两条 UAT 脚本语法检查通过；未运行 build/Maven。
+- 以上 UI 修改仍在本地工作树，未包含于 `3edd72d` 线上镜像；待与更多前端改进合批后再部署。Turbopack 开发模式遇到全局 CSS 转换异常，验收改用独立 `.next-uat-clear` 目录的 Webpack dev 实例；临时实例和目录已关闭清理。
+- 仍未完成：价格建议上游错误/可用性、实时库存 AI 报表、真实 Odoo 价格规则和其他隔离业务写入闭环、第二租户与跨租户授权验收、备份恢复及设备现场验收。整体试点仍 **NO-GO**；线上页面与只读接口通过不构成交易放行。
+- 本轮未运行本地 build 或 Maven；只做线上版本探针、只读浏览器复验与截图检查。
+
 ## 2026-10-21 AI 助手全量问法续测（最新）
 
 - 216 条完整只读问法结果仍为 **75 PASS / 116 BLOCKED / 25 FAIL**；随后将 25 条 FAIL 单独复测，仍为 **0 PASS / 0 BLOCKED / 25 FAIL**。复现类别：7 条写入意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页错误、7 条销售回复 AUD/单日措辞不符。证据：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-216-CURRENT-CONTINUATION.json`、`UAT_AI_WORKFLOW_PREVIOUS-FAILS_RECHECK_2026-10-21.json`。
@@ -107,7 +117,7 @@
 - 本地验证：Odoo 会话恢复 **2/2**，盘点搜索回归 **39/39**，采购详情 AI 布局 **390/1024/1440 共 3/3**；均无业务写入。Node24 typecheck、定向 ESLint 和脚本语法检查通过，未运行 build。
 - Dokploy webhook 环境变量当前未在本机提供，故本批尚未触发部署；`/api/public/version` 当前返回 HTTP 500，不能推断运行 SHA。部署后必须重新执行线上冷入口盘点、采购详情和补货只读验收。
 <!-- capability-summary:start -->
-## 当前能力摘要（自动生成 · 2026-10-21）
+## 当前能力摘要（自动生成 · 2026-10-23）
 
 来源：`docs/capability-status.json`。以下摘要优先于本文件后续历史记录；线上只读通过不等于部署身份已核验或真实业务验收。
 
@@ -118,10 +128,10 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | 待验证 | 待验证 | 问法目录 216 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。 |
+| AI 助手 | 是 | 是 | 是 | 待验证 | 已核验 Demo runtime frontend/backend SHA 为 3edd72d84f514856923c0c0d50b01fe7b015e120，与本次 runner sourceCommit 匹配。完整 216 条助手问法 216 PASS / 0 BLOCKED / 0 FAIL，代表性 smoke 5/5 PASS；请求仅调用助手 API，业务写入为 0。只读功能专项仍需分别关注价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
-试点决策：**NO-GO**。阻塞：Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例；无已核验的远程 Java 21 同候选 SHA pre-push 构建；aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备；隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成。
+试点决策：**NO-GO**。阻塞：真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。
 <!-- capability-summary:end -->
 
 ## 2026-10-21 线上续验与部署状态
@@ -2293,4 +2303,18 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Availability `3/3 PASS`, route matrix `9/9 PASS`, surface/auth `11/11 PASS`, and admin metrics `9/9 PASS`. Evidence: `docs/UAT_AI_AVAILABILITY_ONLINE_2026-10-22-LATEST.json`, `docs/UAT_AI_ROUTES_ONLINE_2026-10-22-LATEST.json`, `docs/UAT_AI_SURFACE_ONLINE_2026-10-22-LATEST.json`, and `docs/UAT_AI_METRICS_ONLINE_2026-10-22-LATEST.json`.
 - The feature matrix was rerun serially with one admin session and returned **14 PASS / 0 FAIL / 1 BLOCKED**. The only block is the explicit invoice OCR `410/41001` unavailable/deprecated response; no extraction or business write was claimed. Evidence: `docs/UAT_AI_FEATURES_ONLINE_2026-10-22-SERIAL.json`.
 - An earlier parallel run showed a transient anonymous-assistant `200`; that run shared the admin session with other scripts. The serial run returned the expected anonymous `401`, so the parallel result is diagnostic only and is not treated as a product failure.
+
+## 2026-10-23 AI full regression verified
+
+- Demo `/api/public/version` now reports frontend/backend SHA `3edd72d84f514856923c0c0d50b01fe7b015e120`, matching the runner source commit.
+- The complete 216-case assistant catalog passed **216/216**, with zero blocked cases, assertion failures, or business writes. The five-case representative smoke passed **5/5**. Evidence: `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json` and `docs/UAT_AI_WORKFLOW_REPRESENTATIVE_SMOKE_2026-10-23.json`.
+- This verifies authenticated assistant routing on the identified runtime. It does not by itself approve real Odoo transactions or close the separately tracked price-suggestions, live-stock, OCR-field, cross-store and isolated-write gaps.
+
+## 2026-10-22 Bulk Price Edit keyboard-accessibility batch
+
+- [x] Odoo Bulk Price Edit Refresh, Save reviewed prices, Previous, and Next buttons now expose visible `focus-visible` outlines.
+- [x] Local Webpack browser fixture passed **12/12** at 390px and 1440px, including focus assertions, price suggestion prefill, manual confirmation, lost-write read-back, unknown-result retry block, no page errors, and no horizontal overflow. Evidence: `docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_KEYBOARD_FOCUS.json`; screenshots: `docs/screenshots/2026-10-22-productization-keyboard-focus/`.
+- [x] Node 24 typecheck, targeted ESLint, and `node --check scripts/productization-ui-local-uat.mjs` passed. No local production build was run; the fixture intercepted all API calls and sent zero business writes.
+- [ ] This UI batch is local-only until Dokploy deployment completes and Demo `/api/public/version` is read back. The user-reported Dokploy status is successful, but no SHA was supplied, so runtime identity and online page verification remain pending.
+- [ ] Remaining release gates are unchanged: isolated Odoo transaction/reconciliation, second-tenant isolation, backup recovery, device/offline POS, live price suggestions, and live inventory AI report.
 
