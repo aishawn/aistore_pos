@@ -146,6 +146,21 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void normalizesFullWidthPunctuationAndRepeatedWhitespace() {
+        for (String question : new String[]{
+                "  TODAY'S   SALES？ ",
+                "最近　7　天　销量",
+                "  WHAT   CAN   YOU   DO？ "
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+        }
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("  TODAY'S   SALES？ ").intent());
+        assertEquals("report_qty", AssistantFastPathRouter.maybeMatch("最近　7　天　销量").intent());
+        assertEquals("qa", AssistantFastPathRouter.maybeMatch("  WHAT   CAN   YOU   DO？ ").intent());
+    }
+
+    @Test
     void routesCommonSalesParaphrasesToTheCorrectBusinessDay() {
         for (String question : new String[]{
                 "How much did we make today?",

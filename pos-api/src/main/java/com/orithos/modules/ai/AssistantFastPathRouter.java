@@ -152,7 +152,7 @@ public final class AssistantFastPathRouter {
         if (question == null || question.isBlank()) {
             return null;
         }
-        String normalized = question.trim().toLowerCase(Locale.ROOT);
+        String normalized = normalize(question);
         // Reject forged routes before any entity/report shortcut can extract a
         // harmless-looking search term from the same malicious utterance.
         if (FORGED_ROUTE.matcher(question.trim()).find()) {
@@ -406,6 +406,16 @@ public final class AssistantFastPathRouter {
         if (value == null) return null;
         String query = value.trim().replaceAll("[?.!。！？]+$", "").trim();
         return query.isEmpty() ? null : query;
+    }
+
+    /** Normalize cashier text before deterministic matching without changing query casing. */
+    static String normalize(String question) {
+        return question.trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[\\u3000\\s]+", " ")
+                .replace('？', '?')
+                .replace('！', '!')
+                .replace('。', '.');
     }
 
     public record Match(

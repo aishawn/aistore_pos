@@ -1,6 +1,5 @@
 package com.orithos.modules.ai;
 
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
@@ -11,7 +10,7 @@ import java.util.regex.Pattern;
 public final class WorkflowRouteRouter {
 
     private static final Pattern REPLENISHMENT = Pattern.compile(
-            "reorder|replenish|restock|restock list|stock up|what should (?:i|we) buy|what should (?:i|we) purchase|what do (?:i|we) need to buy|what do (?:i|we) need to purchase|what should (?:i|we) restock|what should (?:i|we) order|what do (?:i|we) need to order|what should be ordered|what to order|what needs ordering|show (?:me )?(?:the )?replenishment|help me restock|purchase suggestion|suggested purchase|running low|what(?:'s| is) running low|low stock|show (?:me )?(?:the )?low[- ]stock|out of stock|stock alert|which products? (?:need|should) (?:reordering|restocking|buy|purchase|buying|purchasing)|which products? should (?:i|we) buy|which items? (?:need|should) (?:restocking|reordering|buy|purchase|buying|purchasing)|what needs restocking|which items? (?:are )?low|what is low on stock|items? to order|products? to buy|补货|补货清单|补货建议|帮我补货|缺货|快没货|库存不足|库存预警|库存低|哪些商品需要补货|哪些商品要进货|哪些商品要补|哪些商品快没货|哪些商品库存不足|哪些商品该买|需要补什么|该补什么|该进货|建议进货|采购建议",
+            "reorder|replenish|restock|restock list|stock up|what should (?:i|we) buy|what should (?:i|we) purchase|what do (?:i|we) need to buy|what do (?:i|we) need to purchase|what should (?:i|we) restock|what should (?:i|we) order|what do (?:i|we) need to order|what should be ordered|what to order|what needs ordering|show (?:me )?(?:the )?replenishment|help me restock|purchase suggestion|suggested purchase|running low|what(?:'s| is) running low|low stock|show (?:me )?(?:the )?low[- ]stock|out of stock|stock alert|which products? (?:need|should) (?:reordering|restocking|buy|purchase|buying|purchasing)|which products? should (?:i|we) buy|which items? (?:need|should) (?:restocking|reordering|buy|purchase|buying|purchasing)|what needs restocking|which items? (?:are )?low|what is low on stock|items? to order|products? to buy|补货|补货清单|补货建议|帮我补货|缺货|快没货|库存不足|库存预警|库存低|哪些商品需要补货|哪些商品要进货|哪些商品要补|哪些商品快没货|哪些商品库存不足|哪些商品该买|我(?:们)?(?:应该|该)买什么|需要补什么|该补什么|该进货|建议进货|采购建议",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern REPLENISHMENT_NATURAL = Pattern.compile(
             "top up(?: (?:stock|inventory))?|what needs a reorder|帮我看(?:看)?哪些要补货",
@@ -79,7 +78,8 @@ public final class WorkflowRouteRouter {
                     + "(?:top up|restock|replenish|bring)\\s+(?:all(?:\\s+the)?|the)?\\s*[a-z][a-z -]*\\s+(?:to|up to)\\s*\\d+\\s*(?:units?|items?|cases?|bottles?)?",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern NUMERIC_PURCHASE_EXECUTION = Pattern.compile(
-            "\\b(?:order|buy|purchase)\\s+\\d+\\s+(?:units?|items?|cases?|bottles?)\\s+of\\s+[a-z][a-z0-9 -]*\\b",
+            "\\b(?:order|buy|purchase)\\s+\\d+\\s+(?:units?|items?|cases?|bottles?)\\s+of\\s+[a-z][a-z0-9 -]*\\b|"
+                    + "(?:订|下单|采购|买|购买).{0,24}\\d+\\s*(?:件|个|瓶|箱|包|盒)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern NUMERIC_PRICE_EXECUTION = Pattern.compile(
             "\\b(?:set|change|raise|lower|update|apply)\\s+(?:the\\s+)?[a-z][a-z0-9 -]*?(?:\\s+price)?\\s*(?:to|at)\\s*\\$?\\d+(?:\\.\\d{1,2})?\\b|"
@@ -136,7 +136,7 @@ public final class WorkflowRouteRouter {
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
         if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return null;
         if (hasWriteIntent(question)) return null;
-        String normalized = question.trim().toLowerCase(Locale.ROOT);
+        String normalized = AssistantFastPathRouter.normalize(question);
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {
             return new Override("navigate", "/suppliers/odoo");
         }
@@ -197,7 +197,7 @@ public final class WorkflowRouteRouter {
      */
     public static boolean hasWriteIntent(String question) {
         if (question == null || question.isBlank()) return false;
-        String normalized = question.trim().toLowerCase(Locale.ROOT);
+        String normalized = AssistantFastPathRouter.normalize(question);
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
         if (capabilityQuestion != null
                 && ("qa".equals(capabilityQuestion.intent())
