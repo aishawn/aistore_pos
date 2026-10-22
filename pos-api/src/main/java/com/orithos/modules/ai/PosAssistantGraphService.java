@@ -130,7 +130,8 @@ public class PosAssistantGraphService {
                     ui,
                     table,
                     reportId,
-                    cards
+                    cards,
+                    List.of()
             );
         } finally {
             AssistantTenantContext.clear();
@@ -258,6 +259,7 @@ public class PosAssistantGraphService {
             UiAction ui,
             ReportTable table,
             Long reportId,
-            List<AssistantCard> cards
+            List<AssistantCard> cards,
+            List<String> writeRequests
     ) {}
 }

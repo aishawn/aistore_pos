@@ -12,5 +12,6 @@ public record AssistantResponse(
         UiAction ui,
         ReportTable table,
         Long reportId,
-        List<AssistantCard> cards
+        List<AssistantCard> cards,
+        List<String> writeRequests
 ) {}

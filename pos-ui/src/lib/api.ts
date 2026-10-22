@@ -787,6 +787,7 @@ export interface AssistantResponse {
   table?: AssistantReportTable | null;
   reportId?: number | null;
   cards?: AssistantCard[] | null;
+  writeRequests?: string[] | null;
 }
 
 export interface AiReportSnapshot {

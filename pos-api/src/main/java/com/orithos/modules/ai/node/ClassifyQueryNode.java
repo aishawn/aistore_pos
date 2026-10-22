@@ -151,7 +151,7 @@ public class ClassifyQueryNode implements NodeAction {
             return shortcutResult(
                     "report_adhoc",
                     "This custom report is not available yet.",
-                    Map.of(), "", "", "", "");
+                    Map.of(), "", "", writeRoute, "");
         }
 
         AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);

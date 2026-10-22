@@ -107,7 +107,8 @@ public class AiAssistantController {
                 result.ui(),
                 result.table(),
                 result.reportId(),
-                result.cards()
+                result.cards(),
+                result.writeRequests()
         ));
     }
 
