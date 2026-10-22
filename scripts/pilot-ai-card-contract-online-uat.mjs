@@ -19,8 +19,8 @@ const password = process.env.INITIAL_ADMIN_PASSWORD || env.INITIAL_ADMIN_PASSWOR
 if (!password) throw new Error("MISSING_ADMIN_PASSWORD");
 
 const cases = [
-  { id: "product-count", question: "How many products do we have?", type: "product_count", route: "/products", answerPattern: /\\b\\d+\\b/ },
-  { id: "product-count-zh", question: "商品总数", type: "product_count", route: "/products", answerPattern: /\\d+/ },
+  { id: "product-count", question: "How many products do we have?", type: "product_count", route: "/products", answerPattern: /\b\d+\b/ },
+  { id: "product-count-zh", question: "商品总数", type: "product_count", route: "/products", answerPattern: /\d+/ },
   { id: "replenishment", question: "What should I restock?", type: "replenishment", route: "/stock/replenishment" },
   { id: "pricing", question: "Which prices should I review?", type: "pricing", route: "/stock/capped-pricing" },
   { id: "sommelier", question: "Recommend a red wine under $30", type: "sommelier", route: "/sommelier" },
