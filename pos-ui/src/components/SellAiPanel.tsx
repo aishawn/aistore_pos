@@ -828,7 +828,13 @@ export function SellAiPanel({
       busyRef.current = false;
       setBusy(false);
       setThinkingHint(null);
-      requestAnimationFrame(() => inputRef.current?.focus());
+      // Phone: keep the keyboard down after a reply so the answer stays readable.
+      // Desktop can keep focus for the next typed follow-up.
+      if (!fullscreenPanel) {
+        requestAnimationFrame(() => inputRef.current?.focus());
+      } else {
+        inputRef.current?.blur();
+      }
     }
   }
 
