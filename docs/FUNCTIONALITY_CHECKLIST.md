@@ -2,6 +2,7 @@
 
 - [x] Odoo 报表临时 `503` 与未连接 `401` 分支：`2/2 PASS`；503 保留 Retry/Request ID，401 显示连接引导，390px 无横向溢出。
 - [x] 产品目录、补货和报表的移动错误/空态按钮补齐键盘焦点样式。
+- [x] 商品编辑/导入/新建和补货 RFQ 弹窗的主要操作控件补齐键盘焦点状态；typecheck、定向 ESLint 和 `git diff --check` 通过。
 - [x] Platform Audit/Failures fixture：`4/4 PASS`（390/1440px），重试恢复、无页面错误、无业务写入。
 - [ ] 待与下一批前端改动合并后部署 Dokploy，再执行 Demo 线上报表 503/401 语义和平台路由复验。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。

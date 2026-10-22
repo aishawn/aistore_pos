@@ -2,12 +2,22 @@
 
 - [x] `OdooReportingDashboard` 不再把临时 Odoo `503` 当作连接缺失：503 显示错误、Retry 和 Request ID；只有 401 显示连接 Odoo 引导。
 - [x] 产品目录、补货和报表的移动空态/错误态入口补齐可见键盘焦点样式。
+- [x] 商品编辑/导入/新建和补货 RFQ 弹窗的关闭、取消、提交、供应商重试、数量输入和供应商选择控件补齐可见键盘焦点状态；typecheck、定向 ESLint 和 `git diff --check` 通过。
 - [x] 本地 fixture：报表 503/401 `2/2 PASS`；Platform Audit/Failures 双视口 `4/4 PASS`；无业务写入；Node typecheck、定向 ESLint、脚本语法检查通过。
 - [ ] 本批仅修改前端和 UAT 脚本，未运行 production build/Docker build；尚未部署 Dokploy。下一阶段与更多 UI 改动合批后部署，再核对 `/api/public/version` 和线上 390/1440px 结果。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。
 - 候选 `1cd417c3` 已成功推送到 `origin/main`；手动 webhook 返回 `301 Branch Not Match`，约一分钟内两次 `/api/public/version` 探针仍为前后端 `582b92fb`。线上结果不能归因到本批，下一步需在 Dokploy 修正 Source/Git 分支后再触发一次部署。
 
-## 2026-10-22 AI 用户问法回归（最新）
+## 2026-10-22 AI 配套回归（最新）
+
+- [x] Demo 线上自然语言回归 **247/247 PASS**；配套 availability **3/3**、route **9/9**、surface/auth **11/11**、metrics **9/9**、AI UI **2/2** 通过。
+- [ ] Features **14 PASS / 1 BLOCKED**：Classic 发票 OCR 旧接口返回 `41001`，前端保持 Odoo Purchases/Replenishment 引导；Reports **15/16**：实时库存数据源 unavailable，其余销售日期、AUD、时区和 Odoo 对账通过。
+- [x] 全部请求为只读，业务写入为 0。证据文件：`docs/UAT_*_2026-10-22_POST-ROUTE.json`。
+- [ ] Demo runtime `582b92fb` 与当前工作区 source `1cd417c3` 不一致；不能把本轮结果当作最新候选部署证明。
+- [x] Capability gates：聊天可用、语音清晰显示 unavailable；无页面错误、无写入。证据：`docs/UAT_AI_CAPABILITY_GATES_2026-10-22_POST-ROUTE.json`。
+- [ ] History/platform **9 PASS / 2 BLOCKED**（缺第二门店和 platform-operator 凭据）；transcription **2 PASS / 2 BLOCKED**（缺音频 fixture）。证据：`docs/UAT_AI_HISTORY_PLATFORM_2026-10-22_POST-ROUTE.json`、`docs/UAT_AI_TRANSCRIPTION_2026-10-22_POST-ROUTE.json`。
+
+## 2026-10-22 AI 用户问法回归
 
 - [x] 247 条自然语言问法已在线只读执行：**246 PASS / 0 BLOCKED / 1 FAIL**。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_7911D0D4_DATA-AWARE-247.json`。
 - [ ] 唯一失败为 `Recommend something in stock for steak`：route 已到 `/sommelier`，intent 却为 `report_adhoc`。工作区已补充 `in stock` 推荐短语的确定性路由和回归断言；涉及 `pos-api`，尚未通过同 SHA Java 21 `mvn -B clean verify`，不可部署或宣称已修复。

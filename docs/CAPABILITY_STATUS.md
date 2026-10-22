@@ -2,6 +2,7 @@
 
 - 报表 Dashboard 对 Odoo `503` 临时故障现在保留 Retry 和 Request ID，并显示可恢复错误；只有 `401` 会显示连接 Odoo 引导，避免把网关故障误判为配置缺失。
 - 产品目录、补货和报表的错误/空态操作入口补齐统一 `focus-visible` 状态，覆盖移动端清除筛选、连接、重试、分类重载和销售历史引导。
+- 商品编辑/导入/新建和补货 RFQ 弹窗的关闭、取消、提交、供应商重试、数量输入和供应商选择控件也补齐可见键盘焦点状态。
 - 本地验证：报表 503/401 双分支 `2/2 PASS`，390px 无横向溢出；Platform Audit/Failures fixture `4/4 PASS`（390/1440px，重试恢复，无页面错误，无写入）；Node typecheck、定向 ESLint、脚本语法检查通过。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。本批尚未部署，线上仍以已核验 runtime 为准。
 - 已推送候选 `1cd417c3` 到 `origin/main`；Dokploy webhook 返回 `301 Branch Not Match`，连续版本探针仍为前后端 `582b92fb`，因此线上验证未开始。需要在 Dokploy 控制台修正仓库分支绑定后再部署。
