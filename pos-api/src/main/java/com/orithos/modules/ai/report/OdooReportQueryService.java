@@ -326,14 +326,14 @@ public class OdooReportQueryService {
         List<Map<String, Object>> products;
         try {
             products = searchRead(session, "product.product", domain,
-                    List.of("id", "display_name", "free_qty", "qty_available"), context, MAX_LIST_ROWS + 1,
+                    List.of("id", "name", "display_name", "free_qty", "qty_available"), context, MAX_LIST_ROWS + 1,
                     "name asc, id asc");
         } catch (Exception primaryFailure) {
             // Some Odoo service users can read the standard quantity but not the
             // stock-reserved computed field. Keep the report useful without
             // weakening the read-only or company scoping guarantees.
             products = searchRead(session, "product.product", domain,
-                    List.of("id", "display_name", "qty_available"), context, MAX_LIST_ROWS + 1,
+                    List.of("id", "name", "display_name", "qty_available"), context, MAX_LIST_ROWS + 1,
                     "name asc, id asc");
         }
         if (products.size() > MAX_LIST_ROWS) return null;
@@ -341,7 +341,7 @@ public class OdooReportQueryService {
         for (Map<String, Object> product : products) {
             rows.add(Map.of(
                     "id", product.get("id"),
-                    "name", product.getOrDefault("display_name", ""),
+                    "name", product.getOrDefault("name", product.getOrDefault("display_name", "")),
                     "quantity", decimal(product.containsKey("free_qty")
                             ? product.get("free_qty") : product.get("qty_available"))));
         }
