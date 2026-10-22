@@ -2450,3 +2450,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Candidate `876f8b3` is pushed and includes the grouped Settings, stocktake/cash, and report/utility recovery focus improvements.
 - [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. Do not attribute online behavior to this candidate.
 - [ ] Demo runtime remains on the older SHA; online verification awaits Source/Git correction.
+## 2026-10-22 Entry and platform focus follow-up
+
+- Signup wizard, Reset Password, Products menu/batch delete, Platform Stores Retry, and Platform Audit Search/Clear/Retry now expose visible keyboard focus states.
+- Local checks passed: Platform Audit/Failures fixture `4/4` at 390/1440px, Product detail retry fixture PASS, zero writes, no page errors or overflow; typecheck, targeted ESLint, and diff check passed. Evidence: `docs/UAT_ENTRY_PLATFORM_FOCUS_LOCAL_2026-10-22.json`.
+- No production build was run. Online status remains pending exact runtime SHA.

@@ -600,3 +600,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] Candidate `876f8b3` pushed after the report/utility focus batch.
 - [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Exact runtime SHA and online UI verification are pending.
+### 2026-10-22 Entry and platform focus consistency
+
+- [x] Signup wizard, Reset Password, Products menu/batch delete, Platform Stores retry, and Platform Audit search/clear/retry controls now expose visible keyboard focus states.
+- [x] Local Platform Audit/Failures fixture passed `4/4` at 390/1440px; Product detail retry fixture passed with zero writes. Typecheck, targeted ESLint, and diff check passed. Evidence: `docs/UAT_ENTRY_PLATFORM_FOCUS_LOCAL_2026-10-22.json`.
+- [ ] Demo verification remains pending exact runtime SHA deployment.
