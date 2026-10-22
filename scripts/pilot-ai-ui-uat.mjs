@@ -157,6 +157,36 @@ async function runViewport(viewport) {
   if (!assistantAvailable && (await composer.isEnabled())) {
     throw new Error(`AI_COMPOSER_ENABLED_WHILE_ASSISTANT_UNAVAILABLE_${viewport.width}`);
   }
+  if (assistantAvailable) {
+    const askCard = async (question, title, label, bodyPattern) => {
+      await composer.fill(question);
+      await sendButton.click();
+      const card = assistant.locator(`section[aria-label="${title}"]`);
+      await card.waitFor({ state: "visible", timeout: 120000 });
+      const text = await card.innerText();
+      if (!bodyPattern.test(text)) {
+        throw new Error(`${label}_CARD_BODY_INVALID_${viewport.width}_${JSON.stringify(text.slice(0, 500))}`);
+      }
+      if (!/Ready|No match|Unavailable/i.test(text)) {
+        throw new Error(`${label}_CARD_STATUS_MISSING_${viewport.width}_${JSON.stringify(text.slice(0, 500))}`);
+      }
+      const cta = card.getByRole("button");
+      if (await cta.count() < 1) throw new Error(`${label}_CARD_CTA_MISSING_${viewport.width}`);
+      await assistant.getByRole("button", { name: "Clear chat", exact: true }).click();
+    };
+    await askCard(
+      "How many products do we have?",
+      "Product catalogue",
+      "PRODUCT_COUNT",
+      /\d+|unavailable|permission|not bound|sign in/i,
+    );
+    await askCard(
+      "Recommend a red wine under $30",
+      "Wine recommendations",
+      "SOMMELIER",
+      /wine|recommend|unavailable|no match|no recommendation/i,
+    );
+  }
   if (!assistantAvailable) {
     await assistant.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
     await assistant.getByText("Shortcuts still work without AI chat").waitFor({ timeout: 10000 });

@@ -1695,7 +1695,7 @@ function DialogueView({
                 : "mr-auto whitespace-pre-wrap border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text)] shadow-sm",
             )}
           >
-            {msg.role === "assistant" && msg.reportId ? (
+            {msg.role === "assistant" && msg.reportId && cards.length === 0 ? (
               <span className="block">
                 <a
                   href={`/reports/ai/${msg.reportId}`}
@@ -1772,6 +1772,20 @@ function DialogueView({
                   </section>
                   );
                 })}
+                {msg.reportId ? (
+                  <a
+                    href={`/reports/ai/${msg.reportId}`}
+                    {...(getUiMode() === "mobile"
+                      ? {}
+                      : { target: "_blank", rel: "noopener noreferrer" })}
+                    className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--oh-muted)] underline decoration-[var(--oh-border)] underline-offset-2 hover:text-[var(--oh-primary)]"
+                  >
+                    {/[一-鿿]/.test(msg.text)
+                      ? "查看完整报表"
+                      : "View full report"}
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  </a>
+                ) : null}
               </div>
             ) : (
               msg.text

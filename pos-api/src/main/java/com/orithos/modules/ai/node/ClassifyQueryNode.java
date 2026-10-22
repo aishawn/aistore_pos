@@ -268,8 +268,7 @@ public class ClassifyQueryNode implements NodeAction {
         }
         return question.matches(
                 "(?is).*(?:把.+?(?:补到|补足|补至|加到)\\s*\\d+"
-                        + "|(?:top up|restock|replenish|bring)\\b.+?(?:to|up to)\\s*\\d+"
-                        + "|\\border\\s+\\d+\\s+(?:units?|bottles?|cases?)\\b).*");
+                        + "|(?:top up|restock|replenish|bring)\\b.+?(?:to|up to)\\s*\\d+).*");
     }
 
     private static String writeRouteForQuestion(String question, boolean stockTarget, boolean priceTarget) {
@@ -292,6 +291,7 @@ public class ClassifyQueryNode implements NodeAction {
         }
         return question.matches(
                 "(?is).*(?:把.+?(?:价格|售价)\\s*(?:改成|调整为|设为)\\s*\\$?\\d+"
+                        + "|(?:(?:帮我)?(?:直接\\s*)?)把.*?(?:价格|售价)(?:改了|改掉|改成|调整为|设为)"
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+"
                         + "|\\b(?:apply|save|submit|execute)\\b.+?\\b(?:prices?|pricing)\\b"
                         + "|(?:保存|提交|执行|应用|调价|改价).*(?:价格|价目|价格建议|调价)).*");
@@ -314,7 +314,7 @@ public class ClassifyQueryNode implements NodeAction {
     }
 
     private static boolean isOrderWriteTarget(String question) {
-        return question != null && question.matches("(?is).*(?:order|purchase|buy|采购|购买|订单).*");
+        return question != null && question.matches("(?is).*(?:order|purchase|buy|采购|购买|订|下单|订单).*");
     }
 
     private static boolean isSupplierWriteTarget(String question) {

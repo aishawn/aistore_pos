@@ -140,7 +140,12 @@ class ClassifyQueryNodeTest {
                 {"Execute pricing", "/stock/capped-pricing"},
                 {"Buy these items now", "/orders"},
                 {"Order these products", "/orders"},
-                {"保存这些价格建议", "/stock/capped-pricing"}
+                {"Order 50 units of beer", "/orders"},
+                {"现在帮我把啤酒订 50 件", "/orders"},
+                {"下单啤酒 12 箱", "/orders"},
+                {"保存这些价格建议", "/stock/capped-pricing"},
+                {"直接把价格改了", "/stock/capped-pricing"},
+                {"帮我把葡萄酒售价改了", "/stock/capped-pricing"}
         }) {
             OverAllState state = mock(OverAllState.class);
             when(state.value("question", String.class)).thenReturn(Optional.of(sample[0]));
@@ -384,6 +389,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "Suggest a price for Shiraz", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "给我看看价格建议", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "What do we need to buy?", "navigate", "/stock/replenishment");
+        assertDeterministicResult(node, "我应该买什么？", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "Restock list please", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "哪些商品快没货", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "补货清单", "navigate", "/stock/replenishment");

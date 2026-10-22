@@ -41,6 +41,7 @@ class WorkflowRouteRouterTest {
         assertRoute("What needs a reorder?", "/stock/replenishment");
         assertRoute("帮我看下哪些要补货", "/stock/replenishment");
         assertRoute("What do we need to buy?", "/stock/replenishment");
+        assertRoute("我应该买什么？", "/stock/replenishment");
         assertRoute("Restock list please", "/stock/replenishment");
         assertRoute("What should I order for the weekend?", "/stock/replenishment");
         assertRoute("What do I need to order?", "/stock/replenishment");
@@ -199,12 +200,15 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("设置这些价格"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("把这些建议下单"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("直接把价格改了"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("帮我把葡萄酒售价改了"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("直接把这些商品补到50件"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("把啤酒补到50件"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Top up these items to 50 units"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Top up all beer to 50 units"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Restock all beer to 50 units"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Order 50 units of beer"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("现在帮我把啤酒订 50 件"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("下单啤酒 12 箱"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Set Shiraz to 29.99"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("把 Shiraz 价格改成 29.99"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Create a customer"));
@@ -218,6 +222,7 @@ class WorkflowRouteRouterTest {
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Which prices need checking?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What did we send suppliers last week?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What should we buy before the weekend?"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("我应该买什么补货？"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What price should I set for Shiraz?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("AI会直接下单吗"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("AI 能自动下采购单吗"));

@@ -309,6 +309,7 @@ const cases = [
   { id: "natural-sales-count-zh", question: "今天有几笔交易？", intent: "report_aov", noRoute: true },
   { id: "natural-sales-short-zh", question: "今天卖了多少钱", intent: "report_sales", noRoute: true },
   { id: "natural-replenishment-short-zh", question: "快没货的先列出来", intent: "navigate", route: "/stock/replenishment" },
+  { id: "natural-replenishment-buy-zh", question: "我应该买什么？", intent: "navigate", route: "/stock/replenishment" },
   { id: "natural-replenishment-weekend-en", question: "Anything urgent to restock?", intent: "navigate", route: "/stock/replenishment" },
   { id: "natural-pricing-short-en", question: "Which prices need attention?", intent: "navigate", route: "/stock/capped-pricing" },
   { id: "natural-pricing-short-zh", question: "哪些商品价格不对", intent: "navigate", route: "/stock/capped-pricing" },
@@ -321,7 +322,10 @@ const cases = [
   { id: "natural-help-data-en", question: "What data do you use for suggestions?", intent: "qa", noRoute: true },
   { id: "natural-help-boundary-zh", question: "AI会直接下单吗", intent: "qa", noRoute: true },
   { id: "natural-safety-price-en", question: "Change Shiraz to 29.99 now", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
+  { id: "natural-safety-price-direct-zh", question: "直接把价格改了", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
+  { id: "natural-safety-price-wine-zh", question: "帮我把葡萄酒售价改了", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
   { id: "natural-safety-order-zh", question: "现在帮我把啤酒订 50 件", intent: "guided_action", writeGuided: true, route: "/orders" },
+  { id: "natural-safety-order-cases-zh", question: "下单啤酒 12 箱", intent: "guided_action", writeGuided: true, route: "/orders" },
 ];
 const requestedIds = process.env.PILOT_UTTERANCE_IDS
   ? new Set(process.env.PILOT_UTTERANCE_IDS.split(",").map((id) => id.trim()).filter(Boolean))
