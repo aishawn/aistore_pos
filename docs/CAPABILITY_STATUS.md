@@ -1,14 +1,36 @@
-## 2026-10-23 发票扫描页 Odoo lookup（源码）
+## 2026-10-23 AI 自然问法回归扩充
 
-- /invoices/scan 供应商/门店下拉改为 Odoo BFF：`searchOdooRecords` → `POST /api/odoo/records`（`suppliers` / `outlets`）。不再调用已退役 Classic `GET /api/suppliers` 或 `GET /api/outlets`（Odoo-only 下会 41001）。
-- Lookup 失败时仍可上传 OCR；页面仍为 preview-only，不创建采购/收货。提交 `b00992c1`。
-## 2026-10-22 Customer 侧栏 hybrid（策略已锁定）
+- 最新完整线上目录证据：310 条，**266 PASS / 36 BLOCKED / 8 FAIL**。36 个 BLOCKED 均为 `50210`；失败集中在三类既有路由差异和两个新暴露的分类错误（商品总数、关班问答）。见 `docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T155514915Z_8a4c56e5.json`。
+- Demo runtime `b4719e7c51c2ffebdcd8b0916e7186480c55201d` 与 source `8a4c56e51e40317bd16183ee8ebb7148e9841082` 不匹配。源码确定性规则及回归覆盖已扩展为 320 条，但未运行 Java/Maven，尚无候选运行时证据。
+- 未产生业务写入；本地不 build，不推送/部署。Java 21 同 SHA `mvn -B clean verify` 与匹配 runtime 全量问法复验仍是发布阻断项，状态保持 **NO-GO**。
 
-- **生产侧栏**（`pos-ui/src/lib/sidebar-navigation.ts`）：可折叠 `Customers` 分组，目前仅一个 Odoo 入口 `/customers/odoo`。不恢复旧 Shopfront 五级菜单。
-- **不进生产导航**：Classic Customer Groups（`/customer-groups`）、Classic Price Lists（`/pricelists`）、Balances stub（`/customers/balances`，明确未接入 Odoo）、Classic Gift Cards（`/giftcards`）。旧五级定义仅存于未接入的 `pos-ui/lib/sidebar-navigation.ts`（已标 DEPRECATED）。
-- **试点分期**（Balances / Gift Cards 近期不需要）：加深 Customers 目录 → Odoo 价目表查看/分配 → Odoo Groups（标签/类别）→ Balances（应收）→ Gift Cards。侧栏子项仅在对应 Odoo 能力上线后再加。
-- **结账价目表**：checkout `_get_product_price` 已 Accepted；缺的是管理面，不是把 Classic `/pricelists` 挂回导航。
-- 本批为导航策略与文档锁定；无业务写入、未改变运行时客户能力面。整体仍 **NO-GO**。
+## 2026-10-22 当前候选跨模块验证（最新）
+
+- HEAD `8a4c56e51e40317bd16183ee8ebb7148e9841082` 的当前工作树本地 UI fixture 回归 99/99 PASS，覆盖库存定价、价格建议、报表故障恢复、盘点边界、平台审计、采购恢复和发票 OCR 预览；业务写入 0。汇总证据：`docs/UAT_LOCAL_UI_REGRESSION_PACK_2026-10-22_CURRENT-GOAL.json`。
+- Stock List 已清理 Classic 分类筛选旧文案，改为 Odoo 商品搜索（名称/SKU/条码）、分类和仅有库存筛选；五视口 UAT 证明过滤请求带 `stockOnly=true`，见 `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_SHA-8A4C56E.json`。
+- 这是本地浏览器 fixture 结果，不代表真实 Odoo 或 AI 模型验收。Node 版本为 22.22.2；项目要求 Node 24+。
+- Demo 仍运行 `b4719e7c`，与当前源码不匹配；当前机器 Java 8，Java 21 exact-SHA 后端门禁未完成。线上及试点仍 NO-GO。
+
+## 2026-10-22 发票 OCR Odoo-safe 预览（最新）
+
+- 源码新增管理员专用 `/api/ai/invoice/preview`，只调用视觉模型并返回 OCR 预览字段；不访问或写入供应商、商品、采购、收货和库存记录。Classic `/api/orders/receives/scan` 在 Odoo-only 模式仍为 410。
+- `/invoices/scan` 预览页的供应商/门店下拉改为 Odoo BFF：`searchOdooRecords` → `POST /api/odoo/records`（`suppliers` / `outlets`）。不再调用已退役的 Classic `GET /api/suppliers` 或 `GET /api/outlets`（Odoo-only 下会 41001）。Lookup 失败时仍可上传 OCR；页面仍不创建采购/收货。
+- 本地浏览器 mock 6 项 PASS，业务写请求 0；UI typecheck、定向 ESLint、OCR 脚本语法和 diff 检查通过。证据：`docs/UAT_INVOICE_SCAN_MOCK_LOCAL_2026-10-22.json`。
+- Java controller/filter 单测已新增但未执行；本机 Java 8，不符合 Java 21 exact-SHA 门禁。真实 DashScope 发票识别及匹配 runtime 线上验收未完成，能力仍为待验收，试点 NO-GO。
+
+## 2026-10-23 Customer 五级 Odoo 面（源码）
+
+- **生产侧栏**（`pos-ui/src/lib/sidebar-navigation.ts`）：Customers / Customer Groups / Price Lists / Balances / Gift Cards，全部指向 Odoo 面（不再挂 Classic MySQL）。
+- **Customers** `/customers/odoo`：目录加深 — 价目表、分组、应收、地址/ABN/类型；创建/编辑写 `res.partner`（含 `property_product_pricelist`、`category_id`）。
+- **Customer Groups** `/customer-groups`：`res.partner.category` 列表/新建/改名/删除（写操作需 store admin）。
+- **Price Lists** `/pricelists`：`product.pricelist` 列表/新建/改名/归档；客户分配在 Customers；规则编辑仍在 Capped Pricing。
+- **Balances** `/customers/balances`：`res.partner.credit` + 打开 `account.move` 未结发票（只读；收款仍在 Odoo Accounting）。
+- **Gift Cards** `/giftcards`：探测 `loyalty.card` / `gift.card`；`aipos` 当前未装模块时显示明确未就绪，不回落 Classic MySQL。
+- 结账价目表 `_get_product_price` 仍为 Accepted。线上 runtime / 试点仍 **NO-GO**，待部署与只读 UAT。
+
+## 2026-10-22 Customer 侧栏 hybrid（历史策略）
+
+- 当时生产侧栏仅 `/customers/odoo`；Classic 五级不进导航。已被 2026-10-23 Odoo 五级面取代。
 
 ## 2026-10-22 AI 聊天摘要 + CTA（源码已推送）
 
@@ -18,10 +40,9 @@
 
 ## 2026-10-22 最新 AI 线上只读状态
 
-- Demo runtime `582b92fb`：自然语言问法 **247/247 PASS**；availability **3/3**、route **9/9**、surface/auth **11/11**、metrics **9/9**、AI UI **2/2**。
-- Features **14 PASS / 1 BLOCKED**（旧发票 OCR `41001`）；Reports **15/16**（实时库存源 unavailable，销售日期、AUD、时区和 Odoo 对账通过）。Capability gates 聊天可用、语音明确禁用；History/platform **9 PASS / 2 BLOCKED**，transcription **2 PASS / 2 BLOCKED**。
-- 证据：`docs/UAT_*_2026-10-22_POST-ROUTE.json`。测试全为只读，业务写入为 0。
-- 运行时与 runner source `1cd417c3` 及当前工作区后续 docs-only HEAD 均未绑定，不能把本轮结果当作最新候选部署证明。整体仍 **NO-GO**。
+- 最新完整问法诊断：301 条 **247 PASS / 28 BLOCKED / 26 FAIL**，业务写入为 0；28 条因 `50210` 阻断。Demo runtime `b4719e7c` 与 source `bc4159c3` 不匹配，因此结果只诊断旧 runtime，不能作为当前源码验收。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-301-BC4159C.json`。
+- 后续 7 条定向边界抽查为 **3 PASS / 0 BLOCKED / 4 FAIL**，失败同样来自旧 runtime；Availability **3/3**、Route Matrix **9/9**、AI result cards **2/2**（390/1440）通过。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_144CASE_CURRENT.json`、`docs/UAT_AI_AVAILABILITY_2026-10-22_CURRENT-D3EC716-RECHECK.json`、`docs/UAT_AI_ROUTE_MATRIX_2026-10-22_CURRENT-D3EC716-RECHECK.json`、`docs/UAT_AI_UI_2026-10-24_CARD-RECHECK3.json`。
+- 其他近期专项：Surface/Auth **11/11**、Metrics 和 Capability gates 通过；Features **14 PASS / 1 BLOCKED**（OCR `41001`）；Reports **15/16**（实时库存源不可用）；History/platform **9 PASS / 2 BLOCKED**；Transcription **2 PASS / 2 BLOCKED**。尚无最终候选 Java 21 同 SHA 门禁和匹配 runtime，整体仍 **NO-GO**。
 
 ## 2026-10-22 报表与 Odoo 空态 UI 批次（本地待部署）
 
@@ -68,7 +89,7 @@
 | GST 净毛利与 Odoo 改价 | 是 | 是 | 待验证 | 待验证 | 工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。 |
 | 收银退款与结果恢复 | 是 | 是 | 待验证 | 待验证 | 工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。 |
 | 采购收货 | 是 | 是 | 待验证 | 待验证 | 本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。 |
-| AI 助手 | 是 | 是 | 是 | 待验证 | 已核验 Demo runtime frontend/backend SHA 为 3edd72d84f514856923c0c0d50b01fe7b015e120，与本次 runner sourceCommit 匹配。完整 216 条助手问法 216 PASS / 0 BLOCKED / 0 FAIL，代表性 smoke 5/5 PASS；请求仅调用助手 API，业务写入为 0。只读功能专项仍需分别关注价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入。 |
+| AI 助手 | 是 | 是 | 是 | 待验证 | 工作区目录 301 条唯一用例。最新全量 Demo 诊断 247 PASS / 28 BLOCKED / 26 FAIL；runtime `b4719e7c` 与 source `bc4159c3` 不匹配，失败未造成业务写入。Availability 3/3、Route 9/9、AI cards 2/2 为旧 runtime 页面/UI 证据。OCR 返回 41001、实时库存源 unavailable、跨店/operator 凭据和语音 fixture 缺失。当前 `pos-api` 候选尚未完成 Java 21 exact-SHA `mvn -B clean verify`，不允许推送/宣称上线；真实业务验收仍待完成。 |
 | 两租户交付 | 是 | 是 | 是 | 待验证 | 公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。 |
 
 试点决策：**NO-GO**。阻塞：真实 Odoo 交易写入与对账仍需隔离环境验收；价格建议、实时库存报表和真实发票字段提取仍有独立验证项；第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成。
@@ -1520,10 +1541,37 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 线上运行版本仍为 `582b92fb`。
 - 本地候选在 `3a9c47da` 后追加 `192fedb7`，包含目录问法和隔离 UAT 稳定性修正；尚未推送或部署。
 
-## 2026-10-22 最新候选与 UI 矩阵
+## 2026-10-22 当前目标复验
 
-- 当前本地候选为 `78488e6e1bcda4fda3eaff6af1e414f54b582285`，包含 AI CTA、结果卡片、guided-action 路由和员工目录错误态修复。
-- 全路由静态矩阵覆盖 138 条路由 × 390/1440px，`276/276 PASS`；证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`。
-- 前端 typecheck、目标 ESLint、脚本语法和 diff check 通过；本地未运行 production build。
-- 线上仍运行 `b4719e7c`，候选包含 `pos-api`，尚未通过同 SHA Java 21 `mvn -B clean verify`，整体保持 **NO-GO**。
+- 前端 typecheck、Node 脚本语法和 diff check 通过。
+- 隔离写入脚本确认 `aipos_uat` 配置正确，但线上 `/api/public/uat-context` 为 `isolated=false`，因此在任何业务写入前停止；销售/退款等写入为 `0`。
+- 线上 `/api/public/version` 仍为 `582b92fb`，与当前本地候选 `22cbd19b` 不一致。
+- Java 21 exact-SHA `mvn -B clean verify` 尚无证据；试点继续 **NO-GO**。
 
+## 2026-10-22 候选 SHA 更新
+
+- 当前本地候选为 `2721e015e9f102abe1229b6ef0be0cfe78505ab0`，包含 `pos-api` 的 AI fast-path observability 改动。
+- release identity 复验仍为 BLOCKED：线上前后端为 `582b92fb199e312e828a5169cde14105a091f41a`，与候选不一致。
+- Java 21 exact-SHA 门禁和隔离 runtime 证明完成前，不推送、不宣称 AI 修复已上线。
+
+## 2026-10-22 AI 问法回归与当前候选
+
+- 最新完整 290 条只读回归为 `251 PASS / 25 BLOCKED / 14 FAIL`，证据：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_LATEST-CANDIDATE.json`。测试时 Demo 为 `b4719e7c`、source 为 `e58ad619`，不能代表当前候选上线状态。
+- 其中 12 条 fail-closed 写请求因旧 runner 强制要求 route 而误报；runner 已调整为允许无 route，并在 runtime SHA 不匹配时单独标记观测字段不可用。
+- 两个旧 runtime 问法冲突是 `Buy these items now` 被送往 `/products`，以及供应商账单数量查询被当成发票录入。候选 `a176a107` 已分别修正为 `/orders` guided route 和 report 问法，并有 Java 回归断言；仍须 Java 21 门禁与精确 SHA 部署后复验。
+- 当前 `main` 为 `a176a10747e1ec1a78477c2d8ea0dc8676a3c216`，领先 `origin/main` 4 个提交，工作树含未提交的测试文档、runner 和既有 UAT 工件。
+- Java 环境是 8，不能完成 Java 21 exact-SHA `mvn -B clean verify`；未运行 build、未推送或部署。发布结论维持 **NO-GO**。
+## AI Assistant status update — 2026-10-22
+
+- Latest 301-case Demo Assistant API-only regression: **265 PASS / 32 BLOCKED / 4 FAIL**. All blocked cases returned `50210`; no business writes were issued.
+- Four stable old-runtime mismatches: three price execution utterances had `guided_action` but no `/stock/capped-pricing` review route; `收到发票了吗？` incorrectly opened `/invoices/scan` instead of read-only reporting.
+- Demo frontend/backend SHA `b4719e7c51c2ffebdcd8b0916e7186480c55201d` does not match source `d7ae6395ab4b4fe984afc81ceb15934c7f146fcb`. Source Java tests contain these expected contracts, but exact-SHA Java 21 verification and a matching runtime rerun are pending.
+- Companion suites: availability 3/3, route 9/9, surface/auth 11/11, UI 2/2, metrics 9/9 and capability/enabled gates pass. Features 14/1 blocked (retired OCR 41001), reports 15/16 (live stock unavailable), transcription 2/2 blocked (missing audio fixtures), history/platform 9/2 blocked (missing credentials).
+- Overall pilot remains **NO-GO**. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-301-D7AE6395.json` and companion `*_CURRENT-GOAL-D7AE6395.json` files.
+
+## AI Assistant latest recheck — 2026-10-22
+
+- 304 assistant utterances: **265 PASS / 33 BLOCKED / 6 FAIL**. Runtime `b4719e7c` does not match the dirty source based on `d7ae6395`; no business writes. Six old-runtime mismatches: three missing price-review routes and three invoice-arrival questions sent to invoice capture.
+- Features 14/15 (invoice OCR probe HTTP 500 / `50000`); reports 15/16 (live stock unavailable); availability 3/3; routes 9/9; surface/auth 11/11; UI 2/2; transcription 4/4; metrics 9/9; capability/enabled gates pass.
+- History/platform 9 PASS / 2 BLOCKED; stock RPC 4 PASS / 5 BLOCKED / 1 INFO. Local invoice UI mock 6/6 PASS but does not validate real OCR. Node 24 TypeScript check passes. No local build/Maven; Java 21 exact-SHA gate remains pending. Overall **NO-GO**.
+- Evidence: timestamped 304-case workflow JSON and `UAT_AI_*_2026-10-22_CURRENT-RECHECK.json` companion files.

@@ -1,3 +1,9 @@
+## 2026-10-23 AI 用户问法回归续迭代
+
+- [x] 复核最新保存的 310 条 Assistant API-only Demo 结果：266 PASS / 36 BLOCKED / 8 FAIL；BLOCKED 均为 50210，0 业务写入。线上 `b4719e7c` 与 source `8a4c56e5` 不匹配，结果用于归类旧服务问题。
+- [x] 扩展候选规则/回归用例：价格动作有定价复核 route；发票是否到货走只读问数；口语商品计数走 `product_count`；till 关闭步骤走 `qa` 且不导航。目录增加 10 条中英文变体及正反例，共 320 条。
+- [ ] 尚未执行 Java 测试或 Java 21 `mvn -B clean verify`；不得把静态契约标记为通过。需同 SHA 门禁后匹配部署，再跑完整 320 条 UAT；整体仍 NO-GO。
+
 ## 2026-10-23 Demo 库存与定价只读复验
 
 - [x] Demo 前后端 runtime 同为 `b4719e7c51c2ffebdcd8b0916e7186480c55201d`；与本地源码不同。UAT 执行时 source HEAD 为 `c7452e93fc95dfbd79e5d7266e8473debafd0079`，工作树有未提交改动。
