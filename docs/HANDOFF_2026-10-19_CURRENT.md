@@ -176,6 +176,7 @@
 - 新增 29 条自然问法已在 Demo 执行，结果 **22 PASS / 0 BLOCKED / 7 FAIL**；证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NATURAL-EXPANSION.json`。所有请求仅调用 Assistant API，业务写入为 0。
 - 7 个失败已定位：定价建议 2 条、酒类推荐 2 条、交易笔数 1 条、供应商目录 1 条、AI 是否直接下单 1 条。工作区已补 `WorkflowRouteRouter`、`AssistantFastPathRouter`、`ReportAdhocRouter` 规则和对应 Java 回归断言。
 - 本次 runner source 为 `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`，Demo frontend/backend 为 `a5511fc689a8b4c871c0bacda15713afbd86b44f`，身份不一致。后端候选尚未推送；必须先取得同候选 SHA 的远程 Java 21 `mvn -B clean verify` 通过证据。
+- 随后共享 `main` 已包含候选提交 `7f92d1b`，当前 tip 为 `a1063d3`；Dokploy 对 `a1063d3` 的部署状态为 `Error`，Demo 仍为 `a5511fc`。因此 7 个路由修复尚未获得线上验证，不能触发完整 245 条通过结论。
 
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
@@ -2428,3 +2429,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Candidate `0a1a19c` contains the grouped Settings Data, Users, Roles, Account, Payment, Registers & Outlets, and Tax focus-state improvements and is pushed to `origin/main`.
 - [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. Verify Source/Git repository `aishawn/aistore_pos`, branch `main`, root `/`, and `docker-compose.yml` before the next deployment.
 - [ ] Demo runtime identity remains the previously deployed SHA; no grouped Settings change is online-verified.
+## 2026-10-22 Stocktake and cash focus follow-up
+
+- Manage Cash Retry and Stocktake/Express Stocktake clear, recovery, add/remove, and review actions now expose visible keyboard focus states.
+- Local behavioral checks passed: Odoo Stocktake fixture across five viewports, count-boundary fixture `20/20`, zero real writes, no page errors or overflow. Typecheck, targeted ESLint, script syntax, and diff checks also passed. Evidence: `docs/UAT_STOCKTAKE_CASH_FOCUS_LOCAL_2026-10-22.json`.
+- No production build was run. Online verification remains pending the Dokploy Source/Git correction and exact runtime SHA.

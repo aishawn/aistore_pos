@@ -93,7 +93,7 @@ export default function ManageCashPage() {
           <AlertCircle className="mx-auto text-rose-700" size={30} />
           <h2 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load cash register details</h2>
           <p className="mt-2 text-sm leading-6 text-rose-800">{error}</p>
-          <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
+          <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button>
         </section>
       ) : (
         <div className="mx-auto max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">

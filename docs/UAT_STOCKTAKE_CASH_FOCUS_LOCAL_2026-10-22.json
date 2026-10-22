@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-22",
+  "scope": "local keyboard focus consistency for stocktake and cash adjustment workflows",
+  "status": "PASS",
+  "changes": [
+    "Manage Cash load-error Retry has a visible focus state",
+    "Stocktake Clear count, location Retry, product Retry, Add to count, mobile remove, and Review and apply have visible focus states",
+    "Express Stocktake load and search Retry actions have visible focus states"
+  ],
+  "behavioralEvidence": {
+    "odooStocktakeLocal": "PASS",
+    "odooStocktakeViewports": [320, 390, 768, 1024, 1440],
+    "stocktakeBoundaryChecks": "20/20 PASS",
+    "businessWrites": 0,
+    "pageErrors": 0,
+    "horizontalOverflow": false
+  },
+  "validation": {
+    "typecheck": "PASS",
+    "targetedEslint": "PASS",
+    "nodeCheck": "PASS",
+    "diffCheck": "PASS",
+    "productionBuild": "NOT_RUN"
+  },
+  "onlineStatus": "NOT_VERIFIED"
+}

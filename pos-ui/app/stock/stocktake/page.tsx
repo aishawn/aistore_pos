@@ -204,7 +204,7 @@ export default function OdooStocktakePage() {
               {countUnconfirmed && <p role="alert" className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-900">{applyError} This count is preserved. Reconcile it in Odoo, then clear it and start a fresh count.</p>}
             </div>
             {countLines.length > 0 && (
-              <button type="button" onClick={() => setClearCountOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+              <button type="button" onClick={() => setClearCountOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
                 <Trash2 size={16} aria-hidden="true" /> Clear count
               </button>
             )}
@@ -213,7 +213,7 @@ export default function OdooStocktakePage() {
           {locationError ? (
             <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
               <span>{locationError}</span>
-              <button type="button" onClick={() => setLocationRetryKey((value) => value + 1)} disabled={locationLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold disabled:cursor-wait disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
+              <button type="button" onClick={() => setLocationRetryKey((value) => value + 1)} disabled={locationLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
             </div>
           ) : locationLoading ? (
         <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading stock locations" className="h-12 animate-pulse rounded-md bg-[var(--oh-border)]" />
@@ -255,7 +255,7 @@ export default function OdooStocktakePage() {
               {productsError && (
                 <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
                   <span>{productsError}</span>
-                  <button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={productsLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
+                  <button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={productsLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
                 </div>
               )}
               {resultsVisible && (
@@ -287,7 +287,7 @@ export default function OdooStocktakePage() {
                         type="button"
                         onClick={() => addProduct(product)}
                         disabled={!product.eligible || countLines.some((line) => line.id === product.id) || countLines.length >= MAX_COUNT_LINES}
-                        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Plus size={15} aria-hidden="true" />{countLines.some((line) => line.id === product.id) ? "Added" : countLines.length >= MAX_COUNT_LINES ? "Limit reached" : "Add to count"}
                       </button>
@@ -334,7 +334,7 @@ export default function OdooStocktakePage() {
                   {countLines.map((line) => {
                     const variance = delta(line.expectedQty, line.countedQty);
                     return <article key={line.id} className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></div><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-rose-50 hover:text-rose-700"><Trash2 size={17} /></button></div>
+                      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></div><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><Trash2 size={17} /></button></div>
                       <div className="grid grid-cols-2 gap-3"><p className="text-xs text-[var(--oh-muted)]">Expected<span className="mt-1 block text-sm font-medium tabular-nums text-[var(--oh-text)]">{quantity(line.expectedQty)} {line.uom}</span></p><label className="text-xs text-[var(--oh-muted)]">Counted<span className="sr-only"> quantity for {line.name}</span><input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="mt-1 h-11 w-full rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></label></div>
                       <p className="text-xs text-[var(--oh-muted)]">Variance <span className="font-semibold tabular-nums text-[var(--oh-text)]">{variance == null ? "—" : `${variance > 0 ? "+" : ""}${quantity(variance)}`}</span></p>
                     </article>;
@@ -342,7 +342,7 @@ export default function OdooStocktakePage() {
                 </div>
                 <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3">
                   <p className="text-xs text-[var(--oh-muted)]">{!writeEnabled ? "Stock adjustments are not enabled for this store." : invalidCount ? `Enter quantities from 0 to ${MAX_COUNTED_QUANTITY.toLocaleString("en-AU")} for every product.` : changedLines.length ? `${changedLines.length} variance${changedLines.length === 1 ? "" : "s"} to apply.` : "No stock differences to apply."}</p>
-                  <button type="button" onClick={() => { setApplyError(null); setReviewOpen(true); }} disabled={!canReview} className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50">Review and apply</button>
+                  <button type="button" onClick={() => { setApplyError(null); setReviewOpen(true); }} disabled={!canReview} className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50">Review and apply</button>
                 </footer>
               </>
             )}

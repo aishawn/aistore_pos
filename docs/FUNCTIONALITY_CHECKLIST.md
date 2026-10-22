@@ -582,3 +582,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] Grouped Settings focus batch is pushed at candidate `0a1a19c`.
 - [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Online UI verification is pending Dokploy Source/Git correction and exact SHA readback.
+### 2026-10-22 Stocktake and cash workflow focus consistency
+
+- [x] Manage Cash Retry and Stocktake/Express Stocktake recovery, clear, add, remove, and review actions now expose visible keyboard focus states.
+- [x] Existing local Odoo Stocktake fixture passed all five viewports (`320/390/768/1024/1440`) with no overflow/page errors; count-boundary fixture passed `20/20`, with zero real business writes. Evidence summary: `docs/UAT_STOCKTAKE_CASH_FOCUS_LOCAL_2026-10-22.json`.
+- [ ] Demo verification remains pending until Dokploy accepts the grouped candidate and `/api/public/version` matches its exact SHA.

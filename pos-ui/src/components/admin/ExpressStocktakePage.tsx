@@ -220,7 +220,7 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
           <p className="text-sm leading-6 text-rose-800">{error}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {initialStocktakeId && (
-              <button type="button" onClick={() => void loadSession(initialStocktakeId)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60">
+<button type="button" onClick={() => void loadSession(initialStocktakeId)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
                 <RefreshCw size={16} /> Retry
               </button>
             )}
@@ -296,7 +296,7 @@ export function ExpressStocktakePage({ stocktakeId: initialStocktakeId }: { stoc
               ) : searchError ? (
                 <div role="alert" className="flex flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-rose-800">
                   <span>{searchError}</span>
-                  <button type="button" onClick={() => setSearchRetryKey((value) => value + 1)} disabled={searchLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60">
+<button type="button" onClick={() => setSearchRetryKey((value) => value + 1)} disabled={searchLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
                     <RefreshCw size={15} /> Retry search
                   </button>
                 </div>
