@@ -2,9 +2,10 @@
 
 - [x] 产品决策：保留 `/overview` 为唯一经营看板；去掉侧栏 Reporting 分组与独立 Reporting Dashboard 页。
 - [x] Overview 并入原 Dashboard 独有块：Net tax、Open registers KPI、Recent sales & refunds；503 仅 Retry（不再误导去 Connect）；请求带 correlation ID。
+- [x] 补齐 Reporting 遗漏能力：`8 hours` 区间、趋势 `from–to` / sr-only 摘要 / 键盘焦点、空态「Try wider range」、Data through 页脚口径、完整 recentSales（10 条）。
 - [x] `/reports/dashboard` → redirect `/overview`；Favourites / date-time / AI placement / UAT 脚本已改指向 Overview。
 - [x] 删除 `OdooReportingDashboard.tsx`；API `/api/odoo/reporting-dashboard` 仍由 Overview 使用。
-- [ ] 待 `pos-ui` typecheck 后合批部署；Demo runtime SHA 核对前不得宣称线上已合并。Sales History 仍独立保留。整体仍 **NO-GO**。
+- [ ] 待部署后 Demo runtime SHA 核对；Sales History 仍独立保留。整体仍 **NO-GO**。
 
 ## 2026-10-23 Customer Odoo 页面本地验证（本轮最新）
 
@@ -3099,3 +3100,11 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Demo 前后端仍为 `b4719e7c51c2ffebdcd8b0916e7186480c55201d`，与 source HEAD `d7ae6395ab4b4fe984afc81ceb15934c7f146fcb` 不匹配；工作树 dirty。不得把这些线上差异当作当前源码结论。
 - 配套实测：Features 14 PASS / 1 FAIL（OCR probe HTTP 500/50000）；Reports 15/16（stock unavailable）；availability 3/3、route 9/9、surface 11/11、UI 2/2、transcription 4/4、metrics 9/9、capability/enabled gate PASS；History/platform 9/2 BLOCKED；stock RPC 4/5 BLOCKED/1 INFO。发票 UI fixture 6 项通过，限定为 mock，不证明线上 OCR。
 - 本地 Node 24 `tsc --noEmit` 通过；未跑 build/Maven。pos-api 改动推送前须同一候选 SHA 在 Dokploy Java 21 完成 `mvn -B clean verify`，之后才能部署并匹配版本复验。整体保持 **NO-GO**。
+## AI 助手回归交接（2026-10-23）
+
+- 当前问法测试方案和用例目录见 `AI_ASSISTANT_TEST_PLAN.md`、`AI_ASSISTANT_TEST_MATRIX.md`、`AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md` 与 `AI_ASSISTANT_UTTERANCE_CATALOG.md`。覆盖查数据、操作帮助、能力问答、建议、导航、明确执行、数据不可用、权限与提示注入；每条都应断言意图、目标页/回答、数据范围和 `writeRequests=[]`。
+- 320 条旧 Demo 只读回归为 **279 PASS / 38 BLOCKED / 3 FAIL**，证据 `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T163703574Z_063b3028.json`。38 条全为 `50210`；runtime `b4719e7c` 与 source `063b3028` 不匹配。
+- 3 条差异中，上传供应商账单应打开扫描预览，测试预期已修正为 `navigate`；剩余两条是 `Apply the new prices` 的旧价格页路由和 `直接调价` 的旧 intent。当前 Java 源码已有对应 fail-closed/路由回归断言，但尚无当前候选 SHA 的 Java 21 `mvn -B clean verify` 证据。
+- 本地不 build；pos-api 候选不得推送/部署，直到 Dokploy Java 21 对同一候选 SHA 通过 Maven 门禁。门禁通过后先部署，再确认 `/api/public/version` 前后端 SHA 与候选一致，重跑完整问法目录和失败边界组。任何旧 runtime 结果都不能作为当前候选验收。
+- 仍保持只读 UAT：禁止销售、退款、采购、收货、库存、调价、付款、关班、用户或角色写入；不运行会创建/删除用户或角色的 admin guard。
+

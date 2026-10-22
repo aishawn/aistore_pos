@@ -8,6 +8,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BarChart3,
+  Clock3,
   LoaderCircle,
   Package,
   PieChart,
@@ -74,7 +75,9 @@ type R2Receipt = {
   items: Array<{ quantity: number }>;
 };
 
+/** Same sliding windows as the former Reporting Dashboard (incl. 8 hours). */
 const OVERVIEW_RANGES = [
+  { hours: 8, label: "8 hours" },
   { hours: 24, label: "24 hours" },
   { hours: 168, label: "7 days" },
   { hours: 720, label: "30 days" },
@@ -82,7 +85,12 @@ const OVERVIEW_RANGES = [
   { hours: 4320, label: "180 days" },
 ] as const;
 
+const MAX_RANGE_HOURS = 4320;
 const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
+
+function nextWiderRange(hours: number) {
+  return OVERVIEW_RANGES.find((range) => range.hours > hours) ?? null;
+}
 
 const MARK_TONES = [
   { bg: "#eff6ff", fg: "#1d4ed8" },
@@ -263,9 +271,26 @@ export function OrithosOverviewPage() {
   const hasAnalyticsData = hasTrendData || hasCategoryData;
   const trendData = data?.trend ?? [];
   const trendGranularity = data?.trendGranularity ?? "hour";
+  const trendLabelOptions: Intl.DateTimeFormatOptions =
+    trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" };
   const trendLabelInterval = Math.max(1, Math.ceil(trendData.length / 6));
   const currency = data?.currency ?? "AUD";
   const rangeLabel = OVERVIEW_RANGES.find((range) => range.hours === rangeHours)?.label ?? "24 hours";
+  const widerRange = nextWiderRange(rangeHours);
+  const trendSummary = useMemo(() => {
+    if (!data?.trend.length) return "No sales in this period.";
+    const totalRevenue = data.trend.reduce((sum, item) => sum + item.revenue, 0);
+    const totalTransactions = data.trend.reduce((sum, item) => sum + item.transactions, 0);
+    const peak = data.trend.reduce((highest, item) => (item.revenue > highest.revenue ? item : highest), data.trend[0]);
+    const peakLabel = formatGroupedStoreTime(
+      peak.label,
+      data.trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" },
+    );
+    return `${data.trend.length} periods with ${formatMoney(totalRevenue, data.currency)} in sales across ${totalTransactions} transactions. Highest period: ${peakLabel} at ${formatMoney(peak.revenue, data.currency)}.`;
+  }, [data]);
+  const periodBounds = data
+    ? `${formatOdooDateTime(data.from, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })} – ${formatOdooDateTime(data.to, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}`
+    : "";
   const r2Total = r2Receipts.reduce((sum, receipt) => sum + receipt.total, 0);
   const r2ItemsSold = r2Receipts.reduce((sum, receipt) => sum + receipt.items.reduce((lineSum, line) => lineSum + line.quantity, 0), 0);
   const donutGradient = useMemo(() => {
@@ -282,18 +307,19 @@ export function OrithosOverviewPage() {
 
   if (loading && !data) {
     return (
-      <main aria-busy="true" aria-label="Loading overview" className="h-full overflow-y-auto bg-[var(--oh-surface)] p-3 lg:p-3.5">
+      <main aria-busy="true" aria-live="polite" aria-label="Loading overview" className="h-full overflow-y-auto bg-[var(--oh-surface)] p-3 lg:p-3.5">
         <div className="mx-auto flex max-w-[1600px] flex-col gap-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="space-y-2"><div className="h-3 w-44 animate-pulse rounded bg-slate-200" /><div className="h-7 w-52 animate-pulse rounded bg-slate-200" /><div className="h-4 w-40 animate-pulse rounded bg-slate-200" /></div>
             <div className="h-11 w-52 animate-pulse rounded-lg bg-slate-200" />
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-white p-3"><div className="h-3 w-24 rounded bg-slate-200" /><div className="mt-4 h-6 w-32 rounded bg-slate-200" /><div className="mt-3 h-3 w-40 rounded bg-slate-100" /></div>)}
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            {Array.from({ length: 6 }, (_, index) => <div key={index} className="h-[104px] animate-pulse rounded-lg border border-[var(--oh-border)] bg-white p-3"><div className="h-3 w-24 rounded bg-slate-200" /><div className="mt-4 h-6 w-32 rounded bg-slate-200" /><div className="mt-3 h-3 w-40 rounded bg-slate-100" /></div>)}
           </div>
           <div className="h-16 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
           <div className="h-52 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
           <div className="grid gap-2 sm:grid-cols-2"><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /><div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" /></div>
+          <div className="h-56 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
         </div>
       </main>
     );
@@ -305,7 +331,7 @@ export function OrithosOverviewPage() {
         <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
           <Store className="mx-auto text-amber-600" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to open Overview</h1>
-          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Overview reads completed sales from your connected Odoo company.</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Overview reads completed sales and open register sessions from your connected Odoo company.</p>
           <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
         </section>
       </main>
@@ -338,14 +364,18 @@ export function OrithosOverviewPage() {
             <div className="min-w-0">
               <p className="oh-type-meta text-[var(--oh-muted)]">{data?.company ?? "Store"}</p>
               <h1 className="oh-type-title mt-0.5 text-[var(--oh-text)]">{greeting}</h1>
-              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Odoo POS activity · {rangeLabel}{lastLoadedAt !== null && <span className="ml-2">· Last refreshed {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</span>}</p>
+              <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
+                Odoo POS activity · {rangeLabel}
+                {periodBounds ? <span className="ml-1.5 hidden sm:inline">· {periodBounds}</span> : null}
+                {lastLoadedAt !== null && <span className="ml-1.5">· Last refreshed {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</span>}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <div role="group" aria-label="Odoo sales reporting range" className="inline-flex h-9 items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
+              <div role="group" aria-label="Odoo sales reporting range" className="inline-flex max-w-full flex-wrap items-center rounded-lg border border-[var(--oh-border)] bg-white p-0.5 shadow-sm">
                 {OVERVIEW_RANGES.map((range) => (
                   <button key={range.hours} type="button" aria-pressed={rangeHours === range.hours}
                     onClick={() => { setRangeHours(range.hours); void load(true, range.hours); }}
-                    className={cn("oh-type-meta min-h-9 rounded-md px-3 font-medium transition-colors", rangeHours === range.hours ? "bg-[var(--oh-primary)] text-white shadow-sm" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
+                    className={cn("oh-type-meta min-h-9 rounded-md px-2.5 font-medium transition-colors sm:px-3", rangeHours === range.hours ? "bg-[var(--oh-primary)] text-white shadow-sm" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]")}>
                     {range.label}
                   </button>
                 ))}
@@ -506,37 +536,66 @@ export function OrithosOverviewPage() {
           <div className={cn("grid gap-2 sm:grid-cols-2", hasAnalyticsData ? "min-h-0 flex-1" : "min-h-[15rem] shrink-0")}>
             <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales trend</h2>
-                <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Odoo POS · {rangeLabel}</p>
+              <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">
+                {rangeLabel}{periodBounds ? ` · ${periodBounds}` : ""}
+              </p>
               {hasTrendData ? (
-                <div className="mt-2 flex min-h-[7rem] flex-1 items-end gap-1.5 border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1">
-                  {trendData.map((item, index) => {
-                    const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
-                    const label = formatGroupedStoreTime(item.label, trendGranularity === "hour" ? { hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "short" });
-                    const showLabel = index === 0 || index === trendData.length - 1 || index % trendLabelInterval === 0;
-                    return (
-                      <div key={`${item.label}-${index}`} className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center">
-                        <div aria-hidden="true" className="oh-type-meta mb-0.5 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100">{formatMoney(item.revenue, currency)}</div>
+                <>
+                  <div aria-describedby="overview-sales-trend-summary" className="mt-2 flex min-h-[7rem] flex-1 items-end gap-1.5 border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1">
+                    <p id="overview-sales-trend-summary" className="sr-only">{trendSummary}</p>
+                    {trendData.map((item, index) => {
+                      const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
+                      const label = formatGroupedStoreTime(item.label, trendLabelOptions);
+                      const showLabel = index === 0 || index === trendData.length - 1 || index % trendLabelInterval === 0;
+                      return (
                         <div
+                          key={`${item.label}-${index}`}
                           role="img"
+                          tabIndex={0}
                           aria-label={`${label}: ${formatMoney(item.revenue, currency)}, ${item.transactions} sales`}
-                          className="relative mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]"
-                          style={{ height: `${percent}%` }}
-                          title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`}
-                        />
-                        <span className="oh-type-meta mt-1 min-h-[1.25rem] truncate text-[var(--oh-muted)]" aria-hidden={!showLabel}>
-                          {showLabel ? label : ""}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                          className="group flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+                        >
+                          <div aria-hidden="true" className="oh-type-meta mb-0.5 truncate tabular-nums text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{formatMoney(item.revenue, currency)}</div>
+                          <div
+                            className="relative mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]"
+                            style={{ height: `${percent}%` }}
+                            title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`}
+                          />
+                          <span className="oh-type-meta mt-1 hidden min-h-[1.25rem] truncate text-[var(--oh-muted)] sm:block" aria-hidden={!showLabel}>
+                            {showLabel ? label : ""}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {trendData.length > 0 && (
+                    <div className="mt-1 flex justify-between gap-3 text-[11px] text-[var(--oh-muted)] sm:hidden" aria-hidden="true">
+                      <span>{formatGroupedStoreTime(trendData[0].label, trendLabelOptions)}</span>
+                      <span>{formatGroupedStoreTime(trendData[trendData.length - 1].label, trendLabelOptions)}</span>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
                   <div className="max-w-xs">
                     <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><BarChart3 size={19} /></span>
                     <p className="oh-type-label mt-2 font-semibold text-[var(--oh-text)]">No Odoo sales in this period</p>
-                    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">R2 archive receipts are shown separately above.</p>
-                    <Link href="/" className="oh-type-meta mt-2 inline-flex min-h-11 items-center gap-1 rounded-md px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-accent)]">Open point of sale <ArrowRight size={14} /></Link>
+                    <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
+                      No completed Odoo POS orders in {rangeLabel}. R2 archive receipts are shown separately above.
+                      {data?.sampleDataCleared ? " Demo sample orders were cleared for this store." : ""}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                      {widerRange && rangeHours < MAX_RANGE_HOURS ? (
+                        <button
+                          type="button"
+                          onClick={() => { setRangeHours(widerRange.hours); void load(true, widerRange.hours); }}
+                          className="oh-type-meta inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]"
+                        >
+                          Try {widerRange.label}
+                        </button>
+                      ) : null}
+                      <Link href="/" className="oh-type-meta inline-flex min-h-11 items-center gap-1 rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open point of sale <ArrowRight size={14} /></Link>
+                    </div>
                   </div>
                 </div>
               )}
@@ -586,7 +645,7 @@ export function OrithosOverviewPage() {
             </div>
             {data?.recentSales.length ? (
               <ul className="divide-y divide-[var(--oh-border)]">
-                {data.recentSales.slice(0, 8).map((sale) => (
+                {data.recentSales.map((sale) => (
                   <li key={sale.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                     <div className="min-w-0">
                       <p className="oh-type-label truncate font-semibold text-[var(--oh-text)]">{sale.pos_reference || sale.name}</p>
@@ -607,17 +666,35 @@ export function OrithosOverviewPage() {
               <div className="grid place-items-center px-3 py-5 text-center">
                 <div>
                   <p className="oh-type-label font-medium text-[var(--oh-text)]">No recent sales</p>
-                  <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Widen the period or open sales history for all Odoo rows.</p>
-                  <Link href="/history/odoo" className="oh-type-label mt-2 inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
-                    Open sales history
-                  </Link>
+                  <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">
+                    No completed Odoo POS orders in {rangeLabel}. Widen the period or open sales history for all-time Odoo rows.
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                    {widerRange ? (
+                      <button
+                        type="button"
+                        onClick={() => { setRangeHours(widerRange.hours); void load(true, widerRange.hours); }}
+                        className="oh-type-label inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
+                      >
+                        Try {widerRange.label}
+                      </button>
+                    ) : null}
+                    <Link href="/history/odoo" className="oh-type-label inline-flex h-11 items-center rounded-md border border-[var(--oh-border)] px-3 font-semibold text-[var(--oh-primary)] hover:bg-[var(--oh-surface)]">
+                      Open sales history
+                    </Link>
+                  </div>
                 </div>
               </div>
             )}
           </section>
 
-          <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">
-            Times use the store timezone ({data?.timezone ?? "Australia/Adelaide"}). Net sales deduct refunds; R2 archive is not included in Odoo totals.
+          <p className="oh-type-meta inline-flex shrink-0 flex-wrap items-start gap-1.5 text-[var(--oh-muted)]">
+            <Clock3 size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>
+              Data through {data ? formatOdooDateTime(data.to, data.timezone, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+              {lastLoadedAt !== null && <> · Loaded {formatStoreEpoch(lastLoadedAt, data?.timezone ?? "Australia/Adelaide")}</>}.
+              {" "}Sales count excludes drafts, cancelled orders, and refunds; net sales deduct refunds. Times use the store timezone ({data?.timezone ?? "Australia/Adelaide"}). R2 archive is not included.
+            </span>
           </p>
         </div>
 
