@@ -1,4 +1,11 @@
-/** Orithos persistent sidebar navigation — simplified from Shopfront feature set. */
+/**
+ * DEPRECATED — not imported by the live Sidebar.
+ * Live nav: `pos-ui/src/lib/sidebar-navigation.ts` (Odoo-backed Customers only).
+ *
+ * This Shopfront-era five-item Customer section (Groups / Price Lists / Balances /
+ * Gift Cards) must not be restored into SIDEBAR_MAIN. Classic routes remain
+ * reference-only until each has an Odoo-backed replacement.
+ */
 
 export interface SidebarItem {
   label: string;

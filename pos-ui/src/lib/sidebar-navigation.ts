@@ -2,6 +2,16 @@
  * Orithos navigation — Odoo is the sole writable business source of truth.
  * Classic MySQL routes remain in the repo as reference only and are hidden
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
+ *
+ * Customer sidebar hybrid (2026-10-22):
+ * - Keep the collapsible Customers group (Shopfront-style IA).
+ * - Only list Odoo-backed, accepted surfaces in SIDEBAR_MAIN.
+ * - Do NOT restore Classic Customer Groups / Price Lists / Balances / Gift Cards
+ *   into production nav. Those routes stay orphaned or debug-only until each has
+ *   an Odoo-backed replacement.
+ * - Pilot phase order (Balances / Gift Cards not required soon): deepen Customers
+ *   directory → Odoo Price Lists view/assign → Odoo Groups (tags/categories) →
+ *   Balances (AR) → Gift Cards. Add a sidebar child only when that surface ships.
  */
 
 export interface SidebarItem {
@@ -64,10 +74,16 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     ],
   },
   {
+    // Collapsible group kept for future Odoo children; one honest child for now.
     label: "Customers",
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers/odoo" },
+      // Future (Odoo-backed only — do not wire Classic stubs):
+      // Customer Groups → Odoo tags/categories
+      // Price Lists → Odoo pricelist view/assign (checkout already uses _get_product_price)
+      // Balances → Odoo AR (keep /customers/balances stub out of nav until live)
+      // Gift Cards → only after a real Odoo/product decision
     ],
   },
   {

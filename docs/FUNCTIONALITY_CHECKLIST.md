@@ -1,3 +1,10 @@
+## 2026-10-22 Customer 侧栏 hybrid
+
+- [x] 生产导航：可折叠 Customers，仅 `/customers/odoo`（Odoo 目录）。
+- [x] 明确不进生产侧栏：Classic Groups / Price Lists / Gift Cards；Balances stub 保持状态页、不挂导航。
+- [x] 分期：加深 Customers → Odoo 价目表查看/分配 → Odoo Groups → Balances → Gift Cards。
+- [ ] 下一迭代：加深 `/customers/odoo` 详情字段（价目表/标签/备注）或 Odoo 价目表管理面——不是先加侧栏项。
+
 ## 2026-10-22 AI 聊天摘要 + CTA / 可读性（源码）
 
 - [x] 补货 / 调价 / 侍酒：聊天 Top‑3 摘要 + 底栏 CTA；不自动跳页、不写入。能力卡 [`AI_QA_CAPABILITY_CARD.html`](AI_QA_CAPABILITY_CARD.html)。

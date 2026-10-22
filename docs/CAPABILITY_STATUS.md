@@ -1,3 +1,11 @@
+## 2026-10-22 Customer 侧栏 hybrid（策略已锁定）
+
+- **生产侧栏**（`pos-ui/src/lib/sidebar-navigation.ts`）：可折叠 `Customers` 分组，目前仅一个 Odoo 入口 `/customers/odoo`。不恢复旧 Shopfront 五级菜单。
+- **不进生产导航**：Classic Customer Groups（`/customer-groups`）、Classic Price Lists（`/pricelists`）、Balances stub（`/customers/balances`，明确未接入 Odoo）、Classic Gift Cards（`/giftcards`）。旧五级定义仅存于未接入的 `pos-ui/lib/sidebar-navigation.ts`（已标 DEPRECATED）。
+- **试点分期**（Balances / Gift Cards 近期不需要）：加深 Customers 目录 → Odoo 价目表查看/分配 → Odoo Groups（标签/类别）→ Balances（应收）→ Gift Cards。侧栏子项仅在对应 Odoo 能力上线后再加。
+- **结账价目表**：checkout `_get_product_price` 已 Accepted；缺的是管理面，不是把 Classic `/pricelists` 挂回导航。
+- 本批为导航策略与文档锁定；无业务写入、未改变运行时客户能力面。整体仍 **NO-GO**。
+
 ## 2026-10-22 AI 聊天摘要 + CTA（源码已推送）
 
 - 补货 / 调价 / 侍酒工作流：聊天内 Top‑3 摘要 + 底栏 CTA（intent 仍为 `navigate`）；发票仍打开扫描页。
@@ -1507,3 +1515,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 候选仅存在本地，未通过 Java 21 exact-SHA gate，未推送、未部署。
 - 线上运行版本仍为 `582b92fb`。
 - 本地候选在 `3a9c47da` 后追加 `192fedb7`，包含目录问法和隔离 UAT 稳定性修正；尚未推送或部署。
+
+## 2026-10-22 最新候选与 UI 矩阵
+
+- 当前本地候选为 `78488e6e1bcda4fda3eaff6af1e414f54b582285`，包含 AI CTA、结果卡片、guided-action 路由和员工目录错误态修复。
+- 全路由静态矩阵覆盖 138 条路由 × 390/1440px，`276/276 PASS`；证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`。
+- 前端 typecheck、目标 ESLint、脚本语法和 diff check 通过；本地未运行 production build。
+- 线上仍运行 `b4719e7c`，候选包含 `pos-api`，尚未通过同 SHA Java 21 `mvn -B clean verify`，整体保持 **NO-GO**。

@@ -1,3 +1,10 @@
+## 2026-10-22 Customer 侧栏 hybrid（最新）
+
+- [x] 策略锁定：保留可折叠 `Customers` 分组；生产侧栏只挂 Odoo 真入口（当前仅 `/customers/odoo`）。
+- [x] **不**把旧截图五级菜单（Customer Groups / Price Lists / Balances / Gift Cards）恢复进 `SIDEBAR_MAIN`；`pos-ui/lib/sidebar-navigation.ts` 已标 DEPRECATED。
+- [x] 分期默认（试点近期不需要 Balances / Gift Cards）：加深 Customers 目录 → Odoo 价目表查看/分配 → Odoo Groups → Balances → Gift Cards。下一功能迭代做目录加深或价目表管理面，**不做**侧栏凑数。
+- [x] 能力与 handoff 已记录边界；无业务写入。整体试点仍 **NO-GO**。
+
 ## 2026-10-22 AI 聊天摘要 + CTA 与可读性（最新源码）
 
 - [x] 补货 / 调价 / 侍酒：`navigate` 仍附带 `ui.route`，但答案先是聊天内 Top‑3 摘要，底栏 CTA 再打开页面（不自动跳页、不写入）。发票扫描仍以打开 `/invoices/scan` 为主（需上传）。
