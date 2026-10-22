@@ -179,6 +179,7 @@
 - 随后共享 `main` 已包含候选提交 `7f92d1b`，当前 tip 为 `a1063d3`；Dokploy 对 `a1063d3` 的部署状态为 `Error`，Demo 仍为 `a5511fc`。因此 7 个路由修复尚未获得线上验证，不能触发完整 245 条通过结论。
 - 后续 `c905902`、`dc465b3` 部署也为 `Error`，详情面板没有返回构建日志。当前 runner 本地审计为 245 条、245 个唯一 ID、0 重复，其中 88 条为禁止写入的 no-route 安全用例；`node --check` 与 `git diff --check` 通过。下一步仍需先取得同候选 SHA 的 Java 21 `mvn -B clean verify` 和匹配的运行 SHA，再执行新增 29 条及完整 245 条线上回归。
 - 之后 `c905902` runtime 成功承载新增 29 条问法回归，结果为 `28 PASS / 0 BLOCKED / 1 FAIL`；唯一失败是 `AI会直接下单吗` 返回 `unknown`。本地已扩展中文帮助正则并新增两条变体用例；目录现为 247 条、247 个唯一 ID、90 条 no-route。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-29.json`。当前 runtime/source 仍不匹配，且修复尚未通过同候选 SHA Java 21 门禁。
+- 完整 247 条回归随后在 `c941a617` runtime 上为 `244 PASS / 0 BLOCKED / 3 FAIL`；失败均为中文自动下单能力问法，1 条误导航到 `/orders`。本地候选 `a63c84fb` 已扩展帮助正则和 Java 断言，但尚未通过 Java 21 同 SHA 门禁或部署验收。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`。
 
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
@@ -2471,3 +2472,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Platform Store detail status/trial/owner/Odoo/delete/refresh controls now expose visible keyboard focus states. Evidence: `docs/UAT_PLATFORM_STORE_DETAIL_FOCUS_LOCAL_2026-10-22.json`.
 - The Settings mobile UAT script now records structured blocked checks when the active runtime lacks users mobile cards or desktop headers. Runtime `c905902` produced 26 passes and 2 blocked checks; evidence: `docs/UAT_SETTINGS_MOBILE_2026-10-22_RUNTIME-C905902-BLOCKED.json`.
 - This improves verification quality without changing business writes; latest source still awaits valid Dokploy deployment.
+## 2026-10-22 platform detail deployment status
+
+- [x] Candidate `1df9b718` is pushed and includes Platform Store detail focus improvements plus structured Settings blocked diagnostics.
+- [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent.
+- [ ] Demo runtime remains `c905902...`; the new Platform Store detail changes are not online-verified.

@@ -620,3 +620,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Platform Store detail status, trial, owner, Odoo, delete, and refresh controls now have visible focus states. Local evidence: `docs/UAT_PLATFORM_STORE_DETAIL_FOCUS_LOCAL_2026-10-22.json`.
 - [x] Settings mobile UAT now emits a structured `BLOCKED` result instead of aborting when the deployed runtime lacks mobile cards/table headers. Runtime `c905902` produced 26 passed checks and 2 blocked users-layout checks; evidence: `docs/UAT_SETTINGS_MOBILE_2026-10-22_RUNTIME-C905902-BLOCKED.json`.
 - [ ] The users layout gap remains online-unverified for the latest source until a matching runtime is deployed.
+### 2026-10-22 platform detail deployment status
+
+- [x] Candidate `1df9b718` pushed after Platform Store detail and Settings diagnostics work.
+- [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Exact runtime SHA is still older than this candidate.

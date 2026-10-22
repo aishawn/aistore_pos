@@ -10,6 +10,7 @@
 - 新增 29 条收银员自然问法在旧 Demo runtime 上为 **22 PASS / 0 BLOCKED / 7 FAIL**；失败集中在定价建议、葡萄酒推荐、交易笔数、供应商目录和 AI 能力说明。工作区已补确定性路由和 Java 回归断言，但这不是当前线上结果。
 - 线上 Demo 当前仍报告 frontend/backend `a5511fc689a8b4c871c0bacda15713afbd86b44f`。候选 `7f92d1b` 及其后续部署记录 `c905902`、`dc465b3`、`a8ca52c` 均未形成可接受的同 SHA Java 21 `mvn -B clean verify` 与匹配 runtime 证据；最近部署状态为 **Error**。
 - 后续 `c905902` runtime 的 29 条扩展回归为 **28 PASS / 0 BLOCKED / 1 FAIL**；唯一失败是 `AI会直接下单吗` 返回 `unknown`。当前本地已扩展中文帮助正则和回归用例，尚未通过 Java 21 同 SHA 门禁。
+- 完整 247 条回归在 `c941a617` runtime 上为 **244 PASS / 0 BLOCKED / 3 FAIL**；3 条均为中文自动下单能力问法，其中 1 条错误导航到 `/orders`。证据：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`。本地候选 `a63c84fb` 已覆盖这些变体，尚未部署验收。
 - 本轮只读检查通过 `node --check` 和 `git diff --check`，没有执行任何真实销售、采购、收货、调价、库存、退款或关班写入。整体试点继续 **NO-GO**。
 
 <!-- capability-summary:start -->
@@ -1340,3 +1341,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Platform Store detail controls now have consistent keyboard focus states; local evidence is `docs/UAT_PLATFORM_STORE_DETAIL_FOCUS_LOCAL_2026-10-22.json`.
 - Settings UAT diagnostics now preserve evidence when an older deployment lacks the current users responsive markup: runtime `c905902` recorded 26 pass checks and 2 blocked users-layout checks instead of throwing. This is a deployment mismatch, not a claim that the current source is broken.
+## 2026-10-22 platform detail deployment status
+
+- Candidate `1df9b718` is pushed, but Dokploy returned HTTP `301` (`Branch Not Match`) again.
+- Platform Store detail focus improvements remain local-only; Demo runtime is still `c905902...`.
