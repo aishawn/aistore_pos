@@ -19,6 +19,7 @@ if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
 const base = "https://demo.orithos.com.au";
 const browser = await chromium.launch({ headless: true });
 const checks = [];
+let blocked = false;
 
 try {
   for (const width of [390, 1440]) {
@@ -157,15 +158,24 @@ try {
       if (width < 1280) {
         if (await page.locator("table:visible").count()) throw new Error("Users table is visible at mobile width");
         const mobileUserCards = page.locator('ul[class*="xl:hidden"] > li');
-        await mobileUserCards.first().waitFor({ state: "visible", timeout: 15000 });
-        if (!(await mobileUserCards.count())) throw new Error("Mobile user cards are missing");
-        checks.push(`/settings/users: staff cards and no overflow at ${width}px`);
+        const mobileUserCardCount = await mobileUserCards.count();
+        if (!mobileUserCardCount) {
+          blocked = true;
+          checks.push(`/settings/users: BLOCKED - mobile staff cards are missing at ${width}px`);
+        } else {
+          checks.push(`/settings/users: staff cards and no overflow at ${width}px`);
+        }
       } else {
         if (await page.locator('ul[class*="xl:hidden"]').isVisible()) throw new Error("Mobile user cards are visible at desktop width");
-        for (const header of ["Name", "Username", "Email", "Role", "Status", "Actions"]) {
-          await page.getByRole("columnheader", { name: header, exact: true }).waitFor({ timeout: 10000 });
+        const staffHeaders = ["Name", "Username", "Email", "Role", "Status", "Actions"];
+        const headerVisibility = await Promise.all(staffHeaders.map((header) => page.getByRole("columnheader", { name: header, exact: true }).isVisible().catch(() => false)));
+        const missingStaffHeaders = staffHeaders.filter((_, index) => !headerVisibility[index]);
+        if (missingStaffHeaders.length) {
+          blocked = true;
+          checks.push(`/settings/users: BLOCKED - missing semantic staff headers at ${width}px: ${missingStaffHeaders.join(", ")}`);
+        } else {
+          checks.push(`/settings/users: semantic staff table and no overflow at ${width}px`);
         }
-        checks.push(`/settings/users: semantic staff table and no overflow at ${width}px`);
       }
     } finally {
       await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => {});
@@ -184,7 +194,7 @@ const output = {
     : "unverified-after-deploy",
   target: base,
   scope: "authenticated read-only production UI checks; no Odoo write",
-  status: "PASS",
+  status: blocked ? "BLOCKED" : "PASS",
   viewports: [390, 1440],
   checks,
 };
