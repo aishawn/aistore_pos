@@ -1287,3 +1287,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Roles & Permissions now covers visible focus states for retry, permission retry, edit/delete, and role-editor Cancel/Save actions across mobile and desktop layouts.
 - Local evidence: `docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json`; typecheck, ESLint, and diff checks pass, no business writes.
 - Demo verification is pending because the current Dokploy branch binding still returns `301 Branch Not Match`.
+## 2026-10-22 Core Settings keyboard focus follow-up
+
+- Account Save and the Payment, Registers & Outlets, and Tax recovery actions now have consistent visible focus states.
+- Local evidence: `docs/UAT_SETTINGS_CORE_FOCUS_LOCAL_2026-10-22.json`; typecheck, ESLint, and diff checks pass, no business writes.
+- Online verification remains pending because Dokploy still rejects the branch through HTTP `301`.

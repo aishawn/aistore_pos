@@ -95,7 +95,7 @@ export default function AccountSecurityPage() {
           {notice && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">{notice}</p>}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <p className="max-w-xl text-xs leading-5 text-[var(--oh-muted)]">Forgot your current password? Use Forgot password on the sign-in page, or ask an administrator for a reset link.</p>
-            <button type="submit" disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">
+        <button type="submit" disabled={busy} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto">
               {busy && <LoaderCircle size={16} className="animate-spin" />}{busy ? "Updating…" : "Update password"}
             </button>
           </div>

@@ -2418,3 +2418,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Roles & Permissions retry, permission retry, edit/delete, and role-editor Cancel/Save controls now expose visible keyboard focus states at both responsive layouts.
 - Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`; evidence `docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json`. No production build or business write was run.
 - This is grouped with Settings Data and Settings Users for the next deployment; exact runtime SHA verification remains pending.
+## 2026-10-22 Core Settings focus follow-up
+
+- Account Save plus Payment, Registers & Outlets, and Tax Retry now have visible keyboard focus states.
+- Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`; evidence `docs/UAT_SETTINGS_CORE_FOCUS_LOCAL_2026-10-22.json`. No production build or business write was run.
+- This completes the currently identified Settings button-focus consistency pass; grouped online validation remains pending.

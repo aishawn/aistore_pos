@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-22",
+  "scope": "local source accessibility checks for core Settings pages",
+  "status": "PASS",
+  "pages": [
+    { "route": "/settings/account", "control": "Save account" },
+    { "route": "/settings/payment", "control": "Retry" },
+    { "route": "/settings/registers-outlets", "control": "Retry" },
+    { "route": "/settings/tax", "control": "Retry" }
+  ],
+  "checks": [
+    "Each listed primary/recovery control has a visible focus-visible outline",
+    "No business API calls were made by this source-level check"
+  ],
+  "validation": {
+    "typecheck": "PASS",
+    "targetedEslint": "PASS",
+    "diffCheck": "PASS",
+    "productionBuild": "NOT_RUN"
+  },
+  "onlineStatus": "NOT_VERIFIED"
+}

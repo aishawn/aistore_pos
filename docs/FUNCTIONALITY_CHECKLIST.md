@@ -573,3 +573,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Roles & Permissions page retry, permission retry, mobile/desktop edit-delete, and role-editor Cancel/Save controls now have visible keyboard focus states.
 - [x] Local source evidence `docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check passed with no business writes.
 - [ ] Online verification remains pending until the grouped Settings candidate is deployed with an exact runtime SHA.
+### 2026-10-22 Core Settings focus consistency
+
+- [x] Account Save, Payment Retry, Registers & Outlets Retry, and Tax Retry now expose visible keyboard focus states.
+- [x] Local evidence `docs/UAT_SETTINGS_CORE_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check passed with no business writes.
+- [ ] These controls remain online-unverified until the grouped candidate reaches Demo with an exact runtime SHA.
