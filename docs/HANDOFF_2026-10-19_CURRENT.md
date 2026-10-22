@@ -2751,3 +2751,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] `npm run typecheck` 与定向 ESLint 通过。
 - [ ] 本批仍需 Dokploy Source/Git 修正后线上验证；当前 webhook 仍为 `301 Branch Not Match`。
 
+## 2026-10-22 最新前端提交
+
+- [x] AI Quick actions 可访问性修复与证据已提交为 `e9c126e4`，已推送 `origin/main`；本提交不包含 `pos-api`。
+- [x] 本地 AI focus `5/5 PASS`、价格建议产品化 `12/12 PASS`、typecheck 与定向 ESLint 通过。
+- [ ] 自动部署后 `/api/public/version` 仍为前后端 `582b92fb`，不能将线上 builtAt 变化视为 `e9c126e4` 已部署。
+- [ ] Dokploy webhook 的 `301 Branch Not Match` 仍待 Source/Git 配置修正。
+

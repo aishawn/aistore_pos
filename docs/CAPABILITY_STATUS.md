@@ -1491,3 +1491,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - AI Quick actions 的控制关系已补齐；本地 5 视口 `5/5 PASS`，价格建议产品化 fixture `12/12 PASS`。
 - TypeScript 与定向 ESLint 通过；所有 fixture 请求无业务写入。
 - 证据：`docs/UAT_AI_FOCUS_LOCAL_2026-10-22_RECHECK.json`。线上仍未验证，等待 Dokploy Source/Git 修正。
+## 2026-10-22 最新前端提交
+
+- `e9c126e4` 已推送，包含 AI Quick actions 可访问性修复和本地证据；不包含后端改动。
+- 线上版本端点仍是 `582b92fb`，尚未完成候选 runtime 身份核对。
+- Dokploy Source/Git `301 Branch Not Match` 仍是发布阻断。

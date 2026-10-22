@@ -790,3 +790,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] TypeScript、定向 ESLint、脚本语法检查。
 - [ ] Dokploy 线上 UI 验证，受 Source/Git `301 Branch Not Match` 阻断。
 
+## 2026-10-22 最新前端提交
+
+- [x] `e9c126e4` 已推送，前端 UI 和本地测试证据已纳入。
+- [ ] 线上 `/api/public/version` 尚未出现 `e9c126e4`。
+- [ ] Dokploy Source/Git 配置修正后重新部署和线上验收。
+
