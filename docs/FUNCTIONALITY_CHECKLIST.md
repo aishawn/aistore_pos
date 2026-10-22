@@ -648,3 +648,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Local stock/pricing responsive fixture: `15/15 PASS`, `blockedWrites=0` (`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_CURRENT.json`).
 - [x] Online old-runtime Settings recheck recorded `BLOCKED` users layout at 390/1440px, with no business writes (`docs/UAT_SETTINGS_MOBILE_2026-10-22_E8CAC11_RECHECK.json`).
 - [ ] Online verification of `f2e7d659` remains pending exact runtime SHA.
+
+### 2026-10-22 Price Suggestions push follow-up
+
+- [x] Price Suggestions and documentation commits were pushed to `origin/main`; remote top was `7af1b7e0` at the time of verification.
+- [ ] Demo `/api/public/version` still reports `e8cac11`; this batch is not post-deploy verified.
+- [ ] Dokploy webhook cannot be retried from the current environment (`DOKPLOY_WEBHOOK_URL` missing; prior `301 Branch Not Match`). Source/Git binding correction is required.

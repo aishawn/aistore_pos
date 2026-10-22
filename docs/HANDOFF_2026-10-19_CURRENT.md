@@ -2514,3 +2514,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Demo 旧 runtime 的 Settings 复验仍为 `BLOCKED`：390px 缺少用户卡片，1440px 缺少完整 staff 表头。当前源码的 `app/settings/users/page.tsx` 已存在对应移动卡片与六列语义表格，因此该结果归因于旧部署，不归因于当前源码。
 - 本批次未运行本地 production build；未执行销售、退款、采购、库存、现金或关班写入。
 - 下一步：推送候选后触发一次 Dokploy，读取完整前后端 SHA；只有 runtime 精确匹配候选后，才重跑 Price Suggestions、Settings、全站和 AI 只读套件。
+
+## 2026-10-22 Price Suggestions 发布复核
+
+- `f2e7d659` 及其文档提交已推送到 `origin/main`，当前远端顶端为 `7af1b7e0`。
+- 推送后等待并读取 Demo `/api/public/version`，frontend/backend 仍均为 `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`，没有切换到本批次。
+- 当前环境没有可用的 `DOKPLOY_WEBHOOK_URL`；历史 webhook 已返回 `301 Branch Not Match`，按规则不再重试。线上 Price Suggestions 焦点改动仍未验证。

@@ -1368,3 +1368,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Local Stock/Price responsive fixture passed `15/15` with `blockedWrites=0`: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_CURRENT.json`.
 - Demo Settings recheck on the active old runtime remains `BLOCKED` at `/settings/users` (missing mobile cards and desktop staff headers); this does not contradict the current `app/settings/users` source. Evidence: `docs/UAT_SETTINGS_MOBILE_2026-10-22_E8CAC11_RECHECK.json`.
 - Candidate is not online-verified until Demo `/api/public/version` reports the exact deployed SHA.
+
+## 2026-10-22 Price Suggestions push follow-up
+
+- Candidate and documentation commits are pushed; remote top is `7af1b7e0`.
+- After the push, Demo still reports frontend/backend `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`; no post-deploy claim is allowed.
+- `DOKPLOY_WEBHOOK_URL` is unavailable in the current environment, and the previously observed `301 Branch Not Match` prevents blind retries. Dokploy Source/Git settings remain the release blocker.
