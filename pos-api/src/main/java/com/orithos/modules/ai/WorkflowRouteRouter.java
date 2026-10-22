@@ -39,8 +39,8 @@ public final class WorkflowRouteRouter {
             "snap (?:this|an?|the) (?:supplier )?(?:invoice|bill)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_MUTATION = Pattern.compile(
-            "\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
-                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
+            "\\b(?:create|add|edit|update|delete|remove|import|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
+                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
                     + "(?:创建|添加|编辑|修改|删除|移除|导入|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并).*?(?:发票|账单)|"
                     + "(?:发票|账单).*?(?:创建|添加|编辑|修改|删除|移除|导入|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并)",
             Pattern.CASE_INSENSITIVE);
@@ -73,7 +73,7 @@ public final class WorkflowRouteRouter {
                     + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|直接调价|直接改价|设置这些价格|修改这些价格)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_ZH = Pattern.compile(
-            "把这些建议下单|直接把价格改了|(?:直接)?(?:调价|改价)|(?:帮我)?把.*?(?:价格|售价)(?:改了|改掉)|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
+            "把这些建议下单|直接把价格改了|直接(?:调价|改价)|(?:帮我)?把.*?(?:价格|售价)(?:改了|改掉)|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_EN = Pattern.compile(
             "(?:top up|restock|replenish|bring)\\s+(?:these|the)\\s+(?:items|products|lines|stock)\\s+(?:to|up to)\\s*\\d+\\s*(?:units?|items?|cases?|bottles?)?|"

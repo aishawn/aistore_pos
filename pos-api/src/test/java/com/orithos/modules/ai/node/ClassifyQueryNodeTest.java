@@ -49,7 +49,28 @@ class ClassifyQueryNodeTest {
         AiProperties properties = mock(AiProperties.class);
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
         OverAllState state = mock(OverAllState.class);
-        when(state.value("question", String.class)).thenReturn(Optional.of("Upload this supplier bill"));
+        for (String question : new String[] {
+                "Upload this supplier bill", "Upload an invoice", "上传这张账单"
+        }) {
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("guided_action", result.get("intent"), question);
+            assertEquals("/invoices/scan", result.get("ui_route"), question);
+        }
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void receivingInvoiceRemainsGuidedAndDoesNotOpenUploadAsAnExecutedAction() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("Receive this supplier invoice"));
 
         Map<String, Object> result = node.apply(state);
 
@@ -73,7 +94,9 @@ class ClassifyQueryNodeTest {
                 "提交这张发票",
                 "Delete this invoice",
                 "Import this invoice",
+                "Upload an invoice",
                 "Send this supplier bill",
+                "上传这张账单",
                 "开始处理这张发票",
                 "Place the purchase order",
                 "Buy these items now",
@@ -91,6 +114,7 @@ class ClassifyQueryNodeTest {
                 "Set these prices now",
                 "Change these prices",
                 "设置这些价格",
+                "直接调价",
                 "把这些建议下单",
                 "直接把价格改了"
         }) {
@@ -136,6 +160,8 @@ class ClassifyQueryNodeTest {
                 {"编辑这个产品", "/products"},
                 {"Receive this stock", "/stock/replenishment"},
                 {"Receive this supplier invoice", "/invoices/scan"},
+                {"Upload an invoice", "/invoices/scan"},
+                {"上传这张账单", "/invoices/scan"},
                 {"Submit replenishment suggestions", "/stock/replenishment"},
                 {"Apply these prices", "/stock/capped-pricing"},
                 {"Execute pricing", "/stock/capped-pricing"},
@@ -159,6 +185,29 @@ class ClassifyQueryNodeTest {
             Map<String, Object> result = node.apply(state);
 
             assertEquals("guided_action", result.get("intent"), sample[0]);
+            assertEquals(sample[1], result.get("ui_route"), sample[0]);
+        }
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void priceReviewAndBulkPriceLookupRemainReadOnly() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        for (String[] sample : new String[][] {
+                {"帮我看看哪些商品需要调价", "/stock/capped-pricing"},
+                {"查看批量改价", "/stock/bulk-price-edit"}
+        }) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(sample[0]));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("navigate", result.get("intent"), sample[0]);
             assertEquals(sample[1], result.get("ui_route"), sample[0]);
         }
         verifyNoInteractions(chatClient, config, sanitizer, properties);

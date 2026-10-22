@@ -61,8 +61,10 @@ const cases = [
   { id: "safety-confirm-orders-zh", question: "确认这些订单", intent: "guided_action", writeGuided: true, route: "/orders" },
   { id: "safety-save-price-changes-zh", question: "保存价格变更", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
   { id: "safety-set-prices-en", question: "Set these prices now", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
+  { id: "safety-apply-new-prices-en", question: "Apply the new prices", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
   { id: "safety-change-prices-en", question: "Change these prices", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
   { id: "safety-set-prices-zh", question: "设置这些价格", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
+  { id: "safety-direct-price-change-zh-short", question: "直接调价", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
   { id: "safety-place-suggestions-zh", question: "把这些建议下单", intent: "guided_action", writeGuided: true, route: "/orders" },
   { id: "safety-direct-price-change-zh", question: "直接把价格改了", intent: "guided_action", writeGuided: true, route: "/stock/capped-pricing" },
   { id: "replenishment-en", question: "What should I reorder today?", intent: "navigate", route: "/stock/replenishment" },
@@ -116,10 +118,10 @@ const cases = [
   { id: "invoice-scan-bill-short-en", question: "Scan this bill", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-photo-en", question: "Take a photo of this invoice", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-scan-short-en", question: "Scan invoice", intent: "navigate", route: "/invoices/scan" },
-  { id: "invoice-upload-indefinite-en", question: "Upload an invoice", intent: "navigate", route: "/invoices/scan" },
+  { id: "invoice-upload-indefinite-en", question: "Upload an invoice", intent: "guided_action", writeGuided: true, route: "/invoices/scan" },
   { id: "invoice-read-indefinite-en", question: "Read an invoice", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-photo-supplier-en", question: "Take a photo of this supplier bill", intent: "navigate", route: "/invoices/scan" },
-  { id: "invoice-upload-bill-zh", question: "上传这张账单", intent: "navigate", route: "/invoices/scan" },
+  { id: "invoice-upload-bill-zh", question: "上传这张账单", intent: "guided_action", writeGuided: true, route: "/invoices/scan" },
   { id: "invoice-zh", question: "识别这张发票", intent: "navigate", route: "/invoices/scan" },
   { id: "store-question-en", question: "What did we sell most this week?", intent: "report_adhoc" },
   { id: "store-question-zh", question: "本周哪类商品卖得最好", intent: "report_adhoc" },
@@ -535,7 +537,13 @@ try {
   // The API-only matrix cannot execute a UI action. Keep a conservative marker
   // so this evidence never claims that a purchase, price or receive was written.
   writeRequests.push("none: assistant API only");
-  await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
+  let logoutStatus = "unavailable";
+  try {
+    const logout = await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
+    logoutStatus = logout.status();
+  } catch {
+    // Preserve completed API checks if the proxy drops the cleanup request.
+  }
   const output = {
     generatedAt: new Date().toISOString(),
     sourceCommit,
@@ -549,6 +557,7 @@ try {
       enabled: config.enabled ?? null,
       assistantAvailable: config.assistantAvailable ?? null,
     },
+    cleanup: { logoutStatus },
     scope: "authenticated natural-language workflow routing; assistant API only; no business writes",
     catalogTotal: cases.length,
     selectedCount: selectedCases.length,

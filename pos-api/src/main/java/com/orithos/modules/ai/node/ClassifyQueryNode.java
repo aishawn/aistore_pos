@@ -313,7 +313,7 @@ public class ClassifyQueryNode implements NodeAction {
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+"
                         + "|\\b(?:set|change|raise|lower|update|apply)\\b.+?\\bprices?\\b"
                         + "|\\b(?:apply|save|submit|execute)\\b.+?\\b(?:prices?|pricing)\\b"
-                        + "|(?:直接)?(?:调价|改价)|(?:保存|提交|执行|应用|调价|改价|设置|修改)(?:这些|那些)?(?:价格|售价|价目|价格建议|调价)).*");
+                        + "|直接(?:调价|改价)|(?:保存|提交|执行|应用|调价|改价|设置|修改)(?:这些|那些)?(?:价格|售价|价目|价格建议|调价)).*");
     }
 
     private static boolean isCustomerWriteTarget(String question) {
