@@ -2541,4 +2541,5 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] 247 条只读问法复测结果：**188 PASS / 44 BLOCKED / 15 FAIL**；44 条在三次重试后仍返回 `50210`，15 条为固定日期销售问法没有源数据行。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_FULL-247.json`。
 - [x] `writeRequests` 仍为 `none: assistant API only`，没有销售、采购、收货、库存、调价、退款或关班写入。
 - [ ] 该结果是当前 runtime 的 provider/数据可用性基线；runner source 为文档提交 `c1669e53`，不能作为 AI 后端修复已部署的证明。候选 `601ae0dd` 仍需同 SHA Java 21 `mvn -B clean verify` 和匹配 runtime。
+- [x] 三条快速门禁随后为 **1 PASS / 2 BLOCKED**：补货问法正常进入 `/stock/replenishment`；能力帮助遇到 HTTP 502，采购订单执行边界返回 `50210`，均未产生业务写入。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_SMOKE-3.json`。
 

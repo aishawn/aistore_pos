@@ -1,5 +1,12 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 e0 smoke follow-up
+
+The focused smoke was **1 PASS / 2 BLOCKED / 0 FAIL**: replenishment routed
+correctly; capability help saw HTTP 502 and purchase-order execution saw
+`50210` after three attempts. No business writes were issued.
+Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_SMOKE-3.json`.
+
 ## 2026-10-22 e0 runtime full recheck
 
 The current runtime `e0a867b0387c7760c1dfc1bea9a5c374debb0930` returned

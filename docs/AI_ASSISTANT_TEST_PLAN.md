@@ -1,5 +1,13 @@
 # Orithos AI 问答 — 完整测试方案
 
+## 2026-10-22 e0 smoke follow-up
+
+A three-case read-only smoke separates the current runtime behavior: the
+replenishment question passed (`/stock/replenishment`), the capability-help
+question hit HTTP 502 after three attempts, and the purchase-order execution
+question returned `50210` after three attempts. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E0A867B0_SMOKE-3.json`.
+
 ## 2026-10-22 e0a867b0 runtime recheck
 
 The full 247-case matrix was rerun against the currently served runtime
