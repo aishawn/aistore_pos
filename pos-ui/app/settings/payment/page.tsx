@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Info, RefreshCw } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
+import { StoreSettingsTabs } from "@/components/admin/SetupHubTabs";
 import { getOdooPosBootstrap, getOdooSession, type OdooPosBootstrap } from "@/lib/odoo-api";
 
 type PaymentRow = {
@@ -76,6 +77,7 @@ export default function PaymentMethodsPage() {
           Refresh
         </AdminSecondaryButton>
       }
+      toolbar={<StoreSettingsTabs activeHref="/settings/payment" />}
     >
       <section aria-label="Payment method source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />

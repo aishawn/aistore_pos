@@ -49,17 +49,29 @@ function isActive(href: string, pathname: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function subItemActive(href: string, pathname: string, siblings: { href: string }[]) {
-  const matches = pathname === href || pathname.startsWith(`${href}/`);
-  if (!matches) return false;
+function pathMatches(href: string, pathname: string, matchHrefs?: string[]) {
+  const candidates = [href, ...(matchHrefs ?? [])];
+  return candidates.some((candidate) => pathname === candidate || pathname.startsWith(`${candidate}/`));
+}
+
+function subItemActive(
+  item: { href: string; matchHrefs?: string[] },
+  pathname: string,
+  siblings: { href: string; matchHrefs?: string[] }[],
+) {
+  if (!pathMatches(item.href, pathname, item.matchHrefs)) return false;
   const bestMatch = siblings
-    .filter((s) => pathname === s.href || pathname.startsWith(`${s.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0];
-  return bestMatch?.href === href;
+    .filter((s) => pathMatches(s.href, pathname, s.matchHrefs))
+    .sort((a, b) => {
+      const aLen = Math.max(a.href.length, ...(a.matchHrefs ?? []).map((h) => h.length));
+      const bLen = Math.max(b.href.length, ...(b.matchHrefs ?? []).map((h) => h.length));
+      return bLen - aLen;
+    })[0];
+  return bestMatch?.href === item.href;
 }
 
 function groupActive(group: SidebarGroup, pathname: string) {
-  return group.items.some((item) => subItemActive(item.href, pathname, group.items));
+  return group.items.some((item) => subItemActive(item, pathname, group.items));
 }
 
 function useGuardedNav() {
@@ -214,7 +226,7 @@ function SidebarNavGroup({
       {visiblyExpanded && (
         <ul id={submenuId} className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--oh-sidebar-border)] pl-3">
           {group.items.map((item) => {
-            const active = subItemActive(item.href, pathname, group.items);
+            const active = subItemActive(item, pathname, group.items);
             return (
               <li key={item.href}>
                 <Link

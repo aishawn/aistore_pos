@@ -3,15 +3,11 @@
  * Classic MySQL routes remain in the repo as reference only and are hidden
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  *
- * Customer sidebar hybrid (2026-10-22):
- * - Keep the collapsible Customers group (Shopfront-style IA).
- * - Only list Odoo-backed, accepted surfaces in SIDEBAR_MAIN.
- * - Do NOT restore Classic Customer Groups / Price Lists / Balances / Gift Cards
- *   into production nav. Those routes stay orphaned or debug-only until each has
- *   an Odoo-backed replacement.
- * - Pilot phase order (Balances / Gift Cards not required soon): deepen Customers
- *   directory → Odoo Price Lists view/assign → Odoo Groups (tags/categories) →
- *   Balances (AR) → Gift Cards. Add a sidebar child only when that surface ships.
+ * Customer sidebar (2026-10-23):
+ * - Collapsible Customers group with Odoo-backed children only.
+ * - Classic MySQL Customer Groups / Price Lists / Gift Cards stay out of nav;
+ *   production routes under those paths now serve Odoo surfaces (or module-gated
+ *   honesty for Gift Cards when Loyalty is not installed).
  */
 
 export interface SidebarItem {
@@ -25,10 +21,15 @@ export interface SidebarGroupItem {
   href: string;
   /** Renders as "+ More" for expandable module hubs. */
   more?: boolean;
-  /** One-line description shown under the label. */
+  /** One-line description shown under the label (hover title). */
   hint?: string;
   /** Hidden from the sidebar unless the signed-in user is a store admin. */
   adminOnly?: boolean;
+  /**
+   * Extra path prefixes that keep this item active (hub entries that redirect
+   * to child routes, e.g. Store → registers / payment / tax).
+   */
+  matchHrefs?: string[];
 }
 
 export interface SidebarGroup {
@@ -75,16 +76,14 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     ],
   },
   {
-    // Collapsible group kept for future Odoo children; one honest child for now.
     label: "Customers",
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers/odoo" },
-      // Future (Odoo-backed only — do not wire Classic stubs):
-      // Customer Groups → Odoo tags/categories
-      // Price Lists → Odoo pricelist view/assign (checkout already uses _get_product_price)
-      // Balances → Odoo AR (keep /customers/balances stub out of nav until live)
-      // Gift Cards → only after a real Odoo/product decision
+      { label: "Customer Groups", href: "/customer-groups" },
+      { label: "Price Lists", href: "/pricelists" },
+      { label: "Balances", href: "/customers/balances" },
+      { label: "Gift Cards", href: "/giftcards" },
     ],
   },
   {
@@ -111,14 +110,23 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     items: [
       { label: "Integrations", href: "/settings/integrations" },
       { label: "Data", href: "/settings/data" },
-      { label: "Company Settings", href: "/settings/company/general" },
-      { label: "Users", href: "/settings/users" },
+      // Users / Outlets / Registers tabs live inside this hub — keep the row active there.
+      {
+        label: "Company Settings",
+        href: "/settings/company/general",
+        matchHrefs: ["/settings/company", "/settings/outlets", "/settings/registers", "/settings/users"],
+      },
       { label: "Roles & Permissions", href: "/settings/roles" },
-      { label: "Registers & Outlets", href: "/settings/registers-outlets" },
-      { label: "Payment Methods", href: "/settings/payment" },
-      { label: "Tax Rates", href: "/settings/tax" },
-      { label: "Receipts", href: "/settings/receipts" },
-      { label: "Hardware", href: "/settings/hardware" },
+      {
+        label: "Store",
+        href: "/settings/store",
+        matchHrefs: ["/settings/registers-outlets", "/settings/payment", "/settings/tax"],
+      },
+      {
+        label: "Devices",
+        href: "/settings/devices",
+        matchHrefs: ["/settings/receipts", "/settings/hardware"],
+      },
       { label: "Account", href: "/settings/account" },
       // Ops health for store admins — not a cashier / Q&A quality surface.
       {

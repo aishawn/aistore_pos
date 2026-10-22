@@ -3,6 +3,7 @@ export const fetchCache = "force-no-store";
 
 import { Mail, Printer, ReceiptText, Sparkles, TriangleAlert } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 
 const receiptCapabilities = [
   {
@@ -46,6 +47,7 @@ export default function ReceiptsPage() {
     <AdminPageLayout
       title="Receipt Settings"
       subtitle="Receipt delivery and formatting for this POS"
+      toolbar={<DevicesSettingsTabs activeHref="/settings/receipts" />}
     >
       <section
         role="status"

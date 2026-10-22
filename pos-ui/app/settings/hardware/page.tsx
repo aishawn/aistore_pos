@@ -1,5 +1,6 @@
 import { Info, Monitor, Printer, ScanBarcode, Wallet, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
+import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
 
 const devices: {
   name: string;
@@ -48,6 +49,7 @@ export default function HardwarePage() {
     <AdminPageLayout
       title="Hardware"
       subtitle="Peripheral status for this POS terminal"
+      toolbar={<DevicesSettingsTabs activeHref="/settings/hardware" />}
     >
       <section
         role="status"
