@@ -1292,3 +1292,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Account Save and the Payment, Registers & Outlets, and Tax recovery actions now have consistent visible focus states.
 - Local evidence: `docs/UAT_SETTINGS_CORE_FOCUS_LOCAL_2026-10-22.json`; typecheck, ESLint, and diff checks pass, no business writes.
 - Online verification remains pending because Dokploy still rejects the branch through HTTP `301`.
+## 2026-10-22 grouped Settings deployment status
+
+- Candidate `0a1a19c` is pushed, but Dokploy again returned HTTP `301` (`Branch Not Match`); no retry was sent.
+- The grouped Settings focus improvements remain local-only until Demo `/api/public/version` reports the exact candidate SHA.

@@ -2423,3 +2423,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Account Save plus Payment, Registers & Outlets, and Tax Retry now have visible keyboard focus states.
 - Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`; evidence `docs/UAT_SETTINGS_CORE_FOCUS_LOCAL_2026-10-22.json`. No production build or business write was run.
 - This completes the currently identified Settings button-focus consistency pass; grouped online validation remains pending.
+## 2026-10-22 grouped Settings deployment status
+
+- [x] Candidate `0a1a19c` contains the grouped Settings Data, Users, Roles, Account, Payment, Registers & Outlets, and Tax focus-state improvements and is pushed to `origin/main`.
+- [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. Verify Source/Git repository `aishawn/aistore_pos`, branch `main`, root `/`, and `docker-compose.yml` before the next deployment.
+- [ ] Demo runtime identity remains the previously deployed SHA; no grouped Settings change is online-verified.
