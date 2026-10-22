@@ -98,7 +98,8 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            assertEquals("guided_action", result.get("intent"), question);
+            assertEquals("unknown", result.get("intent"), question);
+            assertEquals("", result.get("ui_route"), question);
         }
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);
@@ -116,7 +117,7 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("guided_action", result.get("intent"));
+        assertEquals("navigate", result.get("intent"));
         assertEquals("/stock/replenishment", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("cannot change stock"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
@@ -134,7 +135,7 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("product_count", result.get("intent"));
+        assertEquals("navigate", result.get("intent"));
         assertEquals("/products", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
