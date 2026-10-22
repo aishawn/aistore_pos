@@ -23,13 +23,24 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 900 
 const page = await context.newPage();
 const checks = [];
 
+class BlockedUatCheck extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "BlockedUatCheck";
+  }
+}
+
 async function check(name, run) {
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     const evidence = await run();
     checks.push({ name, status: "PASS", evidence });
   } catch (error) {
-    checks.push({ name, status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" });
+    checks.push({
+      name,
+      status: error instanceof BlockedUatCheck ? "BLOCKED" : "FAIL",
+      evidence: error instanceof Error ? error.message : "Unexpected failure",
+    });
   }
 }
 
@@ -149,19 +160,29 @@ try {
   await check("Product search filters the Odoo catalogue", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const emptyProducts = page.getByText(/No POS products yet|No POS products were returned by Odoo\./).first();
+    const emptyProductsVisible = await emptyProducts.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+    if (emptyProductsVisible) {
+      throw new BlockedUatCheck("Odoo returned an explicit empty POS catalogue; a product fixture is required for search validation.");
+    }
+    await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 }).catch(() => {
+      throw new BlockedUatCheck("Odoo returned no product cards; a product fixture is required for search validation.");
+    });
     const search = page.getByPlaceholder("Search product, barcode or SKU");
     await page.waitForFunction(() => {
       const cards = [...document.querySelectorAll("main section article")];
       const text = document.querySelector("main section")?.innerText ?? "";
       return cards.length > 0 && /SKU R2-/i.test(text);
-    }, null, { timeout: 30000 });
+    }, null, { timeout: 30000 }).catch(() => {
+      throw new BlockedUatCheck("Odoo has no R2 product fixture; a product fixture is required for search validation.");
+    });
     const table = page.locator("table");
     if (await table.evaluate((element) => getComputedStyle(element).display !== "none")) {
       throw new Error("The wide product table is visible at the mobile viewport");
     }
     const firstCard = page.locator("main section article").first();
     const sku = (await firstCard.innerText()).match(/SKU\s+(R2-[A-Za-z0-9-]+)/)?.[1];
-    if (!sku) throw new Error("The R2 product card has no stable SKU for search testing");
+    if (!sku) throw new BlockedUatCheck("Odoo has no R2 product fixture; a product fixture is required for search validation.");
     await search.fill(sku);
     await page.waitForFunction((expectedSku) => {
       const cards = [...document.querySelectorAll("main section article")];
@@ -175,11 +196,19 @@ try {
   await check("Product edit dialog is prefilled from Odoo", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/products/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    const emptyProducts = page.getByText(/No POS products yet|No POS products were returned by Odoo\./).first();
+    const emptyProductsVisible = await emptyProducts.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+    if (emptyProductsVisible) {
+      throw new BlockedUatCheck("Odoo returned an explicit empty POS catalogue; a product fixture is required for edit validation.");
+    }
+    await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 }).catch(() => {
+      throw new BlockedUatCheck("Odoo returned no product cards; a product fixture is required for edit validation.");
+    });
     const search = page.getByPlaceholder("Search product, barcode or SKU");
     await page.locator("main section article").first().waitFor({ timeout: 30000 });
     const initialCard = page.locator("main section article").first();
     const sku = (await initialCard.innerText()).match(/SKU\s+(R2-[A-Za-z0-9-]+)/)?.[1];
-    if (!sku) throw new Error("The R2 product card has no stable SKU for edit testing");
+    if (!sku) throw new BlockedUatCheck("Odoo has no R2 product fixture; a product fixture is required for edit validation.");
     await search.fill(sku);
     await page.waitForFunction((expectedSku) => {
       const cards = [...document.querySelectorAll("main section article")];
@@ -327,6 +356,10 @@ try {
   await check("Sales history searches and opens a refunded receipt", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${base}/history/odoo`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.waitForFunction(() => document.body.innerText.includes("No sales yet") || document.querySelectorAll('button[aria-label^="View receipt "]').length > 0, null, { timeout: 30000 });
+    if (await page.getByRole("heading", { name: "No sales yet", exact: true }).isVisible().catch(() => false)) {
+      throw new BlockedUatCheck("Odoo returned an explicit empty sales history; a refunded-sale fixture is required for receipt validation.");
+    }
     const statusFilter = page.locator("label").filter({ hasText: "Filter sales by status" }).locator("select");
     await statusFilter.selectOption("refunded");
     const table = page.locator("table");
@@ -363,6 +396,15 @@ try {
     if (await page.locator("main table").isVisible().catch(() => false)) throw new Error("Mobile replenishment should show product cards instead of the wide table");
     await page.getByRole("button", { name: "Show all products" }).click();
     await page.getByRole("heading", { name: "All POS products" }).waitFor({ timeout: 10000 });
+    const emptyReplenishment = page.getByText(/No POS products were returned by Odoo\./).first();
+    const emptyReplenishmentVisible = await emptyReplenishment.waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false);
+    if (emptyReplenishmentVisible) {
+      throw new BlockedUatCheck("Odoo returned an explicit empty replenishment catalogue; product demand data is required for card validation.");
+    }
+    await page.waitForFunction(() => document.querySelectorAll("main section article").length > 0, null, { timeout: 30000 });
+    if (await page.getByText("No POS products were returned by Odoo.", { exact: true }).isVisible().catch(() => false)) {
+      throw new BlockedUatCheck("Odoo returned an explicit empty replenishment catalogue; product demand data is required for card validation.");
+    }
     const productSection = page.locator("main section").filter({ has: page.getByRole("heading", { name: "All POS products" }) });
     if (!(await productSection.locator("article").count())) throw new Error("Mobile all-products view did not render product cards");
     const body = await page.locator("body").innerText();

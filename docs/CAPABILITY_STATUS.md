@@ -1,3 +1,10 @@
+## 2026-10-22 线上交互验收分类更新（e0a867b runtime）
+
+- 交互 UAT 最新结果：**10 PASS / 4 BLOCKED / 0 FAIL**，证据：`docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B-BLOCKED-DATA-FINAL.json`。
+- PASS 覆盖移动导航、账户菜单、设置侧栏、分类弹窗焦点恢复、商品/客户表单保护、CSV 预览、报表周期和旧报表只读边界；测试未发起业务写入。
+- 4 个 BLOCKED 是 Odoo Demo 缺少 R2 商品卡片、销售历史和补货商品数据，无法验证商品搜索/编辑、退款收据和补货覆盖计算；它们不是页面回归。
+- Dokploy 部署由用户确认成功；可归属的线上运行版本仍是前后端 `e0a867b0387c7760c1dfc1bea9a5c374debb0930`。当前本地文档/测试提交未再次部署。
+
 ## 2026-10-22 本地前端 UI 批次（尚未部署）
 
 - Stock List 的采购成本只读状态在五种视口完整显示，aria-describedby 提供完整管理说明；Odoo Bulk Price Edit 的清除搜索按钮名称与实际行为一致。

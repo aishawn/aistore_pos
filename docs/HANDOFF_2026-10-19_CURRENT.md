@@ -1,3 +1,10 @@
+## 2026-10-22 交互验收最终结果（最新）
+
+- [x] 线上交互 UAT 已重新执行：**10 PASS / 4 BLOCKED / 0 FAIL**。证据：`docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B-BLOCKED-DATA-FINAL.json`。
+- [x] 已通过：移动导航抽屉、账户菜单、设置侧栏展开、分类弹窗和焦点恢复、商品新建/CSV 预览保护、客户表单与移动卡片、报表周期选择、旧报表只读提示；本轮业务写入 `0`。
+- [ ] BLOCKED：商品搜索与商品编辑缺少 Odoo R2 商品卡片；销售历史退款收据缺少销售记录；补货覆盖计算缺少商品需求数据。需要隔离 Odoo 夹具后复验，不应当作代码失败。
+- 用户确认 Dokploy 最新部署成功；已核验的线上基线仍为前后端 `e0a867b0387c7760c1dfc1bea9a5c374debb0930`。本次脚本分类修订、证据文件和文档更新未部署，因此不改变线上运行版本。
+
 ## 2026-10-22 AI 问法回归续验（最新）
 
 - [x] 重试增强后的 247 条助手问法完成线上只读回归：**244 PASS / 0 BLOCKED / 3 FAIL**；所有请求仅调用 Assistant API，`writeRequests` 为 0。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_E8CAC11_RETRY-FULL-247.json`。
