@@ -98,6 +98,64 @@ function messageLinks(msg: ChatMessage): ChatCta[] {
   return msg.cta ? [msg.cta] : [];
 }
 
+/** Compact chip label: "Open stock list" → "Stock list". */
+function shortChatLinkLabel(label: string): string {
+  return label.replace(/^Open\s+/i, "").trim() || label;
+}
+
+/**
+ * In-chat navigation actions.
+ * One clear next step → solid primary; multiple recovery/related links → soft chips.
+ */
+function ChatActionLinks({
+  links,
+  onOpenLink,
+  className,
+}: {
+  links: ChatCta[];
+  onOpenLink: (href: string) => void;
+  className?: string;
+}) {
+  if (links.length === 0) return null;
+
+  if (links.length === 1) {
+    const link = links[0];
+    return (
+      <div className={cn("mt-2.5", className)}>
+        <button
+          type="button"
+          onClick={() => onOpenLink(link.href)}
+          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
+        >
+          {link.label}
+          <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="group"
+      aria-label="Related pages"
+      className={cn("mt-2.5 flex flex-wrap gap-1.5", className)}
+    >
+      {links.map((link) => (
+        <button
+          key={`${link.href}-${link.label}`}
+          type="button"
+          aria-label={link.label}
+          onClick={() => onOpenLink(link.href)}
+          className="inline-flex min-h-10 cursor-pointer items-center gap-1 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
+        >
+          {shortChatLinkLabel(link.label)}
+          <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Friendly labels for deferred navigation CTAs inside the chat. */
 function labelForHref(href: string): string {
   const path = href.split("?")[0].split("#")[0] || "/";
@@ -732,7 +790,7 @@ export function SellAiPanel({
           const cta = deferredHref
             ? { label: labelForHref(deferredHref), href: deferredHref }
             : null;
-          // Dead-end ad-hoc / empty entity answers get recovery shortcuts.
+          // Dead-end ad-hoc / empty entity answers get soft recovery chips (not 3 primary CTAs).
           const recoveryLinks: ChatCta[] =
             !deferredHref &&
             (result.intent === "report_adhoc" || isTechnicalIntentLabel(result.answer || ""))
@@ -1626,13 +1684,14 @@ function DialogueView({
           const cards = msg.cards ?? [];
           const cardRoutes = new Set(cards.map((card) => card.ctaRoute).filter(Boolean));
           const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
+          const primaryCardCtaIndex = cards.findIndex((c) => c.ctaRoute && c.ctaLabel);
           return (
           <div
             key={i}
             className={cn(
               "max-w-[92%] rounded-[var(--oh-radius)] px-3.5 py-2.5 text-[14px] leading-relaxed",
               msg.role === "user"
-                ? "ml-auto bg-[var(--oh-primary)] text-white"
+                ? "ml-auto border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] text-[var(--oh-text)]"
                 : "mr-auto whitespace-pre-wrap border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text)] shadow-sm",
             )}
           >
@@ -1658,7 +1717,10 @@ function DialogueView({
               </span>
             ) : cards.length > 0 ? (
               <div className="space-y-2">
-                {cards.map((card, cardIndex) => (
+                {cards.map((card, cardIndex) => {
+                  const isPrimaryCardCta =
+                    Boolean(card.ctaRoute && card.ctaLabel) && cardIndex === primaryCardCtaIndex;
+                  return (
                   <section
                     key={`${card.type}-${cardIndex}`}
                     aria-label={card.title}
@@ -1696,14 +1758,20 @@ function DialogueView({
                       <button
                         type="button"
                         onClick={() => onOpenLink(card.ctaRoute!)}
-                        className="mt-2 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"
+                        className={cn(
+                          "mt-2 inline-flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2",
+                          isPrimaryCardCta
+                            ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
+                            : "border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]",
+                        )}
                       >
                         {card.ctaLabel}
                         <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
                       </button>
                     ) : null}
                   </section>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               msg.text
@@ -1744,19 +1812,7 @@ function DialogueView({
               </div>
             )}
             {msg.role === "assistant" && fallbackLinks.length > 0 ? (
-              <div className="mt-2.5 flex flex-col gap-2">
-                {fallbackLinks.map((link) => (
-                  <button
-                    key={`${link.href}-${link.label}`}
-                    type="button"
-                    onClick={() => onOpenLink(link.href)}
-                    className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
-                  >
-                    {link.label}
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
-                  </button>
-                ))}
-              </div>
+              <ChatActionLinks links={fallbackLinks} onOpenLink={onOpenLink} />
             ) : null}
             {msg.role === "assistant" && msg.diagnostics ? (
               <span className={cn(
