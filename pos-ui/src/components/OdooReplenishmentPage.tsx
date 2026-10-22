@@ -90,7 +90,9 @@ export function OdooReplenishmentPage() {
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
-        setNeedsConnection(response.status === 401 || response.status === 503);
+        // A gateway outage is retryable; only an expired or missing session
+        // should send the operator to the Odoo connection setup.
+        setNeedsConnection(response.status === 401);
         throw new Error(message || `Could not load the replenishment plan (${response.status}).`);
       }
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) throw new Error("Odoo returned an incomplete replenishment plan.");

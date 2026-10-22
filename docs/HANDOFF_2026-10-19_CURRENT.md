@@ -3,6 +3,7 @@
 - [x] `OdooReportingDashboard` 不再把临时 Odoo `503` 当作连接缺失：503 显示错误、Retry 和 Request ID；只有 401 显示连接 Odoo 引导。
 - [x] 产品目录、补货和报表的移动空态/错误态入口补齐可见键盘焦点样式。
 - [x] 商品编辑/导入/新建和补货 RFQ 弹窗的关闭、取消、提交、供应商重试、数量输入和供应商选择控件补齐可见键盘焦点状态；typecheck、定向 ESLint 和 `git diff --check` 通过。
+- [x] 补货页不再把 `503` 当作连接缺失；供应商加载失败、手工数量保持、RFQ 创建失败后重试流程本地 `60/60 PASS`，无非预期业务写入。正确使用 tenant host 的 fixture 证据：`docs/UAT_REPLENISHMENT_SUPPLIER_RECOVERY_2026-10-22_UI-BATCH.json`。
 - [x] 本地 fixture：报表 503/401 `2/2 PASS`；Platform Audit/Failures 双视口 `4/4 PASS`；无业务写入；Node typecheck、定向 ESLint、脚本语法检查通过。
 - [ ] 本批仅修改前端和 UAT 脚本，未运行 production build/Docker build；尚未部署 Dokploy。下一阶段与更多 UI 改动合批后部署，再核对 `/api/public/version` 和线上 390/1440px 结果。
 - 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。

@@ -57,7 +57,7 @@ try {
     });
     try {
       await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.getByRole("heading", { name: "Connect Odoo to plan replenishment", exact: true }).waitFor();
+      await page.getByRole("heading", { name: /Connect Odoo to plan replenishment|Could not load the replenishment plan/, exact: true }).waitFor();
       const initialRetry = page.getByRole("button", { name: "Retry", exact: true });
       const hasPlanRetry = await initialRetry.isVisible();
       record("initial Odoo failure offers retry without leaving page", hasPlanRetry);
