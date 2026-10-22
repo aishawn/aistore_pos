@@ -2477,3 +2477,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Candidate `1df9b718` is pushed and includes Platform Store detail focus improvements plus structured Settings blocked diagnostics.
 - [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent.
 - [ ] Demo runtime remains `c905902...`; the new Platform Store detail changes are not online-verified.
+## 2026-10-22 runtime queue follow-up
+
+- Demo `/api/public/version` advanced from `c905902...` to `c941a617ed390679105a780e57c86786157f7470`; this is still an older documentation/runtime candidate and does not contain the Platform Store detail code from `bf3d675f`.
+- Dokploy webhook for the current candidate continues to return HTTP `301` (`Branch Not Match`); no further retry was sent this turn.
+- Local branch contains two unpushed documentation commits because GitHub connections reset during push. The remote application code remains at least through `bf3d675f`.

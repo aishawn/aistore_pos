@@ -1345,3 +1345,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Candidate `1df9b718` is pushed, but Dokploy returned HTTP `301` (`Branch Not Match`) again.
 - Platform Store detail focus improvements remain local-only; Demo runtime is still `c905902...`.
+## 2026-10-22 runtime queue follow-up
+
+- Demo runtime now reports `c941a617...`, still older than the latest application source. Treat this as deployment movement only, not feature verification.
+- The current webhook remains blocked by `301 Branch Not Match`; no additional retry was sent.

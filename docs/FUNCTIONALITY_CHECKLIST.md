@@ -624,3 +624,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] Candidate `1df9b718` pushed after Platform Store detail and Settings diagnostics work.
 - [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Exact runtime SHA is still older than this candidate.
+### 2026-10-22 runtime queue follow-up
+
+- [x] Demo runtime advanced to `c941a617...`; this confirms deployment queue movement but not the latest application candidate.
+- [ ] Current source/runtime alignment is still missing; Platform Store detail and later UI batches remain online-unverified.
