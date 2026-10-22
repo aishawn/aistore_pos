@@ -198,6 +198,9 @@ class WorkflowRouteRouterTest {
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What did we send suppliers last week?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What should we buy before the weekend?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What price should I set for Shiraz?"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("AI会直接下单吗"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("AI 能自动下采购单吗"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("Will you place orders?"));
     }
 
     @Test

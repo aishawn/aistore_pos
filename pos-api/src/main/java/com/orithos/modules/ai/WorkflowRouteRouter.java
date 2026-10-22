@@ -178,6 +178,8 @@ public final class WorkflowRouteRouter {
     public static boolean hasWriteIntent(String question) {
         if (question == null || question.isBlank()) return false;
         String normalized = question.trim().toLowerCase(Locale.ROOT);
+        AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
+        if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return false;
         if (INVOICE_MUTATION.matcher(normalized).find() || DIRECT_EXECUTION_ZH.matcher(normalized).find()) return true;
         if (EXPLICIT_EXECUTION.matcher(normalized).find()
                 && (REPLENISHMENT.matcher(normalized).find()
