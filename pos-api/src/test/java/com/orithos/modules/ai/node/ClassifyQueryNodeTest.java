@@ -98,7 +98,8 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            assertEquals("guided_action", result.get("intent"), question);
+            assertEquals("unknown", result.get("intent"), question);
+            assertEquals("", result.get("ui_route"), question);
         }
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);
@@ -116,14 +117,14 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("guided_action", result.get("intent"));
-        assertEquals("/stock/replenishment", result.get("ui_route"));
+        assertEquals("unknown", result.get("intent"));
+        assertEquals("", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("cannot change stock"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
     @Test
-    void entityWriteIntentUsesGuidedActionAndPageCta() {
+    void entityWriteIntentFailsClosedWithoutPageCta() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -140,8 +141,8 @@ class ClassifyQueryNodeTest {
 
             Map<String, Object> result = node.apply(state);
 
-            assertEquals("guided_action", result.get("intent"), sample[0]);
-            assertEquals(sample[1], result.get("ui_route"), sample[0]);
+            assertEquals("unknown", result.get("intent"), sample[0]);
+            assertEquals("", result.get("ui_route"), sample[0]);
         }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
@@ -162,6 +163,31 @@ class ClassifyQueryNodeTest {
         assertEquals("/products", result.get("ui_route"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void commonProductCountVariantsUseProductCountFastPath() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        for (String question : new String[]{
+                "有多少个产品？",
+                "商品总数",
+                "How many products are there?",
+                "what is the number of items we stock?",
+                "catalogue size"
+        }) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("product_count", result.get("intent"), question);
+            verifyNoInteractions(chatClient, config, sanitizer, properties);
+        }
     }
 
     @Test

@@ -28,6 +28,7 @@ import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -278,30 +279,6 @@ public class ClassifyQueryNode implements NodeAction {
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+).*");
     }
 
-    private static boolean isCustomerWriteTarget(String question) {
-        return question != null && question.matches("(?is).*(?:customer|client|客户|顾客).*");
-    }
-
-    private static boolean isProductWriteTarget(String question) {
-        return question != null && question.matches("(?is).*(?:product|item|catalogue|catalog|产品|商品).*");
-    }
-
-    private static boolean isStockMutationTarget(String question) {
-        return question != null && question.matches("(?is).*(?:stock|inventory|receive|收货|库存|盘点).*");
-    }
-
-    private static boolean isInvoiceWriteTarget(String question) {
-        return question != null && question.matches("(?is).*(?:invoice|bill|发票|账单).*");
-    }
-
-    private static boolean isOrderWriteTarget(String question) {
-        return question != null && question.matches("(?is).*(?:order|purchase|采购|订单).*");
-    }
-
-    private static boolean isSupplierWriteTarget(String question) {
-        return question != null && question.matches("(?is).*(?:supplier|vendor|供应商).*");
-    }
-
     private static boolean isWriteEntityResult(SanitizedIntent result) {
         if (result == null || !"entity_action".equals(result.intent())) return false;
         String op = result.slots().get("op");
@@ -372,12 +349,13 @@ public class ClassifyQueryNode implements NodeAction {
         if (question == null) {
             return false;
         }
-        String q = question.trim().toLowerCase();
-        return q.contains("多少产品") || q.contains("多少商品") || q.contains("产品总数")
-                || q.contains("商品总数") || q.contains("how many product") || q.contains("product count")
-                || q.contains("total products") || q.contains("how many sku")
-                || q.contains("catalogue size") || q.contains("catalog size")
-                || q.contains("how many items do we have");
+        String q = question.trim().toLowerCase(Locale.ROOT)
+                .replaceAll("[\\u3000\\s]+", " ")
+                .replace('？', '?');
+        return q.matches(".*(?:有多少(?:个)?(?:产品|商品)|(?:产品|商品)(?:一共|总共|总数|数量)(?:有多少)?|一共有多少(?:个)?(?:产品|商品)).*[?]?$")
+                || q.matches(".*(?:how many|number of|what(?:'s| is) the number of|total number of) (?:our )?(?:products?|items?|skus?)(?: do we have| are there| do we stock| we stock)?[?]?$")
+                || q.contains("product count") || q.contains("total products")
+                || q.contains("catalogue size") || q.contains("catalog size");
     }
 
     private static Map<String, Object> shortcutResult(
