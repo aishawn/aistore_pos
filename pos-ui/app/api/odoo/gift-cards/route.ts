@@ -8,21 +8,13 @@ export const dynamic = "force-dynamic";
 
 type Many2One = [number, string] | false;
 
-const CANDIDATE_MODELS = ["loyalty.card", "gift.card", "coupon.coupon"] as const;
-
-async function detectGiftModel(scope: Awaited<ReturnType<typeof scopedOdoo>>) {
-  for (const model of CANDIDATE_MODELS) {
-    try {
-      const found = await scope.rpc<Array<{ id: number; model: string; name: string }>>("ir.model", "search_read", [[["model", "=", model]]], {
-        fields: ["id", "model", "name"],
-        limit: 1,
-      });
-      if (found?.length) return found[0];
-    } catch {
-      // Try the next candidate when the model registry lookup is blocked.
-    }
+async function detectLoyaltyCard(scope: Awaited<ReturnType<typeof scopedOdoo>>) {
+  try {
+    await scope.rpc<number>("loyalty.card", "search_count", [[]]);
+    return { model: "loyalty.card", name: "Loyalty Card" };
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -30,12 +22,12 @@ export async function GET(request: NextRequest) {
   try {
     await requireStoreAdmin(request);
     const scope = await scopedOdoo(request);
-    const modelInfo = await detectGiftModel(scope);
+    const modelInfo = await detectLoyaltyCard(scope);
     if (!modelInfo) {
       return NextResponse.json({
         available: false,
         module: null,
-        message: "Gift cards require an Odoo Loyalty or Gift Card module. None of those models are installed on this database.",
+        message: "Gift cards live under Odoo Apps → search “Coupons & Loyalty” (module loyalty), then also install “Point of Sale - Coupons & Loyalty”. There is no separate app named Gift Card.",
         items: [],
         hasNext: false,
       }, { headers: { "Cache-Control": "no-store" } });
@@ -47,48 +39,55 @@ export async function GET(request: NextRequest) {
     const offset = Math.max(0, Number.isFinite(offsetRaw) ? Math.floor(offsetRaw) : 0);
     const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 120) ?? "";
 
-    if (modelInfo.model === "loyalty.card") {
-      const domain: unknown[] = [];
-      if (query) domain.push("|", ["code", "ilike", query], ["partner_id.name", "ilike", query]);
-      type LoyaltyCard = {
-        id: number;
-        code: string;
-        points: number;
-        partner_id: Many2One;
-        program_id: Many2One;
-        expiration_date: string | false;
-      };
-      const rows = await scope.rpc<LoyaltyCard[]>("loyalty.card", "search_read", [domain], {
-        fields: ["id", "code", "points", "partner_id", "program_id", "expiration_date"],
-        limit: limit + 1,
-        offset,
-        order: "id desc",
-      });
-      const page = (rows ?? []).slice(0, limit);
-      return NextResponse.json({
-        available: true,
-        module: modelInfo.model,
-        items: page.map((row) => ({
-          id: row.id,
-          code: row.code,
-          balance: Number(row.points) || 0,
-          partner: Array.isArray(row.partner_id) ? row.partner_id[1] : null,
-          program: Array.isArray(row.program_id) ? row.program_id[1] : null,
-          expiry: row.expiration_date || null,
-          status: row.expiration_date && new Date(row.expiration_date) < new Date() ? "expired" : "active",
-        })),
-        limit,
-        offset,
-        hasNext: (rows?.length ?? 0) > limit,
-      }, { headers: { "Cache-Control": "no-store" } });
+    const domain: unknown[] = [];
+    if (query) domain.push("|", ["code", "ilike", query], ["partner_id.name", "ilike", query]);
+
+    type LoyaltyCard = {
+      id: number;
+      code: string;
+      points: number;
+      point_name?: string | false;
+      partner_id: Many2One;
+      program_id: Many2One;
+      expiration_date: string | false;
+    };
+
+    const rows = await scope.rpc<LoyaltyCard[]>("loyalty.card", "search_read", [domain], {
+      fields: ["id", "code", "points", "partner_id", "program_id", "expiration_date"],
+      limit: limit + 1,
+      offset,
+      order: "id desc",
+    });
+    const page = (rows ?? []).slice(0, limit);
+
+    let programs: Array<{ id: number; name: string; program_type: string }> = [];
+    try {
+      programs = await scope.rpc("loyalty.program", "search_read", [[["program_type", "=", "gift_card"]]], {
+        fields: ["id", "name", "program_type"],
+        limit: 20,
+      }) ?? [];
+    } catch {
+      programs = [];
     }
 
     return NextResponse.json({
       available: true,
       module: modelInfo.model,
-      message: `Detected ${modelInfo.name} (${modelInfo.model}). List mapping for this module is not implemented yet.`,
-      items: [],
-      hasNext: false,
+      message: programs.length
+        ? `Odoo Loyalty is installed. Gift card program: ${programs.map((p) => p.name).join(", ")}.`
+        : "Odoo Loyalty is installed. Create a Gift Card program in Odoo Sales/Loyalty if you need issued cards listed here.",
+      items: page.map((row) => ({
+        id: row.id,
+        code: row.code,
+        balance: Number(row.points) || 0,
+        partner: Array.isArray(row.partner_id) ? row.partner_id[1] : null,
+        program: Array.isArray(row.program_id) ? row.program_id[1] : null,
+        expiry: row.expiration_date || null,
+        status: row.expiration_date && new Date(row.expiration_date) < new Date() ? "expired" : "active",
+      })),
+      limit,
+      offset,
+      hasNext: (rows?.length ?? 0) > limit,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo gift cards are unavailable";

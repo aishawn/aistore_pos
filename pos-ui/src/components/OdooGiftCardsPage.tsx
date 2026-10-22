@@ -85,9 +85,9 @@ export function OdooGiftCardsPage() {
           <div className="flex items-start gap-3">
             <Gift className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
             <div>
-              <h2 className="font-semibold">Gift card module is not installed on this Odoo database</h2>
+              <h2 className="font-semibold">Odoo Loyalty is not available yet</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6">
-                {message || "Install Odoo Loyalty (loyalty.card) or a dedicated Gift Card module, then refresh this page. Classic MySQL gift cards are not used as a live source of truth."}
+                {message || "In Odoo Apps, clear the Apps-only filter and search “Coupons & Loyalty” (not “Gift Card”). Install loyalty, then Point of Sale - Coupons & Loyalty. Refresh this page after install."}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link href="/customers/odoo" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Open customers</Link>
