@@ -730,6 +730,16 @@
       <li>pos-api 仍需同一候选 SHA 的远程 Java 21 <code>mvn -B clean verify</code>；在 exact SHA 部署和复测完成前，项目保持 NO-GO。</li>
     </ul>
   </section>
+  <section id="handoff-2026-10-22-ai-assistant-current-goal" class="content-section">
+    <h2>2026-10-22 AI 助手完整问法回归更新</h2>
+    <ul>
+      <li>可执行问法目录当前为 <strong>290 条唯一用例</strong>，覆盖补货、定价、酒类推荐、商品/库存查询、销售报表、发票、能力咨询、中英混合口语及执行型安全边界。</li>
+      <li>Demo 只读 Assistant API 回归为 <strong>221 PASS / 53 BLOCKED / 16 FAIL</strong>，证据 <code>UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-GOAL-RERUN.json</code>；<code>writeRequests=none: assistant API only</code>。</li>
+      <li>16 条 FAIL 均需结合运行版本判断：旧 Demo SHA <code>582b92fb</code> 对新的 <code>guided_action</code>/<code>product_count</code> 契约仍返回旧 intent。测试源码 SHA 为 <code>1df2aeb6</code>，两者不匹配，不能据此宣称当前源码失败或线上已修复。</li>
+      <li>明确执行型请求应返回安全引导，可给出对应复核页面入口，但不得自动执行或声称操作已完成；只读建议请求继续打开对应工作流。商品数量问法使用 <code>product_count</code>，有实时数据时返回门店范围内数量，无数据时明确说明不可用。</li>
+      <li>前端 TypeScript 与 UAT 脚本语法检查通过；未运行本地 build/Maven。后端变更仍需同候选 SHA 的 Java 21 <code>mvn -B clean verify</code>、部署及完整复验，试点保持 <strong>NO-GO</strong>。</li>
+    </ul>
+  </section>
   <section id="handoff-2026-10-22-ai-cards" class="content-section">
     <h2>2026-10-22 AI 结果卡片链路</h2>
     <ul>
@@ -781,5 +791,13 @@
       <li>AI Quick actions 可访问性修复提交 <code>e9c126e4</code> 已推送，包含本地 <code>5/5</code> 和 <code>12/12</code> 验证证据。</li>
       <li>线上版本探针仍为 <code>582b92fb</code>，不能将 builtAt 变化视为新提交已部署。</li>
       <li>Dokploy webhook 的 <code>301 Branch Not Match</code> 仍待 Source/Git 配置修正。</li>
+    </ul>
+  </section>
+  <section id="handoff-2026-10-22-backend-safety-cleanup" class="content-section">
+    <h2>2026-10-22 后端 AI 安全边界整理</h2>
+    <ul>
+      <li>清除了 <code>ClassifyQueryNode</code> ad-hoc report 分支的作用域错误。</li>
+      <li>明确改价、补货、下单、收货和实体写入问法返回 <code>unknown</code> 且不带 route。</li>
+      <li>Java 测试契约和静态检查已同步；Java 21 exact-SHA 门禁尚未执行，未推送、未部署。</li>
     </ul>
   </section>

@@ -1496,3 +1496,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - `e9c126e4` 已推送，包含 AI Quick actions 可访问性修复和本地证据；不包含后端改动。
 - 线上版本端点仍是 `582b92fb`，尚未完成候选 runtime 身份核对。
 - Dokploy Source/Git `301 Branch Not Match` 仍是发布阻断。
+## 2026-10-22 后端 AI 安全边界整理
+
+- `ClassifyQueryNode` 的作用域错误已清除；明确写入请求保持 `unknown + 空 route`。
+- 测试契约和前端静态检查已同步；后端 Java 21 exact-SHA gate 尚未执行。
+- 该批未推送、未部署；线上仍不能引用为已生效能力。

@@ -2722,8 +2722,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 ## 2026-10-22 AI 写入安全边界修复（当前工作区）
 
 - [x] 定位线上问法回归的 9 个失败：明确改价、补货、下单请求被误返回业务页 route。
-- [x] `ClassifyQueryNode` 对 `WorkflowRouteRouter.hasWriteIntent(...)` 命中的请求统一 fail-closed：intent=`guided_action`、`ui_route` 为空，仅返回解释性摘要；只读“查看补货/价格建议”仍保留正常导航。
-- [x] 同步更新 `ClassifyQueryNodeTest` 契约：直接写入请求无 route；产品总数使用 `product_count` intent。
+- [x] `ClassifyQueryNode` 对 `WorkflowRouteRouter.hasWriteIntent(...)` 命中的请求统一 fail-closed：intent=`guided_action`，最多提供安全 review route，不执行写入或表示已完成；只读“查看补货/价格建议”仍保留正常导航。
+- [x] 同步更新 `ClassifyQueryNodeTest` 契约：直接写入请求只能进入安全引导/复核页；产品总数使用 `product_count` intent。
 - [x] `pos-ui` `npm run typecheck`、3 个 AI UAT 脚本 `node --check`、`git diff --check` 通过。
 - [ ] 本批包含 `pos-api`，尚未在 Java 21 对同一候选 SHA 执行 `mvn -B clean verify`；未推送、未部署，线上仍不能归因到此修复。
 - [ ] 部署前需复测 9 条安全边界问法，以及完整 AI 问法目录；业务写入保持 0。
@@ -2757,4 +2757,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] 本地 AI focus `5/5 PASS`、价格建议产品化 `12/12 PASS`、typecheck 与定向 ESLint 通过。
 - [ ] 自动部署后 `/api/public/version` 仍为前后端 `582b92fb`，不能将线上 builtAt 变化视为 `e9c126e4` 已部署。
 - [ ] Dokploy webhook 的 `301 Branch Not Match` 仍待 Source/Git 配置修正。
+
+## 2026-10-22 后端 AI 安全边界整理（未部署）
+
+- [x] 修复 `ClassifyQueryNode` ad-hoc report 分支引用作用域外 `writeRoute` 的编译问题，恢复空 route。
+- [x] 明确写入问法（改价、补货、下单、收货、创建/编辑实体）统一返回 `unknown + 空 route`；只读导航不受影响。
+- [x] 同步更新 `ClassifyQueryNodeTest`，覆盖显式写入和实体写入边界；前端 typecheck、脚本语法、diff check 通过。
+- [ ] 该批涉及 `pos-api`，尚未在 Java 21 对同一候选 SHA 执行 `mvn -B clean verify`；未推送、未部署。
+- [ ] Dokploy Source/Git 仍返回 `301 Branch Not Match`，后端门禁和线上安全边界复测均待配置修正后进行。
 

@@ -796,3 +796,11 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] 线上 `/api/public/version` 尚未出现 `e9c126e4`。
 - [ ] Dokploy Source/Git 配置修正后重新部署和线上验收。
 
+## 2026-10-22 后端 AI 安全边界整理
+
+- [x] 清除 `writeRoute` 作用域错误。
+- [x] 明确写入问法 `unknown + 空 route` 契约。
+- [x] 更新 Java 测试断言和前端静态检查。
+- [ ] Java 21 `mvn -B clean verify` exact-SHA gate。
+- [ ] Dokploy 部署及线上 9 条安全问法复验。
+
