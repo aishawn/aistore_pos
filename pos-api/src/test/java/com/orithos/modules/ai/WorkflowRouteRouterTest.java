@@ -134,6 +134,9 @@ class WorkflowRouteRouterTest {
         assertNull(WorkflowRouteRouter.maybeOverride("Delete this invoice"));
         assertNull(WorkflowRouteRouter.maybeOverride("提交这张发票"));
         assertNull(WorkflowRouteRouter.maybeOverride("Import this invoice"));
+        assertNull(WorkflowRouteRouter.maybeOverride("上传这张账单"));
+        assertNull(WorkflowRouteRouter.maybeOverride("帮我上传这张发票"));
+        assertNull(WorkflowRouteRouter.maybeOverride("把供应商账单传上去"));
         assertNull(WorkflowRouteRouter.maybeOverride("Send this supplier bill"));
         assertNull(WorkflowRouteRouter.maybeOverride("开始处理这张发票"));
         assertNull(WorkflowRouteRouter.maybeOverride("直接把这些商品补到50件"));
@@ -217,6 +220,9 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Receive this stock"));
 
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Upload this supplier bill"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("上传这张账单"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("帮我上传这张发票"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("把供应商账单传上去"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("How many supplier bills did we receive?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("How many invoices did we receive?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Which prices need checking?"));

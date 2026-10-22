@@ -122,6 +122,8 @@ const cases = [
   { id: "invoice-read-indefinite-en", question: "Read an invoice", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-photo-supplier-en", question: "Take a photo of this supplier bill", intent: "navigate", route: "/invoices/scan" },
   { id: "invoice-upload-bill-zh", question: "上传这张账单", intent: "guided_action", writeGuided: true, route: "/invoices/scan" },
+  { id: "invoice-upload-invoice-zh", question: "帮我上传这张发票", intent: "guided_action", writeGuided: true, route: "/invoices/scan" },
+  { id: "invoice-upload-vendor-bill-zh", question: "把供应商账单传上去", intent: "guided_action", writeGuided: true, route: "/invoices/scan" },
   { id: "invoice-zh", question: "识别这张发票", intent: "navigate", route: "/invoices/scan" },
   { id: "store-question-en", question: "What did we sell most this week?", intent: "report_adhoc" },
   { id: "store-question-zh", question: "本周哪类商品卖得最好", intent: "report_adhoc" },

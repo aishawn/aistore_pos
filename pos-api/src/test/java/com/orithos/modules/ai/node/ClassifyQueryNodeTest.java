@@ -50,7 +50,7 @@ class ClassifyQueryNodeTest {
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
         OverAllState state = mock(OverAllState.class);
         for (String question : new String[] {
-                "Upload this supplier bill", "Upload an invoice", "上传这张账单"
+                "Upload this supplier bill", "Upload an invoice", "上传这张账单", "帮我上传这张发票", "把供应商账单传上去"
         }) {
             when(state.value("question", String.class)).thenReturn(Optional.of(question));
 
@@ -97,6 +97,8 @@ class ClassifyQueryNodeTest {
                 "Upload an invoice",
                 "Send this supplier bill",
                 "上传这张账单",
+                "帮我上传这张发票",
+                "把供应商账单传上去",
                 "开始处理这张发票",
                 "Place the purchase order",
                 "Buy these items now",

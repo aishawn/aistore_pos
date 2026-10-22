@@ -39,10 +39,10 @@ public final class WorkflowRouteRouter {
             "snap (?:this|an?|the) (?:supplier )?(?:invoice|bill)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_MUTATION = Pattern.compile(
-            "\\b(?:create|add|edit|update|delete|remove|import|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
-                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
-                    + "(?:创建|添加|编辑|修改|删除|移除|导入|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并).*?(?:发票|账单)|"
-                    + "(?:发票|账单).*?(?:创建|添加|编辑|修改|删除|移除|导入|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并)",
+            "\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
+                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
+                    + "(?:创建|添加|编辑|修改|删除|移除|导入|上传|传上去|传一下|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并).*?(?:发票|账单)|"
+                    + "(?:发票|账单).*?(?:创建|添加|编辑|修改|删除|移除|导入|上传|传上去|传一下|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern REPORT_CONTEXT = Pattern.compile(
             "sales|sold|revenue|takings|units|quantity|how much .*sold|how many .*invoice|how many .*supplier bills?|(?:do we have|any) .*invoices?|(?:have we|did we) receive .*bills?|invoice.*(?:received|total|count|paid|cost|price|exist|available|left|还有|有没有|有吗)|bill.*(?:received|total|count|paid|cost|exist|available)|(?:paid|pay|cost).*invoice|supplier.*(?:paid|payment|spend)|销量|销售|卖了|营业额|发票.*(?:多少|数量|总额|花了|成本|价格|收到|存在|还有|有没有|有吗)|账单.*(?:多少|数量|总额|收到|存在|还有|有没有|有吗)|(?:付款|支付).*发票|供应商.*(?:付款|支出)",
