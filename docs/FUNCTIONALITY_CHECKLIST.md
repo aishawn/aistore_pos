@@ -568,3 +568,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Settings Users roles retry, invite, copy-link, reset-link, mobile reset, and desktop reset controls now expose visible `focus-visible` outlines; all seven buttons retain 44px minimum touch sizing.
 - [x] Local source evidence: `docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check passed. No production build or business write.
 - [ ] Online verification remains pending. The prior Settings script was blocked by the old runtime's mobile user-card assertion; rerun after exact candidate SHA deployment.
+### 2026-10-22 Roles and Permissions focus consistency
+
+- [x] Roles & Permissions page retry, permission retry, mobile/desktop edit-delete, and role-editor Cancel/Save controls now have visible keyboard focus states.
+- [x] Local source evidence `docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check passed with no business writes.
+- [ ] Online verification remains pending until the grouped Settings candidate is deployed with an exact runtime SHA.

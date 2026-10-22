@@ -233,7 +233,7 @@ export default function RolesPage() {
         ) : loadError ? (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <span>{loadError}</span>
-            <button type="button" onClick={reloadPage} disabled={pageLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={pageLoading ? "animate-spin" : undefined} /> {pageLoading ? "Retrying…" : "Retry"}</button>
+            <button type="button" onClick={reloadPage} disabled={pageLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={pageLoading ? "animate-spin" : undefined} /> {pageLoading ? "Retrying…" : "Retry"}</button>
           </div>
         ) : roles.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center text-sm text-[var(--oh-muted)]">No staff roles yet. Create a role before inviting staff who need non-administrator permissions.</div>
@@ -258,7 +258,7 @@ export default function RolesPage() {
                       ) : assignedPermissions === null ? (
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-red-800">
                           <span>Could not load permissions</span>
-                          <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 disabled:opacity-60">
+                          <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
                             {retryingRoleId === String(role.id) && <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />}
                             Retry permissions
                           </button>
@@ -317,7 +317,7 @@ export default function RolesPage() {
                           ) : rolePermissionSnapshot.byRole[String(role.id)] === null ? (
                             <span className="inline-flex items-center gap-2 text-red-800">
                               Could not load permissions
-                              <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 disabled:opacity-60">
+                              <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
                                 {retryingRoleId === String(role.id) && <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />}
                                 Retry
                               </button>
@@ -366,8 +366,8 @@ export default function RolesPage() {
       {(creating || editing) && (
         <Modal title={editing ? "Edit role access" : "Create role"} onClose={closeEditor} footer={
           <>
-            <button type="button" onClick={closeEditor} disabled={saving} className="min-h-11 rounded-md border border-neutral-300 px-5 text-sm font-semibold text-neutral-700 disabled:opacity-50">Cancel</button>
-            <button type="button" onClick={() => void saveRole()} disabled={saving || loadingRolePermissions || !permissionsState.data} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60">
+            <button type="button" onClick={closeEditor} disabled={saving} className="min-h-11 rounded-md border border-neutral-300 px-5 text-sm font-semibold text-neutral-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Cancel</button>
+            <button type="button" onClick={() => void saveRole()} disabled={saving || loadingRolePermissions || !permissionsState.data} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
               {saving && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}{saving ? "Saving…" : "Save role"}
             </button>
           </>

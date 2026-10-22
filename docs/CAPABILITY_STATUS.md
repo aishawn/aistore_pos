@@ -1282,3 +1282,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Settings Users now provides consistent visible keyboard focus for role retry, invite, copy invite/reset links, and both mobile/desktop reset-link actions.
 - Local evidence: `docs/UAT_SETTINGS_USERS_FOCUS_LOCAL_2026-10-22.json`; seven buttons checked, typecheck/ESLint/diff checks pass, no business writes.
 - Demo verification is pending because the current runtime is older than the candidate and the previous settings suite stopped at its mobile user-card assertion.
+## 2026-10-22 Roles and Permissions keyboard focus follow-up
+
+- Roles & Permissions now covers visible focus states for retry, permission retry, edit/delete, and role-editor Cancel/Save actions across mobile and desktop layouts.
+- Local evidence: `docs/UAT_SETTINGS_ROLES_FOCUS_LOCAL_2026-10-22.json`; typecheck, ESLint, and diff checks pass, no business writes.
+- Demo verification is pending because the current Dokploy branch binding still returns `301 Branch Not Match`.
