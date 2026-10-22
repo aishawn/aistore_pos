@@ -24,9 +24,9 @@
 `UAT_AI_HISTORY_PLATFORM_2026-10-22_POST-ROUTE.json` 和
 `UAT_AI_TRANSCRIPTION_2026-10-22_POST-ROUTE.json`。
 
-该运行结果的 Demo 前后端 SHA 为 `582b92fb`，当前工作区 source SHA 为
-`1cd417c3`，`matchesSourceCommit=false`；因此结果是线上运行版本证据，不是最新
-工作区部署证明。
+该运行结果的 Demo 前后端 SHA 为 `582b92fb`；runner 执行时 source SHA 为
+`1cd417c3`，当前文档 HEAD 为 `6fa3383d`，`matchesSourceCommit=false`。因此结果
+是线上运行版本证据，不是最新工作区部署证明。
 
 ## 2026-10-22 历史 7911d0d4 问法结果
 

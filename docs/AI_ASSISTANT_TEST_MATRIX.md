@@ -10,7 +10,7 @@ routes **9/9**，surface/auth **11/11**，metrics **9/9**，UI **2/2**；feature
 
 Capability gates 显示聊天可用、语音明确禁用；History/platform 为 **9 PASS / 2 BLOCKED**
 （缺第二门店和 platform-operator 凭据），transcription 为 **2 PASS / 2 BLOCKED**
-（缺音频 fixture）。当前 Demo 前后端运行 SHA 是 `582b92fb`，与本地工作区 `1cd417c3` 不一致；下一次
+（缺音频 fixture）。当前 Demo 前后端运行 SHA 是 `582b92fb`，与 runner source `1cd417c3` 及当前 HEAD `6fa3383d` 均不一致；下一次
 发布必须先完成 exact-SHA Java 21 门禁，再重新做 SHA 绑定回归。
 
 ## 2026-10-22 历史 7911d0d4 问法结果

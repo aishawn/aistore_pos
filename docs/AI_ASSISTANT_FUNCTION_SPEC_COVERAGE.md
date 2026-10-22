@@ -11,7 +11,7 @@ route **9/9**、surface/auth **11/11**、metrics **9/9**、AI UI **2/2**。功�
 Capability gates 证明聊天可用、语音在当前门店被明确禁用；History/platform 的 2 项
 需要第二门店和 platform-operator 凭据，转写的 2 项需要音频 fixture，均记录为
 BLOCKED 而非功能失败。证据文件均为 `docs/UAT_*_2026-10-22_POST-ROUTE.json`。Demo runtime `582b92fb`
-尚未与当前 source `1cd417c3` 绑定，不能据此宣称最新候选已部署。
+尚未与 runner source `1cd417c3` 或当前 HEAD `6fa3383d` 绑定，不能据此宣称最新候选已部署。
 
 ## 2026-10-22 历史线上问法覆盖
 
