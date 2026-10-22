@@ -8,9 +8,10 @@
 
 - 当前可执行助手目录为 **247 条问法 / 247 个唯一 ID / 0 重复**，其中 **90 条**明确要求 no-route，覆盖下单、收货、调价、库存调整、退款和关班等业务写入边界。
 - 新增 29 条收银员自然问法在旧 Demo runtime 上为 **22 PASS / 0 BLOCKED / 7 FAIL**；失败集中在定价建议、葡萄酒推荐、交易笔数、供应商目录和 AI 能力说明。工作区已补确定性路由和 Java 回归断言，但这不是当前线上结果。
-- 线上 Demo 当前仍报告 frontend/backend `a5511fc689a8b4c871c0bacda15713afbd86b44f`。候选 `7f92d1b` 及其后续部署记录 `c905902`、`dc465b3`、`a8ca52c` 均未形成可接受的同 SHA Java 21 `mvn -B clean verify` 与匹配 runtime 证据；最近部署状态为 **Error**。
+- 线上 Demo 当前报告 frontend/backend `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`。候选 `601ae0dd` 尚未部署；e8 镜像使用 `mvn clean package -DskipTests`，不构成要求的 Java 21 `mvn -B clean verify` 门禁证据。
 - 后续 `c905902` runtime 的 29 条扩展回归为 **28 PASS / 0 BLOCKED / 1 FAIL**；唯一失败是 `AI会直接下单吗` 返回 `unknown`。当前本地已扩展中文帮助正则和回归用例，尚未通过 Java 21 同 SHA 门禁。
 - 完整 247 条回归在 `c941a617` runtime 上为 **244 PASS / 0 BLOCKED / 3 FAIL**；3 条均为中文自动下单能力问法，其中 1 条错误导航到 `/orders`。证据：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT_FULL-247.json`。本地候选 `a63c84fb` 已覆盖这些变体，尚未部署验收。
+- e8 runtime 的完整 247 条回归为 **241 PASS / 3 BLOCKED / 3 FAIL**；商品查询专项随后 **4/4 PASS**，确认 3 个阻断为暂时性网关/超时。3 个稳定失败仍是中文自动下单能力问法；候选 `601ae0dd` 已修复写入守卫顺序，等待 Java 21 门禁和部署复验。
 - 本轮只读检查通过 `node --check` 和 `git diff --check`，没有执行任何真实销售、采购、收货、调价、库存、退款或关班写入。整体试点继续 **NO-GO**。
 
 <!-- capability-summary:start -->
@@ -1353,3 +1354,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Platform Store detail copy/pagination controls and Register Closure detail Retry now have consistent visible keyboard focus states.
 - Online status remains pending exact runtime alignment.
+
+## 2026-10-22 deployment success reported, runtime still stale
+
+- Dokploy was reported successful, but Demo `/api/public/version` reports frontend/backend `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`.
+- Repository `HEAD` and `origin/main` are `f4d4106488a3177f79c0584f350bc8e8120e5d82`; the latest Platform Store detail and Register Closure detail focus changes remain local-only / online-unverified.
+- Do not attribute any online result from `e8cac11` to `f4d41064`. Re-run release identity and targeted UI checks after Dokploy serves `f4d41064`.
