@@ -74,6 +74,30 @@ async function runViewport(viewport) {
     const headerSubtitleFits = await headerSubtitle.evaluate((element) => element.scrollWidth <= element.clientWidth + 1);
     if (!headerSubtitleFits) throw new Error("AI status subtitle is truncated in the dialog header");
 
+    const quickActionsRegion = dialog.locator("#orithos-ai-quick-actions");
+    await quickActionsRegion.waitFor({ state: "visible", timeout: 10000 });
+    const hideQuickActions = dialog.getByRole("button", { name: "Hide", exact: true });
+    await hideQuickActions.waitFor({ state: "visible", timeout: 10000 });
+    if (await hideQuickActions.getAttribute("aria-expanded") !== "true") {
+      throw new Error("Quick actions must announce the initial expanded state");
+    }
+    if (await hideQuickActions.getAttribute("aria-controls") !== "orithos-ai-quick-actions") {
+      throw new Error("Quick actions must identify their controlled region");
+    }
+    await hideQuickActions.click();
+    const quickActionsToggle = dialog.getByRole("button", { name: "Quick actions", exact: true });
+    await quickActionsToggle.waitFor({ state: "visible", timeout: 10000 });
+    if (await quickActionsToggle.getAttribute("aria-expanded") !== "false") {
+      throw new Error("Quick actions must announce the collapsed state after hiding");
+    }
+    await quickActionsToggle.click();
+    const expandedQuickActions = dialog.getByRole("button", { name: "Hide", exact: true });
+    await expandedQuickActions.waitFor({ state: "visible", timeout: 10000 });
+    if (await expandedQuickActions.getAttribute("aria-expanded") !== "true") {
+      throw new Error("Quick actions must announce the expanded state after reopening");
+    }
+    await quickActionsRegion.waitFor({ state: "visible", timeout: 10000 });
+
     let focusStayedInside = true;
     for (let index = 0; index < 8; index += 1) {
       await page.keyboard.press("Tab");

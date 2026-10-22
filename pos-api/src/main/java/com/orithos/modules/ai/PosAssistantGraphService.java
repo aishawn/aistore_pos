@@ -8,6 +8,7 @@ import com.orithos.config.CorrelationIdContext;
 import com.orithos.modules.ai.context.FollowUpSupport;
 import com.orithos.modules.ai.context.StoreContextPack;
 import com.orithos.modules.ai.context.StoreContextPackAssembler;
+import com.orithos.modules.ai.dto.AssistantCard;
 import com.orithos.modules.ai.dto.ReportTable;
 import com.orithos.modules.ai.dto.UiAction;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -114,6 +116,7 @@ public class PosAssistantGraphService {
             String answer = stringValue(data, "answer");
             String intent = stringValue(data, "intent");
             Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
+            List<AssistantCard> cards = cardsFor(intent, ui, answer);
 
             conversationMemory.append(effectiveThreadId, question, intent, answer, slots);
             conversationMemory.saveLastSlots(effectiveThreadId, intent, slots);
@@ -126,7 +129,8 @@ public class PosAssistantGraphService {
                     slots,
                     ui,
                     table,
-                    reportId
+                    reportId,
+                    cards
             );
         } finally {
             AssistantTenantContext.clear();

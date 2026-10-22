@@ -156,7 +156,7 @@ try {
           && !(await page.getByRole("button", { name: "Clear product search" }).isVisible().catch(() => false));
       }
       const table = route.path === "/stock/bulk-price-edit"
-        ? page.locator("ul").filter({ hasText: "DEMO Shiraz" }).first()
+        ? page.locator("ul > li").filter({ hasText: "DEMO Shiraz" }).first()
         : page.getByTestId(route.testId);
       let mobileCardFieldResults = null;
       let importPanelAccessible = null;
@@ -212,7 +212,7 @@ try {
         const headerVisible = header ? getComputedStyle(header).display !== "none" : false;
         if (!headerVisible) {
           const card = element.querySelector('[data-testid="capped-pricing-card"], [data-testid="bulk-price-card"]')
-            || (element.matches("ul") ? element : null);
+            || (element.matches("ul, li") ? element : null);
           return {
             tableWidth: element.getBoundingClientRect().width,
             scrollerWidth: scroller?.clientWidth ?? 0,

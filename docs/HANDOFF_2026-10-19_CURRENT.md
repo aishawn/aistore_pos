@@ -1,3 +1,11 @@
+## 2026-10-22 AI 聊天摘要 + CTA 与可读性（最新源码）
+
+- [x] 补货 / 调价 / 侍酒：`navigate` 仍附带 `ui.route`，但答案先是聊天内 Top‑3 摘要，底栏 CTA 再打开页面（不自动跳页、不写入）。发票扫描仍以打开 `/invoices/scan` 为主（需上传）。
+- [x] 可读性：`SellAiPanel` 助手气泡 `whitespace-pre-wrap`；`AssistantDisplayText` 清洗 `[R2-…]` / `R2 TEST |` 等噪音，货架价格式化为 `$X.XX`。侍酒 / 补货 / 调价 brief 共用该格式。
+- [x] 本地 Java 21 `mvn -B clean verify` 已在候选 SHA 通过（含 brief / display 单测）。相关提交：`b4880608`（摘要 + CTA）、`c3e9b14c`（能力卡）、`2d3c96a8`（可读性）。
+- [x] 文档已对齐：能力卡、测试计划 §13 / WF 表、问法目录、用户用例、矩阵 Quick Actions。能力卡：[`AI_QA_CAPABILITY_CARD.html`](AI_QA_CAPABILITY_CARD.html)。
+- [ ] 部署后需在 Demo 对 `What should I restock?` / `Which prices should I review?` / `Recommend a red wine under $30` 做只读抽检（答案含换行品名行 + CTA；route 仍对；业务写入 0）。未核验 runtime SHA 前不得宣称线上已生效。整体试点仍 **NO-GO**。
+
 ## 2026-10-22 报表与 Odoo 空态 UI 批次（最新本地进展）
 
 - [x] `OdooReportingDashboard` 不再把临时 Odoo `503` 当作连接缺失：503 显示错误、Retry 和 Request ID；只有 401 显示连接 Odoo 引导。
@@ -2611,9 +2619,9 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 
 ## 2026-10-22 AI 用户问法扩展（本地待门禁）
 
-- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 263 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
+- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 265 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
 - 本轮新增 “Suggest something for steak”“AI会不会自动下单？”、“Top up these items to 50 units”以及中英文分类数量型补货问法，并补充 Java 路由回归。
-- 又补充自然能力问句、发票检查、价格建议和数值调价拦截问法，并加入对应 Java 回归断言；当前目录为 263 条。
+- 又补充自然能力问句、发票检查、价格建议、数值调价和数值采购拦截问法，并加入对应 Java 回归断言；当前目录为 265 条。
 - 本地静态检查通过；未运行本地 build/Maven。后端候选必须先通过 exact-SHA Java 21 mvn -B clean verify，再部署并用同 SHA 线上回归。线上旧证据不代表本轮修改已生效。
 
 ## 2026-10-22 252 条 AI 问法线上复测
@@ -2629,10 +2637,69 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 新增分类数量型补货问法定向只读结果为 1 PASS / 0 BLOCKED / 1 FAIL；中文保持无路由，英文仍误导航到补货页，证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NEW-REPLENISHMENT-BOUNDARIES.json。Demo runtime 与当前 source SHA 不匹配，不能据此否定工作区修复。
 - 当前仍不可推送 pos-api：缺少 exact-SHA Java 21 mvn -B clean verify 远程门禁。
 
+## 2026-10-24 263 条 AI 完整只读回归
+
+- 当前目录完整运行结果为 252 PASS / 0 BLOCKED / 11 FAIL，证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-263.json。
+- 所有请求仅调用 Assistant API，业务写入为 0；失败集中在新增自然侍酒、自然定价、自动下单能力问答和英文数量补货安全边界。
+- Demo runtime 582b92fb 与 runner source 04fd687f 不匹配；不能将旧 runtime 失败归因于当前工作区。pos-api 仍需同 SHA Java 21 mvn -B clean verify 后才能推送。
+- 随后新增 `Restock all beer to 50 units` 与 `Order 50 units of beer` 两条数值执行边界；旧 runtime 定向结果为 1 PASS / 0 BLOCKED / 1 FAIL，证据：docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NEW-PURCHASE-BOUNDARIES.json。当前工作区目录为 265 条。
+
 ## 2026-10-22 AI 配套能力复测
 
 - Availability 3/3、route 9/9、surface/auth 11/11、metrics 9/9、UI 2/2 和 capability gates 均通过。
 - Features 的旧 OCR 接口保持 41001 安全阻断；Reports 的唯一阻断为实时库存数据源不可用。
 - History/platform 及 transcription 的阻断来自缺少第二门店/platform operator 凭据和语音 fixture，不应误判为代码失败。
 - 本轮无业务写入；完整证据集中在 docs/UAT_AI_*_2026-10-22_CURRENT-GOAL.json。
+
+## 2026-10-22 本轮测试续验
+
+- 后端当前工作树已用 Java 21 执行 `mvn -B clean verify`：**281/281 tests PASS，编译和打包 PASS**。中文 AI 能力问法 fast path 已通过 `AssistantFastPathRouterTest` **15/15 PASS**；对应代码仍在工作树，尚未取得线上 runtime SHA。
+- 前端 `npm run typecheck` PASS；源码目录 `npx eslint app src lib` 为 **0 errors / 11 warnings**。默认 `npm run lint` 会把 `.next-uat-clear` 生成产物纳入扫描，产生生成代码错误，不能作为源码回归结论。
+- 隔离数据库 `aipos_uat` 门禁 PASS，但线上 runtime 无法证明使用该数据库或目标 SHA；隔离写入脚本在任何业务写入前停止，销售、退款、采购、库存、改价、关班写入均为 **0**。证据：`docs/UAT_ISOLATION_WRITE_2026-10-22.json`。
+- 公网 `/api/public/version` 当前仍返回 frontend/backend `582b92fb199e312e828a5169cde14105a091f41a`，所以 Dokploy 成功记录仍不能证明目标代码已运行。证据汇总：`docs/UAT_LOCAL_VERIFICATION_2026-10-22.json`。
+- 结论保持 **NO-GO**：必须先让 Dokploy runtime 切换并可证明 exact SHA，同时提供 UAT runtime 的登录和 `aipos_uat` 隔离上下文；之后才能重跑真实销售、退款、采购收货、库存调整、价格保存和关班对账。
+
+## 2026-10-22 当前工作树 UI 回归（最新）
+
+- [x] 当前租户 host 配置下，价格建议产品化 fixture **12/12 PASS**：税/GST 与净毛利展示、建议预填、人工确认、写入结果丢失后的 GET 对账、未知结果禁止重试、390/1440px 无横向溢出。证据：`docs/UAT_PRODUCTIZATION_UI_LOCAL_CURRENT.json`。
+- [x] 报表错误恢复 fixture **2/2 PASS**：Odoo `503` 保留错误、Retry 和 Request ID；`401` 显示连接引导；390px 无溢出、无业务写入。证据：`docs/UAT_REPORTING_ERROR_LOCAL_CURRENT.json`。
+- [x] 采购忙状态/失败恢复 **40/40 PASS**；补货供应商/RFQ 恢复 **60/60 PASS**；盘点数量边界 **20/20 PASS**；平台 Audit/Failures 390/1440px **4/4 PASS**；AI UI **2/2 PASS**。对应证据为 `docs/UAT_PURCHASE_BUSY_RECOVERY_LOCAL_CURRENT.json`、`docs/UAT_REPLENISHMENT_SUPPLIER_RECOVERY_LOCAL_CURRENT_RECHECK.json`、`docs/UAT_STOCKTAKE_COUNT_BOUNDARIES_LOCAL_CURRENT.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_CURRENT_RECHECK.json`、`docs/UAT_AI_UI_LOCAL_CURRENT.json`。
+- [x] 库存列表、Capped Pricing、Odoo Bulk Price Edit 五视口 **15/15 PASS**。本轮修正 UAT 脚本对 Bulk Price Edit 移动 `<li>` 卡片的选择器，未改变产品行为。证据：`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_CURRENT_RECHECK2.json`。
+- [x] 前端 `npm run typecheck` PASS；源码目录 `npx eslint app src` 为 **0 errors / 10 warnings**；`node --check` 和 `git diff --check` PASS。未运行 production build。
+- [ ] 上述均为本地浏览器 fixture 或只读检查，业务写入为 0；尚未形成新的 Dokploy exact-SHA 部署。公网 `/api/public/version` 仍需重新核对，当前已知旧 runtime 不能证明这批改动已上线。
+- [ ] `pos-api` 当前工作树仍有 AI 路由/上下文 WIP；在同一候选 SHA 完成 Java 21 `mvn -B clean verify` 的远程门禁、提交和 Dokploy 部署前，不把这些后端改动标记为已发布。
+
+## 2026-10-22 当前验证续报（本次执行）
+
+- [x] 线上健康检查：`https://demo.orithos.com.au/overview` 返回 `200`；`/api/public/version` 返回前后端均为 `582b92fb199e312e828a5169cde14105a091f41a`。
+- [x] 前端 `pos-ui npm run typecheck`：通过。
+- [ ] 后端 `pos-api mvn -B clean verify`：本机不可作为 Java 21 门禁；当前 `mvn -version` 显示 Java `1.8.0_292`，编译因此产生 record/text-block 等语法错误。需要在 Java 21 远程同 SHA 环境重跑，不能据此判定源码本身失败或通过。
+- [ ] 本地 AI capability-gates：未通过；`http://demo.localhost:3100` 在快捷问法请求等待阶段超时。该结果说明当前开发实例与脚本 fixture/页面状态不匹配，不能替代线上 AI 结论。
+- [ ] 当前线上仍运行旧 SHA `582b92fb`，工作区 HEAD 为 `b4880608`，两者不一致；本地 WIP 尚未部署，不能宣称 AI 修复或真实业务闭环已上线。
+- [x] 本次测试未执行销售、退款、采购、收货、库存、调价或关班写入；隔离库写入继续保持 `0`。
+- 证据：`docs/UAT_VERIFICATION_2026-10-22_CURRENT.json`。
+
+## 2026-10-22 AI 面板与 UI 回归批次（最新）
+
+- [x] AI 助手快捷操作的 `aria-expanded`/`aria-controls` 与真实状态同步；历史、刷新、返回、清空、快捷操作和 CTA 补齐 `focus-visible` 键盘焦点反馈，历史列表增加标签。
+- [x] 独立 tenant dev 实例 `http://demo.localhost:3200`：AI 面板禁用态焦点/ESC/语音禁用五视口 `5/5 PASS`；价格产品化 `12/12 PASS`；库存/定价响应式五视口 `15/15 PASS`；报表 401/503 恢复 `2/2 PASS`。fixture 业务写入 `0`。
+- [ ] AI 开启态快捷问法 fixture 在请求等待阶段超时，尚未证明快捷按钮到 Assistant API 的完整链路；需要修正 fixture/API 契约后重跑。
+- [x] 本批 `pos-ui npm run typecheck`、`npx eslint src/components/SellAiPanel.tsx`、相关脚本语法检查通过；未运行 production build。
+- [ ] 本批尚未部署 Dokploy；线上仍需以 `/api/public/version` 精确 SHA 和 390/1440px 回归为准。
+- 证据：`docs/UAT_AI_PANEL_A11Y_LOCAL_2026-10-22_CURRENT.json`、`docs/UAT_AI_FOCUS_LOCAL_2026-10-19.json`。
+
+## 2026-10-22 AI 问答完整只读回归（当前候选）
+
+- 当前 HEAD 为 `2d3c96a8`（最近提交为 chat brief 文案修复）；本次完整回归实际测试候选为 `ae64e0e784aec48aa7ef2293c2623bb11d203213`。Demo `/api/public/version` 仍报告前后端 `582b92fb199e312e828a5169cde14105a091f41a`，`matchesSourceCommit=false`。
+- 当前问法目录为 **287 条唯一用例**。完整 Assistant API-only 回归为 **247 PASS / 0 BLOCKED / 40 FAIL**，证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_286_CURRENT-GOAL-FINAL.json`。失败集中于当前源码新增的 `guided_action` 安全边界和产品数量语义在旧 runtime 尚未生效；无销售、采购、收货、库存、调价、支付或关班写入。
+- 配套只读套件：Availability 修正后 **3/3 PASS**（`docs/UAT_AI_AVAILABILITY_2026-10-22_287_CURRENT-GOAL-RECHECK2.json`）；Route **9/9 PASS**；Surface/Auth **11/11 PASS**；Metrics **9/9 PASS**；Capability Gates **PASS**；AI UI **2/2 PASS**；Features **14 PASS / 1 BLOCKED**（旧 OCR `41001`）；Reports **15/16**（实时库存数据源阻断）。
+- Availability UAT 现在覆盖 AI 开启时先生成 `Open products` 按钮、再点击完成导航的真实路径；未改变产品逻辑。
+- 当前状态仍为 **NO-GO**。`pos-api` 变更未通过同一候选 SHA 的远程 Java 21 `mvn -B clean verify` 门禁，不得据此推送或宣称线上生效。
+
+## 2026-10-22 AI 路由候选基线（最新补充）
+
+- [x] 当前工作区 AI 问法目录为 `287` 条；线上只读抽样执行 `5` 条，结果 `2 PASS / 3 FAIL / 0 BLOCKED`，请求仅调用 Assistant API，业务写入 `0`。
+- [ ] 失败项为中文产品总数、英文 `catalogue size` 和英文数值改价安全边界；线上 runtime 仍是旧 `582b92fb`，不能把这些失败当作当前工作区代码结论。
+- [ ] 当前 `pos-api` 有未提交 AI 路由/上下文/卡片改动；必须先对完整候选 SHA 在 Java 21 环境运行 `mvn -B clean verify`，再推送和部署。
+- 证据：`docs/UAT_AI_QA_BASELINE_PRE_DEPLOY_2026-10-22.json`、`docs/UAT_AI_GATES_2026-10-22_287_CURRENT-GOAL.json`。
 

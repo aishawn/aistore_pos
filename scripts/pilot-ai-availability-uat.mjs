@@ -45,7 +45,10 @@ try {
   record("AI availability config", "PASS", `Authenticated client config reports enabled=${enabled}.`);
 
   const page = await context.newPage();
-  await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
+  // This is a Next/SPA surface; third-party telemetry can keep networkidle
+  // open indefinitely even after the assistant is interactive.
+  await page.goto(`${base}/overview`, { waitUntil: "commit", timeout: 60000 });
+  await page.locator('main[aria-busy="false"]').waitFor({ timeout: 60000 }).catch(() => {});
   const fab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
   await fab.click();
   const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
@@ -67,7 +70,16 @@ try {
   // The current assistant exposes sell-adjacent navigation through its shared
   // Quick actions rather than the retired “Open sell” button.
   await dialog.getByRole("button", { name: "Products", exact: true }).click();
-  await page.waitForURL((url) => url.pathname === "/products", { timeout: 15000 });
+  // With AI enabled the shortcut first offers a safe CTA in the conversation;
+  // disabled-chat mode may navigate immediately. Accept either product path.
+  const productsCta = dialog.getByRole("button", { name: "Open products", exact: true });
+  try {
+    await productsCta.waitFor({ state: "visible", timeout: 5000 });
+    await productsCta.click();
+  } catch {
+    // Direct navigation already happened, so there is no CTA to click.
+  }
+  await page.waitForURL((url) => url.pathname === "/products", { timeout: 15000, waitUntil: "commit" });
   record("Quick action remains available", "PASS", "The Products shortcut navigated without an AI or business write request.");
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
 } catch (error) {

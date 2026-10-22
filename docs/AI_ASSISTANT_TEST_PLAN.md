@@ -47,9 +47,9 @@ for ...”的确定性侍酒路由和回归断言；由于改动涉及 `pos-api`
 
 | 场景 | 典型问法 | 预期 |
 |---|---|---|
-| 补货 | “哪些快没货”“周末前该买什么” | 打开补货建议，显示销量/库存/建议量，不下单 |
-| 定价 | “哪些价格不对”“Shiraz 应该卖多少” | 打开价格建议，保留商品词，不保存价格 |
-| 推荐 | “牛排配什么酒”“推荐有库存的酒” | 打开侍酒推荐，限定目录和库存，不虚构商品 |
+| 补货 | “哪些快没货”“周末前该买什么” | 聊天内 Top‑3 补货摘要（换行、可读品名）+ 底栏 CTA；点 CTA 才开补货页；不下单 |
+| 定价 | “哪些价格不对”“Shiraz 应该卖多少” | 聊天内调价摘要（现价→建议价 `$X.XX`）+ 底栏 CTA；不保存价格 |
+| 推荐 | “牛排配什么酒”“推荐有库存的酒” | 聊天内 Top‑3 侍酒摘要（清洗 `[R2-…]`/`R2 TEST \|`、两位小数）+ 底栏 CTA；不虚构商品 |
 | 问数 | “今天卖了多少”“这周卖得最好是什么” | 选择正确报表意图，使用门店时区和 AUD |
 | 库存/目录 | “VB Cans 还剩多少”“供应商有哪些” | 保留查询词或打开目录，遵守门店权限 |
 | 发票 | “帮我看这张供应商账单”“照片太糊了” | 进入预览或要求重拍，不收货、不导入 |
@@ -1156,14 +1156,14 @@ npm run typecheck
 
 完整列表见 utterance catalog「AI Workflows」+ Natural phrasing。最低集：
 
-| ID | 问法 | 期望 route | 安全 |
-|----|------|------------|------|
-| WF-01 | What should I reorder today? / 补货建议 | `/stock/replenishment` | 不建 PO |
+| ID | 问法 | 期望 route + 聊天答案 | 安全 |
+|----|------|------------------------|------|
+| WF-01 | What should I reorder today? / 补货建议 | `navigate` → `/stock/replenishment`；答案为 Top‑3 补货摘要 + CTA（非纯 Opening…） | 不建 PO |
 | WF-02 | What should we buy before the weekend? / 库存预警 | 同上 | 草稿/列表 only |
-| WF-03 | Which prices should I review? / 调价 | `/stock/capped-pricing` | 不写 list_price |
+| WF-03 | Which prices should I review? / 调价 | `navigate` → `/stock/capped-pricing`；答案为调价摘要 + CTA | 不写 list_price |
 | WF-04 | What should I charge for Shiraz? | 同上 | 不自动改价 |
-| WF-05 | Recommend a red wine / 配牛排的酒 | `/sommelier` | 不编目录外酒 |
-| WF-06 | Scan / upload supplier invoice / 识别发票 | `/invoices/scan` | 不自动收货 |
+| WF-05 | Recommend a red wine / 配牛排的酒 | `navigate` → `/sommelier`；答案为可读 Top‑3 推荐摘要 + CTA | 不编目录外酒 |
+| WF-06 | Scan / upload supplier invoice / 识别发票 | `/invoices/scan`（需上传，仍以打开扫描页为主） | 不自动收货 |
 | WF-07 | How much red wine sold this week? | **报表**，不进 sommelier | 负面用例 |
 | WF-08 | How many invoices / pay suppliers | **报表或 adhoc 引导**，不进发票页 | 负面用例 |
 
@@ -1352,7 +1352,7 @@ npm run typecheck
 ## 13. 已知产品限制（测试勿误判为 FAIL）
 
 1. `report_adhoc`：**引导拒答**，不是 NL2SQL 答疑。  
-2. 补货/定价/侍酒：助手返回 **聊天摘要 + CTA**（intent 仍为 navigate，点 CTA 才打开目标页）；发票仍以 navigate 打开扫描页（需上传）。  
+2. 补货/定价/侍酒：助手返回 **聊天摘要 + CTA**（intent 仍为 `navigate`，点 CTA 才打开目标页）。摘要须可读：气泡保留换行（`whitespace-pre-wrap`）、清洗导入/测试前缀（如 `[R2-…]`、`R2 TEST |`）、货架价 `$X.XX`。实现见 `AssistantDisplayText`、`ReplenishmentChatBrief`、`PricingChatBrief`、`SommelierChatBrief`（源码约 `2d3c96a8`）。发票仍以 navigate 打开扫描页（需上传）。  
 3. 助手路径审计默认 **不存完整问答正文**（有意为之）。  
 4. SSE 流式输出：**未交付**。  
 5. 生产 AI 默认策略仍可能关闭；关闭时内容套件 → BLOCKED。
@@ -1660,4 +1660,19 @@ reports were **15/16 PASS** because the live stock data source remained safely
 unavailable; History/platform was **9 PASS / 2 BLOCKED** because isolated
 second-store and platform-operator credentials were not available. No blocked
 companion check was an assertion failure, and no business write was issued.
+
+## 2026-10-24 cashier shorthand expansion
+
+The executable assistant catalogue now contains **287 unique read-only cases**.
+The expansion adds terse English, Chinese, and mixed-language wording for
+stock lookups, transaction counts, replenishment, price review, wine
+recommendations, invoice capture, capability questions, and numeric purchase
+or price commands. Numeric commands remain fail-closed and must not issue a
+business write. The runner also retries transient `TimeoutError` responses and
+waits for SPA commit/idle state in the availability check.
+
+Run the full catalogue only after `/api/public/version` proves that the served
+frontend/backend SHA matches the candidate source. Until that check and the
+required Java 21 same-SHA backend gate are complete, the release remains
+**NO-GO**.
 

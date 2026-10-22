@@ -1,3 +1,9 @@
+## 2026-10-22 AI 聊天摘要 + CTA / 可读性（源码）
+
+- [x] 补货 / 调价 / 侍酒：聊天 Top‑3 摘要 + 底栏 CTA；不自动跳页、不写入。能力卡 [`AI_QA_CAPABILITY_CARD.html`](AI_QA_CAPABILITY_CARD.html)。
+- [x] 可读性：`whitespace-pre-wrap`、清洗 `[R2-…]`/`R2 TEST |`、价格 `$X.XX`（约 `2d3c96a8`）；Java 21 `mvn -B clean verify` 已通过。
+- [ ] Demo 部署后抽检三条问法（补货 / 调价 / 红酒推荐）答案形态与 CTA；未核验 runtime SHA 前不记为线上通过。
+
 ## 2026-10-22 最新 AI 回归摘要
 
 - [x] Demo AI 只读回归：247 条自然问法 `247/247 PASS`；availability 3/3、route 9/9、surface/auth 11/11、metrics 9/9、AI UI 2/2。
@@ -715,7 +721,39 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] 该回归的 runtime SHA 仍未核验，版本接口仍为 `582b92fb`，不能作为 `76835aeb` 的线上发布证明。
 ## AI 助手自然问法回归
 
-- [x] 263 条唯一用户问法目录，包含中英混合、收银员短句、日期/指标变体、能力问答、提示注入和执行型安全用例。
+- [x] 265 条唯一用户问法目录，包含中英混合、收银员短句、日期/指标变体、能力问答、提示注入和执行型安全用例。
 - [x] 新增侍酒推荐自然表达、自动下单能力问答和数量型补货执行拦截的源代码回归断言。
 - [x] node --check、git diff --check 通过。
 - [ ] 运行时回归、Java 21 exact-SHA 门禁和部署身份复核待完成；整体试点仍 NO-GO。
+## 2026-10-22 当前回归批次
+
+| 模块 | 当前结果 | 证据 | 业务写入 |
+|---|---:|---|---:|
+| 价格建议产品化与结果恢复 | 12/12 PASS | `UAT_PRODUCTIZATION_UI_LOCAL_CURRENT.json` | 0 |
+| 报表 401/503 错误恢复 | 2/2 PASS | `UAT_REPORTING_ERROR_LOCAL_CURRENT.json` | 0 |
+| 采购忙状态与失败恢复 | 40/40 PASS | `UAT_PURCHASE_BUSY_RECOVERY_LOCAL_CURRENT.json` | 0 |
+| 补货供应商/RFQ 恢复 | 60/60 PASS | `UAT_REPLENISHMENT_SUPPLIER_RECOVERY_LOCAL_CURRENT_RECHECK.json` | 0 |
+| 盘点数量边界 | 20/20 PASS | `UAT_STOCKTAKE_COUNT_BOUNDARIES_LOCAL_CURRENT.json` | 0 |
+| 库存/定价响应式与 AI 入口 | 15/15 PASS | `UAT_STOCK_TABLES_RESPONSIVE_LOCAL_CURRENT_RECHECK2.json` | 0 |
+| 平台 Audit/Failures | 4/4 PASS | `UAT_PLATFORM_AUDIT_FAILURES_LOCAL_CURRENT_RECHECK.json` | 0 |
+| AI 助手 UI fixture | 2/2 PASS | `UAT_AI_UI_LOCAL_CURRENT.json` | 0 |
+
+本批为本地 fixture/只读验证，不能替代 Dokploy exact-SHA 运行验证和 `aipos_uat` 真实业务闭环。生产销售、退款、采购收货、库存调整、改价和关班仍未执行。
+
+## 2026-10-22 AI 助手面板可访问性批次（本地待部署）
+
+- [x] 快捷操作按钮的 `aria-expanded` 与实际展开状态保持一致，并关联快捷操作容器。
+- [x] AI 历史、刷新、返回、清空、CTA、快捷操作和卡片 CTA 补齐 `focus-visible` 键盘焦点反馈；历史列表增加可识别标签。
+- [x] `pos-ui npm run typecheck` 通过；`npx eslint src/components/SellAiPanel.tsx` 通过；目标脚本语法检查通过。
+- [x] 独立 tenant dev 实例 `http://demo.localhost:3200` 已恢复；AI 面板焦点/ESC/禁用态 `5/5 PASS`，价格产品化 `12/12 PASS`，库存/定价响应式 `15/15 PASS`，报表 401/503 恢复 `2/2 PASS`。
+- [ ] AI 开启态快捷问法 fixture 在请求等待阶段超时，仍需修正测试契约后复验；这不影响上述禁用态和只读 UI 结果。
+- [ ] 本批尚未运行 production build，尚未部署 Dokploy；部署前需与下一批 UI 改动合并并完成线上 390/1440px 复验。
+- 证据：`docs/UAT_VERIFICATION_2026-10-22_CURRENT.json`。
+
+## 2026-10-22 AI 路由候选基线
+
+- [x] 当前目录 `287` 条；线上抽样 `2 PASS / 3 FAIL / 0 BLOCKED`，全部 Assistant API-only，业务写入 `0`。
+- [ ] 失败集中于产品总数中文/英文变体和数值改价安全边界；运行时仍为旧 `582b92fb`，等待候选 exact-SHA 部署后复测。
+- [ ] `pos-api` 候选仍需 Java 21 `mvn -B clean verify`；未通过前禁止推送或 Dokploy 部署。
+- 证据：`docs/UAT_AI_GATES_2026-10-22_287_CURRENT-GOAL.json`。
+

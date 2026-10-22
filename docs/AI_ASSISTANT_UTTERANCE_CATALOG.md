@@ -11,10 +11,10 @@ workflow actions should still open their page without attempting a write.
 | Quick action | User wording sent by the UI | Expected behavior | Negative assertion |
 |---|---|---|---|
 | Today's sales | `Today's sales` | `report_sales` for the store business day | No transaction or route mutation |
-| `What should I restock?` | Same as label | `/stock/replenishment` | No purchase order is created |
-| `Which prices should I review?` | Same as label | `/stock/capped-pricing` | No product price is changed |
-| `Recommend a red wine under $30` | Same as label | `/sommelier` and catalogue-bounded options | No product outside current stock is invented |
-| `Scan this supplier invoice` | Same as label | `/invoices/scan` preview | No supplier, purchase order or receipt is created |
+| `What should I restock?` | Same as label | Chat Top‑3 restock brief + CTA; route `/stock/replenishment` only after tap | No purchase order is created |
+| `Which prices should I review?` | Same as label | Chat price-review brief + CTA; route `/stock/capped-pricing` only after tap | No product price is changed |
+| `Recommend a red wine under $30` | Same as label | Chat Top‑3 wine brief (clean names, `$X.XX`) + CTA; route `/sommelier` after tap | No product outside current stock is invented |
+| `Scan this supplier invoice` | Same as label | `/invoices/scan` preview (upload still needs the page) | No supplier, purchase order or receipt is created |
 | Products | direct page shortcut | `/products` | No product is created or edited |
 | Check stock | direct stock shortcut | Store stock lookup | An unavailable source is not reported as zero stock |
 
@@ -109,30 +109,37 @@ These prompts describe the pilot workflows exposed in the assistant and should b
 tested with a real store context plus a mocked empty/error response. Suggestions
 must remain drafts until a staff member confirms the related action.
 
+**Chat brief + CTA contract (restock / pricing / wine):** when AI chat is on,
+`navigate` still sets `ui.route`, but the answer is a readable in-chat Top‑3
+summary first (line breaks, cleaned product names, `$X.XX` prices). The page
+opens only when the user taps the bottom CTA. Invoice scan remains page-first
+because upload is required. See capability card
+[`AI_QA_CAPABILITY_CARD.html`](AI_QA_CAPABILITY_CARD.html).
+
 | Example | Expected intent | Expected result |
 |---|---|---|
-| What should I reorder today? | `navigate` → `/stock/replenishment` | Open suggested purchase lines with sales, stock and a reason |
-| Which products need reordering? / 哪些商品库存低 | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
-| Which products are running low? / What's running low? / Which items need restocking? | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
-| What should I restock? / What should I purchase? / What do I need to order? / Help me restock / What needs ordering? / Show me low-stock items | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
-| What do we need to buy? / Restock list please / 补货清单 / 哪些商品快没货 | `navigate` → `/stock/replenishment` | Treat as a draft replenishment view; do not create a purchase order |
-| Which items are low on stock? / What is low on stock? | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
-| What should I order for the weekend? | `navigate` → `/stock/replenishment` | Open low-stock ranking; do not create a purchase order |
-| 给我今天的补货建议 | `navigate` → `/stock/replenishment` | Open draft quantities and the source window |
-| Which prices should I review? / Which products should I reprice? / Which items need a price review? | `navigate` → `/stock/capped-pricing` | Open price suggestions with current price and evidence |
-| Which prices need checking? / 哪些价格需要复核 | `navigate` → `/stock/capped-pricing` | Open the review list; do not save a price |
-| Show me the price suggestions | `navigate` → `/stock/capped-pricing` | Positive control: suggestions stay in pricing; no price is changed |
-| 给我看看价格建议 | `navigate` → `/stock/capped-pricing` | Current suggestions open the review workflow; do not update prices |
+| What should I reorder today? | `navigate` → `/stock/replenishment` | Chat Top‑3 restock brief + CTA; full lines on the replenishment page after tap |
+| Which products need reordering? / 哪些商品库存低 | `navigate` → `/stock/replenishment` | Same chat brief + CTA; do not create a purchase order |
+| Which products are running low? / What's running low? / Which items need restocking? | `navigate` → `/stock/replenishment` | Same chat brief + CTA; do not create a purchase order |
+| What should I restock? / What should I purchase? / What do I need to order? / Help me restock / What needs ordering? / Show me low-stock items | `navigate` → `/stock/replenishment` | Same chat brief + CTA; do not create a purchase order |
+| What do we need to buy? / Restock list please / 补货清单 / 哪些商品快没货 | `navigate` → `/stock/replenishment` | Draft brief in chat; do not create a purchase order |
+| Which items are low on stock? / What is low on stock? | `navigate` → `/stock/replenishment` | Same chat brief + CTA; do not create a purchase order |
+| What should I order for the weekend? | `navigate` → `/stock/replenishment` | Same chat brief + CTA; do not create a purchase order |
+| 给我今天的补货建议 | `navigate` → `/stock/replenishment` | Chat brief with order quantities; CTA for the full list |
+| Which prices should I review? / Which products should I reprice? / Which items need a price review? | `navigate` → `/stock/capped-pricing` | Chat price-review brief (`$current → suggest $X.XX`) + CTA |
+| Which prices need checking? / 哪些价格需要复核 | `navigate` → `/stock/capped-pricing` | Same chat brief + CTA; do not save a price |
+| Show me the price suggestions | `navigate` → `/stock/capped-pricing` | Positive control: chat brief + CTA; no price is changed |
+| 给我看看价格建议 | `navigate` → `/stock/capped-pricing` | Same chat brief + CTA; do not update prices |
 | Show me the price suggestions from last week | `report_adhoc` | Historical wording stays in reporting; do not open current pricing suggestions |
 | 上周的价格建议有哪些 | `report_adhoc` | Historical Chinese wording stays in reporting; do not open current pricing suggestions |
-| Can you review prices for Shiraz? | `navigate` → `/stock/capped-pricing` | Positive control: keep a valid price-review request in the pricing workflow |
-| Should I raise the price on Shiraz? | `navigate` → `/stock/capped-pricing` | Open review flow; never change a price automatically |
-| How much should I charge for Shiraz? / What should I price Shiraz at? | `navigate` → `/stock/capped-pricing` | Open review flow; never change a price automatically |
-| 帮我看看哪些商品需要调价 | `navigate` → `/stock/capped-pricing` | Open reviewable recommendations, not saved changes |
-| Recommend a red wine under $30 / Recommend wine for steak | `navigate` → `/sommelier` | Open catalogue and current-stock recommendation flow |
-| Red wine for steak / 红酒配牛排 | `navigate` → `/sommelier` | Match catalogue and current stock; no invented products |
-| What goes well with steak? | `navigate` → `/sommelier` | Open food-pairing flow; show an empty state if needed |
-| 推荐适合聚会的白葡萄酒 | `navigate` → `/sommelier` | Open occasion and catalogue filters; do not invent products |
+| Can you review prices for Shiraz? | `navigate` → `/stock/capped-pricing` | Chat brief + CTA; keep the request in the pricing workflow |
+| Should I raise the price on Shiraz? | `navigate` → `/stock/capped-pricing` | Chat brief + CTA; never change a price automatically |
+| How much should I charge for Shiraz? / What should I price Shiraz at? | `navigate` → `/stock/capped-pricing` | Chat brief + CTA; never change a price automatically |
+| 帮我看看哪些商品需要调价 | `navigate` → `/stock/capped-pricing` | Chat brief + CTA; recommendations stay unsaved |
+| Recommend a red wine under $30 / Recommend wine for steak | `navigate` → `/sommelier` | Chat Top‑3 wine brief (clean names, `$X.XX`) + CTA; catalogue/stock only |
+| Red wine for steak / 红酒配牛排 | `navigate` → `/sommelier` | Same readable brief + CTA; no invented products |
+| What goes well with steak? | `navigate` → `/sommelier` | Same brief + CTA; empty state when nothing matches |
+| 推荐适合聚会的白葡萄酒 | `navigate` → `/sommelier` | Same brief + CTA; occasion/type filters; no invented products |
 | How much red wine sold this week? | `report_qty` or `report_adhoc` | Keep the sales question in reporting; do not open recommendations |
 | Show me the pricing report for yesterday / Show me last week's pricing history / Show me the price history for yesterday / 昨天的定价报告 / 上周价格历史 / 昨天价格历史 | `report_adhoc` | Do not route report/history requests to the price-edit workflow |
 | What did we sell most this week? | `report_adhoc` | Answer from the selected store and date range |
@@ -153,16 +160,16 @@ classifier is trusted:
 
 | User phrasing | Expected route | Safety check |
 |---|---|---|
-| What should we buy before the weekend? / 建议进货 | `/stock/replenishment` | Show draft lines and reasons; never create an order |
-| What should I purchase? / What's running low? / 哪些商品库存不足 | `/stock/replenishment` | Show draft lines and reasons; never create an order |
-| Show me the suggested purchase lines / 库存预警有哪些 | `/stock/replenishment` | Use current store stock and sales only |
-| Can you review prices? / What should I charge for Shiraz? | `/stock/capped-pricing` | Show a review list; never save a price automatically |
-| Which items need a price review? / What should I price Shiraz at? | `/stock/capped-pricing` | Show a review list; never save a price automatically |
-| Suggest a wine for dinner / What wine goes with steak? | `/sommelier` | Match catalogue and current stock; no invented products |
-| Recommend wine for steak / Suggest white wine for a party | `/sommelier` | Match catalogue and current stock; no invented products |
-| Pair a wine with lamb / 晚餐喝什么酒 | `/sommelier` | Match catalogue and current stock; no invented products |
-| 牛排配什么酒 | `/sommelier` | Match catalogue and current stock; no invented products |
-| Find me a wine for steak | `/sommelier` | Match catalogue and current stock; no invented products |
+| What should we buy before the weekend? / 建议进货 | `/stock/replenishment` | Chat Top‑3 restock brief + CTA; never create an order |
+| What should I purchase? / What's running low? / 哪些商品库存不足 | `/stock/replenishment` | Chat brief + CTA; never create an order |
+| Show me the suggested purchase lines / 库存预警有哪些 | `/stock/replenishment` | Chat brief from current store stock/sales + CTA |
+| Can you review prices? / What should I charge for Shiraz? | `/stock/capped-pricing` | Chat price-review brief + CTA; never save a price automatically |
+| Which items need a price review? / What should I price Shiraz at? | `/stock/capped-pricing` | Chat brief + CTA; never save a price automatically |
+| Suggest a wine for dinner / What wine goes with steak? | `/sommelier` | Chat Top‑3 wine brief + CTA; catalogue/stock only |
+| Recommend wine for steak / Suggest white wine for a party | `/sommelier` | Same readable brief + CTA; no invented products |
+| Pair a wine with lamb / 晚餐喝什么酒 | `/sommelier` | Same readable brief + CTA; no invented products |
+| 牛排配什么酒 | `/sommelier` | Same readable brief + CTA; no invented products |
+| Find me a wine for steak | `/sommelier` | Same readable brief + CTA; no invented products |
 | Upload this supplier bill / 上传供应商发票 | `/invoices/scan` | Keep OCR and catalogue matches as a draft |
 | Scan this supplier bill / 上传这张账单 | `/invoices/scan` | Keep OCR and catalogue matches as a draft |
 | Scan invoice / Upload an invoice / Read an invoice | `/invoices/scan` | Require an image; keep OCR output as a preview |

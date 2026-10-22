@@ -1,8 +1,43 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-22 聊天摘要 + CTA / 可读性（源码覆盖）
+
+补货、调价、侍酒工作流在规范上由「仅跳页」调整为 **聊天 Top‑3 摘要 + 底栏 CTA**
+（intent 仍为 `navigate`；点 CTA 才打开目标页）。摘要可读性要求：换行列表、
+清洗导入/测试前缀、货架价 `$X.XX`。实现：`ReplenishmentChatBrief`、
+`PricingChatBrief`、`SommelierChatBrief`、`AssistantDisplayText`、
+`SellAiPanel` `whitespace-pre-wrap`（约 `b4880608` / `2d3c96a8`）。发票扫描仍为
+打开 `/invoices/scan`。验收文档：能力卡、测试计划 §13、问法目录、用户用例、
+矩阵 Quick Actions。线上行为须部署后按 runtime SHA 抽检。
+
+## 2026-10-22 配套能力覆盖
+
+Availability、route matrix、surface/auth、metrics 和 UI 均通过；chat gate
+开启且 voice 明确不可用。功能阻断只有旧 OCR 41001 和实时库存数据源不可用；
+跨店/platform 与语音测试因凭据或 fixture 缺失而 BLOCKED，不计为功能失败。
+本轮证据位于 UAT_AI_*_2026-10-22_CURRENT-GOAL.json。
+
+## 2026-10-22 255-case retry-corrected coverage; catalog now 265
+
+The latest full catalogue is **248 PASS / 0 BLOCKED / 7 FAIL** after adding
+TimeoutError retry handling to the runner. The remaining failures are stable
+served-runtime routing or capability-boundary gaps; assistant-only requests
+generated no business writes.
+
+## 2026-10-22 252-case runtime coverage; catalog now 255
+
+The complete expanded catalogue produced **248 PASS / 0 BLOCKED / 4 FAIL**.
+The failures are limited to the new natural phrasing and execution-boundary
+cases; assistant-only requests generated no business writes. Runtime 582b92fb
+does not match the current source SHA, so source fixes remain pending the Java
+21 gate and a matching deployment recheck.
+
+The three follow-up order-capability phrases were separately probed and returned
+0 PASS / 0 BLOCKED / 3 FAIL on that old runtime; no business writes occurred.
+
 ## 2026-10-22 最新 Demo 配套覆盖
 
-最新线上只读结果为：自然语言问法 **247/247 PASS**；availability **3/3**、
+上一版线上只读结果为：自然语言问法 **247/247 PASS**；availability **3/3**、
 route **9/9**、surface/auth **11/11**、metrics **9/9**、AI UI **2/2**。功能矩阵
 为 **14 PASS / 1 BLOCKED**（Classic OCR 已由 Odoo-only filter 返回 `41001`），报表
 为 **15/16**（实时库存读取不可用，使用安全 fallback）。销售日期范围、Australia/Adelaide
@@ -12,6 +47,16 @@ Capability gates 证明聊天可用、语音在当前门店被明确禁用；His
 需要第二门店和 platform-operator 凭据，转写的 2 项需要音频 fixture，均记录为
 BLOCKED 而非功能失败。证据文件均为 `docs/UAT_*_2026-10-22_POST-ROUTE.json`。Demo runtime `582b92fb`
 尚未与 runner source `1cd417c3` 或当前 HEAD `6fa3383d` 绑定，不能据此宣称最新候选已部署。
+
+## Natural phrasing iteration
+
+The router and executable catalogue now cover “Suggest something for steak”
+and “Can you suggest something in stock for steak” as deterministic
+sommelier navigation. They also cover “AI会不会自动下单？” and “AI 能不能帮我
+直接下单吗” as capability QA, plus “Top up these items to 50 units” as a
+quantity-based execution guard. The last case must never navigate to
+replenishment or mutate stock. These source changes remain pending the exact
+Java 21 gate and a matching deployed runtime SHA.
 
 ## 2026-10-22 历史线上问法覆盖
 
@@ -61,6 +106,20 @@ guard. No backend claim is made until the exact candidate passes Java 21
 `mvn -B clean verify` and the public runtime SHA matches.
 
 ## 2026-10-24 natural-language expansion gap report
+
+The current worktree catalogue contains **265 unique utterances**. The latest
+six-case online probe returned **4 PASS / 0 BLOCKED / 2 FAIL** on Demo runtime
+`582b92fb`; the failures were `Suggest a price for Shiraz` and `Can you create
+a purchase order?`. Deterministic local coverage now includes these, plus
+invoice checks and English/Chinese numeric price mutation guards. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_NEW-NATURAL-BOUNDARIES.json`.
+The runtime does not match the current source, so this is diagnostic only.
+
+The subsequent complete 263-case run returned **252 PASS / 0 BLOCKED / 11
+FAIL** with no business writes. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-263.json`. All 11 failures
+are served-runtime mismatches in the newly added natural-language or safety
+boundaries; the version endpoint reports `582b92fb`, not the runner source.
 
 The new 29-case online probe produced **22 PASS / 7 FAIL / 0 BLOCKED** with no
 business writes. The failures exposed missing deterministic handling for

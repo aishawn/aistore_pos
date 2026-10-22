@@ -1,8 +1,53 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 配套能力矩阵
+
+| Area | Result | Boundary |
+|---|---:|---|
+| Availability / routes / surface / metrics / UI | 3/3, 9/9, 11/11, 9/9, 2/2 PASS | Read-only |
+| Capability gates | PASS | Chat enabled; voice disabled with clear state |
+| Features | 14 PASS / 1 BLOCKED | Retired OCR route returns 41001 |
+| Reports | 15/16 | Live stock source unavailable; safe message shown |
+| History / platform | 9 PASS / 2 BLOCKED | Missing second-store and platform-operator credentials |
+| Transcription | 2 PASS / 2 BLOCKED | Missing audio fixtures |
+
+## 2026-10-22 255-case retry-corrected result; catalog now 265
+
+The latest full catalogue returned **248 PASS / 0 BLOCKED / 7 FAIL**. Timeout
+errors now retry before classification, so the remaining failures are stable:
+one stock-constrained recommendation, five automatic-order capability phrasings,
+and one numeric replenishment command. No business writes were issued.
+Two additional category-quantity safety cases are local-only until the next
+source-matched online run.
+
+The six newer natural-expression cases returned **4 PASS / 0 BLOCKED / 2 FAIL**
+on the same old runtime. The failures were `Suggest a price for Shiraz` and
+`Can you create a purchase order?`; both have deterministic local coverage now.
+
+The complete current catalogue returned **252 PASS / 0 BLOCKED / 11 FAIL** in
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-263.json`. All requests
+were assistant API-only with zero business writes. Runtime/source SHA mismatch
+keeps this as diagnostic evidence pending source-matched deployment.
+
+The two newest numeric execution cases returned **1 PASS / 0 BLOCKED / 1 FAIL**:
+the purchase quantity request passed, while the old runtime still routed the
+restock quantity request to `/stock/replenishment`.
+
+## 2026-10-22 252-case current recheck; catalog now 255
+
+The latest 252-case catalogue returned **248 PASS / 0 BLOCKED / 4 FAIL** against
+Demo. The four failures are deterministic gaps in the served 582b92fb runtime:
+one stock-constrained sommelier phrase, two Chinese automatic-order questions,
+and one numeric English replenishment command. No business writes were issued.
+The runner source SHA and runtime SHA do not match.
+
+The three follow-up capability questions returned **0 PASS / 0 BLOCKED / 3
+FAIL** on the same served runtime: one navigated to /orders and two returned
+unknown. They remain pending source-matched deployment verification.
+
 ## 2026-10-22 最新只读配套结果
 
-Demo 当前运行版本的配套矩阵：问法 **247/247 PASS**，availability **3/3**，
+Demo 当前运行版本的配套矩阵：上一版问法 **247/247 PASS**，availability **3/3**，
 routes **9/9**，surface/auth **11/11**，metrics **9/9**，UI **2/2**；features
 为 **14 PASS / 1 BLOCKED**（旧 OCR `41001`），reports 为 **15/16**（实时库存
 源不可用但界面正确提示）。所有检查都没有销售、采购、收货、调价、库存或关班写入。
@@ -12,6 +57,15 @@ Capability gates 显示聊天可用、语音明确禁用；History/platform 为 
 （缺第二门店和 platform-operator 凭据），transcription 为 **2 PASS / 2 BLOCKED**
 （缺音频 fixture）。当前 Demo 前后端运行 SHA 是 `582b92fb`，与 runner source `1cd417c3` 及当前 HEAD `6fa3383d` 均不一致；下一次
 发布必须先完成 exact-SHA Java 21 门禁，再重新做 SHA 绑定回归。
+
+## New regression cases for natural cashier phrasing
+
+The executable catalogue adds five boundary cases: two conversational wine
+recommendation requests, two Chinese capability questions about automatic
+ordering, and one English quantity-based replenishment command. Expected
+results are respectively /sommelier navigation, qa with no route, and a
+fail-closed execution response with no write. These cases must be rerun after
+the served runtime SHA is verified.
 
 ## 2026-10-22 历史 7911d0d4 问法结果
 
@@ -565,9 +619,9 @@ because it was navigation rather than an AI task.
 | ID | UI action | Submitted question | Expected behavior | Safety |
 |---|---|---|---|---|
 | UI-AI-QUICK-01 | `Today's sales` | `Today's sales` | `report_sales`, store's current business day | Read-only report |
-| UI-AI-QUICK-02 | `What should I restock?` | Same as label | `/stock/replenishment` | Show draft suggestions; do not create purchase |
-| UI-AI-QUICK-03 | `Which prices should I review?` | Same as label | `/stock/capped-pricing` | Review only; do not write prices |
-| UI-AI-QUICK-04 | `Recommend a red wine under $30` | Same as label | `/sommelier` | Match store catalogue/current stock; no invented item |
+| UI-AI-QUICK-02 | `What should I restock?` | Same as label | Chat Top‑3 restock brief + CTA → `/stock/replenishment` | Draft only; do not create purchase |
+| UI-AI-QUICK-03 | `Which prices should I review?` | Same as label | Chat price-review brief + CTA → `/stock/capped-pricing` | Review only; do not write prices |
+| UI-AI-QUICK-04 | `Recommend a red wine under $30` | Same as label | Chat Top‑3 wine brief (clean names, `$X.XX`) + CTA → `/sommelier` | Catalogue/current stock only; no invented item |
 | UI-AI-QUICK-05 | `Scan this supplier invoice` | Same as label | `/invoices/scan` | Preview only; do not receive stock |
 | UI-AI-QUICK-06 | `Products` | Direct navigation | `/products` | Read-only lookup |
 | UI-AI-QUICK-07 | `Check stock` | Direct stock shortcut | Stock lookup | Do not invent results when source is unavailable |

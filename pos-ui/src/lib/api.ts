@@ -764,6 +764,19 @@ export interface AssistantReportTable {
   rows: Record<string, unknown>[];
 }
 
+export interface AssistantCard {
+  type: string;
+  title: string;
+  summary?: string | null;
+  items?: Record<string, unknown>[];
+  source?: string | null;
+  generatedAt?: string | null;
+  emptyReason?: string | null;
+  status?: "ready" | "empty" | "unavailable" | string;
+  ctaLabel?: string | null;
+  ctaRoute?: string | null;
+}
+
 export interface AssistantResponse {
   threadId: string;
   intent: string;
@@ -773,6 +786,7 @@ export interface AssistantResponse {
   ui: AssistantUiAction | null;
   table?: AssistantReportTable | null;
   reportId?: number | null;
+  cards?: AssistantCard[] | null;
 }
 
 export interface AiReportSnapshot {
