@@ -105,13 +105,7 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Write-intent request kept in guided flow");
             boolean stockTarget = isStockWriteTarget(question);
             boolean priceTarget = isPriceWriteTarget(question);
-            String writeRoute = isInvoiceWriteTarget(question) ? "/invoices/scan"
-                    : (stockTarget || isStockMutationTarget(question)) ? "/stock/replenishment"
-                    : priceTarget ? "/stock/capped-pricing"
-                    : isCustomerWriteTarget(question) ? "/customers"
-                    : isProductWriteTarget(question) ? "/products"
-                    : isSupplierWriteTarget(question) ? "/suppliers/odoo"
-                    : isOrderWriteTarget(question) ? "/orders" : "";
+            String writeRoute = writeRouteForQuestion(question, stockTarget, priceTarget);
             String summary = stockTarget
                     ? "I cannot change stock quantities from chat. Open replenishment yourself to review suggestions and confirm any order on the page."
                     : priceTarget
@@ -274,6 +268,18 @@ public class ClassifyQueryNode implements NodeAction {
                 "(?is).*(?:把.+?(?:补到|补足|补至|加到)\\s*\\d+"
                         + "|(?:top up|restock|replenish|bring)\\b.+?(?:to|up to)\\s*\\d+"
                         + "|\\border\\s+\\d+\\s+(?:units?|bottles?|cases?)\\b).*");
+    }
+
+    private static String writeRouteForQuestion(String question, boolean stockTarget, boolean priceTarget) {
+        // Mutation review destinations stay deterministic even when a classifier is unavailable.
+        if (stockTarget || isStockMutationTarget(question)) return "/stock/replenishment";
+        if (priceTarget) return "/stock/capped-pricing";
+        if (isInvoiceWriteTarget(question)) return "/invoices/scan";
+        if (isCustomerWriteTarget(question)) return "/customers";
+        if (isSupplierWriteTarget(question)) return "/suppliers/odoo";
+        if (isOrderWriteTarget(question)) return "/orders";
+        if (isProductWriteTarget(question)) return "/products";
+        return "";
     }
 
     private static boolean isPriceWriteTarget(String question) {
