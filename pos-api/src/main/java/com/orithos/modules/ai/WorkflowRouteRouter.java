@@ -71,7 +71,7 @@ public final class WorkflowRouteRouter {
                     + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|设置这些价格|修改这些价格)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_ZH = Pattern.compile(
-            "把这些建议下单|直接把价格改了|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
+            "把这些建议下单|直接把价格改了|(?:帮我)?把.*?(?:价格|售价)(?:改了|改掉)|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_EN = Pattern.compile(
             "(?:top up|restock|replenish|bring)\\s+(?:these|the)\\s+(?:items|products|lines|stock)\\s+(?:to|up to)\\s*\\d+\\s*(?:units?|items?|cases?|bottles?)?|"
