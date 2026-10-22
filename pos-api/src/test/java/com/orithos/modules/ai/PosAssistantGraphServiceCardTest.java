@@ -95,6 +95,8 @@ class PosAssistantGraphServiceCardTest {
         assertEquals("assistant", card.source());
         assertEquals("/products", card.ctaRoute());
         assertEquals("Open products", card.ctaLabel());
+        assertEquals("Open products", card.cta().label());
+        assertEquals("/products", card.cta().route());
         assertEquals(List.of(), card.items());
     }
 

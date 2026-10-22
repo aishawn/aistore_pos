@@ -775,6 +775,7 @@ export interface AssistantCard {
   status?: "ready" | "empty" | "unavailable" | string;
   ctaLabel?: string | null;
   ctaRoute?: string | null;
+  cta?: { label?: string | null; route?: string | null } | null;
 }
 
 export interface AssistantResponse {

@@ -9,6 +9,7 @@ import com.orithos.modules.ai.context.FollowUpSupport;
 import com.orithos.modules.ai.context.StoreContextPack;
 import com.orithos.modules.ai.context.StoreContextPackAssembler;
 import com.orithos.modules.ai.dto.AssistantCard;
+import com.orithos.modules.ai.dto.AssistantCardCta;
 import com.orithos.modules.ai.dto.ReportTable;
 import com.orithos.modules.ai.dto.UiAction;
 import com.orithos.modules.ai.report.AiReportSnapshotService;
@@ -248,7 +249,13 @@ public class PosAssistantGraphService {
                         : "guided_action".equals(type) ? guidedCtaLabel(routeTarget)
                         : "pricing".equals(type) ? "Open price review"
                         : "sommelier".equals(type) ? "Open Sommelier" : "Open replenishment",
-                routeTarget));
+                routeTarget,
+                new AssistantCardCta(
+                        "product_count".equals(type) ? "Open products"
+                                : "guided_action".equals(type) ? guidedCtaLabel(routeTarget)
+                                : "pricing".equals(type) ? "Open price review"
+                                : "sommelier".equals(type) ? "Open Sommelier" : "Open replenishment",
+                        routeTarget)));
     }
 
     private static String guidedCtaLabel(String route) {

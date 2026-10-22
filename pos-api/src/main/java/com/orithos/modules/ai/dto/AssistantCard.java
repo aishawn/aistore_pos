@@ -14,5 +14,6 @@ public record AssistantCard(
         String emptyReason,
         String status,
         String ctaLabel,
-        String ctaRoute
+        String ctaRoute,
+        AssistantCardCta cta
 ) {}

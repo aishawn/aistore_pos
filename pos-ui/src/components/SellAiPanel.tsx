@@ -98,6 +98,12 @@ function messageLinks(msg: ChatMessage): ChatCta[] {
   return msg.cta ? [msg.cta] : [];
 }
 
+function cardCta(card: AssistantCard): ChatCta | null {
+  const label = card.cta?.label ?? card.ctaLabel;
+  const href = card.cta?.route ?? card.ctaRoute;
+  return label && href ? { label, href } : null;
+}
+
 /** Compact chip label: "Open stock list" → "Stock list". */
 function shortChatLinkLabel(label: string): string {
   return label.replace(/^Open\s+/i, "").trim() || label;
@@ -1684,7 +1690,7 @@ function DialogueView({
         {messages.map((msg, i) => {
           const links = messageLinks(msg);
           const cards = msg.cards ?? [];
-          const cardRoutes = new Set(cards.map((card) => card.ctaRoute).filter(Boolean));
+          const cardRoutes = new Set(cards.map((card) => cardCta(card)?.href).filter(Boolean));
           const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
           return (
           <div
@@ -1752,13 +1758,13 @@ function DialogueView({
                     {card.emptyReason ? (
                       <p className="mt-1 text-[12px] text-[var(--oh-muted)]">{card.emptyReason}</p>
                     ) : null}
-                    {card.ctaRoute && card.ctaLabel ? (
+                    {cardCta(card) ? (
                       <button
                         type="button"
-                        onClick={() => onOpenLink(card.ctaRoute!)}
+                        onClick={() => onOpenLink(cardCta(card)!.href)}
                         className={cn(chatNavLinkClassName, "mt-1.5")}
                       >
-                        {card.ctaLabel}
+                        {cardCta(card)!.label}
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       </button>
                     ) : null}
