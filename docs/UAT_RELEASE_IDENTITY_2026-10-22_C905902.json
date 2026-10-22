@@ -1,0 +1,12 @@
+{
+  "generatedAt": "2026-10-22T03:15:26Z",
+  "target": "https://demo.orithos.com.au",
+  "runtime": {
+    "frontend": "c905902f4020180095646cdeeaf638d78a0ded2d",
+    "backend": "c905902f4020180095646cdeeaf638d78a0ded2d",
+    "builtAt": "2026-10-22T03:12:22Z"
+  },
+  "latestSourceAtCheck": "177eea3d91be2d74ac22f049b46467cb19adddc4",
+  "matchesLatestSource": false,
+  "interpretation": "A previously deployed documentation/runtime candidate became active; the latest entry/platform and later local UI batches are not represented by this runtime."
+}

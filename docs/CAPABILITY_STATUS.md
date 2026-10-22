@@ -1330,3 +1330,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Candidate `d2346f9` is pushed, but Dokploy again returned HTTP `301` (`Branch Not Match`).
 - Entry and platform focus changes remain local-only until the Demo runtime reports the candidate SHA.
+## 2026-10-22 runtime identity update: c905902
+
+- Demo frontend and backend now report runtime `c905902f4020180095646cdeeaf638d78a0ded2d`; the latest source is `177eea3d`, so runtime/source are not aligned. Evidence: `docs/UAT_RELEASE_IDENTITY_2026-10-22_C905902.json`.
+- Platform Operations, Usage, Audit, and Failures online read-only checks passed `8/8` at 390/1440px with zero non-GET requests. This validates the active older runtime only.
+- The latest Settings, stocktake/cash, reports/utilities, and entry/platform focus batches remain online-unverified.

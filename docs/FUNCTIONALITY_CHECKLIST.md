@@ -609,3 +609,9 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] Candidate `d2346f9` pushed after the entry/platform focus batch.
 - [ ] Dokploy returned HTTP `301` (`Branch Not Match`); no retry. Online UI verification is pending.
+### 2026-10-22 runtime identity and platform read-only recheck
+
+- [x] Demo version endpoint now reports frontend/backend runtime `c905902f4020180095646cdeeaf638d78a0ded2d`; evidence `docs/UAT_RELEASE_IDENTITY_2026-10-22_C905902.json`.
+- [x] Platform Operations, Usage, Audit, and Failures passed `8/8` read-only checks at 390/1440px with no page errors, overflow, or non-GET requests. Evidence: `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`.
+- [ ] Runtime does not match latest source `177eea3d`; Settings, stocktake/cash, reports/utilities, and entry/platform latest focus changes remain unverified online.
+- [ ] Settings mobile suite still blocks at the old runtime's `/settings/users` mobile-card assertion; preserve this as a blocked regression rather than a Settings Data failure.

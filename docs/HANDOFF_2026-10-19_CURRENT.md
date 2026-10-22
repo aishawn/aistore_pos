@@ -2460,3 +2460,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Candidate `d2346f9` is pushed and includes the grouped Settings, stocktake/cash, reports/utilities, and entry/platform focus improvements.
 - [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. Demo runtime remains older than this candidate.
 - [ ] Online verification is pending Source/Git correction and exact `/api/public/version` SHA match.
+## 2026-10-22 runtime identity update
+
+- Demo `/api/public/version` now reports frontend/backend `c905902f4020180095646cdeeaf638d78a0ded2d`; latest source is `177eea3d`, so this is an older deployed candidate. Evidence: `docs/UAT_RELEASE_IDENTITY_2026-10-22_C905902.json`.
+- Platform Operations, Usage, Audit, and Failures online read-only verification passed `8/8` across 390/1440px with no page errors, overflow, or non-GET requests. Evidence: `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`.
+- The Settings mobile suite remains blocked at the older runtime's user-card assertion; do not attribute local focus changes to this runtime.
