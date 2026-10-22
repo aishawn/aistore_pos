@@ -1479,4 +1479,3 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 前端/UI 批次提交 `84d23803` 已推送，但 Dokploy 返回 `301 Branch Not Match`，尚未构建或部署。
 - `/api/public/version` 仍返回前后端 `582b92fb`；线上验证不能归因到 `84d23803`。
 - 发布阻断属于 Dokploy Source/Git 绑定，不是前端 typecheck 或脚本语法失败。
-
