@@ -245,9 +245,23 @@ public class PosAssistantGraphService {
                         : empty ? emptyReason(type) : null,
                 unavailable ? "unavailable" : empty ? "empty" : "ready",
                 "product_count".equals(type) ? "Open products"
-                        : "guided_action".equals(type) ? "Open workflow"
-                        : "pricing".equals(type) ? "Open price review" : "Open workflow",
+                        : "guided_action".equals(type) ? guidedCtaLabel(routeTarget)
+                        : "pricing".equals(type) ? "Open price review"
+                        : "sommelier".equals(type) ? "Open Sommelier" : "Open replenishment",
                 routeTarget));
+    }
+
+    private static String guidedCtaLabel(String route) {
+        return switch (route == null ? "" : route) {
+            case "/customers" -> "Open customers";
+            case "/products" -> "Open products";
+            case "/orders" -> "Open orders";
+            case "/stock/replenishment" -> "Open replenishment";
+            case "/stock/capped-pricing" -> "Open price review";
+            case "/invoices/scan" -> "Open invoice scan";
+            case "/suppliers/odoo" -> "Open suppliers";
+            default -> "Open workflow";
+        };
     }
 
     private static String emptyReason(String type) {

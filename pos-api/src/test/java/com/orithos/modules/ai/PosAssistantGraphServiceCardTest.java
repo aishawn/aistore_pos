@@ -94,7 +94,7 @@ class PosAssistantGraphServiceCardTest {
         assertEquals("ready", card.status());
         assertEquals("assistant", card.source());
         assertEquals("/products", card.ctaRoute());
-        assertEquals("Open workflow", card.ctaLabel());
+        assertEquals("Open products", card.ctaLabel());
         assertEquals(List.of(), card.items());
     }
 
@@ -109,5 +109,20 @@ class PosAssistantGraphServiceCardTest {
         assertEquals(3, card.items().size());
         assertEquals("Shiraz — $24.99", card.items().getFirst().get("label"));
         assertEquals("I found these matches:", card.summary());
+    }
+
+    @Test
+    void givesWorkflowCardsRouteSpecificCtaLabels() {
+        AssistantCard replenishment = PosAssistantGraphService.cardsFor(
+                "navigate",
+                new UiAction("stock", "replenishment", "/stock/replenishment", "navigate"),
+                "Top restock suggestions:\n• Shiraz — order 4").getFirst();
+        AssistantCard sommelier = PosAssistantGraphService.cardsFor(
+                "navigate",
+                new UiAction("sommelier", "recommend", "/sommelier", "navigate"),
+                "Here are in-stock picks:\n• Shiraz — $24.99").getFirst();
+
+        assertEquals("Open replenishment", replenishment.ctaLabel());
+        assertEquals("Open Sommelier", sommelier.ctaLabel());
     }
 }
