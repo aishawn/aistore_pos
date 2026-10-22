@@ -34,6 +34,8 @@ export function isMobileAllowedPath(pathname: string): boolean {
     path.startsWith("/stock/list/") ||
     path === "/reports/ai" ||
     path.startsWith("/reports/ai/") ||
+    path === "/assistant" ||
+    path.startsWith("/assistant/") ||
     path === "/sommelier" ||
     path.startsWith("/sommelier/") ||
     path === "/invoices/scan" ||

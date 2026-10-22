@@ -298,6 +298,10 @@ interface SellAiPanelProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   launcherVisible?: boolean;
+  /** Force the expanded panel to cover the viewport (dedicated /assistant route). */
+  forceFullscreen?: boolean;
+  /** Called after collapse when the host should leave a dedicated route. */
+  onRequestClose?: () => void;
 }
 
 /** Sell page AI chat panel — intent → frontend dispatcher. */
@@ -305,6 +309,8 @@ export function SellAiPanel({
   expanded,
   onExpandedChange,
   launcherVisible = true,
+  forceFullscreen = false,
+  onRequestClose,
 }: SellAiPanelProps) {
   const mobileOnly = getUiMode() === "mobile";
   const sell = useOptionalSellScreen();
@@ -356,9 +362,11 @@ export function SellAiPanel({
   const restoreFabRef = useRef(false);
   // Phone browsers on the WEB shell still need a true fullscreen assistant;
   // dedicated /m mobile mode keeps the same layout.
-  const fullscreenPanel = mobileOnly || compactViewport;
+  // /assistant forces fullscreen on desktop as a dedicated dialogue page.
+  const fullscreenPanel = forceFullscreen || mobileOnly || compactViewport;
 
-  useDialogFocus(expanded, collapsePanel, "assistant", inputRef);
+  const dismissPanel = () => collapsePanel();
+  useDialogFocus(expanded, dismissPanel, "assistant", inputRef);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -410,7 +418,7 @@ export function SellAiPanel({
       pushAssistantNote("Open the WEB app to continue this action.");
       return;
     }
-    collapsePanel();
+    collapsePanel({ skipRouteExit: true });
     router.push(href);
   }
 
@@ -419,7 +427,7 @@ export function SellAiPanel({
     const jumpNow = options?.immediate === true || aiEnabled === false;
     if (jumpNow) {
       pushAssistantNote(note);
-      collapsePanel();
+      collapsePanel({ skipRouteExit: true });
       router.push(href);
       return;
     }
@@ -635,7 +643,7 @@ export function SellAiPanel({
     onExpandedChange(true);
   }
 
-  function collapsePanel() {
+  function collapsePanel(options?: { skipRouteExit?: boolean }) {
     // The panel can lose activeElement during Escape dispatch or portal teardown.
     // Restore the actual launcher that opened it, including the desktop header entry.
     if (!document.activeElement?.closest('[role="dialog"]')) {
@@ -644,6 +652,10 @@ export function SellAiPanel({
     }
     onExpandedChange(false);
     stopVoiceCapture();
+    // In-chat navigations already push a new route; do not also exit /assistant.
+    if (!options?.skipRouteExit) {
+      onRequestClose?.();
+    }
   }
 
   function stopVoiceCapture() {
@@ -1352,7 +1364,7 @@ export function SellAiPanel({
           type="button"
           aria-label="Close assistant"
           className="pointer-events-auto fixed inset-0 z-0 cursor-default bg-slate-950/40"
-          onClick={collapsePanel}
+          onClick={dismissPanel}
         />
       )}
       {expanded && (
@@ -1409,7 +1421,7 @@ export function SellAiPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={collapsePanel}
+                  onClick={dismissPanel}
                   title="Close"
                   aria-label="Close assistant"
                   className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-white/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"

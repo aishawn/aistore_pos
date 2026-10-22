@@ -81,6 +81,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Orithos AI",
     icon: "sommelier",
     items: [
+      { label: "AI Assistant", href: "/assistant" },
       { label: "Wine Assistant", href: "/sommelier" },
       { label: "Find a Wine", href: "/sommelier/find" },
       { label: "Identify Wine Label", href: "/sommelier/identify" },
