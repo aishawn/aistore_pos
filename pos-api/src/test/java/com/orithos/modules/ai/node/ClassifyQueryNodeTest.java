@@ -381,6 +381,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "查看批量改价", "navigate", "/stock/bulk-price-edit");
         assertDeterministicResult(node, "Can you review prices for Shiraz?", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "Show me the price suggestions", "navigate", "/stock/capped-pricing");
+        assertDeterministicResult(node, "Suggest a price for Shiraz", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "给我看看价格建议", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "What do we need to buy?", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "Restock list please", "navigate", "/stock/replenishment");
@@ -395,6 +396,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "Which prices look off?", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "Snap this supplier invoice", "navigate", "/invoices/scan");
         assertDeterministicResult(node, "Red wine for steak", "navigate", "/sommelier");
+        assertDeterministicResult(node, "Can you suggest something in stock for steak?", "navigate", "/sommelier");
         assertDeterministicResult(node, "红酒配牛排", "navigate", "/sommelier");
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);

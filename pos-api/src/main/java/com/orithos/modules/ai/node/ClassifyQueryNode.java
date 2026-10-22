@@ -139,26 +139,11 @@ public class ClassifyQueryNode implements NodeAction {
                     ""));
         }
 
-        // Explicit unsupported comparisons should keep their guided refusal even
-        // when a date or metric token also matches a supported report shortcut.
-        if (ReportAdhocRouter.shouldUseNl2Sql(question)) {
-            log.info("Ad-hoc report fast-path (skipped classify LLM)");
-            return shortcutResult(
-                    "report_adhoc",
-                    "This custom report is not available yet.",
-                    Map.of(), "", "", "", "");
-        }
-
-        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
-        if (fast != null) {
-            log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
-            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
-                    fast.route(), fast.action());
-        }
-
         // Explicit workflow requests are deterministic navigation intents. Resolve
-        // them before the classifier so a temporary provider outage cannot block
-        // safe replenishment, pricing, sommelier or invoice preview navigation.
+        // them before generic report refusals and the classifier so a temporary
+        // provider outage cannot block safe replenishment, pricing, sommelier or
+        // invoice preview navigation. The router excludes historical/report and
+        // write requests, which retain their own boundaries below.
         WorkflowRouteRouter.Override directWorkflow = WorkflowRouteRouter.maybeOverride(question);
         if (directWorkflow != null) {
             log.info("Workflow fast-path route={}", directWorkflow.route());
@@ -174,6 +159,23 @@ public class ClassifyQueryNode implements NodeAction {
             out.put("route_source", "deterministic");
             out.put("llm_fallback", false);
             return out;
+        }
+
+        // Explicit unsupported comparisons should keep their guided refusal even
+        // when a date or metric token also matches a supported report shortcut.
+        if (ReportAdhocRouter.shouldUseNl2Sql(question)) {
+            log.info("Ad-hoc report fast-path (skipped classify LLM)");
+            return shortcutResult(
+                    "report_adhoc",
+                    "This custom report is not available yet.",
+                    Map.of(), "", "", "", "");
+        }
+
+        AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
+        if (fast != null) {
+            log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
+            return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
+                    fast.route(), fast.action());
         }
 
         IntentConfigService.Snapshot snap = configService.getSnapshot();

@@ -103,8 +103,12 @@ public final class AssistantFastPathRouter {
                     + "what does the assistant do|what data do you use for suggestions|"
                     + "will you (?:place|submit|create) orders?|(?:can|will) you (?:directly )?(?:create|place|submit) (?:an? |the )?(?:purchase )?order|"
                     + "(?:can|will|does) (?:the )?ai (?:create|place|submit) (?:(?:a|the) )?(?:purchase )?orders?(?: automatically)?|"
+                    + "(?:can|could|will|does) (?:the )?(?:ai|assistant) (?:automatically )?(?:change|adjust|set) prices?|"
+                    + "(?:can|could|will|does) (?:the )?(?:ai|assistant) recommend (?:a )?(?:wine|wines|products?)|"
+                    + "(?:can|could|will|does) (?:the )?(?:ai|assistant) (?:read|scan|capture) (?:supplier )?(?:invoices?|bills?)|"
+                    + "(?:can|could|will|does) (?:the )?(?:ai|assistant) answer (?:store )?(?:sales|stock|inventory) questions?|"
                     + "你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么|"
-                    + "ai\\s*(?:(?:会|能)(?:不|否)?|可不可以|可以不可以|能不能|会不会)\\s*(?:帮我\\s*)?(?:直接|自动)?\\s*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?)\\s*(?:吗)?)[?.!。！？]*$",
+                    + "ai\\s*(?:(?:会|能)(?:不|否)?|可不可以|可以不可以|能不能|会不会)\\s*(?:帮我\\s*)?(?:直接|自动)?\\s*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?|改价|调价|推荐(?:什么酒|商品|葡萄酒|红酒)|(?:识别|读取|扫描)(?:供应商)?(?:发票|账单)|回答(?:销售|库存)问题)\\s*(?:吗)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
             "^(?:how many (?:transactions?|tickets?|orders?) did we have (?:today|yesterday)|"
