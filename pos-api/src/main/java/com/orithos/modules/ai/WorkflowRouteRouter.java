@@ -133,6 +133,8 @@ public final class WorkflowRouteRouter {
 
     public static Override maybeOverride(String question) {
         if (question == null || question.isBlank()) return null;
+        AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
+        if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return null;
         if (hasWriteIntent(question)) return null;
         String normalized = question.trim().toLowerCase(Locale.ROOT);
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {

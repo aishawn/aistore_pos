@@ -398,6 +398,13 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "Red wine for steak", "navigate", "/sommelier");
         assertDeterministicResult(node, "Can you suggest something in stock for steak?", "navigate", "/sommelier");
         assertDeterministicResult(node, "红酒配牛排", "navigate", "/sommelier");
+        assertDeterministicResult(node, "Can AI change prices?", "qa", "");
+        assertDeterministicResult(node, "Can the assistant recommend wines?", "qa", "");
+        assertDeterministicResult(node, "Does AI read supplier invoices?", "qa", "");
+        assertDeterministicResult(node, "Can the AI answer stock questions?", "qa", "");
+        assertDeterministicResult(node, "AI会自动改价吗", "qa", "");
+        assertDeterministicResult(node, "AI能推荐红酒吗", "qa", "");
+        assertDeterministicResult(node, "AI能识别供应商发票吗", "qa", "");
 
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }

@@ -221,7 +221,23 @@ class WorkflowRouteRouterTest {
         assertFalse(WorkflowRouteRouter.hasWriteIntent("What price should I set for Shiraz?"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("AI会直接下单吗"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("AI 能自动下采购单吗"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("AI会自动改价吗"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Will you place orders?"));
+    }
+
+    @Test
+    void capabilityQuestionsDoNotNavigateToOperationalWorkflows() {
+        for (String question : new String[]{
+                "Can AI change prices?",
+                "Can the assistant recommend wines?",
+                "Does AI read supplier invoices?",
+                "Can the AI answer stock questions?",
+                "AI会自动改价吗",
+                "AI能推荐红酒吗",
+                "AI能识别供应商发票吗"
+        }) {
+            assertNull(WorkflowRouteRouter.maybeOverride(question), question);
+        }
     }
 
     @Test
