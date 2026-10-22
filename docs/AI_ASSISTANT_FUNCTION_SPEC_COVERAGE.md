@@ -1,5 +1,26 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-22 最新 Demo 配套覆盖
+
+最新线上只读结果为：自然语言问法 **247/247 PASS**；availability **3/3**、
+route **9/9**、surface/auth **11/11**、metrics **9/9**、AI UI **2/2**。功能矩阵
+为 **14 PASS / 1 BLOCKED**（Classic OCR 已由 Odoo-only filter 返回 `41001`），报表
+为 **15/16**（实时库存读取不可用，使用安全 fallback）。销售日期范围、Australia/Adelaide
+业务日、AUD 金额和 Odoo 报表对账均通过。所有检查均为只读，业务写入为 0。
+
+Capability gates 证明聊天可用、语音在当前门店被明确禁用；History/platform 的 2 项
+需要第二门店和 platform-operator 凭据，转写的 2 项需要音频 fixture，均记录为
+BLOCKED 而非功能失败。证据文件均为 `docs/UAT_*_2026-10-22_POST-ROUTE.json`。Demo runtime `582b92fb`
+尚未与当前 source `1cd417c3` 绑定，不能据此宣称最新候选已部署。
+
+## 2026-10-22 历史线上问法覆盖
+
+最新 247 条自然语言用例为 **246 PASS / 0 BLOCKED / 1 FAIL**。失败集中在
+`Recommend something in stock for steak`：页面 route 为 `/sommelier`，但 intent
+为 `report_adhoc`，说明“推荐 + 库存条件”仍需作为独立语义测试。已在工作区补充
+路由正则和 Java 回归断言；此 `pos-api` 改动待同候选 SHA 的 Java 21 门禁与线上
+SHA 绑定后再发布。
+
 ## 2026-10-22 data-aware acceptance
 
 The deployed d0669 runtime completed **232 PASS / 15 BLOCKED / 0 FAIL** across

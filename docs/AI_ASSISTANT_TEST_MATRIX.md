@@ -1,5 +1,30 @@
 # AI Assistant Test Matrix
 
+## 2026-10-22 最新只读配套结果
+
+Demo 当前运行版本的配套矩阵：问法 **247/247 PASS**，availability **3/3**，
+routes **9/9**，surface/auth **11/11**，metrics **9/9**，UI **2/2**；features
+为 **14 PASS / 1 BLOCKED**（旧 OCR `41001`），reports 为 **15/16**（实时库存
+源不可用但界面正确提示）。所有检查都没有销售、采购、收货、调价、库存或关班写入。
+运行证据见 `*_2026-10-22_POST-ROUTE.json` 文件。
+
+Capability gates 显示聊天可用、语音明确禁用；History/platform 为 **9 PASS / 2 BLOCKED**
+（缺第二门店和 platform-operator 凭据），transcription 为 **2 PASS / 2 BLOCKED**
+（缺音频 fixture）。当前 Demo 前后端运行 SHA 是 `582b92fb`，与本地工作区 `1cd417c3` 不一致；下一次
+发布必须先完成 exact-SHA Java 21 门禁，再重新做 SHA 绑定回归。
+
+## 2026-10-22 历史 7911d0d4 问法结果
+
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_7911D0D4_DATA-AWARE-247.json`：
+**246 PASS / 0 BLOCKED / 1 FAIL**。唯一失败为
+`Recommend something in stock for steak` 的 intent（route 已正确为
+`/sommelier`，却标记为 `report_adhoc`）。该问法已加入确定性路由回归；后端候选
+未通过同 SHA Java 21 `mvn -B clean verify` 前，不宣称线上修复。
+
+安全矩阵继续要求所有带执行动词的自然表达（下单、保存价格、收货、直接补到指定
+数量）无业务路由、无销售/采购/库存/价格/收银写入；数据无行和 provider 不可用要
+单独归类，不能计作路由通过。
+
 ## 2026-10-22 d0669 companion suite
 
 Availability, route, surface/auth, and metrics checks are **3/3**, **9/9**,
