@@ -2339,3 +2339,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Targeted ESLint for Platform Failures, Scan Invoice, and Stock List plus both UAT script syntax checks passed. No local production build was run.
 - [ ] The platform alert backend changes currently present in the worktree have not been pushed because the Java 21 same-candidate `mvn -B clean verify` gate is still required. The frontend fallback is safe against an older runtime.
 
+### Deployment result for `f5a2948`
+
+- [x] Frontend batch commit `f5a2948` was pushed to `origin/main`.
+- [ ] Dokploy Compose webhook again returned HTTP `301`; no retry was sent.
+- [x] Demo `/api/public/version` returned HTTP 200 but still reports frontend/backend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120` (built at `2026-10-22T01:11:39.175Z` / `2026-10-22T00:55:56Z`). The platform fallback and invoice JSX fix are therefore not online-verified.
+- [ ] Dokploy Source/Git binding must be corrected before another deployment attempt: repository `aishawn/aistore_pos`, branch `main`, root `/`, compose file `docker-compose.yml`.
+
