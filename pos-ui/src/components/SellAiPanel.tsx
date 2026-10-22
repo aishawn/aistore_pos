@@ -80,12 +80,20 @@ interface ChatMessage {
   text: string;
   table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
   reportId?: number | null;
+  /** Preferred: one or more in-chat action buttons (navigate only on tap). */
+  links?: ChatCta[] | null;
+  /** @deprecated prefer links — kept for single-CTA call sites */
   cta?: ChatCta | null;
   diagnostics?: {
     intent: string;
     latencyMs: number;
     status: "ok" | "error";
   };
+}
+
+function messageLinks(msg: ChatMessage): ChatCta[] {
+  if (msg.links && msg.links.length > 0) return msg.links;
+  return msg.cta ? [msg.cta] : [];
 }
 
 /** Friendly labels for deferred navigation CTAs inside the chat. */
@@ -135,9 +143,44 @@ function isPlaceholderNavigateAnswer(text: string): boolean {
 }
 
 function navigatePromptText(href: string, answer?: string | null): string {
-  if (answer && !isPlaceholderNavigateAnswer(answer)) return answer;
+  if (answer && !isPlaceholderNavigateAnswer(answer) && !isTechnicalIntentLabel(answer)) {
+    return answer;
+  }
   const label = labelForHref(href).replace(/^Open\s+/i, "");
   return `I found that in ${label}. Tap below when you are ready — I will not leave this chat until you do.`;
+}
+
+/** Intent display names / stubs that should never be shown as the chat answer. */
+function isTechnicalIntentLabel(text: string): boolean {
+  const t = text.trim();
+  return /^(Entity CRUD|Report ad-hoc|Report adhoc|Navigate|Sale action|Opening…|Opening\.\.\.|OK)$/i.test(t);
+}
+
+function polishAssistantAnswer(text: string, intent?: string): string {
+  const raw = (text || "").trim();
+  if (!raw || isTechnicalIntentLabel(raw)) {
+    if (intent === "entity_action") {
+      return "I can help you find the right Inventory or Customer page, but I need a clearer request — for example “search product beer” or “open replenishment”.";
+    }
+    if (intent === "report_adhoc") {
+      return "That custom report is not available yet. Try Today's sales, Check stock, or open Products.";
+    }
+    return "I can help with sales, stock, products, replenishment, pricing, wine, or invoices. Try a Quick action below.";
+  }
+  return raw;
+}
+
+/** Extract product-ish name from “把啤酒补到50件” / “top up beer to 50”. */
+function extractRestockProductHint(text: string): string {
+  const zh = text.match(/把\s*(.+?)\s*(?:补到|补足|补至|加到)\s*\d+/);
+  if (zh?.[1]) return zh[1].replace(/^(?:这些|那些|全部的?|所有的?)/, "").trim();
+  const en = text.match(
+    /(?:top up|restock|replenish|bring)\s+(?:all\s+)?(?:the\s+)?(.+?)\s+(?:to|up to)\s*\d+/i,
+  );
+  if (en?.[1]) {
+    return en[1].replace(/^(?:these|those|the)\s+(?:items?|products?|lines?|stock)\s*/i, "").trim();
+  }
+  return "";
 }
 
 const ENABLED_GREETING =
@@ -328,12 +371,14 @@ export function SellAiPanel({
       router.push(href);
       return;
     }
+    const link = { label: labelForHref(href), href };
     setMessages((prev) => [
       ...prev,
       {
         role: "assistant",
         text: navigatePromptText(href, note),
-        cta: { label: labelForHref(href), href },
+        cta: link,
+        links: [link],
       },
     ]);
   }
@@ -359,6 +404,13 @@ export function SellAiPanel({
     else if (view === "products") openWorkspace("/products", "Open products when you are ready.");
     else if (view === "promotions") openWorkspace("/promotions", "Open promotions when you are ready.");
     else openWorkspace("/", "Open the sell screen when you are ready.");
+  }
+
+  function pushGuidedReply(text: string, links: ChatCta[]) {
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", text, links, cta: links[0] ?? null },
+    ]);
   }
 
   function tryLocalWorkspaceIntent(text: string): boolean {
@@ -391,6 +443,44 @@ export function SellAiPanel({
       )
     ) {
       openStockLookup("");
+      return true;
+    }
+    // Catalogue size — no ad-hoc report yet; guide to the product list.
+    if (
+      /^(?:一共有多少(?:个)?(?:产品|商品)|有多少(?:个)?(?:产品|商品)|产品总数|商品总数|产品有多少|商品有多少|how many products?(?: (?:do we have|are there|in (?:the )?(?:catalogue|catalog|store))?)?|product count|total products?)[?.!。！？]*$/i.test(
+        t,
+      )
+    ) {
+      pushGuidedReply(
+        "I cannot return a live product total in chat yet. Open Products to browse the catalogue, or Check stock for on-hand quantities.",
+        [
+          { label: "Open products", href: "/products" },
+          { label: "Open stock list", href: "/stock/list" },
+        ],
+      );
+      return true;
+    }
+    // Imperative stock writes stay fail-closed; offer the review workflow instead.
+    if (
+      /(?:直接\s*)?把.+?(?:补到|补足|补至|加到)\s*\d+\s*(?:件|个|瓶|箱)?/i.test(t) ||
+      /(?:top up|restock|replenish|bring)\s+.+\s+(?:to|up to)\s*\d+/i.test(t)
+    ) {
+      const hint = extractRestockProductHint(t);
+      const links: ChatCta[] = [
+        { label: "Open replenishment", href: "/stock/replenishment" },
+      ];
+      if (hint) {
+        links.unshift({
+          label: `Find “${hint}” in stock`,
+          href: `/stock/list?q=${encodeURIComponent(hint)}`,
+        });
+      }
+      pushGuidedReply(
+        hint
+          ? `I cannot change “${hint}” stock from chat. Review stock or replenishment, then staff confirm any order in the page.`
+          : "I cannot change stock quantities from chat. Open replenishment to review suggestions, then staff confirm any order.",
+        links,
+      );
       return true;
     }
     return false;
@@ -672,13 +762,27 @@ export function SellAiPanel({
       const outcome = await dispatchIntent(result);
       if (outcome.kind !== "messaged") {
         const deferredHref = outcome.kind === "deferred" ? outcome.href : null;
+        const polished = polishAssistantAnswer(result.answer || "", result.intent);
         const hasBody = Boolean(
-          result.answer || result.table || result.reportId || deferredHref,
+          polished || result.table || result.reportId || deferredHref,
         );
         if (hasBody) {
           const answerText = deferredHref
-            ? navigatePromptText(deferredHref, result.answer)
-            : result.answer || "";
+            ? navigatePromptText(deferredHref, polished)
+            : polished;
+          const cta = deferredHref
+            ? { label: labelForHref(deferredHref), href: deferredHref }
+            : null;
+          // Dead-end ad-hoc / empty entity answers get recovery shortcuts.
+          const recoveryLinks: ChatCta[] =
+            !deferredHref &&
+            (result.intent === "report_adhoc" || isTechnicalIntentLabel(result.answer || ""))
+              ? [
+                  { label: "Open products", href: "/products" },
+                  { label: "Open stock list", href: "/stock/list" },
+                  { label: "Open replenishment", href: "/stock/replenishment" },
+                ]
+              : [];
           setMessages((prev) => [
             ...prev,
             {
@@ -686,9 +790,8 @@ export function SellAiPanel({
               text: answerText,
               table: result.table ?? null,
               reportId: result.reportId ?? null,
-              cta: deferredHref
-                ? { label: labelForHref(deferredHref), href: deferredHref }
-                : null,
+              cta,
+              links: cta ? [cta] : recoveryLinks.length ? recoveryLinks : null,
               diagnostics: {
                 intent: result.intent || "unknown",
                 latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
@@ -1311,41 +1414,61 @@ export function SellAiPanel({
               ) : (
                 <DialogueView
                   messages={messages}
-                  onAction={runQuickAction}
                   onOpenLink={followChatLink}
                   onClear={clearChat}
                   busy={busy}
                   thinkingHint={thinkingHint}
-                  quickActionsOpen={quickActionsOpen}
                   compact={fullscreenPanel}
                 />
               )}
             </div>
 
-            <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
-              <div className="flex items-center justify-between gap-2">
-                {messages.some((message) => message.role === "user") && !quickActionsOpen ? (
+            {quickActionsOpen ? (
+              <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
+                    Quick actions
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setQuickActionsOpen(false)}
+                    className="inline-flex min-h-10 items-center rounded-lg px-2 text-[13px] font-medium text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]"
+                  >
+                    Hide
+                  </button>
+                </div>
+                <div className="max-h-[min(36vh,280px)] overflow-y-auto overscroll-contain">
+                  <QuickActions onAction={runQuickAction} />
+                </div>
+              </div>
+            ) : (
+              <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
+                <div className="flex min-h-11 items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => setQuickActionsOpen(true)}
-                    aria-expanded={quickActionsOpen}
-                    className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
+                    aria-expanded={false}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"
                   >
                     <Plus size={15} />
                     Quick actions
                   </button>
-                ) : <span />}
-                {aiEnabled === false ? (
-                  <p className="text-[13px] text-[var(--oh-muted)]">Shortcuts still work without AI chat</p>
-                ) : voiceStatus ? (
-                  <p className="min-w-0 flex-1 truncate text-right text-[13px] font-medium text-[var(--oh-primary)]">
-                    {voiceStatus}
-                  </p>
-                ) : (
-                  <p className="text-[13px] text-[var(--oh-muted)]">AI chat · Enter to send</p>
-                )}
+                  {aiEnabled === false ? (
+                    <p className="min-w-0 truncate text-right text-[12px] text-[var(--oh-muted)]">
+                      Shortcuts still work
+                    </p>
+                  ) : voiceStatus ? (
+                    <p className="min-w-0 flex-1 truncate text-right text-[13px] font-medium text-[var(--oh-primary)]">
+                      {voiceStatus}
+                    </p>
+                  ) : (
+                    <p className="min-w-0 truncate text-right text-[12px] text-[var(--oh-muted)]">
+                      {fullscreenPanel ? "Tap send" : "Enter to send"}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div
               className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2"
@@ -1464,21 +1587,17 @@ function HistoryView({
 
 function DialogueView({
   messages,
-  onAction,
   onOpenLink,
   onClear,
   busy,
   thinkingHint,
-  quickActionsOpen,
   compact = false,
 }: {
   messages: ChatMessage[];
-  onAction: (action: string) => void;
   onOpenLink: (href: string) => void;
   onClear: () => void;
   busy?: boolean;
   thinkingHint?: string | null;
-  quickActionsOpen: boolean;
   compact?: boolean;
 }) {
   const canClear = !busy && messages.length > 1;
@@ -1494,8 +1613,8 @@ function DialogueView({
     ? Math.round((successfulResponses / diagnosticMessages.length) * 100)
     : 0;
   return (
-    <div className="flex h-full flex-col p-3.5">
-      <div className="mb-2 flex items-center justify-between gap-2">
+    <div className="flex min-h-full flex-col p-3.5">
+      <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
         <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Chat
         </p>
@@ -1514,14 +1633,16 @@ function DialogueView({
       {diagnosticMessages.length > 0 && !compact ? (
         <p
           aria-label="AI session diagnostics"
-          className="mb-2.5 rounded-md bg-white px-2.5 py-1.5 text-[11px] tabular-nums text-[var(--oh-muted)]"
+          className="mb-2.5 shrink-0 rounded-md bg-white px-2.5 py-1.5 text-[11px] tabular-nums text-[var(--oh-muted)]"
         >
           AI session · {diagnosticMessages.length} {diagnosticMessages.length === 1 ? "response" : "responses"}
           {" · "}{successRate}% success · {averageLatency}ms avg
         </p>
       ) : null}
-      <div className="min-h-0 flex-1 space-y-2.5">
-        {messages.map((msg, i) => (
+      <div className="space-y-2.5 pb-1">
+        {messages.map((msg, i) => {
+          const links = messageLinks(msg);
+          return (
           <div
             key={i}
             className={cn(
@@ -1589,15 +1710,20 @@ function DialogueView({
                 )}
               </div>
             )}
-            {msg.role === "assistant" && msg.cta ? (
-              <button
-                type="button"
-                onClick={() => onOpenLink(msg.cta!.href)}
-                className="mt-2.5 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
-              >
-                {msg.cta.label}
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
-              </button>
+            {msg.role === "assistant" && links.length > 0 ? (
+              <div className="mt-2.5 flex flex-col gap-2">
+                {links.map((link) => (
+                  <button
+                    key={`${link.href}-${link.label}`}
+                    type="button"
+                    onClick={() => onOpenLink(link.href)}
+                    className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+                  >
+                    {link.label}
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
+                  </button>
+                ))}
+              </div>
             ) : null}
             {msg.role === "assistant" && msg.diagnostics ? (
               <span className={cn(
@@ -1608,39 +1734,31 @@ function DialogueView({
               </span>
             ) : null}
           </div>
-        ))}
+          );
+        })}
         {busy && (
           <div className="mr-auto max-w-[92%] rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3.5 py-2.5 text-[14px] text-[var(--oh-primary)] shadow-sm">
             {thinkingHint ?? "Thinking…"}
           </div>
         )}
       </div>
-      {quickActionsOpen ? <QuickActions onAction={onAction} /> : null}
     </div>
   );
 }
 
 function QuickActions({ onAction }: { onAction: (action: string) => void }) {
   return (
-    <div className="mt-3 shrink-0 border-t border-[var(--oh-border)] pt-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
-          Quick actions
-        </p>
-        <span className="text-[11px] text-[var(--oh-muted)]">Try a shortcut</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {QUICK_ACTIONS.map((action) => (
-          <button
-            key={action}
-            type="button"
-            onClick={() => onAction(action)}
-            className="min-h-11 cursor-pointer rounded-full border border-[var(--oh-border)] bg-white px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
-          >
-            {action}
-          </button>
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-2">
+      {QUICK_ACTIONS.map((action) => (
+        <button
+          key={action}
+          type="button"
+          onClick={() => onAction(action)}
+          className="min-h-11 cursor-pointer rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--oh-text)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]"
+        >
+          {action}
+        </button>
+      ))}
     </div>
   );
 }
