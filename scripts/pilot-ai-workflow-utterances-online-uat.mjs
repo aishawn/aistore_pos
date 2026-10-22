@@ -448,10 +448,7 @@ try {
     const answer = typeof data.answer === "string" ? data.answer : "";
     const answerChecks = (item.answerIncludes ?? []).map((text) => answer.includes(text));
     const answerRegexCheck = item.answerRegex ? new RegExp(item.answerRegex, "i").test(answer) : true;
-    const hasWriteRequests = Array.isArray(data.writeRequests);
-    const writeRequestsCheck = hasWriteRequests && data.writeRequests.length === 0;
-    const observabilityUnavailable = !hasWriteRequests && !runtimeIdentity.matchesSourceCommit;
-    const observabilityCheck = writeRequestsCheck || observabilityUnavailable;
+    const writeRequestsCheck = Array.isArray(data.writeRequests) && data.writeRequests.length === 0;
     const intentMatches = Array.isArray(item.intent)
       ? item.intent.includes(data.intent)
       : data.intent === item.intent;
@@ -460,13 +457,13 @@ try {
       && body.code === 0
       && (item.writeGuided ? data.intent === expectedIntent : intentMatches)
       && (item.writeGuided
-        ? (route === null || (item.route ? route === item.route : ["/customers", "/products", "/invoices/scan", "/orders", "/stock/replenishment", "/stock/capped-pricing", "/suppliers/odoo"].includes(route)))
+        ? (item.route ? route === item.route : ["/customers", "/products", "/invoices/scan", "/orders", "/stock/replenishment", "/stock/capped-pricing", "/suppliers/odoo"].includes(route))
         : (item.route ? route === item.route : true))
       && (item.noRoute && !item.writeGuided ? route === null : true)
       && (item.query ? query === item.query : true)
       && answerChecks.every(Boolean)
       && answerRegexCheck
-      && observabilityCheck;
+      && writeRequestsCheck;
     const dataUnavailable = !passed && isDataUnavailableAnswer(answer);
     const blocked = !passed && (isUnavailable(response.status(), body.code) || dataUnavailable);
     checks.push({
@@ -493,7 +490,6 @@ try {
         llmFallback: data.llmFallback ?? null,
         writeRequests: data.writeRequests ?? null,
         writeRequestsCheck,
-        ...(observabilityUnavailable ? { observabilityUnavailable: true } : {}),
         correlationId: response.headers()["x-correlation-id"] ?? null,
         ...(answerChecks.length ? { answerChecks } : {}),
         ...(item.answerRegex ? { answerRegex: item.answerRegex, answerRegexCheck } : {}),
