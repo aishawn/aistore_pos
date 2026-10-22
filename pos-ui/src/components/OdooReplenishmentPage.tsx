@@ -7,6 +7,11 @@ import { createOdooDraftRfq, fetchOdooRoute, getOdooSuppliers, type OdooDraftRfq
 import { appendReplenishmentAudit, readReplenishmentAudit, type ReplenishmentAuditEntry } from "@/lib/replenishment-audit";
 import { getOdooPosBootstrap } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
+import {
+  friendlyProductName,
+  looksLikeR2ImportMarker,
+  truncateSku,
+} from "@/lib/product-display-name";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 type ReplenishmentProduct = {
@@ -126,6 +131,10 @@ export function OdooReplenishmentPage() {
   const totalSuggestedUnits = suggestedItems.reduce((sum, product) => sum + product.suggestedQuantity, 0);
   const outOfStockWithDemand = suggestedItems.filter((product) => product.onHand <= 0 && product.soldUnits > 0).length;
   const hasRecentSales = data?.products.some((product) => product.soldUnits > 0) ?? false;
+  const showR2DisplayNote = useMemo(
+    () => (data?.products ?? []).some((product) => looksLikeR2ImportMarker(product.name) || looksLikeR2ImportMarker(product.sku)),
+    [data],
+  );
   const selectedRfqLines = rfqLines.filter((line) => line.quantity > 0);
   const planCoverageDays = data?.coverageDays ?? coverageDays;
   const canCreateRfq = suggestedItems.length > 0 && !loading && !refreshing && !error && data?.coverageDays === coverageDays;
@@ -134,7 +143,7 @@ export function OdooReplenishmentPage() {
     if (!canCreateRfq) return;
     setRfqLines(suggestedItems.slice(0, MAX_RFQ_LINES).map((product) => ({
       productId: product.id,
-      name: product.name,
+      name: friendlyProductName(product.name),
       unit: product.unit,
       suggestedQuantity: product.suggestedQuantity,
       quantity: product.suggestedQuantity,
@@ -250,6 +259,11 @@ export function OdooReplenishmentPage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment plan</h1>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">Explainable reorder suggestions from Odoo sales and stock velocity rules — not the chat model. Draft RFQs require human approval — nothing auto-orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p>
+          {showR2DisplayNote && (
+            <p className="mt-1 text-xs text-[var(--oh-muted)]">
+              Import prefixes such as R2 TEST are hidden in product names; SKUs may still start with R2- for reconciliation.
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="coverage-days" className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white pl-3 pr-2 text-sm font-medium text-[var(--oh-muted)]">
@@ -286,9 +300,12 @@ export function OdooReplenishmentPage() {
         <div className="divide-y divide-[var(--oh-border)] xl:hidden">
           {loading && !data ? <div className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></div>
             : !visibleItems.length ? <p className="px-4 py-12 text-center text-sm text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</p>
-              : visibleItems.map((product) => <article key={product.id} className="p-4">
+              : visibleItems.map((product) => {
+                const label = friendlyProductName(product.name);
+                const skuShort = truncateSku(product.sku);
+                return <article key={product.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0"><h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]">{product.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{product.sku ? `SKU ${product.sku} · ` : ""}{product.unit}</p></div>
+                  <div className="min-w-0"><h3 className="break-words font-semibold leading-5 text-[var(--oh-text)]" title={product.name}>{label}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</p></div>
                   {product.suggestedQuantity > 0 ? <span className="shrink-0 rounded-full bg-[var(--oh-orange-light)] px-2.5 py-1 text-xs font-bold tabular-nums text-[var(--oh-orange-dark)]">Order {number.format(product.suggestedQuantity)} {product.unit}</span> : <span className="shrink-0 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-muted)]">No order</span>}
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-md bg-[var(--oh-surface)] p-3 text-sm">
@@ -301,7 +318,8 @@ export function OdooReplenishmentPage() {
                 </div>
                 <button type="button" aria-expanded={expandedReasonId === product.id} onClick={() => setExpandedReasonId((current) => current === product.id ? null : product.id)} className="mt-2 inline-flex min-h-11 items-center rounded-sm font-semibold text-[var(--oh-orange-dark)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">{expandedReasonId === product.id ? "Hide explanation" : "Explain suggestion"}</button>
                 {expandedReasonId === product.id && <ul className="ml-1 list-disc space-y-1 pl-4 text-sm leading-5 text-[var(--oh-text-secondary)]">{(product.reasonParts?.length ? product.reasonParts : [product.reason || "No detail available."]).map((part) => <li key={part}>{part}</li>)}</ul>}
-              </article>)}
+              </article>;
+              })}
         </div>
         <div className="hidden min-h-0 flex-1 overflow-auto xl:block xl:min-h-[104px]">
         <table aria-label="Replenishment recommendations" className="w-full min-w-[980px] border-collapse text-left text-sm">
@@ -311,8 +329,11 @@ export function OdooReplenishmentPage() {
             <tbody className="divide-y divide-[var(--oh-border)]">
               {loading && !data ? <tr><td colSpan={9} className="px-4 py-16 text-center text-[var(--oh-muted)]"><LoaderCircle size={20} className="mx-auto animate-spin" /><span className="mt-2 block">Calculating demand…</span></td></tr>
                 : !visibleItems.length ? <tr><td colSpan={9} className="px-4 py-5 text-center text-[var(--oh-muted)]">{data?.products.length ? "No products need replenishment for this coverage target." : "No POS products were returned by Odoo."}</td></tr>
-                  : visibleItems.map((product) => <tr key={product.id} className="hover:bg-sky-50/40">
-                    <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]">{product.name}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{product.sku ? `SKU ${product.sku} · ` : ""}{product.unit}</span></td>
+                  : visibleItems.map((product) => {
+                    const label = friendlyProductName(product.name);
+                    const skuShort = truncateSku(product.sku);
+                    return <tr key={product.id} className="hover:bg-sky-50/40">
+                    <td className="px-4 py-3"><span className="block font-medium text-[var(--oh-text)]" title={product.name}>{label}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">{skuShort ? <span title={product.sku || undefined}>SKU {skuShort} · </span> : ""}{product.unit}</span></td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.soldUnits)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text-secondary)]">{number.format(product.unitsPerDay)}</td>
                     <td className="px-4 py-3 text-right">{product.trend === "new" ? <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800">New demand</span> : product.trend === "up" ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">↑ {number.format(product.trendPercent ?? 0)}%</span> : product.trend === "down" ? <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">↓ {number.format(Math.abs(product.trendPercent ?? 0))}%</span> : product.trend === "steady" ? <span className="text-xs text-[var(--oh-muted)]">Steady</span> : <span className="text-xs text-[var(--oh-muted)]">—</span>}</td>
@@ -332,7 +353,8 @@ export function OdooReplenishmentPage() {
                         </ul>
                       )}
                     </td>
-                  </tr>)}
+                  </tr>;
+                  })}
             </tbody>
           </table>
         </div>

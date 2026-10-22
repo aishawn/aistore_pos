@@ -19,7 +19,9 @@ import {
   type OdooProductRecord,
 } from "@/lib/odoo-api";
 import { PlusIcon } from "@/components/icons";
+import { ProductImage } from "@/components/ProductImage";
 import { cn } from "@/lib/utils";
+import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -107,15 +109,6 @@ function isActiveCartDraft(value: unknown): value is ActiveCartDraft {
 }
 
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
-
-/** Prefer a human-readable product label; keep the full string for title tooltips. */
-function friendlyProductLabel(name: string) {
-  const cleaned = name
-    .replace(/^\[[^\]]+\]\s*/u, "")
-    .replace(/^DEMO\s*[|·\-–—]\s*/iu, "")
-    .trim();
-  return cleaned || name;
-}
 
 export function OdooRegisterPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
@@ -958,8 +951,8 @@ export function OdooRegisterPage() {
                   {posCategories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {Array.isArray(category.parent_id)
-                        ? `${friendlyProductLabel(category.parent_id[1])} / ${friendlyProductLabel(category.name)}`
-                        : friendlyProductLabel(category.name)}
+                        ? `${friendlyProductName(category.parent_id[1])} / ${friendlyProductName(category.name)}`
+                        : friendlyProductName(category.name)}
                     </option>
                   ))}
                 </select>
@@ -987,8 +980,7 @@ export function OdooRegisterPage() {
                     <div role="listbox" aria-label="POS product search results" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                       {products.map((product, index) => {
                         const fullName = product.display_name || product.name;
-                        const label = friendlyProductLabel(fullName);
-                        const initial = (label.replace(/[^A-Za-z0-9]/gu, "").charAt(0) || "?").toUpperCase();
+                        const label = friendlyProductName(fullName);
                         return (
                           <button
                             key={product.id}
@@ -1001,9 +993,12 @@ export function OdooRegisterPage() {
                             disabled={!selectedConfig?.session || product.free_qty <= 0}
                             className={cn("flex min-h-[112px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", index === productActiveIndex && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}
                           >
-                            <span className="oh-type-label mb-2 grid h-9 w-9 place-items-center rounded-full bg-[var(--oh-orange-light)] font-bold text-[var(--oh-primary)]" aria-hidden="true">
-                              {initial}
-                            </span>
+                            <ProductImage
+                              productId={product.id}
+                              name={label}
+                              className="mb-2 h-9 w-9 rounded-full border border-[var(--oh-border)] bg-[var(--oh-orange-light)]"
+                              fallbackClassName="text-base"
+                            />
                             <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
                             <span className="oh-type-body-strong mt-auto pt-2 tabular-nums text-[var(--oh-text)]">{money(product.price_included ?? product.list_price)}</span>
                             <span className="oh-type-label text-[var(--oh-text-secondary)]">
@@ -1158,7 +1153,7 @@ export function OdooRegisterPage() {
               const lineTotal = splitMoney(quotedLine?.total ?? product.list_price * qty * factor);
               const unitPrice = quotedLine ? quotedLine.total / qty : product.list_price * factor;
               const fullName = product.display_name || product.name;
-              const label = friendlyProductLabel(fullName);
+              const label = friendlyProductName(fullName);
               return (
                 <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3.5">
                   <div className="flex items-start gap-3">
