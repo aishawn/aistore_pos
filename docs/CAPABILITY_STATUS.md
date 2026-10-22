@@ -1265,4 +1265,5 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Current Demo runtime table/accessibility read-only suite passed `14/14`, with `unexpectedWrites=0`. Evidence: `docs/UAT_TABLE_A11Y_ONLINE_2026-10-22_CURRENT_RUNTIME.json`.
 - This is old-runtime evidence only; it does not upgrade local focus changes to online-verified status.
+- Latest deployment attempt for `a37ef77` returned HTTP `301`; Demo version endpoint still reports frontend/backend `3edd72d84f514856923c0c0d50b01fe7b015e120`.
 

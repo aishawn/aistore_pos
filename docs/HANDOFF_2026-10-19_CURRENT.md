@@ -2372,6 +2372,12 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Demo read-only table/accessibility suite passed **14/14** on the current runtime; `unexpectedWrites=0`. Four non-GET requests were intercepted by the suite's safe-path guard. Evidence: `docs/UAT_TABLE_A11Y_ONLINE_2026-10-22_CURRENT_RUNTIME.json`.
 - [ ] This evidence describes the currently running frontend `3edd72d...` and does not verify the un-deployed local commits `3fc821c` or `7400123`.
 
+### Deployment result for `a37ef77`
+
+- [x] Current `main` candidate `a37ef77` is pushed and the working tree is aligned with `origin/main`.
+- [ ] Dokploy webhook returned HTTP `301`; no retry was sent.
+- [x] Demo `/api/public/version` returned HTTP 200 and reports frontend/backend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`, built at `2026-10-22T01:33:13Z`. This confirms the old runtime is healthy but does not contain `a37ef77`.
+
 ## 2026-10-22 Stock List focus consistency follow-up
 
 - [x] Stock List export failure retry and category retry actions now expose visible `focus-visible` outlines, matching the existing search-clear control and shared admin actions.
