@@ -194,6 +194,7 @@ public class PosAssistantGraphService {
     static List<AssistantCard> cardsFor(String intent, UiAction ui, String answer) {
         String route = ui == null ? null : ui.route();
         String type = "product_count".equals(intent) ? "product_count"
+                : "guided_action".equals(intent) && route != null && !route.isBlank() ? "guided_action"
                 : "/sommelier".equals(route) ? "sommelier"
                 : "/stock/replenishment".equals(route) ? "replenishment"
                 : "/stock/capped-pricing".equals(route) ? "pricing" : null;
@@ -219,11 +220,13 @@ public class PosAssistantGraphService {
                 || lower.contains("no recommendation"));
         String title = switch (type) {
             case "product_count" -> "Product catalogue";
+            case "guided_action" -> "Action guide";
             case "sommelier" -> "Wine recommendations";
             case "pricing" -> "Price review suggestions";
             default -> "Replenishment suggestions";
         };
         String routeTarget = "product_count".equals(type) ? "/products"
+                : "guided_action".equals(type) ? route
                 : "/sommelier".equals(route) ? "/sommelier"
                 : "/stock/capped-pricing".equals(route) ? "/stock/capped-pricing"
                 : "/stock/replenishment";
@@ -239,6 +242,7 @@ public class PosAssistantGraphService {
                         : empty ? emptyReason(type) : null,
                 unavailable ? "unavailable" : empty ? "empty" : "ready",
                 "product_count".equals(type) ? "Open products"
+                        : "guided_action".equals(type) ? "Open workflow"
                         : "pricing".equals(type) ? "Open price review" : "Open workflow",
                 routeTarget));
     }

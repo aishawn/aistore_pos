@@ -67,6 +67,22 @@ class PosAssistantGraphServiceCardTest {
     }
 
     @Test
+    void mapsGuidedActionToAnExplicitReadOnlyWorkflowCard() {
+        List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
+                "guided_action",
+                new UiAction("products", "products", "/products", "navigate"),
+                "I can guide this change, but saving business data must be completed and confirmed on the page.");
+
+        assertEquals(1, cards.size());
+        AssistantCard card = cards.getFirst();
+        assertEquals("guided_action", card.type());
+        assertEquals("ready", card.status());
+        assertEquals("/products", card.ctaRoute());
+        assertEquals("Open workflow", card.ctaLabel());
+        assertEquals(List.of(), card.items());
+    }
+
+    @Test
     void extractsNumberedRecommendationLinesIntoAtMostThreeCardItems() {
         List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
                 "navigate",
