@@ -1,0 +1,170 @@
+{
+  "generatedAt": "2026-10-22T04:27:57.185Z",
+  "sourceCommit": "393c4e482b28daa6d9dff3837e1f4b55b2a08f8d",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v22.22.2",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
+  "screenshots": [
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-320.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-390.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-768.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-1024.png",
+    "docs/screenshots/2026-10-21-price-suggestions-local/price-suggestions-1440.png"
+  ],
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "production app route wrapper",
+      "status": "PASS",
+      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\app\\stock\\price-suggestions\\page.tsx"
+    },
+    {
+      "name": "production stock hub links pricing",
+      "status": "PASS",
+      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\app\\stock\\more\\page.tsx"
+    },
+    {
+      "name": "live pricing page is not cached",
+      "status": "PASS",
+      "evidence": "no-cache, must-revalidate"
+    },
+    {
+      "name": "price suggestions page",
+      "status": "PASS",
+      "evidence": "Heading, DEMO row, raise badge and read-only guidance visible"
+    },
+    {
+      "name": "product and SKU search",
+      "status": "PASS",
+      "evidence": "SKU query keeps the matching product visible"
+    },
+    {
+      "name": "empty search state",
+      "status": "PASS",
+      "evidence": "Unmatched query explains that no products match"
+    },
+    {
+      "name": "status filter",
+      "status": "PASS",
+      "evidence": "Raise price filter keeps the matching row visible"
+    },
+    {
+      "name": "status empty state",
+      "status": "PASS",
+      "evidence": "Missing cost filter hides non-matching rows"
+    },
+    {
+      "name": "apply CTA present",
+      "status": "PASS",
+      "evidence": "Open product link present; no apply-price write control"
+    },
+    {
+      "name": "bulk edit deep link",
+      "status": "PASS",
+      "evidence": "/stock/bulk-price-edit?search=DEMO-SHIRAZ"
+    },
+    {
+      "name": "read-only CSV export",
+      "status": "PASS",
+      "evidence": "orithos-price-suggestions-2026-10-22.csv ﻿\"Product\",\"SKU\",\"Status\",\"Standard cost (AUD)\",\"Current shelf incl GST (AUD)\",\"Suggested shelf incl GST (AUD)\",\"Current net margin\",\"Suggested net margin\",\"Sold units (28d)\",\"On h"
+    },
+    {
+      "name": "bulk edit pre-fills SKU",
+      "status": "PASS",
+      "evidence": "DEMO-SHIRAZ"
+    },
+    {
+      "name": "bulk edit requests SKU query",
+      "status": "PASS",
+      "evidence": "[\"DEMO-SHIRAZ\"]"
+    },
+    {
+      "name": "mobile content uses available width at 320px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":320,\"documentWidth\":320,\"contentWidth\":288,\"mainWidth\":320,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 320px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":320,\"documentWidth\":320,\"contentWidth\":288,\"mainWidth\":320,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 320px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":320,\"documentWidth\":320,\"contentWidth\":288,\"mainWidth\":320,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 320px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "mobile content uses available width at 390px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":390,\"documentWidth\":390,\"contentWidth\":358,\"mainWidth\":390,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 390px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":390,\"documentWidth\":390,\"contentWidth\":358,\"mainWidth\":390,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 390px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":390,\"documentWidth\":390,\"contentWidth\":358,\"mainWidth\":390,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 390px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "mobile content uses available width at 768px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":768,\"documentWidth\":768,\"contentWidth\":464,\"mainWidth\":512,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 768px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":768,\"documentWidth\":768,\"contentWidth\":464,\"mainWidth\":512,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 768px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":768,\"documentWidth\":768,\"contentWidth\":464,\"mainWidth\":512,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 768px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "mobile content uses available width at 1024px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":1024,\"documentWidth\":1024,\"contentWidth\":720,\"mainWidth\":768,\"floatCount\":0}"
+    },
+    {
+      "name": "mobile page has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":1024,\"documentWidth\":1024,\"contentWidth\":720,\"mainWidth\":768,\"floatCount\":0}"
+    },
+    {
+      "name": "single header AI entry at 1024px",
+      "status": "PASS",
+      "evidence": "{\"viewportWidth\":1024,\"documentWidth\":1024,\"contentWidth\":720,\"mainWidth\":768,\"floatCount\":0}"
+    },
+    {
+      "name": "header AI opens assistant at 1024px",
+      "status": "PASS",
+      "evidence": ""
+    },
+    {
+      "name": "no api writes",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "writes": []
+}

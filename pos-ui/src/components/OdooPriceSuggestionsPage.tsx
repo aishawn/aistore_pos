@@ -198,7 +198,7 @@ export function OdooPriceSuggestionsPage() {
       <main className="mx-auto flex h-full max-w-lg flex-col items-start justify-center gap-3 px-4 py-10">
         <h1 className="text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to review price suggestions</h1>
         <p className="text-sm text-[var(--oh-muted)]">Suggestions use this store&apos;s Odoo costs and shelf prices. Nothing is written from this page.</p>
-        <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">
+        <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
           Open Integrations
         </Link>
       </main>
@@ -225,7 +225,7 @@ export function OdooPriceSuggestionsPage() {
             <select
               value={String(marginTarget)}
               onChange={(event) => { setOffset(0); setMarginTarget(Number(event.target.value)); }}
-              className="bg-transparent font-semibold outline-none"
+              className="rounded bg-transparent font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             >
               {MARGIN_OPTIONS.map((value) => (
                 <option key={value} value={value}>{(value * 100).toFixed(0)}%</option>
@@ -236,7 +236,7 @@ export function OdooPriceSuggestionsPage() {
             type="button"
             onClick={() => void load(true)}
             disabled={refreshing}
-            className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] disabled:opacity-60"
+            className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
           >
             {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}
             Refresh
@@ -251,7 +251,7 @@ export function OdooPriceSuggestionsPage() {
       {error && (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
           <span className="flex min-w-0 items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error}{requestId ? <span className="mt-1 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</span></span>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold underline-offset-2 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60">
+          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold underline-offset-2 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">
             {refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry
           </button>
         </div>
@@ -276,21 +276,21 @@ export function OdooPriceSuggestionsPage() {
               type="button"
               onClick={() => data && downloadSuggestions(visibleItems)}
               disabled={!data || visibleItems.length === 0}
-              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download size={16} />
               Export CSV
             </button>
-            <Link href="/stock/bulk-price-edit" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)]">
+            <Link href="/stock/bulk-price-edit" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
               Bulk price edit
             </Link>
-            <Link href="/products/odoo" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white">
+            <Link href="/products/odoo" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
               Open products
             </Link>
             <button
               type="button"
               onClick={() => setShowAll((value) => !value)}
-              className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline"
+              className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               {showAll ? "Show suggestions only" : "Show all products"}
             </button>
@@ -305,7 +305,7 @@ export function OdooPriceSuggestionsPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search product or SKU"
-              className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white pl-9 pr-9 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
+              className="h-11 w-full rounded-md border border-[var(--oh-border)] bg-white pl-9 pr-9 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             />
             {query ? (
               <button type="button" onClick={() => setQuery("")} aria-label="Clear product search" className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center text-[var(--oh-muted)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]">
@@ -315,7 +315,7 @@ export function OdooPriceSuggestionsPage() {
           </label>
           <label className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
             <span className="text-[var(--oh-muted)]">Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | SuggestionStatus)} className="bg-transparent font-semibold outline-none">
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | SuggestionStatus)} className="rounded bg-transparent font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">
               <option value="all">All</option>
               <option value="raise">Raise price</option>
               <option value="review_cost">Review</option>
@@ -361,13 +361,13 @@ export function OdooPriceSuggestionsPage() {
                     </span>
                     <Link
                       href={`/products/odoo?q=${encodeURIComponent(product.sku || product.name)}`}
-                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold"
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Open product
                     </Link>
                     <Link
                       href={`/stock/bulk-price-edit?search=${encodeURIComponent(product.sku || product.name)}${product.status === "raise" && product.suggestedListPrice != null ? `&productId=${product.id}&suggestedPrice=${product.suggestedListPrice}&expectedPrice=${product.currentListPrice}` : ""}`}
-                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold"
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Bulk edit this product
                     </Link>
@@ -376,7 +376,7 @@ export function OdooPriceSuggestionsPage() {
                       onClick={() => setExpandedId((current) => (current === product.id ? null : product.id))}
                       aria-expanded={expandedId === product.id}
                       aria-controls={`price-suggestion-explanation-${product.id}`}
-                      className="min-h-11 text-sm font-semibold text-[var(--oh-orange-dark)]"
+                      className="min-h-11 rounded-md px-2 text-sm font-semibold text-[var(--oh-orange-dark)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       {expandedId === product.id ? "Hide explanation" : "Explain suggestion"}
                     </button>
@@ -393,9 +393,9 @@ export function OdooPriceSuggestionsPage() {
         )}
       </section>
       {data && (offset > 0 || data.nextOffset != null || data.truncated) && <nav aria-label="Price suggestion pages" className="flex flex-wrap items-center gap-3 text-sm">
-        <button type="button" disabled={offset === 0 || loading || refreshing} onClick={() => setOffset(Math.max(0, offset - 30))} className="min-h-11 rounded border px-3 disabled:opacity-50">Previous</button>
+        <button type="button" disabled={offset === 0 || loading || refreshing} onClick={() => setOffset(Math.max(0, offset - 30))} className="min-h-11 rounded border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Previous</button>
         <span>Page {Math.floor(offset / 30) + 1}. Search and export cover this page.</span>
-        <button type="button" disabled={data.nextOffset == null || loading || refreshing} onClick={() => { if (data.nextOffset != null) setOffset(data.nextOffset); }} className="min-h-11 rounded border px-3 disabled:opacity-50">Next</button>
+        <button type="button" disabled={data.nextOffset == null || loading || refreshing} onClick={() => { if (data.nextOffset != null) setOffset(data.nextOffset); }} className="min-h-11 rounded border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Next</button>
       </nav>}
     </main>
   );
