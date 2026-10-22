@@ -533,65 +533,64 @@ export function OrithosOverviewPage() {
             )}
           </section>
 
-          <div className={cn("grid gap-2 sm:grid-cols-2", hasAnalyticsData ? "min-h-0 flex-1" : "min-h-[15rem] shrink-0")}>
-            <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
+          {/* Keep a hard min-height: flex-1 + min-h-0 was crushing the trend plot to ~0 and letting bars paint over Recent sales. */}
+          <div className="grid min-h-[16rem] shrink-0 gap-2 sm:grid-cols-2">
+            <section className="flex min-h-[16rem] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales trend</h2>
               <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">
                 {rangeLabel}{periodBounds ? ` · ${periodBounds}` : ""}
               </p>
               {hasTrendData ? (
-                <>
-                  <div className="mt-2 flex min-h-[7rem] min-w-0 flex-1 flex-col overflow-hidden">
-                    <div
-                      aria-describedby="overview-sales-trend-summary"
-                      className="relative flex min-h-0 flex-1 items-end gap-1.5 overflow-hidden border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1"
-                    >
-                      <p id="overview-sales-trend-summary" className="sr-only">{trendSummary}</p>
-                      {trendData.map((item, index) => {
-                        const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
-                        const label = formatGroupedStoreTime(item.label, trendLabelOptions);
-                        return (
+                <div className="mt-2 flex min-w-0 flex-col">
+                  <div
+                    aria-describedby="overview-sales-trend-summary"
+                    className="relative flex h-36 items-end gap-1.5 overflow-hidden border-b border-l border-[var(--oh-border)] px-1.5 pb-0 pt-1"
+                  >
+                    <p id="overview-sales-trend-summary" className="sr-only">{trendSummary}</p>
+                    {trendData.map((item, index) => {
+                      const percent = Math.max(item.revenue > 0 ? 4 : 0, (item.revenue / maxRevenue) * 100);
+                      const label = formatGroupedStoreTime(item.label, trendLabelOptions);
+                      return (
+                        <div
+                          key={`${item.label}-${index}`}
+                          role="img"
+                          tabIndex={0}
+                          aria-label={`${label}: ${formatMoney(item.revenue, currency)}, ${item.transactions} sales`}
+                          className="group relative flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+                        >
                           <div
-                            key={`${item.label}-${index}`}
-                            role="img"
-                            tabIndex={0}
-                            aria-label={`${label}: ${formatMoney(item.revenue, currency)}, ${item.transactions} sales`}
-                            className="group relative flex h-full min-w-0 flex-1 flex-col justify-end text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-x-0 top-0 z-10 truncate tabular-nums text-[11px] text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
                           >
-                            <div
-                              aria-hidden="true"
-                              className="pointer-events-none absolute inset-x-0 top-0 z-10 truncate tabular-nums text-[11px] text-[var(--oh-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                            >
-                              {formatMoney(item.revenue, currency)}
-                            </div>
-                            <div
-                              className="mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]"
-                              style={{ height: `${percent}%` }}
-                              title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`}
-                            />
+                            {formatMoney(item.revenue, currency)}
                           </div>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-1 hidden gap-1.5 sm:flex" aria-hidden="true">
-                      {trendData.map((item, index) => {
-                        const label = formatGroupedStoreTime(item.label, trendLabelOptions);
-                        const showLabel = index === 0 || index === trendData.length - 1 || index % trendLabelInterval === 0;
-                        return (
-                          <span key={`trend-label-${item.label}-${index}`} className="oh-type-meta min-h-[1.25rem] min-w-0 flex-1 truncate text-center text-[var(--oh-muted)]">
-                            {showLabel ? label : ""}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {trendData.length > 0 && (
-                      <div className="mt-1 flex justify-between gap-3 text-[11px] text-[var(--oh-muted)] sm:hidden" aria-hidden="true">
-                        <span>{formatGroupedStoreTime(trendData[0].label, trendLabelOptions)}</span>
-                        <span>{formatGroupedStoreTime(trendData[trendData.length - 1].label, trendLabelOptions)}</span>
-                      </div>
-                    )}
+                          <div
+                            className="mx-auto w-full max-w-10 rounded-t bg-[var(--oh-primary)]/85 transition-colors group-hover:bg-[var(--oh-primary)]"
+                            style={{ height: `${percent}%` }}
+                            title={`${formatMoney(item.revenue, currency)} · ${item.transactions} sales`}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
-                </>
+                  <div className="mt-1 hidden gap-1.5 sm:flex" aria-hidden="true">
+                    {trendData.map((item, index) => {
+                      const label = formatGroupedStoreTime(item.label, trendLabelOptions);
+                      const showLabel = index === 0 || index === trendData.length - 1 || index % trendLabelInterval === 0;
+                      return (
+                        <span key={`trend-label-${item.label}-${index}`} className="oh-type-meta min-h-[1.25rem] min-w-0 flex-1 truncate text-center text-[var(--oh-muted)]">
+                          {showLabel ? label : ""}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  {trendData.length > 0 && (
+                    <div className="mt-1 flex justify-between gap-3 text-[11px] text-[var(--oh-muted)] sm:hidden" aria-hidden="true">
+                      <span>{formatGroupedStoreTime(trendData[0].label, trendLabelOptions)}</span>
+                      <span>{formatGroupedStoreTime(trendData[trendData.length - 1].label, trendLabelOptions)}</span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="grid min-h-[10rem] flex-1 place-items-center p-4 text-center">
                   <div className="max-w-xs">
@@ -618,7 +617,7 @@ export function OrithosOverviewPage() {
               )}
             </section>
 
-            <section className="flex min-h-0 flex-col rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
+            <section className="flex min-h-[16rem] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-2.5 shadow-[var(--oh-shadow-card)]">
               <h2 className="oh-type-label shrink-0 font-semibold text-[var(--oh-text)]">Sales by category</h2>
               <p className="oh-type-meta shrink-0 text-[var(--oh-muted)]">Share of revenue</p>
               {data?.byCategory.length ? (
