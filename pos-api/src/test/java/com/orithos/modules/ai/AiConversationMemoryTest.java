@@ -5,6 +5,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,5 +51,31 @@ class AiConversationMemoryTest {
         memory.clear("thread");
 
         verify(redis).delete("ai:chat:thread");
+    }
+
+    @Test
+    void appendPersistsSlotsAndRehydrateRestoresThem() throws Exception {
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> values = mock(ValueOperations.class);
+        when(redis.opsForValue()).thenReturn(values);
+        when(values.get("ai:chat:thread")).thenReturn("[]");
+        AiProperties properties = new AiProperties(true, null, null, null, null,
+                0.1, 1024, 40, 6, 120);
+        AiConversationMemory memory = new AiConversationMemory(redis,
+                new com.fasterxml.jackson.databind.ObjectMapper(), properties);
+
+        memory.append("thread", "How much Shiraz is in stock?", "report_stock",
+                "Shiraz 4", Map.of("query", "Shiraz"));
+
+        var captured = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(values).set(eq("ai:chat:thread"), captured.capture(), eq(Duration.ofMinutes(120)));
+        assertTrue(captured.getValue().contains("\"query\":\"Shiraz\""));
+
+        memory.rehydrate("thread", java.util.List.of(
+                new AiConversationMemory.Turn("How much Shiraz is in stock?", "report_stock", "Shiraz 4",
+                        Map.of("query", "Shiraz"))));
+
+        verify(values).set(eq("ai:slots:thread"),
+                org.mockito.ArgumentMatchers.contains("Shiraz"), eq(Duration.ofMinutes(120)));
     }
 }
