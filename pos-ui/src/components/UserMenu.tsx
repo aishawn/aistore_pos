@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { DoorClosed } from "lucide-react";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -10,10 +11,12 @@ import { useDialogFocus } from "@/hooks/useDialogFocus";
 export function UserMenu({
   open,
   onClose,
+  onCloseRegister,
   onLogout,
 }: {
   open: boolean;
   onClose: () => void;
+  onCloseRegister?: () => void;
   onLogout?: () => void;
 }) {
   const menuRef = useRef<HTMLElement>(null);
@@ -53,28 +56,44 @@ export function UserMenu({
       <p className="px-1 pb-3 text-sm leading-5 text-[var(--oh-muted)]">
         Account settings and sign-out for this workstation.
       </p>
-      <div className="flex flex-col gap-2 border-t border-[var(--oh-border)] pt-3 sm:flex-row">
-        <Link
-          href="/settings/account"
-          tabIndex={open ? undefined : -1}
-          onClick={onClose}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)] no-underline transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-        >
-          <SettingsGearIcon size={18} strokeWidth={1.5} />
-          Profile &amp; Security
-        </Link>
-        <button
-          type="button"
-          tabIndex={open ? undefined : -1}
-          onClick={() => {
-            onClose();
-            onLogout?.();
-          }}
-          className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-        >
-          <LogOutIcon size={18} strokeWidth={1.5} />
-          Logout
-        </button>
+      <div className="flex flex-col gap-2 border-t border-[var(--oh-border)] pt-3">
+        {onCloseRegister ? (
+          <button
+            type="button"
+            tabIndex={open ? undefined : -1}
+            onClick={() => {
+              onClose();
+              onCloseRegister();
+            }}
+            className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <DoorClosed size={18} strokeWidth={1.5} />
+            Close Register
+          </button>
+        ) : null}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/settings/account"
+            tabIndex={open ? undefined : -1}
+            onClick={onClose}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)] no-underline transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <SettingsGearIcon size={18} strokeWidth={1.5} />
+            Profile &amp; Security
+          </Link>
+          <button
+            type="button"
+            tabIndex={open ? undefined : -1}
+            onClick={() => {
+              onClose();
+              onLogout?.();
+            }}
+            className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <LogOutIcon size={18} strokeWidth={1.5} />
+            Logout
+          </button>
+        </div>
       </div>
     </aside>
   );

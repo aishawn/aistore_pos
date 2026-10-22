@@ -1,3 +1,10 @@
+## 2026-10-23 Close Register 模态入口（源码）
+
+- [x] 抽出 `OdooCloseRegisterForm`（`page` / `modal`）；`/close` 仍为全页。
+- [x] POS 寄存器 pill 增加 Close 图标；admin UserMenu 增加 Close Register；两者经 `CloseRegisterUiProvider` 打开同一模态。
+- [x] 关班成功派发 `orithos:odoo-register-closed`，Sell 页刷新 bootstrap。Close API / 点钞字段未改。
+- [ ] 待 typecheck 合批后部署；真实关班仍须隔离库，禁止对生产 `aipos` 写关班。整体仍 **NO-GO**。
+
 ## 2026-10-23 软上线候选（AI + OCR preview）
 
 - [x] Java 21 `mvn -B clean verify`：**319 tests, BUILD SUCCESS**（本机 `jdk-21.0.12.1+1`）。

@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, CircleHelp, Clock3, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
+import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
+import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
+import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
 import {
   getOdooPosBootstrap,
   getOdooSession,
@@ -156,7 +158,9 @@ export function OdooRegisterPage() {
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
   const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [closeRegisterCartWarn, setCloseRegisterCartWarn] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const { openCloseRegister } = useCloseRegisterUiOptional();
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
   const quoteRevision = useRef(0);
@@ -236,9 +240,24 @@ export function OdooRegisterPage() {
     };
   }, []);
 
-  const dialogOpen = helpOpen || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
+  useEffect(() => {
+    const onRegisterClosed = () => { void loadPos(); };
+    window.addEventListener(ODOO_REGISTER_CLOSED_EVENT, onRegisterClosed);
+    return () => window.removeEventListener(ODOO_REGISTER_CLOSED_EVENT, onRegisterClosed);
+  }, [loadPos]);
+
+  function requestCloseRegister() {
+    if (lines.length > 0) {
+      setCloseRegisterCartWarn(true);
+      return;
+    }
+    openCloseRegister();
+  }
+
+  const dialogOpen = helpOpen || closeRegisterCartWarn || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
   useDialogFocus(dialogOpen, () => {
     if (helpOpen) setHelpOpen(false);
+    else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
     else if (parkedAction) setParkedAction(null);
     else if (pendingRegisterId !== null) setPendingRegisterId(null);
     else if (receipt) setReceipt(null);
@@ -881,6 +900,9 @@ export function OdooRegisterPage() {
             <button type="button" onClick={() => setHelpOpen(true)} title="POS help and recovery" aria-label="POS help and recovery" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
               <CircleHelp size={17} />
             </button>
+            <button type="button" onClick={requestCloseRegister} title="Close register" aria-label="Close register" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
+              <DoorClosed size={17} />
+            </button>
           </div>
           {lines.length > 0 && (
             <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] shadow-sm hover:bg-[var(--oh-orange-light)] disabled:opacity-50">
@@ -1303,6 +1325,47 @@ export function OdooRegisterPage() {
           </div>
         </section>
       </div>}
+      {closeRegisterCartWarn && (
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setCloseRegisterCartWarn(false);
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="close-register-cart-title"
+            aria-describedby="close-register-cart-description"
+            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl"
+          >
+            <h2 id="close-register-cart-title" className="text-lg font-semibold text-[var(--oh-text)]">Cart has items</h2>
+            <p id="close-register-cart-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+              Closing the register does not clear this cart. Park or finish the sale first if you need to keep it.
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setCloseRegisterCartWarn(false)}
+                className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCloseRegisterCartWarn(false);
+                  openCloseRegister();
+                }}
+                className="min-h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                Continue
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

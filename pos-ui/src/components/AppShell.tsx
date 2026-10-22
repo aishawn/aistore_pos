@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UserMenu } from "@/components/UserMenu";
+import { CloseRegisterUiProvider, useCloseRegisterUi } from "@/components/CloseRegisterUiProvider";
 import { useAuth } from "@/lib/auth";
 import { UnsavedChangesProvider } from "@/lib/unsaved-changes";
 import { AiFloatHost } from "@/components/AiFloatHost";
@@ -191,6 +192,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <UnsavedChangesProvider>
       <AiAssistantProvider>
+      <CloseRegisterUiProvider>
+        <AppShellChrome
+          userName={user?.name || user?.username || "admin"}
+          sidebarOpen={sidebarOpen}
+          mobileSidebarOpen={mobileSidebarOpen}
+          isMobileViewport={isMobileViewport}
+          userMenuOpen={userMenuOpen}
+          setUserMenuOpen={setUserMenuOpen}
+          setMobileSidebarOpen={setMobileSidebarOpen}
+          toggleNavigation={toggleNavigation}
+          onLogout={onLogout}
+          pathname={pathname}
+        >
+          {children}
+        </AppShellChrome>
+      </CloseRegisterUiProvider>
+      </AiAssistantProvider>
+    </UnsavedChangesProvider>
+  );
+}
+
+/** Inner chrome so UserMenu can call `useCloseRegisterUi` inside the provider. */
+function AppShellChrome({
+  children,
+  userName,
+  sidebarOpen,
+  mobileSidebarOpen,
+  isMobileViewport,
+  userMenuOpen,
+  setUserMenuOpen,
+  setMobileSidebarOpen,
+  toggleNavigation,
+  onLogout,
+  pathname,
+}: {
+  children: React.ReactNode;
+  userName: string;
+  sidebarOpen: boolean;
+  mobileSidebarOpen: boolean;
+  isMobileViewport: boolean;
+  userMenuOpen: boolean;
+  setUserMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setMobileSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleNavigation: () => void;
+  onLogout: () => void | Promise<void>;
+  pathname: string;
+}) {
+  const { openCloseRegister } = useCloseRegisterUi();
+
+  return (
     <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
       <Sidebar
         open={!isMobileViewport && sidebarOpen}
@@ -207,7 +258,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       <div className="flex min-w-0 flex-1 flex-col print:w-full">
         <Header
-          userName={user?.name || user?.username || "admin"}
+          userName={userName}
           sidebarOpen={isMobileViewport ? mobileSidebarOpen : sidebarOpen}
           userMenuOpen={userMenuOpen}
           onSidebarToggle={toggleNavigation}
@@ -216,6 +267,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <UserMenu
           open={userMenuOpen}
           onClose={() => setUserMenuOpen(false)}
+          onCloseRegister={() => {
+            setUserMenuOpen(false);
+            openCloseRegister();
+          }}
           onLogout={onLogout}
         />
         <a
@@ -230,7 +285,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <AiFloatHost />
     </div>
-      </AiAssistantProvider>
-    </UnsavedChangesProvider>
   );
 }
