@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-10-22T18:06:52.383Z",
+  "viewport": "390x844",
+  "rows": [
+    {
+      "path": "/overview",
+      "issues": [],
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "path": "/",
+      "issues": [],
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "path": "/products/odoo",
+      "issues": [],
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "path": "/assistant",
+      "issues": [],
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "path": "/settings/integrations",
+      "issues": [],
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    {
+      "path": "/stock/price-suggestions",
+      "issues": [],
+      "scrollWidth": 390,
+      "clientWidth": 390
+    }
+  ]
+}
