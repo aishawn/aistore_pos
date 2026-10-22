@@ -1,3 +1,11 @@
+## 2026-10-22 报表与 Odoo 空态 UI 批次（本地待部署）
+
+- [x] Odoo 报表临时 `503` 与未连接 `401` 分支：`2/2 PASS`；503 保留 Retry/Request ID，401 显示连接引导，390px 无横向溢出。
+- [x] 产品目录、补货和报表的移动错误/空态按钮补齐键盘焦点样式。
+- [x] Platform Audit/Failures fixture：`4/4 PASS`（390/1440px），重试恢复、无页面错误、无业务写入。
+- [ ] 待与下一批前端改动合并后部署 Dokploy，再执行 Demo 线上报表 503/401 语义和平台路由复验。
+- 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。
+
 ## 2026-10-22 交互 UAT 最终分类（线上 e0a867b runtime）
 
 - [x] 交互只读回归：`10 PASS / 0 FAIL / 4 BLOCKED`，证据：`docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B-BLOCKED-DATA-FINAL.json`。

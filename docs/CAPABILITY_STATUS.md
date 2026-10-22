@@ -1,3 +1,10 @@
+## 2026-10-22 报表与 Odoo 空态 UI 批次（本地待部署）
+
+- 报表 Dashboard 对 Odoo `503` 临时故障现在保留 Retry 和 Request ID，并显示可恢复错误；只有 `401` 会显示连接 Odoo 引导，避免把网关故障误判为配置缺失。
+- 产品目录、补货和报表的错误/空态操作入口补齐统一 `focus-visible` 状态，覆盖移动端清除筛选、连接、重试、分类重载和销售历史引导。
+- 本地验证：报表 503/401 双分支 `2/2 PASS`，390px 无横向溢出；Platform Audit/Failures fixture `4/4 PASS`（390/1440px，重试恢复，无页面错误，无写入）；Node typecheck、定向 ESLint、脚本语法检查通过。
+- 证据：`docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_UI-BATCH.json`、`docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_UI-BATCH.json`。本批尚未部署，线上仍以已核验 runtime 为准。
+
 ## 2026-10-22 线上交互验收分类更新（e0a867b runtime）
 
 - 交互 UAT 最新结果：**10 PASS / 4 BLOCKED / 0 FAIL**，证据：`docs/UAT_INTERACTION_2026-10-22_RUNTIME-E0A867B-BLOCKED-DATA-FINAL.json`。

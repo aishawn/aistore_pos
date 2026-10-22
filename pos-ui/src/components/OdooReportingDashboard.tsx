@@ -87,7 +87,9 @@ export function OdooReportingDashboard() {
       if (revision !== requestRevision.current) return;
       if (!response.ok) {
         const message = payload && "message" in payload ? payload.message : undefined;
-        setNeedsConnection(response.status === 401 || response.status === 503);
+        // A gateway outage is retryable; only an expired or missing session
+        // should send the operator to the Odoo connection setup.
+        setNeedsConnection(response.status === 401);
         throw new Error(message || `Could not load the Odoo dashboard (${response.status}).`);
       }
       if (!payload || !("revenue" in payload) || !Array.isArray(payload.trend) || !Array.isArray(payload.recentSales)) {
@@ -130,7 +132,7 @@ export function OdooReportingDashboard() {
           <Store className="mx-auto text-amber-600" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to view live reports</h1>
           <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">The dashboard reads completed sales and open register sessions from your connected Odoo company.</p>
-          <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Connect Odoo</Link>
+          <Link href="/settings/integrations" className="mt-5 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
         </section>
       </main>
     );
@@ -143,7 +145,7 @@ export function OdooReportingDashboard() {
           <AlertCircle className="mx-auto text-red-700" size={30} />
           <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the reporting dashboard</h1>
           <p className="mt-2 text-sm leading-6 text-red-800">{error}{requestId ? <span className="mt-2 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</p>
-          <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"><RefreshCw size={16} /> Retry</button>
+          <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button>
         </section>
       </main>
     );
@@ -163,16 +165,16 @@ export function OdooReportingDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="dashboard-range">Reporting period</label>
-          <select id="dashboard-range" value={rangeHours} onChange={(event) => setRangeHours(Number(event.target.value))} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+          <select id="dashboard-range" value={rangeHours} onChange={(event) => setRangeHours(Number(event.target.value))} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
             {ranges.map((range) => <option key={range.hours} value={range.hours}>{range.label}</option>)}
           </select>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">
+          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
             {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
         </div>
       </header>
 
-      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex min-w-0 items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error} The dashboard below is the last successful result and may be out of date.{requestId ? <span className="mt-1 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</span></span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex min-w-0 items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error} The dashboard below is the last successful result and may be out of date.{requestId ? <span className="mt-1 block break-all font-mono text-xs text-red-800/80">Request ID: {requestId}</span> : null}</span></span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{refreshing ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       <section aria-label="Sales summary" className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard title="Net sales" value={formatMoney(data?.revenue ?? 0, data?.currency ?? "AUD")} detail="Completed sales less refunds · incl. tax" icon={<ShoppingBag size={18} />} />
