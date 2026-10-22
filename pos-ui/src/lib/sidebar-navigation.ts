@@ -4,10 +4,8 @@
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  *
  * Customer sidebar (2026-10-23):
- * - Collapsible Customers group with Odoo-backed children only.
- * - Classic MySQL Customer Groups / Price Lists / Gift Cards stay out of nav;
- *   production routes under those paths now serve Odoo surfaces (or module-gated
- *   honesty for Gift Cards when Loyalty is not installed).
+ * - Only list Odoo-backed pages that have been connected and verified.
+ * - Keep Classic MySQL Price Lists / Balances / Gift Cards out of production nav.
  */
 
 export interface SidebarItem {
@@ -57,13 +55,9 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "overview",
   },
   {
-    label: "Register",
+    label: "Sell",
+    href: "/",
     icon: "sales",
-    items: [
-      { label: "Point of sale", href: "/" },
-      { label: "Sales History", href: "/history/odoo" },
-      { label: "Close Register", href: "/close" },
-    ],
   },
   {
     label: "Stock",
@@ -81,9 +75,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     items: [
       { label: "Customers", href: "/customers/odoo" },
       { label: "Customer Groups", href: "/customer-groups" },
-      { label: "Price Lists", href: "/pricelists" },
-      { label: "Balances", href: "/customers/balances" },
-      { label: "Gift Cards", href: "/giftcards" },
     ],
   },
   {
