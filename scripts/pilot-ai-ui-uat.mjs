@@ -158,7 +158,7 @@ async function runViewport(viewport) {
     throw new Error(`AI_COMPOSER_ENABLED_WHILE_ASSISTANT_UNAVAILABLE_${viewport.width}`);
   }
   if (assistantAvailable) {
-    const askCard = async (question, title, label, bodyPattern) => {
+    const askCard = async (question, title, label, bodyPattern, ctaLabel) => {
       await composer.fill(question);
       await sendButton.click();
       const card = assistant.locator(`section[aria-label="${title}"]`);
@@ -172,6 +172,9 @@ async function runViewport(viewport) {
       }
       const cta = card.getByRole("button");
       if (await cta.count() < 1) throw new Error(`${label}_CARD_CTA_MISSING_${viewport.width}`);
+      if (ctaLabel && !(await card.getByRole("button", { name: ctaLabel, exact: true }).count())) {
+        throw new Error(`${label}_CARD_CTA_LABEL_INVALID_${viewport.width}`);
+      }
       await assistant.getByRole("button", { name: "Clear chat", exact: true }).click();
     };
     await askCard(
@@ -179,18 +182,21 @@ async function runViewport(viewport) {
       "Product catalogue",
       "PRODUCT_COUNT",
       /\d+|unavailable|permission|not bound|sign in/i,
+      "Open products",
     );
     await askCard(
       "Recommend a red wine under $30",
       "Wine recommendations",
       "SOMMELIER",
       /wine|recommend|unavailable|no match|no recommendation/i,
+      "Open Sommelier",
     );
     await askCard(
       "Create a customer",
       "Action guide",
       "GUIDED_ACTION",
       /guide|saving business data|confirm|page|unavailable/i,
+      "Open customers",
     );
 
   }
