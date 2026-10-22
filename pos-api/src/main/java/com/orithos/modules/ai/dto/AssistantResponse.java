@@ -13,5 +13,8 @@ public record AssistantResponse(
         ReportTable table,
         Long reportId,
         List<AssistantCard> cards,
-        List<String> writeRequests
+        List<String> writeRequests,
+        String fastPathId,
+        String source,
+        boolean llmFallback
 ) {}

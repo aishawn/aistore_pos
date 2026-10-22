@@ -176,6 +176,9 @@ public class ClassifyQueryNode implements NodeAction {
             out.put("ui_view", "");
             out.put("ui_route", directWorkflow.route());
             out.put("ui_action", "");
+            out.put("fast_path_id", "workflow");
+            out.put("route_source", "deterministic");
+            out.put("llm_fallback", false);
             return out;
         }
 
@@ -230,6 +233,9 @@ public class ClassifyQueryNode implements NodeAction {
         out.put("ui_view", nullToEmpty(result.view()));
         out.put("ui_route", route);
         out.put("ui_action", nullToEmpty(result.action()));
+        out.put("fast_path_id", "llm_classifier");
+        out.put("route_source", "llm");
+        out.put("llm_fallback", true);
         return out;
     }
 
@@ -398,6 +404,9 @@ public class ClassifyQueryNode implements NodeAction {
         out.put("ui_view", nullToEmpty(view));
         out.put("ui_route", nullToEmpty(route));
         out.put("ui_action", nullToEmpty(action));
+        out.put("fast_path_id", intent == null || intent.isBlank() ? "unknown" : intent);
+        out.put("route_source", "deterministic");
+        out.put("llm_fallback", false);
         return out;
     }
 

@@ -788,6 +788,9 @@ export interface AssistantResponse {
   reportId?: number | null;
   cards?: AssistantCard[] | null;
   writeRequests?: string[] | null;
+  fastPathId?: string | null;
+  source?: string | null;
+  llmFallback?: boolean;
 }
 
 export interface AiReportSnapshot {

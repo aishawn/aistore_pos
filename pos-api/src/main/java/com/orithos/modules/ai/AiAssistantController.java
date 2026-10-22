@@ -48,6 +48,10 @@ public class AiAssistantController {
     private boolean aiEnabled;
     @Value("${spring.ai.dashscope.base-url:https://dashscope.aliyuncs.com}")
     private String dashScopeBaseUrl;
+    @Value("${SOURCE_COMMIT:unknown}")
+    private String sourceCommit;
+    @Value("${RUNTIME_COMMIT:unknown}")
+    private String runtimeCommit;
 
     public AiAssistantController(
             ObjectProvider<PosAssistantGraphService> graphService,
@@ -97,6 +101,9 @@ public class AiAssistantController {
 
         auditService.recordAssistant(tenant, result.intent(), true, elapsedMs(startedAt), request.question(), result.answer());
         chatHistoryService.appendTurn(tenant, result.threadId(), request.question(), result.intent(), result.answer());
+        log.info("AI assistant observed fastPathId={} intent={} source={} llmFallback={} sourceCommit={} runtimeCommit={} writeRequests={}",
+                result.fastPathId(), result.intent(), result.source(), result.llmFallback(),
+                sourceCommit, runtimeCommit, result.writeRequests());
 
         return ApiResult.ok(new AssistantResponse(
                 result.threadId(),
@@ -108,7 +115,10 @@ public class AiAssistantController {
                 result.table(),
                 result.reportId(),
                 result.cards(),
-                result.writeRequests()
+                result.writeRequests(),
+                result.fastPathId(),
+                result.source(),
+                result.llmFallback()
         ));
     }
 

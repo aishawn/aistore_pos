@@ -115,6 +115,9 @@ public class PosAssistantGraphService {
             ReportTable table = tableFrom(data);
             String answer = stringValue(data, "answer");
             String intent = stringValue(data, "intent");
+            String fastPathId = stringValue(data, "fast_path_id");
+            String source = stringValue(data, "route_source");
+            boolean llmFallback = Boolean.parseBoolean(stringValue(data, "llm_fallback"));
             Long reportId = snapshotService.save(tenant, intent, question, answer, table, slots);
             List<AssistantCard> cards = cardsFor(intent, ui, answer);
 
@@ -131,7 +134,10 @@ public class PosAssistantGraphService {
                     table,
                     reportId,
                     cards,
-                    List.of()
+                    List.of(),
+                    fastPathId,
+                    source,
+                    llmFallback
             );
         } finally {
             AssistantTenantContext.clear();
@@ -260,6 +266,9 @@ public class PosAssistantGraphService {
             ReportTable table,
             Long reportId,
             List<AssistantCard> cards,
-            List<String> writeRequests
+            List<String> writeRequests,
+            String fastPathId,
+            String source,
+            boolean llmFallback
     ) {}
 }
