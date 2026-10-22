@@ -30,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 @RestController
 @RequestMapping("/api/ai")
@@ -50,8 +51,6 @@ public class AiAssistantController {
     private String dashScopeBaseUrl;
     @Value("${SOURCE_COMMIT:unknown}")
     private String sourceCommit;
-    @Value("${RUNTIME_COMMIT:unknown}")
-    private String runtimeCommit;
 
     public AiAssistantController(
             ObjectProvider<PosAssistantGraphService> graphService,
@@ -103,7 +102,7 @@ public class AiAssistantController {
         chatHistoryService.appendTurn(tenant, result.threadId(), request.question(), result.intent(), result.answer());
         log.info("AI assistant observed fastPathId={} intent={} source={} llmFallback={} sourceCommit={} runtimeCommit={} writeRequests={}",
                 result.fastPathId(), result.intent(), result.source(), result.llmFallback(),
-                sourceCommit, runtimeCommit, result.writeRequests());
+                sourceCommit, runtimeCommit(), result.writeRequests());
 
         return ApiResult.ok(new AssistantResponse(
                 result.threadId(),
@@ -145,6 +144,17 @@ public class AiAssistantController {
             current = current.getCause();
         }
         return current;
+    }
+
+    private String runtimeCommit() {
+        Properties properties = new Properties();
+        try (var resource = getClass().getResourceAsStream("/build-identity.properties")) {
+            if (resource != null) properties.load(resource);
+        } catch (Exception ignored) {
+            return "unknown";
+        }
+        String commit = properties.getProperty("commit", "");
+        return commit.matches("[a-f0-9]{40}") ? commit : "unknown";
     }
 
     /** Full AI report snapshot for the dedicated results page. */

@@ -160,6 +160,9 @@ class ClassifyQueryNodeTest {
 
         assertEquals("product_count", result.get("intent"));
         assertEquals("/products", result.get("ui_route"));
+        assertEquals("product_count", result.get("fast_path_id"));
+        assertEquals("deterministic", result.get("route_source"));
+        assertEquals(false, result.get("llm_fallback"));
         assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
