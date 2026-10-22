@@ -1267,3 +1267,9 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - This is old-runtime evidence only; it does not upgrade local focus changes to online-verified status.
 - Latest deployment attempt for `a37ef77` returned HTTP `301`; Demo version endpoint still reports frontend/backend `3edd72d84f514856923c0c0d50b01fe7b015e120`.
 
+@@
+## 2026-10-22 Settings Data keyboard focus follow-up
+
+- Settings Data destructive/recovery and import/export controls now have visible keyboard focus states: Retry, Remove sample data, Import products, Export products, and Download template.
+- Local evidence is `docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json`; typecheck, targeted ESLint, and diff check pass. This is a frontend-only accessibility change with no business writes.
+- Online status remains **not verified**. The full Settings mobile script was blocked by the existing mobile `/settings/users` card assertion, so it cannot be counted as a complete suite pass.

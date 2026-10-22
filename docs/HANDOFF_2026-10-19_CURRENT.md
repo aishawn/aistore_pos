@@ -165,6 +165,12 @@
 4. 后端 `pos-api` 改动仍须先过同候选 SHA 的远程 Java 21 `mvn -B clean verify`，目前未满足。
 # Orithos POS 当前交接
 
+## 2026-10-24 AI 助手自然问法扩展（当前工作区）
+
+- `scripts/pilot-ai-workflow-utterances-online-uat.mjs` 当前包含 **245 条唯一问法**；本轮新增 29 条收银员口语、混合指标报表、库存/供应商目录、中文夹英文和执行型安全边界。
+- `docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md` 已同步每类问法的预期意图、路由、槽位、不可用状态和零业务写入边界。
+- 既有 Demo 证据 `216/216 PASS` 只覆盖旧目录；新增 29 条尚未在线执行，需先核对 frontend/backend runtime SHA，再以 assistant API-only 方式回归。当前不运行本地 build，不执行真实销售、采购、收货、改价、库存调整、退款或关班写入。
+
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
 用户确认 Dokploy 最新部署成功。本轮只读线上验收已完成：
@@ -2384,3 +2390,10 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Responsive stock/pricing fixture passed **15/15** across 320/390/768/1024/1440px with the new Export CSV and Clear Filters focus assertions, no page errors, no overflow, and `blockedWrites=0`. Evidence: `docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
 - [x] Node 24 typecheck, targeted ESLint, `node --check`, and `git diff --check` passed. No local production build was run.
 
+@@
+## 2026-10-22 Settings Data focus follow-up
+
+- Settings Data now gives Retry, Remove sample data, Import products, Export products, and Download template visible `focus-visible` outlines. The actions and data flow are unchanged.
+- Local checks passed: Node 24 typecheck, targeted ESLint, and `git diff --check`. Evidence: `docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json`. No production build was run and no business write was sent.
+- The authenticated Settings mobile script was attempted against Demo but timed out on an existing `/settings/users` mobile-card selector. Record that suite as blocked; do not infer a Settings Data failure from it.
+- This batch is not online-verified. Read `/api/public/version` after deployment and require an exact candidate SHA match before upgrading its status.

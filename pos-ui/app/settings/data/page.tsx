@@ -123,7 +123,7 @@ export default function SettingsDataPage() {
         {error && (
           <div role="alert" className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
             <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />{error}</span>
-            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 font-semibold disabled:cursor-not-allowed disabled:opacity-60">
+            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-300 bg-white px-3 py-1.5 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
               {loading ? <LoaderCircle size={14} className="animate-spin" /> : null}
               {loading ? "Retrying…" : "Retry"}
             </button>
@@ -183,7 +183,7 @@ export default function SettingsDataPage() {
                     type="button"
                     onClick={() => void purge()}
                     disabled={purging || confirm.trim().toUpperCase() !== status.confirmPhrase}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-900 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-900 hover:bg-red-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {purging ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} />}
                     Remove sample data
@@ -204,7 +204,7 @@ export default function SettingsDataPage() {
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href="/products/odoo?import=1"
-              className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <FileUp size={16} /> Import products
             </Link>
@@ -212,7 +212,7 @@ export default function SettingsDataPage() {
               type="button"
               onClick={() => void exportProducts()}
               disabled={exportBusy}
-              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"
             >
               {exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}
               Export products
@@ -220,7 +220,7 @@ export default function SettingsDataPage() {
             <a
               href="/product-import-template.csv"
               download
-              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               Download template
             </a>

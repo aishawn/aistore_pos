@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-22",
+  "sourceCommit": "3418c44ee8e3ce3d283725a2b47c6df20fa2e785",
+  "scope": "local source and static accessibility checks for Settings Data controls",
+  "status": "PASS",
+  "checks": [
+    "Retry has a visible focus-visible outline",
+    "Remove sample data has a visible focus-visible outline",
+    "Import products has a visible focus-visible outline",
+    "Export products has a visible focus-visible outline",
+    "Download template has a visible focus-visible outline",
+    "No business API calls were made by this check"
+  ],
+  "validation": {
+    "typecheck": "PASS",
+    "targetedEslint": "PASS",
+    "diffCheck": "PASS",
+    "productionBuild": "NOT_RUN"
+  },
+  "onlineStatus": "NOT_VERIFIED"
+}

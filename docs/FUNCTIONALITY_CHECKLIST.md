@@ -551,3 +551,10 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Complete assistant utterance catalog: `216/216 PASS`, `0 BLOCKED`, `0 FAIL`; representative smoke: `5/5 PASS`.
 - [x] Assistant-only run issued zero sales, inventory, purchase, receiving, pricing or register writes. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json`.
 - [ ] Real Odoo transaction acceptance and companion feature gaps remain separate release gates.
+@@
+### 2026-10-22 Settings Data focus consistency
+
+- [x] Settings Data Retry, Remove sample data, Import products, Export products, and Download template controls now expose visible `focus-visible` outlines.
+- [x] Local source accessibility evidence: `docs/UAT_SETTINGS_DATA_FOCUS_LOCAL_2026-10-22.json`; Node 24 typecheck, targeted ESLint, and `git diff --check` passed. No production build was run and no business write was issued.
+- [ ] The broader authenticated Settings mobile script was attempted but stopped at an existing `/settings/users` mobile-card assertion timeout; this is a blocked regression check, not evidence against Settings Data.
+- [ ] The focus batch is not online-verified. Demo `/api/public/version` must match the candidate SHA before claiming deployment.
