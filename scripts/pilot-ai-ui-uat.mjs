@@ -186,6 +186,13 @@ async function runViewport(viewport) {
       "SOMMELIER",
       /wine|recommend|unavailable|no match|no recommendation/i,
     );
+    await askCard(
+      "Create a customer",
+      "Action guide",
+      "GUIDED_ACTION",
+      /guide|saving business data|confirm|page|unavailable/i,
+    );
+
   }
   if (!assistantAvailable) {
     await assistant.getByText("AI chat is off for this store. The shortcuts below still open the right page.").waitFor({ timeout: 10000 });
@@ -210,7 +217,7 @@ async function runViewport(viewport) {
   await assistant.waitFor({ state: "hidden", timeout: 10000 });
   const restoredFab = page.getByRole("button", { name: /Open Orithos AI/ }).first();
   await page.waitForFunction(
-    () => document.activeElement?.getAttribute("aria-label") === "Open Orithos AI",
+    () => document.activeElement?.getAttribute("aria-label")?.startsWith("Open Orithos AI"),
     undefined,
     { timeout: 1500 },
   ).catch(async () => {
