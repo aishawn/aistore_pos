@@ -70,10 +70,6 @@ public class OdooPriceSuggestionClient {
         this.password = password == null ? "" : password;
     }
 
-    OdooPriceSuggestionClient(ObjectMapper objectMapper, VendorMapper vendorMapper) {
-        this(objectMapper, vendorMapper, "", "aipos", "", "");
-    }
-
     public boolean isConfigured() {
         return !baseUrl.isBlank() && !database.isBlank() && !username.isBlank() && !password.isBlank();
     }

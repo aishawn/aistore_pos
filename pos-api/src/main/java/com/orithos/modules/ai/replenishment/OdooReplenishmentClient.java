@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -54,7 +53,6 @@ public class OdooReplenishmentClient {
     private final String username;
     private final String password;
 
-    @Autowired
     public OdooReplenishmentClient(
             ObjectMapper objectMapper,
             VendorMapper vendorMapper,
@@ -68,11 +66,6 @@ public class OdooReplenishmentClient {
         this.database = database == null ? "" : database.trim();
         this.username = username == null ? "" : username.trim();
         this.password = password == null ? "" : password;
-    }
-
-    /** Test constructor without Spring wiring. */
-    OdooReplenishmentClient(ObjectMapper objectMapper, VendorMapper vendorMapper) {
-        this(objectMapper, vendorMapper, "", "aipos", "", "");
     }
 
     public boolean isConfigured() {
