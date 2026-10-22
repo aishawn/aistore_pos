@@ -1,9 +1,40 @@
-## 2026-10-22 Customer 侧栏 hybrid
+## 2026-10-23 Demo 库存与定价只读复验
 
-- [x] 生产导航：可折叠 Customers，仅 `/customers/odoo`（Odoo 目录）。
-- [x] 明确不进生产侧栏：Classic Groups / Price Lists / Gift Cards；Balances stub 保持状态页、不挂导航。
-- [x] 分期：加深 Customers → Odoo 价目表查看/分配 → Odoo Groups → Balances → Gift Cards。
-- [ ] 下一迭代：加深 `/customers/odoo` 详情字段（价目表/标签/备注）或 Odoo 价目表管理面——不是先加侧栏项。
+- [x] Demo 前后端 runtime 同为 `b4719e7c51c2ffebdcd8b0916e7186480c55201d`；与本地源码不同。UAT 执行时 source HEAD 为 `c7452e93fc95dfbd79e5d7266e8473debafd0079`，工作树有未提交改动。
+- [x] Stock List、Capped Pricing、Bulk Price Edit、Price Suggestions：390/1440px 共 **8 PASS / 0 FAIL / 2 BLOCKED**；阻断是 Demo 未配置 Odoo price rules。浏览器写请求拦截器记录 0 次业务写入。证据：`UAT_PRICING_PAGES_ONLINE_READONLY_2026-10-23_SOURCE-C7452E9.json`。
+- [x] 抽查截图无横向溢出；旧筛选文案、R2 测试商品标记及重复定价导航属于旧 runtime 观察，等待候选 SHA 部署后复验。
+- [x] 前端 typecheck、定向 ESLint、单元测试 4/4 通过；未运行 build。POS session 现金余额字段类型已补齐。
+- [ ] 本地 Java 8，后端候选 Java 21 exact-SHA `mvn -B clean verify` 未执行；含 `pos-api` 改动，不得推送或部署。价格写入和交易闭环需隔离 Odoo 环境验收。
+
+## 2026-10-22 AI 全量在线续验（最新）
+
+- [x] 304 条助手问法只读回归：**265 PASS / 33 BLOCKED / 6 FAIL**；runtime `b4719e7c` 与 dirty source `d7ae6395` 不匹配。33 个 BLOCKED 为 `50210`，6 个旧 runtime 路由差异为 3 个调价确认 route 缺失及 3 个发票到货口语误开扫描页。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T151353424Z_d7ae6395.json`。
+- [x] Availability 3/3、route 9/9、surface/auth 11/11、UI 2/2、transcription 4/4、metrics 9/9、capability/enabled gates PASS。Features 14 PASS / 1 FAIL（OCR probe HTTP 500/50000）；Reports 15/16（实时库存 unavailable）；History/platform 9 PASS / 2 BLOCKED；stock RPC 4 PASS / 5 BLOCKED / 1 INFO。
+- [x] 本地发票预览 mock 6/6 PASS，Node 24 TypeScript 检查通过；这不等于真实 OCR 验收。未执行本地 build/Maven，后端 exact-SHA Java 21 门禁和匹配 runtime 复验待完成，整体 NO-GO。
+
+## 2026-10-22 当前候选跨模块 UI 回归包
+
+- [x] HEAD `8a4c56e51e40317bd16183ee8ebb7148e9841082` 的当前工作树本地 Playwright fixture：**99/99 PASS / 0 FAIL / 0 BLOCKED**，覆盖库存/定价响应式、价格建议未知结果恢复、报表 503/401、盘点边界、平台审计与故障重试、采购确认/收货恢复、发票 OCR 预览。
+- [x] 业务数据库写入为 0；完整套件和逐项证据：`docs/UAT_LOCAL_UI_REGRESSION_PACK_2026-10-22_CURRENT-GOAL.json`。
+- [x] 人工抽查 4 张手机/桌面截图，未见重叠或横向溢出；本批截图：`docs/screenshots/2026-10-22-goal-stock-8a4c56e/`、`docs/screenshots/2026-10-22-goal-productization-8a4c56e/`、`docs/screenshots/2026-10-22-goal-purchase-busy-8a4c56e/`。
+- [x] Stock List 遗留 Classic 筛选文案已替换为 Odoo 商品搜索/分类术语；响应式 UAT 在五个视口验证 `stockOnly=true` 查询及准确文案，`15/15 PASS`。证据：`docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_SHA-8A4C56E.json`。
+- [ ] Node `22.22.2` 运行的是本地 webpack dev server（项目声明 Node 24+），不是 production build。真实 Odoo/DashScope 验收未覆盖。
+- [ ] 在线 runtime `b4719e7c` 与当前 dirty worktree（HEAD `8a4c56e5`）不匹配；pos-api Java 21 exact-SHA 门禁尚未完成，暂不能部署此候选。
+
+## 2026-10-22 发票 OCR Odoo-safe 预览修复（当前）
+
+- [x] OCR 前端从退役的 Classic `/api/orders/receives/scan` 切换到管理员专用 `/api/ai/invoice/preview`；不匹配或写入供应商、商品、采购、收货和库存记录。
+- [x] 本地 Playwright mock 6 项 PASS，覆盖能力探测重试、OCR 重试、字段和图片预览、商品行编辑、采购引导链接；业务写入 0。证据：`docs/UAT_INVOICE_SCAN_MOCK_LOCAL_2026-10-22.json`。
+- [x] UI typecheck、目标 ESLint、3 个 OCR 脚本语法检查、`git diff --check` 通过。
+- [ ] Java 21 `mvn -B clean verify` 尚未在同一候选 SHA 运行（本机只有 Java 8）；真实在线模型调用、部署 runtime SHA 和真实发票字段精度仍待验收。整体 NO-GO。
+
+## 2026-10-23 Customer 五级 Odoo 面
+
+- [x] 生产导航：Customers / Customer Groups / Price Lists / Balances / Gift Cards（Odoo）。
+- [x] `/customers/odoo` 加深：价目表、分组、应收、地址/ABN/类型。
+- [x] `/customer-groups` → `res.partner.category`；`/pricelists` → `product.pricelist`；`/customers/balances` → credit + open invoices。
+- [x] `/giftcards` 模块探测；未安装 Loyalty/Gift Card 时诚实未就绪（不回落 Classic）。
+- [ ] 线上只读 UAT + 部署 runtime SHA 核对；Gift Cards 需在 Odoo 安装模块后才能列卡。
 
 ## 2026-10-22 AI 聊天摘要 + CTA / 可读性（源码）
 
@@ -819,3 +850,124 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] 推送、Dokploy 部署、线上安全问法复验。
 
 - [x] 候选追加 `192fedb7`：目录问法规范化、隔离 UAT 登录重试和上下文探针。
+
+## 2026-10-22 线上只读复验（当前 runtime）
+
+- [x] AI availability：3/3 PASS；capability gates：PASS；surface/auth：11/11 PASS。
+- [x] 库存/定价页面：8 PASS，2 BLOCKED；阻断项为实时数据不可用，不是 HTTP/布局失败。
+- [x] 运营搜索竞态：390/1440px 均通过；错误恢复场景可见。
+- [ ] 补货真实 Odoo 读接口返回 503，需恢复 Odoo 连接后复验。
+- [ ] 所有结果来自线上旧 runtime `582b92fb`，当前候选 `2721e015e9f102abe1229b6ef0be0cfe78505ab0` 尚未部署。
+- [ ] Java 21 exact-SHA gate、Dokploy Source/Git 修正、候选部署和 `aipos_uat` 真实业务闭环仍未完成。
+
+## 2026-10-22 通用交互回归
+
+- [x] 线上只读交互 `14/14 PASS`：移动导航、账户弹层、设置侧栏、商品搜索/编辑/导入保护、客户、销售历史、补货覆盖期、报表周期和 AI 面板。
+- [x] 创建/导入/编辑场景均未提交业务写入，必填校验和取消路径通过。
+- 证据：`docs/UAT_INTERACTION_2026-10-14.json`。
+
+## 2026-10-22 b4719 runtime AI 复验
+
+- [x] `/api/public/version` 前后端精确匹配 `b4719e7c51c2ffebdcd8b0916e7186480c55201d`。
+- [x] 关键 AI 问法 `4 PASS / 2 FAIL / 0 BLOCKED`，业务写入 `0`；证据：`docs/UAT_AI_WORKFLOW_B4719_CURRENT_RECHECK.json`。
+- [ ] “提交补货建议” route 与“供应商账单数量”报表问句仍有线上失败。
+- [x] 本地候选 `a176a10747e1ec1a78477c2d8ea0dc8676a3c216` 已修复两类路由问题并补断言。
+- [ ] 候选尚未通过同 SHA Java 21 gate、推送和部署；完整 290 条目录需在修复 runtime 上重跑。
+
+## 2026-10-22 b4719 完整 AI 目录
+
+- [x] 290 条 Assistant API-only：`251 PASS / 14 FAIL / 25 BLOCKED`，业务写入 `0`。
+- [x] 14 个 FAIL 已对应到写入引导 route 和供应商账单报表边界；候选 `a176a107` 已完成修复。
+- [ ] 25 个 BLOCKED 需在新候选 runtime 上复测，不能直接计为代码失败。
+- 证据：`docs/UAT_AI_WORKFLOW_B4719_FULL_RECHECK.json`。
+
+## 2026-10-22 设置员工目录错误态
+
+- [x] 识别 `/api/users` HTTP 410 时的响应式结构缺口。
+- [x] 移动端显示员工目录不可用状态卡，桌面端保留六列表头和 Retry，不伪造用户数据。
+- [x] 前端 typecheck、定向 ESLint、diff check 通过；提交 `e990cc49`。
+- [ ] 尚未部署；线上仍为 `b4719e7c`，需下一次集中 Dokploy 部署后复验 390/1440px。
+
+## 2026-10-22 全路由静态矩阵
+
+- [x] 138 条静态路由 × 390/1440px：`276/276 PASS`，无横向溢出、页面错误或失败路由。
+- [x] 最新本地候选 `78488e6e` 已合并 AI CTA、结果卡片和 guided-action 回归批次。
+- [ ] 候选仍待 Java 21 exact-SHA gate、推送和 Dokploy 部署；线上当前仍为 `b4719e7c`。
+- 证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`。
+
+## 2026-10-22 当前只读验收追加
+
+- [x] 认证页面矩阵 `44/44 PASS`：核心 POS、库存、采购、客户、供应商、报表、设置、侍酒和发票路径可访问并满足页面内容契约。
+- [x] AI 入口 UI：Checkout、Products、Customers、Reporting 均能打开/关闭助手；Overview 390px 无横向溢出。
+- [x] Odoo session recovery：首次 reporting 请求未见 401；页面矩阵无未授权响应。
+- [x] 角色 CRUD 默认安全门禁：线上矩阵显示 `SKIP_UNSAFE_WRITE_GATE`，本轮权限/业务写入 `0`。
+- [ ] 线上 runtime 仍为 `b4719e7c`，当前候选 `d3ec7165` 尚未部署；Java 21 exact-SHA gate、完整 AI 目录和 `aipos_uat` 写入闭环仍未完成。
+
+## 2026-10-22 AI 报表和路由追加
+
+- [x] AI route matrix `9/9 PASS`，无页面错误、横向溢出或业务写入。
+- [x] AI 报表只读检查 `15/16 PASS`，失败项 `0`；唯一 BLOCKED 为实时库存数据不可用。
+- [x] 7 天无成交的明确空结果已纳入正确测试契约，不再要求虚构 rows。
+- [ ] 新候选尚未部署；Java 21 exact-SHA gate、source-matched AI 完整目录和 `aipos_uat` 业务闭环仍未完成。
+
+## 2026-10-22 AI UI 专项追加
+
+- [x] AI UI 390px/1440px：`2/2 PASS`。
+- [x] 侍酒推荐卡片、酒标识别结果、助手可用性、发送按钮、底部安全间距和 pageErrors 均通过。
+- [x] 该轮为 authenticated read-only，业务写入为 `0`。
+- [ ] 仍需在候选部署后执行 source-matched UI 验收。
+
+## 2026-10-22 AI 定向问法追加
+
+- [x] 7 条高风险问法回归：`3 PASS / 4 FAIL / 0 BLOCKED`，Assistant API-only，业务写入 `0`。
+- [x] 失败已定位为旧 runtime 与源码 SHA 不匹配导致的路由差异，不作为当前候选的最终结论。
+- [ ] 候选部署后必须重跑补货、调价、采购三类人工复核路径，并确认旧 runtime 的 4 个差异归零。
+
+## 2026-10-22 提交前静态门禁
+
+- [x] 前端 typecheck、AI 面板定向 ESLint、关键 UAT 脚本语法和 diff check 通过。
+- [ ] 后端 exact-SHA Java 21 `mvn -B clean verify` 尚未完成，因此尚未推送或部署。
+
+## 2026-10-22 AI provider 健康追加
+
+- [x] DashScope generation endpoint：HTTP 200、有文本响应、约 807ms。
+- [x] 健康探针不记录响应正文或密钥，业务写入 `0`。
+- [ ] 仍需候选 source-matched 部署和 `aipos_uat` 隔离证明。
+
+## 2026-10-22 最新 AI 功能矩阵
+
+- [x] AI feature matrix：`14 PASS / 1 BLOCKED / 0 FAIL`。
+- [x] Invoice OCR HTTP 410 已记录为 route deprecated，不宣称 OCR 可用。
+- [x] Transcription：`2 PASS / 2 BLOCKED / 0 FAIL`，阻断为缺少 synthetic audio fixture。
+- [ ] 最新候选 `bc4159c3` 仍待 Java 21 exact-SHA gate、Dokploy 部署和 source-matched 回归。
+
+## 2026-10-22 全静态页面矩阵
+
+- [x] `138` 路由 × `390/1440px`：`276/276 PASS`，失败和 expected unavailable 均为 0。
+- [x] 核心 POS、运营、报表、设置、平台和 AI 页面均通过静态可达性与布局检查。
+- [ ] 当前候选已推进至 `d7ae6395`，仍待 Java 21 exact-SHA gate、Dokploy 部署和线上 source-matched 验收。
+
+## 2026-10-22 d7ae 静态门禁
+
+- [x] 前端 typecheck、AI 面板 ESLint、feature/transcription 脚本语法和 diff check 通过。
+- [ ] `d7ae6395` 的 Java 21 exact-SHA Maven gate 尚未完成，尚未推送或部署。
+
+## 2026-10-22 d7ae AI 功能矩阵复跑
+
+- [x] 当前候选关联只读矩阵：`14 PASS / 1 BLOCKED / 0 FAIL`。
+- [x] 唯一阻断为已废弃的 invoice OCR 路由，其他 AI/NLQ/侍酒/价格/补货/匿名鉴权检查通过。
+- [ ] 仍需 Java 21 门禁和部署后 source-matched 复验。
+
+## 2026-10-22 库存/定价响应式 fixture 回归
+
+- [x] Stock List、Capped Pricing、Bulk Price Edit：`5` 个视口 × `3` 个页面，`15/15 PASS`。
+- [x] 无横向溢出或页面错误；筛选、移动卡片字段、桌面列对齐及 AI 面板入口通过。
+- [x] Fixture 拦截业务写请求，写入为 `0`。证据：`UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_RECHECK3.json`。
+- [ ] 仅为本地 UI/fixture 验证，不代表线上 runtime 或真实 Odoo 业务验收。
+
+## 2026-10-22 AI 双语语音转录回归
+
+- [x] 转录探针使用仓库内固定英文/中文 WAV 夹具，默认可复现，无需手动提供音频路径。
+- [x] 英文、中文转录均 HTTP 200 且通过关键词断言：`4 PASS / 0 BLOCKED / 0 FAIL`；未提交助手请求或业务写入。
+- [x] 脚本 `node --check` 通过。证据：`UAT_AI_TRANSCRIPTION_2026-10-22_FIXTURE-DEFAULT-RECHECK.json`。
+- [ ] 线上前后端仍是 `b4719e7c`；该回归不证明候选 `d7ae6395` 的部署状态。

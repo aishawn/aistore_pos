@@ -1,1 +1,8 @@
-export { default } from "@/app/giftcards/page";
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+import { OdooGiftCardsPage } from "@/components/OdooGiftCardsPage";
+
+export default function GiftCardsRoute() {
+  return <OdooGiftCardsPage />;
+}

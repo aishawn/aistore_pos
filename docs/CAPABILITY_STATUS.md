@@ -1,3 +1,7 @@
+## 2026-10-23 发票扫描页 Odoo lookup（源码）
+
+- /invoices/scan 供应商/门店下拉改为 Odoo BFF：`searchOdooRecords` → `POST /api/odoo/records`（`suppliers` / `outlets`）。不再调用已退役 Classic `GET /api/suppliers` 或 `GET /api/outlets`（Odoo-only 下会 41001）。
+- Lookup 失败时仍可上传 OCR；页面仍为 preview-only，不创建采购/收货。提交 `b00992c1`。
 ## 2026-10-22 Customer 侧栏 hybrid（策略已锁定）
 
 - **生产侧栏**（`pos-ui/src/lib/sidebar-navigation.ts`）：可折叠 `Customers` 分组，目前仅一个 Odoo 入口 `/customers/odoo`。不恢复旧 Shopfront 五级菜单。
@@ -1522,3 +1526,4 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - 全路由静态矩阵覆盖 138 条路由 × 390/1440px，`276/276 PASS`；证据：`docs/UAT_ALL_STATIC_PAGES_2026-10-15.json`。
 - 前端 typecheck、目标 ESLint、脚本语法和 diff check 通过；本地未运行 production build。
 - 线上仍运行 `b4719e7c`，候选包含 `pos-api`，尚未通过同 SHA Java 21 `mvn -B clean verify`，整体保持 **NO-GO**。
+
