@@ -42,7 +42,7 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
-    void explicitWorkflowSkipsClassifierWhenProviderIsUnavailable() {
+    void invoiceUploadFailsClosedIntoGuidedAction() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
         IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
@@ -53,7 +53,7 @@ class ClassifyQueryNodeTest {
 
         Map<String, Object> result = node.apply(state);
 
-        assertEquals("navigate", result.get("intent"));
+        assertEquals("guided_action", result.get("intent"));
         assertEquals("/invoices/scan", result.get("ui_route"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
@@ -78,6 +78,7 @@ class ClassifyQueryNodeTest {
                 "Place the purchase order",
                 "Buy these items now",
                 "Apply these prices",
+                "Apply the new prices",
                 "下单采购这些商品",
                 "执行补货",
                 "执行调价",
@@ -146,6 +147,7 @@ class ClassifyQueryNodeTest {
                 {"保存这些价格建议", "/stock/capped-pricing"},
                   {"Set these prices now", "/stock/capped-pricing"},
                   {"Apply the new prices", "/stock/capped-pricing"},
+                  {"直接调价", "/stock/capped-pricing"},
                   {"Change these prices", "/stock/capped-pricing"},
                   {"设置这些价格", "/stock/capped-pricing"},
                 {"直接把价格改了", "/stock/capped-pricing"},

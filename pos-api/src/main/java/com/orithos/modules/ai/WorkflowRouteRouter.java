@@ -39,8 +39,8 @@ public final class WorkflowRouteRouter {
             "snap (?:this|an?|the) (?:supplier )?(?:invoice|bill)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_MUTATION = Pattern.compile(
-            "\\b(?:create|add|edit|update|delete|remove|import|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
-                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
+            "\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
+                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
                     + "(?:创建|添加|编辑|修改|删除|移除|导入|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并).*?(?:发票|账单)|"
                     + "(?:发票|账单).*?(?:创建|添加|编辑|修改|删除|移除|导入|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并)",
             Pattern.CASE_INSENSITIVE);
@@ -68,12 +68,12 @@ public final class WorkflowRouteRouter {
     /** Imperative purchase/price wording must fail closed before model routing. */
     private static final Pattern EXPLICIT_EXECUTION = Pattern.compile(
             "\\b(?:place|send|create|approve|apply|execute|finalize|commit)\\s+(?:the\\s+)?(?:purchase\\s+)?(?:order|replenishment|restock|suggestions?|prices?|pricing)\\b|"
-                    + "\\b(?:submit|confirm|save|publish|approve|apply|send|create|set|change)\\s+(?:(?:this|the|these|a|an)\\s+)?(?:purchase\\s+)?(?:order|price changes?|prices?|replenishment|restock)\\b|"
+                    + "\\b(?:submit|confirm|save|publish|approve|apply|send|create|set|change)\\s+(?:(?:this|the|these|a|an|new|suggested|recommended|proposed)\\s+)*(?:purchase\\s+)?(?:order|price changes?|prices?|replenishment|restock)\\b|"
                     + "\\b(?:buy|purchase|order)\\s+(?:these|those|the items?|the products?|it|them|now|today)\\b|"
-                    + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|设置这些价格|修改这些价格)",
+                    + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|直接调价|直接改价|设置这些价格|修改这些价格)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_ZH = Pattern.compile(
-            "把这些建议下单|直接把价格改了|(?:帮我)?把.*?(?:价格|售价)(?:改了|改掉)|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
+            "把这些建议下单|直接把价格改了|(?:直接)?(?:调价|改价)|(?:帮我)?把.*?(?:价格|售价)(?:改了|改掉)|(?:直接\\s*)?把.+?(?:补到|补足|补至|加到)\\s*\\d+\\s*(?:件|个|瓶|箱)?",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern DIRECT_EXECUTION_EN = Pattern.compile(
             "(?:top up|restock|replenish|bring)\\s+(?:these|the)\\s+(?:items|products|lines|stock)\\s+(?:to|up to)\\s*\\d+\\s*(?:units?|items?|cases?|bottles?)?|"
@@ -163,11 +163,11 @@ public final class WorkflowRouteRouter {
             return invoiceScan;
         }
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
-        if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return null;
-        // Report-style fast paths must win over page navigation. In particular,
-        // Chinese invoice-arrival questions contain "invoice" but ask whether
-        // a document exists, not to open the scanner.
-        if (capabilityQuestion != null && "report_adhoc".equals(capabilityQuestion.intent())) return null;
+        if (capabilityQuestion != null
+                && ("qa".equals(capabilityQuestion.intent())
+                || "report_adhoc".equals(capabilityQuestion.intent()))) {
+            return null;
+        }
         if (hasWriteIntent(question)) return null;
         String normalized = AssistantFastPathRouter.normalize(question);
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {
