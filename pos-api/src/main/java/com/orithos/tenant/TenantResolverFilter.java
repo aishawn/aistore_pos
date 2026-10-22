@@ -37,7 +37,7 @@ public class TenantResolverFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             TenantSlugParser.HostTenant hostTenant = slugParser.resolve(request);
-            if (hostTenant.controlPlane()) {
+            if (hostTenant.controlPlane() || isPublicControlPlaneEndpoint(request)) {
                 TenantHolder.set(TenantHolder.ResolvedTenant.controlPlaneTenant());
                 filterChain.doFilter(request, response);
                 return;
@@ -57,6 +57,15 @@ public class TenantResolverFilter extends OncePerRequestFilter {
         } finally {
             TenantHolder.clear();
         }
+    }
+
+    private static boolean isPublicControlPlaneEndpoint(HttpServletRequest request) {
+        if (!"GET".equalsIgnoreCase(request.getMethod()) && !"POST".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path = request.getRequestURI();
+        return "/api/public/signup".equals(path)
+                || "/api/public/subdomain-available".equals(path);
     }
 
     public static boolean isUnavailable(Vendor vendor) {
