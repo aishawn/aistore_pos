@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-21",
+  "updatedAt": "2026-10-23",
   "pilotDecision": "NO-GO",
   "capabilities": [
     {"id":"stock-pricing-ui","name":"库存与定价界面","implemented":true,"localEvidence":"docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-21_FULL-MATRIX-RETRY.json","onlineEvidence":"docs/UAT_PRICING_PAGES_DEMO_AFTER_9027428_FINAL8.json","businessAccepted":false,"boundary":"线上只读 8/8；证据对应 9027428，当前运行 SHA 未核验，真实价格写入待验收。"},
@@ -7,8 +7,8 @@
     {"id":"net-margin","name":"GST 净毛利与 Odoo 改价","implemented":true,"localEvidence":"docs/UAT_PRODUCTIZATION_LOCAL_2026-10-21.json","onlineEvidence":null,"businessAccepted":false,"boundary":"工作区新增；建议只读，人工确认后使用 Odoo 商品接口保存；POS 价目表生效待隔离验收。"},
     {"id":"checkout","name":"收银退款与结果恢复","implemented":true,"localEvidence":"docs/UAT_PRODUCTIZATION_LOCAL_2026-10-21.json","onlineEvidence":null,"businessAccepted":false,"boundary":"工作区新增只读订单确认；现金关班、实收付款、设备和完整对账待验收。"},
     {"id":"purchase","name":"采购收货","implemented":true,"localEvidence":"docs/UAT_PRODUCTIZATION_LOCAL_2026-10-21.json","onlineEvidence":null,"businessAccepted":false,"boundary":"本地路由夹具覆盖指定 receipt、重复收货和部分 RPC 未知结果；真实 Odoo 收货对账及原子性仍待验收。"},
-    {"id":"ai","name":"AI 助手","implemented":true,"localEvidence":"docs/UAT_AI_CAPABILITY_GATES_LOCAL_2026-10-21_FULL-MATRIX.json","onlineEvidence":"docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-21_FULL-217-CURRENT-RECHECK.json","businessAccepted":false,"boundary":"问法目录 216 条；最新完整 Demo 只读运行 75 PASS / 116 BLOCKED / 25 FAIL，116 条均为 HTTP 200 + 脱敏 50210。25 条 FAIL：7 条执行意图误路由、10 条历史/报表边界误路由、1 条中文批量改价目的页不符、7 条日期销售回复格式不符；25 条定向复测仍为 0 PASS / 0 BLOCKED / 25 FAIL。只读专项：功能 13/14（价格建议 Cloudflare 502）、报表 15/16（实时库存安全不可用）、可用性 3/3、路由 9/9、surface/auth 11/11、UI 2/2、侍酒 10/10、发票 OCR 6/6、语音转写 4/4、metrics 9/9、History/platform 9 PASS / 2 BLOCKED。Demo 版本接口 frontend/backend SHA 均为空；源码改动尚未通过 Java 21 同候选 SHA 门禁，不可标记为已部署或已验收。"},
+    {"id":"ai","name":"AI 助手","implemented":true,"localEvidence":"docs/AI_ASSISTANT_USER_TEST_CASES_2026-10-24.md","onlineEvidence":"docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-216.json","businessAccepted":false,"boundary":"当前可执行目录为 245 条问法、245 个唯一 ID、0 重复，其中 88 条是 no-route 安全用例。旧运行版本的 216 条结果仍为 216 PASS / 0 BLOCKED / 0 FAIL，仅代表记录中的 3edd72d84f514856923c0c0d50b01fe7b015e120；新增 29 条自然问法此前为 22 PASS / 0 BLOCKED / 7 FAIL，源码已补路由但尚未通过同候选 SHA Java 21 门禁和匹配 runtime 验证。请求仅调用助手 API，业务写入为 0。价格建议、实时库存报表、OCR 真实字段提取、跨店凭据和真实隔离业务写入仍需单独验收。"},
     {"id":"saas","name":"两租户交付","implemented":true,"localEvidence":"docs/UAT_TENANT_SCOPE_AUDIT_2026-10-21_CONTINUATION.json","onlineEvidence":"docs/UAT_SAAS_PUBLIC_READONLY_2026-10-21_CONTINUATION.json","businessAccepted":false,"boundary":"公开注册页与 slug 可用性 GET 为 2/2 PASS；这未验证建店生命周期。Odoo 隔离库 aipos_uat 只读认证及模型探针通过，当前工作树 tenant-scope 静态审计 67 controllers / 0 findings；独立应用 runtime、收银员/店长/第二租户账号、跨租户在线越权测试和备份恢复仍未验收。Runtime SHA 未核验。"}
   ],
-  "blockers": ["Dokploy 最新记录 3706b560 为 UAT 工具提交且已完成，但前后端运行 SHA 未暴露；backend 容器仍沿用旧运行实例", "无已核验的远程 Java 21 同候选 SHA pre-push 构建", "aipos_uat 只读准备通过，但隔离应用 runtime 及收银员/店长/第二租户账号未准备", "隔离业务写入与 Odoo 对账、现场设备验收、跨租户拒绝及备份恢复演练未完成"]
+  "blockers": ["AI 路由候选 7f92d1b 尚无同 SHA Java 21 mvn -B clean verify 和匹配 runtime 证据；最近 Dokploy 部署连续 Error", "真实 Odoo 交易写入与对账仍需隔离环境验收", "价格建议、实时库存报表和真实发票字段提取仍有独立验证项", "第二门店/平台 operator 凭据、跨租户授权和备份恢复演练仍未完成"]
 }

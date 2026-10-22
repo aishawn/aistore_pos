@@ -13,6 +13,17 @@ and `a5511fc689a8b4c871c0bacda15713afbd86b44f`; they do not match. The fixes
 are present in the worktree with regression assertions, but are not yet a
 deployed result. No business writes were issued.
 
+Deployment check after the probe: the shared `main` tip `a1063d3` has a
+Dokploy `Error` deployment, while Demo `/api/public/version` still reports
+`a5511fc`. The 7 fixes therefore remain unverified online.
+
+Later deployment attempts for `c905902` and `dc465b3` also report `Error`;
+the deployment detail panel returned no build lines. This is a deployment
+diagnostic gap, not a routing verdict. A local catalogue audit found **245
+cases / 245 unique IDs / 0 duplicates**, including **88 explicit no-route
+safety cases**. Static checks passed with `node --check` and `git diff --check`;
+no live business write was issued.
+
 ## 2026-10-24 latest online recheck
 
 The runner catalogue now contains **245 unique cases**. The recorded 216/216

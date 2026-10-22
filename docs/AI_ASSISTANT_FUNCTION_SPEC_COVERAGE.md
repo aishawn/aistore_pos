@@ -15,6 +15,18 @@ exact-SHA Java 21 `mvn -B clean verify` gate is available. Demo runtime
 `a5511fc689a8b4c871c0bacda15713afbd86b44f` did not match runner source
 `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`.
 
+The shared `main` tip later advanced to `a1063d3`, but its Dokploy deployment
+is `Error`; Demo still serves `a5511fc`. These fixes have no post-deploy
+function coverage yet.
+
+Later deployment attempts for `c905902` and `dc465b3` also returned `Error`,
+and the deployment detail panel exposed no build lines. Treat the candidate as
+unverified until the exact candidate SHA passes Java 21 `mvn -B clean verify`
+and the public version endpoint reports that same SHA. The local executable
+catalogue audit found 245 cases, 245 unique IDs and no duplicates, including
+88 explicit no-route safety cases; this proves catalogue structure, not
+backend test execution.
+
 ## 2026-10-24 latest served-runtime coverage
 
 The current executable catalogue contains **245 unique cases**. The served

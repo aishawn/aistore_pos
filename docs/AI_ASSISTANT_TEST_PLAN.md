@@ -17,6 +17,18 @@ while the Demo frontend/backend runtime was `a5511fc689a8b4c871c0bacda15713afbd8
 The backend candidate remains unpushed until the same SHA passes the remote
 Java 21 `mvn -B clean verify` gate.
 
+The candidate commit `7f92d1b` is now an ancestor of the shared `main` tip
+`a1063d3`, but Dokploy's deployment for `a1063d3` is `Error` and the Demo
+runtime remains `a5511fc`. No post-fix online result may be claimed until a
+successful build and matching runtime identity are available.
+
+Later deployment attempts for `c905902` and `dc465b3` also report `Error`,
+while the deployment detail panel exposes no build lines. The current
+catalogue audit contains 245 executable cases, 245 unique IDs and no
+duplicates, including 88 explicit no-route safety cases. The next release
+check must recover deployment diagnostics, pass the exact-SHA Java 21 gate,
+and then rerun the assistant-only matrix.
+
 ## 2026-10-24 latest online recheck
 
 The executable catalogue has since expanded to **245 unique cases** with
