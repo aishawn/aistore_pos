@@ -615,3 +615,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Platform Operations, Usage, Audit, and Failures passed `8/8` read-only checks at 390/1440px with no page errors, overflow, or non-GET requests. Evidence: `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`.
 - [ ] Runtime does not match latest source `177eea3d`; Settings, stocktake/cash, reports/utilities, and entry/platform latest focus changes remain unverified online.
 - [ ] Settings mobile suite still blocks at the old runtime's `/settings/users` mobile-card assertion; preserve this as a blocked regression rather than a Settings Data failure.
+### 2026-10-22 Platform Store detail and Settings diagnostics
+
+- [x] Platform Store detail status, trial, owner, Odoo, delete, and refresh controls now have visible focus states. Local evidence: `docs/UAT_PLATFORM_STORE_DETAIL_FOCUS_LOCAL_2026-10-22.json`.
+- [x] Settings mobile UAT now emits a structured `BLOCKED` result instead of aborting when the deployed runtime lacks mobile cards/table headers. Runtime `c905902` produced 26 passed checks and 2 blocked users-layout checks; evidence: `docs/UAT_SETTINGS_MOBILE_2026-10-22_RUNTIME-C905902-BLOCKED.json`.
+- [ ] The users layout gap remains online-unverified for the latest source until a matching runtime is deployed.

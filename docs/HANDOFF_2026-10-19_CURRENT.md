@@ -2466,3 +2466,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Demo `/api/public/version` now reports frontend/backend `c905902f4020180095646cdeeaf638d78a0ded2d`; latest source is `177eea3d`, so this is an older deployed candidate. Evidence: `docs/UAT_RELEASE_IDENTITY_2026-10-22_C905902.json`.
 - Platform Operations, Usage, Audit, and Failures online read-only verification passed `8/8` across 390/1440px with no page errors, overflow, or non-GET requests. Evidence: `docs/UAT_PLATFORM_OBSERVABILITY_ONLINE_2026-10-22.json`.
 - The Settings mobile suite remains blocked at the older runtime's user-card assertion; do not attribute local focus changes to this runtime.
+## 2026-10-22 Platform Store detail and Settings diagnostics
+
+- Platform Store detail status/trial/owner/Odoo/delete/refresh controls now expose visible keyboard focus states. Evidence: `docs/UAT_PLATFORM_STORE_DETAIL_FOCUS_LOCAL_2026-10-22.json`.
+- The Settings mobile UAT script now records structured blocked checks when the active runtime lacks users mobile cards or desktop headers. Runtime `c905902` produced 26 passes and 2 blocked checks; evidence: `docs/UAT_SETTINGS_MOBILE_2026-10-22_RUNTIME-C905902-BLOCKED.json`.
+- This improves verification quality without changing business writes; latest source still awaits valid Dokploy deployment.

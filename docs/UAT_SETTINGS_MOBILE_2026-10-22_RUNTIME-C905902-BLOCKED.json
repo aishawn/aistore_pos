@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-10-22T03:32:36.107Z",
+  "sourceCommit": "a63c84fb8add274a05519995c7486da1b52e4826",
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no Odoo write",
+  "status": "BLOCKED",
+  "viewports": [
+    390,
+    1440
+  ],
+  "checks": [
+    "/settings/payment: Odoo cards, source notice and no overflow at 390px",
+    "/settings/tax: Odoo cards, source notice and no overflow at 390px",
+    "/settings/registers-outlets: Odoo cards, source notice and no overflow at 390px",
+    "/settings/receipts: honest capability status and no overflow at 390px",
+    "/settings/customerdisplay: honest capability status, hardware link and no overflow at 390px",
+    "/settings/hardware: local device status and no overflow at 390px",
+    "/settings/loyalty: sample and unavailable states, no overflow at 390px",
+    "/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at 390px",
+    "/settings/surcharging: honest sample states and no checkout effect claim at 390px",
+    "/settings/statements: preview link, explicit disconnected preferences and no overflow at 390px",
+    "/settings/pricesets: live management entry, separate price-list notice and no overflow at 390px",
+    "/settings/rules: honest control status and no overflow at 390px",
+    "/settings/users: BLOCKED - mobile staff cards are missing at 390px",
+    "/settings/payment: semantic Odoo table(s), source notice and no overflow at 1440px",
+    "/settings/tax: semantic Odoo table(s), source notice and no overflow at 1440px",
+    "/settings/registers-outlets: semantic Odoo table(s), source notice and no overflow at 1440px",
+    "/settings/receipts: honest capability status and no overflow at 1440px",
+    "/settings/customerdisplay: honest capability status, hardware link and no overflow at 1440px",
+    "/settings/hardware: local device status and no overflow at 1440px",
+    "/settings/loyalty: sample and unavailable states, no overflow at 1440px",
+    "/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at 1440px",
+    "/settings/surcharging: honest sample states and no checkout effect claim at 1440px",
+    "/settings/statements: preview link, explicit disconnected preferences and no overflow at 1440px",
+    "/settings/pricesets: live management entry, separate price-list notice and no overflow at 1440px",
+    "/settings/rules: honest control status and no overflow at 1440px",
+    "/settings/users: BLOCKED - missing semantic staff headers at 1440px: Name, Username, Email, Role, Status, Actions"
+  ]
+}
+{
+  "generatedAt": "2026-10-22T03:32:36.107Z",
+  "sourceCommit": "a63c84fb8add274a05519995c7486da1b52e4826",
+  "deployment": "c905902f4020180095646cdeeaf638d78a0ded2d",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no Odoo write",
+  "status": "BLOCKED",
+  "viewports": [390, 1440],
+  "passedChecks": 26,
+  "blockedChecks": [
+    "/settings/users mobile staff cards missing at 390px",
+    "/settings/users semantic staff table headers missing at 1440px"
+  ],
+  "interpretation": "The active older runtime does not contain the current responsive users implementation. The script now records the gap as BLOCKED instead of terminating without evidence."
+}

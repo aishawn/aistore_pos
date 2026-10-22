@@ -1336,3 +1336,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Demo frontend and backend now report runtime `c905902f4020180095646cdeeaf638d78a0ded2d`; the latest source is `177eea3d`, so runtime/source are not aligned. Evidence: `docs/UAT_RELEASE_IDENTITY_2026-10-22_C905902.json`.
 - Platform Operations, Usage, Audit, and Failures online read-only checks passed `8/8` at 390/1440px with zero non-GET requests. This validates the active older runtime only.
 - The latest Settings, stocktake/cash, reports/utilities, and entry/platform focus batches remain online-unverified.
+## 2026-10-22 Platform Store detail and Settings diagnostics
+
+- Platform Store detail controls now have consistent keyboard focus states; local evidence is `docs/UAT_PLATFORM_STORE_DETAIL_FOCUS_LOCAL_2026-10-22.json`.
+- Settings UAT diagnostics now preserve evidence when an older deployment lacks the current users responsive markup: runtime `c905902` recorded 26 pass checks and 2 blocked users-layout checks instead of throwing. This is a deployment mismatch, not a claim that the current source is broken.
