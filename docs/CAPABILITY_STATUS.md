@@ -1310,3 +1310,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Report and utility error recovery actions now expose consistent visible keyboard focus states across closures, sales reports, Mail Log, Trashed Items, and Vendor Connections.
 - Local evidence: `docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json`; typecheck, ESLint, and diff checks pass, no business writes.
 - Online verification remains pending the Dokploy Source/Git correction.
+## 2026-10-22 reports/utilities deployment status
+
+- Candidate `876f8b3` is pushed, but Dokploy returned HTTP `301` (`Branch Not Match`) again.
+- Report and utility recovery focus improvements remain local-only until Demo reports the candidate SHA.

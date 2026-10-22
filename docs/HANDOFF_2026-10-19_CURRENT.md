@@ -177,6 +177,7 @@
 - 7 个失败已定位：定价建议 2 条、酒类推荐 2 条、交易笔数 1 条、供应商目录 1 条、AI 是否直接下单 1 条。工作区已补 `WorkflowRouteRouter`、`AssistantFastPathRouter`、`ReportAdhocRouter` 规则和对应 Java 回归断言。
 - 本次 runner source 为 `3418c44ee8e3ce3d283725a2b47c6df20fa2e785`，Demo frontend/backend 为 `a5511fc689a8b4c871c0bacda15713afbd86b44f`，身份不一致。后端候选尚未推送；必须先取得同候选 SHA 的远程 Java 21 `mvn -B clean verify` 通过证据。
 - 随后共享 `main` 已包含候选提交 `7f92d1b`，当前 tip 为 `a1063d3`；Dokploy 对 `a1063d3` 的部署状态为 `Error`，Demo 仍为 `a5511fc`。因此 7 个路由修复尚未获得线上验证，不能触发完整 245 条通过结论。
+- 后续 `c905902`、`dc465b3` 部署也为 `Error`，详情面板没有返回构建日志。当前 runner 本地审计为 245 条、245 个唯一 ID、0 重复，其中 88 条为禁止写入的 no-route 安全用例；`node --check` 与 `git diff --check` 通过。下一步仍需先取得同候选 SHA 的 Java 21 `mvn -B clean verify` 和匹配的运行 SHA，再执行新增 29 条及完整 245 条线上回归。
 
 ## 2026-10-21 Dokploy 成功后复验（当前）
 
@@ -2444,3 +2445,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - Report and utility Retry actions now expose visible keyboard focus states across closures, daily/weekly/monthly sales, Mail Log, Trashed Items, and Vendor Connections.
 - Local typecheck, targeted ESLint, and `git diff --check` passed; no production build or business write was run. Evidence: `docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json`.
 - This batch is local-only until a valid Dokploy deployment and exact Demo runtime SHA are available.
+## 2026-10-22 reports/utilities deployment status
+
+- [x] Candidate `876f8b3` is pushed and includes the grouped Settings, stocktake/cash, and report/utility recovery focus improvements.
+- [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. Do not attribute online behavior to this candidate.
+- [ ] Demo runtime remains on the older SHA; online verification awaits Source/Git correction.

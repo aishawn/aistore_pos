@@ -596,3 +596,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Register closures, daily/weekly/monthly sales reports, Mail Log, Trashed Items, and Vendor Connections Retry actions now expose visible keyboard focus states.
 - [x] Existing Clear search/Clear filters focus behavior remains intact. Local typecheck, targeted ESLint, and diff check passed; no business writes. Evidence: `docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json`.
 - [ ] These changes remain online-unverified until the Dokploy branch binding is corrected and exact runtime SHA is read back.
+### 2026-10-22 reports/utilities deployment status
+
+- [x] Candidate `876f8b3` pushed after the report/utility focus batch.
+- [ ] Webhook returned HTTP `301` (`Branch Not Match`); no retry. Exact runtime SHA and online UI verification are pending.
