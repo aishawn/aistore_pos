@@ -186,7 +186,7 @@ public class ClassifyQueryNode implements NodeAction {
 
         RawIntent raw = callModel(system, userPrompt);
         SanitizedIntent result = sanitizeService.sanitize(raw);
-        if (isWriteEntityResult(result)) {
+        if (isWriteEntityResult(result) || isUnknownEntityOperation(result)) {
             return shortcutResult("guided_action",
                     "I can guide this change, but saving business data must be completed and confirmed on the page.",
                     Map.of(), "", "", guidedRouteForTarget(result.slots().get("entity")), "");
@@ -324,7 +324,13 @@ public class ClassifyQueryNode implements NodeAction {
     private static boolean isWriteEntityResult(SanitizedIntent result) {
         if (result == null || !"entity_action".equals(result.intent())) return false;
         String op = result.slots().get("op");
-        return op != null && op.matches("(?i)(create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|confirm|approve|save|submit|send|publish)");
+        return op != null && op.matches("(?i)(create|add|edit|update|modify|delete|remove|merge|import|upload|receive|return|transfer|adjust|change|set|reprice|confirm|approve|save|submit|send|publish|book|post|close|refund|buy|order|sell|write)");
+    }
+
+    private static boolean isUnknownEntityOperation(SanitizedIntent result) {
+        if (result == null || !"entity_action".equals(result.intent())) return false;
+        String op = result.slots().get("op");
+        return op == null || !op.matches("(?i)(list|search|view|get|lookup|find|show)");
     }
 
     private static String guidedRouteForTarget(String target) {

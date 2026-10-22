@@ -926,7 +926,7 @@ export function SellAiPanel({
 
     if (intent === "entity_action") {
       const operation = String(slots.op ?? "").toLowerCase();
-      if (/^(create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|confirm|approve|save|submit|send|publish)$/.test(operation)) {
+      if (!/^(list|search|view|get|lookup|find|show)$/.test(operation)) {
         const entity = String(slots.entity ?? "").toLowerCase();
         const href = entity.includes("customer") || entity.includes("client") ? "/customers"
           : entity.includes("product") || entity.includes("item") || entity.includes("catalog") ? "/products"
