@@ -2337,7 +2337,7 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Platform Audit/Failures local browser fixture passed **4/4** at 390px and 1440px with alert endpoint fallback, retry recovery, no page errors, no overflow, and zero non-GET requests. Evidence: `docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_ALERT-FALLBACK.json`.
 - [x] Invoice preview JSX was simplified by computing the availability message before render; Node 24 typecheck now passes. Invoice mock UAT passed with capability retry, scan retry, preview editing, Odoo links, no received-order save action, and zero business writes: `docs/UAT_INVOICE_SCAN_MOCK_2026-10-22_CURRENT.json`.
 - [x] Targeted ESLint for Platform Failures, Scan Invoice, and Stock List plus both UAT script syntax checks passed. No local production build was run.
-- [ ] The platform alert backend changes currently present in the worktree have not been pushed because the Java 21 same-candidate `mvn -B clean verify` gate is still required. The frontend fallback is safe against an older runtime.
+- [ ] Platform alert backend commit `14b8d81` is now present on `origin/main` from a parallel worktree, but no Java 21 same-candidate `mvn -B clean verify` log is available. Treat its build and runtime behavior as unverified; the frontend fallback remains safe against an older runtime.
 
 ### Deployment result for `f5a2948`
 

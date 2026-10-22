@@ -1247,6 +1247,6 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - **Implemented and locally verified:** Platform Failures keeps failure groups usable when the optional `/api/admin/alerts` endpoint returns an error, and displays a non-blocking status message. Audit/Failures fixture: `4/4 PASS`, 390/1440px, zero writes.
 - **Implemented and locally verified:** Invoice preview availability text now parses cleanly and the mock invoice flow passes capability retry, scan retry, editable preview fields, Odoo handoff links, and zero business writes.
-- **Not deployed:** backend alert persistence/status code remains unpushed until the exact candidate passes Java 21 `mvn -B clean verify`. The frontend fallback is compatible with the current runtime.
+- **Not verified:** backend alert persistence/status code is present in `14b8d81`, but no same-SHA Java 21 `mvn -B clean verify` result is recorded. The frontend fallback is compatible with the current runtime.
 - **Deployment follow-up:** frontend candidate `f5a2948` was pushed, but Dokploy returned HTTP `301`; Demo still reports runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`. Keep these checks local-only until Source/Git binding is corrected and the runtime SHA matches.
 

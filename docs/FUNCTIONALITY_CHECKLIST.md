@@ -527,7 +527,7 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [ ] Deployment attempt for candidate `cfd6967` returned Dokploy webhook HTTP `301`; Demo remains on runtime `3edd72d84f514856923c0c0d50b01fe7b015e120`.
 - [x] Platform Failures degrades gracefully when operational alerts are unavailable; local Audit/Failures fixture `4/4 PASS` across mobile and desktop, with zero writes. Evidence: `docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_ALERT-FALLBACK.json`.
 - [x] Invoice preview availability and scan retry flow remain read-only; mock fixture passed with zero business writes. Evidence: `docs/UAT_INVOICE_SCAN_MOCK_2026-10-22_CURRENT.json`.
-- [ ] Platform alert backend persistence/status actions remain unverified and unpushed pending the Java 21 exact-SHA backend gate.
+- [ ] Platform alert backend persistence/status actions are present in candidate `14b8d81`, but remain unverified because the Java 21 exact-SHA `mvn -B clean verify` gate has no recorded result.
 - [ ] Candidate `f5a2948` is not present in Demo runtime; webhook returned HTTP `301` and `/api/public/version` remains `3edd72d84f514856923c0c0d50b01fe7b015e120`.
 ## 2026-10-22 Dokploy 成功部署后复核
 
