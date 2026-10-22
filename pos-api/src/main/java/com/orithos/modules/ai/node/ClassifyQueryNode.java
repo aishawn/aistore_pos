@@ -272,12 +272,14 @@ public class ClassifyQueryNode implements NodeAction {
 
     private static String writeRouteForQuestion(String question, boolean stockTarget, boolean priceTarget) {
         // Mutation review destinations stay deterministic even when a classifier is unavailable.
-        if (stockTarget || isStockMutationTarget(question)) return "/stock/replenishment";
         if (priceTarget) return "/stock/capped-pricing";
         if (isInvoiceWriteTarget(question)) return "/invoices/scan";
+        if (stockTarget || isStockMutationTarget(question)) return "/stock/replenishment";
+        // Purchase/order language must win over a product noun in phrases such as
+        // "buy these items" or "order these products".
+        if (isOrderWriteTarget(question)) return "/orders";
         if (isCustomerWriteTarget(question)) return "/customers";
         if (isSupplierWriteTarget(question)) return "/suppliers/odoo";
-        if (isOrderWriteTarget(question)) return "/orders";
         if (isProductWriteTarget(question)) return "/products";
         return "";
     }

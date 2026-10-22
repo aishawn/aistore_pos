@@ -134,10 +134,12 @@ class ClassifyQueryNodeTest {
                 {"Create a customer", "/customers"},
                 {"编辑这个产品", "/products"},
                 {"Receive this stock", "/stock/replenishment"},
+                {"Receive this supplier invoice", "/invoices/scan"},
                 {"Submit replenishment suggestions", "/stock/replenishment"},
                 {"Apply these prices", "/stock/capped-pricing"},
                 {"Execute pricing", "/stock/capped-pricing"},
                 {"Buy these items now", "/orders"},
+                {"Order these products", "/orders"},
                 {"保存这些价格建议", "/stock/capped-pricing"}
         }) {
             OverAllState state = mock(OverAllState.class);

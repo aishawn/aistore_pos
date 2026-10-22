@@ -191,11 +191,12 @@ public class PosAssistantGraphService {
         return value == null ? null : value.toString();
     }
 
-    private static List<AssistantCard> cardsFor(String intent, UiAction ui, String answer) {
+    static List<AssistantCard> cardsFor(String intent, UiAction ui, String answer) {
         String route = ui == null ? null : ui.route();
         String type = "product_count".equals(intent) ? "product_count"
                 : "/sommelier".equals(route) ? "sommelier"
-                : "/stock/replenishment".equals(route) ? "replenishment" : null;
+                : "/stock/replenishment".equals(route) ? "replenishment"
+                : "/stock/capped-pricing".equals(route) ? "pricing" : null;
         if (type == null) return List.of();
 
         String text = answer == null ? "" : answer;
@@ -206,17 +207,25 @@ public class PosAssistantGraphService {
                 || lower.contains("not bound") || lower.contains("permission")
                 || lower.contains("没有权限");
         boolean empty = !unavailable && (lower.contains("no restock")
+                || lower.contains("no items need")
+                || lower.contains("no products need")
                 || lower.contains("could not pick")
                 || lower.contains("no matching")
                 || lower.contains("没有推荐") || lower.contains("no prices need")
+                || lower.contains("no price suggestions")
+                || lower.contains("no prices to review")
+                || lower.contains("没有需要复核的价格")
                 || lower.contains("no recommendation"));
         String title = switch (type) {
             case "product_count" -> "Product catalogue";
             case "sommelier" -> "Wine recommendations";
+            case "pricing" -> "Price review suggestions";
             default -> "Replenishment suggestions";
         };
         String routeTarget = "product_count".equals(type) ? "/products"
-                : "/sommelier".equals(route) ? "/sommelier" : "/stock/replenishment";
+                : "/sommelier".equals(route) ? "/sommelier"
+                : "/stock/capped-pricing".equals(route) ? "/stock/capped-pricing"
+                : "/stock/replenishment";
         List<Map<String, Object>> items = cardItems(type, answer);
         return List.of(new AssistantCard(
                 type,
@@ -225,10 +234,20 @@ public class PosAssistantGraphService {
                 items,
                 "sommelier".equals(type) ? "catalogue" : "odoo",
                 Instant.now().toString(),
-                unavailable ? "Live data is unavailable" : empty ? "No matching recommendations" : null,
+                unavailable ? "Live data is unavailable"
+                        : empty ? emptyReason(type) : null,
                 unavailable ? "unavailable" : empty ? "empty" : "ready",
-                "product_count".equals(type) ? "Open products" : "Open workflow",
+                "product_count".equals(type) ? "Open products"
+                        : "pricing".equals(type) ? "Open price review" : "Open workflow",
                 routeTarget));
+    }
+
+    private static String emptyReason(String type) {
+        return switch (type) {
+            case "pricing" -> "No price suggestions need review right now.";
+            case "replenishment" -> "No replenishment suggestions are available right now.";
+            default -> "No matching recommendations.";
+        };
     }
 
     private static List<Map<String, Object>> cardItems(String type, String answer) {
