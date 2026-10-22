@@ -444,7 +444,7 @@ try {
     await launcher.waitFor({ timeout: 10000 });
     await launcher.click();
     await page.getByRole("dialog", { name: "Orithos AI assistant" }).waitFor({ timeout: 10000 });
-    await page.getByRole("button", { name: "Close assistant" }).click();
+    await page.getByRole("dialog", { name: "Orithos AI assistant" }).getByTitle("Close").click();
     return rangeData.trend?.length
       ? `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour trend renders ${rangeData.trend.length} accessible marks, and the AI assistant opens/closes.`
       : `At 390px there is no horizontal overflow (${dimensions.document}px); the 24-hour Odoo report has no sales, so the qualified empty state renders, and the AI assistant opens/closes.`;

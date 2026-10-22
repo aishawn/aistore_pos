@@ -2607,11 +2607,13 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - 已确认隔离 Odoo 数据库 `aipos_uat` 存在；本地 `ODOO_DATABASE`、`ODOO_DATABASE_UAT` 和 `ISOLATION_ODOO_DATABASE` 均指向 `aipos_uat`。创建脚本未重复创建数据库。
 - 已获授权后启动隔离销售/退款 UAT；隔离门禁通过，但 Demo 登录在 30 秒内未完成，脚本在任何业务写入前停止。证据：`docs/UAT_ISOLATION_WRITE_2026-10-22.json`，`sales=[]`、`refunds=[]`，业务写入为 0。
 - 当前阻断是线上 runtime/登录身份，不是销售或退款业务断言：Demo 版本接口仍为 `582b92fb`，候选为 `76835aeb`；需先让独立 UAT runtime 证明 `aipos_uat` 和 exact SHA，再重跑写入闭环。
+- 线上只读交互回归修正了 AI 面板关闭按钮的非唯一测试定位后，结果为 **14/14 PASS**，覆盖导航、客户、商品、销售历史、补货和报表；证据：`docs/UAT_INTERACTION_2026-10-22_POST-DEPLOY-RECHECK-FIXED.json`。该结果仍标记为 runtime 未核验，不把旧 `582b92fb` 归因于候选。
 
 ## 2026-10-22 AI 用户问法扩展（本地待门禁）
 
-- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 257 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
+- scripts/pilot-ai-workflow-utterances-online-uat.mjs 当前包含 263 条唯一用例，覆盖补货、定价、推荐、库存、报表、发票、帮助和写入安全边界。
 - 本轮新增 “Suggest something for steak”“AI会不会自动下单？”、“Top up these items to 50 units”以及中英文分类数量型补货问法，并补充 Java 路由回归。
+- 又补充自然能力问句、发票检查、价格建议和数值调价拦截问法，并加入对应 Java 回归断言；当前目录为 263 条。
 - 本地静态检查通过；未运行本地 build/Maven。后端候选必须先通过 exact-SHA Java 21 mvn -B clean verify，再部署并用同 SHA 线上回归。线上旧证据不代表本轮修改已生效。
 
 ## 2026-10-22 252 条 AI 问法线上复测
