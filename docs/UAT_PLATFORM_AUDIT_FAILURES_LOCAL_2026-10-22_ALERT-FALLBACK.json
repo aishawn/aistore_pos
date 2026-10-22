@@ -1,7 +1,8 @@
 {
-  "generatedAt": "2026-10-22T01:10:16.802Z",
+  "generatedAt": "2026-10-22T01:17:18.740Z",
+  "sourceCommit": "f5a2948",
   "target": "http://app.localhost:3035",
-  "scope": "local browser fixture; platform APIs intercepted; no writes",
+  "scope": "local browser fixture; platform APIs intercepted; no live business writes",
   "status": "PASS",
   "checks": [
     {

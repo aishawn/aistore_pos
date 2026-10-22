@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -97,7 +98,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
   }
 }
 await browser.close();
-const evidence = { generatedAt: new Date().toISOString(), target: base, scope: "local browser fixture; platform APIs intercepted; no writes", status: results.every((item) => item.retryRecovered && item.pageErrors.length === 0 && !item.overflow) && blockedWrites.length === 0 ? "PASS" : "FAIL", checks: results, blockedWrites };
+const evidence = { generatedAt: new Date().toISOString(), sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), target: base, scope: "local browser fixture; platform APIs intercepted; no live business writes", status: results.every((item) => item.retryRecovered && item.pageErrors.length === 0 && !item.overflow) && blockedWrites.length === 0 ? "PASS" : "FAIL", checks: results, blockedWrites };
 const output = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
   : path.join(root, "docs", "UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-24.json");
