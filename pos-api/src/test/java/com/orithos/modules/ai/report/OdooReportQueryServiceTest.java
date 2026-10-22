@@ -177,7 +177,9 @@ class OdooReportQueryServiceTest {
         assertEquals(19, request.path("kwargs").path("context").path("warehouse").asInt());
         String domain = request.path("args").get(0).toString();
         assertTrue(domain.contains("VB Cans"));
+        assertTrue(domain.contains("active"));
         assertTrue(domain.contains("company_id"));
+        assertFalse(domain.contains("available_in_pos"));
         assertFalse(requests.stream().anyMatch(node -> {
             String method = node.path("params").path("method").asText();
             return Set.of("create", "write", "unlink").contains(method);

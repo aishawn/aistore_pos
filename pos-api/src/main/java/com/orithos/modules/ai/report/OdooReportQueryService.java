@@ -321,7 +321,7 @@ public class OdooReportQueryService {
                                              Map<String, Object> context) throws Exception {
         String query = slots == null ? null : slots.get("query");
         if (query == null || query.isBlank()) return List.of();
-        List<Object> domain = productDomain(companyId);
+        List<Object> domain = stockProductDomain(companyId);
         domain.add(List.of("name", "ilike", query.trim()));
         List<Map<String, Object>> products;
         try {
@@ -351,7 +351,7 @@ public class OdooReportQueryService {
     private List<Map<String, Object>> deadStock(String session, long companyId, Vendor vendor,
                                                  ReportPeriodResolver.Window window,
                                                  Map<String, Object> context) throws Exception {
-        List<Map<String, Object>> products = searchRead(session, "product.product", productDomain(companyId),
+        List<Map<String, Object>> products = searchRead(session, "product.product", stockProductDomain(companyId),
                 List.of("id", "display_name", "free_qty", "qty_available"), context, MAX_GROUPS + 1,
                 "display_name asc");
         if (products.size() > MAX_GROUPS) return null;
@@ -425,10 +425,21 @@ public class OdooReportQueryService {
         List<Object> domain = new ArrayList<>();
         domain.add(List.of("active", "=", true));
         domain.add(List.of("available_in_pos", "=", true));
+        addCompanyScope(domain, companyId);
+        return domain;
+    }
+
+    private List<Object> stockProductDomain(long companyId) {
+        List<Object> domain = new ArrayList<>();
+        domain.add(List.of("active", "=", true));
+        addCompanyScope(domain, companyId);
+        return domain;
+    }
+
+    private void addCompanyScope(List<Object> domain, long companyId) {
         domain.add("|");
         domain.add(List.of("company_id", "=", false));
         domain.add(List.of("company_id", "=", companyId));
-        return domain;
     }
 
     private List<Map<String, Object>> readGroup(String session, String model, List<Object> domain,

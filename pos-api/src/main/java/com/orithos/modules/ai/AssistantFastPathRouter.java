@@ -45,7 +45,7 @@ public final class AssistantFastPathRouter {
             "\\bhow much did (?:we|the store) (?:make|take|sell)\\b|"
                     + "\\bwhat did (?:we|the store) (?:make|take|sell)\\b|"
                     + "\\bwhat were (?:our|the store'?s) takings\\b|"
-                    + "卖了多少钱|收入多少|营业额多少|流水多少",
+                    + "卖了多少(?:钱|金额)?(?:[?？]|$)|收入多少|营业额多少|流水多少",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
             "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量))$",

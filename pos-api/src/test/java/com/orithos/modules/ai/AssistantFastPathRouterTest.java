@@ -45,6 +45,7 @@ class AssistantFastPathRouterTest {
                 "16/10/2026 revenue",
                 "What were our takings on 16/10/2026?",
                 "收入多少：2026年10月16日",
+                "10月16日卖了多少？",
                 "10月16日卖了多少钱",
                 "10月16日营业额"
         }) {
