@@ -40,6 +40,8 @@ type OdooSession = {
   config_id: [number, string];
   user_id: [number, string] | false;
   start_at: string | false;
+  cash_register_balance_start?: number | false;
+  cash_register_balance_end?: number | false;
 };
 
 type OdooPaymentMethod = {
@@ -154,7 +156,7 @@ export async function GET(request: NextRequest) {
           ["id", "in", sessionIds],
           ["state", "=", "opened"],
         ]], {
-          fields: ["id", "name", "state", "config_id", "user_id", "start_at"],
+          fields: ["id", "name", "state", "config_id", "user_id", "start_at", "cash_register_balance_start", "cash_register_balance_end"],
           limit: 100,
         }, correlationId)) ?? []
       : [];
@@ -180,14 +182,29 @@ export async function GET(request: NextRequest) {
     const methodsById = new Map(paymentMethods.map((item) => [item.id, item]));
     const roundingById = new Map(roundingMethods.map((item) => [item.id, item]));
 
+    const asCashAmount = (value: number | false | undefined): number | null =>
+      typeof value === "number" && Number.isFinite(value) ? value : null;
+
     const data = configs.map((config) => {
       const sessionIdForConfig = Array.isArray(config.current_session_id) ? config.current_session_id[0] : null;
+      const openSession = sessionIdForConfig ? sessionsById.get(sessionIdForConfig) ?? null : null;
       return {
         id: config.id,
         name: config.name,
         company: config.company_id,
         timezone: Array.isArray(config.company_id) ? timezoneByCompanyId.get(config.company_id[0]) ?? "UTC" : "UTC",
-        session: sessionIdForConfig ? sessionsById.get(sessionIdForConfig) ?? null : null,
+        session: openSession
+          ? {
+              id: openSession.id,
+              name: openSession.name,
+              state: openSession.state,
+              config_id: openSession.config_id,
+              user_id: openSession.user_id,
+              start_at: openSession.start_at,
+              cashBalanceStart: asCashAmount(openSession.cash_register_balance_start),
+              cashBalanceEnd: asCashAmount(openSession.cash_register_balance_end),
+            }
+          : null,
         paymentMethods: config.payment_method_ids.map((id) => methodsById.get(id)).filter(Boolean),
         pricelistIds: config.available_pricelist_ids,
         cashRounding: config.cash_rounding && Array.isArray(config.rounding_method)

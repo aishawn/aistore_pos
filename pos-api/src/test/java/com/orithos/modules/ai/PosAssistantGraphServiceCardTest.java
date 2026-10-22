@@ -41,6 +41,19 @@ class PosAssistantGraphServiceCardTest {
     }
 
     @Test
+    void mapsZeroProductCountToEmptyCardWithoutInventingItems() {
+        List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
+                "product_count",
+                new UiAction("products", "products", "/products", "navigate"),
+                "This store has 0 sellable products in the catalogue. Open Products to browse.");
+
+        AssistantCard card = cards.getFirst();
+        assertEquals("empty", card.status());
+        assertEquals("No sellable products are currently available in the catalogue.", card.emptyReason());
+        assertTrue(card.items().isEmpty());
+    }
+
+    @Test
     void mapsUnavailableSommelierBriefWithoutInventingItems() {
         List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
                 "navigate",
@@ -51,5 +64,18 @@ class PosAssistantGraphServiceCardTest {
         assertEquals("unavailable", card.status());
         assertEquals("Live data is unavailable", card.emptyReason());
         assertTrue(card.items().isEmpty());
+    }
+
+    @Test
+    void extractsNumberedRecommendationLinesIntoAtMostThreeCardItems() {
+        List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
+                "navigate",
+                new UiAction("sommelier", "recommend", "/sommelier", "navigate"),
+                "I found these matches:\n1. Shiraz — $24.99\n2) Pinot Noir — $28.00\n- Cabernet — $29.50\n• Merlot — $31.00");
+
+        AssistantCard card = cards.getFirst();
+        assertEquals(3, card.items().size());
+        assertEquals("Shiraz — $24.99", card.items().getFirst().get("label"));
+        assertEquals("I found these matches:", card.summary());
     }
 }

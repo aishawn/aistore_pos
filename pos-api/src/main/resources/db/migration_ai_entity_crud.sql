@@ -1,4 +1,4 @@
--- Expand AI for Inventory + Customer menu CRUD (safe to re-run).
+-- Expand AI for Inventory + Customer menu lookup and guided writes (safe to re-run).
 -- Also covered by AiConfigInitializer.ensureEntityCrudConfig() on API startup.
 
 SET NAMES utf8mb4;
@@ -6,16 +6,39 @@ SET NAMES utf8mb4;
 INSERT IGNORE INTO `ai_intent`
   (`code`, `name`, `description`, `prompt_hint`, `default_panel`, `default_view`, `enabled`, `sort_order`)
 VALUES
-('entity_action', 'Entity CRUD',
- 'Inventory/Customer menu CRUD: list/search/create/view/edit/delete',
- 'User wants to manage Inventory or Customer menu entities. Extract entity + op + query. Destructive ops confirmed on client.',
+('entity_action', 'Entity lookup',
+ 'Read-only Inventory/Customer lookup: list/search/view',
+ 'Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action; the assistant never writes business data.',
  'dialogue', NULL, 1, 45);
+
+INSERT IGNORE INTO `ai_intent`
+  (`code`, `name`, `description`, `prompt_hint`, `default_panel`, `default_view`, `enabled`, `sort_order`)
+VALUES
+('guided_action', 'Guided action', 'Explain a business change and open its confirmation page',
+ 'Use for every business write or mutation. Explain required information and risk, return a page route, and never execute or emit writeRequests.',
+ 'dialogue', NULL, 1, 46);
+
+UPDATE `ai_intent`
+SET `name` = 'Entity lookup',
+    `description` = 'Read-only Inventory/Customer lookup: list/search/view',
+    `prompt_hint` = 'Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action; the assistant never writes business data.'
+WHERE `code` = 'entity_action';
 
 INSERT IGNORE INTO `ai_slot`
   (`code`, `name`, `description`, `value_type`, `max_length`, `enabled`, `sort_order`)
 VALUES
-('entity', 'Business entity', 'Inventory/Customer entity for CRUD', 'enum', 64, 1, 70),
-('op', 'CRUD operation', 'list|search|create|view|edit|delete|merge|import|export', 'enum', 32, 1, 80);
+('entity', 'Business entity', 'Inventory/Customer entity for read-only lookup', 'enum', 64, 1, 70),
+('op', 'Entity operation', 'list|search|view; legacy write values are normalized to guided_action', 'enum', 32, 1, 80);
+
+UPDATE `ai_slot`
+SET `name` = 'Business entity',
+    `description` = 'Inventory/Customer entity for read-only lookup'
+WHERE `code` = 'entity';
+
+UPDATE `ai_slot`
+SET `name` = 'Entity operation',
+    `description` = 'list|search|view; legacy write values are normalized to guided_action'
+WHERE `code` = 'op';
 
 INSERT IGNORE INTO `ai_slot_value`
   (`slot_code`, `value_key`, `value`, `label`, `enabled`, `sort_order`)

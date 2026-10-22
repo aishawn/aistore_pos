@@ -144,6 +144,9 @@ class ClassifyQueryNodeTest {
                 {"现在帮我把啤酒订 50 件", "/orders"},
                 {"下单啤酒 12 箱", "/orders"},
                 {"保存这些价格建议", "/stock/capped-pricing"},
+                  {"Set these prices now", "/stock/capped-pricing"},
+                  {"Change these prices", "/stock/capped-pricing"},
+                  {"设置这些价格", "/stock/capped-pricing"},
                 {"直接把价格改了", "/stock/capped-pricing"},
                 {"帮我把葡萄酒售价改了", "/stock/capped-pricing"}
         }) {
@@ -166,16 +169,21 @@ class ClassifyQueryNodeTest {
         AiProperties properties = mock(AiProperties.class);
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
         OverAllState state = mock(OverAllState.class);
-        when(state.value("question", String.class)).thenReturn(Optional.of("一共有多少产品"));
+        for (String question : new String[] {
+                "一共有多少产品", "商品有几种？", "店里有多少种商品？", "商品目录里有多少商品？",
+                "How many products do we have?", "How many items are in the catalogue?", "catalogue size"
+        }) {
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
 
-        Map<String, Object> result = node.apply(state);
+            Map<String, Object> result = node.apply(state);
 
-        assertEquals("product_count", result.get("intent"));
-        assertEquals("/products", result.get("ui_route"));
-        assertEquals("product_count", result.get("fast_path_id"));
-        assertEquals("deterministic", result.get("route_source"));
-        assertEquals(false, result.get("llm_fallback"));
-        assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"));
+            assertEquals("product_count", result.get("intent"), question);
+            assertEquals("/products", result.get("ui_route"), question);
+            assertEquals("product_count", result.get("fast_path_id"), question);
+            assertEquals("deterministic", result.get("route_source"), question);
+            assertEquals(false, result.get("llm_fallback"), question);
+            assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"), question);
+        }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
@@ -190,7 +198,11 @@ class ClassifyQueryNodeTest {
         for (String question : new String[]{
                 "有多少个产品？",
                 "商品总数",
+                "商品总共有多少！",
+                "产品数量是多少。",
                 "How many products are there?",
+                "How many products are in our catalogue?",
+                "how many items are in the store?",
                 "what is the number of items we stock?",
                 "catalogue size"
         }) {

@@ -58,11 +58,23 @@ class IntentSanitizeServiceTest {
     }
 
     @Test
-    void customerCreateActionKeepsOnlyWhitelistedEntityAndOperation() {
+    void legacyEntityWriteOperationIsRetainedForFailClosedNormalization() {
         IntentSanitizeService.SanitizedIntent result = service.sanitize(raw("entity_action", "Create customer",
                 null, null, null, null, "customer", "create"));
 
+        // The classifier node converts this legacy entity_action result to guided_action
+        // before routing; sanitizer retains the whitelisted slots for that conversion.
         assertEquals("entity_action", result.intent());
+        assertEquals("customer", result.slots().get("entity"));
+        assertEquals("create", result.slots().get("op"));
+    }
+
+    @Test
+    void guidedActionIsAFirstClassConfiguredIntent() {
+        IntentSanitizeService.SanitizedIntent result = service.sanitize(raw("guided_action", "Create customer",
+                "/customers", null, null, null, "customer", "create"));
+
+        assertEquals("guided_action", result.intent());
         assertEquals("customer", result.slots().get("entity"));
         assertEquals("create", result.slots().get("op"));
     }
@@ -72,8 +84,9 @@ class IntentSanitizeServiceTest {
         IntentSanitizeService.SanitizedIntent result = service.sanitize(raw("entity_action", "Run customer action",
                 "/customers", null, null, null, "customer", "archive"));
 
-        assertEquals("unknown", result.intent());
-        assertTrue(result.slots().isEmpty());
+        assertEquals("entity_action", result.intent());
+        assertEquals("customer", result.slots().get("entity"));
+        assertFalse(result.slots().containsKey("op"));
         assertNull(result.route());
     }
 
@@ -115,7 +128,7 @@ class IntentSanitizeServiceTest {
         AiSlotValueMapper values = mock(AiSlotValueMapper.class);
         AiPromptMapper prompts = mock(AiPromptMapper.class);
         when(intents.findEnabled()).thenReturn(List.of(
-                intent("unknown"), intent("navigate"), intent("search_product"), intent("entity_action")));
+                intent("unknown"), intent("navigate"), intent("search_product"), intent("entity_action"), intent("guided_action")));
         when(slots.findEnabled()).thenReturn(List.of(
                 slot("query", "string", 11),
                 slot("route", "enum", 64),

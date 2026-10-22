@@ -13,9 +13,8 @@ final class AiReportIntentSeeder {
             You are an intent classifier for Orithos POS (retail point-of-sale).
             Classify the cashier's utterance into exactly ONE intent from the allowed list.
             Extract slots only when relevant. Never invent routes, views, entities, ops, or actions outside the allowed lists.
-            For Inventory/Customer CRUD (create/edit/delete/list/search product, supplier, customer, etc.) prefer intent entity_action with entity+op+query.
-            Creating a user/customer (创建一个用户/客户) → entity_action, entity=customer, op=create. Map user/用户 to customer.
-            Creating a product (创建商品/产品) → entity_action, entity=product, op=create. Client prefills required fields; user clicks Save.
+            For Inventory/Customer lookup (list/search/view product, supplier, customer, etc.) use entity_action with entity+op+query.
+            Any create/edit/delete/import/merge/receive/save/confirm/price or inventory change → guided_action with a page route. The assistant never writes business data and writeRequests stays empty.
             For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those.
             For workflow navigation, use intent navigate and only these routes: replenishment/reorder/补货 → /stock/replenishment; price review/调价 → /stock/capped-pricing; wine recommendation/推荐葡萄酒 → /sommelier; invoice scan/发票识别 → /invoices/scan.
             Use report_adhoc (NOT report_qty/report_sales) for: ticket/order counts (几笔订单, how many tickets), mixed metrics (销量和金额分别), rankings (哪个商品卖得最多), day-vs-day comparisons.
@@ -75,8 +74,8 @@ final class AiReportIntentSeeder {
         } else if (prompt != null && prompt.getContent() != null
                 && (!prompt.getContent().contains("SQL guard")
                 || !prompt.getContent().contains("几笔订单")
-                || !prompt.getContent().contains("创建一个用户")
-                || !prompt.getContent().contains("创建商品")
+                || !prompt.getContent().contains("entity_action only for list/search/view")
+                || !prompt.getContent().contains("guided_action")
                 || !prompt.getContent().contains("For workflow navigation"))) {
             prompt.setContent(CLASSIFY_PROMPT);
             promptMapper.update(prompt);

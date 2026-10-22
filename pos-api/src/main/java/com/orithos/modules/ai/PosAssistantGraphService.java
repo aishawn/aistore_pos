@@ -206,7 +206,8 @@ public class PosAssistantGraphService {
                 || lower.contains("无法取得") || lower.contains("sign in")
                 || lower.contains("not bound") || lower.contains("permission")
                 || lower.contains("没有权限");
-        boolean empty = !unavailable && (lower.contains("no restock")
+        boolean empty = !unavailable && ("product_count".equals(type) && productCountIsZero(text)
+                || lower.contains("no restock")
                 || lower.contains("no items need")
                 || lower.contains("no products need")
                 || lower.contains("could not pick")
@@ -244,10 +245,15 @@ public class PosAssistantGraphService {
 
     private static String emptyReason(String type) {
         return switch (type) {
+            case "product_count" -> "No sellable products are currently available in the catalogue.";
             case "pricing" -> "No price suggestions need review right now.";
             case "replenishment" -> "No replenishment suggestions are available right now.";
             default -> "No matching recommendations.";
         };
+    }
+
+    private static boolean productCountIsZero(String answer) {
+        return answer != null && answer.matches("(?is).*\\b(?:has|have|contains)\\s+0\\s+(?:sellable\\s+)?products?\\b.*");
     }
 
     private static List<Map<String, Object>> cardItems(String type, String answer) {
@@ -255,9 +261,10 @@ public class PosAssistantGraphService {
         List<Map<String, Object>> items = new ArrayList<>();
         for (String line : answer.split("\\R")) {
             String trimmed = line.trim();
-            if (!trimmed.startsWith("•")) continue;
+            String itemText = cardItemText(trimmed);
+            if (itemText == null) continue;
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("label", trimmed.substring(1).trim());
+            item.put("label", itemText.trim());
             items.add(item);
             if (items.size() == 3) break;
         }
@@ -267,8 +274,14 @@ public class PosAssistantGraphService {
     private static String cardSummary(String answer, List<Map<String, Object>> items) {
         if (answer == null) return "";
         if (items.isEmpty()) return answer;
-        return answer.lines().map(String::trim).filter(line -> !line.startsWith("•"))
+        return answer.lines().map(String::trim).filter(line -> cardItemText(line) == null)
                 .findFirst().orElse(answer);
+    }
+
+    private static String cardItemText(String line) {
+        if (line == null || line.isBlank()) return null;
+        String itemText = line.replaceFirst("^(?:[•*-]|\\d+[.)])\\s*", "");
+        return itemText.equals(line) || itemText.isBlank() ? null : itemText.trim();
     }
 
     private static String emptyToNull(String v) {

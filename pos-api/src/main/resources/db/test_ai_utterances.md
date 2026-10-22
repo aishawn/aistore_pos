@@ -1,4 +1,4 @@
-# 收银 AI 意图测试语料（阶段 A / Entity CRUD）
+# 收银 AI 意图测试语料（Entity lookup / guided action）
 
 用法：Sell 侧栏 Chat / 带意图关键词的输入，或 `POST /api/ai/assistant`
 
@@ -57,26 +57,30 @@
 
 ---
 
-## 5. entity_action（Inventory / Customer 菜单 CRUD）
+## 5. entity_action（Inventory / Customer 只读查询）
 
 | 输入 | 期望 |
 |------|------|
-| `delete customer xiaoli` | entity=customer, op=delete → 确认后 DELETE |
-| `删除客户 xiaoli` | 同上 |
-| `create supplier` | entity=supplier, op=create → `/suppliers/new` |
-| `add product` | entity=product, op=create → `/products/new` |
-| `edit customer xiaoli` | entity=customer, op=edit → 唯一匹配则 `/customers/{id}/edit` |
+| `open customer xiaoli` | entity=customer, op=view → `/customers` |
+| `查看客户 xiaoli` | 同上 |
 | `open price lists` | entity=price_list, op=list → `/pricelists` |
-| `merge customers` | entity=customer, op=merge → `/customers/merge` |
 | `show balances` | entity=balance, op=list → `/customers/balances` |
 | `open stock list` | entity=stock_list, op=list → `/stock/list` |
-| `delete product VB` | entity=product, op=delete → 确认后 DELETE |
 
-删除/合并不会静默执行；需 ConfirmDialog。
+## 6. guided_action（所有业务写操作）
+
+| 输入 | 期望 |
+|------|------|
+| `delete customer xiaoli` | guided_action → `/customers`，说明风险并由页面确认 |
+| `创建商品` | guided_action → `/products`，收集字段后由页面保存 |
+| `merge customers` | guided_action → `/customers/merge`，页面确认 |
+| `执行补货` | guided_action → `/stock/replenishment`，页面确认 |
+
+Assistant API 不执行 DELETE、保存、合并或库存/价格写入，`writeRequests` 必须为空。
 
 ---
 
-## 6. qa（只聊天，不跳转）
+## 7. qa（只聊天，不跳转）
 
 | 输入 |
 |------|
@@ -87,7 +91,7 @@
 
 ---
 
-## 7. 安全 / 胡言（unknown 或丢弃非法 route）
+## 8. 安全 / 胡言（unknown 或丢弃非法 route）
 
 | 输入 |
 |------|

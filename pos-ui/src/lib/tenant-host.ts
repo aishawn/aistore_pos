@@ -10,6 +10,11 @@ export function tenantBaseDomain(): string {
   return (process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN || DEFAULT_BASE).trim().toLowerCase();
 }
 
+/** Public brand-site trial signup (not the control-plane /signup wizard). */
+export function brandSignupUrl(): string {
+  return `https://${tenantBaseDomain()}/signup`;
+}
+
 export function normalizeSlug(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const slug = raw.trim().toLowerCase();

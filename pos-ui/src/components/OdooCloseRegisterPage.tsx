@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Check, CircleAlert, LoaderCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Check, CircleAlert, LoaderCircle, Minus, Plus, RefreshCw } from "lucide-react";
 import {
   closeOdooPosSession,
   getOdooPosBootstrap,
@@ -13,19 +13,59 @@ import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
-const CASH_DENOMINATIONS = [
+const LONG_OPEN_HOURS = 24;
+const MONEY = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
+
+const COIN_DENOMINATIONS = [
   { value: 0.05, label: "$0.05" },
   { value: 0.1, label: "$0.10" },
   { value: 0.2, label: "$0.20" },
   { value: 0.5, label: "$0.50" },
   { value: 1, label: "$1" },
   { value: 2, label: "$2" },
+] as const;
+
+const NOTE_DENOMINATIONS = [
   { value: 5, label: "$5" },
   { value: 10, label: "$10" },
   { value: 20, label: "$20" },
   { value: 50, label: "$50" },
   { value: 100, label: "$100" },
 ] as const;
+
+const CASH_DENOMINATIONS = [...COIN_DENOMINATIONS, ...NOTE_DENOMINATIONS] as const;
+
+type CashEntryMode = "denomination" | "direct";
+
+function parseOdooStartMs(startAt: string | false | undefined): number | null {
+  if (!startAt || typeof startAt !== "string") return null;
+  const normalized = startAt.includes("T") ? startAt : startAt.replace(" ", "T");
+  const withZone = /(?:Z|[+-]\d{2}:?\d{2})$/u.test(normalized) ? normalized : `${normalized}Z`;
+  const ms = new Date(withZone).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
+function formatOpenDuration(startAt: string | false | undefined): { label: string; longOpen: boolean } | null {
+  const startMs = parseOdooStartMs(startAt);
+  if (startMs == null) return null;
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - startMs) / 60_000));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return {
+    label: parts.join(" "),
+    longOpen: (Date.now() - startMs) >= LONG_OPEN_HOURS * 3_600_000,
+  };
+}
+
+function formatMoney(amount: number | null | undefined): string {
+  if (amount == null || !Number.isFinite(amount)) return "—";
+  return MONEY.format(amount);
+}
 
 export function OdooCloseRegisterPage() {
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
@@ -34,6 +74,7 @@ export function OdooCloseRegisterPage() {
   const [configId, setConfigId] = useState<number | null>(null);
   const [countedCash, setCountedCash] = useState("");
   const [cashCounts, setCashCounts] = useState<Record<string, string>>({});
+  const [cashEntryMode, setCashEntryMode] = useState<CashEntryMode>("denomination");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -88,17 +129,70 @@ export function OdooCloseRegisterPage() {
 
   const selected = bootstrap?.configs.find((item) => item.id === configId) ?? null;
   const requiresCashCount = Boolean(selected?.paymentMethods.some((method) => method.is_cash_count));
+  const expectedCash = selected?.session?.cashBalanceEnd ?? null;
+  const openingFloat = selected?.session?.cashBalanceStart ?? null;
+  const openDuration = useMemo(
+    () => formatOpenDuration(selected?.session?.start_at),
+    [selected?.session?.start_at],
+  );
+
   const denominationTotal = useMemo(
     () => CASH_DENOMINATIONS.reduce((total, denomination) => total + denomination.value * (Number(cashCounts[String(denomination.value)]) || 0), 0),
     [cashCounts],
   );
   const hasDenominationCount = Object.values(cashCounts).some((value) => value.trim() !== "");
 
+  const countedAmount = useMemo(() => {
+    if (cashEntryMode === "denomination") {
+      return hasDenominationCount ? denominationTotal : null;
+    }
+    if (!countedCash.trim()) return null;
+    const value = Number(countedCash);
+    return Number.isFinite(value) ? value : null;
+  }, [cashEntryMode, countedCash, denominationTotal, hasDenominationCount]);
+
+  const difference = countedAmount != null && expectedCash != null
+    ? Math.round((countedAmount - expectedCash) * 100) / 100
+    : null;
+
+  function resetCashInputs() {
+    setCountedCash("");
+    setCashCounts({});
+    setCashEntryMode("denomination");
+  }
+
+  function syncCountedFromDenominations(nextCounts: Record<string, string>) {
+    const total = CASH_DENOMINATIONS.reduce(
+      (sum, denomination) => sum + denomination.value * (Number(nextCounts[String(denomination.value)]) || 0),
+      0,
+    );
+    const hasAny = Object.values(nextCounts).some((entry) => entry.trim() !== "");
+    setCountedCash(hasAny ? total.toFixed(2) : "");
+  }
+
   function updateCashDenomination(value: number, count: string) {
-    const next = { ...cashCounts, [String(value)]: count };
+    const cleaned = count.replace(/[^\d]/g, "");
+    const next = { ...cashCounts, [String(value)]: cleaned };
     setCashCounts(next);
-    const total = CASH_DENOMINATIONS.reduce((sum, denomination) => sum + denomination.value * (Number(next[String(denomination.value)]) || 0), 0);
-    setCountedCash(Object.values(next).some((entry) => entry.trim() !== "") ? total.toFixed(2) : "");
+    syncCountedFromDenominations(next);
+  }
+
+  function stepCashDenomination(value: number, delta: number) {
+    const current = Number(cashCounts[String(value)]) || 0;
+    const nextCount = Math.max(0, Math.min(9_999, current + delta));
+    updateCashDenomination(value, nextCount === 0 ? "" : String(nextCount));
+  }
+
+  function switchCashEntryMode(mode: CashEntryMode) {
+    if (mode === cashEntryMode) return;
+    if (mode === "direct") {
+      if (hasDenominationCount) setCountedCash(denominationTotal.toFixed(2));
+      setCashCounts({});
+    } else {
+      setCashCounts({});
+      setCountedCash("");
+    }
+    setCashEntryMode(mode);
   }
 
   async function handleClose() {
@@ -107,7 +201,7 @@ export function OdooCloseRegisterPage() {
     setError(null);
     setResult(null);
     try {
-      const cash = countedCash.trim() ? Number(countedCash) : null;
+      const cash = countedAmount;
       if (requiresCashCount && cash == null) {
         throw new Error("Count the cash in the drawer before closing this register.");
       }
@@ -122,6 +216,7 @@ export function OdooCloseRegisterPage() {
         message: closed.message,
       });
       setConfirming(false);
+      resetCashInputs();
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not close the register.");
@@ -129,6 +224,8 @@ export function OdooCloseRegisterPage() {
       setBusy(false);
     }
   }
+
+  const canReview = Boolean(selected?.session) && !busy && (!requiresCashCount || countedAmount != null);
 
   if (loading) {
     return (
@@ -141,19 +238,13 @@ export function OdooCloseRegisterPage() {
           <div className="h-11 w-28 animate-pulse rounded-lg bg-[var(--oh-border)]" />
         </header>
         <section aria-label="Loading register details" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
-          <div className="border-b border-[var(--oh-border)] pb-3">
-            <div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" />
-            <div className="mt-2 h-3 w-72 max-w-full animate-pulse rounded bg-[var(--oh-border)]" />
+          <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
+          <div className="mt-4 grid gap-2 rounded-lg bg-[var(--oh-surface)] p-3 sm:grid-cols-3">
+            <div className="h-14 animate-pulse rounded bg-[var(--oh-border)]" />
+            <div className="h-14 animate-pulse rounded bg-[var(--oh-border)]" />
+            <div className="h-14 animate-pulse rounded bg-[var(--oh-border)]" />
           </div>
-          <div className="mt-4 h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
-          <div className="mt-4 grid gap-2 rounded-lg bg-[var(--oh-surface)] p-3 sm:grid-cols-2">
-            <div className="h-4 w-24 animate-pulse rounded bg-[var(--oh-border)]" />
-            <div className="h-4 w-40 animate-pulse rounded bg-[var(--oh-border)] sm:ml-auto" />
-            <div className="h-4 w-16 animate-pulse rounded bg-[var(--oh-border)]" />
-            <div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)] sm:ml-auto" />
-          </div>
-          <div className="mt-4 h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
-          <div className="mt-3 h-10 w-full animate-pulse rounded-lg bg-[var(--oh-surface)]" />
+          <div className="mt-4 h-40 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
           <div className="mt-5 h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
         </section>
         <p className="flex items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" />Loading register and session details…</p>
@@ -188,21 +279,34 @@ export function OdooCloseRegisterPage() {
   }
 
   return (
-    <main className="mx-auto flex h-full max-w-3xl flex-col gap-5 overflow-y-auto bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="mx-auto flex h-full max-w-2xl flex-col bg-[var(--oh-surface)]">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">Close register</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">End the open Odoo POS session after reconciling cash.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, selected?.timezone ?? bootstrap?.configs[0]?.timezone ?? "Australia/Adelaide")}.</span>}</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">
+            Reconcile the drawer, then end the open Odoo POS session.
+            {lastLoadedAt !== null && (
+              <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, selected?.timezone ?? bootstrap?.configs[0]?.timezone ?? "Australia/Adelaide")}.</span>
+            )}
+          </p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading || busy} aria-label={loading ? "Refreshing registers" : "Refresh registers"} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
         </button>
       </header>
 
-      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error} Register details may be out of date.</span><button type="button" onClick={() => void load()} disabled={loading || busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+      {error && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">
+          <span>{error} Register details may be out of date.</span>
+          <button type="button" onClick={() => void load()} disabled={loading || busy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
+            {loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry
+          </button>
+        </div>
+      )}
       {result && (
         <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-5 text-emerald-950">
-          <p className="font-semibold inline-flex items-center gap-2"><Check size={16} /> {result.registerName} · {result.sessionName}</p>
+          <p className="inline-flex items-center gap-2 font-semibold"><Check size={16} /> {result.registerName} · {result.sessionName}</p>
           <p className="mt-1">{result.message}</p>
           <p className="mt-1 text-xs">Odoo session state: <strong>{result.state}</strong></p>
         </div>
@@ -210,9 +314,10 @@ export function OdooCloseRegisterPage() {
 
       <section aria-labelledby="close-register-form-heading" className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
         <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
-          <h2 id="close-register-form-heading" className="text-sm font-semibold text-[var(--oh-text)]">Session and cash count</h2>
-          <p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Review the active session before submitting its closing control.</p>
+          <h2 id="close-register-form-heading" className="text-sm font-semibold text-[var(--oh-text)]">End-of-day checklist</h2>
+          <p className="mt-0.5 text-xs leading-5 text-[var(--oh-muted)]">Count the drawer against Odoo expected cash, then review before closing.</p>
         </div>
+
         <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
           Register
           <select
@@ -220,9 +325,8 @@ export function OdooCloseRegisterPage() {
             disabled={!bootstrap?.configs.length || busy}
             onChange={(event) => {
               const nextId = Number(event.target.value);
-      setConfigId(nextId);
-      setCountedCash("");
-      setCashCounts({});
+              setConfigId(nextId);
+              resetCashInputs();
               if (odooUserId) {
                 try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(nextId)); } catch { /* Keep the current selection for this session. */ }
               }
@@ -232,7 +336,7 @@ export function OdooCloseRegisterPage() {
             {!bootstrap?.configs.length && <option value="">No POS registers available</option>}
             {bootstrap?.configs.map((config) => (
               <option key={config.id} value={config.id}>
-                {config.name}{config.session ? ` · ${config.session.name}` : " · No open session"}
+                {config.name}{config.session ? ` · open` : " · no session"}
               </option>
             ))}
           </select>
@@ -244,89 +348,191 @@ export function OdooCloseRegisterPage() {
             <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
           </div>
         ) : selected?.session ? (
-          <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-2 rounded-lg bg-[var(--oh-surface)] p-3 text-sm sm:grid-cols-2">
-            <dt className="text-[var(--oh-muted)]">Open session</dt>
-            <dd className="min-w-0 break-words font-medium text-[var(--oh-text)] sm:text-right">{selected.session.name}</dd>
-            <dt className="text-[var(--oh-muted)]">Started</dt>
-            <dd className="min-w-0 text-[var(--oh-text-secondary)] sm:text-right">
-              {selected.session.start_at
-                ? formatOdooDateTime(String(selected.session.start_at), selected.timezone)
-                : "—"}
-            </dd>
-          </dl>
+          <>
+            <div className="mt-4 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">Open session</p>
+                  <p className="mt-0.5 break-words text-sm font-semibold text-[var(--oh-text)]">{selected.session.name}</p>
+                  <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">
+                    Started {selected.session.start_at
+                      ? formatOdooDateTime(String(selected.session.start_at), selected.timezone)
+                      : "—"}
+                    {openDuration && <> · Open {openDuration.label}</>}
+                  </p>
+                </div>
+                {openDuration?.longOpen && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-950">
+                    <AlertCircle size={14} /> Open over {LONG_OPEN_HOURS}h
+                  </span>
+                )}
+              </div>
+              {openingFloat != null && (
+                <p className="mt-2 text-xs text-[var(--oh-muted)]">Opening float {formatMoney(openingFloat)}</p>
+              )}
+            </div>
+
+            <div
+              role="status"
+              aria-label="Cash reconciliation summary"
+              className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3"
+            >
+              <div className="rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3">
+                <p className="text-xs font-medium text-[var(--oh-muted)]">Expected cash</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(expectedCash)}</p>
+                <p className="mt-0.5 text-[11px] leading-4 text-[var(--oh-muted)]">From Odoo drawer balance</p>
+              </div>
+              <div className="rounded-lg border border-[var(--oh-border)] bg-white px-3 py-3">
+                <p className="text-xs font-medium text-[var(--oh-muted)]">Counted</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums text-[var(--oh-text)]">{formatMoney(countedAmount)}</p>
+                <p className="mt-0.5 text-[11px] leading-4 text-[var(--oh-muted)]">
+                  {cashEntryMode === "denomination" ? "From denomination count" : "Entered total"}
+                </p>
+              </div>
+              <div className={`rounded-lg border px-3 py-3 ${
+                difference == null
+                  ? "border-[var(--oh-border)] bg-white"
+                  : Math.abs(difference) < 0.005
+                    ? "border-emerald-200 bg-emerald-50"
+                    : "border-rose-200 bg-rose-50"
+              }`}>
+                <p className="text-xs font-medium text-[var(--oh-muted)]">Difference</p>
+                <p className={`mt-1 text-lg font-semibold tabular-nums ${
+                  difference == null
+                    ? "text-[var(--oh-text)]"
+                    : Math.abs(difference) < 0.005
+                      ? "text-emerald-900"
+                      : "text-rose-900"
+                }`}>
+                  {difference == null ? "—" : formatMoney(difference)}
+                </p>
+                <p className="mt-0.5 text-[11px] leading-4 text-[var(--oh-muted)]">Counted − expected</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Cash count method">
+              <button
+                type="button"
+                onClick={() => switchCashEntryMode("denomination")}
+                className={`inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${
+                  cashEntryMode === "denomination"
+                    ? "bg-[var(--oh-primary)] text-white"
+                    : "border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
+                }`}
+              >
+                Count by denomination
+              </button>
+              <button
+                type="button"
+                onClick={() => switchCashEntryMode("direct")}
+                className={`inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${
+                  cashEntryMode === "direct"
+                    ? "bg-[var(--oh-primary)] text-white"
+                    : "border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:bg-[var(--oh-surface)]"
+                }`}
+              >
+                Enter total
+              </button>
+            </div>
+
+            {cashEntryMode === "direct" ? (
+              <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
+                Counted cash {requiresCashCount ? "(required)" : "(optional)"}
+                <input
+                  id="counted-cash"
+                  type="number"
+                  min="0"
+                  step="0.05"
+                  required={requiresCashCount}
+                  aria-describedby="counted-cash-help"
+                  value={countedCash}
+                  onChange={(event) => setCountedCash(event.target.value)}
+                  placeholder={requiresCashCount ? "Amount counted in AUD" : "Optional cash count"}
+                  className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+                />
+                <span id="counted-cash-help" className="text-xs font-normal leading-5 text-[var(--oh-muted)]">
+                  {requiresCashCount
+                    ? "Required for this cash-enabled register. Written to Odoo when you confirm."
+                    : "This register has no cash payment method, so a cash count is optional."}
+                </span>
+              </label>
+            ) : (
+              <fieldset className="mt-4">
+                <legend className="text-sm font-semibold text-[var(--oh-text)]">
+                  Count by denomination {requiresCashCount ? <span className="font-normal text-[var(--oh-muted)]">(required)</span> : <span className="font-normal text-[var(--oh-muted)]">(optional)</span>}
+                </legend>
+                <p className="mt-1 text-xs leading-5 text-[var(--oh-muted)]">Enter the number of each note or coin. The total updates Counted above.</p>
+
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Coins</p>
+                <ul className="mt-2 grid gap-2">
+                  {COIN_DENOMINATIONS.map((denomination) => (
+                    <DenominationRow
+                      key={denomination.label}
+                      label={denomination.label}
+                      value={cashCounts[String(denomination.value)] ?? ""}
+                      onStep={(delta) => stepCashDenomination(denomination.value, delta)}
+                      onChange={(next) => updateCashDenomination(denomination.value, next)}
+                    />
+                  ))}
+                </ul>
+
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">Notes</p>
+                <ul className="mt-2 grid gap-2">
+                  {NOTE_DENOMINATIONS.map((denomination) => (
+                    <DenominationRow
+                      key={denomination.label}
+                      label={denomination.label}
+                      value={cashCounts[String(denomination.value)] ?? ""}
+                      onStep={(delta) => stepCashDenomination(denomination.value, delta)}
+                      onChange={(next) => updateCashDenomination(denomination.value, next)}
+                    />
+                  ))}
+                </ul>
+
+                <p role="status" className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">
+                  <span>{hasDenominationCount ? "Denomination total" : "No denomination count entered"}</span>
+                  <strong className="tabular-nums">{formatMoney(denominationTotal)}</strong>
+                </p>
+              </fieldset>
+            )}
+          </>
         ) : (
           <div role="status" className="mt-4 flex flex-col items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm leading-5 text-amber-950 sm:flex-row sm:items-center">
-            <span className="flex items-start gap-2"><AlertCircle size={16} className="mt-0.5 shrink-0" />This register has no open session. Open one in Odoo before closing.</span>
-            <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+            <span className="flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              This register has no open session. Open one from Sell or Odoo before closing.
+            </span>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Link href="/sell" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-white px-3 text-sm font-semibold text-amber-950 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Go to Sell</Link>
+              <a href="https://odoo.orithos.com.au/odoo/point-of-sale" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Odoo POS</a>
+            </div>
           </div>
         )}
+      </section>
+      </div>
 
-        {selected?.session ? (
-          <>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
-              Counted cash {requiresCashCount ? "(required)" : "(optional)"}
-              <input
-                id="counted-cash"
-                type="number"
-                min="0"
-                step="0.05"
-                required={requiresCashCount}
-                aria-describedby="counted-cash-help"
-                value={countedCash}
-                onChange={(event) => { setCountedCash(event.target.value); setCashCounts({}); }}
-                placeholder={requiresCashCount ? "Amount counted in AUD" : "Optional cash count"}
-                className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
-              />
-              <span id="counted-cash-help" className="text-xs font-normal leading-5 text-[var(--oh-muted)]">
-                {requiresCashCount
-                  ? "Required for this cash-enabled register. The counted amount is written to Odoo when you confirm."
-                  : "This register has no cash payment method, so a cash count is optional."}
-              </span>
-            </label>
-
-            <fieldset className="mt-4 border-t border-[var(--oh-border)] pt-4">
-              <legend className="text-sm font-semibold text-[var(--oh-text)]">Count by denomination <span className="font-normal text-[var(--oh-muted)]">(optional)</span></legend>
-              <p className="mt-1 text-xs leading-5 text-[var(--oh-muted)]">Enter the number of each note or coin. The total fills Counted cash automatically.</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                {CASH_DENOMINATIONS.map((denomination) => (
-                  <label key={denomination.label} className="grid min-w-0 gap-1 text-xs font-medium text-[var(--oh-muted)]">
-                    <span>{denomination.label}</span>
-                    <input
-                      aria-label={`${denomination.label} count`}
-                      type="number"
-                      min="0"
-                      step="1"
-                      inputMode="numeric"
-                      value={cashCounts[String(denomination.value)] ?? ""}
-                      onChange={(event) => updateCashDenomination(denomination.value, event.target.value)}
-                      className="h-10 min-w-0 rounded-lg border border-[var(--oh-border)] bg-white px-2 text-sm font-normal tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
-                    />
-                  </label>
-                ))}
-              </div>
-              <p role="status" className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">
-                <span>{hasDenominationCount ? "Denomination total" : "No denomination count entered"}</span>
-                <strong className="tabular-nums">{new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(denominationTotal)}</strong>
-              </p>
-            </fieldset>
-
-            <p className="mt-3 rounded-lg bg-[var(--oh-surface)] px-3 py-2.5 text-xs leading-5 text-[var(--oh-muted)]">
-              Closing sends Odoo&apos;s session closing control. If cash differences remain, finish reconciliation in Odoo.
-              Parked sales on this browser are local drafts and are not uploaded by close.
+      {selected?.session && (
+        <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs leading-5 text-[var(--oh-muted)] sm:max-w-sm">
+              {countedAmount != null
+                ? <>Recording {formatMoney(countedAmount)}{difference != null && Math.abs(difference) >= 0.005 ? <> · difference {formatMoney(difference)}</> : null}</>
+                : requiresCashCount
+                  ? "Count the drawer before reviewing close."
+                  : "Cash count is optional for this register."}
             </p>
-
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              disabled={!selected?.session || busy || (requiresCashCount && !countedCash.trim())}
-              className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!canReview}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
             >
               {busy ? <LoaderCircle size={16} className="animate-spin" /> : null}
               {busy ? "Closing…" : "Review before closing"}
             </button>
-          </>
-        ) : null}
-      </section>
+          </div>
+        </div>
+      )}
 
       {confirming && selected?.session && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
@@ -342,11 +548,32 @@ export function OdooCloseRegisterPage() {
               This will send the closing request for <strong>{selected.name}</strong> · <strong>{selected.session.name}</strong>.
               Check the cash count and make sure all sales are reconciled before continuing.
             </p>
-            {countedCash.trim() && (
-              <p className="mt-3 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">
-                Cash count to record: <strong>{new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(Number(countedCash) || 0)}</strong>
-              </p>
-            )}
+            <dl className="mt-3 grid gap-2 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-sm text-[var(--oh-text)]">
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--oh-muted)]">Expected</dt>
+                <dd className="font-medium tabular-nums">{formatMoney(expectedCash)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--oh-muted)]">Counted</dt>
+                <dd className="font-medium tabular-nums">{formatMoney(countedAmount)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-[var(--oh-muted)]">Difference</dt>
+                <dd className={`font-semibold tabular-nums ${
+                  difference == null
+                    ? ""
+                    : Math.abs(difference) < 0.005
+                      ? "text-emerald-800"
+                      : "text-rose-800"
+                }`}>
+                  {formatMoney(difference)}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+              Parked sales on this browser are local drafts and are not uploaded by close.
+              If cash differences remain, finish reconciliation in Odoo.
+            </p>
             <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -370,5 +597,53 @@ export function OdooCloseRegisterPage() {
         </div>
       )}
     </main>
+  );
+}
+
+function DenominationRow({
+  label,
+  value,
+  onStep,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onStep: (delta: number) => void;
+  onChange: (next: string) => void;
+}) {
+  const count = Number(value) || 0;
+  return (
+    <li className="grid grid-cols-[4.5rem_1fr] items-center gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2">
+      <span className="text-sm font-semibold tabular-nums text-[var(--oh-text)]">{label}</span>
+      <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          aria-label={`Decrease ${label} count`}
+          onClick={() => onStep(-1)}
+          disabled={count <= 0}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text)] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Minus size={16} />
+        </button>
+        <input
+          aria-label={`${label} count`}
+          type="number"
+          min="0"
+          step="1"
+          inputMode="numeric"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 w-16 rounded-lg border border-[var(--oh-border)] bg-white px-2 text-center text-sm font-medium tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+        />
+        <button
+          type="button"
+          aria-label={`Increase ${label} count`}
+          onClick={() => onStep(1)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text)] hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        >
+          <Plus size={16} />
+        </button>
+      </div>
+    </li>
   );
 }

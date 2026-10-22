@@ -52,7 +52,7 @@ try {
     const url = new URL(request.url());
     if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/") && request.method() !== "GET") before.push(`${request.method()} ${url.pathname}`);
   });
-  const response = await context.request.post(`${base}/api/orders/receives/scan`, {
+  const response = await context.request.post(`${base}/api/ai/invoice/preview`, {
     multipart: { file: { name: "harbour-test-invoice.png", mimeType: "image/png", buffer: image } },
     timeout: 120000,
   });
@@ -84,7 +84,7 @@ try {
   } else {
     record("provider OCR response", result.code === 50212 ? "INFO" : "FAIL", `code=${result.code ?? ""} message=${String(result.message ?? "").slice(0, 160)}`);
   }
-  const forbidden = before.filter((entry) => !entry.includes("/api/orders/receives/scan"));
+  const forbidden = before.filter((entry) => !entry.includes("/api/ai/invoice/preview"));
   record("preview-only write boundary", forbidden.length === 0 ? "PASS" : "FAIL", `unexpected=${forbidden.join(",")}`);
   evidence.providerCode = result.code ?? null;
   evidence.status = evidence.checks.every((check) => check.status !== "FAIL") ? "PASS" : "FAIL";

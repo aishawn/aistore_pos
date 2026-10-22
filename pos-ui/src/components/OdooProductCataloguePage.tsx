@@ -97,7 +97,11 @@ export function OdooProductCataloguePage() {
   }, [categoryLoading, importBusy, importOpen]);
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
   const showR2DisplayNote = useMemo(
-    () => items.some((product) => looksLikeR2ImportMarker(product.display_name || product.name) || looksLikeR2ImportMarker(product.default_code)),
+    () => items.some((product) => {
+      const displayName = typeof product.display_name === "string" ? product.display_name : product.name;
+      const sku = typeof product.default_code === "string" ? product.default_code : undefined;
+      return looksLikeR2ImportMarker(displayName) || looksLikeR2ImportMarker(sku);
+    }),
     [items],
   );
 
@@ -419,9 +423,9 @@ export function OdooProductCataloguePage() {
                   <tr><td colSpan={7} className="px-4 py-16 text-center"><div className="mx-auto max-w-md"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery || categoryId ? "No matching products" : "No POS products yet"}</p><p className="mt-1 text-sm text-[var(--oh-muted)]">{debouncedQuery || categoryId ? "Try clearing search or category filters." : "Connect Odoo and confirm products are available in the POS catalogue."}</p>{debouncedQuery || categoryId ? <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button> : <Link href="/settings/integrations" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Open Integrations</Link>}</div></td></tr>
                 ) : items.map((product) => {
                   const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id)).filter(Boolean);
-                  const fullName = product.display_name || product.name;
+                  const fullName = typeof product.display_name === "string" ? product.display_name : product.name;
                   const label = friendlyProductName(fullName);
-                  const skuShort = truncateSku(product.default_code);
+                  const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
                   return (
                     <tr key={product.id} className="hover:bg-[var(--oh-tile-blue-bg)]/60">
                       <td className="px-4 py-3"><span className="flex items-center gap-2.5"><ProductImage productId={product.id} name={label} refreshToken={refreshKey} className="h-10 w-10 border border-[var(--oh-border)] bg-white" /><span className="min-w-0"><span className="block font-medium text-[var(--oh-text)]" title={fullName}>{label}</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{product.id}</span></span></span></td>
@@ -454,9 +458,9 @@ export function OdooProductCataloguePage() {
                 </div>
               ) : items.map((product) => {
                 const productCategories = product.pos_categ_ids.map((id) => categoryNames.get(id)).filter(Boolean);
-                const fullName = product.display_name || product.name;
+                const fullName = typeof product.display_name === "string" ? product.display_name : product.name;
                 const label = friendlyProductName(fullName);
-                const skuShort = truncateSku(product.default_code);
+                const skuShort = truncateSku(typeof product.default_code === "string" ? product.default_code : undefined);
                 return (
                   <article key={product.id} className="px-4 py-3.5">
                     <header className="flex items-start justify-between gap-3">

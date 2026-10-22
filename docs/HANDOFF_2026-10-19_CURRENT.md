@@ -1,3 +1,12 @@
+## 2026-10-23 软上线候选（AI + OCR preview）
+
+- [x] Java 21 `mvn -B clean verify`：**319 tests, BUILD SUCCESS**（本机 `jdk-21.0.12.1+1`）。
+- [x] 候选含：AI fail-closed / 发票到货 `report_adhoc`、OCR `POST /api/ai/invoice/preview`、StoreContext 默认 `Australia/Adelaide`、相关 UI/api。
+- [ ] 推送 `main` 后需 Dokploy Deploy；Compose **`AI_ENABLED=true`** + DashScope 密钥已配。
+- [ ] Demo `/api/public/version` 须匹配候选 SHA 后再做 AI 只读冒烟。
+- [ ] `aipos_uat` 写入烟测需独立 UAT runtime（`/api/public/uat-context` isolated 证明）；**禁止**对生产 `aipos` / 未隔离 Demo 写销售。当前无 `.env.uat` / webhook，隔离写待你起 UAT 栈或提供可证隔离目标。
+- 整体在部署+隔离写完成前仍 **NO-GO / 软上线进行中**。
+
 ## 2026-10-23 Customer 五级 Odoo 面（源码）
 
 - [x] 生产侧栏恢复 Shopfront 五级标签，但全部接 Odoo：Customers / Customer Groups / Price Lists / Balances / Gift Cards。

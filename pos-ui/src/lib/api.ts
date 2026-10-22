@@ -1262,13 +1262,14 @@ export interface InvoiceScanPayload {
   lines?: InvoiceScanLine[];
 }
 
-/** Photograph a supplier tax invoice: Qwen-VL OCR, then match supplier / products. */
+/** Photograph a supplier tax invoice for an Odoo-safe preview without record matching. */
 export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Promise<InvoiceScanPayload> {
   const token = getToken();
   const form = new FormData();
   form.append("file", file, filename);
 
-  const res = await fetch(buildUrl("/api/orders/receives/scan"), {
+  const route = "/api/ai/invoice/preview";
+  const res = await fetch(buildUrl(route), {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
@@ -1283,7 +1284,7 @@ export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Pr
   }
 
   if (!res.ok || !json) {
-    handleAuthFailure("/api/orders/receives/scan", res.status, json?.code ?? -1);
+    handleAuthFailure(route, res.status, json?.code ?? -1);
     const message = json?.message ?? (
       aiGatewayFailureMessage("Invoice scanning", res.status, `Invoice scan failed (${res.status})`)
       + (res.status === 502 || res.status === 503 || res.status === 504 ? " Open Odoo Purchases if you need to continue now." : "")
@@ -1295,14 +1296,10 @@ export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Pr
     );
   }
   if (json.code !== 0) {
-    handleAuthFailure("/api/orders/receives/scan", res.status, json.code);
+    handleAuthFailure(route, res.status, json.code);
     throw new ApiError(json.message, json.code, res.status);
   }
   return json.data;
-}
-
-export function saveScannedInvoice(payload: InvoiceScanPayload) {
-  return api.post<{ id: number | string; invoiceNumber?: string }>("/api/orders/receives/from-scan", payload);
 }
 
 export function sommelierWine(id: string | number) {

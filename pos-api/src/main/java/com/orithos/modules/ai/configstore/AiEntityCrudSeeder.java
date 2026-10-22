@@ -11,10 +11,11 @@ final class AiEntityCrudSeeder {
                        AiSlotMapper slotMapper,
                        AiSlotValueMapper slotValueMapper) {
         ensureIntent(intentMapper);
+        ensureGuidedIntent(intentMapper);
         ensureSlot(slotMapper, "entity", "Business entity",
-                "Inventory/Customer entity for CRUD", "enum", 64, 70);
-        ensureSlot(slotMapper, "op", "CRUD operation",
-                "list|search|create|view|edit|delete|merge|import|export", "enum", 32, 80);
+                "Inventory/Customer entity for read-only lookup", "enum", 64, 70);
+        ensureSlot(slotMapper, "op", "Entity operation",
+                "Read-only list|search|view; legacy write values are normalized to guided_action", "enum", 32, 80);
 
         // routes
         ensureValue(slotValueMapper, "route", "products_merge", "/products/merge", "Merge products", 31);
@@ -100,19 +101,21 @@ final class AiEntityCrudSeeder {
 
     private static void ensureIntent(AiIntentMapper intentMapper) {
         final String hint =
-                "User wants to manage a supported Inventory, Customer, Supplier, Order, Stocktake, Classification, Customer group, Price list, Gift card, Buying period, Stock list, Balance or pricing entity. Extract entity + op + query. Map user/用户 to entity customer. Use list/search/view for read-only requests; destructive ops are confirmed on client. Create does not need field slots — client prefills defaults. Never invent entities or operations.";
+                "User wants to inspect a supported Inventory, Customer, Supplier, Order, Stocktake, Classification, Customer group, Price list, Gift card, Buying period, Stock list, Balance or pricing entity. Extract entity + op + query. Map user/用户 to entity customer. Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action with a page route; the assistant never writes business data.";
         AiIntent existing = intentMapper.findByCode("entity_action");
         if (existing != null) {
-            if (existing.getPromptHint() == null || !existing.getPromptHint().contains("supported Inventory")) {
+            if (existing.getPromptHint() == null || !existing.getPromptHint().contains("entity_action only for list/search/view")) {
                 existing.setPromptHint(hint);
-                intentMapper.update(existing);
             }
+            existing.setName("Entity lookup");
+            existing.setDescription("Read-only entity lookup: list/search/view");
+            intentMapper.update(existing);
             return;
         }
         AiIntent i = new AiIntent();
         i.setCode("entity_action");
-        i.setName("Entity CRUD");
-        i.setDescription("Supported inventory, customer and operations entities: list/search/create/view/edit/delete/import/export");
+        i.setName("Entity lookup");
+        i.setDescription("Read-only entity lookup: list/search/view");
         i.setPromptHint(hint);
         i.setDefaultPanel("dialogue");
         i.setEnabled(true);
@@ -120,9 +123,30 @@ final class AiEntityCrudSeeder {
         intentMapper.insert(i);
     }
 
+    private static void ensureGuidedIntent(AiIntentMapper intentMapper) {
+        if (intentMapper.findByCode("guided_action") != null) return;
+        AiIntent i = new AiIntent();
+        i.setCode("guided_action");
+        i.setName("Guided action");
+        i.setDescription("Explain a business change and open its confirmation page");
+        i.setPromptHint("Use for every business write or mutation. Explain required information and risk, return a page route, and never execute or emit writeRequests.");
+        i.setDefaultPanel("dialogue");
+        i.setEnabled(true);
+        i.setSortOrder(46);
+        intentMapper.insert(i);
+    }
+
     private static void ensureSlot(AiSlotMapper slotMapper, String code, String name, String desc,
                                    String type, int max, int order) {
-        if (slotMapper.findByCode(code) != null) return;
+        AiSlot existing = slotMapper.findByCode(code);
+        if (existing != null) {
+            if ("entity".equals(code) || "op".equals(code)) {
+                existing.setName(name);
+                existing.setDescription(desc);
+                slotMapper.update(existing);
+            }
+            return;
+        }
         AiSlot s = new AiSlot();
         s.setCode(code);
         s.setName(name);

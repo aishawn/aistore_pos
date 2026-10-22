@@ -52,7 +52,9 @@ public class IntentSanitizeService {
                 && raw.op() != null
                 && !raw.op().isBlank()
                 && !slots.containsKey("op")) {
-            return new SanitizedIntent(UNKNOWN, "Unrecognized", Map.of(),
+            // Preserve the safe entity target so ClassifyQueryNode can apply the
+            // guided-action fallback. Never retain the untrusted operation.
+            return new SanitizedIntent("entity_action", "Unrecognized", slots,
                     null, null, null, null);
         }
 

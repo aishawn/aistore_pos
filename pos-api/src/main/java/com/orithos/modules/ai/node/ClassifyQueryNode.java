@@ -98,6 +98,24 @@ public class ClassifyQueryNode implements NodeAction {
         String lastIntent = optionalString(state, "last_intent");
         Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
 
+        // Invoice OCR beats supplier entity-write heuristics on “upload … bill”.
+        WorkflowRouteRouter.Override invoiceScan = WorkflowRouteRouter.invoiceScanOverride(question);
+        if (invoiceScan != null) {
+            log.info("Workflow fast-path route={}", invoiceScan.route());
+            Map<String, Object> out = new HashMap<>();
+            out.put("intent", invoiceScan.intent());
+            out.put("intent_summary", workflowChatSummary(invoiceScan.route(), question));
+            out.put("slots", Map.of());
+            out.put("ui_panel", "");
+            out.put("ui_view", "");
+            out.put("ui_route", invoiceScan.route());
+            out.put("ui_action", "");
+            out.put("fast_path_id", "workflow");
+            out.put("route_source", "deterministic");
+            out.put("llm_fallback", false);
+            return out;
+        }
+
         // Explicit write requests must never reach a shortcut or the model.
         // Both paths can otherwise produce a harmless-looking read-only route
         // for words such as “submit”, “save” or “receive”.
@@ -293,8 +311,9 @@ public class ClassifyQueryNode implements NodeAction {
                 "(?is).*(?:把.+?(?:价格|售价)\\s*(?:改成|调整为|设为)\\s*\\$?\\d+"
                         + "|(?:(?:帮我)?(?:直接\\s*)?)把.*?(?:价格|售价)(?:改了|改掉|改成|调整为|设为)"
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+"
+                        + "|\\b(?:set|change|raise|lower|update|apply)\\b.+?\\bprices?\\b"
                         + "|\\b(?:apply|save|submit|execute)\\b.+?\\b(?:prices?|pricing)\\b"
-                        + "|(?:保存|提交|执行|应用|调价|改价).*(?:价格|价目|价格建议|调价)).*");
+                        + "|(?:保存|提交|执行|应用|调价|改价|设置|修改)(?:这些|那些)?(?:价格|售价|价目|价格建议|调价)).*");
     }
 
     private static boolean isCustomerWriteTarget(String question) {
@@ -399,9 +418,12 @@ public class ClassifyQueryNode implements NodeAction {
         }
         String q = question.trim().toLowerCase(Locale.ROOT)
                 .replaceAll("[\\u3000\\s]+", " ")
-                .replace('？', '?');
-        return q.matches(".*(?:有多少(?:个)?(?:产品|商品)|(?:产品|商品)(?:一共|总共|总数|数量)(?:有多少)?|一共有多少(?:个)?(?:产品|商品)).*[?]?$")
-                || q.matches(".*(?:how many|number of|what(?:'s| is) the number of|total number of) (?:our )?(?:products?|items?|skus?)(?: do we have| are there| do we stock| we stock)?[?]?$")
+                .replace('？', '?')
+                .replace('！', '!')
+                .replace('。', '.');
+        return q.matches(".*(?:有多少(?:个)?(?:产品|商品)|(?:产品|商品)(?:一共|总共|总数|数量)(?:有多少|是多少)?|一共有多少(?:个)?(?:产品|商品)|(?:产品|商品)有几种|有几种(?:产品|商品)|(?:产品|商品)总共有多少|(?:店里|目录|商品目录)?(?:有多少种|一共有多少种|总共有多少种)(?:产品|商品)|(?:目录|商品目录)(?:里)?(?:有多少|共有多少)(?:个)?(?:商品|产品)?|(?:sku|商品)总数(?:是多少|有多少)?).*[?!.]?$")
+                || q.matches(".*(?:how many|number of|what(?:'s| is) the number of|total number of) (?:our )?(?:products?|items?|skus?)(?: do we have| are there| do we stock| we stock| (?:are|is) in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop))?[?!.]?$")
+                || q.matches(".*how many (?:products?|items?|skus?) (?:are|is) (?:in|on) (?:the )?(?:product )?catalog(?:ue)?[?!.]?$")
                 || q.contains("product count") || q.contains("total products")
                 || q.contains("catalogue size") || q.contains("catalog size");
     }

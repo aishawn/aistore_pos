@@ -1,6 +1,5 @@
 package com.orithos.modules.ai.context;
 
-import com.orithos.common.AustraliaTime;
 import com.orithos.modules.ai.AiConversationMemory;
 import com.orithos.modules.ai.report.CategoryLexicon;
 import com.orithos.modules.ai.report.OdooReportQueryService;
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +25,8 @@ import java.util.concurrent.ConcurrentMap;
 public class StoreContextPackAssembler {
 
     private static final long META_CACHE_MILLIS = 10 * 60 * 1000L;
+    /** Store business-day default when Odoo company timezone is unavailable. */
+    private static final ZoneId DEFAULT_BUSINESS_ZONE = ZoneId.of("Australia/Adelaide");
 
     private final VendorMapper vendorMapper;
     private final OdooReportQueryService reportQueryService;
@@ -50,7 +52,7 @@ public class StoreContextPackAssembler {
         } catch (RuntimeException ignored) {
             // A vendor lookup outage must not make the assistant unavailable.
         }
-        ZoneId zone = AustraliaTime.ZONE;
+        ZoneId zone = DEFAULT_BUSINESS_ZONE;
         try {
             ZoneId resolved = reportQueryService.businessTimezone(tenant);
             if (resolved != null) {
@@ -65,13 +67,13 @@ public class StoreContextPackAssembler {
                 tenant.currentOutletId(),
                 meta == null ? "" : meta.name(),
                 meta == null ? "" : meta.subdomain(),
-                zone == null ? AustraliaTime.ZONE.getId() : zone.getId(),
+                zone == null ? DEFAULT_BUSINESS_ZONE.getId() : zone.getId(),
                 tenant.canQueryReport(),
                 tenant.canQueryCost(),
                 last == null ? "" : last.intent(),
                 last == null ? Map.of() : last.slots(),
                 lexiconHints(),
-                surface == null ? "" : surface.trim()
+                normalizeSurface(surface)
         );
     }
 
@@ -105,10 +107,14 @@ public class StoreContextPackAssembler {
         return hints.size() > 8 ? hints.subList(0, 8) : hints;
     }
 
+    private static String normalizeSurface(String surface) {
+        return surface == null ? "" : surface.trim().toLowerCase(Locale.ROOT);
+    }
+
     private static StoreContextPack emptyPack(String surface) {
         return new StoreContextPack(
-                0L, null, "", "", AustraliaTime.ZONE.getId(),
-                false, false, "", Map.of(), List.of(), surface == null ? "" : surface);
+                0L, null, "", "", DEFAULT_BUSINESS_ZONE.getId(),
+                false, false, "", Map.of(), List.of(), normalizeSurface(surface));
     }
 
     private record CachedMeta(String name, String subdomain, long expiresAtMillis) {}

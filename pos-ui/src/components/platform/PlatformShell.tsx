@@ -14,7 +14,6 @@ const NAV = [
   { href: "/platform/operations", label: "Operations" },
   { href: "/platform/failures", label: "Failures" },
   { href: "/platform/audit", label: "Audit" },
-  { href: "/signup", label: "Create store" },
 ] as const;
 
 function navActive(href: string, pathname: string): boolean {

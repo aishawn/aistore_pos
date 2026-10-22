@@ -152,7 +152,7 @@ try {
   const runtime = attestation.ok() ? await attestation.json() : null;
   const candidate = process.env.SOURCE_COMMIT || "";
   if (!runtime?.isolated || runtime.database !== isolationDb
-      || !/^[a-f0-9]{40}$/.test(candidate) || runtime.frontendCommit !== candidate || runtime.backendCommit !== candidate) {
+      || !/^[a-f0-9]{40}$/.test(candidate) || runtime.commit !== candidate) {
     await browser.close();
     fail("Target runtime isolation or exact frontend/backend SHA could not be attested. No business writes performed.");
   }

@@ -48,7 +48,7 @@ public final class AssistantFastPathRouter {
                     + "卖了多少钱|收入多少|营业额多少|流水多少",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
-            "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天(?:销量|销售数量))$",
+            "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量))$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
             "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
@@ -89,8 +89,9 @@ public final class AssistantFastPathRouter {
             "^(check\\s*(stock|inventory)|stock\\s*list|查询库存|查看库存|库存查询)$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CLOSE_REGISTER_HELP = Pattern.compile(
-            "^(?:how do i|how can i|where do i)\\s+(?:close|shut)\\s+(?:the\\s+)?register[?.!]*$|"
-                    + "^(?:怎么|如何|怎样)(?:关闭|关掉|结算)收银台[？?。！!]*$",
+            "^(?:how do i|how can i|where do i|what is the way to|how to)\\s+(?:close|shut)\\s+(?:(?:my|the)\\s+)?(?:register|till|cash register)[?.!]*$|"
+                    + "^(?:how do i|how can i)\\s+cash up(?: the register| the till)?[?.!]*$|"
+                    + "^(?:怎么|如何|怎样)(?:关闭|关掉|结算)(?:收银台|收银机|班次)[？?。！!]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FORGED_ROUTE = Pattern.compile(
             "(?:ignore\\s+(?:all\\s+)?previous instructions|忽略之前的指令).*(?:/(?:admin|platform|internal|debug)(?:/|\\b)|后台秘密)|"
@@ -99,7 +100,8 @@ public final class AssistantFastPathRouter {
     private static final Pattern GIBBERISH = Pattern.compile("^(?:asdfghjkl|qwertyuiop|啊啊啊+)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern HELP = Pattern.compile(
-            "^(?:help|what can you do|what are you able to do|what can i ask you|how can you help|"
+            "^(?:help|what can you do(?: for me)?|what are you able to do|what can i ask you|what can i ask|"
+                    + "what are your capabilities|what do you support|what can you help with|how can you help|"
                     + "what does the assistant do|what data do you use for suggestions|"
                     + "will you (?:place|submit|create) orders?|(?:can|will) you (?:directly )?(?:create|place|submit) (?:an? |the )?(?:purchase )?order|"
                     + "(?:can|will|does) (?:the )?ai (?:create|place|submit) (?:(?:a|the) )?(?:purchase )?orders?(?: automatically)?|"
@@ -107,7 +109,7 @@ public final class AssistantFastPathRouter {
                     + "(?:can|could|will|does) (?:the )?(?:ai|assistant) recommend (?:a )?(?:wine|wines|products?)|"
                     + "(?:can|could|will|does) (?:the )?(?:ai|assistant) (?:read|scan|capture) (?:supplier )?(?:invoices?|bills?)|"
                     + "(?:can|could|will|does) (?:the )?(?:ai|assistant) answer (?:store )?(?:sales|stock|inventory) questions?|"
-                    + "你能做什么|你会做什么|可以帮我做什么|有什么功能|你能帮我什么|"
+                    + "你能做什么|你会做什么|你能干什么|能做些什么|可以帮我做什么|能帮我做什么|有什么功能|你能帮我什么|"
                     + "ai\\s*(?:(?:会|能)(?:不|否)?|可不可以|可以不可以|能不能|会不会)\\s*(?:帮我\\s*)?(?:直接|自动)?\\s*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?|改价|调价|推荐(?:什么酒|商品|葡萄酒|红酒)|(?:识别|读取|扫描)(?:供应商)?(?:发票|账单)|回答(?:销售|库存)问题)\\s*(?:吗)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
@@ -117,9 +119,9 @@ public final class AssistantFastPathRouter {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_REPORT = Pattern.compile(
             "^(?:do we have (?:any )?invoices?|any invoices?|are there (?:any )?invoices?|"
-                    + "(?:have we receiv(?:e|ed)|did we receive) (?:any )?invoices?|how many invoices?(?: did we receive)?|"
+                    + "(?:have we receiv(?:e|ed)|did we receive|did (?:we|you) get) (?:any )?(?:our |the |(?:the )?supplier )?invoices?|did (?:our|the) invoices? arrive|have (?:our |the )?(?:supplier )?invoices? arrived|was the invoice received|how many invoices?(?: did we receive)?|"
                     + "(?:how many (?:supplier )?bills?(?: did we receive)?|(?:have we|did we) receiv(?:e|ed) (?:any )?bills?)|"
-                    + "发票(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少)|收到发票了吗|"
+                    + "发票(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少|收到了吗|到(?:了)?吗|有没有到)|收到发票了吗|(?:有没有|有)收到(?:供应商)?发票(?:吗|[?？])|(?:供应商)?发票(?:到|送到)(?:了)?吗|"
                     + "账单(?:还有吗|还有没有|有没有|有吗|多少|数量|收到多少)|收到(?:了)?账单了吗)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_QUERY = Pattern.compile(

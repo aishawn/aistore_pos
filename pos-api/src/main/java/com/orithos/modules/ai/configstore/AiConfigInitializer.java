@@ -48,7 +48,7 @@ public class AiConfigInitializer implements ApplicationRunner {
                 seedPrompts();
                 System.out.println("[AiConfigInitializer] Seeded ai_prompt defaults.");
             }
-            // Existing DBs may already have slots; always ensure UI trigger keywords + entity CRUD.
+            // Existing DBs may already have slots; always ensure UI triggers + read-only entity lookup + guided writes.
             ensureAiTriggerKeywords();
             AiEntityCrudSeeder.ensure(intentMapper, slotMapper, slotValueMapper);
             AiReportIntentSeeder.ensure(intentMapper, slotMapper, slotValueMapper, promptMapper);
@@ -72,10 +72,13 @@ public class AiConfigInitializer implements ApplicationRunner {
         insertIntent("sale_action", "Sale action", "Suggest a sell-screen action (needs confirm)",
                 "User wants a POS action like discount, void, or finalise — do NOT execute, only suggest.",
                 "dialogue", null, 40);
-        insertIntent("entity_action", "Entity CRUD",
-                "Supported inventory, customer and operations entities: list/search/create/view/edit/delete/import/export",
-                "User wants to manage a supported Inventory, Customer, Supplier, Order, Stocktake, Classification, Customer group, Price list, Gift card, Buying period, Stock list, Balance or pricing entity. Extract entity + op + query. Map user/用户 to entity customer. Use list/search/view for read-only requests; destructive ops are confirmed on client. Never invent entities or operations.",
+        insertIntent("entity_action", "Entity lookup",
+                "Read-only entity lookup only: list/search/view",
+                "User wants to inspect a supported Inventory, Customer, Supplier, Order, Stocktake, Classification, Customer group, Price list, Gift card, Buying period, Stock list, Balance or pricing entity. Extract entity + op + query. Map user/用户 to entity customer. Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment is guided_action; the assistant never writes business data.",
                 "dialogue", null, 45);
+        insertIntent("guided_action", "Guided action", "Explain a business change and open its confirmation page",
+                "Use for every create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment. Explain the required information and risk, return a page route, and never execute or emit writeRequests.",
+                "dialogue", null, 46);
         insertIntent("qa", "Q&A", "General how-to question about the POS",
                 "User asks how to use the POS; answer in chat, no navigation required.",
                 "dialogue", null, 50);
@@ -92,8 +95,8 @@ public class AiConfigInitializer implements ApplicationRunner {
         insertSlot("action", "Sale action key", "Suggested sell action (confirm on client)", "enum", 64, 50);
         insertSlot(IntentConfigService.SLOT_AI_TRIGGER, "AI trigger keyword",
                 "Sell search-mode phrases that route to AI (UI only)", "keyword", 64, 60);
-        insertSlot("entity", "Business entity", "Inventory/Customer entity for CRUD", "enum", 64, 70);
-        insertSlot("op", "CRUD operation", "list|search|create|view|edit|delete|merge|import|export", "enum", 32, 80);
+        insertSlot("entity", "Business entity", "Inventory/Customer entity for read-only lookup", "enum", 64, 70);
+        insertSlot("op", "Entity operation", "list|search|view; legacy write values are normalized to guided_action", "enum", 32, 80);
     }
 
     private void seedSlotValues() {

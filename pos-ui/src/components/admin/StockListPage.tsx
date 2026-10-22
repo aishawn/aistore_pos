@@ -426,7 +426,7 @@ function StockListPageInner() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Search for Product or Classification..."
+            placeholder="Search name, SKU or barcode"
             className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20"
           />
           <div className="w-full shrink-0 sm:w-[240px]">
@@ -438,7 +438,7 @@ function StockListPageInner() {
                 setPage(1);
               }}
               options={categoryOptions}
-              placeholder="All Classifications"
+              placeholder="All categories"
             />
           </div>
           {hasActiveFilters ? (
@@ -464,7 +464,7 @@ function StockListPageInner() {
             setInStockOnly(v);
             setPage(1);
           }}
-          label="Only display products that have stock (when editing a classification or all products)"
+          label="In-stock products only"
         />
       </div>
 

@@ -36,6 +36,9 @@ public class PlatformLifecycleSchemaMigrator implements CommandLineRunner {
             if (!tableExists("platform_alert")) {
                 apply("db/migration_platform_alerts.sql");
             }
+            if (!tableExists("platform_failure_event")) {
+                apply("db/migration_platform_failure_events.sql");
+            }
             if (!tableExists("tenant_provision_attempt") || !tableExists("tenant_provision_attempt_step")) {
                 apply("db/migration_tenant_provision_attempts.sql");
             }

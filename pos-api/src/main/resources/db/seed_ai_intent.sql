@@ -21,9 +21,12 @@ VALUES
 ('sale_action', 'Sale action', 'Suggest a sell-screen action (needs confirm)',
  'User wants a POS action like discount, void, or finalise — do NOT execute, only suggest. Extract action.',
  'dialogue', NULL, 1, 40),
-('entity_action', 'Entity CRUD', 'Inventory/Customer menu CRUD: list/search/create/view/edit/delete',
- 'User wants to manage Inventory or Customer menu entities (products, suppliers, customers, etc.). Extract entity + op + query. For delete/edit/view include query (name). Never invent entity/op outside allowed lists. Destructive ops are confirmed on the client.',
+('entity_action', 'Entity lookup', 'Read-only Inventory/Customer lookup: list/search/view',
+ 'Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action; the assistant never writes business data.',
  'dialogue', NULL, 1, 45),
+('guided_action', 'Guided action', 'Explain a business change and open its confirmation page',
+ 'Use for every business write or mutation. Explain required information and risk, return a page route, and never execute or emit writeRequests.',
+ 'dialogue', NULL, 1, 46),
 ('qa', 'Q&A', 'General how-to question about the POS',
  'User asks how to use the POS; answer in chat, no navigation required.',
  'dialogue', NULL, 1, 50),
@@ -49,6 +52,12 @@ VALUES
  'User asks for a number that is not sales/qty/aov/stock/dead-stock. Do not invent figures.',
  'dialogue', NULL, 1, 57);
 
+UPDATE `ai_intent`
+SET `name` = 'Entity lookup',
+    `description` = 'Read-only Inventory/Customer lookup: list/search/view',
+    `prompt_hint` = 'Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action; the assistant never writes business data.'
+WHERE `code` = 'entity_action';
+
 -- ----------------------------
 -- ai_slot
 -- ----------------------------
@@ -61,8 +70,8 @@ VALUES
 ('panel',  'AI panel',         'Right AI panel mode: search or dialogue',      'enum',    32, 1, 40),
 ('action', 'Sale action key',  'Suggested sell action (confirm on client)',    'enum',    64, 1, 50),
 ('ai_trigger', 'AI trigger keyword', 'Sell search-mode phrases that route to AI (UI only, not LLM slots)', 'keyword', 64, 1, 60),
-('entity', 'Business entity',  'Inventory/Customer entity for CRUD',           'enum',    64, 1, 70),
-('op',     'CRUD operation',   'list|search|create|view|edit|delete|merge|import|export', 'enum', 32, 1, 80),
+('entity', 'Business entity',  'Inventory/Customer entity for read-only lookup', 'enum', 64, 1, 70),
+('op',     'Entity operation', 'list|search|view; legacy write values are normalized to guided_action', 'enum', 32, 1, 80),
 ('from',     'Period start',     'Inclusive start date YYYY-MM-DD',              'string',  32, 1, 90),
 ('to',       'Period end',       'Inclusive end date YYYY-MM-DD',                'string',  32, 1, 91),
 ('days',     'Lookback days',    'Dead-stock window in days (default 30)',       'string',   8, 1, 92),
@@ -206,7 +215,8 @@ VALUES
 'You are an intent classifier for Orithos POS (retail point-of-sale).
 Classify the cashier''s utterance into exactly ONE intent from the allowed list.
 Extract slots only when relevant. Never invent routes, views, entities, ops, or actions outside the allowed lists.
-For Inventory/Customer CRUD (create/edit/delete/list/search product, supplier, customer, etc.) prefer intent entity_action with entity+op+query.
+For Inventory/Customer lookup (list/search/view product, supplier, customer, etc.) use intent entity_action with entity+op+query.
+Any create/edit/delete/import/merge/receive/save/confirm/price or inventory change must use intent guided_action with a page route; the assistant never writes business data and writeRequests stays empty.
 For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those.
 If it sounds like a numbers question but no report_* fits (mixed metrics, unusual filters, a product class on a named weekday), use report_adhoc.
 Requests to DROP/DELETE/ALTER tables or dump the database are still report_adhoc — never execute them; the SQL guard will reject.

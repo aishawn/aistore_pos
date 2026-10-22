@@ -30,8 +30,10 @@ public final class WorkflowRouteRouter {
                     + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|红酒配牛排|白酒配海鲜|"
                     + "配餐|搭配.*酒|.*配.*酒|适合.*酒|清爽.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐",
             Pattern.CASE_INSENSITIVE);
+    /** Explicit invoice OCR / preview — not bare “invoice” wording (reports use that too). */
     private static final Pattern INVOICE = Pattern.compile(
-            "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you (?:read|check) (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|supplier bill|supplier document|发票|供应商单据|供应商账单|读取.*单据|识别.*发票|上传.*发票|上传.*账单|拍照.*(?:发票|账单)",
+            "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you (?:read|check) (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|"
+                    + "读取.*(?:供应商)?(?:单据|发票|账单)|识别.*(?:供应商)?(?:发票|账单)|上传.*(?:供应商)?(?:发票|账单)|拍照.*(?:供应商)?(?:发票|账单)|请识别.*(?:发票|账单)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_NATURAL = Pattern.compile(
             "snap (?:this|an?|the) (?:supplier )?(?:invoice|bill)",
@@ -65,7 +67,7 @@ public final class WorkflowRouteRouter {
             Pattern.CASE_INSENSITIVE);
     /** Imperative purchase/price wording must fail closed before model routing. */
     private static final Pattern EXPLICIT_EXECUTION = Pattern.compile(
-            "\\b(?:place|send|create|approve|apply|execute|finalize|commit)\\s+(?:the\\s+)?(?:purchase\\s+)?(?:order|replenishment|restock|suggestions?|prices?)\\b|"
+            "\\b(?:place|send|create|approve|apply|execute|finalize|commit)\\s+(?:the\\s+)?(?:purchase\\s+)?(?:order|replenishment|restock|suggestions?|prices?|pricing)\\b|"
                     + "\\b(?:submit|confirm|save|publish|approve|apply|send|create|set|change)\\s+(?:(?:this|the|these|a|an)\\s+)?(?:purchase\\s+)?(?:order|price changes?|prices?|replenishment|restock)\\b|"
                     + "\\b(?:buy|purchase|order)\\s+(?:these|those|the items?|the products?|it|them|now|today)\\b|"
                     + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|设置这些价格|修改这些价格)",
@@ -131,10 +133,41 @@ public final class WorkflowRouteRouter {
 
     private WorkflowRouteRouter() {}
 
+    /**
+     * Invoice OCR navigation only. Checked before {@link #hasWriteIntent} because
+     * “upload … supplier bill” also matches supplier entity-write heuristics.
+     */
+    public static Override invoiceScanOverride(String question) {
+        if (question == null || question.isBlank()) {
+            return null;
+        }
+        AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
+        if (capabilityQuestion != null
+                && ("qa".equals(capabilityQuestion.intent())
+                || "report_adhoc".equals(capabilityQuestion.intent()))) {
+            return null;
+        }
+        String normalized = AssistantFastPathRouter.normalize(question);
+        if ((INVOICE.matcher(normalized).find() || INVOICE_NATURAL.matcher(normalized).find())
+                && !INVOICE_MUTATION.matcher(normalized).find()
+                && !REPORT_CONTEXT.matcher(normalized).find()) {
+            return new Override("navigate", "/invoices/scan");
+        }
+        return null;
+    }
+
     public static Override maybeOverride(String question) {
         if (question == null || question.isBlank()) return null;
+        Override invoiceScan = invoiceScanOverride(question);
+        if (invoiceScan != null) {
+            return invoiceScan;
+        }
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
         if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return null;
+        // Report-style fast paths must win over page navigation. In particular,
+        // Chinese invoice-arrival questions contain "invoice" but ask whether
+        // a document exists, not to open the scanner.
+        if (capabilityQuestion != null && "report_adhoc".equals(capabilityQuestion.intent())) return null;
         if (hasWriteIntent(question)) return null;
         String normalized = AssistantFastPathRouter.normalize(question);
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {
@@ -168,11 +201,6 @@ public final class WorkflowRouteRouter {
         }
         if (!READ_ONLY_ACTION.matcher(normalized).find() && BULK_PRICE_LOOKUP.matcher(normalized).find()) {
             return new Override("navigate", "/stock/bulk-price-edit");
-        }
-        if ((INVOICE.matcher(normalized).find() || INVOICE_NATURAL.matcher(normalized).find())
-                && !INVOICE_MUTATION.matcher(normalized).find()
-                && !REPORT_CONTEXT.matcher(normalized).find()) {
-            return new Override("navigate", "/invoices/scan");
         }
         if ((REPLENISHMENT.matcher(normalized).find() || REPLENISHMENT_NATURAL.matcher(normalized).find())
                 && !READ_ONLY_ACTION.matcher(normalized).find()

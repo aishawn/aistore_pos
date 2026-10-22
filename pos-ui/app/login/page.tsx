@@ -7,6 +7,7 @@ import { OrithosLogo } from "@/components/OrithosLogo";
 import { useAuth } from "@/lib/auth";
 import { setUiMode } from "@/lib/ui-mode";
 import {
+  brandSignupUrl,
   controlPlaneLandingPath,
   isControlPlaneHost,
   parseTenantSlugFromHost,
@@ -232,9 +233,14 @@ export default function LoginPage() {
           {controlPlane && (
             <p className="text-center text-sm text-[var(--oh-text-secondary)]">
               New store?{" "}
-              <Link href="/signup" className="font-semibold text-[var(--oh-primary)] hover:underline">
+              <a
+                href={brandSignupUrl()}
+                className="font-semibold text-[var(--oh-primary)] hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Start free trial
-              </Link>
+              </a>
               <span className="mt-2 block text-xs">
                 Store staff sign in at their shop URL (for example{" "}
                 <a
@@ -263,13 +269,18 @@ export default function LoginPage() {
             </p>
             <p className="max-w-sm text-sm text-white/85">
               {controlPlane
-                ? "Platform console for signup, store list and operator access."
+                ? "Platform console for store list and operator access."
                 : "Australian liquor retail workspace."}
             </p>
             {controlPlane && (
-              <Link href="/signup" className="inline-flex min-h-10 items-center text-sm font-semibold text-white underline-offset-4 hover:underline">
+              <a
+                href={brandSignupUrl()}
+                className="inline-flex min-h-10 items-center text-sm font-semibold text-white underline-offset-4 hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Start free trial
-              </Link>
+              </a>
             )}
           </div>
         </aside>
