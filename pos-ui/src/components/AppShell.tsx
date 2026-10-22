@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UserMenu } from "@/components/UserMenu";
 import { CloseRegisterUiProvider, useCloseRegisterUi } from "@/components/CloseRegisterUiProvider";
+import { SalesHistoryUiProvider, useSalesHistoryUi } from "@/components/SalesHistoryUiProvider";
 import { useAuth } from "@/lib/auth";
 import { UnsavedChangesProvider } from "@/lib/unsaved-changes";
 import { AiFloatHost } from "@/components/AiFloatHost";
@@ -193,27 +194,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <UnsavedChangesProvider>
       <AiAssistantProvider>
       <CloseRegisterUiProvider>
-        <AppShellChrome
-          userName={user?.name || user?.username || "admin"}
-          sidebarOpen={sidebarOpen}
-          mobileSidebarOpen={mobileSidebarOpen}
-          isMobileViewport={isMobileViewport}
-          userMenuOpen={userMenuOpen}
-          setUserMenuOpen={setUserMenuOpen}
-          setMobileSidebarOpen={setMobileSidebarOpen}
-          toggleNavigation={toggleNavigation}
-          onLogout={onLogout}
-          pathname={pathname}
-        >
-          {children}
-        </AppShellChrome>
+        <SalesHistoryUiProvider>
+          <AppShellChrome
+            userName={user?.name || user?.username || "admin"}
+            sidebarOpen={sidebarOpen}
+            mobileSidebarOpen={mobileSidebarOpen}
+            isMobileViewport={isMobileViewport}
+            userMenuOpen={userMenuOpen}
+            setUserMenuOpen={setUserMenuOpen}
+            setMobileSidebarOpen={setMobileSidebarOpen}
+            toggleNavigation={toggleNavigation}
+            onLogout={onLogout}
+            pathname={pathname}
+          >
+            {children}
+          </AppShellChrome>
+        </SalesHistoryUiProvider>
       </CloseRegisterUiProvider>
       </AiAssistantProvider>
     </UnsavedChangesProvider>
   );
 }
 
-/** Inner chrome so UserMenu can call `useCloseRegisterUi` inside the provider. */
+/** Inner chrome so UserMenu can call close-register / sales-history hooks inside providers. */
 function AppShellChrome({
   children,
   userName,
@@ -240,6 +243,7 @@ function AppShellChrome({
   pathname: string;
 }) {
   const { openCloseRegister } = useCloseRegisterUi();
+  const { openSalesHistory } = useSalesHistoryUi();
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
@@ -270,6 +274,10 @@ function AppShellChrome({
           onCloseRegister={() => {
             setUserMenuOpen(false);
             openCloseRegister();
+          }}
+          onSalesHistory={() => {
+            setUserMenuOpen(false);
+            openSalesHistory();
           }}
           onLogout={onLogout}
         />

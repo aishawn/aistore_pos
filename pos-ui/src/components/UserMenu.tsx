@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { DoorClosed } from "lucide-react";
+import { DoorClosed, History } from "lucide-react";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -12,11 +12,13 @@ export function UserMenu({
   open,
   onClose,
   onCloseRegister,
+  onSalesHistory,
   onLogout,
 }: {
   open: boolean;
   onClose: () => void;
   onCloseRegister?: () => void;
+  onSalesHistory?: () => void;
   onLogout?: () => void;
 }) {
   const menuRef = useRef<HTMLElement>(null);
@@ -69,6 +71,20 @@ export function UserMenu({
           >
             <DoorClosed size={18} strokeWidth={1.5} />
             Close Register
+          </button>
+        ) : null}
+        {onSalesHistory ? (
+          <button
+            type="button"
+            tabIndex={open ? undefined : -1}
+            onClick={() => {
+              onClose();
+              onSalesHistory();
+            }}
+            className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] px-3 py-2 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+          >
+            <History size={18} strokeWidth={1.5} />
+            Sales History
           </button>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row">

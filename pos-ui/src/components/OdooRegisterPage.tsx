@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
+import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, History, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
+import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
 import {
   getOdooPosBootstrap,
@@ -161,6 +162,7 @@ export function OdooRegisterPage() {
   const [closeRegisterCartWarn, setCloseRegisterCartWarn] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const { openCloseRegister } = useCloseRegisterUiOptional();
+  const { openSalesHistory } = useSalesHistoryUiOptional();
   const orderUuid = useRef<string | null>(null);
   const checkoutFingerprint = useRef<string | null>(null);
   const quoteRevision = useRef(0);
@@ -896,6 +898,9 @@ export function OdooRegisterPage() {
             <span className="hidden truncate text-xs text-[var(--oh-text-secondary)] sm:inline">{sessionOpen ? "Open" : "Closed"}</span>
             <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" aria-label="Refresh register data" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+            </button>
+            <button type="button" onClick={() => openSalesHistory()} title="Sales History" aria-label="Sales History" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
+              <History size={17} />
             </button>
             <button type="button" onClick={() => setHelpOpen(true)} title="POS help and recovery" aria-label="POS help and recovery" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
               <CircleHelp size={17} />

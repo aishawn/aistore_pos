@@ -39,7 +39,7 @@ type R2Receipt = {
   payments: Array<{ id: string; method: string; amount: number; status: string }>;
 };
 
-function R2ArchivePanel({ query }: { query: string }) {
+function R2ArchivePanel({ query, overlayZClass = "z-[70]" }: { query: string; overlayZClass?: string }) {
   const [items, setItems] = useState<R2Receipt[]>([]);
   const [databaseSha256, setDatabaseSha256] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -104,7 +104,7 @@ function R2ArchivePanel({ query }: { query: string }) {
       </section>
 
       {selected && (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/50 p-3 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+        <div className={`fixed inset-0 ${overlayZClass} grid place-items-center bg-slate-950/50 p-3 sm:p-4`} onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="r2-receipt-title" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-6">
             <header className="flex items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
               <div><h2 id="r2-receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">R2 receipt {selected.invoiceNumber}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{selected.date} {selected.time} · Imported read-only test data</p></div>
@@ -169,7 +169,19 @@ function stateClass(state: string) {
   return styles[state] ?? "border border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]";
 }
 
-export function OdooSalesHistoryPage() {
+export function OdooSalesHistoryPage({
+  variant = "page",
+  onRequestClose,
+}: {
+  variant?: "page" | "panel";
+  onRequestClose?: () => void;
+} = {}) {
+  const isPanel = variant === "panel";
+  const receiptOverlayZ = isPanel ? "z-[80]" : "z-50";
+  const refundOverlayZ = isPanel ? "z-[90]" : "z-[60]";
+  const r2OverlayZ = isPanel ? "z-[90]" : "z-[70]";
+  const Root = isPanel ? "div" : "main";
+
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooSaleRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -421,19 +433,39 @@ export function OdooSalesHistoryPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+    <Root className={isPanel
+      ? "flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-white p-3 sm:p-4"
+      : "flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6"}>
       <header className="flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="oh-type-title text-[var(--oh-text)]">Sales History</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            Formal ledger is Odoo POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Odoo rows, not the archive.
-          </p>
+          <h1 className={isPanel ? "text-lg font-semibold text-[var(--oh-text)]" : "oh-type-title text-[var(--oh-text)]"}>Sales History</h1>
+          {!isPanel && (
+            <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+              Formal ledger is Odoo POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Odoo rows, not the archive.
+            </p>
+          )}
           {lastLoadedAt !== null && <p className="mt-1 text-xs text-[var(--oh-muted)]">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</p>}
-          <p className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950">TEST · aipos demo data</p>
+          {!isPanel && <p className="mt-1 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-950">TEST · aipos demo data</p>}
         </div>
-        <button type="button" onClick={() => void loadSales()} disabled={loading} aria-label={loading ? "Refreshing sales" : "Refresh sales"} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
-          {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void loadSales()}
+            disabled={loading}
+            aria-label={loading ? "Refreshing sales" : "Refresh sales"}
+            className={isPanel
+              ? "grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[var(--oh-border)] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"
+              : "inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"}
+          >
+            {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            {!isPanel ? "Refresh" : null}
+          </button>
+          {isPanel && onRequestClose ? (
+            <button type="button" onClick={onRequestClose} aria-label="Close sales history" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-[var(--oh-border)] text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+              <X size={18} />
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {connected === false ? (
@@ -480,7 +512,7 @@ export function OdooSalesHistoryPage() {
 
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => void loadSales()} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
-          <R2ArchivePanel query={debouncedQuery} />
+          <R2ArchivePanel query={debouncedQuery} overlayZClass={r2OverlayZ} />
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
             <table aria-label="Odoo sales history" className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
@@ -568,7 +600,7 @@ export function OdooSalesHistoryPage() {
         </>
       )}
 
-      {(saleDetailLoading || saleDetailError || saleDetail) && <div className="receipt-overlay fixed inset-0 z-50 grid grid-cols-[minmax(0,1fr)] place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSale(); }}>
+      {(saleDetailLoading || saleDetailError || saleDetail) && <div className={`receipt-overlay fixed inset-0 ${receiptOverlayZ} grid grid-cols-[minmax(0,1fr)] place-items-center overflow-y-auto bg-slate-950/40 p-4`} onMouseDown={(event) => { if (event.target === event.currentTarget) closeSale(); }}>
         {saleDetailLoading && <section role="status" className="rounded-xl bg-white p-8 text-center text-sm text-[var(--oh-muted)]"><LoaderCircle size={22} className="mx-auto animate-spin" /><span className="mt-2 block">Loading sale details…</span></section>}
         {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><div className="mt-5 flex flex-wrap justify-end gap-2"><button type="button" onClick={closeSale} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>{saleDetailId !== null && <button type="button" onClick={() => void openSale(saleDetailId)} className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry</button>}</div></section>}
         {saleDetail && <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="receipt-print my-auto max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-7">
@@ -644,7 +676,7 @@ export function OdooSalesHistoryPage() {
       </div>}
 
       {confirmingRefund && saleDetail && canRefund && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4">
+        <div className={`fixed inset-0 ${refundOverlayZ} grid place-items-center bg-slate-950/50 p-4`}>
           <section
             role="alertdialog"
             aria-modal="true"
@@ -693,6 +725,6 @@ export function OdooSalesHistoryPage() {
           </section>
         </div>
       )}
-    </main>
+    </Root>
   );
 }
