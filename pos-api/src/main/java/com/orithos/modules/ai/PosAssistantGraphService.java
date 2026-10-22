@@ -235,6 +235,7 @@ public class PosAssistantGraphService {
         List<Map<String, Object>> items = cardItems(type, answer);
         String source = "sommelier".equals(type) ? "catalogue"
                 : "guided_action".equals(type) ? "assistant" : "odoo";
+        String ctaLabel = cardCtaLabel(type, routeTarget);
         return List.of(new AssistantCard(
                 type,
                 title,
@@ -245,17 +246,16 @@ public class PosAssistantGraphService {
                 unavailable ? "Live data is unavailable"
                         : empty ? emptyReason(type) : null,
                 unavailable ? "unavailable" : empty ? "empty" : "ready",
-                "product_count".equals(type) ? "Open products"
-                        : "guided_action".equals(type) ? guidedCtaLabel(routeTarget)
-                        : "pricing".equals(type) ? "Open price review"
-                        : "sommelier".equals(type) ? "Open Sommelier" : "Open replenishment",
+                ctaLabel,
                 routeTarget,
-                new AssistantCardCta(
-                        "product_count".equals(type) ? "Open products"
-                                : "guided_action".equals(type) ? guidedCtaLabel(routeTarget)
-                                : "pricing".equals(type) ? "Open price review"
-                                : "sommelier".equals(type) ? "Open Sommelier" : "Open replenishment",
-                        routeTarget)));
+                new AssistantCardCta(ctaLabel, routeTarget)));
+    }
+
+    private static String cardCtaLabel(String type, String route) {
+        return "product_count".equals(type) ? "Open products"
+                : "guided_action".equals(type) ? guidedCtaLabel(route)
+                : "pricing".equals(type) ? "Open price review"
+                : "sommelier".equals(type) ? "Open Sommelier" : "Open replenishment";
     }
 
     private static String guidedCtaLabel(String route) {
