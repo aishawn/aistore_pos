@@ -70,16 +70,74 @@ function clampAnchor(anchor: FloatAnchor, width: number, height: number): FloatA
   };
 }
 
+interface ChatCta {
+  label: string;
+  href: string;
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
   reportId?: number | null;
+  cta?: ChatCta | null;
   diagnostics?: {
     intent: string;
     latencyMs: number;
     status: "ok" | "error";
   };
+}
+
+/** Friendly labels for deferred navigation CTAs inside the chat. */
+function labelForHref(href: string): string {
+  const path = href.split("?")[0].split("#")[0] || "/";
+  const known: Record<string, string> = {
+    "/": "Open sell screen",
+    "/products": "Open products",
+    "/customers": "Open customers",
+    "/promotions": "Open promotions",
+    "/stock/list": "Open stock list",
+    "/stock/replenishment": "Open replenishment",
+    "/stock/capped-pricing": "Open price review",
+    "/stock/bulk-price-edit": "Open bulk price edit",
+    "/stock/buying-periods": "Open buying periods",
+    "/sommelier": "Open wine recommendations",
+    "/invoices/scan": "Open invoice capture",
+    "/history/odoo": "Open sales history",
+    "/purchases/odoo": "Open purchases",
+    "/suppliers/odoo": "Open suppliers",
+    "/orders": "Open orders",
+    "/stocktake": "Open stocktake",
+    "/classifications": "Open classifications",
+    "/customer-groups": "Open customer groups",
+    "/pricelists": "Open pricelists",
+    "/giftcards": "Open gift cards",
+    "/customers/balances": "Open customer balances",
+    "/reports/ai": "Open AI reports",
+  };
+  if (known[path]) return known[path];
+  if (path.startsWith("/products/")) return "Open product";
+  if (path.startsWith("/customers/")) return "Open customer";
+  if (path.startsWith("/reports/ai/")) return "Open report";
+  if (path.startsWith("/sommelier/")) return "Open wine recommendations";
+  if (path.startsWith("/invoices/")) return "Open invoice capture";
+  if (path.startsWith("/stock/")) return "Open stock page";
+  return "Open page";
+}
+
+function isPlaceholderNavigateAnswer(text: string): boolean {
+  const t = text.trim();
+  return (
+    !t ||
+    /^Opening(\u2026|\.\.\.|…)?$/i.test(t) ||
+    /^Opening the requested workflow\.?$/i.test(t)
+  );
+}
+
+function navigatePromptText(href: string, answer?: string | null): string {
+  if (answer && !isPlaceholderNavigateAnswer(answer)) return answer;
+  const label = labelForHref(href).replace(/^Open\s+/i, "");
+  return `I found that in ${label}. Tap below when you are ready — I will not leave this chat until you do.`;
 }
 
 const ENABLED_GREETING =
@@ -179,6 +237,7 @@ export function SellAiPanel({
   const [entityDeleteBusy, setEntityDeleteBusy] = useState(false);
   const entityDeleteBusyRef = useRef(false);
   const [voiceAlert, setVoiceAlert] = useState<string | null>(null);
+  const [compactViewport, setCompactViewport] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
@@ -200,13 +259,25 @@ export function SellAiPanel({
   const [dragging, setDragging] = useState(false);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const restoreFabRef = useRef(false);
+  // Phone browsers on the WEB shell still need a true fullscreen assistant;
+  // dedicated /m mobile mode keeps the same layout.
+  const fullscreenPanel = mobileOnly || compactViewport;
 
   useDialogFocus(expanded, collapsePanel, "assistant", inputRef);
 
-  // A mobile assistant is a modal workspace. Keep the page underneath from
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setCompactViewport(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  // Fullscreen assistant is a modal workspace. Keep the page underneath from
   // scrolling while it is open, then restore the exact previous value.
   useEffect(() => {
-    if (!expanded || !mobileOnly) return;
+    if (!expanded || !fullscreenPanel) return;
     const previousOverflow = document.body.style.overflow;
     const previousOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = "hidden";
@@ -215,7 +286,7 @@ export function SellAiPanel({
       document.body.style.overflow = previousOverflow;
       document.body.style.overscrollBehavior = previousOverscroll;
     };
-  }, [expanded, mobileOnly]);
+  }, [expanded, fullscreenPanel]);
 
   useEffect(() => {
     if (expanded) {
@@ -239,20 +310,42 @@ export function SellAiPanel({
     return () => window.cancelAnimationFrame(frame);
   }, [expanded]);
 
-  function openWorkspace(href: string, note: string) {
-    pushAssistantNote(note);
+  function followChatLink(href: string) {
+    if (mobileOnly && !isMobileAllowedHref(href)) {
+      pushAssistantNote("Open the WEB app to continue this action.");
+      return;
+    }
     collapsePanel();
     router.push(href);
+  }
+
+  /** Offer a page link inside chat. Only jump immediately when AI chat is off (shortcut mode). */
+  function openWorkspace(href: string, note: string, options?: { immediate?: boolean }) {
+    const jumpNow = options?.immediate === true || aiEnabled === false;
+    if (jumpNow) {
+      pushAssistantNote(note);
+      collapsePanel();
+      router.push(href);
+      return;
+    }
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        text: navigatePromptText(href, note),
+        cta: { label: labelForHref(href), href },
+      },
+    ]);
   }
 
   function applySellView(view: LeftView) {
     if (mobileOnly) {
       if (view === "products") {
-        openWorkspace("/products", "Opened products.");
+        openWorkspace("/products", "Open products when you are ready.");
         return;
       }
       if (view === "keys" || view === "parked") {
-        openWorkspace("/", "Opened the sell screen.");
+        openWorkspace("/", "Open the sell screen when you are ready.");
         return;
       }
       pushAssistantNote("This is available in the WEB app.");
@@ -262,10 +355,10 @@ export function SellAiPanel({
       sell.setView(view);
       return;
     }
-    if (view === "customers") router.push("/customers");
-    else if (view === "products") router.push("/products");
-    else if (view === "promotions") router.push("/promotions");
-    else router.push("/");
+    if (view === "customers") openWorkspace("/customers", "Open the customers list when you are ready.");
+    else if (view === "products") openWorkspace("/products", "Open products when you are ready.");
+    else if (view === "promotions") openWorkspace("/promotions", "Open promotions when you are ready.");
+    else openWorkspace("/", "Open the sell screen when you are ready.");
   }
 
   function tryLocalWorkspaceIntent(text: string): boolean {
@@ -285,11 +378,11 @@ export function SellAiPanel({
         t,
       )
     ) {
-      openWorkspace("/", "Opened the sell screen.");
+      openWorkspace("/", "Open the sell screen when you are ready.");
       return true;
     }
     if (/^(查询产品|查找产品|产品查询|look\s*up\s*products?|search\s*products?)$/i.test(t)) {
-      openWorkspace("/products", "Opened products.");
+      openWorkspace("/products", "Open products when you are ready.");
       return true;
     }
     if (
@@ -386,14 +479,6 @@ export function SellAiPanel({
     restoreFabRef.current = true;
     restoreFocusRef.current = null;
     openPanel();
-  }
-
-  function onMinimizeClick() {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
-    collapsePanel();
   }
 
   useEffect(() => {
@@ -584,22 +669,34 @@ export function SellAiPanel({
     try {
       const result = await askAssistant(text, threadId, controller?.signal);
       setThreadId(result.threadId);
-      await dispatchIntent(result);
-      if (result.answer || result.table || result.reportId) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            text: result.answer || "",
-            table: result.table ?? null,
-            reportId: result.reportId ?? null,
-            diagnostics: {
-              intent: result.intent || "unknown",
-              latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
-              status: "ok",
+      const outcome = await dispatchIntent(result);
+      if (outcome.kind !== "messaged") {
+        const deferredHref = outcome.kind === "deferred" ? outcome.href : null;
+        const hasBody = Boolean(
+          result.answer || result.table || result.reportId || deferredHref,
+        );
+        if (hasBody) {
+          const answerText = deferredHref
+            ? navigatePromptText(deferredHref, result.answer)
+            : result.answer || "";
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              text: answerText,
+              table: result.table ?? null,
+              reportId: result.reportId ?? null,
+              cta: deferredHref
+                ? { label: labelForHref(deferredHref), href: deferredHref }
+                : null,
+              diagnostics: {
+                intent: result.intent || "unknown",
+                latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+                status: "ok",
+              },
             },
-          },
-        ]);
+          ]);
+        }
       }
     } catch (e) {
       if (e instanceof ApiError && (e.code === 50301 || e.status === 503)) {
@@ -638,10 +735,13 @@ export function SellAiPanel({
     if (sell) {
       sell.setCustomerSearchQuery(q);
       sell.setView("customers");
-    } else {
-      router.push(q ? `/customers?q=${encodeURIComponent(q)}` : "/customers");
+      pushAssistantNote(q ? `Showing customers for “${q}”.` : "Showing customers.");
+      return;
     }
-    pushAssistantNote(q ? `Opened customers for “${q}”.` : "Opened customers.");
+    openWorkspace(
+      q ? `/customers?q=${encodeURIComponent(q)}` : "/customers",
+      q ? `Open customers for “${q}” when you are ready.` : "Open customers when you are ready.",
+    );
   }
 
   function openProductLookup(query: string) {
@@ -649,63 +749,75 @@ export function SellAiPanel({
     if (mobileOnly) {
       openWorkspace(
         q ? `/products?q=${encodeURIComponent(q)}` : "/products",
-        q ? `Opened products for “${q}”.` : "Opened products.",
+        q ? `Open products for “${q}” when you are ready.` : "Open products when you are ready.",
       );
       return;
     }
     if (sell) {
       sell.setProductSearchQuery(q);
       sell.setView("products");
-    } else {
-      router.push(q ? `/products?q=${encodeURIComponent(q)}` : "/products");
+      pushAssistantNote(q ? `Showing products for “${q}”.` : "Showing products.");
+      return;
     }
-    pushAssistantNote(q ? `Opened products for “${q}”.` : "Opened products.");
+    openWorkspace(
+      q ? `/products?q=${encodeURIComponent(q)}` : "/products",
+      q ? `Open products for “${q}” when you are ready.` : "Open products when you are ready.",
+    );
   }
 
   function openStockLookup(query: string) {
     const q = query.trim();
     openWorkspace(
       q ? `/stock/list?q=${encodeURIComponent(q)}` : "/stock/list",
-      q ? `Opened stock list for “${q}”.` : "Opened stock list.",
+      q ? `Open stock list for “${q}” when you are ready.` : "Open stock list when you are ready.",
     );
   }
 
-  async function dispatchIntent(result: AssistantResponse) {
+  type IntentDispatch =
+    | { kind: "none" }
+    | { kind: "deferred"; href: string }
+    | { kind: "messaged" };
+
+  /** Deferred page link keeps the user in chat until they tap the CTA. */
+  async function dispatchIntent(result: AssistantResponse): Promise<IntentDispatch> {
     const ui = result.ui ?? {};
     const slots = result.slots ?? {};
     const intent = result.intent;
 
-    if (!DISPATCHABLE_AI_INTENTS.has(intent)) return;
+    if (!DISPATCHABLE_AI_INTENTS.has(intent)) return { kind: "none" };
 
     if (intent === "search_customer") {
       openCustomerLookup(slots.query ?? "");
       onExpandedChange(true);
-      return;
+      return { kind: "messaged" };
     }
 
     if (intent === "search_product") {
       openProductLookup(slots.query ?? "");
-      return;
+      return { kind: "messaged" };
     }
 
     if (intent === "entity_action") {
       await handleEntityAction(slots.entity, slots.op, slots.query);
-      return;
+      return { kind: "messaged" };
     }
 
     if (typeof intent === "string" && intent.startsWith("report_")) {
       onExpandedChange(true);
-      return;
+      return { kind: "none" };
     }
 
     if (ui.view && SELL_VIEWS.has(ui.view as LeftView)) {
       applySellView(ui.view as LeftView);
     }
 
+    let deferred: IntentDispatch = { kind: "none" };
     if (ui.route && ui.route.startsWith("/") && !ui.route.startsWith("//")) {
       if (!mobileOnly || isMobileAllowedHref(ui.route)) {
-        collapsePanel();
-        router.push(ui.route);
+        deferred = { kind: "deferred", href: ui.route };
+      } else {
+        pushAssistantNote("Open the WEB app to continue this action.");
+        return { kind: "messaged" };
       }
     }
 
@@ -713,14 +825,16 @@ export function SellAiPanel({
       const action = ui.action;
       if (action === "Create Customer") {
         await handleEntityAction("customer", "create", slots.query);
-        return;
+        return { kind: "messaged" };
       }
       if (action === "Create Product") {
         await handleEntityAction("product", "create", slots.query);
-        return;
+        return { kind: "messaged" };
       }
       setPendingAction(action);
     }
+
+    return deferred;
   }
 
   async function handleEntityAction(entity?: string, op?: string, query?: string) {
@@ -743,9 +857,10 @@ export function SellAiPanel({
           pushAssistantNote(result.note ?? "Open the WEB app to continue this action.");
           return;
         }
-        collapsePanel();
-        router.push(result.href);
-        if (result.note) pushAssistantNote(result.note);
+        openWorkspace(
+          result.href,
+          result.note ?? navigatePromptText(result.href),
+        );
         return;
       }
       if (result.kind === "message") {
@@ -897,7 +1012,7 @@ export function SellAiPanel({
     // Route sample questions through the assistant; keep direct navigation available when chat is off.
     if (action === "Today's sales") {
       if (aiEnabled === false) {
-        openWorkspace("/history/odoo", "Opened sales history.");
+        openWorkspace("/history/odoo", "Opened sales history.", { immediate: true });
         return;
       }
       void runIntent("Today's sales");
@@ -907,35 +1022,35 @@ export function SellAiPanel({
       "What should I restock?": {
         question: "What should I restock?",
         href: "/stock/replenishment",
-        note: "Opened replenishment suggestions.",
+        note: "Open replenishment when you are ready.",
       },
       "Which prices should I review?": {
         question: "Which prices should I review?",
         href: "/stock/capped-pricing",
-        note: "Opened price suggestions for review.",
+        note: "Open price review when you are ready.",
       },
       "Recommend a red wine under $30": {
         question: "Recommend a red wine under $30",
         href: "/sommelier",
-        note: "Opened wine recommendations.",
+        note: "Open wine recommendations when you are ready.",
       },
       "Scan this supplier invoice": {
         question: "Scan this supplier invoice",
         href: "/invoices/scan",
-        note: "Opened invoice capture.",
+        note: "Open invoice capture when you are ready.",
       },
     };
     const workflow = workflows[action];
     if (workflow) {
       if (aiEnabled === false) {
-        openWorkspace(workflow.href, workflow.note);
+        openWorkspace(workflow.href, workflow.note, { immediate: true });
         return;
       }
       void runIntent(workflow.question);
       return;
     }
     if (action === "Products") {
-      openWorkspace("/products", "Opened products.");
+      openWorkspace("/products", "Open products when you are ready.");
       return;
     }
     if (action === "Check stock") {
@@ -1094,21 +1209,23 @@ export function SellAiPanel({
     <div
       ref={floatRef}
       className={cn(
-        "pointer-events-none fixed z-[80] flex flex-col items-end",
-        mobileOnly && expanded && "inset-0 h-dvh w-full",
+        "pointer-events-none fixed z-[80] flex flex-col",
+        expanded && fullscreenPanel && "inset-0 h-dvh w-full",
+        expanded && !fullscreenPanel && "inset-y-0 right-0 h-dvh w-[min(100vw,420px)]",
+        !expanded && "items-end",
         dragging && "select-none",
       )}
-      style={{
-        ...(mobileOnly && expanded
-          ? { left: 0, top: 0, transform: "none" }
-          : { left: anchor.x, top: anchor.y, transform: "translate(-100%, -100%)" }),
-      }}
+      style={
+        expanded
+          ? { left: fullscreenPanel ? 0 : undefined, top: 0, right: fullscreenPanel ? 0 : 0, transform: "none" }
+          : { left: anchor.x, top: anchor.y, transform: "translate(-100%, -100%)" }
+      }
     >
-      {mobileOnly && expanded && (
+      {expanded && fullscreenPanel && (
         <button
           type="button"
           aria-label="Close assistant"
-          className="pointer-events-auto fixed inset-0 z-0 cursor-default bg-slate-950/50"
+          className="pointer-events-auto fixed inset-0 z-0 cursor-default bg-slate-950/40"
           onClick={collapsePanel}
         />
       )}
@@ -1118,27 +1235,23 @@ export function SellAiPanel({
           aria-labelledby="orithos-ai-assistant-title"
           aria-modal="true"
           className={cn(
-            "pointer-events-auto relative z-10 flex w-[min(100vw-2.5rem,420px)] flex-col gap-2.5",
-            mobileOnly && "h-full w-full gap-0",
+            "pointer-events-auto relative z-10 flex h-full w-full flex-col",
+            !fullscreenPanel && "border-l border-[var(--oh-border)] bg-white",
           )}
+          style={{ boxShadow: fullscreenPanel ? "none" : FLOAT_SHADOW }}
         >
           <div
             className={cn(
-              "flex max-h-[min(72vh,620px)] w-full flex-col overflow-hidden rounded-2xl border border-[var(--oh-border)] bg-white",
-              mobileOnly && "h-full max-h-none rounded-none border-0",
+              "flex h-full w-full flex-col overflow-hidden bg-white",
+              fullscreenPanel ? "rounded-none border-0" : "rounded-none",
             )}
-            style={{ boxShadow: mobileOnly ? "none" : FLOAT_SHADOW }}
           >
             <div
               className={cn(
                 "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] bg-[var(--oh-orange-light)] px-3.5 py-3",
-                mobileOnly && "pt-[max(0.75rem,env(safe-area-inset-top))]",
-                mobileOnly ? "cursor-default" : dragging ? "cursor-grabbing" : "cursor-grab",
+                fullscreenPanel && "pt-[max(0.75rem,env(safe-area-inset-top))]",
+                "cursor-default",
               )}
-              onPointerDown={mobileOnly ? undefined : beginDrag}
-              onPointerMove={mobileOnly ? undefined : onDragMove}
-              onPointerUp={mobileOnly ? undefined : endDrag}
-              onPointerCancel={mobileOnly ? undefined : endDrag}
             >
               <AiFabIcon size={40} className="pointer-events-none shadow-sm" />
               <div className="min-w-0 flex-1">
@@ -1154,7 +1267,7 @@ export function SellAiPanel({
                     : "Ask anything about sales"}
                 </p>
               </div>
-              <div className="flex items-center gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5">
                 <button
                   type="button"
                   onClick={() => {
@@ -1184,7 +1297,7 @@ export function SellAiPanel({
               ref={scrollRef}
               aria-live="polite"
               aria-atomic="false"
-              className="min-h-[240px] flex-1 overflow-y-auto bg-[var(--oh-surface)]"
+              className="min-h-0 flex-1 overflow-y-auto bg-[var(--oh-surface)]"
             >
               {historyOpen ? (
                 <HistoryView
@@ -1199,10 +1312,12 @@ export function SellAiPanel({
                 <DialogueView
                   messages={messages}
                   onAction={runQuickAction}
+                  onOpenLink={followChatLink}
                   onClear={clearChat}
                   busy={busy}
                   thinkingHint={thinkingHint}
                   quickActionsOpen={quickActionsOpen}
+                  compact={fullscreenPanel}
                 />
               )}
             </div>
@@ -1232,29 +1347,12 @@ export function SellAiPanel({
               </div>
             </div>
 
-            <div className="border-t border-[var(--oh-border)] bg-white px-3.5 py-2 md:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}>
+            <div
+              className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2"
+              style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+            >
               {composer}
             </div>
-          </div>
-
-          <div className="hidden w-full items-center gap-2.5 md:flex">
-            {composer}
-            <button
-              type="button"
-              onClick={onMinimizeClick}
-              onPointerDown={beginDrag}
-              onPointerMove={onDragMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              aria-label="Minimize Orithos AI"
-              className={cn(
-                "shrink-0 touch-none transition-transform",
-                dragging ? "cursor-grabbing" : "cursor-grab hover:-translate-y-0.5",
-              )}
-              style={{ boxShadow: FLOAT_SHADOW, borderRadius: "9999px" }}
-            >
-              <AiFabIcon size={48} />
-            </button>
           </div>
         </div>
       )}
@@ -1367,17 +1465,21 @@ function HistoryView({
 function DialogueView({
   messages,
   onAction,
+  onOpenLink,
   onClear,
   busy,
   thinkingHint,
   quickActionsOpen,
+  compact = false,
 }: {
   messages: ChatMessage[];
   onAction: (action: string) => void;
+  onOpenLink: (href: string) => void;
   onClear: () => void;
   busy?: boolean;
   thinkingHint?: string | null;
   quickActionsOpen: boolean;
+  compact?: boolean;
 }) {
   const canClear = !busy && messages.length > 1;
   const diagnosticMessages = messages.filter((message) => message.role === "assistant" && message.diagnostics);
@@ -1393,7 +1495,7 @@ function DialogueView({
     : 0;
   return (
     <div className="flex h-full flex-col p-3.5">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
           Chat
         </p>
@@ -1409,7 +1511,7 @@ function DialogueView({
           Clear
         </button>
       </div>
-      {diagnosticMessages.length > 0 ? (
+      {diagnosticMessages.length > 0 && !compact ? (
         <p
           aria-label="AI session diagnostics"
           className="mb-2.5 rounded-md bg-white px-2.5 py-1.5 text-[11px] tabular-nums text-[var(--oh-muted)]"
@@ -1426,7 +1528,7 @@ function DialogueView({
               "max-w-[92%] rounded-[var(--oh-radius)] px-3.5 py-2.5 text-[14px] leading-relaxed",
               msg.role === "user"
                 ? "ml-auto bg-[var(--oh-primary)] text-white"
-                : "mr-auto border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text-secondary)] shadow-sm",
+                : "mr-auto border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text)] shadow-sm",
             )}
           >
             {msg.role === "assistant" && msg.reportId ? (
@@ -1487,6 +1589,16 @@ function DialogueView({
                 )}
               </div>
             )}
+            {msg.role === "assistant" && msg.cta ? (
+              <button
+                type="button"
+                onClick={() => onOpenLink(msg.cta!.href)}
+                className="mt-2.5 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[var(--oh-primary)] px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)]"
+              >
+                {msg.cta.label}
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-90" />
+              </button>
+            ) : null}
             {msg.role === "assistant" && msg.diagnostics ? (
               <span className={cn(
                 "mt-2 block text-[11px] tabular-nums",
