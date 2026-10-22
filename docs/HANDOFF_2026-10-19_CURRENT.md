@@ -2520,3 +2520,11 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - `f2e7d659` 及其文档提交已推送到 `origin/main`，当前远端顶端为 `7af1b7e0`。
 - 推送后等待并读取 Demo `/api/public/version`，frontend/backend 仍均为 `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`，没有切换到本批次。
 - 当前环境没有可用的 `DOKPLOY_WEBHOOK_URL`；历史 webhook 已返回 `301 Branch Not Match`，按规则不再重试。线上 Price Suggestions 焦点改动仍未验证。
+
+## 2026-10-22 关班与销售历史焦点优化
+
+- `pos-ui/src/components/OdooCloseRegisterPage.tsx`：初始加载失败 Retry、运行中错误 Retry 增加可见键盘焦点。
+- `pos-ui/src/components/OdooSalesHistoryPage.tsx`：导出、错误 Retry、收据关闭、全单退款和打印按钮增加可见键盘焦点。
+- 候选提交：`bc33d48077345b13c44fdfc2de6376fd64403ff4`。
+- 本地 typecheck、定向 ESLint、diff check 通过；未运行 production build，未写入业务数据。
+- Demo 旧 runtime 交互基线为 `10 PASS / 4 FAIL`，失败集中在商品目录、销售历史数据和补货加载，证据 `docs/UAT_INTERACTION_2026-10-22_OLD-RUNTIME-RECHECK.json`。该结果不能归因到 `bc33d480`。

@@ -654,3 +654,10 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 - [x] Price Suggestions and documentation commits were pushed to `origin/main`; remote top was `7af1b7e0` at the time of verification.
 - [ ] Demo `/api/public/version` still reports `e8cac11`; this batch is not post-deploy verified.
 - [ ] Dokploy webhook cannot be retried from the current environment (`DOKPLOY_WEBHOOK_URL` missing; prior `301 Branch Not Match`). Source/Git binding correction is required.
+
+### 2026-10-22 Close register and sales history focus batch
+
+- [x] Candidate `bc33d480` adds visible focus states to close-register and sales-history recovery/receipt actions.
+- [x] Typecheck, targeted ESLint, and diff check passed; no local production build or business write.
+- [x] Old Demo interaction baseline: `10 PASS / 4 FAIL`; evidence `docs/UAT_INTERACTION_2026-10-22_OLD-RUNTIME-RECHECK.json`.
+- [ ] Exact-SHA online verification remains pending; current Demo runtime is still `e8cac11`.

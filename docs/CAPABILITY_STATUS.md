@@ -1374,3 +1374,10 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Candidate and documentation commits are pushed; remote top is `7af1b7e0`.
 - After the push, Demo still reports frontend/backend `e8cac11ea1284f57dcb5ff4c6d203011ba10b79d`; no post-deploy claim is allowed.
 - `DOKPLOY_WEBHOOK_URL` is unavailable in the current environment, and the previously observed `301 Branch Not Match` prevents blind retries. Dokploy Source/Git settings remain the release blocker.
+
+## 2026-10-22 Close register and sales history focus batch
+
+- Candidate `bc33d480` adds visible keyboard focus states to close-register initial/error recovery and sales-history export, retry, receipt close, refund, and print controls.
+- Targeted typecheck, ESLint, and diff checks passed. No production build or business write was run.
+- Demo old-runtime interaction baseline recorded `10 PASS / 4 FAIL`; failures were product catalogue, sales-history data, and replenishment loading timeouts. Evidence: `docs/UAT_INTERACTION_2026-10-22_OLD-RUNTIME-RECHECK.json`.
+- This baseline is not exact-SHA evidence for `bc33d480`; Demo still reports `e8cac11`.
