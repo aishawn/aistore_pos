@@ -197,16 +197,19 @@ public final class WorkflowRouteRouter {
         if (question == null || question.isBlank()) return false;
         String normalized = question.trim().toLowerCase(Locale.ROOT);
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
-        if (capabilityQuestion != null && "qa".equals(capabilityQuestion.intent())) return false;
+        if (capabilityQuestion != null
+                && ("qa".equals(capabilityQuestion.intent())
+                || capabilityQuestion.intent().startsWith("report_"))) return false;
         boolean historicalQuestion = normalized.matches(
                 "^(?:what|how|did|were|was)\\b.*\\b(?:today|yesterday|last|past|previous|week|month)\\b.*$");
         if (historicalQuestion && !EXPLICIT_EXECUTION.matcher(normalized).find()) return false;
-        if (INVOICE_MUTATION.matcher(normalized).find()
+        boolean reportQuestion = REPORT_CONTEXT.matcher(normalized).find();
+        if ((!reportQuestion && INVOICE_MUTATION.matcher(normalized).find())
                 || DIRECT_EXECUTION_ZH.matcher(normalized).find()
                 || DIRECT_EXECUTION_EN.matcher(normalized).find()
                 || NUMERIC_PRICE_EXECUTION.matcher(normalized).find()
                 || NUMERIC_PURCHASE_EXECUTION.matcher(normalized).find()
-                || ENTITY_WRITE.matcher(normalized).find()) return true;
+                || (!reportQuestion && ENTITY_WRITE.matcher(normalized).find())) return true;
         if (EXPLICIT_EXECUTION.matcher(normalized).find()
                 && (REPLENISHMENT.matcher(normalized).find()
                 || PRICING.matcher(normalized).find()
