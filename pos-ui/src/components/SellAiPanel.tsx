@@ -99,8 +99,8 @@ function messageLinks(msg: ChatMessage): ChatCta[] {
 }
 
 function cardCta(card: AssistantCard): ChatCta | null {
-  const label = card.cta?.label ?? card.ctaLabel;
-  const href = card.cta?.route ?? card.ctaRoute;
+  const label = card.cta?.label?.trim() || card.ctaLabel?.trim();
+  const href = card.cta?.route?.trim() || card.ctaRoute?.trim();
   return label && href ? { label, href } : null;
 }
 
