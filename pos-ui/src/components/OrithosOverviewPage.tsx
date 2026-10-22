@@ -268,7 +268,6 @@ export function OrithosOverviewPage() {
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
   const hasTrendData = data?.trend.some((item) => item.revenue > 0) ?? false;
   const hasCategoryData = (data?.byCategory.length ?? 0) > 0;
-  const hasAnalyticsData = hasTrendData || hasCategoryData;
   const trendData = data?.trend ?? [];
   const trendGranularity = data?.trendGranularity ?? "hour";
   const trendLabelOptions: Intl.DateTimeFormatOptions =
