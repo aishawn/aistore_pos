@@ -48,6 +48,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await page.goto(`${base}/platform/${routeName}?__uat=${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.getByRole("heading", { name: routeName === "operations" ? "Operations" : "AI usage" }).waitFor({ state: "visible", timeout: 30000 });
     await page.getByRole("button", { name: "Retry", exact: true }).waitFor({ state: "visible", timeout: 30000 });
+    const refreshButton = page.getByRole("button", { name: "Refresh", exact: true });
+    const focusControls = (await refreshButton.getAttribute("class"))?.includes("focus-visible:outline")
+      && (await page.getByRole("button", { name: "Retry", exact: true }).getAttribute("class"))?.includes("focus-visible:outline");
     await page.getByRole("button", { name: "Retry", exact: true }).click();
     await page.waitForFunction((text) => document.body.innerText.includes(text), routeName === "operations" ? "MySQL" : "Demo Store", { timeout: 30000 });
     if (routeName === "usage") {
@@ -55,12 +58,15 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
       await page.waitForTimeout(150);
     }
     const metrics = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, viewportWidth: window.innerWidth }));
-    results.push({ route: `/platform/${routeName}`, viewport: viewport.width, attempts, retryRecovered: true, pageErrors, ...metrics, overflow: metrics.scrollWidth > metrics.viewportWidth });
+    results.push({ route: `/platform/${routeName}`, viewport: viewport.width, attempts, retryRecovered: true, focusControls, pageErrors, ...metrics, overflow: metrics.scrollWidth > metrics.viewportWidth });
     await context.close();
   }
 }
 await browser.close();
-const evidence = { generatedAt: new Date().toISOString(), target: base, scope: "local browser fixture; platform APIs intercepted; no writes", status: results.every((item) => item.retryRecovered && item.pageErrors.length === 0 && !item.overflow) && blockedWrites.length === 0 ? "PASS" : "FAIL", checks: results, blockedWrites };
-const output = path.join(root, "docs", "UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json");
+const evidence = { generatedAt: new Date().toISOString(), sourceCommit: process.env.PILOT_SOURCE_COMMIT ?? "working-tree", target: base, scope: "local browser fixture; platform APIs intercepted; no live business writes", status: results.every((item) => item.retryRecovered && item.focusControls && item.pageErrors.length === 0 && !item.overflow) && blockedWrites.length === 0 ? "PASS" : "FAIL", checks: results, blockedWrites };
+const output = process.env.PILOT_UAT_OUTPUT_PATH
+  ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
+  : path.join(root, "docs", "UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-24.json");
+fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`);
 console.log(JSON.stringify(evidence, null, 2));

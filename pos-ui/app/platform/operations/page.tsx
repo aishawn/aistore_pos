@@ -150,7 +150,7 @@ export default function PlatformOperationsPage() {
       subtitle="Runtime identity and dependency checks for the platform services."
       fullBleed
       actions={(
-        <AdminSecondaryButton onClick={() => void load(true)} disabled={refreshing || loading}>
+        <AdminSecondaryButton onClick={() => void load(true)} disabled={refreshing || loading} className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
           {refreshing || loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           Refresh
         </AdminSecondaryButton>
@@ -160,7 +160,7 @@ export default function PlatformOperationsPage() {
         {error ? (
           <div role="alert" className="mb-5 flex flex-wrap items-start justify-between gap-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
             <span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span>
-            <button type="button" onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold disabled:opacity-50">
+            <button type="button" onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
               <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Retry
             </button>
           </div>

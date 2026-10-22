@@ -169,7 +169,7 @@ export default function ManageCashPage() {
                     type="button"
                     onClick={() => void submit()}
                     disabled={busy}
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"
                   >
                     {busy ? <LoaderCircle size={16} className="animate-spin" /> : null}
                     {busy ? "Recording…" : `Record cash ${direction}`}

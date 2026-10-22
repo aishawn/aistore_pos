@@ -2353,6 +2353,13 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Demo `/api/public/version` returned HTTP 200 with frontend runtime `3edd72d84f514856923c0c0d50b01fe7b015e120` and backend runtime `null`. This does not verify any current `main` commit and the backend identity is incomplete.
 - [ ] Backend commits `14b8d81` and `09af7a6` still have no recorded same-SHA Java 21 `mvn -B clean verify` result. Do not treat the current Compose state as a successful backend deployment.
 
+## 2026-10-22 login and platform operations focus consistency
+
+- [x] Login primary action, Manage Cash submit action, and Platform Operations/AI Usage refresh and retry actions now expose visible `focus-visible` outlines.
+- [x] Platform Operations/Usage local fixture passed **4/4** at 390px and 1440px with retry recovery, focus assertions, no page errors, no overflow, and zero non-GET requests. Evidence: `docs/UAT_PLATFORM_OPERATIONS_USAGE_LOCAL_2026-10-22_FOCUS-CONTROLS.json`.
+- [x] Login page direct browser check passed at 390px: Login button visible, focus style present, and document width did not overflow the viewport.
+- [x] Node 24 typecheck and targeted ESLint passed; no local production build was run.
+
 ## 2026-10-22 Stock List focus consistency follow-up
 
 - [x] Stock List export failure retry and category retry actions now expose visible `focus-visible` outlines, matching the existing search-clear control and shared admin actions.

@@ -212,7 +212,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={busy !== null}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] text-base font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-70"
           >
             <LogIn size={18} aria-hidden="true" />
             {busy === "web" ? "Signing in…" : "Login"}

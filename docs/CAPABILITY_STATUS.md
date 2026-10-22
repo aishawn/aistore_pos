@@ -1256,3 +1256,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - **Online status:** not deployed; the current Demo runtime remains `3edd72d84f514856923c0c0d50b01fe7b015e120`.
 - **Latest runtime check:** current `main` is `a5511fc`; webhook returned HTTP `301`, Demo frontend remains `3edd72d84f514856923c0c0d50b01fe7b015e120`, and backend runtime is `null`. Backend alert commits `14b8d81`/`09af7a6` remain without same-SHA Java 21 verification evidence.
 
+## 2026-10-22 login and platform operations focus consistency
+
+- **Implemented and locally verified:** Login, Manage Cash, Platform Operations and AI Usage primary/retry controls now show visible keyboard focus states. Platform fixture `4/4 PASS`; login 390px smoke passed with no overflow.
+- **Online status:** not verified; Demo runtime identity remains frontend `3edd72d...`, backend `null`.
+
