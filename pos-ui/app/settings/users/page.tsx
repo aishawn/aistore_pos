@@ -299,9 +299,33 @@ export default function UsersSettingsPage() {
                 </div>
               </div>
             ) : error ? (
-              <div role="alert" className="flex flex-wrap items-center justify-between gap-3 py-8 text-sm text-red-800">
-                <span>{error}</span>
-                <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry</button>
+              <div className="py-6">
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 text-sm text-red-800">
+                  <span>{error}</span>
+                  <button type="button" onClick={reload} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry</button>
+                </div>
+                <div className="mt-4 xl:hidden">
+                  <ul className="grid gap-3">
+                    <li className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <h3 className="text-sm font-semibold text-amber-950">Store users are unavailable</h3>
+                      <p className="mt-1 text-sm text-amber-900">Connect the staff directory before inviting or resetting a user. No user data was changed.</p>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-4 hidden overflow-x-auto xl:block">
+                  <table aria-label="Store users" className="w-full min-w-[820px] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--oh-border)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
+                        {(["Name", "Username", "Email", "Role", "Status", "Actions"] as const).map((heading) => <th key={heading} scope="col" className="px-2 py-3 font-semibold">{heading}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td colSpan={6} className="px-2 py-6 text-center text-sm text-[var(--oh-muted)]">The staff directory is unavailable. Retry after the connection is restored.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : users.length === 0 ? (
               <p className="py-8 text-center text-sm text-[var(--oh-muted)]">No users yet. Invite the first teammate above.</p>
