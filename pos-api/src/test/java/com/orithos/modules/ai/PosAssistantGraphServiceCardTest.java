@@ -54,6 +54,21 @@ class PosAssistantGraphServiceCardTest {
     }
 
     @Test
+    void mapsNaturalLanguageZeroProductCountToEmptyCard() {
+        for (String answer : List.of(
+                "There are 0 products in the catalogue.",
+                "商品总数为 0。打开商品页查看目录。")) {
+            AssistantCard card = PosAssistantGraphService.cardsFor(
+                    "product_count",
+                    new UiAction("products", "products", "/products", "navigate"),
+                    answer).getFirst();
+
+            assertEquals("empty", card.status(), answer);
+            assertTrue(card.items().isEmpty(), answer);
+        }
+    }
+
+    @Test
     void mapsUnavailableSommelierBriefWithoutInventingItems() {
         List<AssistantCard> cards = PosAssistantGraphService.cardsFor(
                 "navigate",

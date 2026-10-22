@@ -206,7 +206,8 @@ public class PosAssistantGraphService {
                 || lower.contains("not available") || lower.contains("暂不可用")
                 || lower.contains("无法取得") || lower.contains("sign in")
                 || lower.contains("not bound") || lower.contains("permission")
-                || lower.contains("没有权限");
+                || lower.contains("没有权限") || lower.contains("无权限")
+                || lower.contains("权限不足") || lower.contains("无法访问");
         boolean empty = !unavailable && ("product_count".equals(type) && productCountIsZero(text)
                 || lower.contains("no restock")
                 || lower.contains("no items need")
@@ -259,7 +260,9 @@ public class PosAssistantGraphService {
     }
 
     private static boolean productCountIsZero(String answer) {
-        return answer != null && answer.matches("(?is).*\\b(?:has|have|contains)\\s+0\\s+(?:sellable\\s+)?products?\\b.*");
+        return answer != null && (answer.matches(
+                "(?is).*\\b(?:has|have|contains|there are|total is)\\s+0\\s+(?:sellable\\s+)?(?:products?|items?|skus?)\\b.*")
+                || answer.matches("(?s).*(?:产品|商品|SKU)(?:总数|数量)?\\s*(?:是|为|共有|有)?\\s*0(?:个|件|种)?(?:产品|商品|SKU)?[^0-9]*$"));
     }
 
     private static List<Map<String, Object>> cardItems(String type, String answer) {
