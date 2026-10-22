@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Camera, FileImage, LoaderCircle, ReceiptText } from "lucide-react";
-import { useApi, useApiList } from "@/hooks/useApi";
 import { SelectChevronIcon } from "@/components/icons";
 import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import {
@@ -15,9 +14,10 @@ import {
   type InvoiceScanLine,
   type InvoiceScanPayload,
 } from "@/lib/api";
+import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 
 interface Named {
-  id: string;
+  id: number;
   name: string;
 }
 
@@ -54,6 +54,13 @@ export function ScanInvoicePage() {
   const [capabilityLoading, setCapabilityLoading] = useState(true);
   const scanRevision = useRef(0);
 
+  const [suppliers, setSuppliers] = useState<Named[]>([]);
+  const [outlets, setOutlets] = useState<Named[]>([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(true);
+  const [outletsLoading, setOutletsLoading] = useState(true);
+  const [suppliersError, setSuppliersError] = useState<string | null>(null);
+  const [outletsError, setOutletsError] = useState<string | null>(null);
+
   const loadCapabilities = useCallback(async () => {
     setCapabilityLoading(true);
     setCapabilityError(false);
@@ -69,20 +76,54 @@ export function ScanInvoicePage() {
     }
   }, []);
 
+  const loadSuppliers = useCallback(async () => {
+    setSuppliersLoading(true);
+    setSuppliersError(null);
+    try {
+      const session = await getOdooSession();
+      if (!session) throw new Error("Connect your Odoo staff account to load suppliers.");
+      const page = await searchOdooRecords<Named>("suppliers", { limit: 100 });
+      setSuppliers(page.items);
+    } catch (cause) {
+      setSuppliers([]);
+      setSuppliersError(cause instanceof Error ? cause.message : "Could not load suppliers.");
+    } finally {
+      setSuppliersLoading(false);
+    }
+  }, []);
+
+  const loadOutlets = useCallback(async () => {
+    setOutletsLoading(true);
+    setOutletsError(null);
+    try {
+      const session = await getOdooSession();
+      if (!session) throw new Error("Connect your Odoo staff account to load outlets.");
+      const page = await searchOdooRecords<Named>("outlets", { limit: 100 });
+      setOutlets(page.items);
+    } catch (cause) {
+      setOutlets([]);
+      setOutletsError(cause instanceof Error ? cause.message : "Could not load outlets.");
+    } finally {
+      setOutletsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadCapabilities();
   }, [loadCapabilities]);
 
-  const suppliers = useApiList<Named>("/api/suppliers", { page: 1, size: 500 });
-  const outlets = useApi<Named[]>("/api/outlets");
+  useEffect(() => {
+    void loadSuppliers();
+    void loadOutlets();
+  }, [loadSuppliers, loadOutlets]);
 
   const supplierOptions = useMemo(
-    () => (suppliers.items ?? []).map((s) => ({ label: s.name, value: String(s.id) })),
-    [suppliers.items],
+    () => suppliers.map((s) => ({ label: s.name, value: String(s.id) })),
+    [suppliers],
   );
   const outletOptions = useMemo(
-    () => (outlets.data ?? []).map((o) => ({ label: o.name, value: String(o.id) })),
-    [outlets.data],
+    () => outlets.map((o) => ({ label: o.name, value: String(o.id) })),
+    [outlets],
   );
 
   useEffect(() => {
@@ -108,6 +149,7 @@ export function ScanInvoicePage() {
         ...data,
         invoiceDate: toIsoDate(data.invoiceDate),
         dueDate: toIsoDate(data.dueDate),
+        createSupplier: false,
       });
     } catch (e) {
       if (revision !== scanRevision.current) return;
@@ -171,6 +213,10 @@ export function ScanInvoicePage() {
           : aiEnabled === true
             ? " Store AI is on — photos are read for preview only."
             : "";
+
+  const lookupsReady = !suppliersError && !outletsError;
+  const supplierSelectDisabled = suppliersLoading || !!suppliersError || supplierOptions.length === 0;
+  const outletSelectDisabled = outletsLoading || !!outletsError || outletOptions.length === 0;
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
@@ -245,8 +291,8 @@ export function ScanInvoicePage() {
 
           <AsyncDependencyNotice
             dependencies={[
-              { label: "Suppliers", error: suppliers.error, loading: suppliers.loading, onRetry: suppliers.reload },
-              { label: "Outlets", error: outlets.error, loading: outlets.loading, onRetry: outlets.reload },
+              { label: "Suppliers", error: suppliersError, loading: suppliersLoading, onRetry: () => void loadSuppliers() },
+              { label: "Outlets", error: outletsError, loading: outletsLoading, onRetry: () => void loadOutlets() },
             ]}
           />
 
@@ -268,17 +314,29 @@ export function ScanInvoicePage() {
           {scan && (
             <>
               <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-5">
-                <div className="mb-4 border-b border-[var(--oh-border)] pb-3"><h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice details</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">Check supplier, destination and document totals before saving.</p></div>
+                <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
+                  <h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice details</h2>
+                  <p className="mt-1 text-xs text-[var(--oh-muted)]">
+                    Check supplier, destination and document totals before continuing in Odoo Purchases or Replenishment.
+                    {!lookupsReady && " Lookup lists are unavailable until Odoo options reload."}
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label className="flex flex-col">
                     <span className={labelClass}>Supplier</span>
                     <div className="relative">
                       <select
                         value={scan.supplierId ? String(scan.supplierId) : ""}
-                        onChange={(e) => patch({ supplierId: e.target.value ? Number(e.target.value) : null, createSupplier: !e.target.value })}
-                        className={`${fieldClass} appearance-none pr-10`}
+                        onChange={(e) => patch({
+                          supplierId: e.target.value ? Number(e.target.value) : null,
+                          createSupplier: false,
+                        })}
+                        disabled={supplierSelectDisabled}
+                        className={`${fieldClass} appearance-none pr-10 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70`}
                       >
-                        <option value="">{scan.supplierName ? `Create “${scan.supplierName}”` : "Select supplier…"}</option>
+                        <option value="">
+                          {scan.supplierName ? `Use OCR name: “${scan.supplierName}”` : "Select matched supplier…"}
+                        </option>
                         {supplierOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                       <SelectChevronIcon size={16} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
@@ -290,8 +348,10 @@ export function ScanInvoicePage() {
                       <select
                         value={scan.toId ? String(scan.toId) : ""}
                         onChange={(e) => patch({ toId: e.target.value ? Number(e.target.value) : null })}
-                        className={`${fieldClass} appearance-none pr-10`}
+                        disabled={outletSelectDisabled}
+                        className={`${fieldClass} appearance-none pr-10 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70`}
                       >
+                        {outletOptions.length === 0 && <option value="">No outlets available</option>}
                         {outletOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                       <SelectChevronIcon size={16} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
@@ -317,7 +377,7 @@ export function ScanInvoicePage() {
                         <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.packQty ?? "—"}</td>
                         <td className="px-4 py-2.5"><input aria-label={`Cases for line ${index + 1}`} type="number" min="0" step="0.01" value={line.qtyCases ?? ""} onChange={(e) => patchLine(index, { qtyCases: e.target.value === "" ? null : Number(e.target.value) })} className="h-10 w-24 rounded-lg border border-[var(--oh-border)] px-2.5 text-right tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{money(line.unitPrice)}</td><td className="px-4 py-2.5 text-right font-medium tabular-nums text-[var(--oh-text)]">{money(line.lineTotal)}</td>
-                        <td className="px-4 py-2.5 text-xs text-[var(--oh-muted)]">{line.productId ? `#${line.productId}` : "New product"}</td>
+                        <td className="px-4 py-2.5 text-xs text-[var(--oh-muted)]">{line.productId ? `#${line.productId}` : "Unmatched"}</td>
                       </tr>
                     ))}{!scan.lines?.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--oh-muted)]">No line items were detected on this invoice.</td></tr>}</tbody>
                   </table>
@@ -331,7 +391,7 @@ export function ScanInvoicePage() {
                       <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2"><p className="text-xs text-[var(--oh-muted)]">Price</p><p className="mt-1 text-sm tabular-nums text-[var(--oh-text-secondary)]">{money(line.unitPrice)}</p></div>
                       <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2"><p className="text-xs text-[var(--oh-muted)]">Total</p><p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(line.lineTotal)}</p></div>
                     </div>
-                    <p className="text-xs text-[var(--oh-muted)]">{line.productId ? `Matched product #${line.productId}` : "New product — review before saving"}</p>
+                    <p className="text-xs text-[var(--oh-muted)]">{line.productId ? `Matched product #${line.productId}` : "Unmatched — review in Purchases/Replenishment"}</p>
                   </article>
                 ))}{!scan.lines?.length && <p className="px-4 py-10 text-center text-sm text-[var(--oh-muted)]">No line items were detected on this invoice.</p>}</div>
               </section>
