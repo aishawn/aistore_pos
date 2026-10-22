@@ -1305,3 +1305,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 
 - Candidate `3bc4b9f` is pushed, but Dokploy again returned HTTP `301` (`Branch Not Match`).
 - Stocktake, cash, and grouped Settings focus improvements remain local-only until the Demo runtime reports the candidate SHA.
+## 2026-10-22 Reports and utilities recovery focus follow-up
+
+- Report and utility error recovery actions now expose consistent visible keyboard focus states across closures, sales reports, Mail Log, Trashed Items, and Vendor Connections.
+- Local evidence: `docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json`; typecheck, ESLint, and diff checks pass, no business writes.
+- Online verification remains pending the Dokploy Source/Git correction.

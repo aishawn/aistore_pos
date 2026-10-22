@@ -591,3 +591,8 @@ API/AI 网关错误体验已改善：普通 API、发票 OCR、语音转写和�
 
 - [x] Candidate `3bc4b9f` pushed after the Settings and stocktake/cash batches were consolidated.
 - [ ] Dokploy returned HTTP `301` (`Branch Not Match`) again; no retry. Online verification remains pending Source/Git correction and exact runtime SHA.
+### 2026-10-22 Reports and utilities recovery focus consistency
+
+- [x] Register closures, daily/weekly/monthly sales reports, Mail Log, Trashed Items, and Vendor Connections Retry actions now expose visible keyboard focus states.
+- [x] Existing Clear search/Clear filters focus behavior remains intact. Local typecheck, targeted ESLint, and diff check passed; no business writes. Evidence: `docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json`.
+- [ ] These changes remain online-unverified until the Dokploy branch binding is corrected and exact runtime SHA is read back.

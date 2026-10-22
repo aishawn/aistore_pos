@@ -2439,3 +2439,8 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 - [x] Candidate `3bc4b9f` is pushed and includes the grouped Settings work plus Stocktake, Express Stocktake, and Manage Cash focus-state improvements.
 - [ ] Dokploy webhook returned HTTP `301` (`Branch Not Match`) again; no retry was sent. This is the same Source/Git binding blocker, not an application test failure.
 - [ ] Demo `/api/public/version` remains on the older runtime; the new stocktake/cash and Settings batches are not online-verified.
+## 2026-10-22 Reports and utilities focus follow-up
+
+- Report and utility Retry actions now expose visible keyboard focus states across closures, daily/weekly/monthly sales, Mail Log, Trashed Items, and Vendor Connections.
+- Local typecheck, targeted ESLint, and `git diff --check` passed; no production build or business write was run. Evidence: `docs/UAT_REPORTS_UTILITIES_FOCUS_LOCAL_2026-10-22.json`.
+- This batch is local-only until a valid Dokploy deployment and exact Demo runtime SHA are available.
