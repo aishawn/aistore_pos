@@ -1326,3 +1326,7 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Signup, reset-password, products, Platform Stores, and Platform Audit recovery/search actions now have consistent visible focus states.
 - Local Platform Audit/Failures recovery passed `4/4` across mobile and desktop; Product detail retry passed with zero writes. Evidence: `docs/UAT_ENTRY_PLATFORM_FOCUS_LOCAL_2026-10-22.json`.
 - Online verification remains pending Dokploy Source/Git correction.
+## 2026-10-22 entry/platform deployment status
+
+- Candidate `d2346f9` is pushed, but Dokploy again returned HTTP `301` (`Branch Not Match`).
+- Entry and platform focus changes remain local-only until the Demo runtime reports the candidate SHA.
