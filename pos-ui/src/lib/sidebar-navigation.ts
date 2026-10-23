@@ -4,8 +4,8 @@
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  *
  * Customer sidebar (2026-10-23):
- * - Only list Odoo-backed pages that have been connected and verified.
- * - Keep Classic MySQL Price Lists / Balances / Gift Cards out of production nav.
+ * - Odoo-backed children: Customers, Groups, Price Lists, Balances, Gift Cards.
+ * - Do not confuse those Odoo routes with retired Classic MySQL pages of the same name.
  */
 
 export interface SidebarItem {
@@ -70,6 +70,9 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     items: [
       { label: "Customers", href: "/customers/odoo" },
       { label: "Customer Groups", href: "/customer-groups" },
+      { label: "Price Lists", href: "/pricelists" },
+      { label: "Balances", href: "/customers/balances" },
+      { label: "Gift Cards", href: "/giftcards" },
     ],
   },
   {
