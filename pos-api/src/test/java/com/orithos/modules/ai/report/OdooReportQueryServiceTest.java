@@ -295,12 +295,12 @@ class OdooReportQueryServiceTest {
         assertEquals(1, result.rows().size());
         assertEquals(0, new BigDecimal("15.0").compareTo((BigDecimal) result.rows().get(0).get("quantity")));
         assertEquals(3, requests.size());
-        assertEquals(List.of("id", "display_name", "qty_available"),
-                MAPPER.convertValue(requests.get(2).path("params").path("kwargs").path("fields"),
-                        MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
-    }
+          assertEquals(List.of("id", "name", "display_name", "qty_available"),
+                  MAPPER.convertValue(requests.get(2).path("params").path("kwargs").path("fields"),
+                          MAPPER.getTypeFactory().constructCollectionType(List.class, String.class)));
+      }
 
-    private List<JsonNode> startServer(String groupedRowsJson) throws Exception {
+      private List<JsonNode> startServer(String groupedRowsJson) throws Exception {
         List<JsonNode> requests = new CopyOnWriteArrayList<>();
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/web/session/authenticate", exchange -> {

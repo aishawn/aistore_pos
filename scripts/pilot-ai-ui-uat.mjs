@@ -105,7 +105,7 @@ async function runViewport(viewport) {
   await fab.click();
   const assistant = page.getByRole("dialog", { name: "Orithos AI assistant" });
   await assistant.waitFor({ state: "visible", timeout: 10000 });
-  for (const label of ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Scan this supplier invoice", "Products", "Check stock"]) {
+  for (const label of ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Something in stock for a BBQ under $20", "Products", "Check stock"]) {
     await assistant.getByRole("button", { name: label, exact: true }).waitFor({ state: "visible", timeout: 10000 });
   }
   if (await assistant.getAttribute("aria-modal") !== "true") {
@@ -189,7 +189,7 @@ async function runViewport(viewport) {
       "Wine recommendations",
       "SOMMELIER",
       /wine|recommend|unavailable|no match|no recommendation/i,
-      "Open Sommelier",
+      "Open wine recommendations",
     );
     await askCard(
       "Create a customer",

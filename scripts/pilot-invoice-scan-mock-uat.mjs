@@ -10,7 +10,8 @@ const env = Object.fromEntries(fs.readFileSync(path.join(root, ".env"), "utf8")
   .filter((line) => line && !line.startsWith("#") && line.includes("="))
   .map((line) => { const index = line.indexOf("="); return [line.slice(0, index).trim(), line.slice(index + 1).trim()]; }));
 const base = (process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au").replace(/\/+$/, "");
-if (!env.INITIAL_ADMIN_PASSWORD) throw new Error("MISSING_ADMIN_PASSWORD");
+const adminPassword = process.env.DEMO_ADMIN_PASSWORD ?? env.DEMO_ADMIN_PASSWORD ?? env.INITIAL_ADMIN_PASSWORD;
+if (!adminPassword) throw new Error("MISSING_DEMO_ADMIN_PASSWORD");
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
@@ -18,21 +19,26 @@ const page = await context.newPage();
 const businessWrites = [];
 let scanCalls = 0;
 let capabilityCalls = 0;
+let odooSessionCalls = 0;
+const odooRecordTypes = [];
+const unexpectedOdooRecordTypes = [];
 page.on("request", (request) => {
   const url = new URL(request.url());
-  if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/") && request.method() !== "GET") {
+  const isReadOnlyOdooRecords = url.pathname === "/api/odoo/records" && request.method() === "POST";
+  const isMockedInvoicePreview = url.pathname === "/api/ai/invoice/preview" && request.method() === "POST";
+  if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth/") && request.method() !== "GET" && !isReadOnlyOdooRecords && !isMockedInvoicePreview) {
     businessWrites.push(`${request.method()} ${url.pathname}`);
   }
 });
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
-    data: { username: "admin", password: env.INITIAL_ADMIN_PASSWORD },
+    data: { username: "admin", password: adminPassword },
     headers: { Origin: base },
   });
   const loginBody = await login.json().catch(() => ({}));
   if (!login.ok() || loginBody.code !== 0) throw new Error("Orithos admin login failed");
 
-  await page.route("**/api/orders/receives/scan", async (route) => {
+  await page.route("**/api/ai/invoice/preview", async (route) => {
     if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Unexpected method" });
     scanCalls += 1;
     if (scanCalls === 1) {
@@ -68,8 +74,29 @@ try {
       } }),
     });
   });
+  await page.route("**/api/odoo/session", async (route) => {
+    odooSessionCalls += 1;
+    if (route.request().method() !== "GET") return route.fulfill({ status: 405, body: "Unexpected method" });
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ user: { id: "mock-staff", name: "Mock Staff", username: "mock-staff", isAdmin: false, allowedCompanyIds: [1] }, autoRecoverConfigured: false }),
+    });
+  });
+  await page.route("**/api/odoo/records", async (route) => {
+    if (route.request().method() !== "POST") return route.fulfill({ status: 405, body: "Unexpected method" });
+    const payload = route.request().postDataJSON();
+    const type = typeof payload?.type === "string" ? payload.type : "unknown";
+    odooRecordTypes.push(type);
+    if (!["suppliers", "outlets"].includes(type)) unexpectedOdooRecordTypes.push(type);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], limit: 100, offset: 0, hasNext: false }),
+    });
+  });
 
-  await page.goto(`${base}/invoices/scan`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.goto(`${base}/invoices/new`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Scan supplier invoice" }).waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "Photograph or upload" }).waitFor({ timeout: 20000 });
   await page.waitForTimeout(1000);
@@ -86,7 +113,6 @@ try {
     mimeType: "image/jpeg",
     buffer: Buffer.from("/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD6IooooA//2Q==", "base64"),
   });
-  console.log("INVOICE_FILE_SELECTED", await upload.evaluate((input) => ({ count: input.files?.length ?? 0, name: input.files?.[0]?.name ?? null })));
   await page.waitForFunction(() => [...document.querySelectorAll("h2")].some((heading) => heading.textContent?.trim() === "Invoice details") || document.querySelector('[role="alert"]'), undefined, { timeout: 30000 }).catch(async () => {
     throw new Error(`Invoice scan never reached review/error; intercepted calls=${scanCalls}; writes=${businessWrites.join("|")}; page=${(await page.locator("body").innerText()).slice(-650)}`);
   });
@@ -114,6 +140,10 @@ try {
     throw new Error(`Unexpected business write request: ${businessWrites.join(", ")}`);
   }
   if (scanCalls !== 2) throw new Error(`Expected one failed and one successful intercepted scan call, got ${scanCalls}`);
+  if (unexpectedOdooRecordTypes.length) throw new Error(`Unexpected Odoo records query type(s): ${unexpectedOdooRecordTypes.join(", ")}`);
+  if (!odooRecordTypes.includes("suppliers") || !odooRecordTypes.includes("outlets")) {
+    throw new Error(`Expected supplier and outlet lookups, got ${odooRecordTypes.join(", ")}`);
+  }
 
   const output = {
     generatedAt: new Date().toISOString(),
@@ -121,16 +151,19 @@ try {
     deployment: process.env.PILOT_DEPLOYMENT_SHA || null,
     target: base,
     status: "PASS",
-    fixture: "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
+    fixture: "invoice preview, AI capability, Odoo session and Odoo records intercepted in browser; no model call or business writes",
     viewport: 390,
-    checks: ["invoice AI availability retry recovers after a transient failure", "invoice scan retry reuses the selected file after a transient OCR failure", "invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
+    checks: ["invoice AI availability retry recovers after a transient failure", "Odoo session and supplier/outlet lookups are isolated by fixtures", "invoice scan retry reuses the selected file after a transient OCR failure", "invoice preview has no received-order save button before scanning", "mock scan image preview and details render", "invoice line is editable before leaving preview", "Odoo purchasing links are shown and no business write was sent"],
     scanCalls,
     capabilityCalls,
+    odooSessionCalls,
+    odooRecordTypes,
+    unexpectedOdooRecordTypes,
     businessWrites,
   };
   const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
     ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-    : path.join(root, "docs", "UAT_INVOICE_SCAN_MOCK_2026-10-14.json");
+    : path.join(root, "docs", "UAT_INVOICE_SCAN_MOCK_2026-10-23_CURRENT.json");
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
   console.log(JSON.stringify({ outputPath, status: output.status, checks: output.checks }));

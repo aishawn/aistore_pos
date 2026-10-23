@@ -100,21 +100,17 @@ class WorkflowRouteRouterTest {
         assertRoute("牛排配什么酒", "/sommelier");
         assertRoute("红酒配牛排", "/sommelier");
         assertRoute("晚餐喝什么酒", "/sommelier");
-        assertRoute("识别这张发票", "/invoices/scan");
-        assertRoute("Upload this supplier bill", "/invoices/scan");
-        assertRoute("Scan this supplier bill", "/invoices/scan");
-        assertRoute("Can you read this bill?", "/invoices/scan");
-        assertRoute("Can you check this invoice?", "/invoices/scan");
-        assertRoute("Scan this bill", "/invoices/scan");
-        assertRoute("Scan invoice", "/invoices/scan");
-        assertRoute("Upload an invoice", "/invoices/scan");
-        assertRoute("Read an invoice", "/invoices/scan");
-        assertRoute("Take a photo of this supplier bill", "/invoices/scan");
-        assertRoute("Take a photo of this invoice", "/invoices/scan");
-        assertRoute("Snap this supplier invoice", "/invoices/scan");
-        assertRoute("Read this supplier invoice", "/invoices/scan");
-        assertRoute("上传这张账单", "/invoices/scan");
-        assertRoute("上传供应商发票", "/invoices/scan");
+        assertRoute("识别这张发票", "/invoices");
+        assertRoute("Scan this supplier bill", "/invoices");
+        assertRoute("Can you read this bill?", "/invoices");
+        assertRoute("Can you check this invoice?", "/invoices");
+        assertRoute("Scan this bill", "/invoices");
+        assertRoute("Scan invoice", "/invoices");
+        assertRoute("Read an invoice", "/invoices");
+        assertRoute("Take a photo of this supplier bill", "/invoices");
+        assertRoute("Take a photo of this invoice", "/invoices");
+        assertRoute("Snap this supplier invoice", "/invoices");
+        assertRoute("Read this supplier invoice", "/invoices");
         assertRoute("Who are our suppliers?", "/suppliers/odoo");
     }
 
@@ -134,7 +130,10 @@ class WorkflowRouteRouterTest {
         assertNull(WorkflowRouteRouter.maybeOverride("Delete this invoice"));
         assertNull(WorkflowRouteRouter.maybeOverride("提交这张发票"));
         assertNull(WorkflowRouteRouter.maybeOverride("Import this invoice"));
+        assertNull(WorkflowRouteRouter.maybeOverride("Upload this supplier bill"));
+        assertNull(WorkflowRouteRouter.maybeOverride("Upload an invoice"));
         assertNull(WorkflowRouteRouter.maybeOverride("上传这张账单"));
+        assertNull(WorkflowRouteRouter.maybeOverride("上传供应商发票"));
         assertNull(WorkflowRouteRouter.maybeOverride("帮我上传这张发票"));
         assertNull(WorkflowRouteRouter.maybeOverride("把供应商账单传上去"));
         assertNull(WorkflowRouteRouter.maybeOverride("Send this supplier bill"));
@@ -176,7 +175,7 @@ class WorkflowRouteRouterTest {
         assertRoute("  REORDER, please!  ", "/stock/replenishment");
         assertRoute("PRICE REVIEW?", "/stock/capped-pricing");
         assertRoute("推荐适合聚会的白葡萄酒。", "/sommelier");
-        assertRoute("请识别这张发票。", "/invoices/scan");
+        assertRoute("请识别这张发票。", "/invoices");
     }
 
     @Test

@@ -265,7 +265,9 @@ public class PosAssistantGraphService {
             case "/orders" -> "Open orders";
             case "/stock/replenishment" -> "Open replenishment";
             case "/stock/capped-pricing" -> "Open price review";
-            case "/invoices/scan" -> "Open invoice scan";
+            case "/invoices" -> "Open supplier invoices";
+            case "/invoices/scan" -> "Open supplier invoices";
+            case "/invoices/new" -> "Scan supplier invoice";
             case "/suppliers/odoo" -> "Open suppliers";
             default -> "Open workflow";
         };

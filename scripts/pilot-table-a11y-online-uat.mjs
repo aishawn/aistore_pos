@@ -25,7 +25,7 @@ const routes = [
   { path: "/products/odoo", label: "Odoo products" },
   { path: "/stock/stocktake", label: "stocktake" },
   { path: "/orders/new", label: "supply chain" },
-  { path: "/invoices/scan", label: "invoice scan" },
+  { path: "/invoices/new", label: "invoice scan" },
 ];
 const viewports = [{ width: 390, height: 844 }, { width: 1440, height: 900 }];
 const checks = [];

@@ -76,7 +76,7 @@ async function runViewport(viewport, assistantAvailable) {
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "Orithos AI assistant" });
     await dialog.waitFor({ state: "visible", timeout: 10000 });
-    for (const label of ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Scan this supplier invoice", "Products", "Check stock"]) {
+    for (const label of ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Something in stock for a BBQ under $20", "Products", "Check stock"]) {
       await dialog.getByRole("button", { name: label, exact: true }).waitFor({ state: "visible", timeout: 10000 });
     }
     const composer = dialog.getByPlaceholder(/Ask Orithos AI|AI chat is off for this store/);
@@ -90,7 +90,7 @@ async function runViewport(viewport, assistantAvailable) {
       ["What should I restock?", "What should I restock?"],
       ["Which prices should I review?", "Which prices should I review?"],
       ["Recommend a red wine under $30", "Recommend a red wine under $30"],
-      ["Scan this supplier invoice", "Scan this supplier invoice"],
+      ["Something in stock for a BBQ under $20", "Something in stock for a BBQ under $20"],
     ];
     if (assistantAvailable) {
       for (const [label, question] of workflowQuestions) {
@@ -116,7 +116,7 @@ async function runViewport(viewport, assistantAvailable) {
         ["What should I restock?", "/stock/replenishment"],
         ["Which prices should I review?", "/stock/capped-pricing"],
         ["Recommend a red wine under $30", "/sommelier"],
-        ["Scan this supplier invoice", "/invoices/scan"],
+        ["Something in stock for a BBQ under $20", "/recommend/grocery"],
         ["Products", "/products"],
       ];
       for (const [label, route] of routes) {
@@ -163,7 +163,7 @@ const expectedQuestions = [
   "What should I restock?",
   "Which prices should I review?",
   "Recommend a red wine under $30",
-  "Scan this supplier invoice",
+  "Something in stock for a BBQ under $20",
 ];
 const expectedQuestionCount = results.filter((result) => result.expectedChatAvailable).length * expectedQuestions.length;
 const questionContractPasses = assistantQuestions.length === expectedQuestionCount

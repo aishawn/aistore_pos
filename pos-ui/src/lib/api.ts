@@ -1179,6 +1179,37 @@ export function sommelierRecommend(profile: SommelierProfilePayload) {
   return api.post<SommelierRecommendResponse>("/api/ai/sommelier/recommend", profile);
 }
 
+export interface GroceryRecommendPayload {
+  category?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  occasion?: string | null;
+}
+
+export interface GroceryRecommendCard {
+  productId: number;
+  name: string;
+  tier: string;
+  badge: string;
+  category: string | null;
+  listPrice: number;
+  sellPrice: number;
+  stockQuantity: number;
+  caseQuantity: number | null;
+  matchPct: number;
+  reason: string;
+}
+
+export interface GroceryRecommendResponse {
+  profile: GroceryRecommendPayload;
+  recommendations: GroceryRecommendCard[];
+  emptyReason: string | null;
+}
+
+export function groceryRecommend(profile: GroceryRecommendPayload) {
+  return api.post<GroceryRecommendResponse>("/api/ai/recommend/grocery", profile);
+}
+
 export function sommelierIdentify(q: string) {
   return api.get<{ items: SommelierWine[] }>("/api/ai/sommelier/identify", { q });
 }
@@ -1263,7 +1294,79 @@ export interface InvoiceScanPayload {
   lines?: InvoiceScanLine[];
 }
 
-/** Photograph a supplier tax invoice for an Odoo-safe preview without record matching. */
+export type InvoiceScanSourceType = "upload" | "camera" | "pdf" | "api";
+export type InvoiceScanStatus = "draft" | "matched" | "po_created" | "received" | "failed" | "discarded";
+export type InvoiceLineMatchStatus = "unmatched" | "suggested" | "confirmed" | "skipped";
+
+export interface InvoiceScanSessionLine {
+  id?: number;
+  lineIndex?: number;
+  description?: string | null;
+  brand?: string | null;
+  packQty?: number | null;
+  qtyCases?: number | null;
+  unitPrice?: number | null;
+  lineTotal?: number | null;
+  odooProductId?: number | null;
+  odooProductName?: string | null;
+  matchStatus?: InvoiceLineMatchStatus | string | null;
+  confidence?: number | null;
+}
+
+export interface InvoiceScanSession {
+  id: number;
+  status: InvoiceScanStatus | string;
+  sourceType?: InvoiceScanSourceType | string | null;
+  supplierName?: string | null;
+  supplierAbn?: string | null;
+  invoiceNumber?: string | null;
+  invoiceDate?: string | null;
+  dueDate?: string | null;
+  totalPayable?: number | null;
+  gstIncluded?: number | null;
+  odooSupplierId?: number | null;
+  odooOutletId?: number | null;
+  odooPoId?: number | null;
+  odooPoName?: string | null;
+  odooPickingId?: number | null;
+  odooPickingName?: string | null;
+  sourceFilename?: string | null;
+  sourceContentType?: string | null;
+  notes?: string | null;
+  internalNotes?: string | null;
+  duplicateIds?: number[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  confirmedAt?: string | null;
+  lines?: InvoiceScanSessionLine[];
+}
+
+export interface InvoiceScanSessionList {
+  items: InvoiceScanSession[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface InvoiceScanSavePayload {
+  sourceType?: InvoiceScanSourceType;
+  sourceFilename?: string | null;
+  sourceContentType?: string | null;
+  supplierName?: string | null;
+  supplierAbn?: string | null;
+  invoiceNumber?: string | null;
+  invoiceDate?: string | null;
+  dueDate?: string | null;
+  totalPayable?: number | null;
+  gstIncluded?: number | null;
+  odooSupplierId?: number | null;
+  odooOutletId?: number | null;
+  notes?: string | null;
+  internalNotes?: string | null;
+  lines?: InvoiceScanSessionLine[];
+}
+
+/** Photograph or upload a supplier tax invoice for OCR preview (image or PDF). */
 export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Promise<InvoiceScanPayload> {
   const token = getToken();
   const form = new FormData();
@@ -1301,6 +1404,43 @@ export async function scanInvoiceImage(file: Blob, filename = "invoice.jpg"): Pr
     throw new ApiError(json.message, json.code, res.status);
   }
   return json.data;
+}
+
+export function listInvoiceScans(params?: { status?: string; query?: string; limit?: number; offset?: number }) {
+  const search = new URLSearchParams();
+  if (params?.status) search.set("status", params.status);
+  if (params?.query) search.set("query", params.query);
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.offset != null) search.set("offset", String(params.offset));
+  const qs = search.toString();
+  return api.get<InvoiceScanSessionList>(`/api/invoice-scans${qs ? `?${qs}` : ""}`);
+}
+
+export function getInvoiceScan(id: number) {
+  return api.get<InvoiceScanSession>(`/api/invoice-scans/${id}`);
+}
+
+export function createInvoiceScan(payload: InvoiceScanSavePayload) {
+  return api.post<InvoiceScanSession>("/api/invoice-scans", payload);
+}
+
+export function updateInvoiceScan(id: number, payload: InvoiceScanSavePayload) {
+  return api.put<InvoiceScanSession>(`/api/invoice-scans/${id}`, payload);
+}
+
+export function linkInvoiceScanPurchase(
+  id: number,
+  payload: { odooPoId?: number; odooPoName?: string; odooPickingId?: number; odooPickingName?: string; status?: string },
+) {
+  return api.post<InvoiceScanSession>(`/api/invoice-scans/${id}/link-purchase`, payload);
+}
+
+export function discardInvoiceScan(id: number) {
+  return api.del<null>(`/api/invoice-scans/${id}`);
+}
+
+export function suggestedInvoiceSupplierByAbn(abn: string) {
+  return api.get<number | null>(`/api/invoice-scans/abn-map?abn=${encodeURIComponent(abn)}`);
 }
 
 export function sommelierWine(id: string | number) {

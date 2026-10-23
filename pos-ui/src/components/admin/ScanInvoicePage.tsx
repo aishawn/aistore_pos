@@ -3,16 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Camera, FileImage, LoaderCircle, ReceiptText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Camera, FileImage, FileText, LoaderCircle, ReceiptText } from "lucide-react";
 import { SelectChevronIcon } from "@/components/icons";
 import { AsyncDependencyNotice } from "@/components/admin/AsyncState";
 import {
   ApiError,
   apiFailureMessage,
+  createInvoiceScan,
   fetchAiClientConfig,
   scanInvoiceImage,
   type InvoiceScanLine,
   type InvoiceScanPayload,
+  type InvoiceScanSourceType,
 } from "@/lib/api";
 import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
 
@@ -40,11 +43,16 @@ function toIsoDate(raw?: string | null): string {
 }
 
 export function ScanInvoicePage() {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewIsPdf, setPreviewIsPdf] = useState(false);
+  const [sourceType, setSourceType] = useState<InvoiceScanSourceType>("upload");
   const [scan, setScan] = useState<InvoiceScanPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [assistantAvailable, setAssistantAvailable] = useState<boolean | null>(null);
@@ -136,14 +144,17 @@ export function ScanInvoicePage() {
     return () => URL.revokeObjectURL(preview);
   }, [preview]);
 
-  async function scanFile(file: File) {
+  async function scanFile(file: File, nextSource: InvoiceScanSourceType) {
     const revision = ++scanRevision.current;
     setError(null);
     setScan(null);
     setLoading(true);
+    setSourceType(nextSource);
     try {
-      const prepared = await compressInvoicePhoto(file);
-      const data = await scanInvoiceImage(prepared, prepared.name || "invoice.jpg");
+      const prepared = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+        ? file
+        : await compressInvoicePhoto(file);
+      const data = await scanInvoiceImage(prepared, prepared.name || (nextSource === "pdf" ? "invoice.pdf" : "invoice.jpg"));
       if (revision !== scanRevision.current) return;
       setScan({
         ...data,
@@ -156,37 +167,42 @@ export function ScanInvoicePage() {
       if (e instanceof ApiError && e.code === 41001) {
         setInvoiceWorkflowRetired(true);
         setInvoiceVisionAvailable(false);
-        setError("Invoice photo capture is not available in this Odoo-only store. Continue in Odoo Purchases or Replenishment.");
+        setError("Invoice capture is not available in this Odoo-only store. Continue in Odoo Purchases or Replenishment.");
       } else {
-        setError(apiFailureMessage(e, "Could not read that invoice photo.", "Please sign in again."));
+        setError(apiFailureMessage(e, "Could not read that invoice.", "Please sign in again."));
       }
     } finally {
       if (revision === scanRevision.current) setLoading(false);
     }
   }
 
-  async function onPhoto(file: File) {
+  async function onFile(file: File, nextSource: InvoiceScanSourceType) {
     ++scanRevision.current;
-    if (!file.type.startsWith("image/")) {
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
       setSelectedFile(null);
       setPreview(null);
+      setPreviewIsPdf(false);
       setScan(null);
       setLoading(false);
-      setError("Choose an image file such as JPG, PNG or HEIC.");
+      setError("Choose a PDF or image file such as JPG, PNG or HEIC.");
       return;
     }
     if (file.size > MAX_INVOICE_BYTES) {
       setSelectedFile(null);
       setPreview(null);
+      setPreviewIsPdf(false);
       setScan(null);
       setLoading(false);
-      setError("That image is larger than 10 MB. Choose a smaller invoice photo.");
+      setError("That file is larger than 10 MB. Choose a smaller invoice.");
       return;
     }
     setSelectedFile(file);
     setError(null);
-    setPreview(URL.createObjectURL(file));
-    await scanFile(file);
+    setPreviewIsPdf(isPdf);
+    setPreview(isPdf ? null : URL.createObjectURL(file));
+    await scanFile(file, isPdf ? "pdf" : nextSource);
   }
 
   function patch(update: Partial<InvoiceScanPayload>) {
@@ -202,6 +218,45 @@ export function ScanInvoicePage() {
     });
   }
 
+  async function saveDraft() {
+    if (!scan) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const saved = await createInvoiceScan({
+        sourceType,
+        sourceFilename: selectedFile?.name ?? null,
+        sourceContentType: selectedFile?.type ?? null,
+        supplierName: scan.supplierName,
+        supplierAbn: scan.supplierAbn,
+        invoiceNumber: scan.invoiceNumber,
+        invoiceDate: scan.invoiceDate,
+        dueDate: scan.dueDate,
+        totalPayable: scan.totalPayable,
+        gstIncluded: scan.gstIncluded,
+        odooSupplierId: scan.supplierId ?? null,
+        odooOutletId: scan.toId ?? null,
+        notes: scan.notes,
+        internalNotes: scan.internalNotes,
+        lines: (scan.lines ?? []).map((line) => ({
+          description: line.description,
+          brand: line.brand,
+          packQty: line.packQty,
+          qtyCases: line.qtyCases,
+          unitPrice: line.unitPrice,
+          lineTotal: line.lineTotal,
+          odooProductId: line.productId ?? null,
+          matchStatus: line.productId ? "confirmed" : "unmatched",
+        })),
+      });
+      router.push(`/invoices/${saved.id}`);
+    } catch (cause) {
+      setError(apiFailureMessage(cause, "Could not save this invoice draft.", "Please sign in again."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const availabilityMessage = capabilityError
     ? " Could not check invoice AI availability — refresh and try again."
     : aiEnabled === null || invoiceVisionAvailable === null
@@ -211,9 +266,10 @@ export function ScanInvoicePage() {
         : invoiceVisionAvailable === false
           ? ` Invoice vision is unavailable for this store — use Odoo Purchases or Replenishment instead.${assistantAvailable ? " Orithos AI assistant remains available for questions." : ""}`
           : aiEnabled === true
-            ? " Store AI is on — photos are read for preview only."
+            ? " Store AI is on — files are read for preview, then you can save a draft and receive stock."
             : "";
 
+  const uploadDisabled = loading || capabilityError || aiEnabled === null || invoiceVisionAvailable === null || aiEnabled === false || invoiceVisionAvailable === false || invoiceWorkflowRetired;
   const lookupsReady = !suppliersError && !outletsError;
   const supplierSelectDisabled = suppliersLoading || !!suppliersError || supplierOptions.length === 0;
   const outletSelectDisabled = outletsLoading || !!outletsError || outletOptions.length === 0;
@@ -222,12 +278,12 @@ export function ScanInvoicePage() {
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-5xl">
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Purchasing · Documents</p>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Invoices</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Preview the extracted invoice details. This page does not create a purchase or a receipt.</p>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">Upload a PDF, photograph, or image. Review OCR, save a draft, then match products and receive into Odoo.</p>
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-            OCR is preview-only. Use Odoo Purchases or Replenishment to create and receive inventory; this page does not write a received order.
-            {invoiceWorkflowRetired && " Invoice photo capture is retired for this Odoo-only store."}
+            OCR drafts are stored in Orithos. Confirming a matched draft creates an Odoo RFQ, confirms the PO, and validates the receipt when a single open picking is available.
+            {invoiceWorkflowRetired && " Invoice capture is retired for this Odoo-only store."}
             {availabilityMessage}
             {capabilityError && (
               <button
@@ -249,43 +305,55 @@ export function ScanInvoicePage() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
-              capture="environment"
-              aria-label="Choose or photograph a supplier invoice"
+              accept="image/*,application/pdf,.pdf"
+              aria-label="Choose a supplier invoice PDF or image"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void onPhoto(file);
+                if (file) void onFile(file, "upload");
                 e.target.value = "";
               }}
             />
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              aria-label="Photograph a supplier invoice"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void onFile(file, "camera");
+                e.target.value = "";
+              }}
+            />
+            <div className="flex flex-col gap-4">
               <div className="flex min-w-0 items-start gap-3">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileImage size={21} aria-hidden="true" /></span>
-                <div className="min-w-0"><h2 id="invoice-upload-title" className="text-sm font-semibold text-[var(--oh-text)]">Upload a supplier invoice</h2><p className="mt-1 text-sm leading-5 text-[var(--oh-muted)]">Take a photo or choose an image. OCR will fill in the invoice details for review.</p></div>
+                <div className="min-w-0">
+                  <h2 id="invoice-upload-title" className="text-sm font-semibold text-[var(--oh-text)]">Upload or photograph</h2>
+                  <p className="mt-1 text-sm leading-5 text-[var(--oh-muted)]">PDF (first pages), camera photo, or gallery image. Supplier API ingest is reserved for later.</p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={loading || capabilityError || aiEnabled === null || invoiceVisionAvailable === null || aiEnabled === false || invoiceVisionAvailable === false || invoiceWorkflowRetired}
-                className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60 sm:w-auto"
-              >
-                {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}
-                {loading ? "Reading invoice…" : preview ? "Choose another image" : "Photograph or upload"}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button type="button" onClick={() => cameraRef.current?.click()} disabled={uploadDisabled} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
+                  {loading ? <LoaderCircle size={17} className="animate-spin" /> : <Camera size={17} />}
+                  {loading ? "Reading invoice…" : "Photograph"}
+                </button>
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadDisabled} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60">
+                  <FileText size={17} />
+                  Upload PDF or image
+                </button>
+              </div>
             </div>
-            {preview && (
+            {preview && !previewIsPdf && (
               <figure className="mt-4 flex flex-col items-start gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:items-center">
-                <Image
-                  src={preview}
-                  alt="Invoice preview"
-                  width={640}
-                  height={256}
-                  unoptimized
-                  className="h-auto max-h-64 max-w-full rounded-lg border border-[var(--oh-border)] object-contain"
-                />
+                <Image src={preview} alt="Invoice preview" width={640} height={256} unoptimized className="h-auto max-h-64 max-w-full rounded-lg border border-[var(--oh-border)] object-contain" />
                 <figcaption className="text-xs text-[var(--oh-muted)]">Uploaded invoice image</figcaption>
               </figure>
+            )}
+            {previewIsPdf && selectedFile && (
+              <p className="mt-4 border-t border-[var(--oh-border)] pt-4 text-sm text-[var(--oh-muted)]">PDF selected: {selectedFile.name}</p>
             )}
           </section>
 
@@ -300,14 +368,7 @@ export function ScanInvoicePage() {
           {error && (
             <div role="alert" className="flex flex-col gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-800 sm:flex-row sm:items-center sm:justify-between">
               <span>{error}</span>
-              {!invoiceWorkflowRetired && <button
-                type="button"
-                onClick={() => selectedFile && void scanFile(selectedFile)}
-                disabled={loading || !selectedFile}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
-              >
-                {loading ? "Reading invoice…" : "Retry scan"}
-              </button>}
+              {!invoiceWorkflowRetired && <button type="button" onClick={() => selectedFile && void scanFile(selectedFile, sourceType)} disabled={loading || !selectedFile} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-900 hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60">{loading ? "Reading invoice…" : "Retry scan"}</button>}
             </div>
           )}
 
@@ -317,7 +378,7 @@ export function ScanInvoicePage() {
                 <div className="mb-4 border-b border-[var(--oh-border)] pb-3">
                   <h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice details</h2>
                   <p className="mt-1 text-xs text-[var(--oh-muted)]">
-                    Check supplier, destination and document totals before continuing in Odoo Purchases or Replenishment.
+                    Check supplier and document totals, then save a draft to continue matching and receiving.
                     {!lookupsReady && " Lookup lists are unavailable until Odoo options reload."}
                   </p>
                 </div>
@@ -327,16 +388,11 @@ export function ScanInvoicePage() {
                     <div className="relative">
                       <select
                         value={scan.supplierId ? String(scan.supplierId) : ""}
-                        onChange={(e) => patch({
-                          supplierId: e.target.value ? Number(e.target.value) : null,
-                          createSupplier: false,
-                        })}
+                        onChange={(e) => patch({ supplierId: e.target.value ? Number(e.target.value) : null, createSupplier: false })}
                         disabled={supplierSelectDisabled}
                         className={`${fieldClass} appearance-none pr-10 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70`}
                       >
-                        <option value="">
-                          {scan.supplierName ? `Use OCR name: “${scan.supplierName}”` : "Select matched supplier…"}
-                        </option>
+                        <option value="">{scan.supplierName ? `Use OCR name: “${scan.supplierName}”` : "Select matched supplier…"}</option>
                         {supplierOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                       <SelectChevronIcon size={16} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
@@ -367,33 +423,38 @@ export function ScanInvoicePage() {
               </section>
 
               <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-                <header className="border-b border-[var(--oh-border)] px-4 py-3 sm:px-5"><div className="flex items-center gap-2"><ReceiptText size={17} className="text-[var(--oh-primary)]" /><h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice line items</h2></div><p className="mt-1 text-xs text-[var(--oh-muted)]">Review product descriptions and case quantities extracted by OCR.</p></header>
+                <header className="border-b border-[var(--oh-border)] px-4 py-3 sm:px-5">
+                  <div className="flex items-center gap-2"><ReceiptText size={17} className="text-[var(--oh-primary)]" /><h2 className="text-sm font-semibold text-[var(--oh-text)]">Invoice line items</h2></div>
+                  <p className="mt-1 text-xs text-[var(--oh-muted)]">Review descriptions and quantities. Product matching continues after you save the draft.</p>
+                </header>
                 <div className="hidden overflow-x-auto md:block">
                   <table aria-label="Invoice OCR line items" className="w-full min-w-[760px] text-left text-sm">
-                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Product</th><th scope="col" className="px-4 py-3 text-right">Pack</th><th scope="col" className="px-4 py-3 text-right">Cases</th><th scope="col" className="px-4 py-3 text-right">Price</th><th scope="col" className="px-4 py-3 text-right">Total</th><th scope="col" className="px-4 py-3">Match</th></tr></thead>
-                    <tbody className="divide-y divide-[var(--oh-border)]">{(scan.lines ?? []).map((line, index) => (
-                      <tr key={`${line.description}-${index}`} className="hover:bg-[var(--oh-surface)]/60">
-                        <td className="px-4 py-2.5"><input aria-label={`Product description ${index + 1}`} value={line.description ?? ""} onChange={(e) => patchLine(index, { description: e.target.value })} className="h-10 w-full min-w-48 rounded-lg border border-[var(--oh-border)] px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></td>
-                        <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.packQty ?? "—"}</td>
-                        <td className="px-4 py-2.5"><input aria-label={`Cases for line ${index + 1}`} type="number" min="0" step="0.01" value={line.qtyCases ?? ""} onChange={(e) => patchLine(index, { qtyCases: e.target.value === "" ? null : Number(e.target.value) })} className="h-10 w-24 rounded-lg border border-[var(--oh-border)] px-2.5 text-right tabular-nums text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></td>
-                        <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{money(line.unitPrice)}</td><td className="px-4 py-2.5 text-right font-medium tabular-nums text-[var(--oh-text)]">{money(line.lineTotal)}</td>
-                        <td className="px-4 py-2.5 text-xs text-[var(--oh-muted)]">{line.productId ? `#${line.productId}` : "Unmatched"}</td>
-                      </tr>
-                    ))}{!scan.lines?.length && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--oh-muted)]">No line items were detected on this invoice.</td></tr>}</tbody>
+                    <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Product</th><th scope="col" className="px-4 py-3 text-right">Pack</th><th scope="col" className="px-4 py-3 text-right">Cases</th><th scope="col" className="px-4 py-3 text-right">Price</th><th scope="col" className="px-4 py-3 text-right">Total</th></tr></thead>
+                    <tbody className="divide-y divide-[var(--oh-border)]">
+                      {(scan.lines ?? []).map((line, index) => (
+                        <tr key={`${line.description}-${index}`} className="hover:bg-[var(--oh-surface)]/60">
+                          <td className="px-4 py-2.5"><input aria-label={`Product description ${index + 1}`} value={line.description ?? ""} onChange={(e) => patchLine(index, { description: e.target.value })} className="h-10 w-full min-w-48 rounded-lg border border-[var(--oh-border)] px-2.5 text-sm outline-none focus:border-[var(--oh-primary)]" /></td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{line.packQty ?? "—"}</td>
+                          <td className="px-4 py-2.5"><input aria-label={`Cases for line ${index + 1}`} type="number" min="0" step="0.01" value={line.qtyCases ?? ""} onChange={(e) => patchLine(index, { qtyCases: e.target.value === "" ? null : Number(e.target.value) })} className="h-10 w-24 rounded-lg border border-[var(--oh-border)] px-2.5 text-right tabular-nums outline-none focus:border-[var(--oh-primary)]" /></td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-[var(--oh-text-secondary)]">{money(line.unitPrice)}</td>
+                          <td className="px-4 py-2.5 text-right font-medium tabular-nums">{money(line.lineTotal)}</td>
+                        </tr>
+                      ))}
+                      {!scan.lines?.length && <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-[var(--oh-muted)]">No line items were detected on this invoice.</td></tr>}
+                    </tbody>
                   </table>
                 </div>
-                <div className="divide-y divide-[var(--oh-border)] md:hidden">{(scan.lines ?? []).map((line, index) => (
-                  <article key={`${line.description}-${index}`} className="space-y-3 p-4">
-                    <label className="block"><span className={labelClass}>Product</span><input aria-label={`Product description ${index + 1}`} value={line.description ?? ""} onChange={(e) => patchLine(index, { description: e.target.value })} className={fieldClass} /></label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2"><p className="text-xs text-[var(--oh-muted)]">Pack</p><p className="mt-1 text-sm tabular-nums text-[var(--oh-text-secondary)]">{line.packQty ?? "—"}</p></div>
-                      <label><span className={labelClass}>Cases</span><input aria-label={`Cases for line ${index + 1}`} type="number" min="0" step="0.01" value={line.qtyCases ?? ""} onChange={(e) => patchLine(index, { qtyCases: e.target.value === "" ? null : Number(e.target.value) })} className={fieldClass} /></label>
-                      <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2"><p className="text-xs text-[var(--oh-muted)]">Price</p><p className="mt-1 text-sm tabular-nums text-[var(--oh-text-secondary)]">{money(line.unitPrice)}</p></div>
-                      <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2"><p className="text-xs text-[var(--oh-muted)]">Total</p><p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text)]">{money(line.lineTotal)}</p></div>
-                    </div>
-                    <p className="text-xs text-[var(--oh-muted)]">{line.productId ? `Matched product #${line.productId}` : "Unmatched — review in Purchases/Replenishment"}</p>
-                  </article>
-                ))}{!scan.lines?.length && <p className="px-4 py-10 text-center text-sm text-[var(--oh-muted)]">No line items were detected on this invoice.</p>}</div>
+                <div className="divide-y divide-[var(--oh-border)] md:hidden">
+                  {(scan.lines ?? []).map((line, index) => (
+                    <article key={`${line.description}-${index}`} className="space-y-3 p-4">
+                      <label className="block"><span className={labelClass}>Product</span><input aria-label={`Product description ${index + 1}`} value={line.description ?? ""} onChange={(e) => patchLine(index, { description: e.target.value })} className={fieldClass} /></label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-lg bg-[var(--oh-surface)] px-3 py-2"><p className="text-xs text-[var(--oh-muted)]">Pack</p><p className="mt-1 text-sm tabular-nums">{line.packQty ?? "—"}</p></div>
+                        <label><span className={labelClass}>Cases</span><input aria-label={`Cases for line ${index + 1}`} type="number" min="0" step="0.01" value={line.qtyCases ?? ""} onChange={(e) => patchLine(index, { qtyCases: e.target.value === "" ? null : Number(e.target.value) })} className={fieldClass} /></label>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               </section>
             </>
           )}
@@ -402,10 +463,12 @@ export function ScanInvoicePage() {
 
       <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Review the OCR preview, then continue in Odoo for purchasing and receiving." : "Choose an invoice image to begin."}</p>
+          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Save the draft to match products and receive stock." : "Choose a PDF or photo to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Link href="/purchases/odoo" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Open Odoo Purchases</Link>
-            <Link href="/stock/replenishment" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">Open Replenishment</Link>
+            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Invoice history</Link>
+            <button type="button" onClick={() => void saveDraft()} disabled={!scan || saving || loading} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
+              {saving ? "Saving…" : "Save draft & continue"}
+            </button>
           </div>
         </div>
       </footer>

@@ -167,7 +167,11 @@ function labelForHref(href: string): string {
     "/stock/bulk-price-edit": "Open bulk price edit",
     "/stock/buying-periods": "Open buying periods",
     "/sommelier": "Open wine recommendations",
-    "/invoices/scan": "Open invoice capture",
+    "/recommend": "Open recommendations",
+    "/recommend/grocery": "Open grocery recommendations",
+    "/invoices": "Open supplier invoices",
+    "/invoices/scan": "Open supplier invoices",
+    "/invoices/new": "Scan supplier invoice",
     "/history/odoo": "Open sales history",
     "/purchases/odoo": "Open purchases",
     "/suppliers/odoo": "Open suppliers",
@@ -185,7 +189,8 @@ function labelForHref(href: string): string {
   if (path.startsWith("/customers/")) return "Open customer";
   if (path.startsWith("/reports/ai/")) return "Open report";
   if (path.startsWith("/sommelier/")) return "Open wine recommendations";
-  if (path.startsWith("/invoices/")) return "Open invoice capture";
+  if (path.startsWith("/recommend/")) return "Open recommendations";
+  if (path.startsWith("/invoices")) return "Open supplier invoices";
   if (path.startsWith("/stock/")) return "Open stock page";
   return "Open page";
 }
@@ -222,7 +227,7 @@ function polishAssistantAnswer(text: string, intent?: string): string {
     if (intent === "report_adhoc") {
       return "That custom report is not available yet. Try Today's sales, Check stock, or open Products.";
     }
-    return "I can help with sales, stock, products, replenishment, pricing, wine, or invoices. Try a Quick action below.";
+    return "I can help with sales, stock, products, replenishment, pricing, or wine. Try a Quick action below.";
   }
   return raw;
 }
@@ -235,13 +240,14 @@ function surfaceFromPath(pathname: string | null | undefined): string {
   if (path.startsWith("/customers")) return "customers";
   if (path.startsWith("/reports") || path.startsWith("/ai/reports")) return "reports";
   if (path.startsWith("/sommelier")) return "sommelier";
+  if (path.startsWith("/recommend")) return "recommend";
   if (path.startsWith("/invoices")) return "invoices";
   if (path === "/" || path.startsWith("/sell")) return "sell";
   return "";
 }
 
 const ENABLED_GREETING =
-  "Hi, I'm the Orithos AI assistant. Ask about sales or stock, or try restock suggestions, price reviews, wine matches, or invoice capture.";
+  "Hi, I'm the Orithos AI assistant. Ask about sales or stock, or try restock suggestions, price reviews, or product recommendations.";
 const DISABLED_GREETING =
   "AI chat is off for this store. The shortcuts below still open the right page.";
 
@@ -280,7 +286,7 @@ const QUICK_ACTIONS = [
   "What should I restock?",
   "Which prices should I review?",
   "Recommend a red wine under $30",
-  "Scan this supplier invoice",
+  "Something in stock for a BBQ under $20",
   "Products",
   "Check stock",
 ];
@@ -789,13 +795,29 @@ export function SellAiPanel({
     await runIntent(trimmed);
   }
 
-  async function runIntent(text: string) {
+  async function runIntent(text: string, retryExistingMessage = false) {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     setThinkingHint(null);
     lockAndClearInput();
-    setMessages((prev) => [...prev, { role: "user", text }]);
+    if (!retryExistingMessage) {
+      setMessages((prev) => [...prev, { role: "user", text }]);
+    }
+    const appendReply = (message: ChatMessage) => setMessages((prev) => {
+      if (!retryExistingMessage) return [...prev, message];
+      let retryIndex = -1;
+      for (let index = prev.length - 1; index >= 0; index -= 1) {
+        if (prev[index].role === "assistant" && prev[index].retryQuestion === text) {
+          retryIndex = index;
+          break;
+        }
+      }
+      if (retryIndex < 0) return [...prev, message];
+      const next = [...prev];
+      next[retryIndex] = message;
+      return next;
+    });
     if (tryLocalWorkspaceIntent(text)) {
       busyRef.current = false;
       setBusy(false);
@@ -839,9 +861,7 @@ export function SellAiPanel({
                   { label: "Open replenishment", href: "/stock/replenishment" },
                 ]
               : [];
-          setMessages((prev) => [
-            ...prev,
-            {
+          appendReply({
               role: "assistant",
               text: answerText,
               table: result.table ?? null,
@@ -855,8 +875,7 @@ export function SellAiPanel({
                 latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
                 status: "ok",
               },
-            },
-          ]);
+            });
         }
       }
     } catch (e) {
@@ -866,9 +885,7 @@ export function SellAiPanel({
       const aborted =
         (typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "AbortError") ||
         (e instanceof Error && e.name === "AbortError");
-      setMessages((prev) => [
-        ...prev,
-        {
+      appendReply({
           role: "assistant",
           text: aborted
             ? "The assistant timed out. Try a shorter question, or use Today's sales / Check stock shortcuts."
@@ -879,8 +896,7 @@ export function SellAiPanel({
             latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
             status: "error",
           },
-        },
-      ]);
+        });
     } finally {
       window.clearTimeout(hardTimeout);
       for (const id of hintTimers) window.clearTimeout(id);
@@ -971,7 +987,7 @@ export function SellAiPanel({
         const entity = String(slots.entity ?? "").toLowerCase();
         const href = entity.includes("customer") || entity.includes("client") ? "/customers"
           : entity.includes("product") || entity.includes("item") || entity.includes("catalog") ? "/products"
-            : entity.includes("invoice") || entity.includes("bill") ? "/invoices/scan"
+            : entity.includes("invoice") || entity.includes("bill") ? "/invoices"
               : entity.includes("order") || entity.includes("purchase") ? "/orders"
                 : entity.includes("supplier") || entity.includes("vendor") ? "/suppliers/odoo"
                 : "/stock/replenishment";
@@ -1211,10 +1227,10 @@ export function SellAiPanel({
         href: "/sommelier",
         note: "Open wine recommendations when you are ready.",
       },
-      "Scan this supplier invoice": {
-        question: "Scan this supplier invoice",
-        href: "/invoices/scan",
-        note: "Open invoice capture when you are ready.",
+      "Something in stock for a BBQ under $20": {
+        question: "Something in stock for a BBQ under $20",
+        href: "/recommend/grocery",
+        note: "Open grocery recommendations when you are ready.",
       },
     };
     const workflow = workflows[action];
@@ -1494,7 +1510,7 @@ export function SellAiPanel({
                 <DialogueView
                   messages={messages}
                   onOpenLink={followChatLink}
-                  onRetry={(question) => void runIntent(question)}
+                  onRetry={(question) => void runIntent(question, true)}
                   onClear={clearChat}
                   busy={busy}
                   thinkingHint={thinkingHint}
@@ -1803,7 +1819,7 @@ function DialogueView({
                         ))}
                       </ul>
                     ) : null}
-                    {card.emptyReason ? (
+                    {card.emptyReason && !card.summary?.toLowerCase().includes(card.emptyReason.toLowerCase()) ? (
                       <p className="mt-1 text-[12px] text-[var(--oh-muted)]">{card.emptyReason}</p>
                     ) : null}
                     {cardCta ? (

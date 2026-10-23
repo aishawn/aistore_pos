@@ -81,7 +81,8 @@ const pages = [
   { path: "/sommelier", expect: [/Wine|Sommelier|AI|assistant|disabled|not enabled|coming/i] },
   { path: "/sommelier/find", expect: [/Find|Wine|taste|AI|disabled|not enabled/i] },
   { path: "/sommelier/identify", expect: [/Identify|label|AI|disabled|not enabled|upload/i] },
-  { path: "/invoices/scan", expect: [/Invoice|scan|AI|OCR|disabled|not enabled|supplier/i] },
+  { path: "/invoices", expect: [/Invoice|scan|AI|OCR|disabled|not enabled|supplier/i] },
+  { path: "/invoices/new", expect: [/Invoice|scan|AI|OCR|disabled|not enabled|supplier|PDF|Photograph/i] },
 ];
 
 function matchAll(text, patterns) {

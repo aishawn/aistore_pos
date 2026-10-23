@@ -77,7 +77,7 @@ try {
       await trigger.click();
       const dialog = page.getByRole("dialog", { name: "Orithos AI assistant", exact: true });
       await dialog.waitFor();
-      const shortcuts = ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Scan this supplier invoice"];
+      const shortcuts = ["Today's sales", "What should I restock?", "Which prices should I review?", "Recommend a red wine under $30", "Something in stock for a BBQ under $20"];
       for (const label of shortcuts) await dialog.getByRole("button", { name: label, exact: true }).waitFor();
       let trapped = true;
       for (let index = 0; index < 12; index += 1) {

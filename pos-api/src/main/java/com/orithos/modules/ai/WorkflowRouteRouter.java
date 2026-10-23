@@ -179,7 +179,7 @@ public final class WorkflowRouteRouter {
         if ((INVOICE.matcher(normalized).find() || INVOICE_NATURAL.matcher(normalized).find())
                 && !INVOICE_MUTATION.matcher(normalized).find()
                 && !REPORT_CONTEXT.matcher(normalized).find()) {
-            return new Override("navigate", "/invoices/scan");
+            return new Override("navigate", "/invoices");
         }
         return null;
     }

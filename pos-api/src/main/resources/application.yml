@@ -88,6 +88,9 @@ mybatis:
     default-fetch-size: 100
 
 app:
+  invoice:
+    # Reserved for future supplier-provided invoice APIs. Keep false until an adapter exists.
+    supplier-ingest-enabled: ${SUPPLIER_INVOICE_INGEST_ENABLED:false}
   # Public browser origin used in invite / password-reset links
   public-url: ${PUBLIC_APP_URL:http://localhost:3000}
   mail:

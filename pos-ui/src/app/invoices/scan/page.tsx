@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ScanInvoicePage } from "@/components/admin/ScanInvoicePage";
-
-export default function ScanInvoiceRoute() {
-  return <ScanInvoicePage />;
+/** Legacy AI / bookmark path — invoices now live under Stock → Invoices. */
+export default function LegacyInvoiceScanRedirect() {
+  redirect("/invoices/new");
 }

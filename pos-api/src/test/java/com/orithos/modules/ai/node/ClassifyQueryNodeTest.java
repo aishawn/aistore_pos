@@ -57,7 +57,7 @@ class ClassifyQueryNodeTest {
             Map<String, Object> result = node.apply(state);
 
             assertEquals("guided_action", result.get("intent"), question);
-            assertEquals("/invoices/scan", result.get("ui_route"), question);
+            assertEquals("/invoices", result.get("ui_route"), question);
         }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
@@ -75,7 +75,7 @@ class ClassifyQueryNodeTest {
         Map<String, Object> result = node.apply(state);
 
         assertEquals("guided_action", result.get("intent"));
-        assertEquals("/invoices/scan", result.get("ui_route"));
+        assertEquals("/invoices", result.get("ui_route"));
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
@@ -161,9 +161,9 @@ class ClassifyQueryNodeTest {
                 {"Create a customer", "/customers"},
                 {"编辑这个产品", "/products"},
                 {"Receive this stock", "/stock/replenishment"},
-                {"Receive this supplier invoice", "/invoices/scan"},
-                {"Upload an invoice", "/invoices/scan"},
-                {"上传这张账单", "/invoices/scan"},
+                {"Receive this supplier invoice", "/invoices"},
+                {"Upload an invoice", "/invoices"},
+                {"上传这张账单", "/invoices"},
                 {"Submit replenishment suggestions", "/stock/replenishment"},
                 {"Apply these prices", "/stock/capped-pricing"},
                 {"Execute pricing", "/stock/capped-pricing"},
@@ -466,7 +466,7 @@ class ClassifyQueryNodeTest {
         assertDeterministicResult(node, "帮我看下哪些要补货", "navigate", "/stock/replenishment");
         assertDeterministicResult(node, "What is a fair price for Shiraz?", "navigate", "/stock/capped-pricing");
         assertDeterministicResult(node, "Which prices look off?", "navigate", "/stock/capped-pricing");
-        assertDeterministicResult(node, "Snap this supplier invoice", "navigate", "/invoices/scan");
+        assertDeterministicResult(node, "Snap this supplier invoice", "navigate", "/invoices");
         assertDeterministicResult(node, "Red wine for steak", "navigate", "/sommelier");
         assertDeterministicResult(node, "Can you suggest something in stock for steak?", "navigate", "/sommelier");
         assertDeterministicResult(node, "红酒配牛排", "navigate", "/sommelier");

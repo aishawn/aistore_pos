@@ -1,5 +1,6 @@
 export type OdooRecordType =
   | "products"
+  | "purchaseProducts"
   | "posCategories"
   | "customers"
   | "suppliers"
@@ -750,6 +751,27 @@ export async function createOdooDraftRfq(input: {
   const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
   if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string" || typeof payload.auditSaved !== "boolean") {
     throw new OdooApiError(payload?.message || `Draft RFQ creation failed (${response.status})`, response.status || 502);
+  }
+  return payload;
+}
+
+export async function createOdooDraftRfqFromInvoice(input: {
+  supplierId: number;
+  invoiceNumber?: string | null;
+  invoiceDate?: string | null;
+  notes?: string | null;
+  lines: Array<{ productId: number; quantity: number; priceUnit?: number | null; description?: string | null }>;
+}): Promise<OdooDraftRfq> {
+  const response = await fetchOdooApi("/api/odoo/purchase-requests/from-invoice", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  const payload = await response.json().catch(() => null) as (OdooDraftRfq & { message?: string }) | null;
+  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string" || typeof payload.supplier !== "string" || typeof payload.url !== "string" || typeof payload.auditSaved !== "boolean") {
+    throw new OdooApiError(payload?.message || `Invoice RFQ creation failed (${response.status})`, response.status || 502);
   }
   return payload;
 }

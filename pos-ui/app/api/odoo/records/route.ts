@@ -18,6 +18,13 @@ const RECORD_TYPES = {
     searchFields: ["name", "barcode", "default_code"],
     baseDomain: [["available_in_pos", "=", true]],
   },
+  purchaseProducts: {
+    model: "product.product",
+    fields: ["id", "name", "display_name", "barcode", "default_code", "list_price", "uom_id", "purchase_ok"],
+    order: "name asc, id asc",
+    searchFields: ["name", "barcode", "default_code"],
+    baseDomain: [["purchase_ok", "=", true]],
+  },
   posCategories: {
     model: "pos.category",
     fields: ["id", "name", "parent_id"],

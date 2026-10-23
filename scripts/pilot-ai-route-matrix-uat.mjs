@@ -20,13 +20,17 @@ const routes = [
   "/sommelier",
   "/sommelier/find",
   "/sommelier/identify",
-  "/invoices/scan",
+  "/invoices",
   "/stock/stocktake",
 ];
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const checks = [];
 const isTransientNetworkError = (value) => /socket hang up|ECONNRESET|ECONNREFUSED|ETIMEDOUT|TLS connection|secure TLS|ERR_CONNECTION_CLOSED|Client network socket disconnected/i.test(String(value));
+const safeErrorEvidence = (error) => ({
+  errorType: error instanceof Error ? error.name : "UnknownError",
+  message: (error instanceof Error ? error.message : "Unexpected failure").split(/\r?\n/, 1)[0].slice(0, 200),
+});
 
 try {
   const login = await context.request.post(`${base}/api/auth/login`, {
@@ -88,15 +92,15 @@ try {
         && (pathname !== "/sommelier/identify" || (labelVisionAvailable ? !result.labelPhotoButtonDisabled : (result.labelPhotoButtonDisabled && result.disabledCopy))) ? "PASS" : "FAIL", evidence: result });
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unexpected failure";
-      checks.push({ name: pathname, status: isTransientNetworkError(detail) ? "BLOCKED" : "FAIL", evidence: { error: detail, pageErrors } });
+      checks.push({ name: pathname, status: isTransientNetworkError(detail) ? "BLOCKED" : "FAIL", evidence: { ...safeErrorEvidence(error), pageErrors } });
     } finally {
       await page.close();
     }
   }
-  await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
+  await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } }).catch(() => null);
 } catch (error) {
   const detail = error instanceof Error ? error.message : "Unexpected failure";
-  checks.push({ name: "route matrix setup", status: isTransientNetworkError(detail) ? "BLOCKED" : "FAIL", evidence: detail });
+  checks.push({ name: "route matrix setup", status: isTransientNetworkError(detail) ? "BLOCKED" : "FAIL", evidence: safeErrorEvidence(error) });
 } finally {
   await browser.close();
 }

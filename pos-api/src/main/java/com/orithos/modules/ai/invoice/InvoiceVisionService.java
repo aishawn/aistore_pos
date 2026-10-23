@@ -18,6 +18,15 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
+
+import javax.imageio.ImageIO;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -123,6 +132,10 @@ public class InvoiceVisionService {
         }
 
         String mime = resolveMime(file.getContentType(), file.getOriginalFilename());
+        if ("application/pdf".equals(mime)) {
+            bytes = rasterizePdf(bytes);
+            mime = "image/jpeg";
+        }
         String dataUri = "data:" + mime + ";base64," + Base64.getEncoder().encodeToString(bytes);
 
         boolean multimodal = DashScopeModelRouting.requiresMultimodalEndpoint(properties.visionModel());
@@ -277,14 +290,56 @@ public class InvoiceVisionService {
     private static String resolveMime(String contentType, String filename) {
         if (StringUtils.hasText(contentType)) {
             String mime = contentType.split(";")[0].trim().toLowerCase(Locale.ROOT);
-            if (mime.startsWith("image/")) return mime;
+            if (mime.startsWith("image/") || "application/pdf".equals(mime)) return mime;
         }
         String name = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
+        if (name.endsWith(".pdf")) return "application/pdf";
         if (name.endsWith(".png")) return "image/png";
         if (name.endsWith(".webp")) return "image/webp";
         if (name.endsWith(".gif")) return "image/gif";
         if (name.endsWith(".heic") || name.endsWith(".heif")) return "image/heic";
         return "image/jpeg";
+    }
+
+    /** Render up to three PDF pages into one JPEG for vision OCR. */
+    static byte[] rasterizePdf(byte[] pdfBytes) {
+        try (PDDocument document = Loader.loadPDF(pdfBytes)) {
+            if (document.getNumberOfPages() < 1) {
+                throw new BusinessException(40010, "PDF has no pages.");
+            }
+            PDFRenderer renderer = new PDFRenderer(document);
+            int pages = Math.min(document.getNumberOfPages(), 3);
+            List<BufferedImage> images = new ArrayList<>(pages);
+            int width = 0;
+            int height = 0;
+            for (int i = 0; i < pages; i++) {
+                BufferedImage page = renderer.renderImageWithDPI(i, 144, ImageType.RGB);
+                images.add(page);
+                width = Math.max(width, page.getWidth());
+                height += page.getHeight();
+            }
+            BufferedImage collage = new BufferedImage(Math.max(width, 1), Math.max(height, 1), BufferedImage.TYPE_INT_RGB);
+            Graphics2D graphics = collage.createGraphics();
+            int y = 0;
+            for (BufferedImage page : images) {
+                graphics.drawImage(page, 0, y, null);
+                y += page.getHeight();
+            }
+            graphics.dispose();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            if (!ImageIO.write(collage, "jpg", out)) {
+                throw new BusinessException(40012, "Could not convert PDF pages for OCR.");
+            }
+            byte[] jpeg = out.toByteArray();
+            if (jpeg.length > MAX_BYTES) {
+                throw new BusinessException(40011, "Converted PDF is too large (max 8 MB). Try fewer pages or a smaller file.");
+            }
+            return jpeg;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(40012, "Could not read that PDF. Try exporting the first pages as images.");
+        }
     }
 
     private static String trimTrailingSlash(String url) {

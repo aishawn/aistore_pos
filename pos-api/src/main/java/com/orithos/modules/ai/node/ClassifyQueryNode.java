@@ -292,7 +292,7 @@ public class ClassifyQueryNode implements NodeAction {
     private static String writeRouteForQuestion(String question, boolean stockTarget, boolean priceTarget) {
         // Mutation review destinations stay deterministic even when a classifier is unavailable.
         if (priceTarget) return "/stock/capped-pricing";
-        if (isInvoiceWriteTarget(question)) return "/invoices/scan";
+        if (isInvoiceWriteTarget(question)) return "/invoices";
         if (stockTarget || isStockMutationTarget(question)) return "/stock/replenishment";
         // Purchase/order language must win over a product noun in phrases such as
         // "buy these items" or "order these products".
@@ -357,7 +357,7 @@ public class ClassifyQueryNode implements NodeAction {
         return switch (target.toLowerCase(java.util.Locale.ROOT)) {
             case "customer", "client" -> "/customers";
             case "product", "item", "catalogue", "catalog" -> "/products";
-            case "invoice", "bill" -> "/invoices/scan";
+            case "invoice", "bill" -> "/invoices";
             case "supplier", "vendor" -> "/suppliers/odoo";
             case "order", "purchase" -> "/orders";
             case "stock", "inventory" -> "/stock/replenishment";

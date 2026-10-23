@@ -30,7 +30,7 @@ try {
 
   for (const test of [
     { name: "Identify", route: "/sommelier/identify", button: "Photograph label", heading: "Identify a wine" },
-    { name: "Invoice", route: "/invoices/scan", button: "Photograph or upload", heading: "Scan supplier invoice" },
+    { name: "Invoice", route: "/invoices/new", button: "Photograph or upload", heading: "Scan supplier invoice" },
   ]) {
     const page = await context.newPage();
     let configSeen = false;

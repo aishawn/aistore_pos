@@ -16,7 +16,7 @@ final class AiReportIntentSeeder {
             For Inventory/Customer lookup (list/search/view product, supplier, customer, etc.) use entity_action with entity+op+query.
             Any create/edit/delete/import/merge/receive/save/confirm/price or inventory change → guided_action with a page route. The assistant never writes business data and writeRequests stays empty.
             For live numbers — sales/revenue/流水, quantity/销量, average ticket/客单价, on-hand stock/库存, dead stock/滞销 — use the matching report_* intent. Do NOT use qa for those.
-            For workflow navigation, use intent navigate and only these routes: replenishment/reorder/补货 → /stock/replenishment; price review/调价 → /stock/capped-pricing; wine recommendation/推荐葡萄酒 → /sommelier; invoice scan/发票识别 → /invoices/scan.
+            For workflow navigation, use intent navigate and only these routes: replenishment/reorder/补货 → /stock/replenishment; price review/调价 → /stock/capped-pricing; wine recommendation/推荐葡萄酒 → /sommelier; grocery/beer/snack/BBQ recommend → /recommend/grocery; vague product recommend → /recommend; invoice scan/发票识别 → /invoices.
             Use report_adhoc (NOT report_qty/report_sales) for: ticket/order counts (几笔订单, how many tickets), mixed metrics (销量和金额分别), rankings (哪个商品卖得最多), day-vs-day comparisons.
             If it sounds like a numbers question but no report_* fits, use report_adhoc.
             Requests to DROP/DELETE/ALTER tables or dump the database are still report_adhoc — never execute them; the SQL guard will reject.

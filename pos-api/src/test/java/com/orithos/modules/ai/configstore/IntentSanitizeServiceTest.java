@@ -53,8 +53,8 @@ class IntentSanitizeServiceTest {
                 "/stock/capped-pricing", null, null, null, null, null)).route());
         assertEquals("/sommelier", service.sanitize(raw("navigate", "Wine recommendations",
                 "/sommelier", null, null, null, null, null)).route());
-        assertEquals("/invoices/scan", service.sanitize(raw("navigate", "Invoice capture",
-                "/invoices/scan", null, null, null, null, null)).route());
+        assertEquals("/invoices", service.sanitize(raw("navigate", "Invoice capture",
+                "/invoices", null, null, null, null, null)).route());
     }
 
     @Test
@@ -142,7 +142,7 @@ class IntentSanitizeServiceTest {
                 value("route", "replenishment", "/stock/replenishment"),
                 value("route", "capped_pricing", "/stock/capped-pricing"),
                 value("route", "sommelier", "/sommelier"),
-                value("route", "invoice_scan", "/invoices/scan"),
+                value("route", "invoice_scan", "/invoices"),
                 value("view", "list", "list"), value("panel", "inventory", "inventory"),
                 value("action", "open", "open"), value("entity", "customer", "customer"),
                 value("entity", "product", "product"), value("op", "create", "create"),
