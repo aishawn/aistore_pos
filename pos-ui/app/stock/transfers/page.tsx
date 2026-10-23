@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { StockTransfersPage } from "@/components/admin/StockTransfersPage";
-
-export default function StockTransfersRoute() {
-  return <StockTransfersPage />;
+/** Transfers live under Purchases — keep this path for old links. */
+export default function TransfersRedirect() {
+  redirect("/purchases/odoo?tab=transfers");
 }

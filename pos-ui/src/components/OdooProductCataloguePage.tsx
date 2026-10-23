@@ -17,6 +17,7 @@ import {
 } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
 import { parseProductCsv, type ProductImportRow } from "@/lib/product-csv";
+import { OdooStocktakePanel } from "@/components/admin/OdooStocktakePanel";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { ProductImage } from "@/components/ProductImage";
 import { prepareProductImage } from "@/lib/product-image";
@@ -95,6 +96,7 @@ export function OdooProductCataloguePage() {
     focusWhenReady();
     return () => window.cancelAnimationFrame(frame);
   }, [categoryLoading, importBusy, importOpen]);
+  const tab = searchParams.get("tab") === "stocktake" ? "stocktake" : "catalogue";
   const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
   const showR2DisplayNote = useMemo(
     () => items.some((product) => {
@@ -349,13 +351,34 @@ export function OdooProductCataloguePage() {
       <header className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
-          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">POS products, prices and stock data from Odoo.</p>
-          {showR2DisplayNote && (
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
+            {tab === "stocktake" ? "Count physical stock and apply Odoo adjustments when write is enabled." : "POS products, prices and stock data from Odoo."}
+          </p>
+          {tab === "catalogue" && showR2DisplayNote && (
             <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
               Import prefixes such as R2 TEST are hidden in the list; SKUs may still start with R2- for reconciliation.
             </p>
           )}
+          <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Products views">
+            <Link
+              href="/products/odoo"
+              role="tab"
+              aria-selected={tab === "catalogue"}
+              className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "catalogue" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}
+            >
+              Catalogue
+            </Link>
+            <Link
+              href="/products/odoo?tab=stocktake"
+              role="tab"
+              aria-selected={tab === "stocktake"}
+              className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "stocktake" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}
+            >
+              Count stock
+            </Link>
+          </div>
         </div>
+        {tab === "catalogue" && (
         <div className="grid grid-cols-2 items-center gap-2 sm:flex">
           <button type="button" onClick={() => void exportProductsCsv()} disabled={connected !== true || exportBusy} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3">{exportBusy ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}<span className="sm:hidden">Export</span><span className="hidden sm:inline">Export CSV</span></button>
           <button type="button" onClick={() => { setImportRows([]); setImportErrors([]); setImportResult(null); setImportFileName(""); setImportOpen(true); }} disabled={connected !== true} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-2.5 text-sm font-semibold text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3"><FileUp size={16} /><span className="sm:hidden">Import</span><span className="hidden sm:inline">Import CSV</span></button>
@@ -364,6 +387,7 @@ export function OdooProductCataloguePage() {
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />}<span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
+        )}
       </header>
 
       {connected === false ? (
@@ -378,6 +402,10 @@ export function OdooProductCataloguePage() {
             </div>
           </div>
         </section>
+      ) : tab === "stocktake" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
+          <OdooStocktakePanel />
+        </div>
       ) : (
         <>
           <div className="flex shrink-0 flex-wrap gap-3">

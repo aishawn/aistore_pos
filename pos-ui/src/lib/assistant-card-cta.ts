@@ -26,6 +26,8 @@ const workflowLabels: Record<string, string> = {
   "/stock/replenishment": "Open replenishment",
   "/stocktake": "Open stocktake",
   "/stock/stocktake": "Open stocktake",
+  "/products/odoo": "Open products",
+  "/purchases/odoo": "Open purchases",
   "/stock/transfers": "Open transfers",
   "/stock/transfers/new": "Create transfer",
 };

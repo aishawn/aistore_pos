@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowUpRight, Check, ChevronLeft, ChevronRight, ExternalLink, FileText, LoaderCircle, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
 import { confirmOdooPurchaseOrder, getOdooPosBootstrap, getOdooPurchaseOrderDetail, getOdooSession, receiveOdooPurchaseOrder, searchOdooPurchaseOrders, OdooApiError, type OdooPurchaseOrderDetail, type OdooPurchaseOrderRecord } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { StockTransfersPage } from "@/components/admin/StockTransfersPage";
+import { CreateStockTransferPage } from "@/components/admin/CreateStockTransferPage";
 
 const PAGE_SIZE = 40;
 const STATUS_OPTIONS = [
@@ -100,6 +103,9 @@ function PurchaseOrdersEmptyState({ filtered, onReset }: { filtered: boolean; on
 }
 
 export function OdooPurchaseOrdersPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = tabParam === "transfer-new" ? "transfer-new" : tabParam === "transfers" ? "transfers" : "orders";
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooPurchaseOrderRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -306,13 +312,35 @@ export function OdooPurchaseOrdersPage() {
   return (
     <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
       <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Odoo</p><h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1><p className="mt-1 text-sm text-[var(--oh-muted)]">Review requests for quotation and purchase orders from your current Odoo companies.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</p></div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Odoo</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1>
+          <p className="mt-1 text-sm text-[var(--oh-muted)]">
+            {tab === "orders"
+              ? <>Review RFQs and purchase orders.{lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}</>
+              : tab === "transfer-new"
+                ? "Create a same-company warehouse transfer."
+                : "Move stock between warehouses in this company (optional; only if you have 2+ locations)."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Purchases views">
+            <Link href="/purchases/odoo" role="tab" aria-selected={tab === "orders"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "orders" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Orders</Link>
+            <Link href="/purchases/odoo?tab=transfers" role="tab" aria-selected={tab === "transfers" || tab === "transfer-new"} className={`inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold ${tab === "transfers" || tab === "transfer-new" ? "bg-[var(--oh-primary)] text-white" : "bg-white text-[var(--oh-text-secondary)] ring-1 ring-[var(--oh-border)]"}`}>Transfers</Link>
+          </div>
+        </div>
+        {tab === "orders" && (
         <div className="flex items-center gap-2">
           <Link href="/stock/replenishment" className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><ShoppingCart size={16} /> Replenishment</Link>
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh purchases" title="Refresh purchases" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
+        )}
       </header>
 
+      {tab === "transfers" ? (
+        <StockTransfersPage embedded />
+      ) : tab === "transfer-new" ? (
+        <CreateStockTransferPage embedded />
+      ) : (
+      <>
       {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
       <div className="flex flex-wrap gap-3">
@@ -450,6 +478,8 @@ export function OdooPurchaseOrdersPage() {
           </footer>
         </section>
       </div>}
+      </>
+      )}
     </main>
   );
 }

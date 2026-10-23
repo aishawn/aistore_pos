@@ -16,7 +16,7 @@ function stateLabel(state: string) {
   }
 }
 
-export function StockTransfersPage() {
+export function StockTransfersPage({ embedded = false }: { embedded?: boolean }) {
   const [data, setData] = useState<OdooTransfersBootstrap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,34 +41,33 @@ export function StockTransfersPage() {
   const items: OdooTransferListItem[] = data?.items ?? [];
   const canCreate = (data?.locations.length ?? 0) >= 2;
 
-  return (
-    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Moves</p>
-            <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Transfers</h1>
-            <p className="mt-1 text-sm text-[var(--oh-muted)]">
-              Move stock between warehouses in this Odoo company. Cross-company store transfers stay in Odoo.
-            </p>
-          </div>
-          <Link
-            href="/stock/transfers/new"
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold ${
-              canCreate
-                ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
-                : "pointer-events-none bg-[var(--oh-surface)] text-[var(--oh-muted)] ring-1 ring-[var(--oh-border)]"
-            }`}
-            aria-disabled={!canCreate}
-          >
-            <Plus size={17} />
-            New transfer
-          </Link>
-        </div>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+  const newHref = embedded ? "/purchases/odoo?tab=transfer-new" : "/stock/transfers/new";
+  const body = (
+        <div className={`flex flex-col gap-4 ${embedded ? "" : "mx-auto w-full max-w-6xl"}`}>
+          {!embedded && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <p className="text-sm text-[var(--oh-muted)]">Move stock between warehouses in this company.</p>
+              <Link
+                href={newHref}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold ${
+                  canCreate
+                    ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
+                    : "pointer-events-none bg-[var(--oh-surface)] text-[var(--oh-muted)] ring-1 ring-[var(--oh-border)]"
+                }`}
+                aria-disabled={!canCreate}
+              >
+                <Plus size={17} />
+                New transfer
+              </Link>
+            </div>
+          )}
+          {embedded && canCreate && (
+            <div className="flex justify-end">
+              <Link href={newHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)]">
+                <Plus size={17} /> New transfer
+              </Link>
+            </div>
+          )}
           {data?.note && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">{data.note}</div>
           )}
@@ -123,7 +122,19 @@ export function StockTransfersPage() {
             </section>
           )}
         </div>
-      </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+        <div className="mx-auto w-full max-w-6xl">
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Moves</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Transfers</h1>
+        </div>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">{body}</div>
     </main>
   );
 }

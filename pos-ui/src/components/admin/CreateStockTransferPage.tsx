@@ -24,7 +24,7 @@ interface LineDraft {
   quantity: number;
 }
 
-export function CreateStockTransferPage() {
+export function CreateStockTransferPage({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const [locations, setLocations] = useState<OdooTransferLocation[]>([]);
   const [noteHint, setNoteHint] = useState<string | null>(null);
@@ -89,7 +89,9 @@ export function CreateStockTransferPage() {
         validate,
         lines: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
       });
-      router.push(`/stock/transfers?created=${encodeURIComponent(created.name)}`);
+      router.push(embedded
+        ? `/purchases/odoo?tab=transfers&created=${encodeURIComponent(created.name)}`
+        : `/purchases/odoo?tab=transfers&created=${encodeURIComponent(created.name)}`);
     } catch (cause) {
       setError(cause instanceof OdooApiError ? cause.message : "Could not create transfer.");
     } finally {
@@ -99,24 +101,15 @@ export function CreateStockTransferPage() {
 
   if (loading) {
     return (
-      <main className="grid h-full place-items-center bg-[var(--oh-surface)] text-sm text-[var(--oh-muted)]">
+      <div className="grid place-items-center py-16 text-sm text-[var(--oh-muted)]">
         <span className="inline-flex items-center gap-2"><LoaderCircle className="animate-spin" size={17} /> Loading locations…</span>
-      </main>
+      </div>
     );
   }
 
-  return (
-    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <div className="mx-auto w-full max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Transfers</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">New transfer</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Same-company warehouse move. Does not invent products or GST.</p>
-        </div>
-      </header>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+  const body = (
+        <div className={`flex flex-col gap-4 ${embedded ? "" : "mx-auto w-full max-w-3xl"}`}>
+          {!embedded && <p className="text-sm text-[var(--oh-muted)]">Same-company warehouse move. Does not invent products or GST.</p>}
           {noteHint && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">{noteHint}</div>}
           {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>}
 
@@ -201,22 +194,31 @@ export function CreateStockTransferPage() {
               {!lines.length && <li className="py-6 text-center text-sm text-[var(--oh-muted)]">Add at least one product.</li>}
             </ul>
           </section>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <Link href="/purchases/odoo?tab=transfers" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</Link>
+            <button
+              type="button"
+              onClick={() => void onSubmit()}
+              disabled={saving || !fromId || !toId || fromId === toId || lines.length === 0 || locations.length < 2}
+              className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
+            >
+              {saving ? "Creating…" : validate ? "Transfer now" : "Create transfer"}
+            </button>
+          </div>
         </div>
-      </div>
+  );
 
-      <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
-        <div className="mx-auto flex w-full max-w-3xl flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          <Link href="/stock/transfers" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</Link>
-          <button
-            type="button"
-            onClick={() => void onSubmit()}
-            disabled={saving || !fromId || !toId || fromId === toId || lines.length === 0 || locations.length < 2}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
-          >
-            {saving ? "Creating…" : validate ? "Transfer now" : "Create transfer"}
-          </button>
+  if (embedded) return body;
+
+  return (
+    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+        <div className="mx-auto w-full max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Transfers</p>
+          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">New transfer</h1>
         </div>
-      </footer>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">{body}</div>
     </main>
   );
 }

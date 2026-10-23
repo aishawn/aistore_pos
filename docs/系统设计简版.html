@@ -96,15 +96,15 @@
         <div class="step"><b>Purchases</b>确认/收货</div>
       </div>
 
-      <h3>路径 C · 盘点纠偏</h3>
+      <h3>路径 C · 盘点纠偏（非每天必做）</h3>
       <div class="flow">
-        <div class="step"><b>Stocktake</b>/stock/stocktake</div><span class="arr">→</span>
+        <div class="step"><b>Products</b>Count stock 页签</div><span class="arr">→</span>
         <div class="step"><b>确认数量</b></div><span class="arr">→</span>
         <div class="step"><b>写 Odoo</b>需写开关</div>
       </div>
-      <h3>路径 D · 店内调拨</h3>
+      <h3>路径 D · 店内调拨（多仓才需要）</h3>
       <div class="flow">
-        <div class="step"><b>Transfers</b>/stock/transfers</div><span class="arr">→</span>
+        <div class="step"><b>Purchases</b>Transfers 页签</div><span class="arr">→</span>
         <div class="step"><b>选仓位</b>同公司</div><span class="arr">→</span>
         <div class="step"><b>确认调拨</b></div>
       </div>
@@ -180,8 +180,8 @@
           <tr><td>发票 OCR → 收货</td><td>Invoices</td><td><span class="badge warn">有·待验</span></td><td>隔离写 UAT、真实 OCR 准确率未过</td></tr>
           <tr><td>OCR 自动建新品</td><td>—</td><td><span class="badge plan">不做 v1</span></td><td>防瞎造 GST/售价</td></tr>
           <tr><td>供应商 API 直连</td><td>ingest stub</td><td><span class="badge plan">脚手架</span></td><td>开关默认关</td></tr>
-          <tr><td>盘点</td><td><code>/stock/stocktake</code></td><td><span class="badge warn">有·写关</span></td><td>Stock 侧栏已挂；Demo 写开关默认关</td></tr>
-          <tr><td>店内库位调拨</td><td><code>/stock/transfers</code></td><td><span class="badge warn">有·待验</span></td><td>同公司仓位间内部调拨；跨公司仍走 Odoo</td></tr>
+          <tr><td>盘点</td><td>Products → Count stock</td><td><span class="badge warn">有·写关</span></td><td>非必做；并入 Products 页签；写开关默认关</td></tr>
+          <tr><td>店内库位调拨</td><td>Purchases → Transfers</td><td><span class="badge warn">有·待验</span></td><td>多仓才要；并入 Purchases 页签；单仓可忽略</td></tr>
           <tr><td>调价建议</td><td>Price Suggestions</td><td><span class="badge warn">有·待验</span></td><td>人工写入 Products</td></tr>
           <tr><td>客户 / 分组 / 价目表</td><td>Customers…</td><td><span class="badge ok">有</span></td><td></td></tr>
           <tr><td>挂账收款 / 拆分支付</td><td>—</td><td><span class="badge plan">规划</span></td><td></td></tr>

@@ -69,8 +69,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Replenishment", href: "/stock/replenishment", permission: "stock.replenishment" },
       { label: "Purchases", href: "/purchases/odoo", permission: "stock.purchases" },
       { label: "Invoices", href: "/invoices", matchHrefs: ["/invoices/"], permission: "stock.invoices" },
-      { label: "Stocktake", href: "/stock/stocktake", permission: "stock.stocktake" },
-      { label: "Transfers", href: "/stock/transfers", matchHrefs: ["/stock/transfers/"], permission: "stock.receive" },
       { label: "Suppliers", href: "/suppliers/odoo", permission: "stock.suppliers" },
     ],
   },

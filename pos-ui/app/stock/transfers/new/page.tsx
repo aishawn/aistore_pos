@@ -1,7 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { CreateStockTransferPage } from "@/components/admin/CreateStockTransferPage";
-
-export default function NewStockTransferRoute() {
-  return <CreateStockTransferPage />;
+export default function NewTransferRedirect() {
+  redirect("/purchases/odoo?tab=transfer-new");
 }
