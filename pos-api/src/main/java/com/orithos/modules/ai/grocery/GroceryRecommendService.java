@@ -35,6 +35,8 @@ public class GroceryRecommendService {
                     && !profile.category().equals(category))) continue;
 
             BigDecimal sell = decimal(row.get("sell_price"));
+            BigDecimal quantity = decimal(row.get("quantity"));
+            if (quantity.compareTo(BigDecimal.ZERO) <= 0) continue;
             BigDecimal min = profile.budgetMin();
             BigDecimal max = profile.budgetMax();
             if (min != null && sell.compareTo(min) < 0 || max != null && sell.compareTo(max) > 0) continue;
@@ -44,7 +46,7 @@ public class GroceryRecommendService {
             String badge = "not_sure".equals(profile.category()) ? "In-stock pick" : label(category);
             String reason = reason(category, sell, profile);
             candidates.add(new GroceryRecommendCard(id, name, "", badge, category,
-                    decimal(row.get("list_price")), sell, decimal(row.get("quantity")), null,
+                    decimal(row.get("list_price")), sell, quantity, null,
                     100, reason));
         }
 
