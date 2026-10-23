@@ -1023,6 +1023,75 @@ export async function receiveOdooPurchaseOrder(
   return { pickingName: payload.pickingName, pickingState: payload.pickingState || "" };
 }
 
+export interface OdooTransferLocation {
+  id: number;
+  name: string;
+  warehouseId: number;
+  pickingTypeId: number;
+}
+
+export interface OdooTransferListItem {
+  id: number;
+  name: string;
+  state: string;
+  fromLocation?: string | null;
+  toLocation?: string | null;
+  scheduledDate?: string | null;
+  origin?: string | null;
+}
+
+export interface OdooTransfersBootstrap {
+  writeEnabled: boolean;
+  companyId: number;
+  warehouses: Array<{ id: number; name: string; locationId: number; locationName: string; pickingTypeId: number }>;
+  locations: OdooTransferLocation[];
+  items: OdooTransferListItem[];
+  note?: string;
+}
+
+export async function getOdooTransfers(): Promise<OdooTransfersBootstrap> {
+  const response = await fetchOdooApi("/api/odoo/transfers", { credentials: "same-origin", cache: "no-store" }, true);
+  const payload = await response.json().catch(() => null) as (OdooTransfersBootstrap & { message?: string }) | null;
+  if (!response.ok || !payload || !Array.isArray(payload.locations) || !Array.isArray(payload.items)) {
+    throw new OdooApiError(payload?.message || `Transfer list failed (${response.status})`, response.status || 502);
+  }
+  return payload;
+}
+
+export async function createOdooStockTransfer(input: {
+  fromLocationId: number;
+  toLocationId: number;
+  note?: string;
+  validate?: boolean;
+  lines: Array<{ productId: number; quantity: number }>;
+}): Promise<{ id: number; name: string; state: string; fromLocation: string; toLocation: string }> {
+  const response = await fetchOdooApi("/api/odoo/transfers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    cache: "no-store",
+    body: JSON.stringify(input),
+  });
+  const payload = await response.json().catch(() => null) as {
+    id?: number;
+    name?: string;
+    state?: string;
+    fromLocation?: string;
+    toLocation?: string;
+    message?: string;
+  } | null;
+  if (!response.ok || !payload || typeof payload.id !== "number" || typeof payload.name !== "string") {
+    throw new OdooApiError(payload?.message || `Transfer create failed (${response.status})`, response.status || 502);
+  }
+  return {
+    id: payload.id,
+    name: payload.name,
+    state: payload.state || "",
+    fromLocation: payload.fromLocation || "",
+    toLocation: payload.toLocation || "",
+  };
+}
+
 export async function postOdooSessionCash(body: {
   configId: number;
   direction: "in" | "out";

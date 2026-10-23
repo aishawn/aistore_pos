@@ -25,6 +25,9 @@ const workflowLabels: Record<string, string> = {
   "/stock/capped-pricing": "Open price review",
   "/stock/replenishment": "Open replenishment",
   "/stocktake": "Open stocktake",
+  "/stock/stocktake": "Open stocktake",
+  "/stock/transfers": "Open transfers",
+  "/stock/transfers/new": "Create transfer",
 };
 
 const INTERNAL_ORIGIN = "https://orithos.invalid";
@@ -33,6 +36,13 @@ const odooRouteByLegacyRoot: Record<string, string> = {
   "/customers": "/customers/odoo",
   "/products": "/products/odoo",
 };
+
+export function assistantSaleActionHref(action: string | null | undefined): string {
+  const normalized = action?.trim().toLowerCase();
+  if (normalized === "create customer") return "/customers/odoo";
+  if (normalized === "create product") return "/products/odoo";
+  return "/";
+}
 
 export function normalizeAssistantHref(value: string | null | undefined): string | null {
   const href = value?.trim();

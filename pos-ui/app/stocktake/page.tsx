@@ -1,1 +1,6 @@
-export { default } from "@/app/stocktake/page";
+import { redirect } from "next/navigation";
+
+/** Classic MySQL stocktake list → Odoo stocktake. */
+export default function ClassicStocktakeRedirect() {
+  redirect("/stock/stocktake");
+}

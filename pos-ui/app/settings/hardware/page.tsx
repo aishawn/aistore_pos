@@ -1,6 +1,7 @@
 import { Info, Monitor, Printer, ScanBarcode, Wallet, type LucideIcon } from "lucide-react";
 import { AdminPageLayout } from "@/components/admin/AdminPageLayout";
 import { DevicesSettingsTabs } from "@/components/admin/SetupHubTabs";
+import { HardwareBarcodeTest } from "@/components/admin/HardwareBarcodeTest";
 
 const devices: {
   name: string;
@@ -94,6 +95,8 @@ export default function HardwarePage() {
           ))}
         </ul>
       </section>
+
+      <HardwareBarcodeTest />
     </AdminPageLayout>
   );
 }

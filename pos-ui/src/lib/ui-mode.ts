@@ -38,8 +38,14 @@ export function isMobileAllowedPath(pathname: string): boolean {
     path.startsWith("/assistant/") ||
     path === "/sommelier" ||
     path.startsWith("/sommelier/") ||
+    path === "/recommend" ||
+    path.startsWith("/recommend/") ||
     path === "/invoices/scan" ||
-    path.startsWith("/invoices/")
+    path.startsWith("/invoices/") ||
+    path === "/stock/stocktake" ||
+    path.startsWith("/stock/stocktake/") ||
+    path === "/stock/transfers" ||
+    path.startsWith("/stock/transfers/")
   );
 }
 

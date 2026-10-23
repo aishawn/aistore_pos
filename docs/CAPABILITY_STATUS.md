@@ -1201,6 +1201,7 @@ Statuses:
 | Approve → draft RFQ (human gated) | Accepted | Never auto-confirms PO |
 | Replenishment approval audit | Accepted | Live isolated-company UAT created a draft RFQ and read back one internal Odoo chatter audit containing the forecast method, target coverage, suggested/ordered quantities and reason; zeroed suggestions remain audit-only and are excluded from PO lines. Evidence: `docs/UAT_REPLENISHMENT_AUDIT_LIVE_2026-10-17.json`. RFQ remains draft and is never auto-confirmed. |
 | Supplier invoice OCR → receive draft | In progress | Stock → **Invoices** hub with Capture → Match → Receive → Done stepper. Scan/save does **not** update Products stock; only Confirm → PO → receive does, for matched lines. UI: ABN supplier recall, product auto-suggest, confirm checklist, finish-receive for `po_created`, post-receive links to Purchases/Products. Supplier API ingest still scaffolded. Isolation write UAT + OCR accuracy still required before pilot acceptance. |
+| Internal stock transfers (same company) | In progress | Stock → **Transfers** (`/stock/transfers`, `/stock/transfers/new`) + `GET/POST /api/odoo/transfers`. Lists internal pickings; creates warehouse-to-warehouse moves with optional validate. Stocktake linked in Stock nav (`/stock/stocktake`); classic `/stocktake` redirects. Cross-company transfers and hardware printer/drawer drivers still out of scope. Isolation write UAT required. |
 | Banner / buyer-group price files | Planned | |
 
 ## Reporting & AI
