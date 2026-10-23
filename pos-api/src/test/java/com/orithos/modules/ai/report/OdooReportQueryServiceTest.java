@@ -352,8 +352,9 @@ class OdooReportQueryServiceTest {
         when(vendors.findById(42L)).thenThrow(new IllegalStateException("vendor storage unavailable"));
         OdooReportQueryService service = service(vendors);
         TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        LocalDate day = LocalDate.of(2026, 10, 16);
         ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
-                LocalDate.of(2026, 10, 16), LocalDate.of(2026, 10, 16));
+                day.atStartOfDay(), day.plusDays(1).atStartOfDay(), 1);
 
         OdooReportQueryService.Result result = service.query(
                 tenant, "report_stock", Map.of("query", "Shiraz"), window);
