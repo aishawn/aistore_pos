@@ -1070,8 +1070,21 @@ export function OdooRegisterPage() {
   }
 
   const topCategories = posCategories.filter((category) => !category.parent_id);
-  const categoryTiles = topCategories.length > 0 ? topCategories : posCategories;
+  const SALE_KEY_ORDER = ["beer", "wine", "wines", "spirits", "soft drinks", "grocery", "products"];
+  const unsortedTiles = topCategories.length > 0 ? topCategories : posCategories;
+  const categoryTiles = [...unsortedTiles].sort((a, b) => {
+    const aName = friendlyProductName(a.name).toLowerCase();
+    const bName = friendlyProductName(b.name).toLowerCase();
+    const aRank = SALE_KEY_ORDER.findIndex((key) => aName === key || aName.includes(key));
+    const bRank = SALE_KEY_ORDER.findIndex((key) => bName === key || bName.includes(key));
+    const aScore = aRank >= 0 ? aRank : SALE_KEY_ORDER.length;
+    const bScore = bRank >= 0 ? bRank : SALE_KEY_ORDER.length;
+    if (aScore !== bScore) return aScore - bScore;
+    return aName.localeCompare(bName);
+  });
   const showCatalogHome = catalogHome && !query.trim();
+  const saleKeyTileClass =
+    "flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border px-2 py-3 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]";
   const productCount = lines.length;
   const cashMethod = paymentMethods.find((item) => item.type === "cash");
   const cardMethod = paymentMethods.find((item) => item.type !== "cash");
@@ -1270,11 +1283,11 @@ export function OdooRegisterPage() {
                       </button>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                     <button
                       type="button"
                       onClick={() => openCategory(null)}
-                      className="flex aspect-square max-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border p-2 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98]"
+                      className={saleKeyTileClass}
                       style={{ backgroundColor: "var(--oh-tile-green-bg)", borderColor: "var(--oh-tile-green-border)", color: "var(--oh-tile-green-text)" }}
                     >
                       All products
@@ -1287,7 +1300,7 @@ export function OdooRegisterPage() {
                           key={category.id}
                           type="button"
                           onClick={() => openCategory(category.id)}
-                          className="flex aspect-square max-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border p-2 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98]"
+                          className={saleKeyTileClass}
                           style={{ backgroundColor: tone.bg, borderColor: tone.border, color: tone.text }}
                         >
                           {label}
@@ -1435,10 +1448,18 @@ export function OdooRegisterPage() {
 
         <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
           <div className="flex flex-wrap items-center gap-2">
-            <AdminNavyButton className="min-h-11" onClick={() => selectCardPayment()} disabled={!lines.length || !cardMethod}>
+            <AdminNavyButton
+              className={cn("min-h-11", lines.length > 0 && !isCashPayment && "ring-2 ring-[var(--oh-primary)] ring-offset-1")}
+              onClick={() => selectCardPayment()}
+              disabled={!lines.length || !cardMethod}
+            >
               EFTPOS
             </AdminNavyButton>
-            <AdminSecondaryButton className="min-h-11" onClick={() => selectCashPayment(true)} disabled={!lines.length || !cashMethod || !quoteIsCurrent}>
+            <AdminSecondaryButton
+              className={cn("min-h-11", lines.length > 0 && isCashPayment && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)] ring-2 ring-[var(--oh-primary)] ring-offset-1")}
+              onClick={() => selectCashPayment(true)}
+              disabled={!lines.length || !cashMethod || !quoteIsCurrent}
+            >
               Exact Cash
             </AdminSecondaryButton>
             <AdminSecondaryButton className="min-h-11" onClick={applyCaseQuantity} disabled={!lines.length}>
@@ -1447,13 +1468,11 @@ export function OdooRegisterPage() {
             <AdminSecondaryButton className="min-h-11" onClick={clearSale} disabled={!lines.length}>
               Clear Sale
             </AdminSecondaryButton>
-            <div className="ml-auto flex flex-wrap items-center gap-3">
-              {lines.length > 0 && (
-                <span className="text-[22px] font-bold leading-none text-[var(--oh-text)]">
-                  ${totalWhole}
-                  <span className="text-[14px]">.{totalCents}</span>
-                </span>
-              )}
+            <div className="ml-auto flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-1.5 shadow-sm">
+              <span className={cn("text-[22px] font-bold leading-none tabular-nums", lines.length ? "text-[var(--oh-text)]" : "text-[var(--oh-border-strong)]")}>
+                ${totalWhole}
+                <span className="text-[14px]">.{totalCents}</span>
+              </span>
               <button
                 type="button"
                 disabled={!canFinalise}

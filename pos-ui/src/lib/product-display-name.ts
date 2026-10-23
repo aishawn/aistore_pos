@@ -86,7 +86,7 @@ function stripLeadingPrefix(name: string, matcher: (head: string) => number): st
   while (i < name.length && isSpace(name[i]!)) i += 1;
   const consumed = matcher(name.slice(i));
   if (consumed <= 0) return name;
-  let rest = name.slice(i + consumed);
+  const rest = name.slice(i + consumed);
   let j = 0;
   while (j < rest.length && isSpace(rest[j]!)) j += 1;
   return rest.slice(j);
@@ -120,6 +120,13 @@ function matchTestPrefix(head: string): number {
 function matchDemoPrefix(head: string): number {
   const upper = head.toUpperCase();
   if (!upper.startsWith("DEMO")) return 0;
+  // "DEMO Beer" / "DEMO Soft drinks" — drop the DEMO word + following spaces.
+  if (head.length > 4 && isSpace(head[4]!)) {
+    let i = 4;
+    while (i < head.length && isSpace(head[i]!)) i += 1;
+    return i > 4 ? i : 0;
+  }
+  // "DEMO|House Red" / "DEMO · …" / "DEMO - …"
   let i = 4;
   while (i < head.length && isSpace(head[i]!)) i += 1;
   const sep = head[i];

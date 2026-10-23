@@ -24,8 +24,10 @@ describe("friendlyProductName", () => {
     assert.equal(friendlyProductName("   "), "Product");
   });
 
-  it("strips DEMO pipe prefixes and short seed tags", () => {
+  it("strips DEMO pipe prefixes, DEMO word prefixes, and short seed tags", () => {
     assert.equal(friendlyProductName("DEMO | House Red"), "House Red");
+    assert.equal(friendlyProductName("DEMO Beer"), "Beer");
+    assert.equal(friendlyProductName("DEMO Soft drinks"), "Soft drinks");
     assert.equal(friendlyProductName("SEED | Gin 700ml"), "Gin 700ml");
   });
 });
