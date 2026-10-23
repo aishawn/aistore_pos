@@ -183,7 +183,7 @@ public class OdooReportQueryService {
             domain.add(List.of("barcode", "ilike", query.trim()));
             List<Map<String, Object>> products = searchRead(sessionId, "product.product", domain,
                     List.of("id", "display_name", "list_price", "qty_available"), context, capped,
-                    "display_name asc");
+                    "name asc, id asc");
             List<Map<String, Object>> rows = new ArrayList<>();
             for (Map<String, Object> product : products) {
                 Map<String, Object> row = new LinkedHashMap<>();
@@ -228,11 +228,11 @@ public class OdooReportQueryService {
                 products = searchReadPages(sessionId, "product.product", productDomain(companyId),
                         List.of("id", "display_name", "name", "list_price", "lst_price",
                                 "free_qty", "qty_available", "categ_id"),
-                        context, MAX_RECOMMENDATION_PRODUCTS, "display_name asc, id asc");
+                        context, MAX_RECOMMENDATION_PRODUCTS, "name asc, id asc");
             } catch (Exception unsupportedFreeQuantity) {
                 products = searchReadPages(sessionId, "product.product", productDomain(companyId),
                         List.of("id", "display_name", "name", "list_price", "lst_price", "qty_available", "categ_id"),
-                        context, MAX_RECOMMENDATION_PRODUCTS, "display_name asc, id asc");
+                        context, MAX_RECOMMENDATION_PRODUCTS, "name asc, id asc");
             }
             if (products.size() > MAX_RECOMMENDATION_PRODUCTS) {
                 return ProductCatalogResult.fail("ODOO_REPORT_TOO_LARGE");

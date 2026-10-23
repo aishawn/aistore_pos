@@ -233,6 +233,7 @@ class OdooReportQueryServiceTest {
         assertEquals(2, productPages.size());
         assertEquals(0, productPages.get(0).path("params").path("kwargs").path("offset").asInt());
         assertEquals(1000, productPages.get(0).path("params").path("kwargs").path("limit").asInt());
+        assertEquals("name asc, id asc", productPages.get(0).path("params").path("kwargs").path("order").asText());
         assertEquals(1000, productPages.get(1).path("params").path("kwargs").path("offset").asInt());
         assertEquals(1000, productPages.get(1).path("params").path("kwargs").path("limit").asInt());
         assertFalse(requests.stream().anyMatch(request -> Set.of("create", "write", "unlink")
@@ -304,6 +305,7 @@ class OdooReportQueryServiceTest {
         JsonNode searchParams = emptyRequests.get(1).path("params");
         assertEquals("product.product", searchParams.path("model").asText());
         assertEquals("search_read", searchParams.path("method").asText());
+        assertEquals("name asc, id asc", searchParams.path("kwargs").path("order").asText());
         String searchDomain = searchParams.path("args").get(0).toString();
         assertTrue(searchDomain.contains("No match"));
         assertTrue(searchDomain.contains("default_code"));
