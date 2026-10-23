@@ -58,7 +58,7 @@ const ACTIONS = [
   { label: "Order Stock", Icon: ClipboardIcon, href: "/orders/new" },
   { label: "Transfer Stock", Icon: TransferIcon, href: "/orders/transfer/new" },
   { label: "Receive Stock", Icon: TruckIcon, href: "/orders/receive/new" },
-  { label: "Scan Invoice", Icon: ScanIcon, href: "/invoices/scan" },
+  { label: "Scan Invoice", Icon: ScanIcon, href: "/invoices/new" },
   { label: "Return Stock", Icon: ReturnIcon, href: "/orders/return/new" },
   { label: "Add Credit Note", Icon: ReceiptIcon, href: "/orders/credit/new" },
   { label: "Integrations", Icon: CableIcon, href: "/settings/integrations", secondary: true },

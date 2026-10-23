@@ -13,11 +13,13 @@ import {
   createInvoiceScan,
   fetchAiClientConfig,
   scanInvoiceImage,
+  suggestedInvoiceSupplierByAbn,
   type InvoiceScanLine,
   type InvoiceScanPayload,
   type InvoiceScanSourceType,
 } from "@/lib/api";
 import { getOdooSession, searchOdooRecords } from "@/lib/odoo-api";
+import { InvoiceWorkflowSteps } from "@/components/admin/InvoiceWorkflowSteps";
 
 interface Named {
   id: number;
@@ -156,8 +158,18 @@ export function ScanInvoicePage() {
         : await compressInvoicePhoto(file);
       const data = await scanInvoiceImage(prepared, prepared.name || (nextSource === "pdf" ? "invoice.pdf" : "invoice.jpg"));
       if (revision !== scanRevision.current) return;
+      let supplierId = data.supplierId ?? null;
+      if (!supplierId && data.supplierAbn) {
+        try {
+          const mapped = await suggestedInvoiceSupplierByAbn(data.supplierAbn);
+          if (mapped) supplierId = mapped;
+        } catch {
+          /* optional ABN map */
+        }
+      }
       setScan({
         ...data,
+        supplierId,
         invoiceDate: toIsoDate(data.invoiceDate),
         dueDate: toIsoDate(data.dueDate),
         createSupplier: false,
@@ -277,12 +289,22 @@ export function ScanInvoicePage() {
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
-        <div className="mx-auto w-full max-w-5xl">
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Invoices</p>
-          <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
-          <p className="mt-1 text-sm text-[var(--oh-muted)]">Upload a PDF, photograph, or image. Review OCR, save a draft, then match products and receive into Odoo.</p>
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-            OCR drafts are stored in Orithos. Confirming a matched draft creates an Odoo RFQ, confirms the PO, and validates the receipt when a single open picking is available.
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Invoices</p>
+              <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Scan supplier invoice</h1>
+              <p className="mt-1 text-sm text-[var(--oh-muted)]">
+                Step 1 of 3: capture and review OCR. Saving does not put stock into Products — matching and receive come next.
+              </p>
+            </div>
+            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+              Invoice history
+            </Link>
+          </div>
+          <InvoiceWorkflowSteps active="capture" />
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+            OCR drafts stay in Orithos until you match lines and confirm. Confirm creates an Odoo RFQ → PO → receive for matched products only.
             {invoiceWorkflowRetired && " Invoice capture is retired for this Odoo-only store."}
             {availabilityMessage}
             {capabilityError && (
@@ -463,11 +485,11 @@ export function ScanInvoicePage() {
 
       <footer className="shrink-0 border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Save the draft to match products and receive stock." : "Choose a PDF or photo to begin."}</p>
+          <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Next: match each line to Products, then confirm to receive stock." : "Choose a PDF or photo to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Invoice history</Link>
+            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Cancel</Link>
             <button type="button" onClick={() => void saveDraft()} disabled={!scan || saving || loading} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
-              {saving ? "Saving…" : "Save draft & continue"}
+              {saving ? "Saving…" : "Save draft → match products"}
             </button>
           </div>
         </div>

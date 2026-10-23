@@ -25,13 +25,50 @@ function statusLabel(status: string) {
   }
 }
 
+function statusClass(status: string) {
+  switch (status) {
+    case "draft": return "bg-amber-50 text-amber-950";
+    case "matched": return "bg-sky-50 text-sky-950";
+    case "po_created": return "bg-indigo-50 text-indigo-950";
+    case "received": return "bg-emerald-50 text-emerald-950";
+    case "failed": return "bg-rose-50 text-rose-900";
+    default: return "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]";
+  }
+}
+
+function nextAction(status: string) {
+  switch (status) {
+    case "draft": return "Match products";
+    case "matched": return "Confirm & receive";
+    case "po_created": return "Finish receive";
+    case "received": return "View stock";
+    case "failed": return "Retry match";
+    default: return "Open";
+  }
+}
+
+const STATUS_FILTERS = [
+  { value: "", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "matched", label: "Matched" },
+  { value: "po_created", label: "PO created" },
+  { value: "received", label: "Received" },
+  { value: "failed", label: "Failed" },
+] as const;
+
 export function InvoiceScansListPage() {
   const [items, setItems] = useState<InvoiceScanSession[]>([]);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState("");
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,7 +76,7 @@ export function InvoiceScansListPage() {
     try {
       const page = await listInvoiceScans({
         status: status || undefined,
-        query: query.trim() || undefined,
+        query: debouncedQuery || undefined,
         limit: 50,
         offset: 0,
       });
@@ -52,7 +89,7 @@ export function InvoiceScansListPage() {
     } finally {
       setLoading(false);
     }
-  }, [query, status]);
+  }, [debouncedQuery, status]);
 
   useEffect(() => {
     void load();
@@ -66,7 +103,7 @@ export function InvoiceScansListPage() {
             <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Documents</p>
             <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Supplier invoices</h1>
             <p className="mt-1 text-sm text-[var(--oh-muted)]">
-              Scan PDFs or photos, review OCR drafts, then confirm into Odoo purchases and receive stock.
+              Capture → match to Products → confirm PO → receive stock. Scanning alone does not update inventory.
             </p>
           </div>
           <Link
@@ -92,18 +129,6 @@ export function InvoiceScansListPage() {
                   className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
                 />
               </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm outline-none focus:border-[var(--oh-primary)]"
-              >
-                <option value="">All statuses</option>
-                <option value="draft">Draft</option>
-                <option value="matched">Matched</option>
-                <option value="po_created">PO created</option>
-                <option value="received">Received</option>
-                <option value="failed">Failed</option>
-              </select>
               <button
                 type="button"
                 onClick={() => void load()}
@@ -111,6 +136,28 @@ export function InvoiceScansListPage() {
               >
                 Refresh
               </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2" role="tablist" aria-label="Filter by status">
+              {STATUS_FILTERS.map((filter) => {
+                const active = status === filter.value;
+                return (
+                  <button
+                    key={filter.value || "all"}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setStatus(filter.value)}
+                    className={[
+                      "inline-flex min-h-9 items-center rounded-full px-3 text-xs font-semibold",
+                      active
+                        ? "bg-[var(--oh-primary)] text-white"
+                        : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-border)]/40",
+                    ].join(" ")}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
             </div>
             <p className="mt-3 text-xs text-[var(--oh-muted)]">{total} scan{total === 1 ? "" : "s"}</p>
           </section>
@@ -137,12 +184,13 @@ export function InvoiceScansListPage() {
 
           {items.length > 0 && (
             <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                   <tr>
                     <th className="px-4 py-3">Invoice</th>
                     <th className="px-4 py-3">Supplier</th>
                     <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Next</th>
                     <th className="px-4 py-3 text-right">Total</th>
                     <th className="px-4 py-3">Updated</th>
                   </tr>
@@ -158,10 +206,15 @@ export function InvoiceScansListPage() {
                       </td>
                       <td className="px-4 py-3 text-[var(--oh-text)]">{item.supplierName || "—"}</td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-semibold text-[var(--oh-text-secondary)]">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(String(item.status))}`}>
                           {statusLabel(String(item.status))}
                         </span>
                         {item.odooPoName && <p className="mt-1 text-xs text-[var(--oh-muted)]">{item.odooPoName}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/invoices/${item.id}`} className="text-xs font-semibold text-[var(--oh-primary)] hover:underline">
+                          {nextAction(String(item.status))}
+                        </Link>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{money(item.totalPayable)}</td>
                       <td className="px-4 py-3 text-xs text-[var(--oh-muted)]">{item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "—"}</td>
@@ -173,9 +226,14 @@ export function InvoiceScansListPage() {
           )}
 
           <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 text-sm text-[var(--oh-muted)]">
-            <h2 className="text-sm font-semibold text-[var(--oh-text)]">Supplier invoice APIs</h2>
-            <p className="mt-1">
-              Inbound supplier API ingest is reserved (`SUPPLIER_INVOICE_INGEST_ENABLED`). Connect a vendor adapter later; until then use PDF upload or camera scan here.
+            <h2 className="text-sm font-semibold text-[var(--oh-text)]">How stock updates</h2>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>Scan PDF/photo → OCR draft (no stock change).</li>
+              <li>Match each line to an existing product (or skip / create the product in Products first).</li>
+              <li>Confirm → Odoo PO → receive — then on-hand qty appears in Products.</li>
+            </ol>
+            <p className="mt-3 text-xs">
+              Supplier API ingest remains reserved (`SUPPLIER_INVOICE_INGEST_ENABLED`). Use PDF or camera until a vendor adapter is connected.
             </p>
           </section>
         </div>
