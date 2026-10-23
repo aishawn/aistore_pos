@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   Store,
 } from "lucide-react";
+import { OverviewLaunchTiles } from "@/components/OverviewLaunchTiles";
 import { fetchOdooRoute, getOdooSessionStatus } from "@/lib/odoo-api";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -267,7 +268,6 @@ export function OrithosOverviewPage() {
   const averageSale = data?.transactions ? (data.grossSales ?? data.revenue) / data.transactions : 0;
   const maxRevenue = useMemo(() => Math.max(1, ...(data?.trend.map((item) => item.revenue) ?? [0])), [data]);
   const hasTrendData = data?.trend.some((item) => item.revenue > 0) ?? false;
-  const hasCategoryData = (data?.byCategory.length ?? 0) > 0;
   const trendData = data?.trend ?? [];
   const trendGranularity = data?.trendGranularity ?? "hour";
   const trendLabelOptions: Intl.DateTimeFormatOptions =
@@ -393,6 +393,17 @@ export function OrithosOverviewPage() {
               </Link>
             </div>
           </header>
+
+          <OverviewLaunchTiles
+            parkedCount={parkedCount}
+            openRegisters={data?.openRegisters ?? 0}
+            company={data?.company}
+            netSalesLabel={
+              data
+                ? `${formatMoney(data.revenue, data.currency)} net · ${rangeLabel}`
+                : undefined
+            }
+          />
 
           {error && (
             <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-900">

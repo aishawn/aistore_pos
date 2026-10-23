@@ -10,6 +10,7 @@ import { SalesHistoryUiProvider, useSalesHistoryUi } from "@/components/SalesHis
 import { useAuth } from "@/lib/auth";
 import { UnsavedChangesProvider } from "@/lib/unsaved-changes";
 import { AiFloatHost } from "@/components/AiFloatHost";
+import { LaunchRingHost } from "@/components/LaunchRingHost";
 import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
 import { MobileTopBar } from "@/components/MobileAiApp";
@@ -183,6 +184,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <AiFloatHost />
+          <LaunchRingHost />
         </div>
       </AiAssistantProvider>
       </SellScreenProvider>
@@ -292,6 +294,7 @@ function AppShellChrome({
         </main>
       </div>
       <AiFloatHost />
+      <LaunchRingHost />
     </div>
   );
 }
