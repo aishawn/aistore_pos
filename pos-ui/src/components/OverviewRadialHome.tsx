@@ -1,5 +1,6 @@
 "use client";
 
+import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
 import { RadialPie } from "@/components/RadialPie";
 import { useAuth } from "@/lib/auth";
 import { buildLaunchDestinations } from "@/lib/overview-launch";
@@ -42,11 +43,14 @@ export function OverviewRadialHome({
         }}
       />
 
-      <header className="relative z-10 shrink-0 px-5 pb-0 pt-5 sm:px-7 sm:pt-6">
-        <p className="oh-type-meta text-[var(--oh-muted)]">{company}</p>
-        <h1 className="mt-1 text-[1.35rem] font-semibold tracking-tight text-[var(--oh-text)] sm:text-[1.5rem]">
-          {greeting}
-        </h1>
+      <header className="relative z-10 flex shrink-0 flex-wrap items-start justify-between gap-3 px-5 pb-0 pt-5 sm:px-7 sm:pt-6">
+        <div className="min-w-0">
+          <p className="oh-type-meta text-[var(--oh-muted)]">{company}</p>
+          <h1 className="mt-1 text-[1.35rem] font-semibold tracking-tight text-[var(--oh-text)] sm:text-[1.5rem]">
+            {greeting}
+          </h1>
+        </div>
+        <OverviewLayoutSwitcher active="radial" />
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-8 pt-2">
