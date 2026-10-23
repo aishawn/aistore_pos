@@ -9,7 +9,8 @@ const inspected = [];
 const guard = fs.readFileSync(path.join(root, "pos-api", "src", "main", "java", "com", "orithos", "config", "OdooOnlyModeFilter.java"), "utf8");
 const compose = fs.readFileSync(path.join(root, "docker-compose.yml"), "utf8");
 const uatCompose = fs.readFileSync(path.join(root, "docker-compose.uat.yml"), "utf8");
-const composeGuardEnabled = /APP_ODOO_ONLY_MODE:\s*\$\{ODOO_ONLY_MODE:-true\}/.test(compose);
+const composeGuardEnabled = /APP_ODOO_ONLY_MODE:\s*\$\{(?:APP_ODOO_ONLY_MODE:-)?\$\{ODOO_ONLY_MODE:-true\}\}/.test(compose)
+  || /APP_ODOO_ONLY_MODE:\s*\$\{ODOO_ONLY_MODE:-true\}/.test(compose);
 const uatGuardEnabled = /APP_ODOO_ONLY_MODE:\s*"true"/.test(uatCompose);
 if (!composeGuardEnabled || !uatGuardEnabled) findings.push({ file: "docker-compose.yml", reason: "Odoo-only guard is not enabled by default in both production and UAT Compose" });
 
