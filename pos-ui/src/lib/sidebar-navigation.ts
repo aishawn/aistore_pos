@@ -61,6 +61,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Products", href: "/products/odoo" },
       { label: "Replenishment", href: "/stock/replenishment" },
       { label: "Purchases", href: "/purchases/odoo" },
+      { label: "Invoices", href: "/invoices", matchHrefs: ["/invoices/"] },
       { label: "Suppliers", href: "/suppliers/odoo" },
     ],
   },
@@ -80,17 +81,22 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "sommelier",
     items: [
       { label: "AI Assistant", href: "/assistant" },
-      { label: "Wine Assistant", href: "/sommelier" },
+      { label: "Recommend", href: "/recommend" },
       { label: "Find a Wine", href: "/sommelier/find" },
       { label: "Identify Wine Label", href: "/sommelier/identify" },
+      { label: "Find Grocery", href: "/recommend/grocery" },
       { label: "Price Suggestions", href: "/stock/price-suggestions" },
-      { label: "Scan Supplier Invoice", href: "/invoices/scan" },
     ],
   },
   {
     label: "Overview",
     href: "/overview",
     icon: "overview",
+  },
+  {
+    label: "Reports",
+    href: "/reports/dashboard",
+    icon: "reporting",
   },
   {
     label: "Setup",

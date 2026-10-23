@@ -43,6 +43,7 @@ const TONES: Record<string, LaunchTone> = {
   customers: { iconBg: "rgba(2, 132, 199, 0.12)", iconFg: "#0369a1", accent: "#0284c7" },
   ai: { iconBg: "rgba(190, 24, 93, 0.12)", iconFg: "#9d174d", accent: "#be185d" },
   overview: { iconBg: "rgba(79, 70, 229, 0.12)", iconFg: "#4338ca", accent: "#4f46e5" },
+  reports: { iconBg: "rgba(99, 102, 241, 0.14)", iconFg: "#4338ca", accent: "#6366f1" },
   setup: { iconBg: "rgba(71, 85, 105, 0.12)", iconFg: "#334155", accent: "#475569" },
 };
 
@@ -57,6 +58,7 @@ function toneFor(label: string, icon: SidebarIcon): LaunchTone {
   if (key.includes("customer") || icon === "customers") return TONES.customers;
   if (key.includes("ai") || key.includes("sommelier") || icon === "sommelier") return TONES.ai;
   if (key.includes("overview") || icon === "overview") return TONES.overview;
+  if (key.includes("report") || icon === "reporting") return TONES.reports;
   return TONES.setup;
 }
 
@@ -68,7 +70,8 @@ function hintFor(label: string, children?: LaunchChild[]): string {
       .join(" · ");
   }
   if (label === "Sell") return "Open the register";
-  if (label === "Overview") return "Today’s store pulse";
+  if (label === "Overview") return "Store launcher";
+  if (label === "Reports") return "Sales pulse & trends";
   return "Open";
 }
 
