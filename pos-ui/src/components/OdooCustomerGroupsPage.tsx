@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { AlertCircle, LoaderCircle, Pencil, Plus, RefreshCw, Search, Trash2, Users } from "lucide-react";
-import { AdminPageLayout, AdminPrimaryButton, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertCircle, Check, ChevronLeft, ChevronRight, LoaderCircle, Pencil, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useAuth } from "@/lib/auth";
 import {
   createOdooCustomerGroup,
   deleteOdooCustomerGroup,
@@ -12,63 +12,115 @@ import {
   updateOdooCustomerGroup,
   type OdooCustomerGroupRecord,
 } from "@/lib/odoo-api";
-import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
 
 export function OdooCustomerGroupsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin === true;
   const [connected, setConnected] = useState<boolean | null>(null);
-  const [items, setItems] = useState<OdooCustomerGroupRecord[]>([]);
+  const [connectionRetry, setConnectionRetry] = useState(0);
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebouncedValue(query, 250);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [offset, setOffset] = useState(0);
+  const [groups, setGroups] = useState<OdooCustomerGroupRecord[]>([]);
   const [hasNext, setHasNext] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<OdooCustomerGroupRecord | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<OdooCustomerGroupRecord | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const requestRevision = useRef(0);
+  const queryPending = query.trim() !== debouncedQuery;
+  const resultsBusy = loading || queryPending;
+  const rowActionsDisabled = resultsBusy || Boolean(error);
+
+  useDialogFocus(editorOpen, () => {
+    if (!busy) closeEditor();
+  });
+  useDialogFocus(Boolean(deleting), () => {
+    if (!busy) setDeleting(null);
+  });
 
   useEffect(() => {
-    void getOdooSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
-  }, [refreshKey]);
+    let active = true;
+    void getOdooSession().then((session) => {
+      if (active) setConnected(Boolean(session));
+    }).catch(() => {
+      if (active) setConnected(false);
+    });
+    return () => { active = false; };
+  }, [connectionRetry]);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query.trim());
+      setOffset(0);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  const loadGroups = useCallback(async () => {
     if (connected !== true) return;
+    const revision = ++requestRevision.current;
     setLoading(true);
     setError(null);
     try {
       const page = await getOdooCustomerGroups(debouncedQuery, offset, PAGE_SIZE);
-      setItems(page.items);
+      if (revision !== requestRevision.current) return;
+      setGroups(page.items);
       setHasNext(page.hasNext);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load customer groups.");
+      if (revision === requestRevision.current) {
+        setError(cause instanceof Error ? cause.message : "Could not load Odoo customer groups.");
+      }
     } finally {
-      setLoading(false);
+      if (revision === requestRevision.current) setLoading(false);
     }
   }, [connected, debouncedQuery, offset]);
 
-  useEffect(() => { void load(); }, [load, refreshKey]);
-  useEffect(() => { setOffset(0); }, [debouncedQuery]);
+  useEffect(() => { void loadGroups(); }, [loadGroups, refreshKey]);
 
-  async function saveGroup(event: React.FormEvent) {
+  function closeEditor() {
+    setEditorOpen(false);
+    setEditing(null);
+    setName("");
+    setFormError(null);
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setName("");
+    setFormError(null);
+    setEditorOpen(true);
+  }
+
+  function openEdit(group: OdooCustomerGroupRecord) {
+    setEditing(group);
+    setName(group.name);
+    setFormError(null);
+    setEditorOpen(true);
+  }
+
+  async function submitGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    const nextName = name.trim();
+    if (!nextName || busy) return;
     setBusy(true);
     setFormError(null);
     try {
-      if (editing) await updateOdooCustomerGroup(editing.id, name.trim());
-      else await createOdooCustomerGroup(name.trim());
-      setDialogOpen(false);
-      setEditing(null);
-      setName("");
+      if (editing) await updateOdooCustomerGroup(editing.id, nextName);
+      else await createOdooCustomerGroup(nextName);
+      closeEditor();
+      setOffset(0);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setFormError(cause instanceof Error ? cause.message : "Could not save this group.");
+      setFormError(cause instanceof Error ? cause.message : "Could not save this Odoo customer group.");
     } finally {
       setBusy(false);
     }
@@ -77,134 +129,62 @@ export function OdooCustomerGroupsPage() {
   async function confirmDelete() {
     if (!deleting || busy) return;
     setBusy(true);
-    setFormError(null);
+    setDeleteError(null);
     try {
       await deleteOdooCustomerGroup(deleting.id);
       setDeleting(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setFormError(cause instanceof Error ? cause.message : "Could not delete this group.");
+      setDeleteError(cause instanceof Error ? cause.message : "Could not delete this Odoo customer group.");
     } finally {
       setBusy(false);
     }
   }
 
-  if (connected === false) {
-    return (
-      <AdminPageLayout title="Customer Groups" subtitle="Odoo partner tags used for pricing and reporting">
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950">
-          <AlertCircle className="mb-2" size={20} />
-          <p className="font-semibold">Connect Odoo to manage customer groups</p>
-          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Odoo</Link>
-        </section>
-      </AdminPageLayout>
-    );
-  }
-
   return (
-    <AdminPageLayout
-      title="Customer Groups"
-      subtitle="Odoo partner tags (res.partner.category) for organising customers"
-      count={loading || error ? undefined : items.length}
-      countLabel="Groups on this page"
-      actions={
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6 max-xl:overflow-x-hidden max-xl:overflow-y-auto">
+      <header className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="oh-type-title text-[var(--oh-text)]">Groups</h1>
+          <p className="oh-type-label mt-1 text-[var(--oh-muted)]">Odoo customer categories used to organise customers.</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {isAdmin && <button type="button" onClick={openCreate} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New group</button>}
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={resultsBusy || connected !== true} aria-label="Refresh customer groups" title="Refresh customer groups" className="grid size-11 place-items-center rounded-lg border border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={16} /></button>
+        </div>
+      </header>
+
+      {connected === false ? (
+        <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
+          <div className="max-w-md"><AlertCircle className="mx-auto text-amber-600" size={28} /><h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view customer groups</h2><p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect an Odoo staff account to manage customer categories used by the register.</p><button type="button" onClick={() => setConnectionRetry((value) => value + 1)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry connection</button></div>
+        </section>
+      ) : (
         <>
-          <AdminSecondaryButton onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>
-            {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
-          </AdminSecondaryButton>
-          <AdminPrimaryButton onClick={() => { setEditing(null); setName(""); setFormError(null); setDialogOpen(true); }}>
-            <Plus size={16} /> Add group
-          </AdminPrimaryButton>
-        </>
-      }
-    >
-      <label className="mb-4 flex h-11 max-w-xl items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3">
-        <Search size={16} className="text-[var(--oh-muted)]" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search groups" className="min-w-0 flex-1 bg-transparent text-sm outline-none" aria-label="Search customer groups" />
-      </label>
+          <label className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
+            <Search size={17} className="text-[var(--oh-muted)]" aria-hidden="true" />
+            <input aria-label="Search customer groups" aria-busy={queryPending} value={query} onChange={(event) => { setQuery(event.target.value); setOffset(0); }} placeholder="Search group names" className="min-w-0 flex-1 bg-transparent text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)]" />
+          </label>
+          {!isAdmin && <p className="text-sm text-[var(--oh-muted)]">Only store admins can add, rename or remove customer groups.</p>}
+          {resultsBusy && groups.length > 0 && <p role="status" aria-live="polite" className="text-sm text-[var(--oh-muted)]">{queryPending ? "Waiting to apply search…" : "Updating customer groups…"} Existing rows are temporarily read-only.</p>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900"><span>{error}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><RefreshCw size={14} /> Retry</button></div>}
 
-      {error && (
-        <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-900">
-          <span>{error}</span>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} className="inline-flex min-h-11 items-center rounded-md border border-rose-300 bg-white px-3 font-semibold">Retry</button>
-        </div>
-      )}
-
-      <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
-        <table className="hidden w-full text-left text-sm md:table">
-          <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-            <tr><th className="px-4 py-3">Group</th><th className="px-4 py-3">Customers</th><th className="px-4 py-3 text-right">Actions</th></tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--oh-border)]">
-            {loading && items.length === 0 ? (
-              <tr><td colSpan={3} className="px-4 py-8 text-[var(--oh-muted)]"><LoaderCircle className="mr-2 inline animate-spin" size={15} />Loading groups…</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={3} className="px-4 py-10 text-center text-[var(--oh-muted)]"><Users className="mx-auto mb-2" size={20} />No customer groups yet</td></tr>
-            ) : items.map((group) => (
-              <tr key={group.id}>
-                <td className="px-4 py-3 font-medium text-[var(--oh-text)]">{group.name}<span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Odoo #{group.id}</span></td>
-                <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{group.customerCount}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="inline-flex gap-2">
-                    <button type="button" onClick={() => { setEditing(group); setName(group.name); setFormError(null); setDialogOpen(true); }} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3"><Pencil size={14} /> Edit</button>
-                    <button type="button" onClick={() => { setDeleting(group); setFormError(null); }} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-rose-800"><Trash2 size={14} /> Delete</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="divide-y divide-[var(--oh-border)] md:hidden">
-          {items.map((group) => (
-            <article key={group.id} className="px-4 py-3">
-              <p className="font-semibold text-[var(--oh-text)]">{group.name}</p>
-              <p className="text-xs text-[var(--oh-muted)]">{group.customerCount} customers · Odoo #{group.id}</p>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => { setEditing(group); setName(group.name); setDialogOpen(true); }} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)]"><Pencil size={14} /> Edit</button>
-                <button type="button" onClick={() => setDeleting(group)} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-rose-200 text-rose-800"><Trash2 size={14} /> Delete</button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <footer className="mt-4 flex items-center justify-between gap-2 text-sm text-[var(--oh-muted)]">
-        <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
-        <div className="flex gap-2">
-          <button type="button" disabled={offset === 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 disabled:opacity-40">Previous</button>
-          <button type="button" disabled={!hasNext || loading} onClick={() => setOffset((value) => value + PAGE_SIZE)} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 disabled:opacity-40">Next</button>
-        </div>
-      </footer>
-
-      {dialogOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDialogOpen(false); }}>
-          <form onSubmit={(event) => void saveGroup(event)} className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-xl">
-            <h2 className="text-lg font-semibold text-[var(--oh-text)]">{editing ? "Edit group" : "New group"}</h2>
-            <label className="mt-4 grid gap-1.5 text-sm font-medium">Name
-              <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={120} className="h-11 rounded-lg border border-[var(--oh-border)] px-3" />
-            </label>
-            {formError && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{formError}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" disabled={busy} onClick={() => setDialogOpen(false)} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</button>
-              <button type="submit" disabled={busy} className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Save</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {deleting && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
-          <section role="dialog" aria-modal="true" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-xl">
-            <h2 className="text-lg font-semibold text-[var(--oh-text)]">Delete group?</h2>
-            <p className="mt-2 text-sm text-[var(--oh-muted)]">Remove “{deleting.name}” from Odoo. Customers keep their other tags.</p>
-            {formError && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{formError}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" disabled={busy} onClick={() => setDeleting(null)} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</button>
-              <button type="button" disabled={busy} onClick={() => void confirmDelete()} className="inline-flex h-11 items-center gap-2 rounded-md bg-rose-700 px-4 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle size={15} className="animate-spin" /> : null} Delete</button>
-            </div>
+          <section aria-busy={resultsBusy} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white max-xl:flex-none max-xl:overflow-visible">
+            {loading && groups.length === 0 ? <p role="status" className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Loading customer groups…</p>
+              : groups.length === 0 ? <div role="status" className="flex min-h-56 flex-col items-center justify-center px-5 py-10 text-center"><p className="text-sm font-semibold text-[var(--oh-text)]">{debouncedQuery ? "No customer groups match this search" : "No Odoo customer groups yet"}</p><p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{debouncedQuery ? "Try another group name." : isAdmin ? "Add a group to organise customers in Odoo." : "A store admin can add customer groups for this Odoo company."}</p></div>
+                : <>
+                  <table aria-label="Odoo customer groups" className="hidden w-full min-w-[650px] border-collapse text-left text-sm xl:table">
+                    <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3">Group</th><th scope="col" className="px-4 py-3">Parent</th><th scope="col" className="px-4 py-3 text-right">Customers</th>{isAdmin && <th scope="col" className="px-4 py-3 text-right">Actions</th>}</tr></thead>
+                    <tbody className="divide-y divide-[var(--oh-border)]">{groups.map((group) => <tr key={group.id} className="hover:bg-[var(--oh-surface)]/70"><td className="px-4 py-3 font-medium text-[var(--oh-text)]">{group.name}</td><td className="px-4 py-3 text-[var(--oh-text-secondary)]">{group.parentName || "—"}</td><td className="px-4 py-3 text-right tabular-nums text-[var(--oh-text)]">{group.customerCount}</td>{isAdmin && <td className="px-4 py-3"><div className="flex justify-end gap-2"><button type="button" aria-label={`Edit group ${group.name}`} title="Edit group" disabled={rowActionsDisabled} onClick={() => openEdit(group)} className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={15} /></button><button type="button" aria-label={`Delete group ${group.name}`} title="Delete group" disabled={rowActionsDisabled} onClick={() => { setDeleting(group); setDeleteError(null); }} className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] text-rose-700 hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:cursor-wait disabled:opacity-50"><Trash2 size={15} /></button></div></td>}</tr>)}</tbody>
+                  </table>
+                  <ul className="divide-y divide-[var(--oh-border)] xl:hidden">{groups.map((group) => <li key={group.id} className="flex items-start justify-between gap-3 px-4 py-3.5"><div className="min-w-0"><p className="break-words text-sm font-semibold text-[var(--oh-text)]">{group.name}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{group.parentName ? `${group.parentName} · ` : ""}{group.customerCount} customers</p></div>{isAdmin && <div className="flex shrink-0 gap-2"><button type="button" aria-label={`Edit group ${group.name}`} disabled={rowActionsDisabled} onClick={() => openEdit(group)} className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={15} /></button><button type="button" aria-label={`Delete group ${group.name}`} disabled={rowActionsDisabled} onClick={() => { setDeleting(group); setDeleteError(null); }} className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] text-rose-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:cursor-wait disabled:opacity-50"><Trash2 size={15} /></button></div>}</li>)}</ul>
+                </>}
           </section>
-        </div>
+          <footer className="flex shrink-0 items-center justify-between gap-3 text-sm text-[var(--oh-muted)]"><span>Page {Math.floor(offset / PAGE_SIZE) + 1}{groups.length ? ` · Showing ${offset + 1}–${offset + groups.length}` : ""}</span><div className="flex gap-2"><button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || resultsBusy} aria-label="Previous customer groups page" className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] bg-white disabled:opacity-40"><ChevronLeft size={16} /></button><button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || resultsBusy} aria-label="Next customer groups page" className="grid size-10 place-items-center rounded-md border border-[var(--oh-border)] bg-white disabled:opacity-40"><ChevronRight size={16} /></button></div></footer>
+        </>
       )}
-    </AdminPageLayout>
+
+      {editorOpen && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) closeEditor(); }}><section role="dialog" aria-modal="true" aria-labelledby="customer-group-title" className="my-auto w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-white p-5 shadow-2xl"><header className="flex items-start justify-between gap-3"><div><h2 id="customer-group-title" className="text-lg font-semibold text-[var(--oh-text)]">{editing ? "Edit customer group" : "New customer group"}</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Changes are saved to Odoo.</p></div><button type="button" aria-label="Close" onClick={closeEditor} disabled={busy} className="grid size-10 place-items-center rounded-md hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={17} /></button></header><form className="mt-5 grid gap-4" onSubmit={(event) => void submitGroup(event)}><label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Group name<input autoFocus required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} className="h-11 rounded-md border border-[var(--oh-border)] px-3 font-normal outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" /></label>{formError && <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{formError}</p>}<footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end"><button type="button" onClick={closeEditor} disabled={busy} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</button><button type="submit" disabled={busy || !name.trim()} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Check size={15} />}{editing ? "Save changes" : "Create group"}</button></footer></form></section></div>}
+      {deleting && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4"><section role="alertdialog" aria-modal="true" aria-labelledby="delete-customer-group-title" className="w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-white p-5 shadow-2xl"><h2 id="delete-customer-group-title" className="text-lg font-semibold text-[var(--oh-text)]">Delete customer group?</h2><p className="mt-2 text-sm leading-5 text-[var(--oh-muted)]">Deleting “{deleting.name}” also removes it from associated Odoo customers.</p>{deleteError && <p role="alert" className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{deleteError}</p>}<footer className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={() => setDeleting(null)} disabled={busy} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</button><button type="button" onClick={() => void confirmDelete()} disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-rose-700 px-4 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle size={15} className="animate-spin" /> : <Trash2 size={15} />}Delete group</button></footer></section></div>}
+    </main>
   );
 }

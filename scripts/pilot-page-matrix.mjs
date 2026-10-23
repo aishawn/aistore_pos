@@ -37,7 +37,7 @@ const pages = [
   // Product list hides the human "R2 TEST" import prefix; SKUs may still start with R2-.
   { path: "/products/odoo", expect: [/Products/, /SKU R2-|Barcode|LIST PRICE|On hand|No products/i] },
   { path: "/customers/odoo", expect: [/Customers|No customers|Walk-in|empty|0/i] },
-  { path: "/customer-groups", expect: [/Customer Groups/i, /partner tags|No customer groups|GROUPS/i] },
+  { path: "/customer-groups", expect: [/Groups/i, /partner tags|No customer groups|GROUPS/i] },
   // Balances is Odoo-backed now (receivable / owing); legacy "not connected" copy is gone.
   { path: "/customers/balances", expect: [/Balances/i, /Odoo|owing|receivable|invoice/i] },
   { path: "/suppliers/odoo", expect: [/Suppliers|No suppliers|empty|0/i] },

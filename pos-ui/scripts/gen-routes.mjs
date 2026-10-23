@@ -17,7 +17,7 @@ const ROUTES = [
   ["Stocktake", "/stocktake"],
   ["More", "/stock/more"],
   ["Customers", "/customers"],
-  ["Customer Groups", "/customer-groups"],
+  ["Groups", "/customer-groups"],
   ["Price Lists", "/pricelists"],
   ["Balances", "/customers/balances"],
   ["Gift Cards", "/giftcards"],

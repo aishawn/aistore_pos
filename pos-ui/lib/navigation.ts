@@ -38,7 +38,7 @@ export const NAVIGATION: NavEntry[] = [
       label: "Customers",
       items: [
         { label: "Customers", href: "/customers" },
-        { label: "Customer Groups", href: "/customer-groups" },
+        { label: "Groups", href: "/customer-groups" },
         { label: "Price Lists", href: "/pricelists" },
         { label: "Balances", href: "/customers/balances" },
         { label: "Gift Cards", href: "/giftcards" },

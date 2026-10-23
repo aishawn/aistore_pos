@@ -70,7 +70,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     icon: "customers",
     items: [
       { label: "Customers", href: "/customers/odoo" },
-      { label: "Customer Groups", href: "/customer-groups" },
+      { label: "Groups", href: "/customer-groups" },
       { label: "Price Lists", href: "/pricelists" },
       { label: "Balances", href: "/customers/balances" },
       { label: "Gift Cards", href: "/giftcards" },
