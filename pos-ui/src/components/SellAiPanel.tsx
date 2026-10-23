@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { Eraser, ExternalLink, History, MessageCircle, Mic, Plus, Send, X } from "lucide-react";
+import { Eraser, ExternalLink, History, MessageCircle, Mic, Plus, RefreshCw, Send, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
@@ -21,6 +21,7 @@ import {
   resolveEntityAction,
   type PendingEntityDelete,
 } from "@/lib/ai-entity-actions";
+import { normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -86,6 +87,7 @@ interface ChatMessage {
   links?: ChatCta[] | null;
   /** @deprecated prefer links — kept for single-CTA call sites */
   cta?: ChatCta | null;
+  retryQuestion?: string | null;
   diagnostics?: {
     intent: string;
     latencyMs: number;
@@ -94,14 +96,11 @@ interface ChatMessage {
 }
 
 function messageLinks(msg: ChatMessage): ChatCta[] {
-  if (msg.links && msg.links.length > 0) return msg.links;
-  return msg.cta ? [msg.cta] : [];
-}
-
-function cardCta(card: AssistantCard): ChatCta | null {
-  const label = card.cta?.label?.trim() || card.ctaLabel?.trim();
-  const href = card.cta?.route?.trim() || card.ctaRoute?.trim();
-  return label && href ? { label, href } : null;
+  const links = msg.links && msg.links.length > 0 ? msg.links : msg.cta ? [msg.cta] : [];
+  return links.flatMap((link) => {
+    const href = normalizeAssistantHref(link.href);
+    return href ? [{ ...link, href }] : [];
+  });
 }
 
 /** Compact chip label: "Open stock list" → "Stock list". */
@@ -158,7 +157,9 @@ function labelForHref(href: string): string {
   const known: Record<string, string> = {
     "/": "Open sell screen",
     "/products": "Open products",
+    "/products/odoo": "Open products",
     "/customers": "Open customers",
+    "/customers/odoo": "Open customers",
     "/promotions": "Open promotions",
     "/stock/list": "Open stock list",
     "/stock/replenishment": "Open replenishment",
@@ -304,7 +305,12 @@ interface SellAiPanelProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   launcherVisible?: boolean;
-  /** Force the expanded panel to cover the viewport (dedicated /assistant route). */
+  /**
+   * `page` — fill the AppShell main column (Sidebar stays visible).
+   * `float` — portal FAB / dock / mobile fullscreen overlay (default).
+   */
+  presentation?: "float" | "page";
+  /** Force the expanded float panel to cover the viewport. */
   forceFullscreen?: boolean;
   /** Called after collapse when the host should leave a dedicated route. */
   onRequestClose?: () => void;
@@ -315,9 +321,11 @@ export function SellAiPanel({
   expanded,
   onExpandedChange,
   launcherVisible = true,
+  presentation = "float",
   forceFullscreen = false,
   onRequestClose,
 }: SellAiPanelProps) {
+  const pagePresentation = presentation === "page";
   const mobileOnly = getUiMode() === "mobile";
   const sell = useOptionalSellScreen();
   const ai = useOptionalAiAssistant();
@@ -368,11 +376,29 @@ export function SellAiPanel({
   const restoreFabRef = useRef(false);
   // Phone browsers on the WEB shell still need a true fullscreen assistant;
   // dedicated /m mobile mode keeps the same layout.
-  // /assistant forces fullscreen on desktop as a dedicated dialogue page.
-  const fullscreenPanel = forceFullscreen || mobileOnly || compactViewport;
+  // Page presentation uses the same full-bleed chat chrome inside <main>.
+  const fullscreenPanel =
+    pagePresentation || forceFullscreen || mobileOnly || compactViewport;
 
   const dismissPanel = () => collapsePanel();
-  useDialogFocus(expanded, dismissPanel, "assistant", inputRef);
+  // Page mode keeps Sidebar interactive — Escape closes, but no focus trap.
+  useDialogFocus(
+    expanded && !pagePresentation,
+    dismissPanel,
+    "assistant",
+    inputRef,
+  );
+
+  useEffect(() => {
+    if (!pagePresentation || !expanded) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      dismissPanel();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [pagePresentation, expanded]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -383,10 +409,10 @@ export function SellAiPanel({
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Fullscreen assistant is a modal workspace. Keep the page underneath from
-  // scrolling while it is open, then restore the exact previous value.
+  // Floating fullscreen assistant is a modal workspace. Keep the page underneath
+  // from scrolling while it is open. Page presentation lives inside <main>.
   useEffect(() => {
-    if (!expanded || !fullscreenPanel) return;
+    if (pagePresentation || !expanded || !fullscreenPanel) return;
     const previousOverflow = document.body.style.overflow;
     const previousOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = "hidden";
@@ -395,7 +421,7 @@ export function SellAiPanel({
       document.body.style.overflow = previousOverflow;
       document.body.style.overscrollBehavior = previousOverscroll;
     };
-  }, [expanded, fullscreenPanel]);
+  }, [pagePresentation, expanded, fullscreenPanel]);
 
   useEffect(() => {
     if (expanded) {
@@ -420,12 +446,17 @@ export function SellAiPanel({
   }, [expanded]);
 
   function followChatLink(href: string) {
-    if (mobileOnly && !isMobileAllowedHref(href)) {
+    const safeHref = normalizeAssistantHref(href);
+    if (!safeHref) {
+      pushAssistantNote("This assistant link is unavailable. Ask for the page again.");
+      return;
+    }
+    if (mobileOnly && !isMobileAllowedHref(safeHref)) {
       pushAssistantNote("Open the WEB app to continue this action.");
       return;
     }
     collapsePanel({ skipRouteExit: true });
-    router.push(href);
+    router.push(safeHref);
   }
 
   /** Offer a page link inside chat. Only jump immediately when AI chat is off (shortcut mode). */
@@ -816,6 +847,7 @@ export function SellAiPanel({
               table: result.table ?? null,
               reportId: result.reportId ?? null,
               cards: result.cards ?? null,
+              retryQuestion: result.cards?.some((card) => card.status === "unavailable") ? text : null,
               cta,
               links: cta ? [cta] : recoveryLinks.length ? recoveryLinks : null,
               diagnostics: {
@@ -841,6 +873,7 @@ export function SellAiPanel({
           text: aborted
             ? "The assistant timed out. Try a shorter question, or use Today's sales / Check stock shortcuts."
             : aiFailureMessage(e, "chat"),
+          retryQuestion: e instanceof ApiError && (e.code === 50301 || e.status === 503) ? null : text,
           diagnostics: {
             intent: "unavailable",
             latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
@@ -1353,19 +1386,24 @@ export function SellAiPanel({
     <div
       ref={floatRef}
       className={cn(
-        "pointer-events-none fixed z-[80] flex flex-col",
-        expanded && fullscreenPanel && "inset-0 h-dvh w-full",
-        expanded && !fullscreenPanel && "inset-y-0 right-0 h-dvh w-[min(100vw,420px)]",
-        !expanded && "items-end",
+        "pointer-events-none flex flex-col",
+        pagePresentation
+          ? "absolute inset-0 z-10 h-full w-full"
+          : "fixed z-[80]",
+        !pagePresentation && expanded && fullscreenPanel && "inset-0 h-dvh w-full",
+        !pagePresentation && expanded && !fullscreenPanel && "inset-y-0 right-0 h-dvh w-[min(100vw,420px)]",
+        !pagePresentation && !expanded && "items-end",
         dragging && "select-none",
       )}
       style={
-        expanded
-          ? { left: fullscreenPanel ? 0 : undefined, top: 0, right: fullscreenPanel ? 0 : 0, transform: "none" }
-          : { left: anchor.x, top: anchor.y, transform: "translate(-100%, -100%)" }
+        pagePresentation
+          ? undefined
+          : expanded
+            ? { left: fullscreenPanel ? 0 : undefined, top: 0, right: fullscreenPanel ? 0 : 0, transform: "none" }
+            : { left: anchor.x, top: anchor.y, transform: "translate(-100%, -100%)" }
       }
     >
-      {expanded && fullscreenPanel && (
+      {expanded && fullscreenPanel && !pagePresentation && (
         <button
           type="button"
           aria-label="Close assistant"
@@ -1377,7 +1415,7 @@ export function SellAiPanel({
         <div
           role="dialog"
           aria-labelledby="orithos-ai-assistant-title"
-          aria-modal="true"
+          aria-modal={pagePresentation ? undefined : true}
           className={cn(
             "pointer-events-auto relative z-10 flex h-full w-full flex-col",
             !fullscreenPanel && "border-l border-[var(--oh-border)] bg-white",
@@ -1393,7 +1431,7 @@ export function SellAiPanel({
             <div
               className={cn(
                 "flex shrink-0 touch-none items-center gap-2.5 border-b border-[var(--oh-border)] bg-[var(--oh-orange-light)] px-3.5 py-3",
-                fullscreenPanel && "pt-[max(0.75rem,env(safe-area-inset-top))]",
+                fullscreenPanel && !pagePresentation && "pt-[max(0.75rem,env(safe-area-inset-top))]",
                 "cursor-default",
               )}
             >
@@ -1456,6 +1494,7 @@ export function SellAiPanel({
                 <DialogueView
                   messages={messages}
                   onOpenLink={followChatLink}
+                  onRetry={(question) => void runIntent(question)}
                   onClear={clearChat}
                   busy={busy}
                   thinkingHint={thinkingHint}
@@ -1527,7 +1566,7 @@ export function SellAiPanel({
         </div>
       )}
 
-      {!expanded && launcherVisible && (
+      {!expanded && launcherVisible && !pagePresentation && (
         <button
           type="button"
           onClick={onFabClick}
@@ -1551,7 +1590,11 @@ export function SellAiPanel({
 
   return (
     <>
-      {mounted ? createPortal(floatUi, document.body) : null}
+      {pagePresentation
+        ? floatUi
+        : mounted
+          ? createPortal(floatUi, document.body)
+          : null}
       {panelDialogs}
     </>
   );
@@ -1635,6 +1678,7 @@ function HistoryView({
 function DialogueView({
   messages,
   onOpenLink,
+  onRetry,
   onClear,
   busy,
   thinkingHint,
@@ -1642,6 +1686,7 @@ function DialogueView({
 }: {
   messages: ChatMessage[];
   onOpenLink: (href: string) => void;
+  onRetry: (question: string) => void;
   onClear: () => void;
   busy?: boolean;
   thinkingHint?: string | null;
@@ -1690,7 +1735,8 @@ function DialogueView({
         {messages.map((msg, i) => {
           const links = messageLinks(msg);
           const cards = msg.cards ?? [];
-          const cardRoutes = new Set(cards.map((card) => cardCta(card)?.href).filter(Boolean));
+          const cardCtas = cards.map(resolveAssistantCardCta);
+          const cardRoutes = new Set(cardCtas.flatMap((cta) => cta ? [cta.href] : []));
           const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
           return (
           <div
@@ -1724,7 +1770,9 @@ function DialogueView({
               </span>
             ) : cards.length > 0 ? (
               <div className="space-y-2">
-                {cards.map((card, cardIndex) => (
+                {cards.map((card, cardIndex) => {
+                  const cardCta = cardCtas[cardIndex];
+                  return (
                   <section
                     key={`${card.type}-${cardIndex}`}
                     aria-label={card.title}
@@ -1758,18 +1806,30 @@ function DialogueView({
                     {card.emptyReason ? (
                       <p className="mt-1 text-[12px] text-[var(--oh-muted)]">{card.emptyReason}</p>
                     ) : null}
-                    {cardCta(card) ? (
+                    {cardCta ? (
                       <button
                         type="button"
-                        onClick={() => onOpenLink(cardCta(card)!.href)}
+                        onClick={() => onOpenLink(cardCta.href)}
                         className={cn(chatNavLinkClassName, "mt-1.5")}
                       >
-                        {cardCta(card)!.label}
+                        {cardCta.label}
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       </button>
                     ) : null}
+                    {card.status === "unavailable" && msg.retryQuestion ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => onRetry(msg.retryQuestion!)}
+                        className={cn(chatNavLinkClassName, "mt-1.5 disabled:cursor-not-allowed disabled:opacity-50")}
+                      >
+                        <RefreshCw className="h-3 w-3 shrink-0" aria-hidden />
+                        Retry
+                      </button>
+                    ) : null}
                   </section>
-                ))}
+                  );
+                })}
                 {msg.reportId ? (
                   <a
                     href={`/reports/ai/${msg.reportId}`}
@@ -1786,7 +1846,20 @@ function DialogueView({
                 ) : null}
               </div>
             ) : (
-              msg.text
+              <>
+                {msg.text}
+                {msg.role === "assistant" && msg.retryQuestion ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onRetry(msg.retryQuestion!)}
+                    className={cn(chatNavLinkClassName, "mt-2 disabled:cursor-not-allowed disabled:opacity-50")}
+                  >
+                    <RefreshCw className="h-3 w-3 shrink-0" aria-hidden />
+                    Retry
+                  </button>
+                ) : null}
+              </>
             )}
             {msg.role === "assistant" && !msg.reportId && msg.table && msg.table.rows.length > 0 && (
               <div className="mt-2 overflow-x-auto">

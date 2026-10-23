@@ -1,22 +1,41 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { SellAiPanel } from "@/components/SellAiPanel";
 import { useAiAssistant } from "@/lib/ai-assistant";
 
 /**
- * Dedicated Orithos AI dialogue route. Chat UI is the global SellAiPanel
- * (forced fullscreen via AiFloatHost); this page only opens the panel.
+ * Dedicated Orithos AI dialogue page — chat fills main beside the store Sidebar.
  */
 export default function AssistantPage() {
+  const router = useRouter();
   const { setExpanded } = useAiAssistant();
 
   useEffect(() => {
     setExpanded(true);
+    return () => setExpanded(false);
   }, [setExpanded]);
 
+  const onRequestClose = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.replace("/overview");
+  }, [router]);
+
   return (
-    <div className="flex min-h-[40vh] items-center justify-center p-6 text-sm text-[var(--oh-muted)]">
-      <p className="sr-only">Orithos AI assistant is open.</p>
+    <div className="relative h-full min-h-0 overflow-hidden">
+      <SellAiPanel
+        expanded
+        onExpandedChange={(next) => {
+          setExpanded(next);
+        }}
+        presentation="page"
+        launcherVisible={false}
+        onRequestClose={onRequestClose}
+      />
     </div>
   );
 }
