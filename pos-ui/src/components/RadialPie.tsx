@@ -38,10 +38,13 @@ const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?
   marketing: Percent,
 };
 
-const RING_RADIUS = 168;
-const CHILD_RADIUS = 248;
-const MAX_CHILD_ARC = 5;
+const RING_RADIUS = 158;
+/** Child pills sit just outside the parent node — not a wide outer orbit. */
+const CHILD_RADIUS = 214;
+const MAX_VISIBLE_CHILDREN = 3;
 const PIE_SIZE = 520;
+const CLEAR_ACTIVE_MS = 120;
+const SPRING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
 function polar(radius: number, angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -85,6 +88,21 @@ function destinationIcon(destination: LaunchDestination) {
   return ICONS[destination.icon] ?? LayoutDashboard;
 }
 
+/**
+ * Keep child chips inside the parent's sector so Setup never spills onto Reports.
+ * Sector width = 360/n; allow at most ~42% of that as the child arc.
+ */
+function childArcAngles(parentAngle: number, count: number, sectorDeg: number) {
+  if (count <= 0) return [] as number[];
+  if (count === 1) return [parentAngle];
+  const maxSpread = Math.max(18, sectorDeg * 0.42);
+  const stepIdeal = 22;
+  const spread = Math.min(maxSpread, stepIdeal * (count - 1));
+  const start = parentAngle - spread / 2;
+  const step = spread / (count - 1);
+  return Array.from({ length: count }, (_, index) => start + step * index);
+}
+
 export function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -113,6 +131,7 @@ export function RadialPie({
   destinations,
   centerTitle,
   centerCaption,
+  centerHint,
   centerHref = "/reports/dashboard",
   onNavigate,
   entered = true,
@@ -122,6 +141,8 @@ export function RadialPie({
   destinations: LaunchDestination[];
   centerTitle: string;
   centerCaption: string;
+  /** Optional quieter line under the caption (e.g. "Last 24 hours"). */
+  centerHint?: string;
   centerHref?: string;
   onNavigate?: () => void;
   entered?: boolean;
@@ -129,6 +150,7 @@ export function RadialPie({
   className?: string;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const compact = useIsCompactViewport();
@@ -143,30 +165,47 @@ export function RadialPie({
     });
   }, [destinations]);
 
+  const sectorDeg = 360 / Math.max(items.length, 1);
   const active = items.find((item) => item.id === activeId) ?? null;
 
   const childItems = useMemo(() => {
+    // Leaf destinations (Sell, Reports, …) must never render foreign pills.
     if (!active?.children?.length) {
-      return [] as Array<LaunchChild & { x: number; y: number }>;
+      return [] as Array<LaunchChild & { x: number; y: number; angle: number }>;
     }
-    const shown = active.children.slice(0, MAX_CHILD_ARC);
+    const shown = active.children.slice(0, MAX_VISIBLE_CHILDREN);
     const overflow = active.children.length - shown.length;
-    const arc = [...shown];
+    const arc: LaunchChild[] = [...shown];
     if (overflow > 0) {
       arc.push({
         label: `+${overflow} more`,
-        href: shown[0]?.href ?? active.href,
-        hint: "Open this group",
+        href: active.children[MAX_VISIBLE_CHILDREN]?.href ?? shown[0]?.href ?? active.href,
+        hint: "Open more in this group",
       });
     }
-    const spread = Math.min(110, 28 * Math.max(arc.length - 1, 1));
-    const start = active.angle - spread / 2;
-    const step = arc.length > 1 ? spread / (arc.length - 1) : 0;
+    const angles = childArcAngles(active.angle, arc.length, sectorDeg);
     return arc.map((child, index) => {
-      const point = polar(CHILD_RADIUS, start + step * index);
-      return { ...child, x: point.x, y: point.y };
+      const angle = angles[index] ?? active.angle;
+      const point = polar(CHILD_RADIUS, angle);
+      return { ...child, x: point.x, y: point.y, angle };
     });
-  }, [active]);
+  }, [active, sectorDeg]);
+
+  const setActiveSoon = useCallback((id: string | null) => {
+    if (clearTimer.current) {
+      clearTimeout(clearTimer.current);
+      clearTimer.current = null;
+    }
+    if (id === null) {
+      clearTimer.current = setTimeout(() => setActiveId(null), CLEAR_ACTIVE_MS);
+      return;
+    }
+    setActiveId(id);
+  }, []);
+
+  useEffect(() => () => {
+    if (clearTimer.current) clearTimeout(clearTimer.current);
+  }, []);
 
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -175,14 +214,14 @@ export function RadialPie({
       const dx = event.clientX - (rect.left + rect.width / 2);
       const dy = event.clientY - (rect.top + rect.height / 2);
       const distance = Math.hypot(dx, dy);
-      if (distance < 56) {
-        setActiveId(null);
+      if (distance < 64) {
+        setActiveSoon(null);
         return;
       }
       const angle = angleFromCenter(event.clientX, event.clientY, rect);
-      setActiveId(nearestDestinationId(angle, items));
+      setActiveSoon(nearestDestinationId(angle, items));
     },
-    [items, listMode],
+    [items, listMode, setActiveSoon],
   );
 
   if (listMode) {
@@ -191,12 +230,13 @@ export function RadialPie({
         <Link
           href={centerHref}
           onClick={onNavigate}
-          className="block rounded-[22px] bg-white/90 px-4 py-3 no-underline shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5"
+          className="block rounded-[22px] bg-white/90 px-4 py-3.5 no-underline shadow-[0_8px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5"
         >
-          <p className="oh-type-meta text-[var(--oh-muted)]">{centerTitle}</p>
-          <p className="oh-type-title mt-0.5 font-semibold text-[var(--oh-text)]">{centerCaption}</p>
+          <p className="oh-type-meta truncate text-[var(--oh-muted)]">{centerTitle}</p>
+          <p className="mt-1 text-[1.25rem] font-semibold tracking-tight text-[var(--oh-text)]">{centerCaption}</p>
+          {centerHint ? <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">{centerHint}</p> : null}
         </Link>
-        <ul className="grid grid-cols-2 gap-2">
+        <ul className="grid grid-cols-2 gap-2.5">
           {destinations.map((destination) => {
             const Icon = destinationIcon(destination);
             return (
@@ -204,13 +244,13 @@ export function RadialPie({
                 <Link
                   href={destination.children?.[0]?.href ?? destination.href}
                   onClick={onNavigate}
-                  className="flex min-h-[104px] flex-col justify-between rounded-[20px] bg-white/90 p-3.5 no-underline shadow-[0_8px_24px_rgba(15,23,42,0.06)] ring-1 ring-black/5"
+                  className="flex min-h-[108px] flex-col justify-between rounded-[22px] bg-white/90 p-3.5 no-underline shadow-[0_8px_24px_rgba(15,23,42,0.06)] ring-1 ring-black/5 transition-transform active:scale-[0.97] motion-reduce:transform-none"
                 >
                   <span
-                    className="grid h-11 w-11 place-items-center rounded-full"
-                    style={{ background: destination.tone.iconBg, color: destination.tone.iconFg }}
+                    className="grid h-12 w-12 place-items-center rounded-full bg-white shadow-sm ring-1 ring-black/5"
+                    style={{ color: destination.tone.iconFg }}
                   >
-                    <Icon size={20} strokeWidth={1.75} />
+                    <Icon size={22} strokeWidth={1.6} />
                   </span>
                   <span className="mt-3">
                     <span className="oh-type-label block font-semibold text-[var(--oh-text)]">{destination.label}</span>
@@ -229,7 +269,7 @@ export function RadialPie({
     <div
       ref={stageRef}
       onPointerMove={onPointerMove}
-      onPointerLeave={() => setActiveId(null)}
+      onPointerLeave={() => setActiveSoon(null)}
       className={cn(
         "relative mx-auto touch-none select-none",
         variant === "page" ? "h-[min(72vh,32.5rem)] w-[min(100%,32.5rem)]" : "h-[30rem] w-[30rem]",
@@ -243,7 +283,8 @@ export function RadialPie({
         viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`}
       >
         {items.map((item) => {
-          const end = polar(PIE_SIZE * 0.48, item.angle);
+          // Rays stop at the node — no leftover stubs past the orbit.
+          const end = polar(RING_RADIUS - 36, item.angle);
           const isActive = activeId === item.id;
           return (
             <line
@@ -252,10 +293,12 @@ export function RadialPie({
               y1={PIE_SIZE / 2}
               x2={PIE_SIZE / 2 + end.x}
               y2={PIE_SIZE / 2 + end.y}
-              stroke={isActive ? item.tone.accent : "rgba(100,116,139,0.28)"}
-              strokeWidth={isActive ? 2.5 : 1.25}
+              stroke={isActive ? item.tone.accent : "rgba(148,163,184,0.22)"}
+              strokeWidth={isActive ? 2 : 1}
               strokeLinecap="round"
-              className="transition-[stroke,stroke-width] duration-200"
+              opacity={isActive ? 0.85 : 0.55}
+              className="transition-[stroke,stroke-width,opacity] duration-200"
+              style={{ transitionTimingFunction: SPRING }}
             />
           );
         })}
@@ -263,18 +306,29 @@ export function RadialPie({
 
       <div
         className={cn(
-          "absolute inset-0 transition-[transform,opacity] duration-300 ease-out",
-          entered ? "scale-100 opacity-100" : "scale-[0.86] opacity-0",
-          "motion-reduce:transition-none motion-reduce:scale-100",
+          "absolute inset-0",
+          entered ? "opacity-100" : "opacity-0",
+          "transition-opacity duration-300 motion-reduce:transition-none",
         )}
       >
         <Link
           href={centerHref}
           onClick={onNavigate}
-          className="absolute left-1/2 top-1/2 z-20 flex h-[7.75rem] w-[7.75rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full bg-white/85 px-3 text-center no-underline shadow-[0_16px_40px_rgba(15,23,42,0.14)] ring-1 ring-white/70 backdrop-blur-xl backdrop-saturate-150"
+          className={cn(
+            "absolute left-1/2 top-1/2 z-20 flex h-[8.25rem] w-[8.25rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full px-4 text-center no-underline",
+            "bg-white/75 shadow-[0_20px_50px_rgba(15,23,42,0.12)] ring-1 ring-white/80",
+            "backdrop-blur-2xl backdrop-saturate-150",
+            "transition-transform duration-200 active:scale-[0.96] motion-reduce:transform-none",
+          )}
+          style={{ transitionTimingFunction: SPRING }}
         >
-          <p className="oh-type-meta truncate font-medium text-[var(--oh-muted)]">{centerTitle}</p>
-          <p className="oh-type-label mt-0.5 line-clamp-2 font-semibold text-[var(--oh-text)]">{centerCaption}</p>
+          <p className="oh-type-meta max-w-full truncate px-1 font-medium text-[var(--oh-muted)]">{centerTitle}</p>
+          <p className="mt-1 max-w-full truncate text-[1.15rem] font-semibold tracking-tight text-[var(--oh-text)]">
+            {centerCaption}
+          </p>
+          {centerHint ? (
+            <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">{centerHint}</p>
+          ) : null}
         </Link>
 
         {items.map((item, index) => {
@@ -286,34 +340,50 @@ export function RadialPie({
               className="absolute left-1/2 top-1/2 z-10"
               style={{
                 transform: `translate(calc(-50% + ${item.x}px), calc(-50% + ${item.y}px))`,
-                transitionDelay: entered ? `${index * 28}ms` : "0ms",
               }}
-              onMouseEnter={() => setActiveId(item.id)}
-              onFocus={() => setActiveId(item.id)}
+              onMouseEnter={() => setActiveSoon(item.id)}
+              onFocus={() => setActiveSoon(item.id)}
             >
               <Link
                 href={item.children?.[0]?.href ?? item.href}
                 onClick={onNavigate}
                 aria-expanded={item.children?.length ? isActive : undefined}
                 className={cn(
-                  "group flex w-[6.75rem] flex-col items-center gap-1.5 no-underline outline-none transition-transform duration-200",
-                  isActive ? "scale-110" : "scale-100 hover:scale-105",
+                  "group flex w-[6.5rem] flex-col items-center gap-2 no-underline outline-none",
+                  "transition-transform duration-200 motion-reduce:transition-none",
+                  isActive ? "scale-[1.08]" : "scale-100 hover:scale-[1.04]",
+                  "active:scale-[0.96]",
                   "focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2",
                 )}
+                style={{
+                  transitionTimingFunction: SPRING,
+                  transitionDelay: reducedMotion || !entered ? "0ms" : `${index * 40}ms`,
+                }}
               >
-                <span
-                  className={cn(
-                    "grid h-[3.75rem] w-[3.75rem] place-items-center rounded-full shadow-[0_10px_28px_rgba(15,23,42,0.14)] backdrop-blur-md backdrop-saturate-150 transition-[box-shadow,ring-width] duration-200",
-                    isActive ? "ring-[5px] ring-slate-800/85" : "ring-[3px] ring-slate-700/55",
-                  )}
-                  style={{ background: item.tone.iconBg, color: item.tone.iconFg }}
-                >
-                  <Icon size={24} strokeWidth={1.75} />
+                <span className="relative grid h-14 w-14 place-items-center">
+                  {isActive ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-[-6px] rounded-full opacity-90 blur-md transition-opacity duration-200"
+                      style={{ background: item.tone.iconBg }}
+                    />
+                  ) : null}
+                  <span
+                    className={cn(
+                      "relative grid h-14 w-14 place-items-center rounded-full",
+                      "bg-white/90 shadow-[0_10px_28px_rgba(15,23,42,0.1)] ring-1 ring-black/[0.04]",
+                      "backdrop-blur-xl backdrop-saturate-150",
+                      "transition-[box-shadow,transform] duration-200",
+                    )}
+                    style={{ color: item.tone.iconFg, transitionTimingFunction: SPRING }}
+                  >
+                    <Icon size={24} strokeWidth={1.6} />
+                  </span>
                 </span>
                 <span
                   className={cn(
-                    "oh-type-meta text-center font-semibold transition-colors",
-                    variant === "modal" ? "text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]" : "text-[var(--oh-text)]",
+                    "oh-type-meta text-center font-semibold tracking-tight",
+                    variant === "modal" ? "text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.4)]" : "text-[var(--oh-text)]",
                   )}
                 >
                   {item.label}
@@ -323,19 +393,27 @@ export function RadialPie({
           );
         })}
 
-        {childItems.map((child) => (
+        {childItems.map((child, index) => (
           <div
             key={`${active?.id}-${child.href}-${child.label}`}
             className="absolute left-1/2 top-1/2 z-30"
             style={{
-              transform: `translate(calc(-50% + ${child.x}px), calc(-50% + ${child.y}px))`,
+              transform: `translate(calc(-50% + ${child.x}px), calc(-50% + ${child.y}px)) scale(${reducedMotion ? 1 : 1})`,
+              opacity: 1,
+              transition: reducedMotion ? undefined : `opacity 220ms ${SPRING}, transform 260ms ${SPRING}`,
+              transitionDelay: reducedMotion ? undefined : `${index * 35}ms`,
             }}
           >
             <Link
               href={child.href}
               onClick={onNavigate}
               title={child.hint}
-              className="oh-type-meta inline-flex min-h-10 max-w-[9.5rem] items-center justify-center rounded-full bg-white/95 px-3 text-center font-semibold text-[var(--oh-text)] no-underline shadow-lg ring-1 ring-black/5 backdrop-blur-md hover:bg-white"
+              onMouseEnter={() => active && setActiveSoon(active.id)}
+              className={cn(
+                "oh-type-meta inline-flex min-h-10 max-w-[9rem] items-center justify-center rounded-full px-3 text-center font-semibold text-[var(--oh-text)] no-underline",
+                "bg-white/92 shadow-[0_8px_24px_rgba(15,23,42,0.12)] ring-1 ring-black/[0.05]",
+                "backdrop-blur-xl hover:bg-white active:scale-[0.97] motion-reduce:transform-none",
+              )}
             >
               <span className="line-clamp-2">{child.label}</span>
             </Link>

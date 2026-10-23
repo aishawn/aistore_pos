@@ -98,8 +98,11 @@ export function OrithosOverviewPage() {
 
   const company = data?.company ?? "Store";
   const centerCaption = data
-    ? `${formatMoney(data.revenue, data.currency)} · last 24h`
-    : "Open reports";
+    ? data.revenue > 0
+      ? formatMoney(data.revenue, data.currency)
+      : "No sales yet"
+    : "Reports";
+  const centerHint = data ? "Last 24 hours · Reports" : undefined;
 
   if (loading && !data) {
     return (
@@ -192,6 +195,7 @@ export function OrithosOverviewPage() {
         greeting={greeting}
         company={company}
         centerCaption={centerCaption}
+        centerHint={centerHint}
         className="min-h-0 flex-1"
       />
     </main>
