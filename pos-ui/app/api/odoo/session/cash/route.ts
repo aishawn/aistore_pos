@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,14 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  try {
+    await requirePermission(request, "sell.cash.move");
+  } catch (error) {
+    if (error instanceof StoreAccessError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+    throw error;
+  }
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
   if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");

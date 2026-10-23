@@ -29,6 +29,7 @@ import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useAuth } from "@/lib/auth";
 
 type WorkspaceTab = "keys" | "parked" | "more";
 
@@ -142,6 +143,8 @@ function isActiveCartDraft(value: unknown): value is ActiveCartDraft {
 const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
 export function OdooRegisterPage() {
+  const { hasPermission } = useAuth();
+  const canSell = hasPermission("sell.checkout");
   const [bootstrap, setBootstrap] = useState<OdooPosBootstrap | null>(null);
   const [configId, setConfigId] = useState<number | null>(null);
   const [odooUserId, setOdooUserId] = useState<string | null>(null);
@@ -961,8 +964,10 @@ export function OdooRegisterPage() {
   const paymentConfirmationKey = JSON.stringify([configId, paymentMethodId, amountToCollect, customer?.id, lines.map((line) => [line.product.id, line.quantity, line.packFactor])]);
   const cardPaymentConfirmed = isCashPayment || confirmedPaymentKey === paymentConfirmationKey;
   const cashEnough = Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect;
-  const canFinalise = Boolean(isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && cardPaymentConfirmed && cashEnough);
-  const finaliseLabel = busy
+  const canFinalise = Boolean(canSell && isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && cardPaymentConfirmed && cashEnough);
+  const finaliseLabel = !canSell
+    ? "No sell permission"
+    : busy
     ? "Processing…"
     : !isOnline
       ? "Reconnect to finalise"

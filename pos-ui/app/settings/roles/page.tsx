@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { LoaderCircle, Pencil, Plus, RefreshCw, ShieldCheck, Trash2, UsersRound } from "lucide-react";
-import { AdminPageLayout, AdminPrimaryButton } from "@/components/admin/AdminPageLayout";
-import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { Modal } from "@/components/admin/Modal";
+import { useEffect, useMemo, useState } from "react";
+import { LoaderCircle, RefreshCw, Save, ShieldCheck, UsersRound } from "lucide-react";
+import { AdminPageLayout, AdminPrimaryButton, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { useApi } from "@/hooks/useApi";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 interface Role {
   id: string | number;
   name: string;
-  managedId?: string | number | null;
+  managedId?: string | null;
 }
 
 interface Permission {
@@ -24,175 +23,161 @@ interface Permission {
 
 interface StaffUser {
   id: string | number;
+  name?: string;
+  username?: string;
   roleId?: string | number | null;
   isAdmin?: boolean;
   admin?: boolean;
 }
 
 const BASE = "/api/roles";
+const ROLE_ORDER = ["ADMIN", "MANAGER", "CLERK"] as const;
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Admin",
+  MANAGER: "店长 (Manager)",
+  CLERK: "店员 (Clerk)",
+};
+const ROLE_SUMMARIES: Record<string, string> = {
+  ADMIN: "Full store access, including integrations and data tools. Cannot be reduced on this page.",
+  MANAGER: "Store operations plus staff invites and clerk permission edits. Integrations and data purge stay admin-only.",
+  CLERK: "Only the operations switched on below. Admin and 店长 can change this matrix.",
+};
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-export default function RolesPage() {
-  const { user: currentUser } = useAuth();
-  const rolesState = useApi<Role[]>(BASE);
-  const permissionsState = useApi<Permission[]>("/api/permissions");
-  const usersState = useApi<StaffUser[]>("/api/users");
-  const roles = useMemo(() => rolesState.data ?? [], [rolesState.data]);
+function managedCode(role: Role | null | undefined) {
+  return String(role?.managedId ?? "").trim().toUpperCase();
+}
+
+function staffIsAdmin(user: StaffUser) {
+  return Boolean(user.isAdmin ?? user.admin);
+}
+
+export default function PermissionsPage() {
+  const { user: currentUser, hasPermission } = useAuth();
+  const canManage = Boolean(currentUser?.isAdmin || hasPermission("settings.permissions"));
+
+  const rolesState = useApi<Role[]>(canManage ? BASE : null);
+  const permissionsState = useApi<Permission[]>(canManage ? "/api/permissions" : null);
+  const usersState = useApi<StaffUser[]>(canManage ? "/api/users" : null);
+
+  const roles = useMemo(() => {
+    const list = rolesState.data ?? [];
+    return [...list].sort((a, b) => {
+      const ai = ROLE_ORDER.indexOf(managedCode(a) as (typeof ROLE_ORDER)[number]);
+      const bi = ROLE_ORDER.indexOf(managedCode(b) as (typeof ROLE_ORDER)[number]);
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+  }, [rolesState.data]);
+
   const permissions = useMemo(() => permissionsState.data ?? [], [permissionsState.data]);
   const users = usersState.data ?? [];
-  const roleKey = useMemo(() => roles.map((role) => String(role.id)).join("|"), [roles]);
 
-  const [rolePermissionSnapshot, setRolePermissionSnapshot] = useState<{
-    key: string;
-    byRole: Record<string, string[] | null>;
-  }>({ key: "", byRole: {} });
-  const [editing, setEditing] = useState<Role | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("");
+  const [selectedCode, setSelectedCode] = useState<string>("CLERK");
+  const selectedRole = useMemo(
+    () => roles.find((role) => managedCode(role) === selectedCode) ?? roles[0] ?? null,
+    [roles, selectedCode],
+  );
+  const selectedManaged = managedCode(selectedRole);
+  const clerkEditable = selectedManaged === "CLERK";
+
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
-  const [loadingRolePermissions, setLoadingRolePermissions] = useState(false);
-  const [retryingRoleId, setRetryingRoleId] = useState<string | null>(null);
+  const [baselineIds, setBaselineIds] = useState<number[]>([]);
+  const [loadingMatrix, setLoadingMatrix] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState<Role | null>(null);
-  const [editorError, setEditorError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
   const [pageError, setPageError] = useState<string | null>(null);
-  const editorRevision = useRef(0);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
   const permissionGroups = useMemo(() => {
+    const q = filter.trim().toLowerCase();
     const groups = new Map<string, Permission[]>();
     for (const permission of permissions) {
+      if (q && !permission.name.toLowerCase().includes(q) && !permission.safeName.toLowerCase().includes(q)) {
+        continue;
+      }
       const section = permission.section?.trim() || "General";
       groups.set(section, [...(groups.get(section) ?? []), permission]);
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [permissions]);
+  }, [permissions, filter]);
 
-  async function retryRolePermissions(role: Role) {
-    const roleId = String(role.id);
-    setRetryingRoleId(roleId);
-    try {
-      const assigned = await api.get<Permission[]>(`${BASE}/${role.id}/permissions`);
-      setRolePermissionSnapshot((current) => current.key === roleKey
-        ? { ...current, byRole: { ...current.byRole, [roleId]: assigned.map((permission) => permission.name) } }
-        : current);
-    } catch {
-      setRolePermissionSnapshot((current) => current.key === roleKey
-        ? { ...current, byRole: { ...current.byRole, [roleId]: null } }
-        : current);
-    } finally {
-      setRetryingRoleId((current) => current === roleId ? null : current);
-    }
-  }
+  const dirty = useMemo(() => {
+    if (!clerkEditable) return false;
+    if (selectedPermissionIds.length !== baselineIds.length) return true;
+    const baseline = new Set(baselineIds);
+    return selectedPermissionIds.some((id) => !baseline.has(id));
+  }, [baselineIds, clerkEditable, selectedPermissionIds]);
 
   useEffect(() => {
-    if (!roles.length) return;
+    if (!selectedRole) return;
     let cancelled = false;
-    void Promise.all(roles.map(async (role) => {
-      try {
-        const assigned = await api.get<Permission[]>(`${BASE}/${role.id}/permissions`);
-        return [String(role.id), assigned.map((permission) => permission.name)] as const;
-      } catch {
-        return [String(role.id), null] as const;
-      }
-    })).then((entries) => {
-      if (!cancelled) {
-        setRolePermissionSnapshot({
-          key: roleKey,
-          byRole: Object.fromEntries(entries),
-        });
-      }
-    });
+    setLoadingMatrix(true);
+    setPageError(null);
+    setSaveNotice(null);
+    void api.get<Permission[]>(`${BASE}/${selectedRole.id}/permissions`)
+      .then((assigned) => {
+        if (cancelled) return;
+        const ids = assigned.map((permission) => permission.id);
+        setSelectedPermissionIds(ids);
+        setBaselineIds(ids);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSelectedPermissionIds([]);
+        setBaselineIds([]);
+        setPageError(errorMessage(error, "Could not load this role's permissions."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMatrix(false);
+      });
     return () => { cancelled = true; };
-  }, [roles, roleKey]);
+  }, [selectedRole?.id]);
 
-  function openCreate() {
-    editorRevision.current += 1;
-    setEditing(null);
-    setName("");
-    setSelectedPermissionIds([]);
-    setEditorError(null);
-    setCreating(true);
-  }
-
-  async function openEdit(role: Role) {
-    const revision = ++editorRevision.current;
-    setEditing(role);
-    setCreating(false);
-    setName(role.name);
-    setSelectedPermissionIds([]);
-    setEditorError(null);
-    setLoadingRolePermissions(true);
-    try {
-      const assigned = await api.get<Permission[]>(`${BASE}/${role.id}/permissions`);
-      if (revision === editorRevision.current) setSelectedPermissionIds(assigned.map((permission) => permission.id));
-    } catch (error) {
-      if (revision === editorRevision.current) setEditorError(errorMessage(error, "Could not load this role's permissions."));
-    } finally {
-      if (revision === editorRevision.current) setLoadingRolePermissions(false);
+  function roleStaff(role: Role) {
+    const code = managedCode(role);
+    if (code === "ADMIN") {
+      return users.filter((staff) => staffIsAdmin(staff));
     }
-  }
-
-  function closeEditor() {
-    if (saving) return;
-    editorRevision.current += 1;
-    setCreating(false);
-    setEditing(null);
-    setEditorError(null);
+    return users.filter((staff) => !staffIsAdmin(staff) && String(staff.roleId ?? "") === String(role.id));
   }
 
   function togglePermission(permissionId: number) {
+    if (!clerkEditable || saving) return;
     setSelectedPermissionIds((current) => current.includes(permissionId)
       ? current.filter((id) => id !== permissionId)
       : [...current, permissionId]);
+    setSaveNotice(null);
   }
 
-  async function saveRole() {
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      setEditorError("Enter a role name.");
-      return;
-    }
+  async function saveClerkMatrix() {
+    if (!selectedRole || !clerkEditable) return;
     setSaving(true);
-    setEditorError(null);
+    setPageError(null);
+    setSaveNotice(null);
     try {
-      const body = { name: trimmedName, permissionIds: selectedPermissionIds };
-      if (editing) await api.put(`${BASE}/${editing.id}`, body);
-      else await api.post(BASE, body);
-      await Promise.all([rolesState.reload(), usersState.reload()]);
-      setCreating(false);
-      setEditing(null);
+      await api.put(`${BASE}/${selectedRole.id}/permissions`, selectedPermissionIds);
+      setBaselineIds(selectedPermissionIds);
+      setSaveNotice("Clerk permissions saved. Staff need to sign in again for JWT claims to refresh; live checks use the database.");
     } catch (error) {
-      setEditorError(errorMessage(error, "Could not save this role."));
+      setPageError(errorMessage(error, "Could not save clerk permissions."));
     } finally {
       setSaving(false);
     }
   }
 
-  async function removeRole(role: Role, userCount: number) {
-    if (userCount > 0) return;
-    setDeletingId(String(role.id));
-    setPageError(null);
-    try {
-      await api.del(`${BASE}/${role.id}`);
-      await rolesState.reload();
-      setConfirmingDelete(null);
-    } catch (error) {
-      setPageError(errorMessage(error, "Could not delete this role."));
-      setConfirmingDelete(null);
-    } finally {
-      setDeletingId(null);
-    }
+  function resetMatrix() {
+    setSelectedPermissionIds(baselineIds);
+    setSaveNotice(null);
   }
 
-  if (!currentUser?.isAdmin) {
+  if (!canManage) {
     return (
-      <AdminPageLayout title="Roles & Permissions" subtitle="Store administrators can manage staff access.">
+      <AdminPageLayout title="Permissions" subtitle="Admin and 店长 can control clerk operation access.">
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-          You need store administrator access to view or change roles and permissions.
+          You need permission to manage staff access to open this page.
         </div>
       </AdminPageLayout>
     );
@@ -200,6 +185,7 @@ export default function RolesPage() {
 
   const pageLoading = rolesState.loading || permissionsState.loading || usersState.loading;
   const loadError = rolesState.error || permissionsState.error || usersState.error;
+
   function reloadPage() {
     rolesState.reload();
     permissionsState.reload();
@@ -208,215 +194,156 @@ export default function RolesPage() {
 
   return (
     <AdminPageLayout
-      title="Roles & Permissions"
-      subtitle="Give each staff role only the access needed for their work."
-      count={roles.length}
+      title="Permissions"
+      subtitle="Fixed roles: Admin, 店长, and 店员. Only the clerk operation matrix is editable."
+      count={roles.length || 3}
       countLabel="Roles"
-      actions={
-        <AdminPrimaryButton onClick={openCreate} disabled={permissionsState.loading || Boolean(permissionsState.error)} className="min-h-11">
-          <Plus size={16} aria-hidden="true" /> New role
-        </AdminPrimaryButton>
-      }
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         <div className="flex items-start gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-4 text-sm text-[var(--oh-text-secondary)] shadow-[var(--oh-shadow-card)]">
           <ShieldCheck className="mt-0.5 shrink-0 text-[var(--oh-primary)]" size={19} aria-hidden="true" />
-          <p>New roles start with no permissions. AI report permissions can expose sales or cost reports; review each grant before saving.</p>
+          <p>Admin and 店长 keep fixed capabilities. Switch on the operations each 店员 may use — changes apply to every clerk account.</p>
         </div>
 
         {pageError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{pageError}</p>}
+        {saveNotice && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">{saveNotice}</p>}
 
         {pageLoading ? (
-        <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading roles and permissions" className="grid gap-3">
-            {Array.from({ length: 3 }, (_, index) => <div key={index} className="h-32 animate-pulse rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)]" />)}
+          <div role="status" aria-live="polite" aria-busy="true" className="grid gap-3 lg:grid-cols-[220px_1fr]">
+            <div className="h-48 animate-pulse rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)]" />
+            <div className="h-72 animate-pulse rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)]" />
           </div>
         ) : loadError ? (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <span>{loadError}</span>
-            <button type="button" onClick={reloadPage} disabled={pageLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60"><RefreshCw size={15} className={pageLoading ? "animate-spin" : undefined} /> {pageLoading ? "Retrying…" : "Retry"}</button>
+            <button type="button" onClick={reloadPage} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100">
+              <RefreshCw size={15} /> Retry
+            </button>
           </div>
-        ) : roles.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-5 py-12 text-center text-sm text-[var(--oh-muted)]">No staff roles yet. Create a role before inviting staff who need non-administrator permissions.</div>
         ) : (
-          <>
-            <ul className="grid gap-3 xl:hidden">
-              {roles.map((role) => {
-                const roleUsers = users.filter((staff) => String(staff.roleId ?? "") === String(role.id));
-                const assignedPermissions = rolePermissionSnapshot.byRole[String(role.id)];
-                return (
-                  <li key={String(role.id)} className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <h2 className="min-w-0 break-words text-sm font-semibold text-[var(--oh-text)]">{role.name}</h2>
-                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">
-                        <UsersRound size={14} aria-hidden="true" /> {roleUsers.length} staff
-                      </span>
-                    </div>
-                    <div className="mt-4 border-t border-[var(--oh-border)] pt-3">
-                      <h3 className="text-xs font-semibold text-[var(--oh-muted)]">Permissions</h3>
-                      {rolePermissionSnapshot.key !== roleKey ? (
-                        <p className="mt-2 text-sm text-[var(--oh-muted)]">Loading access…</p>
-                      ) : assignedPermissions === null ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-red-800">
-                          <span>Could not load permissions</span>
-                          <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
-                            {retryingRoleId === String(role.id) && <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />}
-                            Retry permissions
-                          </button>
-                        </div>
-                      ) : assignedPermissions?.length ? (
-                        <ul className="mt-2 flex flex-wrap gap-1.5">
-                          {assignedPermissions.map((permissionName) => (
-                            <li key={permissionName} className="rounded-full bg-[var(--oh-surface)] px-2.5 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{permissionName}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="mt-2 text-sm text-[var(--oh-muted)]">No permissions assigned</p>
-                      )}
-                    </div>
-                    <div className="mt-4 flex gap-2 border-t border-[var(--oh-border)] pt-3">
-                      <button type="button" onClick={() => void openEdit(role)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
-                        <Pencil size={15} aria-hidden="true" /> Edit access
-                      </button>
+          <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+            <aside className="rounded-xl border border-[var(--oh-border)] bg-white p-2 shadow-[var(--oh-shadow-card)]">
+              <ul className="grid gap-1">
+                {(roles.length ? roles : ROLE_ORDER.map((code) => ({ id: code, name: ROLE_LABELS[code], managedId: code }))).map((role) => {
+                  const code = managedCode(role) || String(role.id);
+                  const active = code === selectedManaged || code === selectedCode;
+                  const count = roles.length ? roleStaff(role as Role).length : 0;
+                  return (
+                    <li key={String(role.id)}>
                       <button
                         type="button"
-                        onClick={() => setConfirmingDelete(role)}
-                        disabled={roleUsers.length > 0 || deletingId === String(role.id)}
-                        title={roleUsers.length > 0 ? "Reassign staff before deleting this role" : "Delete role"}
-                        aria-label={`Delete ${role.name} role`}
-                        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-[var(--oh-border)] text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700"
+                        onClick={() => setSelectedCode(code)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors",
+                          active ? "bg-[var(--oh-orange-light)] text-[var(--oh-text)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
+                        )}
                       >
-                        {deletingId === String(role.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} aria-hidden="true" />}
+                        <span>{ROLE_LABELS[code] ?? role.name}</span>
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--oh-muted)]">
+                          <UsersRound size={13} aria-hidden="true" />{count}
+                        </span>
                       </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
 
-            <div className="hidden overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:block">
-              <div className="overflow-x-auto">
-              <table aria-label="Store roles" className="w-full min-w-[720px] text-left text-sm">
-                <thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 font-semibold">Role</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Permissions</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Staff</th>
-                    <th scope="col" className="px-4 py-3 text-right font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {roles.map((role) => {
-                    const roleUsers = users.filter((staff) => String(staff.roleId ?? "") === String(role.id));
-                    const isAssigned = roleUsers.length > 0;
-                    return (
-                      <tr key={String(role.id)} className="border-t border-[var(--oh-border)]/70">
-                        <td className="px-4 py-4 font-semibold text-[var(--oh-text)]">{role.name}</td>
-                        <td className="px-4 py-4 text-[var(--oh-text-secondary)]">
-                          {rolePermissionSnapshot.key !== roleKey ? (
-                            <span className="text-[var(--oh-muted)]">Loading access…</span>
-                          ) : rolePermissionSnapshot.byRole[String(role.id)] === null ? (
-                            <span className="inline-flex items-center gap-2 text-red-800">
-                              Could not load permissions
-                              <button type="button" onClick={() => void retryRolePermissions(role)} disabled={retryingRoleId === String(role.id)} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
-                                {retryingRoleId === String(role.id) && <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />}
-                                Retry
-                              </button>
-                            </span>
-                          ) : rolePermissionSnapshot.byRole[String(role.id)]?.length ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {rolePermissionSnapshot.byRole[String(role.id)]?.map((permissionName) => (
-                                <span key={permissionName} className="rounded-full bg-[var(--oh-surface)] px-2 py-1 text-xs font-medium text-[var(--oh-text-secondary)]">{permissionName}</span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-[var(--oh-muted)]">No permissions assigned</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 text-[var(--oh-text-secondary)]">
-                          <span className="inline-flex items-center gap-1.5"><UsersRound size={15} aria-hidden="true" />{roleUsers.length}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => void openEdit(role)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border-strong)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]">
-                              <Pencil size={15} aria-hidden="true" /> Edit access
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmingDelete(role)}
-                              disabled={isAssigned || deletingId === String(role.id)}
-                              title={isAssigned ? "Reassign staff before deleting this role" : "Delete role"}
-                              aria-label={`Delete ${role.name} role`}
-                              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-[var(--oh-border)] text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-700"
-                            >
-                              {deletingId === String(role.id) ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} aria-hidden="true" />}
-                            </button>
+            <section className="rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--oh-border)] pb-4">
+                <div>
+                  <h2 className="text-base font-semibold text-[var(--oh-text)]">{ROLE_LABELS[selectedManaged] ?? selectedRole?.name ?? "Role"}</h2>
+                  <p className="mt-1 max-w-2xl text-sm text-[var(--oh-text-secondary)]">
+                    {ROLE_SUMMARIES[selectedManaged] ?? "Managed store role."}
+                  </p>
+                </div>
+                {clerkEditable && (
+                  <div className="flex flex-wrap gap-2">
+                    <AdminSecondaryButton type="button" onClick={resetMatrix} disabled={!dirty || saving || loadingMatrix}>
+                      Reset
+                    </AdminSecondaryButton>
+                    <AdminPrimaryButton type="button" onClick={() => void saveClerkMatrix()} disabled={!dirty || saving || loadingMatrix}>
+                      {saving ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />}
+                      {saving ? "Saving…" : "Save clerk access"}
+                    </AdminPrimaryButton>
+                  </div>
+                )}
+              </div>
+
+              {!clerkEditable ? (
+                <div className="mt-4 rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-[var(--oh-surface)] px-4 py-6 text-sm text-[var(--oh-text-secondary)]">
+                  This role’s capabilities are fixed. Select <strong>店员 (Clerk)</strong> to turn operations on or off.
+                </div>
+              ) : (
+                <>
+                  <label className="mt-4 grid gap-1.5 text-sm font-semibold text-[var(--oh-text-secondary)]">
+                    Search operations
+                    <input
+                      value={filter}
+                      onChange={(event) => setFilter(event.target.value)}
+                      placeholder="e.g. refund, receive, gift cards"
+                      className="h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+                    />
+                  </label>
+
+                  {loadingMatrix ? (
+                    <div className="mt-6 flex min-h-24 items-center justify-center gap-2 text-sm text-[var(--oh-muted)]">
+                      <LoaderCircle size={16} className="animate-spin" /> Loading permissions…
+                    </div>
+                  ) : permissionGroups.length === 0 ? (
+                    <p className="mt-6 text-sm text-[var(--oh-muted)]">No permissions match this search.</p>
+                  ) : (
+                    <div className="mt-4 grid gap-3">
+                      {permissionGroups.map(([section, items]) => (
+                        <section key={section} className="rounded-lg border border-[var(--oh-border)] p-3">
+                          <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--oh-muted)]">{section}</h3>
+                          <div className="grid gap-1 sm:grid-cols-2">
+                            {items.map((permission) => (
+                              <label
+                                key={permission.id}
+                                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedPermissionIds.includes(permission.id)}
+                                  onChange={() => togglePermission(permission.id)}
+                                  disabled={saving}
+                                  className="h-4 w-4 accent-[var(--oh-primary)]"
+                                />
+                                <span>
+                                  <span className="block font-medium text-[var(--oh-text)]">{permission.name}</span>
+                                  <span className="block text-xs text-[var(--oh-muted)]">{permission.safeName}</span>
+                                </span>
+                              </label>
+                            ))}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {selectedRole && (
+                <div className="mt-6 border-t border-[var(--oh-border)] pt-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-[var(--oh-muted)]">Staff on this role</h3>
+                  {roleStaff(selectedRole).length === 0 ? (
+                    <p className="mt-2 text-sm text-[var(--oh-muted)]">No staff assigned yet.</p>
+                  ) : (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {roleStaff(selectedRole).map((staff) => (
+                        <li key={String(staff.id)} className="rounded-full bg-[var(--oh-surface)] px-3 py-1.5 text-xs font-medium text-[var(--oh-text-secondary)]">
+                          {staff.name || staff.username || `User ${staff.id}`}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
           </div>
-          </>
         )}
       </div>
-
-      {(creating || editing) && (
-        <Modal title={editing ? "Edit role access" : "Create role"} onClose={closeEditor} footer={
-          <>
-            <button type="button" onClick={closeEditor} disabled={saving} className="min-h-11 rounded-md border border-neutral-300 px-5 text-sm font-semibold text-neutral-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">Cancel</button>
-            <button type="button" onClick={() => void saveRole()} disabled={saving || loadingRolePermissions || !permissionsState.data} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-5 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">
-              {saving && <LoaderCircle size={16} className="animate-spin" aria-hidden="true" />}{saving ? "Saving…" : "Save role"}
-            </button>
-          </>
-        }>
-          <div className="flex flex-col gap-5">
-            <label className="grid gap-1.5 text-sm font-semibold text-[var(--oh-text-secondary)]">
-              Role name
-              <input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} autoFocus className="h-11 rounded-md border border-[var(--oh-border-strong)] px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
-            </label>
-            <fieldset disabled={loadingRolePermissions || saving} className="grid gap-3">
-              <legend className="text-sm font-semibold text-[var(--oh-text)]">Permissions</legend>
-              {loadingRolePermissions ? (
-                <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" />Loading permissions…</div>
-              ) : permissionGroups.length === 0 ? (
-                <p className="rounded-lg bg-[var(--oh-surface)] p-3 text-sm text-[var(--oh-muted)]">No permissions are available for this store.</p>
-              ) : permissionGroups.map(([section, items]) => (
-                <section key={section} className="rounded-lg border border-[var(--oh-border)] p-3">
-                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--oh-muted)]">{section}</h3>
-                  <div className="grid gap-1 sm:grid-cols-2">
-                    {items.map((permission) => (
-                      <label key={permission.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-2 text-sm text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]">
-                        <input type="checkbox" checked={selectedPermissionIds.includes(permission.id)} onChange={() => togglePermission(permission.id)} className="h-4 w-4 accent-[var(--oh-primary)]" />
-                        <span>{permission.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </fieldset>
-            {editorError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{editorError}</p>}
-          </div>
-        </Modal>
-      )}
-
-      <ConfirmDialog
-        open={!!confirmingDelete}
-        title="Delete role"
-        message={confirmingDelete ? `Delete the “${confirmingDelete.name}” role? This cannot be undone.` : ""}
-        confirmLabel="Delete role"
-        busy={deletingId === String(confirmingDelete?.id ?? "")}
-        onConfirm={() => {
-          if (!confirmingDelete) return;
-          const userCount = users.filter((staff) => String(staff.roleId ?? "") === String(confirmingDelete.id)).length;
-          void removeRole(confirmingDelete, userCount);
-        }}
-        onCancel={() => {
-          if (!deletingId) setConfirmingDelete(null);
-        }}
-      />
     </AdminPageLayout>
   );
 }

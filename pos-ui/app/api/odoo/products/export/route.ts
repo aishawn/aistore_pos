@@ -3,6 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,6 +67,14 @@ function asMoney(value: unknown) {
 
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
+  try {
+    await requirePermission(request, "stock.products.import_export");
+  } catch (error) {
+    if (error instanceof StoreAccessError) {
+      return NextResponse.json({ message: error.message }, { status: error.status });
+    }
+    throw error;
+  }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");

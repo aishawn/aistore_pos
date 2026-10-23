@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { isSameOrigin } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   let writeAttempted = false;
   let recoveryContext: Record<string, unknown> | null = null;
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "stock.receive");
     const companyIds = await getCompanyIds(request, sessionId);
     const correlationId = request.headers.get("x-correlation-id");
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -231,7 +231,7 @@ function responseError(error: unknown) {
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed." }, { status: 403 });
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "stock.stocktake");
     const sessionId = sessionCookie(request);
     const scope = await tenantScope(request, sessionId);
     const locations = await leafLocations(sessionId, scope);
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
   try {
     // Authorize before parsing business input or checking the feature gate so every
     // non-admin write attempt fails closed with the same permission response.
-    await requireStoreAdmin(request);
+    await requirePermission(request, "stock.stocktake");
   } catch (error) {
     return responseError(error);
   }

@@ -1,7 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, registerAuthFailureHandler } from "@/lib/api";
+
+export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
 export interface AuthUser {
   id: string;
@@ -9,6 +11,10 @@ export interface AuthUser {
   username: string;
   /** Store administrator — can manage staff in this vendor only. */
   isAdmin: boolean;
+  /** Fixed role: ADMIN | MANAGER | CLERK | NONE */
+  roleCode?: StoreRoleCode;
+  /** Granted operation keys (safe_name). Admins receive the full catalog. */
+  permissions?: string[];
   /**
    * SaaS platform admin (operator vendor, e.g. demo on app.*).
    * Can list all stores; distinct from store-scoped isAdmin.
@@ -19,6 +25,7 @@ export interface AuthUser {
   /** SaaS vendor id (subdomain tenant). */
   vendorId?: number;
   email?: string | null;
+  roleId?: number | null;
   pendingPasswordReset?: boolean;
   subdomain?: string | null;
 }
@@ -32,12 +39,18 @@ interface LoginResponse {
 type CurrentUserResponse = Omit<AuthUser, "id"> & { id: string | number };
 
 function normalizeUser(user: CurrentUserResponse): AuthUser {
-  return { ...user, id: String(user.id) };
+  return {
+    ...user,
+    id: String(user.id),
+    roleCode: user.roleCode ?? (user.isAdmin ? "ADMIN" : "NONE"),
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
+  };
 }
 
 interface AuthState {
   user: AuthUser | null;
   ready: boolean;
+  hasPermission: (safeName: string) => boolean;
   login: (username: string, password: string, subdomain?: string) => Promise<LoginResponse>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -62,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     const cached = typeof localStorage !== "undefined" ? localStorage.getItem(USER_KEY) : null;
     if (cached) {
-      try { setUser(JSON.parse(cached) as AuthUser); } catch { localStorage.removeItem(USER_KEY); }
+      try { setUser(normalizeUser(JSON.parse(cached) as CurrentUserResponse)); } catch { localStorage.removeItem(USER_KEY); }
     }
     void api.get<CurrentUserResponse>("/api/auth/me")
       .then((current) => {
@@ -106,7 +119,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
   }, []);
 
-  return <AuthContext.Provider value={{ user, ready, login, changePassword, logout }}>{children}</AuthContext.Provider>;
+  const hasPermission = useCallback((safeName: string) => {
+    if (!user) return false;
+    if (user.isAdmin || user.roleCode === "ADMIN") return true;
+    return (user.permissions ?? []).includes(safeName);
+  }, [user]);
+
+  const value = useMemo(
+    () => ({ user, ready, hasPermission, login, changePassword, logout }),
+    [user, ready, hasPermission, login, changePassword, logout],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

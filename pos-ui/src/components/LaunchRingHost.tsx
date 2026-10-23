@@ -16,7 +16,10 @@ export function LaunchRingHost() {
   const [detail, setDetail] = useState<LaunchRingDetail>({});
 
   const destinations = useMemo(
-    () => buildLaunchDestinations(getSidebarNavigation({ isAdmin: Boolean(user?.isAdmin) })),
+    () => buildLaunchDestinations(getSidebarNavigation({
+      isAdmin: Boolean(user?.isAdmin),
+      hasPermission: (safeName) => Boolean(user?.isAdmin) || (user?.permissions ?? []).includes(safeName),
+    })),
     [user?.isAdmin],
   );
 

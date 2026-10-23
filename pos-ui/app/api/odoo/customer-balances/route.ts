@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { isSameOrigin } from "@/lib/server-auth";
 
@@ -22,7 +22,7 @@ type PartnerBalance = {
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "customers.balances");
     const scope = await scopedOdoo(request);
     const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? 40);
     const offsetRaw = Number(request.nextUrl.searchParams.get("offset") ?? 0);

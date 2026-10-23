@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { netMargin, suggestedListPrice, type SuggestionTax } from "@/lib/price-suggestion-math";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { netMargin, simpleTaxTotals, suggestedListPrice, type SuggestionTax } from "@/lib/price-suggestion-math";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
@@ -72,21 +72,6 @@ function parseMarginTarget(raw: string | null): number {
   return Math.min(MAX_MARGIN, Math.max(MIN_MARGIN, normalized));
 }
 
-function computeSimpleTaxTotals(price: number, taxes: SuggestionTax[]) {
-  if (!Number.isFinite(price) || price <= 0 || !taxes.length) return null;
-  if (taxes.some((tax) => tax.amount_type !== "percent"
-    || !Number.isFinite(tax.amount) || tax.amount < 0
-    || tax.include_base_amount !== false
-    || tax.price_include !== taxes[0].price_include)) return null;
-  const rate = taxes.reduce((sum, tax) => sum + tax.amount / 100, 0);
-  const totalIncluded = taxes[0].price_include ? price : price * (1 + rate);
-  const totalExcluded = taxes[0].price_include ? price / (1 + rate) : price;
-  if (!Number.isFinite(totalExcluded) || !Number.isFinite(totalIncluded)
-    || totalExcluded <= 0 || totalIncluded < totalExcluded) return null;
-  const cents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
-  return { total_excluded: cents(totalExcluded), total_included: cents(totalIncluded) };
-}
-
 export async function GET(request: NextRequest) {
   const correlationId = request.headers.get("x-correlation-id");
   if (!isSameOrigin(request)) return noStoreJson({ message: "Cross-origin requests are not allowed" }, 403, correlationId);
@@ -98,7 +83,7 @@ export async function GET(request: NextRequest) {
   const recentFrom = new Date(now - HISTORY_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
 
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "ai.price_suggestions");
     const sessionResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
       headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
@@ -174,7 +159,7 @@ export async function GET(request: NextRequest) {
       const taxReady = productTaxIds.length > 0 && productTaxes.length === productTaxIds.length
         && suggestedListPrice(1, marginTarget, productTaxes) !== null;
       if (hasPrice && taxReady) {
-        const compute = (price: number) => computeSimpleTaxTotals(price, productTaxes);
+        const compute = (price: number) => simpleTaxTotals(price, productTaxes);
         const current = await compute(listPrice);
         currentNetPrice = current?.total_excluded ?? null;
         currentPrice = current?.total_included ?? null;

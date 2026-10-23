@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { isSameOrigin } from "@/lib/server-auth";
 
@@ -14,7 +14,7 @@ function parseId(raw: string) {
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "customers.pricelists");
     const scope = await scopedOdoo(request);
     const pricelistId = parseId((await context.params).id);
     if (!pricelistId) return NextResponse.json({ message: "Invalid price list ID" }, { status: 400 });
@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "customers.pricelists");
     const scope = await scopedOdoo(request);
     const pricelistId = parseId((await context.params).id);
     if (!pricelistId) return NextResponse.json({ message: "Invalid price list ID" }, { status: 400 });

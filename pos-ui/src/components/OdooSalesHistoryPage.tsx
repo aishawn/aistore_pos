@@ -20,6 +20,7 @@ import {
 } from "@/lib/odoo-api";
 import { formatOdooDateTime, formatStoreEpoch } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+import { useAuth } from "@/lib/auth";
 
 const PAGE_SIZE = 40;
 const money = (amount: number, currency = "AUD") => new Intl.NumberFormat("en-AU", { style: "currency", currency }).format(amount);
@@ -176,6 +177,8 @@ export function OdooSalesHistoryPage({
   variant?: "page" | "panel";
   onRequestClose?: () => void;
 } = {}) {
+  const { hasPermission } = useAuth();
+  const mayRefund = hasPermission("sell.refund");
   const isPanel = variant === "panel";
   const receiptOverlayZ = isPanel ? "z-[80]" : "z-50";
   const refundOverlayZ = isPanel ? "z-[90]" : "z-[60]";
@@ -400,7 +403,8 @@ export function OdooSalesHistoryPage({
 
   const receiptCurrency = saleDetail && Array.isArray(saleDetail.company?.currency_id) ? saleDetail.company.currency_id[1] : "AUD";
   const canRefund = Boolean(
-    saleDetail
+    mayRefund
+    && saleDetail
     && ["paid", "done", "invoiced"].includes(saleDetail.order.state)
     && saleDetail.order.amount_total > 0
     && !refundComplete

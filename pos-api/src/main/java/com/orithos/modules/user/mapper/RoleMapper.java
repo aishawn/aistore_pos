@@ -12,8 +12,18 @@ public interface RoleMapper {
     @Select("SELECT * FROM role WHERE id = #{id}")
     Role findById(Long id);
 
+    @Select("SELECT * FROM role WHERE managed_id = #{managedId} ORDER BY id ASC LIMIT 1")
+    Role findByManagedId(String managedId);
+
     @Select("SELECT * FROM role ORDER BY id DESC")
     List<Role> findAll();
+
+    @Select("""
+        SELECT * FROM role
+        WHERE managed_id IN ('ADMIN', 'MANAGER', 'CLERK')
+        ORDER BY FIELD(managed_id, 'ADMIN', 'MANAGER', 'CLERK'), id
+        """)
+    List<Role> findManagedRoles();
 
     @Select("SELECT COUNT(*) FROM app_user WHERE role_id = #{roleId} AND deleted_at IS NULL")
     long countActiveUsers(Long roleId);

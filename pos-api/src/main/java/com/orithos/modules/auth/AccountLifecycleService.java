@@ -1,14 +1,18 @@
 package com.orithos.modules.auth;
 
 import com.orithos.common.BusinessException;
+import com.orithos.modules.user.StorePermissionCatalog;
 import com.orithos.modules.user.UserService;
+import com.orithos.modules.user.entity.Role;
 import com.orithos.modules.user.entity.User;
+import com.orithos.modules.user.mapper.RoleMapper;
 import com.orithos.modules.user.mapper.UserMapper;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import com.orithos.security.AccountTokenStore;
 import com.orithos.security.AuthUser;
 import com.orithos.security.CurrentUser;
+import com.orithos.security.PermissionAccess;
 import com.orithos.security.TokenStore;
 import com.orithos.tenant.TenantProperties;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +35,8 @@ public class AccountLifecycleService {
 
     private final UserMapper userMapper;
     private final UserService userService;
+    private final RoleMapper roleMapper;
+    private final PermissionAccess permissionAccess;
     private final AccountTokenStore accountTokens;
     private final TokenStore tokenStore;
     private final MailService mailService;
@@ -41,6 +47,8 @@ public class AccountLifecycleService {
     public AccountLifecycleService(
             UserMapper userMapper,
             UserService userService,
+            RoleMapper roleMapper,
+            PermissionAccess permissionAccess,
             AccountTokenStore accountTokens,
             TokenStore tokenStore,
             MailService mailService,
@@ -49,6 +57,8 @@ public class AccountLifecycleService {
             @Value("${app.public-url:http://localhost:3000}") String publicAppUrl) {
         this.userMapper = userMapper;
         this.userService = userService;
+        this.roleMapper = roleMapper;
+        this.permissionAccess = permissionAccess;
         this.accountTokens = accountTokens;
         this.tokenStore = tokenStore;
         this.mailService = mailService;
@@ -120,7 +130,29 @@ public class AccountLifecycleService {
 
     public Map<String, Object> inviteUser(String name, String username, String email,
                                           Long roleId, Boolean isAdmin, Long outletId) {
-        requireAdmin();
+        permissionAccess.requireUsersManager();
+        AuthUser actor = CurrentUser.get();
+        boolean actorAdmin = actor != null && actor.admin();
+        if (Boolean.TRUE.equals(isAdmin) && !actorAdmin) {
+            throw new BusinessException(40300, "Only store administrators can grant administrator access");
+        }
+        Long resolvedRoleId = roleId;
+        if (!actorAdmin) {
+            Role clerk = roleMapper.findByManagedId(StorePermissionCatalog.MANAGED_CLERK);
+            if (clerk == null) {
+                throw new BusinessException(50001, "Clerk role is not configured");
+            }
+            if (resolvedRoleId != null && !clerk.getId().equals(resolvedRoleId)) {
+                throw new BusinessException(40300, "Store managers can only invite Clerk staff");
+            }
+            resolvedRoleId = clerk.getId();
+            isAdmin = false;
+        } else if (resolvedRoleId != null) {
+            Role target = roleMapper.findById(resolvedRoleId);
+            if (target == null) {
+                throw new BusinessException(40001, "Unknown role");
+            }
+        }
         if (email == null || email.isBlank()) {
             throw new BusinessException(40001, "Email is required so the invite can be delivered");
         }
@@ -128,7 +160,7 @@ public class AccountLifecycleService {
         u.setName(name == null || name.isBlank() ? username : name.trim());
         u.setUsername(username.trim());
         u.setEmail(email.trim());
-        u.setRoleId(roleId);
+        u.setRoleId(resolvedRoleId);
         u.setIsAdmin(Boolean.TRUE.equals(isAdmin));
         Long resolvedOutlet = outletId != null ? outletId : CurrentUser.outletId();
         u.setOutletId(resolvedOutlet);
@@ -157,8 +189,9 @@ public class AccountLifecycleService {
     }
 
     public Map<String, Object> issueResetLink(Long userId) {
-        requireAdmin();
+        permissionAccess.requireUsersManager();
         User user = userService.require(userId);
+        assertCanManageUser(user);
         if (user.getOutletId() == null) {
             throw new BusinessException(40104, "User is not bound to an outlet");
         }
@@ -304,6 +337,20 @@ public class AccountLifecycleService {
         AuthUser current = CurrentUser.get();
         if (current == null) throw new BusinessException(40100, "Unauthorized");
         if (!current.admin()) throw new BusinessException(40300, "Administrator access required");
+    }
+
+    /** Managers may only act on Clerk accounts; admins may act on anyone in the store. */
+    private void assertCanManageUser(User target) {
+        AuthUser actor = CurrentUser.get();
+        if (actor == null) throw new BusinessException(40100, "Unauthorized");
+        if (actor.admin()) return;
+        if (Boolean.TRUE.equals(target.getIsAdmin())) {
+            throw new BusinessException(40300, "Store managers cannot manage administrator accounts");
+        }
+        Role clerk = roleMapper.findByManagedId(StorePermissionCatalog.MANAGED_CLERK);
+        if (clerk == null || target.getRoleId() == null || !clerk.getId().equals(target.getRoleId())) {
+            throw new BusinessException(40300, "Store managers can only manage Clerk staff");
+        }
     }
 
     private void validateNewPassword(String newPassword) {

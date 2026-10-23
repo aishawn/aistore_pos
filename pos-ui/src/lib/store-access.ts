@@ -5,8 +5,13 @@ export class StoreAccessError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
-/** Check the application role as well as the shared Odoo service account. */
-export async function requireStoreAdmin(request: NextRequest) {
+export interface StoreMe {
+  isAdmin?: boolean;
+  roleCode?: string;
+  permissions?: string[];
+}
+
+async function fetchStoreMe(request: NextRequest): Promise<StoreMe> {
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
   if (!token) throw new StoreAccessError("Orithos session expired.", 401);
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
@@ -23,5 +28,23 @@ export async function requireStoreAdmin(request: NextRequest) {
   if (!response.ok) throw new StoreAccessError("Could not verify your store permissions.", 503);
   const payload = await response.json().catch(() => null);
   if (payload?.code !== 0 || !payload.data) throw new StoreAccessError("Could not verify your store permissions.", 503);
-  if (payload.data.isAdmin !== true) throw new StoreAccessError("Store administrator access is required.", 403);
+  return payload.data as StoreMe;
+}
+
+/** Check the application role as well as the shared Odoo service account. */
+export async function requireStoreAdmin(request: NextRequest) {
+  const me = await fetchStoreMe(request);
+  if (me.isAdmin !== true && me.roleCode !== "ADMIN") {
+    throw new StoreAccessError("Store administrator access is required.", 403);
+  }
+  return me;
+}
+
+/** Require any of the given permission safe_names (admins always pass). */
+export async function requirePermission(request: NextRequest, ...safeNames: string[]) {
+  const me = await fetchStoreMe(request);
+  if (me.isAdmin === true || me.roleCode === "ADMIN") return me;
+  const granted = new Set(me.permissions ?? []);
+  if (safeNames.some((name) => granted.has(name))) return me;
+  throw new StoreAccessError("You do not have permission for this action.", 403);
 }

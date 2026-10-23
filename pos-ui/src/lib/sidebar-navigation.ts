@@ -12,6 +12,8 @@ export interface SidebarItem {
   label: string;
   href: string;
   icon: SidebarIcon;
+  /** Required permission safe_name; admins always pass. */
+  permission?: string;
 }
 
 export interface SidebarGroupItem {
@@ -23,6 +25,8 @@ export interface SidebarGroupItem {
   hint?: string;
   /** Hidden from the sidebar unless the signed-in user is a store admin. */
   adminOnly?: boolean;
+  /** Required permission safe_name; admins always pass. */
+  permission?: string;
   /**
    * Extra path prefixes that keep this item active (hub entries that redirect
    * to child routes, e.g. Store → registers / payment / tax).
@@ -34,6 +38,8 @@ export interface SidebarGroup {
   label: string;
   icon: SidebarIcon;
   items: SidebarGroupItem[];
+  /** If set, the whole group is hidden without this permission (when no child remains). */
+  permission?: string;
 }
 
 export type SidebarIcon =
@@ -53,39 +59,40 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Sell",
     href: "/",
     icon: "sales",
+    permission: "sell.checkout",
   },
   {
     label: "Stock",
     icon: "inventory",
     items: [
-      { label: "Products", href: "/products/odoo" },
-      { label: "Replenishment", href: "/stock/replenishment" },
-      { label: "Purchases", href: "/purchases/odoo" },
-      { label: "Invoices", href: "/invoices", matchHrefs: ["/invoices/"] },
-      { label: "Suppliers", href: "/suppliers/odoo" },
+      { label: "Products", href: "/products/odoo", permission: "stock.products.view" },
+      { label: "Replenishment", href: "/stock/replenishment", permission: "stock.replenishment" },
+      { label: "Purchases", href: "/purchases/odoo", permission: "stock.purchases" },
+      { label: "Invoices", href: "/invoices", matchHrefs: ["/invoices/"], permission: "stock.invoices" },
+      { label: "Suppliers", href: "/suppliers/odoo", permission: "stock.suppliers" },
     ],
   },
   {
     label: "Customers",
     icon: "customers",
     items: [
-      { label: "Customers", href: "/customers/odoo" },
-      { label: "Groups", href: "/customer-groups" },
-      { label: "Price Lists", href: "/pricelists" },
-      { label: "Balances", href: "/customers/balances" },
-      { label: "Gift Cards", href: "/giftcards" },
+      { label: "Customers", href: "/customers/odoo", permission: "customers.view" },
+      { label: "Customer Groups", href: "/customer-groups", permission: "customers.groups" },
+      { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
+      { label: "Balances", href: "/customers/balances", permission: "customers.balances" },
+      { label: "Gift Cards", href: "/giftcards", permission: "customers.gift_cards" },
     ],
   },
   {
     label: "Orithos AI",
     icon: "sommelier",
     items: [
-      { label: "AI Assistant", href: "/assistant" },
-      { label: "Recommend", href: "/recommend" },
-      { label: "Find a Wine", href: "/sommelier/find" },
-      { label: "Identify Wine Label", href: "/sommelier/identify" },
-      { label: "Find Grocery", href: "/recommend/grocery" },
-      { label: "Price Suggestions", href: "/stock/price-suggestions" },
+      { label: "AI Assistant", href: "/assistant", permission: "ai.assistant" },
+      { label: "Recommend", href: "/recommend", permission: "ai.recommend" },
+      { label: "Find a Wine", href: "/sommelier/find", permission: "ai.sommelier" },
+      { label: "Identify Wine Label", href: "/sommelier/identify", permission: "ai.sommelier" },
+      { label: "Find Grocery", href: "/recommend/grocery", permission: "ai.grocery" },
+      { label: "Price Suggestions", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
     ],
   },
   {
@@ -97,29 +104,34 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Reports",
     href: "/reports/dashboard",
     icon: "reporting",
+    permission: "reports.dashboard",
   },
   {
     label: "Setup",
     icon: "settings",
+    permission: "settings.view",
     items: [
-      { label: "Integrations", href: "/settings/integrations" },
-      { label: "Data", href: "/settings/data" },
+      { label: "Integrations", href: "/settings/integrations", permission: "settings.integrations" },
+      { label: "Data", href: "/settings/data", permission: "settings.data" },
       // Users / Outlets / Registers tabs live inside this hub — keep the row active there.
       {
         label: "Company Settings",
         href: "/settings/company/general",
         matchHrefs: ["/settings/company", "/settings/outlets", "/settings/registers", "/settings/users"],
+        permission: "settings.view",
       },
-      { label: "Roles & Permissions", href: "/settings/roles" },
+      { label: "Permissions", href: "/settings/roles", permission: "settings.permissions" },
       {
         label: "Store",
         href: "/settings/store",
         matchHrefs: ["/settings/registers-outlets", "/settings/payment", "/settings/tax"],
+        permission: "settings.store",
       },
       {
         label: "Devices",
         href: "/settings/devices",
         matchHrefs: ["/settings/receipts", "/settings/hardware"],
+        permission: "settings.store",
       },
       { label: "Account", href: "/settings/account" },
       // Ops health for store admins — not a cashier / Q&A quality surface.
@@ -139,40 +151,50 @@ export const SIDEBAR_CLASSIC_DEBUG: SidebarGroup[] = [
     label: "Classic (MySQL reference)",
     icon: "settings",
     items: [
-      { label: "Classic POS", href: "/register/classic" },
-      { label: "Classic Sales", href: "/history" },
+      { label: "Classic Sell", href: "/sell" },
       { label: "Classic Products", href: "/products" },
-      { label: "Classic Stock", href: "/stock/list" },
-      { label: "Classic Orders", href: "/orders" },
       { label: "Classic Customers", href: "/customers" },
-      { label: "Classic Reports", href: "/reports/sales" },
     ],
   },
 ];
 
-function isSidebarGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
-  return "items" in entry;
+export interface SidebarNavOptions {
+  /**
+   * Primary store navigation. Pass `isAdmin` so admin-only ops links (e.g. AI
+   * query health) stay out of cashier sidebars.
+   */
+  isAdmin?: boolean;
+  /** Returns true when the user may see a permission-gated item. */
+  hasPermission?: (safeName: string) => boolean;
+}
+
+function allowed(
+  options: SidebarNavOptions | undefined,
+  permission: string | undefined,
+  adminOnly?: boolean,
+) {
+  const isAdmin = options?.isAdmin === true;
+  if (adminOnly && !isAdmin) return false;
+  if (!permission) return true;
+  if (isAdmin) return true;
+  return options?.hasPermission?.(permission) === true;
 }
 
 /**
  * Primary store navigation. Pass `isAdmin` so admin-only ops links (e.g. AI
  * query health) stay out of cashier sidebars.
  */
-export function getSidebarNavigation(options?: {
-  isAdmin?: boolean;
-}): (SidebarItem | SidebarGroup)[] {
-  const showClassic =
-    typeof process !== "undefined" &&
-    process.env.NEXT_PUBLIC_SHOW_CLASSIC_POS === "true";
-  const base = showClassic ? [...SIDEBAR_MAIN, ...SIDEBAR_CLASSIC_DEBUG] : SIDEBAR_MAIN;
-  const isAdmin = options?.isAdmin === true;
-  return base
-    .map((entry) => {
-      if (!isSidebarGroup(entry)) return entry;
-      return {
-        ...entry,
-        items: entry.items.filter((item) => !item.adminOnly || isAdmin),
-      };
-    })
-    .filter((entry) => !isSidebarGroup(entry) || entry.items.length > 0);
+export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem | SidebarGroup)[] {
+  const showClassic = process.env.NEXT_PUBLIC_SHOW_CLASSIC_POS === "true";
+  const main = SIDEBAR_MAIN.flatMap((entry) => {
+    if ("items" in entry) {
+      if (!allowed(options, entry.permission)) return [];
+      const items = entry.items.filter((item) => allowed(options, item.permission, item.adminOnly));
+      if (items.length === 0) return [];
+      return [{ ...entry, items }];
+    }
+    if (!allowed(options, entry.permission)) return [];
+    return [entry];
+  });
+  return showClassic ? [...main, ...SIDEBAR_CLASSIC_DEBUG] : main;
 }

@@ -84,20 +84,29 @@ public class UserService {
         return authorities(user);
     }
 
-    /** Authorities = ROLE_<roleName> + perm:<safeName> for the JWT claim. */
+    /** Authorities = ROLE_<managed|name> + perm:<safeName> for the JWT claim. */
     public List<String> authorities(User u) {
         List<String> result = new ArrayList<>();
         if (Boolean.TRUE.equals(u.getIsAdmin())) {
             result.add("ROLE_ADMIN");
-            result.add("perm:ai.report.query");
-            result.add("perm:ai.report.cost");
+            for (String safeName : StorePermissionCatalog.allSafeNames()) {
+                result.add("perm:" + safeName);
+            }
+            return result;
         }
         if (u.getRoleId() != null) {
             Role role = roleMapper.findById(u.getRoleId());
             if (role != null) {
-                result.add("ROLE_" + role.getName().toUpperCase().replace(' ', '_'));
+                String managed = role.getManagedId();
+                if (managed != null && !managed.isBlank()) {
+                    result.add("ROLE_" + managed.trim().toUpperCase().replace(' ', '_'));
+                } else {
+                    result.add("ROLE_" + role.getName().toUpperCase().replace(' ', '_'));
+                }
                 for (Permission p : roleMapper.permissionsOfRole(role.getId())) {
-                    result.add("perm:" + p.getSafeName());
+                    if (p.getSafeName() != null && !p.getSafeName().isBlank()) {
+                        result.add("perm:" + p.getSafeName());
+                    }
                 }
             }
         }

@@ -97,9 +97,12 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const guardNav = useGuardedNav();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
-  const navigation = getSidebarNavigation({ isAdmin: Boolean(user?.isAdmin) });
+  const navigation = getSidebarNavigation({
+    isAdmin: Boolean(user?.isAdmin),
+    hasPermission,
+  });
 
   return (
     <aside

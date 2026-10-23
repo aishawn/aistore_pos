@@ -1,5 +1,7 @@
 package com.orithos.modules.auth.dto;
 
+import java.util.List;
+
 public record TokenResponse(
         String accessToken,
         String refreshToken,
@@ -12,7 +14,16 @@ public record TokenResponse(
         this(accessToken, refreshToken, expiresIn, user, null, null);
     }
 
-    public record UserInfo(Long id, String name, String username, boolean isAdmin, Long outletId,
-                           Long vendorId, String email, boolean pendingPasswordReset,
-                           boolean platformOperator) {}
+    public record UserInfo(
+            Long id,
+            String name,
+            String username,
+            boolean isAdmin,
+            Long outletId,
+            Long vendorId,
+            String email,
+            boolean pendingPasswordReset,
+            boolean platformOperator,
+            String roleCode,
+            List<String> permissions) {}
 }

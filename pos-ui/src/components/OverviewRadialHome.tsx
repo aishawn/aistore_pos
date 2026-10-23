@@ -23,7 +23,10 @@ export function OverviewRadialHome({
 }) {
   const { user } = useAuth();
   const destinations = buildLaunchDestinations(
-    getSidebarNavigation({ isAdmin: Boolean(user?.isAdmin) }),
+    getSidebarNavigation({
+      isAdmin: Boolean(user?.isAdmin),
+      hasPermission: (safeName) => Boolean(user?.isAdmin) || (user?.permissions ?? []).includes(safeName),
+    }),
   ).filter((item) => item.id !== "overview");
 
   return (

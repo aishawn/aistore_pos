@@ -17,6 +17,7 @@ import com.orithos.security.AdminAccess;
 import com.orithos.security.CurrentUser;
 import com.orithos.security.JwtProperties;
 import com.orithos.security.JwtService;
+import com.orithos.security.PermissionAccess;
 import com.orithos.security.TokenStore;
 import com.orithos.tenant.PlatformAccessService;
 import com.orithos.tenant.TenantHolder;
@@ -45,6 +46,7 @@ public class AuthController {
     private final TenantProperties tenantProperties;
     private final AccountTokenStore accountTokenStore;
     private final PlatformAccessService platformAccess;
+    private final PermissionAccess permissionAccess;
 
     public AuthController(UserService userService, JwtService jwtService,
                           TokenStore tokenStore, JwtProperties props,
@@ -52,7 +54,8 @@ public class AuthController {
                           VendorMapper vendorMapper, TenantSlugParser slugParser,
                           TenantProperties tenantProperties,
                           AccountTokenStore accountTokenStore,
-                          PlatformAccessService platformAccess) {
+                          PlatformAccessService platformAccess,
+                          PermissionAccess permissionAccess) {
         this.userService = userService;
         this.jwtService = jwtService;
         this.tokenStore = tokenStore;
@@ -63,6 +66,7 @@ public class AuthController {
         this.tenantProperties = tenantProperties;
         this.accountTokenStore = accountTokenStore;
         this.platformAccess = platformAccess;
+        this.permissionAccess = permissionAccess;
     }
 
     @PostMapping("/login")
@@ -239,12 +243,15 @@ public class AuthController {
         body.put("name", u.getName());
         body.put("username", u.getUsername());
         body.put("isAdmin", Boolean.TRUE.equals(u.getIsAdmin()));
+        body.put("roleCode", permissionAccess.roleCode(u));
+        body.put("permissions", permissionAccess.permissionSafeNames(u));
         body.put("platformOperator", platformAccess.isPlatformAdmin(
                 Boolean.TRUE.equals(u.getIsAdmin()), u.getVendorId()));
         body.put("darkMode", u.getDarkMode() == null ? "default" : u.getDarkMode());
         body.put("outletId", u.getOutletId());
         body.put("vendorId", u.getVendorId());
         body.put("email", u.getEmail());
+        body.put("roleId", u.getRoleId());
         body.put("pendingPasswordReset", Boolean.TRUE.equals(u.getPendingPasswordReset()));
         TenantHolder.ResolvedTenant tenant = TenantHolder.get();
         if (tenant != null && !tenant.controlPlane() && tenant.slug() != null) {
@@ -310,7 +317,9 @@ public class AuthController {
                 u.getVendorId(),
                 u.getEmail(),
                 Boolean.TRUE.equals(u.getPendingPasswordReset()),
-                platformAccess.isPlatformAdmin(admin, u.getVendorId()));
+                platformAccess.isPlatformAdmin(admin, u.getVendorId()),
+                permissionAccess.roleCode(u),
+                permissionAccess.permissionSafeNames(u));
     }
 
 }

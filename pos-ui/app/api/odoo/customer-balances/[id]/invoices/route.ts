@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
 import { isSameOrigin } from "@/lib/server-auth";
 
@@ -24,7 +24,7 @@ type InvoiceRow = {
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "customers.balances");
     const scope = await scopedOdoo(request);
     const rawId = (await context.params).id;
     const partnerId = /^\d+$/.test(rawId) ? Number(rawId) : NaN;

@@ -29,10 +29,19 @@ interface StaffUser {
 interface StaffRole {
   id: string | number;
   name: string;
+  managedId?: string | null;
 }
 
 function staffIsAdmin(user: StaffUser): boolean {
   return Boolean(user.isAdmin ?? user.admin);
+}
+
+function roleLabel(role: StaffRole) {
+  const code = String(role.managedId ?? "").toUpperCase();
+  if (code === "ADMIN") return "Admin";
+  if (code === "MANAGER") return "店长 (Manager)";
+  if (code === "CLERK") return "店员 (Clerk)";
+  return role.name;
 }
 
 interface InviteResult {
@@ -49,11 +58,17 @@ interface ResetLinkResult {
 }
 
 export default function UsersSettingsPage() {
-  const { user: currentUser } = useAuth();
-  const { data, loading, error, reload } = useApi<StaffUser[]>("/api/users");
-  const rolesState = useApi<StaffRole[]>("/api/roles");
+  const { user: currentUser, hasPermission } = useAuth();
+  const canManageUsers = Boolean(currentUser?.isAdmin || hasPermission("settings.users"));
+  const isStoreAdmin = Boolean(currentUser?.isAdmin);
+  const { data, loading, error, reload } = useApi<StaffUser[]>(canManageUsers ? "/api/users" : null);
+  const rolesState = useApi<StaffRole[]>(canManageUsers ? "/api/roles" : null);
   const users = useMemo(() => data ?? [], [data]);
-  const roles = rolesState.data ?? [];
+  const roles = useMemo(() => {
+    const list = rolesState.data ?? [];
+    if (isStoreAdmin) return list;
+    return list.filter((role) => String(role.managedId ?? "").toUpperCase() === "CLERK");
+  }, [isStoreAdmin, rolesState.data]);
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -106,7 +121,8 @@ export default function UsersSettingsPage() {
       setUsername("");
       setEmail("");
       setIsAdmin(false);
-      setRoleId("");
+      const clerk = roles.find((role) => String(role.managedId ?? "").toUpperCase() === "CLERK");
+      setRoleId(clerk ? String(clerk.id) : "");
       reload();
     } catch (cause) {
       setInviteError(apiFailureMessage(cause, "Could not create the invite.", "Sign in again to invite staff."));
@@ -138,11 +154,11 @@ export default function UsersSettingsPage() {
     }
   }
 
-  if (!currentUser?.isAdmin) {
+  if (!canManageUsers) {
     return (
       <UserSettingsScaffold>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Only store administrators can invite staff or issue password reset links.
+          Only store administrators and 店长 can invite staff or issue password reset links.
         </div>
       </UserSettingsScaffold>
     );
@@ -207,7 +223,7 @@ export default function UsersSettingsPage() {
                 className="h-11 rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:bg-[var(--oh-surface)]"
               >
                 <option value="">{rolesState.loading ? "Loading roles…" : "Select a role"}</option>
-                {roles.map((role) => <option key={String(role.id)} value={String(role.id)}>{role.name}</option>)}
+                {roles.map((role) => <option key={String(role.id)} value={String(role.id)}>{roleLabel(role)}</option>)}
               </select>
               {rolesState.error ? (
                 <span role="alert" className="flex flex-wrap items-center gap-2 font-normal text-red-800">
@@ -215,20 +231,22 @@ export default function UsersSettingsPage() {
                   <button type="button" onClick={rolesState.reload} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 text-xs font-semibold text-red-900 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={13} /> Retry</button>
                 </span>
               ) : roles.length === 0 && !rolesState.loading ? (
-                <span className="font-normal text-[var(--oh-muted)]">Create a role first in <a href="/settings/roles" className="font-semibold text-[var(--oh-primary)] underline">Roles &amp; Permissions</a>. Administrators can still be invited below.</span>
+                <span className="font-normal text-[var(--oh-muted)]">Managed roles are still seeding. Open <a href="/settings/roles" className="font-semibold text-[var(--oh-primary)] underline">Permissions</a> after the API restarts.</span>
               ) : (
-                <span className="font-normal text-[var(--oh-muted)]">Choose the least access this teammate needs.</span>
+                <span className="font-normal text-[var(--oh-muted)]">{isStoreAdmin ? "Choose Admin, 店长, or 店员." : "店长 can invite 店员 only."}</span>
               )}
             </label>
-            <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--oh-text-secondary)] sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={isAdmin}
-                onChange={(event) => setIsAdmin(event.target.checked)}
-                className="h-4 w-4 accent-[var(--oh-primary)]"
-              />
-              Grant administrator access
-            </label>
+            {isStoreAdmin && (
+              <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-[var(--oh-text-secondary)] sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={isAdmin}
+                  onChange={(event) => setIsAdmin(event.target.checked)}
+                  className="h-4 w-4 accent-[var(--oh-primary)]"
+                />
+                Grant administrator access
+              </label>
+            )}
 
             {inviteError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 sm:col-span-2">{inviteError}</p>}
             {inviteNotice && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 sm:col-span-2">{inviteNotice}</p>}

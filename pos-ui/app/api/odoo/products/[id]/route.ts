@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
-import { requireStoreAdmin, StoreAccessError } from "@/lib/store-access";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ const EDITABLE_FIELDS = new Set(["name", "barcode", "default_code", "list_price"
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "stock.products.edit");
     const id = Number((await context.params).id);
     if (!Number.isSafeInteger(id) || id < 1) return NextResponse.json({ message: "Invalid product." }, { status: 400 });
     const scope = await scopedOdoo(request);
@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 
   try {
-    await requireStoreAdmin(request);
+    await requirePermission(request, "stock.products.edit");
     const scope = await scopedOdoo(request);
     const domain = [["id", "=", productId], ["company_id", "in", scope.companyIds]];
     const before = await scope.rpc<Array<{ id: number; list_price: number }>>("product.product", "search_read", [domain], { fields: ["id", "list_price"], limit: 1 });

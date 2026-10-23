@@ -55,7 +55,7 @@ const TILES: WorkspaceTile[] = [
   },
   {
     id: "roles",
-    label: "Staff & access",
+    label: "Permissions",
     href: "/settings/roles",
     icon: Shield,
     fill: "#E8F8EF",
