@@ -3523,3 +3523,7 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 4. 候选含 `pos-api` 改动，必须在 Dokploy Java 21 对同一冻结 SHA 保存完整 `mvn -B clean verify` 成功日志；然后部署并核对前后端 `/api/public/version` SHA 与候选一致，再复跑 17 项 AI 卡片合约，目标 17/17。
 5. 只有隔离门禁通过后才做真实业务闭环：代表性脱敏供应商票据 OCR、销售/GST、退款、现金关班、采购/收货、库存与价格回读对账。预期投入：部署侧修正 + 一次 Java gate/部署/AI 复验约 1–3 小时；完整业务闭环至少半天，需隔离库数据、终端/票据和店主确认。
 
+
+## 2026-10-23 Overview visual redesign
+
+Workspace-default and Radial UI implementation passed local fixture acceptance (59 browser checks, 4 navigation tests). Rehomed Reports regression passed 15 layout checks and request-race coverage. See [Overview UI handoff](HANDOFF_OVERVIEW_UI_2026-10-23.md) for screenshots, source boundaries and deployment limitations. No pilot-readiness change; online exact-SHA verification remains pending.

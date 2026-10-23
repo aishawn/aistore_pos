@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
-import { RadialPie, useIsCompactViewport, usePrefersReducedMotion } from "@/components/RadialPie";
-import type { LaunchDestination, LaunchRingDetail } from "@/lib/overview-launch";
+import { RadialPie, useIsCompactViewport } from "@/components/RadialPie";
+import type {
+  LaunchDestination,
+  LaunchRingDetail,
+} from "@/lib/overview-launch";
 import { cn } from "@/lib/utils";
 
 export function OverviewRadialMenu({
@@ -19,35 +21,25 @@ export function OverviewRadialMenu({
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
-  const router = useRouter();
-  const reducedMotion = usePrefersReducedMotion();
+
   const compact = useIsCompactViewport();
   const [entered, setEntered] = useState(false);
 
   useDialogFocus(open, onClose, open ? "launch-ring" : null);
 
   useEffect(() => {
-    if (!open) {
-      setEntered(false);
-      return;
-    }
-    // Logo shortcut: from other pages, jump to Overview so the launcher is home.
-    if (pathname !== "/overview" && pathname !== "/dashboard") {
-      onClose();
-      router.push("/overview");
-      return;
-    }
-    const frame = window.requestAnimationFrame(() => setEntered(true));
+    const frame = window.requestAnimationFrame(() => setEntered(open));
     return () => window.cancelAnimationFrame(frame);
-  }, [open, onClose, pathname, router]);
+  }, [open]);
 
   if (!open) return null;
 
   const company = detail.company?.trim() || "Orithos";
   const caption = detail.centerCaption?.trim() || "Choose a destination";
-  const ringDestinations = destinations.filter((item) => item.id !== "overview");
-  const listMode = reducedMotion || compact;
+  const ringDestinations = destinations.filter(
+    (item) => item.id !== "overview",
+  );
+  const listMode = compact;
 
   return (
     <div className="fixed inset-0 z-[80] print:hidden" role="presentation">
@@ -68,17 +60,21 @@ export function OverviewRadialMenu({
         aria-modal="true"
         aria-label="Store quick menu"
         className={cn(
-          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+          "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[88dvh] overflow-y-auto rounded-[28px]",
           listMode
-            ? "max-h-[min(88vh,40rem)] w-[min(100vw-1.5rem,28rem)] overflow-y-auto rounded-[28px] bg-white/92 p-4 shadow-2xl"
-            : "h-[30rem] w-[30rem]",
+            ? "max-h-[min(88vh,40rem)] w-[min(100vw-1.5rem,28rem)] overflow-y-auto rounded-[28px] bg-white p-4 shadow-2xl"
+            : "h-[min(88dvh,40rem)] w-[min(94vw,64rem)]",
         )}
       >
         <RadialPie
           destinations={ringDestinations}
           centerTitle={company}
           centerCaption={caption}
-          centerHref="/reports/dashboard"
+          centerHref={
+            destinations.some((item) => item.id === "reports")
+              ? "/reports/dashboard"
+              : undefined
+          }
           onNavigate={onClose}
           entered={entered}
           variant="modal"

@@ -1,0 +1,350 @@
+{
+  "status": "PASS",
+  "base": "http://demo.localhost:3101",
+  "authRequests": [
+    "POST /api/auth/refresh (mocked)"
+  ],
+  "scope": "Local fixture UI only; no real Odoo acceptance",
+  "results": [
+    {
+      "label": "workspace-1440x900",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-1440x900",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-900-Stock-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-900-Customers-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-900-Orithos AI-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-900-Setup-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "workspace-1280x800",
+      "width": 1280,
+      "scroll": 1280,
+      "overlap": false
+    },
+    {
+      "label": "radial-1280x800",
+      "width": 1280,
+      "scroll": 1280,
+      "overlap": false
+    },
+    {
+      "label": "1280-800-Stock-expanded",
+      "width": 1280,
+      "scroll": 1280,
+      "overlap": false
+    },
+    {
+      "label": "1280-800-Customers-expanded",
+      "width": 1280,
+      "scroll": 1280,
+      "overlap": false
+    },
+    {
+      "label": "1280-800-Orithos AI-expanded",
+      "width": 1280,
+      "scroll": 1280,
+      "overlap": false
+    },
+    {
+      "label": "1280-800-Setup-expanded",
+      "width": 1280,
+      "scroll": 1280,
+      "overlap": false
+    },
+    {
+      "label": "workspace-1024x768",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "radial-1024x768",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "1024-768-Stock-expanded",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "1024-768-Customers-expanded",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "1024-768-Orithos AI-expanded",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "1024-768-Setup-expanded",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "workspace-1440x700",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-1440x700",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-700-Stock-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-700-Customers-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-700-Orithos AI-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "1440-700-Setup-expanded",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "workspace-390x844",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "radial-390x844",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "390-844-Stock-expanded",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "390-844-Customers-expanded",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "390-844-Orithos AI-expanded",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "390-844-Setup-expanded",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "workspace-320x740",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "radial-320x740",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "320-740-Stock-expanded",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "320-740-Customers-expanded",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "320-740-Orithos AI-expanded",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "320-740-Setup-expanded",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "workspace-zero",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-zero",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "workspace-long",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-long",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "workspace-restricted",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-restricted",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "workspace-retry",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-retry",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "workspace-reduced",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "radial-reduced",
+      "width": 1440,
+      "scroll": 1440,
+      "overlap": false
+    },
+    {
+      "label": "quick-menu-stays-on-workspace",
+      "pass": true
+    },
+    {
+      "label": "toolbar-ai-opens-and-closes",
+      "pass": true
+    },
+    {
+      "label": "radial-arrow-keys-and-focus-return",
+      "pass": true
+    },
+    {
+      "label": "hover-preview-clears-without-navigation",
+      "pass": true
+    },
+    {
+      "label": "pinned-group-persists-and-outside-click-closes",
+      "pass": true
+    },
+    {
+      "label": "quick-menu-320-expanded",
+      "width": 320,
+      "scroll": 320,
+      "overlap": false
+    },
+    {
+      "label": "quick-menu-320-scroll-and-focus",
+      "pass": true
+    },
+    {
+      "label": "quick-menu-390-expanded",
+      "width": 390,
+      "scroll": 390,
+      "overlap": false
+    },
+    {
+      "label": "quick-menu-390-scroll-and-focus",
+      "pass": true
+    },
+    {
+      "label": "quick-menu-1024-expanded",
+      "width": 1024,
+      "scroll": 1024,
+      "overlap": false
+    },
+    {
+      "label": "quick-menu-1024-scroll-and-focus",
+      "pass": true
+    },
+    {
+      "label": "loading-without-fake-zero",
+      "pass": true
+    },
+    {
+      "label": "disconnected-state",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "writes": [],
+  "generatedAt": "2026-10-23T06:57:11.905338+00:00",
+  "testedSourceBase": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+  "sourceWorkingTreeDirty": true,
+  "runtime": "Node 24.19.0; Chromium; local Next.js development server"
+}

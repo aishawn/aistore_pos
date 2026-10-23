@@ -47,6 +47,7 @@ function isGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
 
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
+  if (href === "/overview/workspace") return pathname === "/overview" || pathname.startsWith("/overview/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

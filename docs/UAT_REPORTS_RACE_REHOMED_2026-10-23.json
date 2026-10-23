@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-23T06:46:03.638Z",
+  "sourceCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Node v24.19.0; browser API fixtures",
+  "scope": "Overview stale-response race: delayed 24-hour response must not overwrite the newer 7-day result; all API calls intercepted",
+  "status": "PASS",
+  "requests": [
+    {
+      "hours": 720,
+      "method": "GET"
+    },
+    {
+      "hours": 24,
+      "method": "GET"
+    },
+    {
+      "hours": 168,
+      "method": "GET"
+    }
+  ],
+  "interceptedWrites": [],
+  "productionBusinessWrites": 0,
+  "screenshot": "docs/screenshots/2026-10-23-reports-race-rehomed/reports-race.png"
+}

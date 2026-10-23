@@ -24,7 +24,7 @@ export function OverviewLayoutSwitcher({
         href="/overview"
         aria-current={active === "radial" ? "page" : undefined}
         className={cn(
-          "oh-type-meta inline-flex min-h-9 items-center rounded-full px-3 font-semibold no-underline transition-colors",
+          "oh-type-meta inline-flex min-h-11 items-center rounded-full px-3 font-semibold no-underline transition-colors",
           active === "radial"
             ? "bg-[var(--oh-text)] text-white"
             : "text-[var(--oh-muted)] hover:text-[var(--oh-text)]",
@@ -36,7 +36,7 @@ export function OverviewLayoutSwitcher({
         href="/overview/workspace"
         aria-current={active === "workspace" ? "page" : undefined}
         className={cn(
-          "oh-type-meta inline-flex min-h-9 items-center rounded-full px-3 font-semibold no-underline transition-colors",
+          "oh-type-meta inline-flex min-h-11 items-center rounded-full px-3 font-semibold no-underline transition-colors",
           active === "workspace"
             ? "bg-[var(--oh-text)] text-white"
             : "text-[var(--oh-muted)] hover:text-[var(--oh-text)]",

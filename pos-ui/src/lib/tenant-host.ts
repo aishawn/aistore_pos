@@ -91,7 +91,7 @@ export function controlPlaneLandingPath(next: string | null | undefined): string
 }
 
 /** Default store web landing after login (Overview, not Sell `/`). */
-export const STORE_WEB_LANDING_PATH = "/overview";
+export const STORE_WEB_LANDING_PATH = "/overview/workspace";
 
 /** Safe post-login path on a store host. */
 export function storeLandingPath(

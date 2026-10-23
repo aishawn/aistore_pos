@@ -1,7 +1,6 @@
 "use client";
 
 import { UserIcon } from "@/components/icons";
-import { OrithosLogo } from "@/components/OrithosLogo";
 import { useOverviewChrome } from "@/components/OverviewChromeContext";
 import { openLaunchRing } from "@/lib/overview-launch";
 import { cn } from "@/lib/utils";
@@ -14,7 +13,9 @@ export function OverviewAccountControl({ className }: { className?: string }) {
   const { userName, userMenuOpen, toggleUserMenu } = chrome;
 
   return (
-    <div className={cn("flex shrink-0 items-center gap-1.5 sm:gap-2", className)}>
+    <div
+      className={cn("flex shrink-0 items-center gap-1.5 sm:gap-2", className)}
+    >
       <button
         type="button"
         aria-label="Open store quick menu"
@@ -26,9 +27,19 @@ export function OverviewAccountControl({ className }: { className?: string }) {
             originY: rect.top + rect.height / 2,
           });
         }}
-        className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg px-1.5 transition-colors hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-1.5 transition-colors hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
       >
-        <OrithosLogo />
+        <span className="oh-brand-mark">
+          {/* eslint-disable-next-line @next/next/no-img-element -- existing static brand mark */}
+          <img
+            src="/images/orithos-mark-icon-v4.svg"
+            width={32}
+            height={32}
+            alt=""
+            aria-hidden="true"
+          />
+          <span className="oh-brand-wordmark">orithos</span>
+        </span>
       </button>
       <button
         type="button"
@@ -40,12 +51,14 @@ export function OverviewAccountControl({ className }: { className?: string }) {
         aria-controls="user-menu"
         aria-expanded={userMenuOpen}
         data-testid="sh-current-user"
-        className="inline-flex min-h-10 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+        className="inline-flex min-h-11 cursor-pointer items-center rounded-md px-1 transition-colors hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--oh-primary)]">
           <UserIcon size={18} className="text-white" fill="white" />
         </span>
-        <p className="oh-type-body mx-1.5 hidden text-[var(--oh-text)] sm:block">{userName}</p>
+        <p className="oh-type-body mx-1.5 hidden text-[var(--oh-text)] sm:block">
+          {userName}
+        </p>
       </button>
     </div>
   );

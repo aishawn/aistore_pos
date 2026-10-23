@@ -20,7 +20,7 @@ export function LaunchRingHost() {
       isAdmin: Boolean(user?.isAdmin),
       hasPermission: (safeName) => Boolean(user?.isAdmin) || (user?.permissions ?? []).includes(safeName),
     })),
-    [user?.isAdmin],
+    [user?.isAdmin, user?.permissions],
   );
 
   useEffect(() => {
