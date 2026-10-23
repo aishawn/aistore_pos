@@ -89,7 +89,7 @@ public final class AssistantFastPathRouter {
             "^(?:stock|inventory|check\\s*(?:stock|inventory)|stock\\s*list|show(?:\\s+me)?\\s+(?:the\\s+)?(?:stock|inventory)|"
                     + "what(?:'s| is)\\s+(?:in\\s+)?stock|what(?:'s| is)\\s+(?:our\\s+)?inventory|"
                     + "how(?:'s| is)\\s+(?:our\\s+)?stock(?:\\s+looking)?|inventory\\s+status|"
-                    + "库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货|库存列表|查询库存|查看库存|库存查询)$",
+                    + "库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货|库存列表|查询库存|查看库存|库存查询)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_CLARIFICATION = Pattern.compile(
             "^(?:why (?:can'?t|cannot) (?:you|we|i) find (?:the )?(?:stock|inventory|products?)|"
@@ -191,7 +191,8 @@ public final class AssistantFastPathRouter {
             "^(?:do we have|is there|can you check)\\s+(?:any\\s+)?stock\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
                     + "^how much\\s+stock\\s+do we have\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
                     + "^what\\s+stock\\s+do we have\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
-                    + "^(?:库存里有|库存中有|有没有)\\s*(.+?)(?:的)?(?:库存|现货)(?:吗)?[？?。]*$|"
+                    + "^(?:库存里有|库存中有)\\s*(.+?)(?:的)?(?:库存|现货)?\\s*吗[？?。.!]*$|"
+                    + "^有没有\\s*(.+?)(?:的)?(?:库存|现货)(?:吗)?[？?。.!]*$|"
                     + "^(.+?)(?:有库存吗|有货吗)[？?。]*$|"
                     + "^(?:查|搜索|查询)(?:一下)?\\s*(?:条码|barcode)\\s*[:：]?\\s*([A-Za-z0-9-]{4,})[？?。.!]*$|"
                     + "^(?:找|搜索|查询)(?:一下)?\\s*(?:SKU|sku)\\s*[:：]?\\s*([A-Za-z0-9_-]{2,})[？?。.!]*$|"

@@ -28,6 +28,10 @@ class WorkflowRouteRouterTest {
         assertRoute("查看价目表", "/pricelists");
         assertRoute("Show me gift cards", "/giftcards");
         assertRoute("查看礼品卡列表", "/giftcards");
+        assertRoute("Stock?", "/stock/list");
+        assertRoute("What's in stock?", "/stock/list");
+        assertRoute("How's our stock looking?", "/stock/list");
+        assertRoute("库存情况怎么样？", "/stock/list");
         assertRoute("Open buying periods", "/stock/buying-periods");
         assertRoute("查看采购周期", "/stock/buying-periods");
         assertRoute("Show customer balances", "/customers/balances");

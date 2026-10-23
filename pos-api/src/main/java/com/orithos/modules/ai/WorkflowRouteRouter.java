@@ -156,7 +156,7 @@ public final class WorkflowRouteRouter {
                     + "(?:查看|打开|查询|搜索)?(?:批量改价|批量定价|批量价格编辑|批量改价页面)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern STOCK_LIST_LOOKUP = Pattern.compile(
-            "^(?:stock|inventory|what(?:'s| is)\\s+(?:in\\s+)?stock|what(?:'s| is)\\s+(?:our\\s+)?inventory|how(?:'s| is)\\s+(?:our\\s+)?stock(?:\\s+looking)?|inventory\\s+status|库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货)$",
+            "^(?:stock|inventory|what(?:'s| is)\\s+(?:in\\s+)?stock|what(?:'s| is)\\s+(?:our\\s+)?inventory|how(?:'s| is)\\s+(?:our\\s+)?stock(?:\\s+looking)?|inventory\\s+status|库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
 
     private WorkflowRouteRouter() {}
