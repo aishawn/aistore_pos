@@ -220,7 +220,7 @@ export function OrithosOverviewWorkspacePage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-[linear-gradient(180deg,#eef2f7_0%,#f5f7fa_45%,#e8eef6_100%)] p-3 lg:p-4">
+    <main className="flex h-full min-h-0 flex-col bg-[linear-gradient(180deg,#eef2f7_0%,#f5f7fa_45%,#e8eef6_100%)]">
       {error ? (
         <div
           role="alert"

@@ -165,7 +165,7 @@ export function OrithosOverviewPage() {
   }
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)] p-3 lg:p-3.5">
+    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       {error ? (
         <div
           role="alert"

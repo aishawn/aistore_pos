@@ -38,11 +38,15 @@ const ICONS: Record<SidebarIcon, React.ComponentType<{ size?: number; className?
   marketing: Percent,
 };
 
-const RING_RADIUS = 158;
-/** Child pills sit just outside the parent node — not a wide outer orbit. */
-const CHILD_RADIUS = 214;
+/** Modal / LaunchRing orbit — keep compact so 30rem stage does not clip children. */
+const MODAL_RING_RADIUS = 158;
+const MODAL_CHILD_RADIUS = 214;
+const MODAL_PIE_SIZE = 520;
+/** Full-page Overview hub — larger orbit for chromeless viewport. */
+const PAGE_RING_RADIUS = 195;
+const PAGE_CHILD_RADIUS = 264;
+const PAGE_PIE_SIZE = 640;
 const MAX_VISIBLE_CHILDREN = 3;
-const PIE_SIZE = 520;
 const CLEAR_ACTIVE_MS = 120;
 const SPRING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
@@ -155,15 +159,19 @@ export function RadialPie({
   const reducedMotion = usePrefersReducedMotion();
   const compact = useIsCompactViewport();
   const listMode = reducedMotion || compact;
+  const isPage = variant === "page";
+  const ringRadius = isPage ? PAGE_RING_RADIUS : MODAL_RING_RADIUS;
+  const childRadius = isPage ? PAGE_CHILD_RADIUS : MODAL_CHILD_RADIUS;
+  const pieSize = isPage ? PAGE_PIE_SIZE : MODAL_PIE_SIZE;
 
   const items = useMemo(() => {
     const count = Math.max(destinations.length, 1);
     return destinations.map((destination, index) => {
       const angle = (360 / count) * index;
-      const point = polar(RING_RADIUS, angle);
+      const point = polar(ringRadius, angle);
       return { ...destination, angle, x: point.x, y: point.y };
     });
-  }, [destinations]);
+  }, [destinations, ringRadius]);
 
   const sectorDeg = 360 / Math.max(items.length, 1);
   const active = items.find((item) => item.id === activeId) ?? null;
@@ -186,10 +194,10 @@ export function RadialPie({
     const angles = childArcAngles(active.angle, arc.length, sectorDeg);
     return arc.map((child, index) => {
       const angle = angles[index] ?? active.angle;
-      const point = polar(CHILD_RADIUS, angle);
+      const point = polar(childRadius, angle);
       return { ...child, x: point.x, y: point.y, angle };
     });
-  }, [active, sectorDeg]);
+  }, [active, childRadius, sectorDeg]);
 
   const setActiveSoon = useCallback((id: string | null) => {
     if (clearTimer.current) {
@@ -272,27 +280,27 @@ export function RadialPie({
       onPointerLeave={() => setActiveSoon(null)}
       className={cn(
         "relative mx-auto touch-none select-none",
-        variant === "page" ? "h-[min(72vh,32.5rem)] w-[min(100%,32.5rem)]" : "h-[30rem] w-[30rem]",
+        isPage ? "h-[min(78vh,40rem)] w-[min(100%,40rem)]" : "h-[30rem] w-[30rem]",
         className,
       )}
-      style={{ maxWidth: PIE_SIZE, maxHeight: PIE_SIZE }}
+      style={{ maxWidth: pieSize, maxHeight: pieSize }}
     >
       <svg
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-        viewBox={`0 0 ${PIE_SIZE} ${PIE_SIZE}`}
+        viewBox={`0 0 ${pieSize} ${pieSize}`}
       >
         {items.map((item) => {
           // Rays stop at the node — no leftover stubs past the orbit.
-          const end = polar(RING_RADIUS - 36, item.angle);
+          const end = polar(ringRadius - 36, item.angle);
           const isActive = activeId === item.id;
           return (
             <line
               key={`ray-${item.id}`}
-              x1={PIE_SIZE / 2}
-              y1={PIE_SIZE / 2}
-              x2={PIE_SIZE / 2 + end.x}
-              y2={PIE_SIZE / 2 + end.y}
+              x1={pieSize / 2}
+              y1={pieSize / 2}
+              x2={pieSize / 2 + end.x}
+              y2={pieSize / 2 + end.y}
               stroke={isActive ? item.tone.accent : "rgba(148,163,184,0.22)"}
               strokeWidth={isActive ? 2 : 1}
               strokeLinecap="round"

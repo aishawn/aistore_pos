@@ -6,13 +6,12 @@ import {
   BarChart3,
   Package,
   Shield,
+  ShoppingBag,
   ShoppingCart,
   Sparkles,
   Users,
-  Search,
-  LayoutGrid,
-  ShoppingBag,
 } from "lucide-react";
+import { OverviewAccountControl } from "@/components/OverviewAccountControl";
 import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +29,14 @@ type WorkspaceTile = {
 };
 
 const TILES: WorkspaceTile[] = [
+  {
+    id: "sell",
+    label: "Sell",
+    href: "/",
+    icon: ShoppingBag,
+    fill: "#FFF7E8",
+    accent: "#B45309",
+  },
   {
     id: "reports",
     label: "Business insights",
@@ -80,18 +87,18 @@ const TILES: WorkspaceTile[] = [
   },
 ];
 
-const DOCK: Array<{
-  id: string;
-  label: string;
-  href: string;
-  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
-}> = [
-  { id: "home", label: "Workspace", href: "/overview/workspace", icon: LayoutGrid },
-  { id: "sell", label: "Sell", href: "/", icon: ShoppingBag },
-  { id: "reports", label: "Reports", href: "/reports/dashboard", icon: BarChart3 },
-  { id: "stock", label: "Stock", href: "/products/odoo", icon: Package },
-  { id: "ai", label: "AI", href: "/assistant", icon: Sparkles },
-];
+function subtitleForTile(
+  tile: WorkspaceTile,
+  briefingLines: Array<{ text: string; href: string }>,
+): string | null {
+  const match = briefingLines.find(
+    (line) => line.href === tile.href || line.href.startsWith(`${tile.href}?`),
+  );
+  if (!match) return null;
+  const text = match.text.trim();
+  if (!text) return null;
+  return text.length > 72 ? `${text.slice(0, 69)}…` : text;
+}
 
 export function OverviewWorkspaceHome({
   greeting,
@@ -110,43 +117,22 @@ export function OverviewWorkspaceHome({
     <section
       aria-label="Admin workspace"
       className={cn(
-        "relative mx-auto flex h-full min-h-0 w-full max-w-[920px] flex-col overflow-hidden",
-        "rounded-[28px] bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.1)] ring-1 ring-black/[0.04]",
-        "backdrop-blur-xl",
+        "relative flex h-full min-h-0 w-full flex-col overflow-hidden",
+        "bg-[linear-gradient(180deg,#eef2f7_0%,#f5f7fa_45%,#e8eef6_100%)]",
         className,
       )}
     >
-      {/* Soft stage wash behind the window */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 rounded-[28px]"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.06), transparent 55%)",
+            "radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.07), transparent 55%)",
         }}
       />
 
-      {/* Window chrome */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-black/[0.04] px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#FF9F0A]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#D1D5DB]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#D1D5DB]" />
-        </div>
-        <p className="oh-type-meta flex-1 truncate text-center font-medium text-[var(--oh-muted)]">
-          ORITHOS · Admin Workspace
-        </p>
-        <Link
-          href="/products/odoo"
-          aria-label="Search products"
-          className="grid h-9 w-9 place-items-center rounded-full text-[var(--oh-muted)] transition-colors hover:bg-black/[0.04] hover:text-[var(--oh-text)]"
-        >
-          <Search size={16} strokeWidth={1.75} />
-        </Link>
-      </header>
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4 pt-6 sm:px-8 sm:pt-8">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-y-auto px-5 pb-8 pt-5 sm:px-8 sm:pt-6 lg:px-10">
+        <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="oh-type-meta text-[var(--oh-muted)]">
               {greeting}, {userName}
@@ -156,19 +142,22 @@ export function OverviewWorkspaceHome({
             </h1>
             <p className="oh-type-meta mt-1.5 text-[var(--oh-muted)]">{company}</p>
           </div>
-          <OverviewLayoutSwitcher active="workspace" />
-        </div>
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <OverviewLayoutSwitcher active="workspace" />
+            <OverviewAccountControl />
+          </div>
+        </header>
 
-        {/* Square module grid */}
-        <ul className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5">
+        <ul className="mt-6 grid grid-cols-2 gap-3 sm:mt-7 sm:grid-cols-3 sm:gap-3.5 lg:grid-cols-4">
           {TILES.map((tile, index) => {
             const Icon = tile.icon;
+            const subtitle = subtitleForTile(tile, briefingLines);
             return (
               <li key={tile.id}>
                 <Link
                   href={tile.href}
                   className={cn(
-                    "group flex aspect-square flex-col justify-between rounded-[22px] p-4 no-underline sm:rounded-[26px] sm:p-5",
+                    "group flex aspect-[5/4] flex-col justify-between rounded-[22px] p-4 no-underline sm:rounded-[26px] sm:p-5",
                     "shadow-[0_1px_0_rgba(255,255,255,0.7)_inset] ring-1 ring-black/[0.03]",
                     "transition-[transform,box-shadow] duration-300 will-change-transform",
                     "hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.1)]",
@@ -186,11 +175,18 @@ export function OverviewWorkspaceHome({
                   >
                     <Icon size={22} strokeWidth={1.6} />
                   </span>
-                  <span
-                    className="text-[0.95rem] font-semibold tracking-tight sm:text-[1.05rem]"
-                    style={{ color: tile.accent }}
-                  >
-                    {tile.label}
+                  <span className="min-w-0">
+                    <span
+                      className="block text-[0.95rem] font-semibold tracking-tight sm:text-[1.05rem]"
+                      style={{ color: tile.accent }}
+                    >
+                      {tile.label}
+                    </span>
+                    {subtitle ? (
+                      <span className="mt-1 block line-clamp-2 text-[0.75rem] leading-snug text-[var(--oh-text-secondary)] opacity-90">
+                        {subtitle}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
               </li>
@@ -198,13 +194,12 @@ export function OverviewWorkspaceHome({
           })}
         </ul>
 
-        {/* Smart briefing */}
         <section
           aria-label="Today’s smart briefing"
-          className="mt-5 rounded-[20px] bg-[#F4F7FB] px-4 py-4 ring-1 ring-black/[0.03] sm:px-5"
+          className="mt-5 rounded-[20px] bg-white/80 px-4 py-4 ring-1 ring-black/[0.04] backdrop-blur-sm sm:mt-6 sm:px-5"
         >
           <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-[var(--oh-primary)] shadow-sm">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-[#F4F7FB] text-[var(--oh-primary)] shadow-sm">
               <Sparkles size={14} strokeWidth={1.75} />
             </span>
             <h2 className="oh-type-label font-semibold text-[var(--oh-text)]">Today’s smart briefing</h2>
@@ -214,7 +209,7 @@ export function OverviewWorkspaceHome({
               <li key={line.href + line.text}>
                 <Link
                   href={line.href}
-                  className="oh-type-meta flex min-h-10 items-start gap-2 rounded-xl px-2 py-1.5 text-[var(--oh-text-secondary)] no-underline transition-colors hover:bg-white hover:text-[var(--oh-text)]"
+                  className="oh-type-meta flex min-h-10 items-start gap-2 rounded-xl px-2 py-1.5 text-[var(--oh-text-secondary)] no-underline transition-colors hover:bg-[#F4F7FB] hover:text-[var(--oh-text)]"
                 >
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--oh-primary)]" aria-hidden="true" />
                   <span className="leading-5">{line.text}</span>
@@ -223,43 +218,6 @@ export function OverviewWorkspaceHome({
             ))}
           </ul>
         </section>
-      </div>
-
-      {/* macOS-style dock */}
-      <div className="shrink-0 px-4 pb-4 pt-1 sm:px-6 sm:pb-5">
-        <nav
-          aria-label="App dock"
-          className={cn(
-            "mx-auto flex max-w-md items-center justify-between gap-1 rounded-[22px] px-3 py-2.5",
-            "bg-white/70 shadow-[0_12px_40px_rgba(15,23,42,0.1)] ring-1 ring-black/[0.06]",
-            "backdrop-blur-2xl backdrop-saturate-150",
-          )}
-        >
-          <div className="flex flex-1 items-center justify-around">
-            {DOCK.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  title={item.label}
-                  aria-label={item.label}
-                  className={cn(
-                    "grid h-11 w-11 place-items-center rounded-[14px] text-[var(--oh-text)] no-underline",
-                    "transition-transform duration-200 hover:-translate-y-1 hover:bg-black/[0.04] active:scale-95",
-                    "motion-reduce:transform-none",
-                  )}
-                  style={{ transitionTimingFunction: SPRING }}
-                >
-                  <Icon size={22} strokeWidth={1.6} />
-                </Link>
-              );
-            })}
-          </div>
-          <span className="oh-type-meta hidden shrink-0 pl-2 font-medium text-[var(--oh-muted)] sm:inline">
-            App Dock
-          </span>
-        </nav>
       </div>
     </section>
   );

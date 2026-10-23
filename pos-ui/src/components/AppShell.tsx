@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { UserMenu } from "@/components/UserMenu";
+import { OverviewChromeProvider } from "@/components/OverviewChromeContext";
 import { CloseRegisterUiProvider, useCloseRegisterUi } from "@/components/CloseRegisterUiProvider";
 import { SalesHistoryUiProvider, useSalesHistoryUi } from "@/components/SalesHistoryUiProvider";
 import { useAuth } from "@/lib/auth";
@@ -29,6 +30,11 @@ const CHROMELESS = ["/login", "/signup", "/auth/bootstrap", "/forgot-password", 
 
 function isPlatformPath(pathname: string): boolean {
   return pathname === "/platform" || pathname.startsWith("/platform/");
+}
+
+/** Overview keeps auth/providers but hides Sidebar + Header (in-page launcher is nav). */
+function isOverviewPath(pathname: string): boolean {
+  return pathname === "/overview" || pathname.startsWith("/overview/");
 }
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
@@ -246,6 +252,60 @@ function AppShellChrome({
 }) {
   const { openCloseRegister } = useCloseRegisterUi();
   const { openSalesHistory } = useSalesHistoryUi();
+  const hideStoreChrome = isOverviewPath(pathname);
+
+  const userMenu = (
+    <UserMenu
+      open={userMenuOpen}
+      onClose={() => setUserMenuOpen(false)}
+      onCloseRegister={() => {
+        setUserMenuOpen(false);
+        openCloseRegister();
+      }}
+      onSalesHistory={() => {
+        setUserMenuOpen(false);
+        openSalesHistory();
+      }}
+      onLogout={onLogout}
+    />
+  );
+
+  const skipLink = (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-[var(--oh-primary)] focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+    >
+      Skip to main content
+    </a>
+  );
+
+  const main = (
+    <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 outline-none">
+      {ODOO_REGISTER_PATHS.has(pathname) ? children : <SellScreenProvider>{children}</SellScreenProvider>}
+    </main>
+  );
+
+  if (hideStoreChrome) {
+    return (
+      <OverviewChromeProvider
+        value={{
+          userName,
+          userMenuOpen,
+          toggleUserMenu: () => setUserMenuOpen((v) => !v),
+        }}
+      >
+        <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
+          <div className="flex min-w-0 flex-1 flex-col print:w-full">
+            {userMenu}
+            {skipLink}
+            {main}
+          </div>
+          <AiFloatHost />
+          <LaunchRingHost />
+        </div>
+      </OverviewChromeProvider>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--oh-surface)] font-sans print:block print:h-auto print:overflow-visible">
@@ -270,28 +330,9 @@ function AppShellChrome({
           onSidebarToggle={toggleNavigation}
           onUserClick={() => setUserMenuOpen((v) => !v)}
         />
-        <UserMenu
-          open={userMenuOpen}
-          onClose={() => setUserMenuOpen(false)}
-          onCloseRegister={() => {
-            setUserMenuOpen(false);
-            openCloseRegister();
-          }}
-          onSalesHistory={() => {
-            setUserMenuOpen(false);
-            openSalesHistory();
-          }}
-          onLogout={onLogout}
-        />
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-[var(--oh-primary)] focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
-        >
-          Skip to main content
-        </a>
-        <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 outline-none">
-          {ODOO_REGISTER_PATHS.has(pathname) ? children : <SellScreenProvider>{children}</SellScreenProvider>}
-        </main>
+        {userMenu}
+        {skipLink}
+        {main}
       </div>
       <AiFloatHost />
       <LaunchRingHost />

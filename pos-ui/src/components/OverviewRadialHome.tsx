@@ -1,5 +1,6 @@
 "use client";
 
+import { OverviewAccountControl } from "@/components/OverviewAccountControl";
 import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
 import { RadialPie } from "@/components/RadialPie";
 import { useAuth } from "@/lib/auth";
@@ -29,7 +30,7 @@ export function OverviewRadialHome({
     <section
       aria-label="Store launcher"
       className={cn(
-        "relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px]",
+        "relative flex min-h-0 flex-1 flex-col overflow-hidden",
         "bg-[radial-gradient(ellipse_at_50%_42%,_#ffffff_0%,_#f0f5fc_55%,_#eef2f7_100%)]",
         className,
       )}
@@ -43,17 +44,20 @@ export function OverviewRadialHome({
         }}
       />
 
-      <header className="relative z-10 flex shrink-0 flex-wrap items-start justify-between gap-3 px-5 pb-0 pt-5 sm:px-7 sm:pt-6">
+      <header className="relative z-10 flex shrink-0 flex-wrap items-start justify-between gap-3 px-5 pb-0 pt-5 sm:px-8 sm:pt-6">
         <div className="min-w-0">
           <p className="oh-type-meta text-[var(--oh-muted)]">{company}</p>
           <h1 className="mt-1 text-[1.35rem] font-semibold tracking-tight text-[var(--oh-text)] sm:text-[1.5rem]">
             {greeting}
           </h1>
         </div>
-        <OverviewLayoutSwitcher active="radial" />
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <OverviewLayoutSwitcher active="radial" />
+          <OverviewAccountControl />
+        </div>
       </header>
 
-      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-8 pt-2">
+      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-6 pt-2">
         <RadialPie
           destinations={destinations}
           centerTitle={company}
