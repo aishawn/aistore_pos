@@ -1,0 +1,69 @@
+{
+  "title": "Demo aipos company 1 POS Sale Keys assignment",
+  "date": "2026-10-23",
+  "target": {
+    "odooBaseUrl": "https://odoo.orithos.com.au",
+    "database": "aipos",
+    "companyId": 1,
+    "companyName": "Orithos Pilot Liquor Store (TEST)",
+    "posConfigId": 1,
+    "posConfigName": "orithos_store1"
+  },
+  "scope": "catalogue_write_pos_categ_ids",
+  "readWrite": "write",
+  "limitation": "Assigned existing DEMO* pos.category records onto company-1 available_in_pos products that previously had empty pos_categ_ids. Did not create new categories. Did not complete a Finalise sale write in this run (browser to demo.orithos.com.au unavailable from agent network).",
+  "before": {
+    "posProductTotal": 4489,
+    "sampleWithPosCateg": 0,
+    "saleKeyTilesExpected": 0,
+    "note": "BFF filters pos.category to ids used by company POS products; empty pos_categ_ids => only All products tile on Sell."
+  },
+  "assignment": {
+    "uncategorizedIdsProcessed": 4489,
+    "mapping": {
+      "10": { "name": "DEMO Beer", "count": 544 },
+      "9": { "name": "DEMO Wine", "count": 1204 },
+      "11": { "name": "DEMO Spirits", "count": 332 },
+      "12": { "name": "DEMO Soft drinks", "count": 146 },
+      "13": { "name": "DEMO Grocery", "count": 2263 }
+    },
+    "method": "XML-RPC product.product write pos_categ_ids=[(6,0,[catId])] by name heuristics"
+  },
+  "after": {
+    "verifySampleSize": 500,
+    "verifySampleWithPosCateg": 500,
+    "usedCategoryIds": [9, 10, 11, 12, 13],
+    "expectedSaleKeyTiles": [
+      "DEMO Beer",
+      "DEMO Grocery",
+      "DEMO Soft drinks",
+      "DEMO Spirits",
+      "DEMO Wine"
+    ],
+    "inStockCountApprox": 885,
+    "openSessionConfig1": {
+      "id": 7,
+      "name": "orithos_store1/00004",
+      "state": "opened"
+    },
+    "paymentMethodIdsOnConfig": [2, 3, 1]
+  },
+  "uiFollowUp": {
+    "emptySaleKeysCopy": "Added in OdooRegisterPage when categoryTiles.length===0 linking to /products/odoo",
+    "cashierAction": "Refresh Sell on demo.orithos.com.au; Sale Keys tiles should appear; uncheck Hide out of stock if browsing zero-qty SKUs"
+  },
+  "firstSaleGate": {
+    "openSession": true,
+    "sessionName": "orithos_store1/00004",
+    "paymentMethods": ["Card", "Customer Account", "Cash"],
+    "saleKeyTiles": ["DEMO Beer", "DEMO Grocery", "DEMO Soft drinks", "DEMO Spirits", "DEMO Wine"],
+    "inStockPricedSample": [
+      { "id": 5346, "name": "R2 TEST | JAMES SQUIRE PALE ALE    345ML", "list_price": 3.4545, "free_qty": 147.0, "pos_categ_ids": [10], "taxes_id": [3] },
+      { "id": 5353, "name": "R2 TEST | JAMES SQUIRE PEAR CIDER 345ML", "list_price": 3.6273, "free_qty": 96.0, "pos_categ_ids": [10], "taxes_id": [3] }
+    ],
+    "quoteFinaliseUi": "NOT_RUN_AGENT_NETWORK_BLOCKED_TO_DEMO",
+    "cashierNextStep": "On demo Sell: Refresh → confirm DEMO Beer/Wine/… tiles → add in-stock line → wait for quote → Finalise (Cash or Card confirm)."
+  },
+  "result": "PASS_DATA_ASSIGNMENT_AND_GATE_PRECHECKS",
+  "finaliseSale": "NOT_RUN"
+}

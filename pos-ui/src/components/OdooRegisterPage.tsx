@@ -1295,6 +1295,18 @@ export function OdooRegisterPage() {
                       );
                     })}
                   </div>
+                  {categoryTiles.length === 0 && !categoriesLoading && !categoriesError && (
+                    <div role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
+                      <p className="font-medium">No POS category keys yet</p>
+                      <p className="mt-1 leading-5">
+                        Sale Keys come from Odoo POS categories linked on products (<code className="text-[12px]">pos_categ_ids</code>).
+                        Assign categories in the product catalogue, then refresh this register.
+                      </p>
+                      <Link href="/products/odoo" className="mt-2 inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange)] underline underline-offset-2">
+                        Open product catalogue
+                      </Link>
+                    </div>
+                  )}
                   <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
                     Tap a category to browse products, or search in the cart panel.
                   </p>
