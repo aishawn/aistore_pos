@@ -44,7 +44,8 @@ public class OdooReportQueryService {
     private static final List<String> PAID_STATES = List.of("paid", "done", "invoiced");
     private static final int MAX_GROUPS = 1000;
     private static final int MAX_LIST_ROWS = 50;
-    private static final int MAX_RECOMMENDATION_PRODUCTS = 1000;
+    private static final int RECOMMENDATION_PAGE_SIZE = 1000;
+    private static final int MAX_RECOMMENDATION_PRODUCTS = 10000;
     private static final long TIMEZONE_CACHE_MILLIS = Duration.ofMinutes(30).toMillis();
 
     private final ObjectMapper objectMapper;
@@ -224,14 +225,14 @@ public class OdooReportQueryService {
             Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
             List<Map<String, Object>> products;
             try {
-                products = searchRead(sessionId, "product.product", productDomain(companyId),
+                products = searchReadPages(sessionId, "product.product", productDomain(companyId),
                         List.of("id", "display_name", "name", "list_price", "lst_price",
                                 "free_qty", "qty_available", "categ_id"),
-                        context, MAX_RECOMMENDATION_PRODUCTS + 1, "display_name asc, id asc");
+                        context, MAX_RECOMMENDATION_PRODUCTS, "display_name asc, id asc");
             } catch (Exception unsupportedFreeQuantity) {
-                products = searchRead(sessionId, "product.product", productDomain(companyId),
+                products = searchReadPages(sessionId, "product.product", productDomain(companyId),
                         List.of("id", "display_name", "name", "list_price", "lst_price", "qty_available", "categ_id"),
-                        context, MAX_RECOMMENDATION_PRODUCTS + 1, "display_name asc, id asc");
+                        context, MAX_RECOMMENDATION_PRODUCTS, "display_name asc, id asc");
             }
             if (products.size() > MAX_RECOMMENDATION_PRODUCTS) {
                 return ProductCatalogResult.fail("ODOO_REPORT_TOO_LARGE");
@@ -534,9 +535,31 @@ public class OdooReportQueryService {
     private List<Map<String, Object>> searchRead(String session, String model, List<Object> domain,
                                                   List<String> fields, Map<String, Object> context,
                                                   int limit, String order) throws Exception {
+        return searchRead(session, model, domain, fields, context, limit, order, 0);
+    }
+
+    private List<Map<String, Object>> searchReadPages(String session, String model, List<Object> domain,
+                                                       List<String> fields, Map<String, Object> context,
+                                                       int maxRows, String order) throws Exception {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        while (rows.size() <= maxRows) {
+            int limit = Math.min(RECOMMENDATION_PAGE_SIZE, maxRows + 1 - rows.size());
+            List<Map<String, Object>> page = searchRead(
+                    session, model, domain, fields, context, limit, order, rows.size());
+            if (page.isEmpty()) break;
+            rows.addAll(page);
+            if (rows.size() > maxRows || page.size() < limit) break;
+        }
+        return rows;
+    }
+
+    private List<Map<String, Object>> searchRead(String session, String model, List<Object> domain,
+                                                  List<String> fields, Map<String, Object> context,
+                                                  int limit, String order, int offset) throws Exception {
         Map<String, Object> kwargs = new LinkedHashMap<>();
         kwargs.put("fields", fields);
         kwargs.put("limit", limit);
+        if (offset > 0) kwargs.put("offset", offset);
         kwargs.put("order", order);
         kwargs.put("context", context);
         return convertRows(call(session, model, "search_read", List.of(domain), kwargs));

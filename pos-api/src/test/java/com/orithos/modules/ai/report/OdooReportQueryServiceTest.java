@@ -216,6 +216,30 @@ class OdooReportQueryServiceTest {
     }
 
     @Test
+    void recommendationCatalogueReadsBeyondOneThousandProductsInPages() throws Exception {
+        List<JsonNode> requests = startRecommendationServer(1001);
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        OdooReportQueryService.ProductCatalogResult result = service.listRecommendationProducts(tenant);
+
+        assertNull(result.error());
+        assertEquals(1001, result.rows().size());
+        List<JsonNode> productPages = requests.stream()
+                .filter(request -> "product.product".equals(request.path("params").path("model").asText()))
+                .toList();
+        assertEquals(2, productPages.size());
+        assertEquals(0, productPages.get(0).path("params").path("kwargs").path("offset").asInt());
+        assertEquals(1000, productPages.get(0).path("params").path("kwargs").path("limit").asInt());
+        assertEquals(1000, productPages.get(1).path("params").path("kwargs").path("offset").asInt());
+        assertEquals(1000, productPages.get(1).path("params").path("kwargs").path("limit").asInt());
+        assertFalse(requests.stream().anyMatch(request -> Set.of("create", "write", "unlink")
+                .contains(request.path("params").path("method").asText())));
+    }
+
+    @Test
     void productCountDoesNotQueryOdooWithoutOutlet() throws Exception {
         List<JsonNode> requests = startStockServer("286");
         VendorMapper vendors = mock(VendorMapper.class);
@@ -569,6 +593,44 @@ class OdooReportQueryServiceTest {
                     ? "{\"jsonrpc\":\"2.0\"," + rpcResponseJson.substring(1)
                     : "{\"jsonrpc\":\"2.0\",\"result\":" + rpcResponseJson + "}";
             respond(exchange, response);
+        });
+        server.start();
+        return requests;
+    }
+
+    private List<JsonNode> startRecommendationServer(int productCount) throws Exception {
+        List<JsonNode> requests = new CopyOnWriteArrayList<>();
+        server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/web/session/authenticate", exchange -> {
+            requests.add(MAPPER.readTree(exchange.getRequestBody()));
+            exchange.getResponseHeaders().add("Set-Cookie", "session_id=test-session; Path=/; HttpOnly");
+            respond(exchange, "{\"jsonrpc\":\"2.0\",\"result\":{\"uid\":5}}");
+        });
+        server.createContext("/web/dataset/call_kw", exchange -> {
+            JsonNode request = MAPPER.readTree(exchange.getRequestBody());
+            requests.add(request);
+            JsonNode params = request.path("params");
+            com.fasterxml.jackson.databind.node.ArrayNode rows = MAPPER.createArrayNode();
+            if ("product.product".equals(params.path("model").asText())) {
+                int offset = params.path("kwargs").path("offset").asInt();
+                int limit = params.path("kwargs").path("limit").asInt();
+                for (int index = offset; index < Math.min(offset + limit, productCount); index++) {
+                    com.fasterxml.jackson.databind.node.ObjectNode row = MAPPER.createObjectNode();
+                    row.put("id", index + 1);
+                    row.put("display_name", "Beer " + index);
+                    row.put("name", "Beer " + index);
+                    row.put("list_price", 10.0);
+                    row.put("lst_price", 10.0);
+                    row.put("free_qty", 1.0);
+                    row.put("qty_available", 1.0);
+                    row.set("categ_id", MAPPER.valueToTree(List.of(1, "Beer")));
+                    rows.add(row);
+                }
+            }
+            com.fasterxml.jackson.databind.node.ObjectNode response = MAPPER.createObjectNode();
+            response.put("jsonrpc", "2.0");
+            response.set("result", rows);
+            respond(exchange, MAPPER.writeValueAsString(response));
         });
         server.start();
         return requests;
