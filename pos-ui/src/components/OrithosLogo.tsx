@@ -13,7 +13,7 @@ export function OrithosLogo({ compact = false, inverse = false }: { compact?: bo
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset */}
       <img
-        src="/images/orithos-mark.png"
+        src={inverse ? "/images/orithos-logo-inverse.png" : "/images/orithos-logo.png"}
         alt=""
         aria-hidden="true"
         className="oh-brand-mark-img"

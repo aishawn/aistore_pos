@@ -32,7 +32,7 @@ export function OverviewAccountControl({ className }: { className?: string }) {
         <span className="oh-brand-mark">
           {/* eslint-disable-next-line @next/next/no-img-element -- existing static brand mark */}
           <img
-            src="/images/orithos-mark-icon-v4.svg"
+            src="/images/orithos-favicon.png"
             width={32}
             height={32}
             alt=""
