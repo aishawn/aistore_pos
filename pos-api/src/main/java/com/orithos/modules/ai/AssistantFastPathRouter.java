@@ -86,7 +86,42 @@ public final class AssistantFastPathRouter {
                     + "^(?:帮我)?(?:搜一下|找一下)\\s*(?!产品[。！？?！]*$|商品[。！？?！]*$|库存[。！？?！]*$)(.+?)[。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CHECK_STOCK = Pattern.compile(
-            "^(check\\s*(stock|inventory)|stock\\s*list|查询库存|查看库存|库存查询)$",
+            "^(?:stock|inventory|check\\s*(?:stock|inventory)|stock\\s*list|show(?:\\s+me)?\\s+(?:the\\s+)?(?:stock|inventory)|"
+                    + "what(?:'s| is)\\s+(?:in\\s+)?stock|what(?:'s| is)\\s+(?:our\\s+)?inventory|"
+                    + "how(?:'s| is)\\s+(?:our\\s+)?stock(?:\\s+looking)?|inventory\\s+status|"
+                    + "库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货|库存列表|查询库存|查看库存|库存查询)$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern STOCK_CLARIFICATION = Pattern.compile(
+            "^(?:why (?:can'?t|cannot) (?:you|we|i) find (?:the )?(?:stock|inventory|products?)|"
+                    + "why (?:is|isn't|is not) (?:the )?(?:stock|inventory|product) (?:not )?(?:showing|appearing)|"
+                    + "why (?:can't|cannot) i see (?:the )?(?:stock|inventory|results?)|"
+                    + "why (?:can't|cannot) (?:i|we) find (?:the )?(?:stock|inventory|results?)|"
+                    + "why (?:can't|cannot) (?:i|we) find (?:anything|anything in stock)|"
+                    + "why (?:can't|cannot) (?:i|we) (?:see|find) anything(?: in (?:the )?(?:stock|inventory))?|"
+                    + "why (?:is|isn't|is not) (?:the )?(?:stock|inventory) missing|"
+                    + "why is nothing showing (?:for|in) (?:the )?(?:stock|inventory)|"
+                    + "why (?:are|is) there no (?:stock|inventory|results?)(?: for (?:the )?(?:stock|inventory))?(?: showing| available)?|"
+                    + "why can'?t i find anything(?: in stock)?|"
+                    + "nothing comes up(?: for (?:the )?(?:stock|inventory))?|"
+                    + "no results?(?: for (?:the )?(?:stock|inventory))?|"
+                    + "(?:the )?(?:stock|inventory) has no results?|"
+                    + "(?:the )?(?:stock|inventory) search is (?:blank|empty)|"
+                    + "nothing is showing (?:for|in) (?:the )?(?:stock|inventory)|"
+                    + "nothing (?:appears|is appearing) (?:for|in) (?:the )?(?:stock|inventory)|"
+                    + "(?:i )?can'?t find (?:the )?(?:stock|inventory)|"
+                    + "(?:the )?(?:stock|inventory) (?:isn't|is not) showing|"
+                    + "no (?:stock|inventory) (?:is )?showing|"
+                    + "为什么(?:查不到|找不到|没有查到|没有找到)(?:库存|商品|产品)?(?:结果)?|"
+                    + "为什么(?:库存|商品|产品)(?:查不到|找不到|没有结果)|"
+                    + "(?:库存|商品|产品)(?:怎么|为什么)(?:查不到|找不到|没有结果)|"
+                    + "(?:查不到|找不到)库存|"
+                    + "(?:查不到|找不到)(?:库存|商品|产品)|"
+                    + "(?:怎么|为何|为什么)(?:查不到|找不到|看不到|没有显示)库存|"
+                    + "库存(?:怎么|为何|为什么)(?:查不到|找不到|看不到|没有显示)|"
+                    + "(?:为什么|怎么|为何)(?:没有结果|什么都查不到|什么都找不到)|"
+                    + "(?:库存|商品|产品)(?:搜索|查询)(?:是)?(?:空白|空的)|"
+                    + "(?:库存|商品|产品)(?:没显示|没有显示|查不到|找不到|看不到)|"
+                    + "(?:库存|商品|产品)没有显示)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CLOSE_REGISTER_HELP = Pattern.compile(
             "^(?:how do i|how can i|where do i|what is the way to|how to)\\s+(?:close|shut)\\s+(?:(?:my|the)\\s+)?(?:register|till|cash register)[?.!]*$|"
@@ -146,6 +181,22 @@ public final class AssistantFastPathRouter {
                     + "^(?:店里|我们店里|门店)有\\s*(.+?)吗[？?。]*$|"
                     + "^(?!(?:订单|客户|供应商|发票))(.+?)(?:还有吗|还有没有|有吗)[？?。]*$|"
                     + "^(?:帮我)?(?:查下|查一下|看看|看下)\\s*(.+?)\\s*(?:还剩几件|还剩多少|剩下多少|还有多少|库存)[？?。]*$",
+            Pattern.CASE_INSENSITIVE);
+    /**
+     * Explicit "stock of/for <product>" wording must extract only the product.
+     * Keep this ahead of the broader "do we have <thing>" fallback so "stock
+     * of VB Cans" is never sent to Odoo as the product name.
+     */
+    private static final Pattern STOCK_QUERY_DIRECT = Pattern.compile(
+            "^(?:do we have|is there|can you check)\\s+(?:any\\s+)?stock\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^how much\\s+stock\\s+do we have\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^what\\s+stock\\s+do we have\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
+                    + "^(?:库存里有|有没有)\\s*(.+?)(?:的)?库存(?:吗)?[？?。]*$|"
+                    + "^(.+?)(?:有库存吗|有货吗)[？?。]*$|"
+                    + "^(?:查|搜索|查询)(?:一下)?\\s*(?:条码|barcode)\\s*[:：]?\\s*([A-Za-z0-9-]{4,})[？?。.!]*$|"
+                    + "^(?:找|搜索|查询)(?:一下)?\\s*(?:SKU|sku)\\s*[:：]?\\s*([A-Za-z0-9_-]{2,})[？?。.!]*$|"
+                    + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:barcode)\\s*[:#]?\\s*([A-Za-z0-9-]{4,})[?.!]*$|"
+                    + "^(?:check|look up|search|find)(?:\\s+the)?\\s+(?:SKU|sku)\\s*[:#]?\\s*([A-Za-z0-9_-]{2,})[?.!]*$",
             Pattern.CASE_INSENSITIVE);
 
     private AssistantFastPathRouter() {}
@@ -324,6 +375,19 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
+        if (STOCK_CLARIFICATION.matcher(normalized).matches()) {
+            boolean chinese = normalized.matches(".*[\\u3400-\\u9fff].*");
+            return new Match(
+                    "qa",
+                    chinese
+                            ? "请告诉我具体商品名称或条码，我会查询本门店库存；查无匹配和库存数据暂不可用是两种不同情况。"
+                            : "Please give me the product name or barcode so I can check this store's stock. No catalogue match and temporarily unavailable stock data are different results.",
+                    Map.of(),
+                    "",
+                    "",
+                    "",
+                    "");
+        }
         if (HELP.matcher(normalized).matches()) {
             return new Match(
                     "qa",
@@ -373,6 +437,23 @@ public final class AssistantFastPathRouter {
                     "",
                     "",
                     "");
+        }
+        var directStockQuery = STOCK_QUERY_DIRECT.matcher(question.trim());
+        if (directStockQuery.matches()) {
+            String query = cleanQuery(firstNonNull(
+                    directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
+                    directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
+                    directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9)));
+            if (query != null) {
+                return new Match(
+                        "report_stock",
+                        "Stock report",
+                        Map.of("query", query),
+                        "",
+                        "",
+                        "",
+                        "");
+            }
         }
         var stockQuery = STOCK_QUERY.matcher(question.trim());
         if (stockQuery.matches()) {

@@ -127,8 +127,8 @@ public final class WorkflowRouteRouter {
                     + "(?:查看|打开|查询|搜索)客户余额|客户对账单(?:列表)?",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern BULK_PRICE_LOOKUP = Pattern.compile(
-            "(?:show|open|view|list|search|find|check)(?:\\s+me)?\\s+(?:the\\s+)?bulk price edit(?:ing)?|"
-                    + "(?:查看|打开|查询|搜索)批量改价",
+            "(?:show|open|view|list|search|find|check)(?:\\s+me)?\\s+(?:the\\s+)?(?:bulk price edit(?:ing)?|bulk pricing|bulk price review)|"
+                    + "(?:查看|打开|查询|搜索)(?:批量改价|批量定价|批量价格编辑|批量改价页面)",
             Pattern.CASE_INSENSITIVE);
 
     private WorkflowRouteRouter() {}
