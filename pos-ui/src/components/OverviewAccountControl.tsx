@@ -1,5 +1,6 @@
 "use client";
 
+import { OrithosBrandMarkIcon } from "@/components/OrithosBrandMark";
 import { UserIcon } from "@/components/icons";
 import { useOverviewChrome } from "@/components/OverviewChromeContext";
 import { openLaunchRing } from "@/lib/overview-launch";
@@ -30,14 +31,7 @@ export function OverviewAccountControl({ className }: { className?: string }) {
         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-1.5 transition-colors hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
       >
         <span className="oh-brand-mark">
-          {/* eslint-disable-next-line @next/next/no-img-element -- existing static brand mark */}
-          <img
-            src="/images/orithos-favicon.png"
-            width={32}
-            height={32}
-            alt=""
-            aria-hidden="true"
-          />
+          <OrithosBrandMarkIcon className="h-7 w-7" />
           <span className="oh-brand-wordmark">orithos</span>
         </span>
       </button>

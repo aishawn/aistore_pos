@@ -1,6 +1,7 @@
+import { ORITHOS_BRAND } from "@/components/OrithosBrandMark";
 import { cn } from "@/lib/utils";
 
-/** Orithos brand mark — Scheme A light retail blue. */
+/** Orithos brand mark with a version for each background tone. */
 export function OrithosLogo({ compact = false, inverse = false }: { compact?: boolean; inverse?: boolean }) {
   return (
     <span
@@ -13,11 +14,11 @@ export function OrithosLogo({ compact = false, inverse = false }: { compact?: bo
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset */}
       <img
-        src={inverse ? "/images/orithos-logo-inverse.png" : "/images/orithos-logo.png"}
+        src={inverse ? ORITHOS_BRAND.dark : ORITHOS_BRAND.light}
         alt=""
         aria-hidden="true"
-        className="oh-brand-mark-img"
-        width={32}
+        className={cn("oh-brand-mark-img", compact && "oh-brand-mark-img-compact")}
+        width={48}
         height={32}
       />
       {!compact && <span className="oh-brand-wordmark">orithos</span>}

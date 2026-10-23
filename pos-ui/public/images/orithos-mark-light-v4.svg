@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1557 1044" fill="none">
+  <path fill="#1B1D20" fill-rule="evenodd" d="M507 80a436 436 0 1 0 0 872 436 436 0 0 0 0-872Zm0 108a328 328 0 1 1 0 656 328 328 0 0 1 0-656Z" clip-rule="evenodd"/>
+  <path fill="#FB9201" d="M579 158C782 185 933 338 933 516C933 757 744 952 511 952C374 952 246 884 169 767C251 837 386 871 507 871C688 871 835 712 835 516C835 352 738 214 579 158Z"/>
+  <circle cx="332" cy="515" r="60" fill="#FB9201"/><circle cx="515" cy="515" r="60" fill="#FB9201"/><circle cx="698" cy="515" r="60" fill="#FB9201"/>
+  <path fill="#1B1D20" d="M949 194h144v250h241V194h144v850h-144V576h-241v468H949V194Z"/>
+</svg>
