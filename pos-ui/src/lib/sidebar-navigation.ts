@@ -47,13 +47,8 @@ export type SidebarIcon =
   | "settings"
   | "marketing";
 
-/** Primary nav: Odoo-backed surfaces only. */
+/** Primary nav: Odoo-backed surfaces only. Sell first; Overview just above Setup. */
 export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
-  {
-    label: "Overview",
-    href: "/overview",
-    icon: "overview",
-  },
   {
     label: "Sell",
     href: "/",
@@ -88,6 +83,11 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Price Suggestions", href: "/stock/price-suggestions" },
       { label: "Scan Supplier Invoice", href: "/invoices/scan" },
     ],
+  },
+  {
+    label: "Overview",
+    href: "/overview",
+    icon: "overview",
   },
   {
     label: "Setup",
