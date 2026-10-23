@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, History, LayoutGrid, List, LoaderCircle, Minus, Package, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
+import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, History, LayoutGrid, List, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
@@ -21,13 +21,23 @@ import {
   type OdooPosCategoryRecord,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
-import { PlusIcon } from "@/components/icons";
+import { CartIcon, KeyboardIcon, ParkingIcon, PlusIcon } from "@/components/icons";
+import { AdminNavyButton, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import { ProductImage } from "@/components/ProductImage";
 import { cn } from "@/lib/utils";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
 import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
+
+type WorkspaceTab = "keys" | "parked" | "more";
+
+const CATEGORY_TILE_TONES = [
+  { bg: "var(--oh-tile-orange-bg)", border: "var(--oh-tile-orange-border)", text: "var(--oh-tile-orange-text)" },
+  { bg: "var(--oh-tile-red-bg)", border: "var(--oh-tile-red-border)", text: "var(--oh-tile-red-text)" },
+  { bg: "var(--oh-tile-blue-bg)", border: "var(--oh-tile-blue-border)", text: "var(--oh-tile-blue-text)" },
+  { bg: "var(--oh-tile-green-bg)", border: "var(--oh-tile-green-border)", text: "var(--oh-tile-green-text)" },
+] as const;
 
 type CartLine = { product: OdooProductRecord; quantity: number; /** Units per pack (1 = bottle/each, 12 = case). */ packFactor: number };
 const CASE_PACK_OPTIONS = [1, 6, 12, 24] as const;
@@ -178,7 +188,9 @@ export function OdooRegisterPage() {
   const [cashTendered, setCashTendered] = useState("");
   const [parkedSales, setParkedSales] = useState<ParkedOdooSale[]>([]);
   const [parkedLoaded, setParkedLoaded] = useState(false);
-  const [saleView, setSaleView] = useState<"sell" | "parked">("sell");
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("keys");
+  const [catalogHome, setCatalogHome] = useState(true);
+  const [selectedLineKey, setSelectedLineKey] = useState<string | null>(null);
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
   const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -362,7 +374,8 @@ export function OdooRegisterPage() {
         selectedPaymentMethodIdRef.current = parsed.paymentMethodId;
         setPaymentMethodId(parsed.paymentMethodId);
       }
-      setSaleView("sell");
+      setWorkspaceTab("keys");
+      setCatalogHome(true);
       setDraftNotice("Draft restored from this device. Odoo will recheck stock and tax before finalising.");
     } catch {
       setDraftNotice("A saved cart draft could not be read from this device.");
@@ -758,7 +771,8 @@ export function OdooRegisterPage() {
     setCustomer(null);
     setCustomerQuery("");
     setCashTendered("");
-    setSaleView("parked");
+    setSelectedLineKey(null);
+    setWorkspaceTab("parked");
     orderUuid.current = null;
     checkoutFingerprint.current = null;
     return true;
@@ -781,7 +795,9 @@ export function OdooRegisterPage() {
       selectedPaymentMethodIdRef.current = sale.paymentMethodId;
       setPaymentMethodId(sale.paymentMethodId);
     }
-    setSaleView("sell");
+    setWorkspaceTab("keys");
+    setCatalogHome(true);
+    setSelectedLineKey(null);
     orderUuid.current = null;
     checkoutFingerprint.current = null;
   }
@@ -973,17 +989,103 @@ export function OdooRegisterPage() {
     const nextPaymentMethodId = config?.paymentMethods[0]?.id ?? null;
     selectedPaymentMethodIdRef.current = nextPaymentMethodId;
     setPaymentMethodId(nextPaymentMethodId);
-    setSaleView("sell");
+    setWorkspaceTab("keys");
+    setCatalogHome(true);
+    setSelectedLineKey(null);
     setPendingRegisterId(null);
     if (odooUserId) {
       try { localStorage.setItem(`${REGISTER_SELECTION_KEY}:${odooUserId}`, String(id)); } catch { /* Keep the current selection for this session. */ }
     }
   }
 
+  function lineKey(productId: number, packFactor: number) {
+    return `${productId}:${packFactor}`;
+  }
+
+  function targetCartLine() {
+    if (selectedLineKey) {
+      const match = lines.find((line) => lineKey(line.product.id, line.packFactor || 1) === selectedLineKey);
+      if (match) return match;
+    }
+    return lines[lines.length - 1] ?? null;
+  }
+
+  function selectCashPayment(exact = false) {
+    const method = paymentMethods.find((item) => item.type === "cash");
+    if (!method) {
+      setError("No cash payment method is configured for this register.");
+      return;
+    }
+    selectedPaymentMethodIdRef.current = method.id;
+    setPaymentMethodId(method.id);
+    if (exact && quoteIsCurrent) setCashTendered(amountToCollect.toFixed(2));
+    else setCashTendered("");
+  }
+
+  function selectCardPayment() {
+    const method = paymentMethods.find((item) => item.type !== "cash") ?? paymentMethods[0];
+    if (!method) {
+      setError("No card payment method is configured for this register.");
+      return;
+    }
+    selectedPaymentMethodIdRef.current = method.id;
+    setPaymentMethodId(method.id);
+    setCashTendered("");
+  }
+
+  function applyCaseQuantity() {
+    const line = targetCartLine();
+    if (!line) return;
+    const current = line.packFactor || 1;
+    const next = current === 1 ? 12 : 1;
+    setLinePackFactor(line.product.id, current, next);
+    setSelectedLineKey(lineKey(line.product.id, next));
+  }
+
+  function clearSale() {
+    setLines([]);
+    setCustomer(null);
+    setCustomerQuery("");
+    setCustomers([]);
+    setCashTendered("");
+    setConfirmedPaymentKey(null);
+    setSelectedLineKey(null);
+    setError(null);
+    setDraftNotice(null);
+  }
+
+  function openCategory(nextCategoryId: number | null) {
+    setCategoryId(nextCategoryId);
+    setCatalogHome(false);
+    setWorkspaceTab("keys");
+    setQuery("");
+    setProductActiveIndex(-1);
+  }
+
+  function backToCatalogHome() {
+    setCatalogHome(true);
+    setCategoryId(null);
+    setQuery("");
+    setProductActiveIndex(-1);
+  }
+
+  const topCategories = posCategories.filter((category) => !category.parent_id);
+  const categoryTiles = topCategories.length > 0 ? topCategories : posCategories;
+  const showCatalogHome = catalogHome && !query.trim();
+  const productCount = lines.length;
+  const cashMethod = paymentMethods.find((item) => item.type === "cash");
+  const cardMethod = paymentMethods.find((item) => item.type !== "cash");
+
   return (
-    <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col bg-[var(--oh-surface)] p-3 font-sans max-xl:overflow-y-auto xl:overflow-hidden sm:p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-semibold text-[var(--oh-text)]">Sell</h1>
+          <p className="mt-0.5 text-[13px] text-[var(--oh-muted)]">
+            Process sales, manage the cart, and finalise payments
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <div
             className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--oh-border)] bg-white py-1 pl-3 pr-1 shadow-sm"
             title={selectedConfig?.session ? `${selectedConfig.name} · ${selectedConfig.session.name}` : selectedConfig?.name}
@@ -1000,13 +1102,12 @@ export function OdooRegisterPage() {
                 if (lines.length) setPendingRegisterId(id);
                 else selectRegister(id);
               }}
-              className="max-w-[200px] truncate border-0 bg-transparent py-1 text-sm font-semibold text-[var(--oh-text)] outline-none"
+              className="max-w-[160px] truncate border-0 bg-transparent py-1 text-sm font-semibold text-[var(--oh-text)] outline-none"
             >
               {bootstrap?.configs.map((config) => (
                 <option key={config.id} value={config.id}>{config.name}{config.session ? "" : " · Closed"}</option>
               ))}
             </select>
-            <span className="hidden truncate text-xs text-[var(--oh-text-secondary)] sm:inline">{sessionOpen ? "Open" : "Closed"}</span>
             <button type="button" onClick={() => void loadPos()} disabled={refreshing} title="Refresh register data" aria-label="Refresh register data" className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] disabled:opacity-60">
               {refreshing ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             </button>
@@ -1021,12 +1122,11 @@ export function OdooRegisterPage() {
             </button>
           </div>
           {lines.length > 0 && (
-            <button type="button" onClick={parkCurrentSale} disabled={!parkedLoaded || !selectedConfig || busy} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] shadow-sm hover:bg-[var(--oh-orange-light)] disabled:opacity-50">
-              <Archive size={15} /> Park
-            </button>
+            <span className="rounded-[var(--oh-radius)] border border-[var(--oh-orange-muted)] bg-[var(--oh-orange-light)] px-3 py-1.5 text-[13px] font-semibold text-[var(--oh-orange)]">
+              {quantity} items · ${totalWhole}.{totalCents}
+            </span>
           )}
         </div>
-        <p className="truncate text-xs text-[var(--oh-text-secondary)]" title={sessionHint}>{sessionHint}</p>
       </div>
 
       {!selectedConfig?.session && (
@@ -1059,315 +1159,371 @@ export function OdooRegisterPage() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 max-xl:flex-none xl:flex-row">
-        <section aria-label="POS products and parked sales" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] max-xl:min-h-[52dvh]">
-          {saleView === "sell" ? (
-            <>
-              <div role="group" aria-label="Search and filter POS products" className="flex shrink-0 flex-col gap-2 border-b border-[var(--oh-border)] px-3 py-2 sm:px-4">
-                <div className="flex h-11 items-center gap-2">
-                  <Search size={18} className="shrink-0 text-[var(--sf-placeholder)]" />
-                  <input
-                    aria-label="Search products by name, barcode or code"
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-controls="pos-product-results"
-                    aria-expanded={products.length > 0}
-                    aria-activedescendant={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
-                    value={query}
-                    onChange={(event) => {
-                      setProductsError(null);
-                      setProductActiveIndex(-1);
-                      setQuery(event.target.value);
-                    }}
-                    onKeyDown={(event) => void handleProductSearchKeyDown(event)}
-                    placeholder="Search products or scan a barcode…"
-                    className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
-                  />
-                  {productsLoading && <LoaderCircle size={16} className="animate-spin text-[var(--sf-placeholder)]" />}
-                  <select
-                    aria-label="POS category"
-                    value={categoryId ?? ""}
-                    onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)}
-                    className="h-11 max-w-[42%] shrink-0 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-xs font-medium text-[var(--oh-text)] sm:max-w-[180px]"
-                  >
-                    <option value="">All categories</option>
-                    {posCategories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {Array.isArray(category.parent_id)
-                          ? `${friendlyProductName(category.parent_id[1])} / ${friendlyProductName(category.name)}`
-                          : friendlyProductName(category.name)}
-                      </option>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
+          <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
+            <button
+              type="button"
+              onClick={() => setWorkspaceTab("keys")}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
+                workspaceTab === "keys" ? "bg-[var(--oh-orange-light)] text-[var(--oh-orange)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
+              )}
+            >
+              <KeyboardIcon size={15} strokeWidth={1.75} />
+              Quick Keys
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceTab("parked")}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
+                workspaceTab === "parked" ? "bg-[var(--oh-orange-light)] text-[var(--oh-orange)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
+              )}
+            >
+              <ParkingIcon size={15} strokeWidth={1.75} />
+              Parked Sales
+              {visibleParkedSales.length > 0 && (
+                <span className="ml-0.5 rounded-full bg-[var(--oh-primary)] px-1.5 py-0.5 text-[13px] font-semibold leading-none text-white">
+                  {visibleParkedSales.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceTab("more")}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
+                workspaceTab === "more" ? "bg-[var(--oh-orange-light)] text-[var(--oh-orange)]" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
+              )}
+            >
+              More Actions
+            </button>
+          </div>
+
+          <div className="relative min-h-0 flex-1 overflow-y-auto p-4">
+            {workspaceTab === "parked" ? (
+              <div className="space-y-3">
+                <p className="flex items-start gap-2 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-text-secondary)]">
+                  <Clock3 size={15} className="mt-0.5 shrink-0" />
+                  Parked sales are saved on this terminal.
+                </p>
+                {visibleParkedSales.length ? (
+                  <div className="grid gap-2">
+                    {visibleParkedSales.map((sale) => (
+                      <article key={sale.id} className="rounded-xl border border-[var(--oh-border)] bg-white p-3 shadow-sm">
+                        <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3>
+                        <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">{formatParkedDate(sale.createdAt, sale.timezone)} · {sale.registerName}</p>
+                        <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">
+                          {sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity, 0))}
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
+                          <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:text-red-700">Discard</button>
+                        </div>
+                      </article>
                     ))}
-                  </select>
+                  </div>
+                ) : (
+                  <div className="grid place-items-center py-16 text-center">
+                    <Archive size={24} className="mx-auto text-[var(--oh-border-strong)]" />
+                    <p className="mt-2 text-sm font-medium text-[var(--oh-text)]">No parked sales</p>
+                    <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Park the current cart to resume it later from this list</p>
+                  </div>
+                )}
+              </div>
+            ) : workspaceTab === "more" ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Register actions</p>
+                  <button type="button" onClick={() => setWorkspaceTab("keys")} className="cursor-pointer text-[13px] font-medium text-[var(--oh-orange)] hover:underline">
+                    ← Back to Quick Keys
+                  </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 pb-0.5">
-                  <p className="oh-type-label mr-auto text-[var(--oh-text-secondary)]">Shelf prices include GST where taxed</p>
-                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)]">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-[var(--oh-border)]"
-                      checked={hideOutOfStock}
-                      onChange={(event) => setHideOutOfStock(event.target.checked)}
-                    />
-                    Hide out of stock
-                  </label>
-                  <div className="inline-flex rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] p-0.5" role="group" aria-label="Catalogue density">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <button type="button" onClick={() => { setWorkspaceTab("keys"); openCategory(null); }} className="flex aspect-square max-h-[120px] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] p-2 text-[13px] font-semibold text-[var(--oh-tile-blue-text)] shadow-[var(--oh-shadow-card)] hover:opacity-95">
+                    All products
+                  </button>
+                  <button type="button" onClick={() => openSalesHistory()} className="flex aspect-square max-h-[120px] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] p-2 text-[13px] font-semibold text-[var(--oh-tile-blue-text)] shadow-[var(--oh-shadow-card)] hover:opacity-95">
+                    Sales History
+                  </button>
+                  <button type="button" onClick={() => setHelpOpen(true)} className="flex aspect-square max-h-[120px] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] p-2 text-[13px] font-semibold text-[var(--oh-tile-orange-text)] shadow-[var(--oh-shadow-card)] hover:opacity-95">
+                    POS Help
+                  </button>
+                  <button type="button" onClick={requestCloseRegister} className="flex aspect-square max-h-[120px] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-2 text-[13px] font-semibold text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] hover:border-[var(--oh-orange)]">
+                    Close Register
+                  </button>
+                </div>
+              </div>
+            ) : showCatalogHome ? (
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Sale keys</p>
+                    <span className="text-[13px] text-[var(--oh-muted)]">Home Keys</span>
+                  </div>
+                  {categoriesError && (
+                    <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      <span>{categoriesError}</span>
+                      <button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoriesLoading} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold">
+                        {categoriesLoading ? "Retrying…" : "Retry categories"}
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                     <button
                       type="button"
-                      aria-pressed={catalogDensity === "grid"}
-                      aria-label="Grid view"
-                      onClick={() => setCatalogDensity("grid")}
-                      className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "grid" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
+                      onClick={() => openCategory(null)}
+                      className="flex aspect-square max-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border p-2 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98]"
+                      style={{ backgroundColor: "var(--oh-tile-green-bg)", borderColor: "var(--oh-tile-green-border)", color: "var(--oh-tile-green-text)" }}
                     >
-                      <LayoutGrid size={16} />
+                      All products
                     </button>
-                    <button
-                      type="button"
-                      aria-pressed={catalogDensity === "list"}
-                      aria-label="List view"
-                      onClick={() => setCatalogDensity("list")}
-                      className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "list" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
-                    >
-                      <List size={16} />
-                    </button>
+                    {categoryTiles.map((category, index) => {
+                      const tone = CATEGORY_TILE_TONES[index % CATEGORY_TILE_TONES.length];
+                      const label = friendlyProductName(category.name);
+                      return (
+                        <button
+                          key={category.id}
+                          type="button"
+                          onClick={() => openCategory(category.id)}
+                          className="flex aspect-square max-h-[120px] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border p-2 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98]"
+                          style={{ backgroundColor: tone.bg, borderColor: tone.border, color: tone.text }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
+                    Tap a category to browse products, or search in the cart panel.
+                  </p>
+                </div>
+                <div>
+                  <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line controls</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={!lines.length} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, 1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">+ Qty</button>
+                    <button type="button" disabled={!lines.length || (targetCartLine()?.quantity ?? 0) <= 1} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">− Qty</button>
+                    <button type="button" disabled={!lines.length} onClick={applyCaseQuantity} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Case Qty</button>
+                    <button type="button" disabled={!lines.length || !parkedLoaded || !selectedConfig || busy} onClick={() => parkCurrentSale()} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Park Sale</button>
+                    <button type="button" disabled={!lines.length} onClick={clearSale} className="min-h-11 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] font-medium text-[var(--oh-tile-red-text)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Clear Sale</button>
                   </div>
                 </div>
               </div>
-              {categoriesError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span className="min-w-0 break-words">{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoriesLoading} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">{categoriesLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} {categoriesLoading ? "Retrying…" : "Retry categories"}</button></div>}
-              <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
-                {productsLoading && products.length > 0 && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Updating products from Odoo…</p>}
-                {productsLoading && !products.length ? (
-                  <div aria-label="Loading products" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5")}>
-                    {Array.from({ length: 8 }, (_, index) => <div key={index} className={cn("animate-pulse rounded-lg border border-[var(--oh-border)] bg-white", catalogDensity === "list" ? "h-16" : "min-h-36")} />)}
-                  </div>
-                ) : productsError && !products.length ? (
-                  <div role="alert" className="grid h-full min-h-48 place-items-center px-5 text-center">
-                    <div className="max-w-sm">
-                      <CircleAlert size={26} className="mx-auto text-red-700" />
-                      <p className="mt-2 font-semibold text-[var(--oh-text)]">Products could not load</p>
-                      <p className="mt-1 text-sm text-[var(--oh-muted)]">{productsError}</p>
-                      <button type="button" onClick={() => setProductRetryKey((value) => value + 1)} disabled={productsLoading} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] disabled:cursor-wait disabled:opacity-60">
-                        {productsLoading ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {productsLoading ? "Retrying…" : "Retry search"}
+            ) : (
+              <div className="flex h-full min-h-0 flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={backToCatalogHome} className="min-h-11 cursor-pointer rounded-lg px-2 text-[13px] font-medium text-[var(--oh-orange)] hover:underline">
+                    ← Back to Quick Keys
+                  </button>
+                  <span className="text-[15px] font-semibold text-[var(--oh-text)]">
+                    {categoryId === null
+                      ? (query.trim() ? `Search: ${query.trim()}` : "All products")
+                      : friendlyProductName(posCategories.find((item) => item.id === categoryId)?.name ?? "Products")}
+                  </span>
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)]">
+                      <input type="checkbox" className="h-4 w-4 rounded border-[var(--oh-border)]" checked={hideOutOfStock} onChange={(event) => setHideOutOfStock(event.target.checked)} />
+                      Hide out of stock
+                    </label>
+                    <div className="inline-flex rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] p-0.5" role="group" aria-label="Catalogue density">
+                      <button type="button" aria-pressed={catalogDensity === "grid"} aria-label="Grid view" onClick={() => setCatalogDensity("grid")} className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "grid" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}>
+                        <LayoutGrid size={16} />
+                      </button>
+                      <button type="button" aria-pressed={catalogDensity === "list"} aria-label="List view" onClick={() => setCatalogDensity("list")} className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "list" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}>
+                        <List size={16} />
                       </button>
                     </div>
                   </div>
-                ) : products.length ? (
-                  <div className="flex min-h-full flex-col">
-                    <div
-                      role="listbox"
-                      aria-label="POS product search results"
-                      className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5")}
-                    >
-                      {products.map((product, index) => {
-                        const fullName = product.display_name || product.name;
-                        const label = friendlyProductName(fullName);
-                        const shelfPrice = shelfUnitPrice(product);
-                        const inStock = product.free_qty > 0;
-                        const disabled = !selectedConfig?.session || !inStock;
-                        const selected = index === productActiveIndex;
-                        if (catalogDensity === "list") {
-                          return (
-                            <button
-                              key={product.id}
-                              id={`pos-product-option-${product.id}`}
-                              type="button"
-                              role="option"
-                              aria-selected={selected}
-                              title={fullName}
-                              onClick={() => addProduct(product)}
-                              disabled={disabled}
-                              className={cn(
-                                "flex min-h-14 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-3 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45",
-                                selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]",
-                              )}
-                            >
-                              <ProductImage
-                                productId={product.id}
-                                name={label}
-                                className="h-12 w-12 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-orange-light)]"
-                                fallbackClassName="text-lg"
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="oh-type-body block truncate font-semibold text-[var(--oh-text)]">{label}</span>
-                                <span className={cn("oh-type-label", inStock ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>
-                                  {inStock ? `${formatStockQty(product.free_qty)} avail.` : "No stock"}
-                                </span>
-                              </span>
-                              <span className="shrink-0 text-right">
-                                {shelfPrice === null ? (
-                                  <span className="oh-type-label font-semibold text-amber-800">Price unavailable</span>
-                                ) : (
-                                  <span className="text-base font-bold tabular-nums text-[var(--oh-text)]">{money(shelfPrice)}</span>
-                                )}
-                              </span>
-                            </button>
-                          );
-                        }
-                        return (
-                          <button
-                            key={product.id}
-                            id={`pos-product-option-${product.id}`}
-                            type="button"
-                            role="option"
-                            aria-selected={selected}
-                            title={fullName}
-                            onClick={() => addProduct(product)}
-                            disabled={disabled}
-                            className={cn(
-                              "flex min-h-[132px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
-                              selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]",
-                            )}
-                          >
-                            <ProductImage
-                              productId={product.id}
-                              name={label}
-                              className="mb-2 h-16 w-16 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-orange-light)]"
-                              fallbackClassName="text-2xl"
-                            />
-                            <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
-                            {shelfPrice === null ? (
-                              <span className="oh-type-label mt-auto pt-2 font-semibold text-amber-800">Price unavailable</span>
-                            ) : (
-                              <span className="mt-auto pt-2 text-base font-bold tabular-nums leading-none text-[var(--oh-text)]">{money(shelfPrice)}</span>
-                            )}
-                            {product.price_tax === 0 && shelfPrice !== null && (
-                              <span className="oh-type-label mt-0.5 text-[var(--oh-text-secondary)]">GST-free</span>
-                            )}
-                            {!inStock ? (
-                              <span className="oh-type-label mt-0.5 font-medium text-amber-800">No stock</span>
-                            ) : product.free_qty <= 3 ? (
-                              <span className="oh-type-label mt-0.5 font-medium text-amber-800">{formatStockQty(product.free_qty)} left</span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
+                </div>
+                <div id="pos-product-results" className="min-h-0 flex-1 overflow-y-auto rounded-lg bg-[var(--sf-pad-bg)] p-3">
+                  {productsLoading && !products.length ? (
+                    <div aria-label="Loading products" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4")}>
+                      {Array.from({ length: 8 }, (_, index) => <div key={index} className={cn("animate-pulse rounded-lg border border-[var(--oh-border)] bg-white", catalogDensity === "list" ? "h-16" : "min-h-36")} />)}
                     </div>
-                    {productsHasNext && (
-                      <div className="mt-3 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() => void loadMoreProducts()}
-                          disabled={productsLoadingMore || productsLoading}
-                          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60"
-                        >
-                          {productsLoadingMore ? <LoaderCircle size={15} className="animate-spin" /> : null}
-                          {productsLoadingMore ? "Loading…" : "Load more products"}
+                  ) : productsError && !products.length ? (
+                    <div role="alert" className="grid min-h-48 place-items-center px-5 text-center">
+                      <div className="max-w-sm">
+                        <CircleAlert size={26} className="mx-auto text-red-700" />
+                        <p className="mt-2 font-semibold text-[var(--oh-text)]">Products could not load</p>
+                        <p className="mt-1 text-sm text-[var(--oh-muted)]">{productsError}</p>
+                        <button type="button" onClick={() => setProductRetryKey((value) => value + 1)} disabled={productsLoading} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold">
+                          {productsLoading ? "Retrying…" : "Retry search"}
                         </button>
                       </div>
-                    )}
-                    {productsError && (
-                      <p role="alert" className="mt-2 text-center text-xs text-red-800">{productsError}</p>
-                    )}
-                    {products.length < 8 && !productsHasNext && (
-                      <p className="mt-auto pt-8 text-center text-sm text-[var(--oh-text-secondary)]">
-                        Search or tap a product to start
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid h-full place-items-center px-5 text-center text-sm text-[var(--oh-text-secondary)]">
-                    {productsLoading ? "Loading products…" : (
+                    </div>
+                  ) : products.length ? (
+                    <div className="flex min-h-full flex-col">
+                      <div role="listbox" aria-label="POS product search results" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4")}>
+                        {products.map((product, index) => {
+                          const fullName = product.display_name || product.name;
+                          const label = friendlyProductName(fullName);
+                          const shelfPrice = shelfUnitPrice(product);
+                          const inStock = product.free_qty > 0;
+                          const disabled = !selectedConfig?.session || !inStock;
+                          const selected = index === productActiveIndex;
+                          if (catalogDensity === "list") {
+                            return (
+                              <button key={product.id} id={`pos-product-option-${product.id}`} type="button" role="option" aria-selected={selected} title={fullName} onClick={() => addProduct(product)} disabled={disabled} className={cn("flex min-h-14 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-3 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}>
+                                <ProductImage productId={product.id} name={label} className="h-12 w-12 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-orange-light)]" fallbackClassName="text-lg" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="oh-type-body block truncate font-semibold text-[var(--oh-text)]">{label}</span>
+                                  <span className={cn("oh-type-label", inStock ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>{inStock ? `${formatStockQty(product.free_qty)} avail.` : "No stock"}</span>
+                                </span>
+                                <span className="shrink-0 text-right">
+                                  {shelfPrice === null ? <span className="oh-type-label font-semibold text-amber-800">Price unavailable</span> : <span className="text-base font-bold tabular-nums text-[var(--oh-text)]">{money(shelfPrice)}</span>}
+                                </span>
+                              </button>
+                            );
+                          }
+                          return (
+                            <button key={product.id} id={`pos-product-option-${product.id}`} type="button" role="option" aria-selected={selected} title={fullName} onClick={() => addProduct(product)} disabled={disabled} className={cn("flex min-h-[132px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}>
+                              <ProductImage productId={product.id} name={label} className="mb-2 h-16 w-16 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-orange-light)]" fallbackClassName="text-2xl" />
+                              <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
+                              {shelfPrice === null ? <span className="oh-type-label mt-auto pt-2 font-semibold text-amber-800">Price unavailable</span> : <span className="mt-auto pt-2 text-base font-bold tabular-nums leading-none text-[var(--oh-text)]">{money(shelfPrice)}</span>}
+                              {!inStock ? <span className="oh-type-label mt-0.5 font-medium text-amber-800">No stock</span> : product.free_qty <= 3 ? <span className="oh-type-label mt-0.5 font-medium text-amber-800">{formatStockQty(product.free_qty)} left</span> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {productsHasNext && (
+                        <div className="mt-3 flex justify-center">
+                          <button type="button" onClick={() => void loadMoreProducts()} disabled={productsLoadingMore || productsLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-60">
+                            {productsLoadingMore ? <LoaderCircle size={15} className="animate-spin" /> : null}
+                            {productsLoadingMore ? "Loading…" : "Load more products"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid h-full place-items-center px-5 text-center text-sm text-[var(--oh-text-secondary)]">
                       <div>
                         <Search size={28} className="mx-auto mb-2 text-[var(--oh-border-strong)]" />
                         <p className="font-medium text-[var(--oh-text)]">No products here</p>
                         <p className="mt-1">{hideOutOfStock ? "No in-stock products match. Clear filters or show out-of-stock items." : "Search or scan a barcode to find stock."}</p>
-                        {(query || categoryId !== null || hideOutOfStock) && (
-                          <button
-                            type="button"
-                            onClick={() => { setQuery(""); setCategoryId(null); setHideOutOfStock(false); }}
-                            className="mt-3 font-semibold text-[var(--sf-tab-blue)] underline underline-offset-2"
-                          >
-                            Clear filters
-                          </button>
-                        )}
+                        <button type="button" onClick={backToCatalogHome} className="mt-3 font-semibold text-[var(--sf-tab-blue)] underline underline-offset-2">Back to Quick Keys</button>
                       </div>
-                    )}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line controls</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" disabled={!lines.length} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, 1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">+ Qty</button>
+                    <button type="button" disabled={!lines.length || (targetCartLine()?.quantity ?? 0) <= 1} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">− Qty</button>
+                    <button type="button" disabled={!lines.length} onClick={applyCaseQuantity} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Case Qty</button>
+                    <button type="button" disabled={!lines.length || !parkedLoaded || !selectedConfig || busy} onClick={() => parkCurrentSale()} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Park Sale</button>
+                    <button type="button" disabled={!lines.length} onClick={clearSale} className="min-h-11 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] font-medium text-[var(--oh-tile-red-text)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Clear Sale</button>
                   </div>
-                )}
+                </div>
               </div>
-            </>
-          ) : (
-            <div id="parked-sales-panel" className="min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
-              <p className="mb-3 flex items-start gap-2 rounded-xl border border-[var(--oh-border)] bg-white p-3 text-xs leading-5 text-[var(--oh-text-secondary)]">
-                <Clock3 size={15} className="mt-0.5 shrink-0" />
-                Parked sales are saved on this terminal.
-              </p>
-              {visibleParkedSales.length ? (
-                <div className="grid gap-2">
-                  {visibleParkedSales.map((sale) => (
-                    <article key={sale.id} className="rounded-xl border border-[var(--oh-border)] bg-white p-3 shadow-sm">
-                      <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3>
-                      <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">{formatParkedDate(sale.createdAt, sale.timezone)} · {sale.registerName}</p>
-                      <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">
-                        {sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity, 0))}
-                      </p>
-                      <div className="mt-3 flex gap-2">
-                        <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
-                        <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:text-red-700">Discard</button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid h-[60%] place-items-center text-center">
-                  <div>
-                    <Archive size={24} className="mx-auto text-[var(--oh-border-strong)]" />
-                    <p className="mt-2 text-sm font-medium text-[var(--oh-text)]">No parked sales</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="shrink-0 border-t border-[var(--oh-border)] bg-white p-2">
-            <div className="flex rounded-lg bg-[var(--oh-surface)] p-1" role="tablist" aria-label="Sell views">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={saleView === "sell"}
-                aria-controls="pos-product-results"
-                onClick={() => setSaleView("sell")}
-                className={cn(
-                  "oh-type-body flex h-11 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-colors",
-                  saleView === "sell" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]",
-                )}
-              >
-                <Package size={18} strokeWidth={1.75} /> Products
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={saleView === "parked"}
-                aria-controls="parked-sales-panel"
-                onClick={() => setSaleView("parked")}
-                className={cn(
-                  "oh-type-body relative flex h-11 flex-1 items-center justify-center gap-2 rounded-md font-semibold transition-colors",
-                  saleView === "parked" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]",
-                )}
-              >
-                <SquareParking size={18} strokeWidth={1.75} /> Parked
-                {visibleParkedSales.length > 0 && (
-                  <span className="oh-type-label inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--oh-primary)] px-1.5 font-bold text-white">
-                    {visibleParkedSales.length}
-                  </span>
-                )}
-              </button>
-            </div>
+            )}
           </div>
         </section>
 
-        <section className="flex w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] max-xl:min-h-[20rem] xl:w-[400px] xl:shrink-0">
-          <div className="flex h-14 shrink-0 items-center border-b border-[var(--oh-border)] px-1">
-            {customer ? (
-              <>
-                <button type="button" onClick={() => setCustomerQuery(customer.name)} className="flex flex-1 cursor-pointer items-center text-left">
-                  <span className="oh-type-body ml-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--oh-primary)] font-bold text-white">{customer.name.charAt(0)}</span>
-                  <span className="oh-type-body-strong mx-2 truncate text-[var(--oh-text)]">{customer.name}</span>
+        <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminNavyButton className="min-h-11" onClick={() => selectCardPayment()} disabled={!lines.length || !cardMethod}>
+              EFTPOS
+            </AdminNavyButton>
+            <AdminSecondaryButton className="min-h-11" onClick={() => selectCashPayment(true)} disabled={!lines.length || !cashMethod || !quoteIsCurrent}>
+              Exact Cash
+            </AdminSecondaryButton>
+            <AdminSecondaryButton className="min-h-11" onClick={applyCaseQuantity} disabled={!lines.length}>
+              Case Quantity
+            </AdminSecondaryButton>
+            <AdminSecondaryButton className="min-h-11" onClick={clearSale} disabled={!lines.length}>
+              Clear Sale
+            </AdminSecondaryButton>
+            <div className="ml-auto flex flex-wrap items-center gap-3">
+              {lines.length > 0 && (
+                <span className="text-[22px] font-bold leading-none text-[var(--oh-text)]">
+                  ${totalWhole}
+                  <span className="text-[14px]">.{totalCents}</span>
+                </span>
+              )}
+              <button
+                type="button"
+                disabled={!canFinalise}
+                onClick={() => void checkout()}
+                className={cn(
+                  "min-h-11 cursor-pointer rounded-[var(--oh-radius)] px-5 text-[14px] font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
+                  canFinalise ? "bg-[var(--oh-primary)] hover:bg-[var(--oh-primary-hover)]" : "cursor-not-allowed bg-[var(--oh-border-strong)]",
+                )}
+              >
+                {finaliseLabel === "Finalise" ? "Finalise Sale" : finaliseLabel}
+              </button>
+            </div>
+          </div>
+          {(isCashPayment || (!isCashPayment && paymentMethodId)) && lines.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-end gap-3 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2">
+              {isCashPayment && (
+                <label className="grid min-w-[160px] flex-1 gap-1 text-[13px] font-medium text-[var(--oh-text-secondary)]">
+                  Cash received
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={amountToCollect}
+                    max={1_000_000}
+                    step="0.01"
+                    value={cashTendered}
+                    onChange={(event) => setCashTendered(event.target.value)}
+                    placeholder={amountToCollect.toFixed(2)}
+                    className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-semibold tabular-nums outline-none focus:border-[var(--oh-primary)]"
+                  />
+                  {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && (
+                    <span className="text-[13px] text-[var(--oh-muted)]">Change {money(changeDue)}</span>
+                  )}
+                </label>
+              )}
+              {!isCashPayment && paymentMethodId && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={confirmedPaymentKey === paymentConfirmationKey}
+                  disabled={busy || !quoteIsCurrent}
+                  onClick={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
+                  className={cn(
+                    "flex min-h-14 min-w-[240px] flex-1 items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                    confirmedPaymentKey === paymentConfirmationKey
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+                      : "border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text)] hover:bg-white",
+                  )}
+                >
+                  <span aria-hidden="true" className={cn("mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full px-0.5 transition-colors", confirmedPaymentKey === paymentConfirmationKey ? "bg-emerald-600" : "bg-slate-300")}>
+                    <span className={cn("h-6 w-6 rounded-full bg-white shadow transition-transform", confirmedPaymentKey === paymentConfirmationKey && "translate-x-5")} />
+                  </span>
+                  <span>
+                    <span className="block font-semibold">Payment approved on terminal</span>
+                    <span className="mt-0.5 block text-xs leading-5 opacity-90">Records the payment only — Orithos does not charge the card.</span>
+                  </span>
                 </button>
-                <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="mr-2 grid h-11 w-11 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text)]"><X size={18} /></button>
-              </>
+              )}
+              {selectedPayment && (
+                <p className="text-[13px] text-[var(--oh-muted)]">Paying with {selectedPayment.name}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
+          <div className="border-b border-[var(--oh-border)] px-4 py-3">
+            {customer ? (
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-navy)] text-[13px] font-bold text-white">
+                  {customer.name.charAt(0)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-medium text-[var(--oh-text)]">{customer.name}</p>
+                  <p className="text-[13px] text-[var(--oh-muted)]">Odoo customer</p>
+                </div>
+                <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)]">
+                  <X size={16} />
+                </button>
+              </div>
             ) : (
-              <label className="flex h-full flex-1 cursor-text items-center">
-                <PlusIcon size={18} strokeWidth={1.5} className="ml-3 mr-2 shrink-0 text-[var(--oh-primary)]" />
+              <label className="flex min-h-11 w-full cursor-text items-center gap-2 rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-2.5">
+                <PlusIcon size={15} strokeWidth={1.75} className="text-[var(--oh-text-secondary)]" />
                 <input
                   value={customerQuery}
                   aria-label="Search customers"
@@ -1379,169 +1535,156 @@ export function OdooRegisterPage() {
                   onChange={(event) => { setCustomers([]); setCustomerQuery(event.target.value); }}
                   onKeyDown={handleCustomerSearchKeyDown}
                   placeholder="Add customer"
-                  className="oh-type-body-strong h-full min-w-0 flex-1 bg-transparent text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
+                  className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-medium text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
                 />
               </label>
             )}
-          </div>
-          {!customer && customerSearchLoading && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
-          {!customer && customerSearchError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900"><span className="min-w-0 break-words">{customerSearchError}</span><button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} disabled={customerSearchLoading} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-red-300 bg-white px-2 font-semibold disabled:cursor-wait disabled:opacity-60">{customerSearchLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} {customerSearchLoading ? "Retrying…" : "Retry"}</button></div>}
-          {!customer && customers.length > 0 && (
-            <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
-              {customers.map((item, index) => (
-                <button id={`customer-option-${item.id}`} key={item.id} type="button" role="option" aria-selected={index === customerActiveIndex} onClick={() => selectCustomer(item)} className={cn("flex min-h-11 w-full items-center border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]", index === customerActiveIndex && "bg-[var(--oh-orange-light)]")}>
-                  {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {!customer && customerQuery.trim() && !customerSearchLoading && !customerSearchError && !customers.length && <p role="status" className="shrink-0 border-b border-[var(--oh-border)] px-4 py-2 text-xs text-[var(--oh-muted)]">No matching customers</p>}
-
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
-              const factor = packFactor || 1;
-              const quotedLine = quoteIsCurrent ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor) : undefined;
-              const provisionalUnit = provisionalLineUnit(product, factor);
-              const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty);
-              const unitPrice = quotedLine ? quotedLine.total / qty : provisionalUnit;
-              const fullName = product.display_name || product.name;
-              const label = friendlyProductName(fullName);
-              const lineA11yName = label;
-              return (
-                <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3.5">
-                  <div className="flex items-start gap-3">
-                    <span className="oh-type-body mt-0.5 w-7 shrink-0 font-semibold tabular-nums text-[var(--oh-text-secondary)]">{qty}×</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="oh-type-body block truncate font-semibold text-[var(--oh-text)]" title={fullName}>{label}</span>
-                      <span className="oh-type-label text-[var(--oh-text-secondary)]">
-                        {factor > 1
-                          ? `${money(unitPrice)} / case · ${factor}`
-                          : `${money(unitPrice)} each`}
-                        {quotedLine ? " · GST" : shelfUnitPrice(product) !== null ? " · Incl. GST" : ""}
-                      </span>
-                    </span>
-                    <span className="oh-type-body-strong shrink-0 tabular-nums text-[var(--oh-text)]">${lineTotal.whole}.{lineTotal.cents}</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 pl-9">
-                    <div className="flex items-center gap-1">
-                      <button type="button" aria-label={`Decrease ${lineA11yName}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={15} /></button>
-                      <button type="button" aria-label={`Increase ${lineA11yName}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={15} /></button>
-                      <button type="button" aria-label={`Remove ${lineA11yName}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={16} /></button>
-                    </div>
-                    <label className="oh-type-label flex items-center gap-2 text-[var(--oh-text-secondary)]">Pack
-                      <select aria-label={`Pack size for ${lineA11yName}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="oh-type-label h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-semibold text-[var(--oh-text)]">
-                        {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each" : `Case ×${size}`}</option>)}
-                      </select>
-                    </label>
-                  </div>
-                </div>
-              );
-            }) : (
-              <div className="grid h-full min-h-[180px] place-items-center px-6 text-center">
-                <div>
-                  <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
-                    <ShoppingBag size={24} aria-hidden="true" />
-                  </span>
-                  <p className="oh-type-body-strong mt-3 text-[var(--oh-text)]">Cart is empty</p>
-                  <p className="oh-type-label mt-1 text-[var(--oh-text-secondary)]">Tap a product to start.</p>
-                </div>
+            {!customer && customerSearchLoading && <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
+            {!customer && customerSearchError && (
+              <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-red-900">
+                <span>{customerSearchError}</span>
+                <button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="font-semibold underline">Retry</button>
+              </div>
+            )}
+            {!customer && customers.length > 0 && (
+              <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-[var(--oh-border)]">
+                {customers.map((item, index) => (
+                  <button id={`customer-option-${item.id}`} key={item.id} type="button" role="option" aria-selected={index === customerActiveIndex} onClick={() => selectCustomer(item)} className={cn("flex min-h-11 w-full items-center border-b border-[var(--oh-border)] px-3 py-2 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]", index === customerActiveIndex && "bg-[var(--oh-orange-light)]")}>
+                    {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          <div className="relative shrink-0 border-t border-[var(--oh-border)] bg-white max-xl:sticky max-xl:bottom-0 max-xl:z-20 max-xl:shadow-[0_-6px_16px_rgba(15,23,42,0.08)] xl:bg-[var(--oh-surface)]/60">
-            {(isCashPayment || paymentMethods.length > 1) && (
-              <div className="border-b border-[var(--oh-border)] px-4 py-3">
-                <label className="oh-type-label grid gap-1.5 font-semibold text-[var(--oh-text-secondary)]">Payment
-                <select value={paymentMethodId ?? ""} onChange={(event) => { const nextPaymentMethodId = Number(event.target.value) || null; selectedPaymentMethodIdRef.current = nextPaymentMethodId; setPaymentMethodId(nextPaymentMethodId); setCashTendered(""); }} disabled={!paymentMethods.length} className="oh-type-body h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-medium text-[var(--oh-text)]">
-                    {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
-                  </select>
-                </label>
-                {isCashPayment && (
-                  <div className="mt-2">
-                    <label htmlFor="cash-tendered" className="oh-type-body flex items-center justify-between text-[var(--oh-text)]"><span>Cash received</span><span className="oh-type-label text-[var(--oh-text-secondary)]">Due {money(amountToCollect)}</span></label>
-                    <input id="cash-tendered" type="number" inputMode="decimal" min={amountToCollect} max={1_000_000} step="0.01" value={cashTendered} onChange={(event) => setCashTendered(event.target.value)} placeholder={amountToCollect.toFixed(2)} className="oh-type-body-strong mt-1 h-11 w-full rounded-md border border-[var(--oh-border)] bg-white px-2 tabular-nums outline-none focus:border-[var(--sf-cta)] focus:ring-2 focus:ring-[var(--sf-cta)]/20" />
-                    {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && <p className="oh-type-body mt-1 tabular-nums text-[var(--oh-text-secondary)]">Change {money(changeDue)}</p>}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-              {!isCashPayment && paymentMethodId && (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={confirmedPaymentKey === paymentConfirmationKey}
-                  disabled={busy || !quoteIsCurrent}
-                  onClick={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
-                  className={cn(
-                    "mb-3 flex min-h-14 w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                    confirmedPaymentKey === paymentConfirmationKey
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-                      : "border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text)] hover:bg-white",
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full px-0.5 transition-colors",
-                      confirmedPaymentKey === paymentConfirmationKey ? "bg-emerald-600" : "bg-slate-300",
-                    )}
-                  >
-                    <span className={cn("h-6 w-6 rounded-full bg-white shadow transition-transform", confirmedPaymentKey === paymentConfirmationKey && "translate-x-5")} />
-                  </span>
-                  <span>
-                    <span className="block font-semibold">Payment approved on terminal</span>
-                    <span className="mt-0.5 block text-xs leading-5 opacity-90">Records the payment only — Orithos does not charge the card.</span>
-                  </span>
-                </button>
-              )}
-              {!canFinalise && lines.length > 0 && !busy && isOnline && selectedConfig?.session && finaliseLabel !== "Finalise" && (
-                <p role="status" className="mb-2 text-xs font-medium text-amber-800">{finaliseLabel}</p>
-              )}
-              <div className="flex items-end justify-between gap-3">
-                <div className={cn("oh-type-label", lines.length ? "text-[var(--oh-text-secondary)]" : "text-[var(--oh-placeholder)]")}>
-                  <p className="oh-type-body font-semibold text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>
-                  <p className="mt-0.5">Subtotal {money(subtotal)}</p>
-                  <p>GST {quoteLoading ? "…" : money(taxTotal)}</p>
-                  {quoteLoading && <p role="status" className="slow-status mt-1 max-w-48 text-xs text-amber-800">Odoo is taking longer to calculate tax and total.</p>}
-                  {quoteError && connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0 && (
-                    <div role="alert" className="mt-2 grid gap-1.5 text-left text-xs text-red-800">
-                      <span>{quoteError}</span>
-                      <button type="button" onClick={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50">
-                        <RefreshCw size={14} /> Retry quote
-                      </button>
-                    </div>
-                  )}
-                  {amountToCollect !== total && <p>Rounding {money(amountToCollect - total)}</p>}
-                </div>
-                <div className={cn("text-right", lines.length ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]")}>
-                  <p className="oh-type-label font-semibold text-[var(--oh-text-secondary)]">Total</p>
-                  <p className="leading-none">
-                    <span className="oh-type-display">${totalWhole}</span>
-                    <span className="align-top text-[1.375rem] font-bold">.{totalCents}</span>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void checkout()}
-                disabled={!canFinalise}
-                className={cn(
-                  "oh-type-body-strong mt-3 inline-flex h-14 w-full items-center justify-center rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
-                  canFinalise
-                    ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
-                    : "cursor-not-allowed bg-[var(--oh-border)] text-[var(--oh-text-secondary)]",
-                )}
-              >
-                {finaliseLabel}
-              </button>
+          <div className="border-b border-[var(--oh-border)] px-4 py-3">
+            <div className="flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3">
+              <Search size={16} className="shrink-0 text-[var(--sf-placeholder)]" />
+              <input
+                aria-label="Search products by name, barcode or code"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="pos-product-results"
+                aria-expanded={products.length > 0}
+                aria-activedescendant={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
+                value={query}
+                onChange={(event) => {
+                  setProductsError(null);
+                  setProductActiveIndex(-1);
+                  setQuery(event.target.value);
+                  setCatalogHome(false);
+                  setWorkspaceTab("keys");
+                }}
+                onKeyDown={(event) => void handleProductSearchKeyDown(event)}
+                placeholder="Search or scan to add a product"
+                className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
+              />
+              {productsLoading && <LoaderCircle size={14} className="animate-spin text-[var(--sf-placeholder)]" />}
             </div>
           </div>
-        </section>
+
+          <div className="min-h-[120px] flex-1 overflow-y-auto">
+            {!lines.length ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+                <CartIcon size={28} className="text-[var(--oh-border-strong)]" />
+                <p className="text-[14px] font-medium text-[var(--oh-text-secondary)]">Cart is empty</p>
+                <p className="text-[13px] text-[var(--oh-muted)]">Search or tap a quick key to add items</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-[var(--oh-border)]">
+                {lines.map(({ product, quantity: qty, packFactor }) => {
+                  const factor = packFactor || 1;
+                  const key = lineKey(product.id, factor);
+                  const quotedLine = quoteIsCurrent ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor) : undefined;
+                  const provisionalUnit = provisionalLineUnit(product, factor);
+                  const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty);
+                  const unitPrice = quotedLine ? quotedLine.total / qty : provisionalUnit;
+                  const fullName = product.display_name || product.name;
+                  const label = friendlyProductName(fullName);
+                  const selected = selectedLineKey === key;
+                  return (
+                    <li key={key}>
+                      <div
+                        role="button"
+                        tabIndex={-1}
+                        onClick={() => setSelectedLineKey(key)}
+                        className={cn(
+                          "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors",
+                          selected ? "bg-[var(--oh-orange-light)]/50" : "hover:bg-[var(--oh-surface)]",
+                        )}
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] text-[13px] font-semibold text-[var(--oh-text-secondary)]">
+                          {qty}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-medium text-[var(--oh-text)]" title={fullName}>{label}</p>
+                          <p className="text-[13px] text-[var(--oh-muted)]">
+                            {factor > 1 ? `${money(unitPrice)} / case · ${factor}` : `${money(unitPrice)} each`}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-[13px] font-semibold text-[var(--oh-text)]">${lineTotal.whole}.{lineTotal.cents}</span>
+                        <button
+                          type="button"
+                          aria-label={`Remove ${label}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)));
+                            if (selectedLineKey === key) setSelectedLineKey(null);
+                          }}
+                          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)]"
+                        >
+                          <Trash2 size={15} strokeWidth={1.75} />
+                        </button>
+                      </div>
+                      {selected && (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/40 px-4 py-2 pl-[4.25rem]">
+                          <button type="button" aria-label={`Decrease ${label}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-white"><Minus size={15} /></button>
+                          <button type="button" aria-label={`Increase ${label}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-white"><Plus size={15} /></button>
+                          <label className="flex items-center gap-2 text-[13px] text-[var(--oh-text-secondary)]">
+                            Pack
+                            <select aria-label={`Pack size for ${label}`} value={factor} onChange={(event) => { const next = Number(event.target.value); setLinePackFactor(product.id, factor, next); setSelectedLineKey(lineKey(product.id, next)); }} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-[13px] font-semibold text-[var(--oh-text)]">
+                              {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each" : `Case ×${size}`}</option>)}
+                            </select>
+                          </label>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/50 p-4">
+            <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[13px] text-[var(--oh-muted)]">
+              <span>{quantity} {quantity === 1 ? "item" : "items"}</span>
+              <span className="text-right">{productCount} products</span>
+              <span>Subtotal {money(subtotal)}</span>
+              <span className="text-right">GST {quoteLoading ? "…" : money(taxTotal)}</span>
+            </div>
+            {quoteError && connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0 && (
+              <div role="alert" className="mb-3 grid gap-1.5 text-left text-xs text-red-800">
+                <span>{quoteError}</span>
+                <button type="button" onClick={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50">
+                  <RefreshCw size={14} /> Retry quote
+                </button>
+              </div>
+            )}
+            {!canFinalise && lines.length > 0 && !busy && isOnline && selectedConfig?.session && finaliseLabel !== "Finalise" && (
+              <p role="status" className="mb-2 text-xs font-medium text-amber-800">{finaliseLabel}</p>
+            )}
+            <div className="flex items-end justify-between">
+              <span className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Total</span>
+              <p className="text-[32px] font-bold leading-none text-[var(--oh-text)]">
+                ${totalWhole}
+                <span className="text-[20px]">.{totalCents}</span>
+              </p>
+            </div>
+          </div>
+        </aside>
       </div>
 
-      {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
+            {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
         <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
           <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></header>
           <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatStoreDate(receipt.date, receipt.timezone)}</p></div>
