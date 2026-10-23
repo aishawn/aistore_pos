@@ -1,8 +1,13 @@
-import { ORITHOS_BRAND } from "@/components/OrithosBrandMark";
+import {
+  OrithosBrandMarkDark,
+  OrithosBrandMarkIcon,
+  OrithosBrandMarkLight,
+} from "@/components/OrithosBrandMark";
 import { cn } from "@/lib/utils";
 
-/** Orithos brand mark with a version for each background tone. */
+/** Orithos brand lockup: crisp SVG mark + wordmark (no raster black-box PNGs). */
 export function OrithosLogo({ compact = false, inverse = false }: { compact?: boolean; inverse?: boolean }) {
+  const Mark = compact ? OrithosBrandMarkIcon : inverse ? OrithosBrandMarkDark : OrithosBrandMarkLight;
   return (
     <span
       className={cn(
@@ -12,14 +17,10 @@ export function OrithosLogo({ compact = false, inverse = false }: { compact?: bo
       )}
       aria-label="Orithos"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset */}
-      <img
-        src={inverse ? ORITHOS_BRAND.dark : ORITHOS_BRAND.light}
-        alt=""
-        aria-hidden="true"
-        className={cn("oh-brand-mark-img", compact && "oh-brand-mark-img-compact")}
-        width={48}
-        height={32}
+      <Mark
+        className={cn(
+          compact ? "oh-brand-mark-img-compact h-7 w-7" : "h-8 w-auto",
+        )}
       />
       {!compact && <span className="oh-brand-wordmark">orithos</span>}
     </span>

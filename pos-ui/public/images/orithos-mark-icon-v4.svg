@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="112" fill="#FFFFFF"/>
-  <path fill="#1B1D20" fill-rule="evenodd" d="M256 22a234 234 0 1 0 0 468 234 234 0 0 0 0-468Zm0 58a176 176 0 1 1 0 352 176 176 0 0 1 0-352Z" clip-rule="evenodd"/>
-  <path fill="#FB9201" d="M294 57C403 74 482 156 482 256C482 386 381 491 256 491C183 491 115 454 73 390C117 428 173 448 233 448C368 448 477 339 477 204C477 144 455 95 407 63Z"/>
-  <circle cx="168" cy="256" r="32" fill="#FB9201"/><circle cx="256" cy="256" r="32" fill="#FB9201"/><circle cx="344" cy="256" r="32" fill="#FB9201"/>
+  <rect width="512" height="512" rx="96" fill="#FFFFFF"/>
+  <path fill="#1B1D20" fill-rule="evenodd" d="M214 56a200 200 0 1 0 0 400 200 200 0 0 0 0-400Zm0 50a150 150 0 1 1 0 300 150 150 0 0 1 0-300Z" clip-rule="evenodd"/>
+  <path fill="#FB9201" d="M248 86C340 102 406 172 406 256C406 366 320 456 214 456C152 456 96 426 60 374C96 406 142 424 192 424C306 424 398 332 398 218C398 168 380 126 340 96Z"/>
+  <circle cx="140" cy="256" r="28" fill="#FB9201"/><circle cx="214" cy="256" r="28" fill="#FB9201"/><circle cx="288" cy="256" r="28" fill="#FB9201"/>
+  <rect x="392" y="148" width="52" height="216" rx="26" fill="#1B1D20"/>
 </svg>
