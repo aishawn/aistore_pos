@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { DoorClosed, History } from "lucide-react";
+import { DoorClosed, History, Wifi, WifiOff } from "lucide-react";
 import { SettingsGearIcon, LogOutIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -22,7 +22,19 @@ export function UserMenu({
   onLogout?: () => void;
 }) {
   const menuRef = useRef<HTMLElement>(null);
+  const [online, setOnline] = useState(true);
   useDialogFocus(open, onClose);
+
+  useEffect(() => {
+    const syncStatus = () => setOnline(navigator.onLine);
+    syncStatus();
+    window.addEventListener("online", syncStatus);
+    window.addEventListener("offline", syncStatus);
+    return () => {
+      window.removeEventListener("online", syncStatus);
+      window.removeEventListener("offline", syncStatus);
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -55,6 +67,19 @@ export function UserMenu({
         open ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-[.98] opacity-0",
       )}
     >
+      <div
+        role="status"
+        aria-live="polite"
+        title="Browser network connection"
+        className="oh-type-label mb-3 inline-flex items-center gap-1.5 px-1 font-semibold text-[var(--oh-text-secondary)]"
+      >
+        {online ? (
+          <Wifi size={16} className="text-[var(--sf-online-green)]" aria-hidden="true" />
+        ) : (
+          <WifiOff size={16} className="text-[var(--oh-warning)]" aria-hidden="true" />
+        )}
+        <span className={online ? "text-[var(--sf-online-green)]" : ""}>{online ? "ONLINE" : "OFFLINE"}</span>
+      </div>
       <p className="px-1 pb-3 text-sm leading-5 text-[var(--oh-muted)]">
         Account settings and sign-out for this workstation.
       </p>

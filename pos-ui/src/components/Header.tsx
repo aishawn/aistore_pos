@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { usesHeaderAiEntry } from "@/lib/ai-entry-placement";
-import { MessageCircle, PanelLeft, PanelLeftClose, Wifi, WifiOff } from "lucide-react";
+import { PanelLeft, PanelLeftClose } from "lucide-react";
 import { UserIcon } from "@/components/icons";
 import { OrithosLogo } from "@/components/OrithosLogo";
-import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 
 /**
  * Orithos top bar — light chrome (50px) shared by Sell and admin pages.
  *
  * Right-group: avatar opens the account menu (onUserClick).
+ * Network status lives in UserMenu; AI entry is the floating launcher.
  */
 export function Header({
   userName = "admin",
@@ -26,23 +24,9 @@ export function Header({
   onSidebarToggle?: () => void;
   onUserClick?: () => void;
 }) {
-  const [online, setOnline] = useState(true);
-  const ai = useOptionalAiAssistant();
   const pathname = usePathname();
   const checkoutKeyboard = pathname === "/" || pathname === "/finalise";
-  const showHeaderAi = usesHeaderAiEntry(pathname);
   const tabIndex = checkoutKeyboard ? -1 : undefined;
-
-  useEffect(() => {
-    const syncStatus = () => setOnline(navigator.onLine);
-    syncStatus();
-    window.addEventListener("online", syncStatus);
-    window.addEventListener("offline", syncStatus);
-    return () => {
-      window.removeEventListener("online", syncStatus);
-      window.removeEventListener("offline", syncStatus);
-    };
-  }, []);
 
   return (
     <header className="relative flex h-[50px] items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-header-bg)] font-sans print:hidden">
@@ -66,34 +50,7 @@ export function Header({
         <OrithosLogo />
       </div>
 
-      <div className="flex items-center gap-2 pr-2 sm:gap-5 sm:pr-5">
-        <div
-          role="status"
-          aria-live="polite"
-          title="Browser network connection"
-          className="oh-type-label inline-flex items-center gap-1.5 font-semibold text-[var(--oh-text-secondary)]"
-        >
-          {online ? (
-            <Wifi size={16} className="text-[var(--sf-online-green)]" aria-hidden="true" />
-          ) : (
-            <WifiOff size={16} className="text-[var(--oh-warning)]" aria-hidden="true" />
-          )}
-          <span className={`hidden sm:inline ${online ? "text-[var(--sf-online-green)]" : ""}`}>{online ? "ONLINE" : "OFFLINE"}</span>
-        </div>
-        {showHeaderAi ? (
-          <button
-            type="button"
-            tabIndex={tabIndex}
-            onClick={() => ai?.setExpanded(true)}
-            title="Open Orithos AI assistant"
-            aria-label="Open Orithos AI assistant"
-            aria-haspopup="dialog"
-            aria-expanded={Boolean(ai?.expanded)}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[var(--oh-primary)] transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
-          >
-            <MessageCircle size={19} aria-hidden="true" />
-          </button>
-        ) : null}
+      <div className="flex items-center gap-2 pr-2 sm:pr-5">
         <button
           type="button"
           tabIndex={tabIndex}
