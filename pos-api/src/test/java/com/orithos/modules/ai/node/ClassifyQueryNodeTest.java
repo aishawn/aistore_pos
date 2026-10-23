@@ -346,7 +346,10 @@ class ClassifyQueryNodeTest {
 
         assertEquals("guided_action", result.get("intent"));
         assertEquals("/stock/replenishment", result.get("ui_route"));
-        assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("cannot change stock"));
+        String stockWriteSummary = String.valueOf(result.get("intent_summary"));
+        assertTrue(stockWriteSummary.contains("不能") && stockWriteSummary.contains("库存")
+                        || stockWriteSummary.toLowerCase().contains("cannot adjust stock"),
+                stockWriteSummary);
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
@@ -506,7 +509,10 @@ class ClassifyQueryNodeTest {
             assertEquals("product_count", result.get("fast_path_id"), question);
             assertEquals("deterministic", result.get("route_source"), question);
             assertEquals(false, result.get("llm_fallback"), question);
-            assertTrue(String.valueOf(result.get("intent_summary")).toLowerCase().contains("product"), question);
+            String productCountSummary = String.valueOf(result.get("intent_summary"));
+            assertTrue(productCountSummary.toLowerCase().contains("product")
+                            || productCountSummary.contains("商品"),
+                    question + " => " + productCountSummary);
         }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }

@@ -327,8 +327,12 @@ public class PosAssistantGraphService {
     }
 
     private static String unavailableReason(String type, String answer, boolean chinese) {
+        // Keep the full historical-stock refusal, including the stock-page CTA sentence.
+        // unavailableText() strips trailing "Open …" navigation prompts meant for other cards.
+        if ("stock_history".equals(type)) {
+            return answer == null ? "" : answer.trim();
+        }
         String text = unavailableText(answer);
-        if ("stock_history".equals(type)) return text;
         if (!chinese) {
             return text.isBlank() ? "Live data is unavailable"
                     : "product_count".equals(type) ? productCountSummary(text) : text;

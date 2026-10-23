@@ -346,7 +346,8 @@ public final class AssistantFastPathRouter {
             String query = cleanQuery(firstNonNull(
                     directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
                     directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
-                    directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9)));
+                    directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9),
+                    directStockQuery.group(10)));
             if (query != null) {
                 return new Match("report_stock", "Stock report", Map.of("query", query), "", "", "", "");
             }
