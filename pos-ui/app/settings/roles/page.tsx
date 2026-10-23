@@ -259,10 +259,10 @@ export default function PermissionsPage() {
                 </div>
                 {clerkEditable && (
                   <div className="flex flex-wrap gap-2">
-                    <AdminSecondaryButton type="button" onClick={resetMatrix} disabled={!dirty || saving || loadingMatrix}>
+                    <AdminSecondaryButton onClick={resetMatrix} disabled={!dirty || saving || loadingMatrix}>
                       Reset
                     </AdminSecondaryButton>
-                    <AdminPrimaryButton type="button" onClick={() => void saveClerkMatrix()} disabled={!dirty || saving || loadingMatrix}>
+                    <AdminPrimaryButton onClick={() => void saveClerkMatrix()} disabled={!dirty || saving || loadingMatrix}>
                       {saving ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />}
                       {saving ? "Saving…" : "Save clerk access"}
                     </AdminPrimaryButton>
