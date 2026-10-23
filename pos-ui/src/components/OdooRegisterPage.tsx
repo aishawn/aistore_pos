@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, History, Keyboard, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
+import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, History, LayoutGrid, List, LoaderCircle, Minus, Package, Plus, Printer, RefreshCw, RotateCcw, Search, ShoppingBag, SquareParking, Trash2, X } from "lucide-react";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
@@ -65,6 +65,24 @@ const PARKED_SALES_KEY = "orithos-odoo-parked-sales-v1";
 const REGISTER_SELECTION_KEY = "orithos-odoo-register-v1";
 const ACTIVE_CART_KEY = "orithos-odoo-active-cart-v1";
 const ACTIVE_CART_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const PRODUCT_PAGE_SIZE = 50;
+const HIDE_OOS_KEY = "orithos-odoo-hide-oos-v1";
+const CATALOG_DENSITY_KEY = "orithos-odoo-catalog-density-v1";
+
+type CatalogDensity = "grid" | "list";
+
+function shelfUnitPrice(product: OdooProductRecord): number | null {
+  return product.price_included;
+}
+
+function provisionalLineUnit(product: OdooProductRecord, packFactor: number): number {
+  const unit = shelfUnitPrice(product);
+  return (unit ?? product.list_price) * packFactor;
+}
+
+function formatStockQty(qty: number) {
+  return new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(qty);
+}
 
 type ActiveCartDraft = {
   pendingOrder?: OdooCheckoutRequest | null;
@@ -129,10 +147,15 @@ export function OdooRegisterPage() {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryRetryKey, setCategoryRetryKey] = useState(0);
   const [products, setProducts] = useState<OdooProductRecord[]>([]);
+  const [productsHasNext, setProductsHasNext] = useState(false);
+  const [productsLoadingMore, setProductsLoadingMore] = useState(false);
   const [productActiveIndex, setProductActiveIndex] = useState(-1);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [productRetryKey, setProductRetryKey] = useState(0);
+  const [hideOutOfStock, setHideOutOfStock] = useState(true);
+  const [catalogDensity, setCatalogDensity] = useState<CatalogDensity>("grid");
+  const [prefsHydrated, setPrefsHydrated] = useState(false);
   const [customers, setCustomers] = useState<OdooCustomerRecord[]>([]);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
@@ -243,6 +266,29 @@ export function OdooRegisterPage() {
   }, []);
 
   useEffect(() => {
+    try {
+      const hideOos = localStorage.getItem(HIDE_OOS_KEY);
+      if (hideOos === "0") setHideOutOfStock(false);
+      else if (hideOos === "1") setHideOutOfStock(true);
+      const density = localStorage.getItem(CATALOG_DENSITY_KEY);
+      if (density === "list" || density === "grid") setCatalogDensity(density);
+    } catch {
+      /* Preferences stay at defaults when storage is unavailable. */
+    }
+    setPrefsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsHydrated) return;
+    try {
+      localStorage.setItem(HIDE_OOS_KEY, hideOutOfStock ? "1" : "0");
+      localStorage.setItem(CATALOG_DENSITY_KEY, catalogDensity);
+    } catch {
+      /* Preference persistence is best-effort. */
+    }
+  }, [catalogDensity, hideOutOfStock, prefsHydrated]);
+
+  useEffect(() => {
     const onRegisterClosed = () => { void loadPos(); };
     window.addEventListener(ODOO_REGISTER_CLOSED_EVENT, onRegisterClosed);
     return () => window.removeEventListener(ODOO_REGISTER_CLOSED_EVENT, onRegisterClosed);
@@ -340,24 +386,38 @@ export function OdooRegisterPage() {
   }, [cashTendered, configId, connected, customer, hydratedDraftKey, lines, odooUserId, paymentMethodId, pendingCheckout]);
 
   useEffect(() => {
+    if (!prefsHydrated) return;
     const revision = ++searchRevision.current;
     setProductActiveIndex(-1);
+    setProductsHasNext(false);
     if (!connected) {
       setProducts([]);
       setProductsError(null);
       setProductsLoading(false);
+      setProductsLoadingMore(false);
       return;
     }
-    setProducts([]);
+    // Keep the previous grid visible while the debounced search returns to avoid flash-empty.
     setProductsError(null);
     setProductsLoading(true);
+    setProductsLoadingMore(false);
     const timer = window.setTimeout(async () => {
       try {
-        const result = await searchOdooRecords<OdooProductRecord>("products", { query, limit: 50, categoryId: categoryId ?? undefined });
-        if (revision === searchRevision.current) setProducts(result.items);
+        const result = await searchOdooRecords<OdooProductRecord>("products", {
+          query,
+          limit: PRODUCT_PAGE_SIZE,
+          offset: 0,
+          categoryId: categoryId ?? undefined,
+          stockOnly: hideOutOfStock || undefined,
+        });
+        if (revision === searchRevision.current) {
+          setProducts(result.items);
+          setProductsHasNext(Boolean(result.hasNext));
+        }
       } catch (cause) {
         if (revision === searchRevision.current) {
           setProducts([]);
+          setProductsHasNext(false);
           setProductsError(cause instanceof Error ? cause.message : "Product search failed.");
         }
       } finally {
@@ -365,7 +425,7 @@ export function OdooRegisterPage() {
       }
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [query, categoryId, connected, productRetryKey]);
+  }, [query, categoryId, connected, productRetryKey, hideOutOfStock, prefsHydrated]);
 
   useEffect(() => {
     if (!connected) {
@@ -465,7 +525,10 @@ export function OdooRegisterPage() {
   const parkedActionSale = parkedAction ? parkedSales.find((sale) => sale.id === parkedAction.saleId) : null;
   const quoteIsCurrent = Boolean(quote && quotedFingerprint === currentQuoteFingerprint);
   const quoteError = !quoteLoading && quoteFailure?.fingerprint === currentQuoteFingerprint ? quoteFailure.message : null;
-  const fallbackSubtotal = useMemo(() => Math.round(lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0) * 100) / 100, [lines]);
+  const fallbackSubtotal = useMemo(
+    () => Math.round(lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity, 0) * 100) / 100,
+    [lines],
+  );
   const subtotal = quoteIsCurrent ? quote!.subtotal : fallbackSubtotal;
   const taxTotal = quoteIsCurrent ? quote!.tax : 0;
   const total = quoteIsCurrent ? quote!.unroundedTotal : fallbackSubtotal;
@@ -525,10 +588,38 @@ export function OdooRegisterPage() {
     return formatOdooDateTime(value, timezone);
   }
 
+  async function loadMoreProducts() {
+    if (!connected || !productsHasNext || productsLoading || productsLoadingMore) return;
+    const revision = searchRevision.current;
+    setProductsLoadingMore(true);
+    setProductsError(null);
+    try {
+      const result = await searchOdooRecords<OdooProductRecord>("products", {
+        query,
+        limit: PRODUCT_PAGE_SIZE,
+        offset: products.length,
+        categoryId: categoryId ?? undefined,
+        stockOnly: hideOutOfStock || undefined,
+      });
+      if (revision !== searchRevision.current) return;
+      setProducts((current) => {
+        const seen = new Set(current.map((item) => item.id));
+        return [...current, ...result.items.filter((item) => !seen.has(item.id))];
+      });
+      setProductsHasNext(Boolean(result.hasNext));
+    } catch (cause) {
+      if (revision === searchRevision.current) {
+        setProductsError(cause instanceof Error ? cause.message : "Product search failed.");
+      }
+    } finally {
+      if (revision === searchRevision.current) setProductsLoadingMore(false);
+    }
+  }
+
   function addProduct(product: OdooProductRecord, packFactor = 1) {
     const requested = lines.filter((line) => line.product.id === product.id).reduce((sum, line) => sum + line.quantity * (line.packFactor || 1), 0) + packFactor;
     if (requested > product.free_qty + 1e-9) {
-      setError(`Only ${product.free_qty} units of ${product.name} are available.`);
+      setError(`Only ${product.free_qty} units of ${friendlyProductName(product.display_name || product.name)} are available.`);
       return;
     }
     setError(null);
@@ -544,7 +635,7 @@ export function OdooRegisterPage() {
     const product = lines.find((line) => line.product.id === productId)?.product;
     const requested = lines.filter((line) => line.product.id === productId).reduce((sum, line) => sum + line.quantity * ((line.packFactor || 1) === currentFactor ? nextFactor : (line.packFactor || 1)), 0);
     if (product && requested > product.free_qty + 1e-9) {
-      setError(`Only ${product.free_qty} units of ${product.name} are available.`);
+      setError(`Only ${product.free_qty} units of ${friendlyProductName(product.display_name || product.name)} are available.`);
       return;
     }
     setError(null);
@@ -565,11 +656,10 @@ export function OdooRegisterPage() {
       setProductActiveIndex((current) => (current <= 0 ? products.length - 1 : current - 1));
       return;
     }
-    if (event.key === "Escape" && products.length) {
+    if (event.key === "Escape") {
       event.preventDefault();
-      searchRevision.current += 1;
-      setProducts([]);
       setProductActiveIndex(-1);
+      if (query) setQuery("");
       return;
     }
     if (event.key === "Enter" && productActiveIndex >= 0) {
@@ -590,7 +680,7 @@ export function OdooRegisterPage() {
     try {
       // Barcode scanners usually send Enter after the final character. Search
       // immediately instead of relying on the debounced text search response.
-      const result = await searchOdooRecords<OdooProductRecord>("products", { query: query.trim(), limit: 50 });
+      const result = await searchOdooRecords<OdooProductRecord>("products", { query: query.trim(), limit: PRODUCT_PAGE_SIZE });
       const needle = query.trim().toLocaleLowerCase();
       const matches = result.items.filter((product) =>
         [product.barcode, product.default_code]
@@ -617,7 +707,7 @@ export function OdooRegisterPage() {
     const product = matching[0]?.product;
     const requested = matching.reduce((sum, line) => sum + (line.quantity + ((line.packFactor || 1) === packFactor ? amount : 0)) * (line.packFactor || 1), 0);
     if (amount > 0 && product && requested > product.free_qty + 1e-9) {
-      setError(`Only ${product.free_qty} units of ${product.name} are available.`);
+      setError(`Only ${product.free_qty} units of ${friendlyProductName(product.display_name || product.name)} are available.`);
       return;
     }
     setError(null);
@@ -843,7 +933,28 @@ export function OdooRegisterPage() {
 
   const { whole: totalWhole, cents: totalCents } = splitMoney(amountToCollect);
   const paymentConfirmationKey = JSON.stringify([configId, paymentMethodId, amountToCollect, customer?.id, lines.map((line) => [line.product.id, line.quantity, line.packFactor])]);
-  const canFinalise = Boolean(isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && (isCashPayment || confirmedPaymentKey === paymentConfirmationKey) && Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect);
+  const cardPaymentConfirmed = isCashPayment || confirmedPaymentKey === paymentConfirmationKey;
+  const cashEnough = Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect;
+  const canFinalise = Boolean(isOnline && lines.length && quoteIsCurrent && !quoteLoading && selectedConfig?.session && paymentMethodId && !busy && cardPaymentConfirmed && cashEnough);
+  const finaliseLabel = busy
+    ? "Processing…"
+    : !isOnline
+      ? "Reconnect to finalise"
+      : !selectedConfig?.session
+        ? "No session"
+        : !lines.length
+          ? "Finalise"
+          : quoteLoading
+            ? "Calculating…"
+            : quoteError || !quoteIsCurrent
+              ? "Waiting for tax…"
+              : !paymentMethodId
+                ? "Select payment"
+                : !isCashPayment && !cardPaymentConfirmed
+                  ? "Confirm card payment"
+                  : isCashPayment && !cashEnough
+                    ? "Enter cash received"
+                    : "Finalise";
   const sessionOpen = Boolean(selectedConfig?.session);
   const sessionHint = selectedConfig?.session?.name
     ? selectedConfig.session.name
@@ -870,7 +981,7 @@ export function OdooRegisterPage() {
   }
 
   return (
-    <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-3 font-sans sm:p-4">
+    <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col bg-[var(--oh-surface)] p-3 font-sans max-xl:overflow-y-auto xl:overflow-hidden sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div
@@ -948,50 +1059,88 @@ export function OdooRegisterPage() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
-        <section aria-label="POS products and parked sales" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 max-xl:flex-none xl:flex-row">
+        <section aria-label="POS products and parked sales" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] max-xl:min-h-[52dvh]">
           {saleView === "sell" ? (
             <>
-              <div role="group" aria-label="Search and filter POS products" className="flex h-12 shrink-0 items-center gap-2 border-b border-[var(--oh-border)] px-3 sm:px-4">
-                <Search size={18} className="shrink-0 text-[var(--sf-placeholder)]" />
-                <input
-                  aria-label="Search products by name, barcode or code"
-                  role="combobox"
-                  aria-autocomplete="list"
-                  aria-controls="pos-product-results"
-                  aria-expanded={products.length > 0}
-                  aria-activedescendant={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
-                  value={query}
-                  onChange={(event) => { setProductActiveIndex(-1); setQuery(event.target.value); }}
-                  onKeyDown={(event) => void handleProductSearchKeyDown(event)}
-                  placeholder="Search products or scan a barcode…"
-                  className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
-                />
-                {productsLoading && <LoaderCircle size={16} className="animate-spin text-[var(--sf-placeholder)]" />}
-                <select
-                  aria-label="POS category"
-                  value={categoryId ?? ""}
-                  onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)}
-                  className="hidden h-11 max-w-[160px] rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-xs font-medium text-[var(--oh-text)] sm:block"
-                >
-                  <option value="">All categories</option>
-                  {posCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {Array.isArray(category.parent_id)
-                        ? `${friendlyProductName(category.parent_id[1])} / ${friendlyProductName(category.name)}`
-                        : friendlyProductName(category.name)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {categoriesError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span className="min-w-0 break-words">{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoriesLoading} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">{categoriesLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} {categoriesLoading ? "Retrying…" : "Retry categories"}</button></div>}
-              <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
-                {productsLoading && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Still waiting for products from Odoo…</p>}
-                {productsLoading && !products.length ? (
-                  <div aria-label="Loading products" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />)}
+              <div role="group" aria-label="Search and filter POS products" className="flex shrink-0 flex-col gap-2 border-b border-[var(--oh-border)] px-3 py-2 sm:px-4">
+                <div className="flex h-11 items-center gap-2">
+                  <Search size={18} className="shrink-0 text-[var(--sf-placeholder)]" />
+                  <input
+                    aria-label="Search products by name, barcode or code"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="pos-product-results"
+                    aria-expanded={products.length > 0}
+                    aria-activedescendant={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
+                    value={query}
+                    onChange={(event) => {
+                      setProductsError(null);
+                      setProductActiveIndex(-1);
+                      setQuery(event.target.value);
+                    }}
+                    onKeyDown={(event) => void handleProductSearchKeyDown(event)}
+                    placeholder="Search products or scan a barcode…"
+                    className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
+                  />
+                  {productsLoading && <LoaderCircle size={16} className="animate-spin text-[var(--sf-placeholder)]" />}
+                  <select
+                    aria-label="POS category"
+                    value={categoryId ?? ""}
+                    onChange={(event) => setCategoryId(event.target.value ? Number(event.target.value) : null)}
+                    className="h-11 max-w-[42%] shrink-0 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-xs font-medium text-[var(--oh-text)] sm:max-w-[180px]"
+                  >
+                    <option value="">All categories</option>
+                    {posCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {Array.isArray(category.parent_id)
+                          ? `${friendlyProductName(category.parent_id[1])} / ${friendlyProductName(category.name)}`
+                          : friendlyProductName(category.name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pb-0.5">
+                  <p className="oh-type-label mr-auto text-[var(--oh-text-secondary)]">Shelf prices include GST where taxed</p>
+                  <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)]">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-[var(--oh-border)]"
+                      checked={hideOutOfStock}
+                      onChange={(event) => setHideOutOfStock(event.target.checked)}
+                    />
+                    Hide out of stock
+                  </label>
+                  <div className="inline-flex rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] p-0.5" role="group" aria-label="Catalogue density">
+                    <button
+                      type="button"
+                      aria-pressed={catalogDensity === "grid"}
+                      aria-label="Grid view"
+                      onClick={() => setCatalogDensity("grid")}
+                      className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "grid" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
+                    >
+                      <LayoutGrid size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={catalogDensity === "list"}
+                      aria-label="List view"
+                      onClick={() => setCatalogDensity("list")}
+                      className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "list" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}
+                    >
+                      <List size={16} />
+                    </button>
                   </div>
-                ) : productsError ? (
+                </div>
+              </div>
+              {categoriesError && <div role="status" className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-900"><span className="min-w-0 break-words">{categoriesError} Category filtering is unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoriesLoading} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold text-amber-950 hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700">{categoriesLoading ? <LoaderCircle size={13} className="animate-spin" /> : <RefreshCw size={13} />} {categoriesLoading ? "Retrying…" : "Retry categories"}</button></div>}
+              <div id="pos-product-results" className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--sf-pad-bg)] p-3">
+                {productsLoading && products.length > 0 && <p role="status" className="slow-status mb-2 text-xs text-[var(--oh-muted)]">Updating products from Odoo…</p>}
+                {productsLoading && !products.length ? (
+                  <div aria-label="Loading products" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5")}>
+                    {Array.from({ length: 8 }, (_, index) => <div key={index} className={cn("animate-pulse rounded-lg border border-[var(--oh-border)] bg-white", catalogDensity === "list" ? "h-16" : "min-h-36")} />)}
+                  </div>
+                ) : productsError && !products.length ? (
                   <div role="alert" className="grid h-full min-h-48 place-items-center px-5 text-center">
                     <div className="max-w-sm">
                       <CircleAlert size={26} className="mx-auto text-red-700" />
@@ -1004,43 +1153,112 @@ export function OdooRegisterPage() {
                   </div>
                 ) : products.length ? (
                   <div className="flex min-h-full flex-col">
-                    <div role="listbox" aria-label="POS product search results" className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    <div
+                      role="listbox"
+                      aria-label="POS product search results"
+                      className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5")}
+                    >
                       {products.map((product, index) => {
                         const fullName = product.display_name || product.name;
                         const label = friendlyProductName(fullName);
+                        const shelfPrice = shelfUnitPrice(product);
+                        const inStock = product.free_qty > 0;
+                        const disabled = !selectedConfig?.session || !inStock;
+                        const selected = index === productActiveIndex;
+                        if (catalogDensity === "list") {
+                          return (
+                            <button
+                              key={product.id}
+                              id={`pos-product-option-${product.id}`}
+                              type="button"
+                              role="option"
+                              aria-selected={selected}
+                              title={fullName}
+                              onClick={() => addProduct(product)}
+                              disabled={disabled}
+                              className={cn(
+                                "flex min-h-14 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-3 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45",
+                                selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]",
+                              )}
+                            >
+                              <ProductImage
+                                productId={product.id}
+                                name={label}
+                                className="h-12 w-12 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-orange-light)]"
+                                fallbackClassName="text-lg"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="oh-type-body block truncate font-semibold text-[var(--oh-text)]">{label}</span>
+                                <span className={cn("oh-type-label", inStock ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>
+                                  {inStock ? `${formatStockQty(product.free_qty)} avail.` : "No stock"}
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-right">
+                                {shelfPrice === null ? (
+                                  <span className="oh-type-label font-semibold text-amber-800">Price unavailable</span>
+                                ) : (
+                                  <span className="text-base font-bold tabular-nums text-[var(--oh-text)]">{money(shelfPrice)}</span>
+                                )}
+                              </span>
+                            </button>
+                          );
+                        }
                         return (
                           <button
                             key={product.id}
                             id={`pos-product-option-${product.id}`}
                             type="button"
                             role="option"
-                            aria-selected={index === productActiveIndex}
+                            aria-selected={selected}
                             title={fullName}
                             onClick={() => addProduct(product)}
-                            disabled={!selectedConfig?.session || product.free_qty <= 0}
-                            className={cn("flex min-h-[112px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", index === productActiveIndex && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}
+                            disabled={disabled}
+                            className={cn(
+                              "flex min-h-[132px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
+                              selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]",
+                            )}
                           >
                             <ProductImage
                               productId={product.id}
                               name={label}
-                              className="mb-2 h-9 w-9 rounded-full border border-[var(--oh-border)] bg-[var(--oh-orange-light)]"
-                              fallbackClassName="text-base"
+                              className="mb-2 h-16 w-16 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-orange-light)]"
+                              fallbackClassName="text-2xl"
                             />
                             <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
-                            <span className="oh-type-body-strong mt-auto pt-2 tabular-nums text-[var(--oh-text)]">{money(product.price_included ?? product.list_price)}</span>
-                            <span className="oh-type-label text-[var(--oh-text-secondary)]">
-                              {product.price_included === null ? "Ex GST · tax quote unavailable" : product.price_tax === null ? "Tax status unavailable" : product.price_tax > 0 ? "Incl. GST" : "GST-free"}
-                            </span>
-                            <span className={cn("oh-type-label mt-0.5", product.free_qty > 0 ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>
-                              {product.free_qty > 0
-                                ? `${new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(product.free_qty)} avail.`
-                                : "No stock"}
-                            </span>
+                            {shelfPrice === null ? (
+                              <span className="oh-type-label mt-auto pt-2 font-semibold text-amber-800">Price unavailable</span>
+                            ) : (
+                              <span className="mt-auto pt-2 text-base font-bold tabular-nums leading-none text-[var(--oh-text)]">{money(shelfPrice)}</span>
+                            )}
+                            {product.price_tax === 0 && shelfPrice !== null && (
+                              <span className="oh-type-label mt-0.5 text-[var(--oh-text-secondary)]">GST-free</span>
+                            )}
+                            {!inStock ? (
+                              <span className="oh-type-label mt-0.5 font-medium text-amber-800">No stock</span>
+                            ) : product.free_qty <= 3 ? (
+                              <span className="oh-type-label mt-0.5 font-medium text-amber-800">{formatStockQty(product.free_qty)} left</span>
+                            ) : null}
                           </button>
                         );
                       })}
                     </div>
-                    {products.length < 8 && (
+                    {productsHasNext && (
+                      <div className="mt-3 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => void loadMoreProducts()}
+                          disabled={productsLoadingMore || productsLoading}
+                          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {productsLoadingMore ? <LoaderCircle size={15} className="animate-spin" /> : null}
+                          {productsLoadingMore ? "Loading…" : "Load more products"}
+                        </button>
+                      </div>
+                    )}
+                    {productsError && (
+                      <p role="alert" className="mt-2 text-center text-xs text-red-800">{productsError}</p>
+                    )}
+                    {products.length < 8 && !productsHasNext && (
                       <p className="mt-auto pt-8 text-center text-sm text-[var(--oh-text-secondary)]">
                         Search or tap a product to start
                       </p>
@@ -1052,9 +1270,15 @@ export function OdooRegisterPage() {
                       <div>
                         <Search size={28} className="mx-auto mb-2 text-[var(--oh-border-strong)]" />
                         <p className="font-medium text-[var(--oh-text)]">No products here</p>
-                        <p className="mt-1">Search or scan a barcode to find stock.</p>
-                        {(query || categoryId !== null) && (
-                          <button type="button" onClick={() => { setQuery(""); setCategoryId(null); }} className="mt-3 font-semibold text-[var(--sf-tab-blue)] underline underline-offset-2">Clear filters</button>
+                        <p className="mt-1">{hideOutOfStock ? "No in-stock products match. Clear filters or show out-of-stock items." : "Search or scan a barcode to find stock."}</p>
+                        {(query || categoryId !== null || hideOutOfStock) && (
+                          <button
+                            type="button"
+                            onClick={() => { setQuery(""); setCategoryId(null); setHideOutOfStock(false); }}
+                            className="mt-3 font-semibold text-[var(--sf-tab-blue)] underline underline-offset-2"
+                          >
+                            Clear filters
+                          </button>
                         )}
                       </div>
                     )}
@@ -1075,7 +1299,7 @@ export function OdooRegisterPage() {
                       <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3>
                       <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">{formatParkedDate(sale.createdAt, sale.timezone)} · {sale.registerName}</p>
                       <p className="mt-1 text-xs text-[var(--oh-text-secondary)]">
-                        {sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + line.product.list_price * line.quantity * (line.packFactor || 1), 0))}
+                        {sale.lines.reduce((sum, line) => sum + line.quantity, 0)} items · {money(sale.lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity, 0))}
                       </p>
                       <div className="mt-3 flex gap-2">
                         <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
@@ -1107,7 +1331,7 @@ export function OdooRegisterPage() {
                   saleView === "sell" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)] hover:text-[var(--oh-text)]",
                 )}
               >
-                <Keyboard size={18} strokeWidth={1.75} /> Sales Keys
+                <Package size={18} strokeWidth={1.75} /> Products
               </button>
               <button
                 type="button"
@@ -1131,7 +1355,7 @@ export function OdooRegisterPage() {
           </div>
         </section>
 
-        <section className="flex w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] xl:w-[400px] xl:shrink-0">
+        <section className="flex w-full min-h-0 flex-col overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] max-xl:min-h-[20rem] xl:w-[400px] xl:shrink-0">
           <div className="flex h-14 shrink-0 items-center border-b border-[var(--oh-border)] px-1">
             {customer ? (
               <>
@@ -1165,7 +1389,7 @@ export function OdooRegisterPage() {
           {!customer && customers.length > 0 && (
             <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="max-h-36 shrink-0 overflow-y-auto border-b border-[var(--oh-border)]">
               {customers.map((item, index) => (
-                <button id={`customer-option-${item.id}`} key={item.id} type="button" role="option" aria-selected={index === customerActiveIndex} onClick={() => selectCustomer(item)} className={cn("block w-full border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]", index === customerActiveIndex && "bg-[var(--oh-orange-light)]")}>
+                <button id={`customer-option-${item.id}`} key={item.id} type="button" role="option" aria-selected={index === customerActiveIndex} onClick={() => selectCustomer(item)} className={cn("flex min-h-11 w-full items-center border-b border-[var(--oh-border)] px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]", index === customerActiveIndex && "bg-[var(--oh-orange-light)]")}>
                   {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
                 </button>
               ))}
@@ -1177,10 +1401,12 @@ export function OdooRegisterPage() {
             {lines.length ? lines.map(({ product, quantity: qty, packFactor }) => {
               const factor = packFactor || 1;
               const quotedLine = quoteIsCurrent ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor) : undefined;
-              const lineTotal = splitMoney(quotedLine?.total ?? product.list_price * qty * factor);
-              const unitPrice = quotedLine ? quotedLine.total / qty : product.list_price * factor;
+              const provisionalUnit = provisionalLineUnit(product, factor);
+              const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty);
+              const unitPrice = quotedLine ? quotedLine.total / qty : provisionalUnit;
               const fullName = product.display_name || product.name;
               const label = friendlyProductName(fullName);
+              const lineA11yName = label;
               return (
                 <div key={`${product.id}-${factor}`} className="flex flex-col gap-2 border-b border-[var(--oh-border)] px-4 py-3.5">
                   <div className="flex items-start gap-3">
@@ -1191,19 +1417,19 @@ export function OdooRegisterPage() {
                         {factor > 1
                           ? `${money(unitPrice)} / case · ${factor}`
                           : `${money(unitPrice)} each`}
-                        {quotedLine ? " · GST" : ""}
+                        {quotedLine ? " · GST" : shelfUnitPrice(product) !== null ? " · Incl. GST" : ""}
                       </span>
                     </span>
                     <span className="oh-type-body-strong shrink-0 tabular-nums text-[var(--oh-text)]">${lineTotal.whole}.{lineTotal.cents}</span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 pl-9">
                     <div className="flex items-center gap-1">
-                      <button type="button" aria-label={`Decrease ${product.name}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={15} /></button>
-                      <button type="button" aria-label={`Increase ${product.name}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={15} /></button>
-                      <button type="button" aria-label={`Remove ${product.name}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={16} /></button>
+                      <button type="button" aria-label={`Decrease ${lineA11yName}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Minus size={15} /></button>
+                      <button type="button" aria-label={`Increase ${lineA11yName}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)]"><Plus size={15} /></button>
+                      <button type="button" aria-label={`Remove ${lineA11yName}`} onClick={() => setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)))} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-text-secondary)] hover:text-red-600"><Trash2 size={16} /></button>
                     </div>
                     <label className="oh-type-label flex items-center gap-2 text-[var(--oh-text-secondary)]">Pack
-                      <select aria-label={`Pack size for ${product.name}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="oh-type-label h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-semibold text-[var(--oh-text)]">
+                      <select aria-label={`Pack size for ${lineA11yName}`} value={factor} onChange={(event) => setLinePackFactor(product.id, factor, Number(event.target.value))} className="oh-type-label h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 font-semibold text-[var(--oh-text)]">
                         {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each" : `Case ×${size}`}</option>)}
                       </select>
                     </label>
@@ -1223,7 +1449,7 @@ export function OdooRegisterPage() {
             )}
           </div>
 
-          <div className="relative shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/60">
+          <div className="relative shrink-0 border-t border-[var(--oh-border)] bg-white max-xl:sticky max-xl:bottom-0 max-xl:z-20 max-xl:shadow-[0_-6px_16px_rgba(15,23,42,0.08)] xl:bg-[var(--oh-surface)]/60">
             {(isCashPayment || paymentMethods.length > 1) && (
               <div className="border-b border-[var(--oh-border)] px-4 py-3">
                 <label className="oh-type-label grid gap-1.5 font-semibold text-[var(--oh-text-secondary)]">Payment
@@ -1241,10 +1467,38 @@ export function OdooRegisterPage() {
               </div>
             )}
             <div className="px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-              {!isCashPayment && paymentMethodId && <label className="mb-3 flex min-h-11 items-start gap-2 text-sm">
-                <input type="checkbox" className="mt-1" checked={confirmedPaymentKey === paymentConfirmationKey} disabled={busy || !quoteIsCurrent} onChange={(event) => setConfirmedPaymentKey(event.target.checked ? paymentConfirmationKey : null)} />
-                <span>Payment approved on the external terminal. This records the payment; Orithos does not charge the card.</span>
-              </label>}
+              {!isCashPayment && paymentMethodId && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={confirmedPaymentKey === paymentConfirmationKey}
+                  disabled={busy || !quoteIsCurrent}
+                  onClick={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
+                  className={cn(
+                    "mb-3 flex min-h-14 w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                    confirmedPaymentKey === paymentConfirmationKey
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+                      : "border-[var(--oh-border)] bg-[var(--oh-surface)] text-[var(--oh-text)] hover:bg-white",
+                  )}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full px-0.5 transition-colors",
+                      confirmedPaymentKey === paymentConfirmationKey ? "bg-emerald-600" : "bg-slate-300",
+                    )}
+                  >
+                    <span className={cn("h-6 w-6 rounded-full bg-white shadow transition-transform", confirmedPaymentKey === paymentConfirmationKey && "translate-x-5")} />
+                  </span>
+                  <span>
+                    <span className="block font-semibold">Payment approved on terminal</span>
+                    <span className="mt-0.5 block text-xs leading-5 opacity-90">Records the payment only — Orithos does not charge the card.</span>
+                  </span>
+                </button>
+              )}
+              {!canFinalise && lines.length > 0 && !busy && isOnline && selectedConfig?.session && finaliseLabel !== "Finalise" && (
+                <p role="status" className="mb-2 text-xs font-medium text-amber-800">{finaliseLabel}</p>
+              )}
               <div className="flex items-end justify-between gap-3">
                 <div className={cn("oh-type-label", lines.length ? "text-[var(--oh-text-secondary)]" : "text-[var(--oh-placeholder)]")}>
                   <p className="oh-type-body font-semibold text-[var(--oh-text)]">{quantity} {quantity === 1 ? "item" : "items"}</p>
@@ -1274,13 +1528,13 @@ export function OdooRegisterPage() {
                 onClick={() => void checkout()}
                 disabled={!canFinalise}
                 className={cn(
-                  "oh-type-body-strong mt-3 inline-flex h-14 w-full items-center justify-center rounded-lg transition-colors",
+                  "oh-type-body-strong mt-3 inline-flex h-14 w-full items-center justify-center rounded-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
                   canFinalise
                     ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
                     : "cursor-not-allowed bg-[var(--oh-border)] text-[var(--oh-text-secondary)]",
                 )}
               >
-                {busy ? "Processing…" : !isOnline ? "Reconnect to finalise" : quoteLoading ? "Calculating…" : !selectedConfig?.session ? "No session" : "Finalise"}
+                {finaliseLabel}
               </button>
             </div>
           </div>

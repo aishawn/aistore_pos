@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,14 +31,31 @@ export function ProductImage({
   const id = typeof productId === "number" || /^\d+$/.test(String(productId ?? "")) ? String(productId) : "";
   const src = id ? `/api/odoo/products/${id}/image${refreshToken === undefined ? "" : `?v=${refreshToken}`}` : "";
   const [failedSrc, setFailedSrc] = useState("");
+  const [loadedSrc, setLoadedSrc] = useState("");
   const category = CATEGORIES.find((item) => item.words.some((word) => name.toLocaleLowerCase().includes(word)));
   const showImage = Boolean(src && failedSrc !== src);
+  const imageReady = Boolean(src && loadedSrc === src && failedSrc !== src);
+
+  useEffect(() => {
+    setFailedSrc("");
+    setLoadedSrc("");
+  }, [src]);
 
   return (
     <span className={cn("relative flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--oh-surface)]", className)}>
       {showImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={`${name} product`} loading="lazy" className="h-full w-full object-contain" onError={() => setFailedSrc(src)} />
+        <>
+          {!imageReady && <span aria-hidden="true" className="absolute inset-0 animate-pulse bg-slate-100" />}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={`${name} product`}
+            loading="lazy"
+            className={cn("h-full w-full object-contain transition-opacity", imageReady ? "opacity-100" : "opacity-0")}
+            onLoad={() => setLoadedSrc(src)}
+            onError={() => setFailedSrc(src)}
+          />
+        </>
       ) : category ? (
         <span aria-hidden="true" className={cn("flex h-full w-full items-center justify-center text-2xl", category.tone, fallbackClassName)}>{category.icon}</span>
       ) : (
