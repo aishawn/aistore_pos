@@ -1,5 +1,6 @@
 package com.orithos.modules.ai;
 
+import com.orithos.modules.ai.report.ReportAdhocRouter;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -149,6 +150,7 @@ class AssistantFastPathRouterTest {
         assertNotNull(match);
         assertEquals("report_sales", match.intent());
         assertEquals("Today's sales", match.summary());
+        assertEquals("report_sales", AssistantFastPathRouter.maybeMatch("今天卖了多少钱").intent());
     }
 
     @Test
@@ -281,12 +283,26 @@ class AssistantFastPathRouterTest {
         for (String question : new String[]{
                 "How many transactions did we have today?",
                 "How many tickets did we have yesterday?",
-                "今天有多少笔交易"
+                "今天有多少笔交易",
+                "How many transactions today?",
+                "今天有几笔交易？",
+                "What was our average sale today?"
         }) {
             AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
             assertNotNull(match, question);
             assertEquals("report_aov", match.intent(), question);
         }
+    }
+
+    @Test
+    void routesWeeklyQuantityAndMixedSalesUnitsDeterministically() {
+        for (String question : new String[]{"这周卖了多少件", "units sold this week"}) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("report_qty", match.intent(), question);
+        }
+        assertEquals("report_adhoc",
+                ReportAdhocRouter.maybeOverride("Give me sales and units for yesterday", "report_qty"));
     }
 
     @Test

@@ -16,7 +16,7 @@ public final class AssistantFastPathRouter {
                     + "how much did we (?:make|take|sell) today|what did we (?:make|take|sell) today|how were (?:sales|we) today|"
                     + "what(?:'s| is) (?:our )?(?:sales|revenue|takings|turnover) today|"
                     + "what(?:'s| is) today'?s? (?:sales|revenue|takings|turnover)|"
-                    + "今日销售额?|今天销售额?|今天卖了多少|今天营业额?|今天流水|今天收入多少|今日收入多少|今天赚了多少)[?.!。！？]*$",
+                    + "今日销售额?|今天销售额?|今天卖了多少(?:钱|金额)?|今天营业额?|今天流水|今天收入多少|今日收入多少|今天赚了多少)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern YESTERDAY_SALES = Pattern.compile(
             "^(?:yesterday'?s?\\s+sales|sales\\s+yesterday|show(?:\\s+me)?\\s+yesterday'?s?\\s+sales|"
@@ -48,7 +48,7 @@ public final class AssistantFastPathRouter {
                     + "卖了多少(?:钱|金额)?(?:[?？]|$)|收入多少|营业额多少|流水多少",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern QUANTITY_RANGE = Pattern.compile(
-            "^(?:(?:units|quantity)\\s+sold\\s+(?:last|past|previous)\\s+\\d+\\s+days?|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量))$",
+            "^(?:(?:units|quantity)\\s+sold\\s+(?:(?:last|past|previous)\\s+\\d+\\s+days?|this\\s+week)|(?:近|最近|过去)\\s*\\d+\\s*天\\s*(?:销量|销售数量)|这周(?:卖了多少件?|销量(?:是多少)?)|本周(?:卖了多少件?|销量(?:是多少)?))$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern CATEGORY_QUANTITY = Pattern.compile(
             "^how much\\s+(.+?)\\s+sold\\s+(?:this|last)\\s+week\\??$|^本周(.+?)(?:卖了多少|销量(?:是多少)?)$",
@@ -149,9 +149,9 @@ public final class AssistantFastPathRouter {
                     + "ai\\s*(?:(?:会|能)(?:不|否)?|可不可以|可以不可以|能不能|会不会)\\s*(?:帮我\\s*)?(?:直接|自动)?\\s*(?:下(?:采购)?单|下订单|提交(?:采购)?订单?|生成(?:采购)?订单?|改价|调价|推荐(?:什么酒|商品|葡萄酒|红酒)|(?:识别|读取|扫描)(?:供应商)?(?:发票|账单)|回答(?:销售|库存)问题)\\s*(?:吗)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern TICKET_COUNT = Pattern.compile(
-            "^(?:how many (?:transactions?|tickets?|orders?) did we have (?:today|yesterday)|"
+            "^(?:(?:what was|what's|what is) (?:our )?average (?:sale|ticket) (?:today|yesterday)|how many (?:transactions?|tickets?|orders?)(?: did we have)? (?:today|yesterday)|"
                     + "(?:today|yesterday)\\s+(?:transaction|ticket|order) count|今天(?:有)?多少笔(?:交易|订单)|"
-                    + "今天几笔(?:交易|订单)?)[?.!。！？]*$",
+                    + "今天(?:有)?几笔(?:交易|订单)?)[?.!。！？]*$",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_REPORT = Pattern.compile(
             "^(?:do we have (?:any )?invoices?|any invoices?|are there (?:any )?invoices?|"

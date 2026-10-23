@@ -28,6 +28,8 @@ class ReportAdhocRouterTest {
                 ReportAdhocRouter.maybeOverride("What did we sell most this week?", "report_qty"));
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("Compare sales on 14 Oct with 15 Oct"));
         assertTrue(ReportAdhocRouter.shouldUseNl2Sql("比较 10月14日和10月15日销售额"));
+        assertEquals("report_adhoc",
+                ReportAdhocRouter.maybeOverride("Give me sales and units for yesterday", "report_qty"));
     }
 
     @Test

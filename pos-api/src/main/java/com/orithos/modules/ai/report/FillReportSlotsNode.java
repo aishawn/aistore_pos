@@ -32,9 +32,11 @@ public class FillReportSlotsNode implements NodeAction {
     public Map<String, Object> apply(OverAllState state) {
         Map<String, String> slots = new HashMap<>(ReportGraphState.slots(state));
         Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
-        slots = new HashMap<>(FollowUpSupport.mergeMissingSlots(slots, lastSlots));
         String question = ReportGraphState.string(state, "question");
         String intent = ReportGraphState.string(state, "intent");
+        String lastIntent = ReportGraphState.string(state, "last_intent");
+        slots = new HashMap<>(FollowUpSupport.mergeFollowUpSlots(
+                question, lastIntent, slots, lastSlots));
         String category = ReportTemplateRegistry.sanitizeCategory(slots.get("category"));
         if (category == null) {
             slots.remove("category");

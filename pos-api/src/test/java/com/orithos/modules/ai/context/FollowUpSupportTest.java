@@ -14,9 +14,21 @@ class FollowUpSupportTest {
     void detectsRelativeFollowUps() {
         assertTrue(FollowUpSupport.isRelativeFollowUp("那昨天呢"));
         assertTrue(FollowUpSupport.isRelativeFollowUp("and yesterday?"));
+        assertTrue(FollowUpSupport.isRelativeFollowUp("and the day before?"));
+        assertTrue(FollowUpSupport.isRelativeFollowUp("那前一天呢"));
         assertTrue(FollowUpSupport.isRelativeFollowUp("昨天"));
         assertFalse(FollowUpSupport.isRelativeFollowUp("今天销售额"));
         assertFalse(FollowUpSupport.isRelativeFollowUp("compare yesterday with today"));
+    }
+
+    @Test
+    void recognizesOnlyExplicitHistoricalStockRefusalsInHistory() {
+        assertTrue(FollowUpSupport.hasHistoricalStockUnavailableContext(
+                "Assistant: Stock reports show a live snapshot; historical stock is unavailable."));
+        assertTrue(FollowUpSupport.hasHistoricalStockUnavailableContext(
+                "助手：历史库存查询暂不可用；当前库存报表是实时快照。"));
+        assertFalse(FollowUpSupport.hasHistoricalStockUnavailableContext(
+                "Assistant: Sales reports are available for yesterday."));
     }
 
     @Test
@@ -54,8 +66,23 @@ class FollowUpSupportTest {
 
         assertEquals(Map.of("from", "2026-10-22", "query", "Shiraz", "category", "wine"),
                 followUp);
+        assertFalse(followUp.containsKey("days"));
         assertEquals(Map.of(), independent);
         assertEquals(Map.of(), previousAdhoc);
+    }
+
+    @Test
+    void previousDayFollowUpMovesBackFromThePriorReportDateWithoutKeepingItsRangeLength() {
+        Map<String, String> merged = FollowUpSupport.mergeFollowUpSlots(
+                "and the day before?", "report_sales", Map.of(),
+                Map.of("query", "Shiraz", "category", "wine", "days", "7",
+                        "from", "2026-10-20", "to", "2026-10-26"));
+
+        assertEquals("2026-10-19", merged.get("from"));
+        assertEquals("2026-10-19", merged.get("to"));
+        assertEquals("Shiraz", merged.get("query"));
+        assertEquals("wine", merged.get("category"));
+        assertFalse(merged.containsKey("days"));
     }
 
     @Test

@@ -114,6 +114,9 @@ public class ClassifyQueryNode implements NodeAction {
                 .orElseThrow(() -> new IllegalStateException("question is required"));
         String lastIntent = optionalString(state, "last_intent");
         Map<String, String> lastSlots = optionalStringMap(state, "last_slots");
+        String conversationHistory = optionalString(state, "conversation_history");
+        boolean historicalStockContext = FollowUpSupport.hasHistoricalStockUnavailableContext(conversationHistory)
+                && (lastIntent.isBlank() || "unknown".equals(lastIntent));
 
         // Invoice OCR beats supplier entity-write heuristics on “upload … bill”.
         WorkflowRouteRouter.Override invoiceScan = WorkflowRouteRouter.invoiceScanOverride(question);
@@ -149,9 +152,11 @@ public class ClassifyQueryNode implements NodeAction {
         // Relative follow-ups reuse the previous report intent ("and yesterday?").
         if (FollowUpSupport.isRelativeFollowUp(question)
                 && (FollowUpSupport.isReportIntent(lastIntent)
-                || "stock_history_unavailable".equals(lastIntent))
+                || "stock_history_unavailable".equals(lastIntent)
+                || historicalStockContext)
                 && !"report_adhoc".equals(lastIntent)) {
-            if ("report_stock".equals(lastIntent) || "stock_history_unavailable".equals(lastIntent)) {
+            if ("report_stock".equals(lastIntent) || "stock_history_unavailable".equals(lastIntent)
+                    || historicalStockContext) {
                 String message = isChinese(question)
                         ? "历史库存查询暂不可用；当前库存报表是实时快照，不能还原历史库存。请打开库存列表查看当前库存。"
                         : "Stock reports show a live snapshot; historical stock is unavailable. Open the stock page to view current stock.";

@@ -27,6 +27,7 @@ public final class ReportAdhocRouter {
             "分别|混[合问]|"
                     + "哪个商品|卖得最多|卖得最好|销量最高|排行|top product|best seller|best-performing|"
                     + "sell(?:s|ing)? most|sold most|what (?:did we|was|were).*(?:sell|sold) most|"
+                    + "sales\\s+and\\s+(?:units|quantit(?:y|ies))|(?:units|quantit(?:y|ies))\\s+and\\s+sales|"
                     + "对比|比较|差多少|compare(?:d|s|ing)?|comparison|versus|\\bvs\\b|"
                     + "how many .*invoices|invoice.*(?:received|total|count)|"
                     + "(?:pricing|price).*?(?:report|history)|(?:report|history).*?(?:pricing|price)|"

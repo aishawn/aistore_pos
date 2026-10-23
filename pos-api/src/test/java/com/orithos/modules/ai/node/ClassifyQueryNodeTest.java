@@ -82,6 +82,48 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void repeatedStockRelativeFollowUpUsesHistoricalRefusalFromConversationHistory() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("and the day before?"));
+        when(state.value("last_intent", String.class)).thenReturn(Optional.of(""));
+        when(state.value("conversation_history", String.class)).thenReturn(Optional.of(
+                "Assistant (stock_history_unavailable): Stock reports show a live snapshot; historical stock is unavailable."));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("stock_history_unavailable", result.get("intent"));
+        assertEquals("historical_stock_unavailable", result.get("fast_path_id"));
+        assertEquals("/stock/list", result.get("ui_route"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void currentSalesIntentWinsOverOlderHistoricalStockRefusal() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("and yesterday?"));
+        when(state.value("last_intent", String.class)).thenReturn(Optional.of("report_sales"));
+        when(state.value("conversation_history", String.class)).thenReturn(Optional.of(
+                "Assistant (stock_history_unavailable): Stock reports show a live snapshot; historical stock is unavailable.\n"
+                        + "Assistant (report_sales): Sales report for today."));
+
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("report_sales", result.get("intent"));
+        assertEquals("Follow-up report", result.get("intent_summary"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void namedProductFastPathReturnsOdooMatchesInTheChatAnswer() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
@@ -580,7 +622,7 @@ class ClassifyQueryNodeTest {
         ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
 
         for (String lastIntent : List.of("report_stock", "stock_history_unavailable")) {
-            for (String question : List.of("那昨天呢", "and last week?")) {
+            for (String question : List.of("那昨天呢", "and last week?", "and the day before?", "那前一天呢")) {
                 OverAllState state = mock(OverAllState.class);
                 when(state.value("question", String.class)).thenReturn(Optional.of(question));
                 when(state.value("last_intent", String.class)).thenReturn(Optional.of(lastIntent));
