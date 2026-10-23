@@ -191,6 +191,8 @@ export function OdooRegisterPage() {
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("keys");
   const [catalogHome, setCatalogHome] = useState(true);
   const [selectedLineKey, setSelectedLineKey] = useState<string | null>(null);
+  const [exactCashArmed, setExactCashArmed] = useState(false);
+  const [clearSaleConfirm, setClearSaleConfirm] = useState(false);
   const [parkedAction, setParkedAction] = useState<{ type: "resume" | "discard"; saleId: string } | null>(null);
   const [pendingRegisterId, setPendingRegisterId] = useState<number | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -314,10 +316,11 @@ export function OdooRegisterPage() {
     openCloseRegister();
   }
 
-  const dialogOpen = helpOpen || closeRegisterCartWarn || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
+  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
   useDialogFocus(dialogOpen, () => {
     if (helpOpen) setHelpOpen(false);
     else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
+    else if (clearSaleConfirm) setClearSaleConfirm(false);
     else if (parkedAction) setParkedAction(null);
     else if (pendingRegisterId !== null) setPendingRegisterId(null);
     else if (receipt) setReceipt(null);
@@ -546,11 +549,18 @@ export function OdooRegisterPage() {
   const taxTotal = quoteIsCurrent ? quote!.tax : 0;
   const total = quoteIsCurrent ? quote!.unroundedTotal : fallbackSubtotal;
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
-  const isCashPayment = selectedPayment?.type === "cash";
+  const isCashMethod = (method: { type: string; is_cash_count?: boolean }) =>
+    method.type === "cash" || Boolean(method.is_cash_count);
+  const isCashPayment = selectedPayment ? isCashMethod(selectedPayment) : false;
   const amountToCollect = quoteIsCurrent ? quote!.total : 0;
   const quantity = lines.reduce((sum, line) => sum + line.quantity, 0);
   const tenderedAmount = isCashPayment && cashTendered.trim() ? Number(cashTendered) : amountToCollect;
   const changeDue = isCashPayment && Number.isFinite(tenderedAmount) ? Math.max(0, Math.round((tenderedAmount - amountToCollect) * 100) / 100) : 0;
+
+  useEffect(() => {
+    if (!exactCashArmed || !isCashPayment || !quoteIsCurrent || !lines.length) return;
+    setCashTendered(amountToCollect.toFixed(2));
+  }, [amountToCollect, exactCashArmed, isCashPayment, lines.length, quoteIsCurrent]);
 
   useEffect(() => {
     const revision = ++quoteRevision.current;
@@ -1011,35 +1021,47 @@ export function OdooRegisterPage() {
   }
 
   function selectCashPayment(exact = false) {
-    const method = paymentMethods.find((item) => item.type === "cash");
+    const method = paymentMethods.find((item) => isCashMethod(item));
     if (!method) {
       setError("No cash payment method is configured for this register.");
       return;
     }
     selectedPaymentMethodIdRef.current = method.id;
     setPaymentMethodId(method.id);
+    setExactCashArmed(exact);
+    setConfirmedPaymentKey(null);
     if (exact && quoteIsCurrent) setCashTendered(amountToCollect.toFixed(2));
-    else setCashTendered("");
+    else if (!exact) setCashTendered("");
   }
 
   function selectCardPayment() {
-    const method = paymentMethods.find((item) => item.type !== "cash") ?? paymentMethods[0];
+    const nonCash = paymentMethods.filter((item) => !isCashMethod(item));
+    const method = nonCash.find((item) => /card|eftpos|bank|terminal/i.test(item.name))
+      ?? nonCash.find((item) => !/account|customer|credit|pay.?later/i.test(item.name))
+      ?? nonCash[0]
+      ?? null;
     if (!method) {
       setError("No card payment method is configured for this register.");
       return;
     }
     selectedPaymentMethodIdRef.current = method.id;
     setPaymentMethodId(method.id);
+    setExactCashArmed(false);
     setCashTendered("");
   }
 
   function applyCaseQuantity() {
     const line = targetCartLine();
-    if (!line) return;
+    if (!line) {
+      setError("Add a product first, then use Case Quantity on the selected line.");
+      return;
+    }
     const current = line.packFactor || 1;
-    const next = current === 1 ? 12 : 1;
+    const idx = CASE_PACK_OPTIONS.findIndex((size) => size === current);
+    const next = CASE_PACK_OPTIONS[idx >= 0 ? (idx + 1) % CASE_PACK_OPTIONS.length : 1] ?? 12;
     setLinePackFactor(line.product.id, current, next);
     setSelectedLineKey(lineKey(line.product.id, next));
+    setError(null);
   }
 
   function clearSale() {
@@ -1050,8 +1072,15 @@ export function OdooRegisterPage() {
     setCashTendered("");
     setConfirmedPaymentKey(null);
     setSelectedLineKey(null);
+    setExactCashArmed(false);
+    setClearSaleConfirm(false);
     setError(null);
     setDraftNotice(null);
+  }
+
+  function requestClearSale() {
+    if (!lines.length) return;
+    setClearSaleConfirm(true);
   }
 
   function openCategory(nextCategoryId: number | null) {
@@ -1086,8 +1115,14 @@ export function OdooRegisterPage() {
   const saleKeyTileClass =
     "flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border px-2 py-3 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]";
   const productCount = lines.length;
-  const cashMethod = paymentMethods.find((item) => item.type === "cash");
-  const cardMethod = paymentMethods.find((item) => item.type !== "cash");
+  const cashMethod = paymentMethods.find((item) => isCashMethod(item)) ?? null;
+  const nonCashMethods = paymentMethods.filter((item) => !isCashMethod(item));
+  const cardMethod = nonCashMethods.find((item) => /card|eftpos|bank|terminal/i.test(item.name))
+    ?? nonCashMethods.find((item) => !/account|customer|credit|pay.?later/i.test(item.name))
+    ?? nonCashMethods[0]
+    ?? null;
+  const eftposSelected = Boolean(lines.length && cardMethod && paymentMethodId === cardMethod.id);
+  const cashSelected = Boolean(lines.length && cashMethod && paymentMethodId === cashMethod.id);
 
   return (
     <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
@@ -1331,7 +1366,7 @@ export function OdooRegisterPage() {
                     <button type="button" disabled={!lines.length || (targetCartLine()?.quantity ?? 0) <= 1} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">− Qty</button>
                     <button type="button" disabled={!lines.length} onClick={applyCaseQuantity} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Case Qty</button>
                     <button type="button" disabled={!lines.length || !parkedLoaded || !selectedConfig || busy} onClick={() => parkCurrentSale()} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Park Sale</button>
-                    <button type="button" disabled={!lines.length} onClick={clearSale} className="min-h-11 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] font-medium text-[var(--oh-tile-red-text)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Clear Sale</button>
+                    <button type="button" disabled={!lines.length} onClick={requestClearSale} className="min-h-11 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] font-medium text-[var(--oh-tile-red-text)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Clear Sale</button>
                   </div>
                 </div>
               </div>
@@ -1438,7 +1473,7 @@ export function OdooRegisterPage() {
                     <button type="button" disabled={!lines.length || (targetCartLine()?.quantity ?? 0) <= 1} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">− Qty</button>
                     <button type="button" disabled={!lines.length} onClick={applyCaseQuantity} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Case Qty</button>
                     <button type="button" disabled={!lines.length || !parkedLoaded || !selectedConfig || busy} onClick={() => parkCurrentSale()} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">Park Sale</button>
-                    <button type="button" disabled={!lines.length} onClick={clearSale} className="min-h-11 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] font-medium text-[var(--oh-tile-red-text)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Clear Sale</button>
+                    <button type="button" disabled={!lines.length} onClick={requestClearSale} className="min-h-11 rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2 text-[13px] font-medium text-[var(--oh-tile-red-text)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">Clear Sale</button>
                   </div>
                 </div>
               </div>
@@ -1448,24 +1483,64 @@ export function OdooRegisterPage() {
 
         <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
           <div className="flex flex-wrap items-center gap-2">
-            <AdminNavyButton
-              className={cn("min-h-11", lines.length > 0 && !isCashPayment && "ring-2 ring-[var(--oh-primary)] ring-offset-1")}
-              onClick={() => selectCardPayment()}
-              disabled={!lines.length || !cardMethod}
-            >
-              EFTPOS
-            </AdminNavyButton>
+            {eftposSelected ? (
+              <AdminNavyButton
+                className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1"
+                onClick={() => selectCardPayment()}
+                disabled={!lines.length || !cardMethod}
+              >
+                EFTPOS
+              </AdminNavyButton>
+            ) : (
+              <AdminSecondaryButton
+                className="min-h-11"
+                onClick={() => selectCardPayment()}
+                disabled={!lines.length || !cardMethod}
+                title={!lines.length ? "Add items before choosing EFTPOS" : !cardMethod ? "No card payment method on this register" : cardMethod.name}
+              >
+                EFTPOS
+              </AdminSecondaryButton>
+            )}
+            {cashSelected ? (
+              <AdminNavyButton
+                className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1"
+                onClick={() => selectCashPayment(true)}
+                disabled={!lines.length || !cashMethod}
+              >
+                Exact Cash
+              </AdminNavyButton>
+            ) : (
+              <AdminSecondaryButton
+                className="min-h-11"
+                onClick={() => selectCashPayment(true)}
+                disabled={!lines.length || !cashMethod}
+                title={!lines.length ? "Add items before choosing Exact Cash" : !cashMethod ? "No cash payment method on this register" : "Select cash and fill the exact amount due"}
+              >
+                Exact Cash
+              </AdminSecondaryButton>
+            )}
             <AdminSecondaryButton
-              className={cn("min-h-11", lines.length > 0 && isCashPayment && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)] ring-2 ring-[var(--oh-primary)] ring-offset-1")}
-              onClick={() => selectCashPayment(true)}
-              disabled={!lines.length || !cashMethod || !quoteIsCurrent}
+              className="min-h-11"
+              onClick={applyCaseQuantity}
+              disabled={!lines.length}
+              title={lines.length ? "Cycle pack size on the selected line (Each → 6 → 12 → 24)" : "Add a product first"}
             >
-              Exact Cash
-            </AdminSecondaryButton>
-            <AdminSecondaryButton className="min-h-11" onClick={applyCaseQuantity} disabled={!lines.length}>
               Case Quantity
             </AdminSecondaryButton>
-            <AdminSecondaryButton className="min-h-11" onClick={clearSale} disabled={!lines.length}>
+            <AdminSecondaryButton
+              className="min-h-11"
+              onClick={() => parkCurrentSale()}
+              disabled={!lines.length || !parkedLoaded || !selectedConfig || busy}
+              title={!lines.length ? "Nothing to park" : "Save this cart on this terminal"}
+            >
+              Park Sale
+            </AdminSecondaryButton>
+            <AdminSecondaryButton
+              className={cn("min-h-11", lines.length > 0 && "border-[var(--oh-tile-red-border)] text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)]")}
+              onClick={requestClearSale}
+              disabled={!lines.length}
+              title={lines.length ? "Clear the current cart" : "Cart is already empty"}
+            >
               Clear Sale
             </AdminSecondaryButton>
             <div className="ml-auto flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-1.5 shadow-sm">
@@ -1477,6 +1552,7 @@ export function OdooRegisterPage() {
                 type="button"
                 disabled={!canFinalise}
                 onClick={() => void checkout()}
+                title={!canFinalise ? finaliseLabel : "Complete this sale in Odoo"}
                 className={cn(
                   "min-h-11 cursor-pointer rounded-[var(--oh-radius)] px-5 text-[14px] font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
                   canFinalise ? "bg-[var(--oh-primary)] hover:bg-[var(--oh-primary-hover)]" : "cursor-not-allowed bg-[var(--oh-border-strong)]",
@@ -1498,7 +1574,10 @@ export function OdooRegisterPage() {
                     max={1_000_000}
                     step="0.01"
                     value={cashTendered}
-                    onChange={(event) => setCashTendered(event.target.value)}
+                    onChange={(event) => {
+                      setExactCashArmed(false);
+                      setCashTendered(event.target.value);
+                    }}
                     placeholder={amountToCollect.toFixed(2)}
                     className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-semibold tabular-nums outline-none focus:border-[var(--oh-primary)]"
                   />
@@ -1794,6 +1873,44 @@ export function OdooRegisterPage() {
                 className="min-h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
               >
                 Continue
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {clearSaleConfirm && (
+        <div
+          role="presentation"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setClearSaleConfirm(false);
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="clear-sale-title"
+            aria-describedby="clear-sale-description"
+            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl"
+          >
+            <h2 id="clear-sale-title" className="text-lg font-semibold text-[var(--oh-text)]">Clear this sale?</h2>
+            <p id="clear-sale-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
+              This removes all lines and the selected customer from the cart. It does not change any completed Odoo sale.
+            </p>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setClearSaleConfirm(false)}
+                className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={clearSale}
+                className="min-h-11 rounded-md bg-red-700 px-4 text-sm font-semibold text-white hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+              >
+                Clear sale
               </button>
             </div>
           </section>
