@@ -97,7 +97,7 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
   },
   {
     label: "Overview",
-    href: "/overview",
+    href: "/overview/workspace",
     icon: "overview",
   },
   {
@@ -186,7 +186,7 @@ function allowed(
  */
 export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem | SidebarGroup)[] {
   const showClassic = process.env.NEXT_PUBLIC_SHOW_CLASSIC_POS === "true";
-  const main = SIDEBAR_MAIN.flatMap((entry) => {
+  const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
       const items = entry.items.filter((item) => allowed(options, item.permission, item.adminOnly));
