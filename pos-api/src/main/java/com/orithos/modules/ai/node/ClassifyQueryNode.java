@@ -176,7 +176,7 @@ public class ClassifyQueryNode implements NodeAction {
                     "/products",
                     "products",
                     "",
-                    ""));
+                    ""), question);
         }
 
         // Explicit workflow requests are deterministic navigation intents. Resolve
@@ -564,7 +564,7 @@ public class ClassifyQueryNode implements NodeAction {
         return out;
     }
 
-    private Map<String, Object> productCountShortcut(AssistantFastPathRouter.Match fast) {
+    private Map<String, Object> productCountShortcut(AssistantFastPathRouter.Match fast, String question) {
         TenantContext tenant = AssistantTenantContext.get();
         if (tenant == null) {
             String message = isChinese(question)
