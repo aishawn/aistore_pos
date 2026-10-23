@@ -15,6 +15,8 @@ import com.orithos.modules.ai.configstore.IntentSanitizeService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.RawIntent;
 import com.orithos.modules.ai.configstore.IntentSanitizeService.SanitizedIntent;
 import com.orithos.modules.ai.context.FollowUpSupport;
+import com.orithos.modules.ai.dto.AssistantCard;
+import com.orithos.modules.ai.grocery.GroceryChatBrief;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
 import com.orithos.modules.ai.report.OdooReportQueryService;
@@ -56,6 +58,7 @@ public class ClassifyQueryNode implements NodeAction {
     private final ObjectProvider<SommelierChatBrief> sommelierChatBrief;
     private final ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief;
     private final ObjectProvider<PricingChatBrief> pricingChatBrief;
+    private final ObjectProvider<GroceryChatBrief> groceryChatBrief;
 
     public ClassifyQueryNode(ChatClient chatClient,
                              IntentConfigService configService,
@@ -81,6 +84,19 @@ public class ClassifyQueryNode implements NodeAction {
                              ObjectProvider<SommelierChatBrief> sommelierChatBrief,
                              ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
                              ObjectProvider<PricingChatBrief> pricingChatBrief) {
+        this(chatClient, configService, sanitizeService, properties, reportQueryService, sommelierChatBrief,
+                replenishmentChatBrief, pricingChatBrief, null);
+    }
+
+    public ClassifyQueryNode(ChatClient chatClient,
+                             IntentConfigService configService,
+                             IntentSanitizeService sanitizeService,
+                             AiProperties properties,
+                             OdooReportQueryService reportQueryService,
+                             ObjectProvider<SommelierChatBrief> sommelierChatBrief,
+                             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBrief,
+                             ObjectProvider<PricingChatBrief> pricingChatBrief,
+                             ObjectProvider<GroceryChatBrief> groceryChatBrief) {
         this.chatClient = chatClient;
         this.configService = configService;
         this.sanitizeService = sanitizeService;
@@ -89,6 +105,7 @@ public class ClassifyQueryNode implements NodeAction {
         this.sommelierChatBrief = sommelierChatBrief;
         this.replenishmentChatBrief = replenishmentChatBrief;
         this.pricingChatBrief = pricingChatBrief;
+        this.groceryChatBrief = groceryChatBrief;
     }
 
     @Override
@@ -104,7 +121,9 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Workflow fast-path route={}", invoiceScan.route());
             Map<String, Object> out = new HashMap<>();
             out.put("intent", invoiceScan.intent());
-            out.put("intent_summary", workflowChatSummary(invoiceScan.route(), question));
+            WorkflowChatResult workflow = workflowChatResult(invoiceScan.route(), question);
+            out.put("intent_summary", workflow.answer());
+            if (workflow.card() != null) out.put("assistant_card", workflow.card());
             out.put("slots", Map.of());
             out.put("ui_panel", "");
             out.put("ui_view", "");
@@ -121,26 +140,29 @@ public class ClassifyQueryNode implements NodeAction {
         // for words such as “submit”, “save” or “receive”.
         if (WorkflowRouteRouter.hasWriteIntent(question)) {
             log.info("Write-intent request kept in guided flow");
-            boolean stockTarget = isStockWriteTarget(question);
             boolean priceTarget = isPriceWriteTarget(question);
-            String writeRoute = writeRouteForQuestion(question, stockTarget, priceTarget);
-            String summary = stockTarget
-                    ? "I cannot change stock quantities from chat. Open replenishment yourself to review suggestions and confirm any order on the page."
-                    : priceTarget
-                    ? "I cannot change prices from chat. Open price review yourself to check suggestions and confirm any change on the page."
-                    : "I can help review this, but I cannot perform that business action from chat.";
-            return shortcutResult(
-                    "guided_action",
-                    summary,
-                    Map.of(), "", "", writeRoute, "");
+            String writeRoute = resolveGuidedActionRoute(question, null, optionalString(state, "ui_surface"));
+            return guidedActionResult(question, writeRoute,
+                    "/stock/replenishment".equals(writeRoute), "/stock/capped-pricing".equals(writeRoute));
         }
 
         // Relative follow-ups reuse the previous report intent ("and yesterday?").
         if (FollowUpSupport.isRelativeFollowUp(question)
-                && FollowUpSupport.isReportIntent(lastIntent)
+                && (FollowUpSupport.isReportIntent(lastIntent)
+                || "stock_history_unavailable".equals(lastIntent))
                 && !"report_adhoc".equals(lastIntent)) {
+            if ("report_stock".equals(lastIntent) || "stock_history_unavailable".equals(lastIntent)) {
+                String message = isChinese(question)
+                        ? "历史库存查询暂不可用；当前库存报表是实时快照，不能还原历史库存。请打开库存列表查看当前库存。"
+                        : "Stock reports show a live snapshot; historical stock is unavailable. Open the stock page to view current stock.";
+                Map<String, Object> result = shortcutResult(
+                        "stock_history_unavailable", message, Map.of(), "", "", "/stock/list", "");
+                result.put("fast_path_id", "historical_stock_unavailable");
+                return result;
+            }
             log.info("Follow-up fast-path intent={}", lastIntent);
-            Map<String, String> slots = FollowUpSupport.mergeMissingSlots(Map.of(), lastSlots);
+            Map<String, String> slots = FollowUpSupport.mergeFollowUpSlots(
+                    question, lastIntent, Map.of(), lastSlots);
             return shortcutResult(lastIntent, "Follow-up report", slots, "", "", "", "");
         }
 
@@ -149,7 +171,7 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Product-count fast-path (skipped classify LLM)");
             return productCountShortcut(new AssistantFastPathRouter.Match(
                     "product_count",
-                    "Live product count is unavailable right now. Open Products to browse or try again shortly.",
+                    "Live product count is unavailable right now. Please try again shortly.",
                     Map.of(),
                     "/products",
                     "products",
@@ -167,7 +189,9 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Workflow fast-path route={}", directWorkflow.route());
             Map<String, Object> out = new HashMap<>();
             out.put("intent", directWorkflow.intent());
-            out.put("intent_summary", workflowChatSummary(directWorkflow.route(), question));
+            WorkflowChatResult workflow = workflowChatResult(directWorkflow.route(), question);
+            out.put("intent_summary", workflow.answer());
+            if (workflow.card() != null) out.put("assistant_card", workflow.card());
             out.put("slots", Map.of());
             out.put("ui_panel", "");
             out.put("ui_view", "");
@@ -192,6 +216,10 @@ public class ClassifyQueryNode implements NodeAction {
         AssistantFastPathRouter.Match fast = AssistantFastPathRouter.maybeMatch(question);
         if (fast != null) {
             log.info("Fast-path intent={} (skipped classify LLM)", fast.intent());
+            if ("search_product".equals(fast.intent())
+                    && fast.slots().get("query") != null && !fast.slots().get("query").isBlank()) {
+                return productSearchShortcut(fast, question);
+            }
             return shortcutResult(fast.intent(), fast.summary(), fast.slots(), fast.panel(), fast.view(),
                     fast.route(), fast.action());
         }
@@ -205,17 +233,19 @@ public class ClassifyQueryNode implements NodeAction {
         RawIntent raw = callModel(system, userPrompt);
         SanitizedIntent result = sanitizeService.sanitize(raw);
         if (isWriteEntityResult(result) || isUnknownEntityOperation(result)) {
-            return shortcutResult("guided_action",
-                    "I can guide this change, but saving business data must be completed and confirmed on the page.",
-                    Map.of(), "", "", guidedRouteForTarget(result.slots().get("entity")), "");
+            String route = resolveGuidedActionRoute(
+                    question, result.slots().get("entity"), optionalString(state, "ui_surface"));
+            return guidedActionResult(question, route,
+                    "/stock/replenishment".equals(route), "/stock/capped-pricing".equals(route));
         }
-        if ("sale_action".equals(result.intent())
-                && ("Create Customer".equalsIgnoreCase(result.action())
-                || "Create Product".equalsIgnoreCase(result.action()))) {
-            String route = "Create Customer".equalsIgnoreCase(result.action()) ? "/customers" : "/products";
-            return shortcutResult("guided_action",
-                    "I can guide this creation, but saving business data must be completed and confirmed on the page.",
-                    Map.of(), "", "", route, "");
+        if ("sale_action".equals(result.intent())) {
+            String action = result.action() == null ? "" : result.action().trim();
+            String route = "Create Customer".equalsIgnoreCase(action) ? "/customers"
+                    : "Create Product".equalsIgnoreCase(action) ? "/products"
+                    : writeRouteForQuestion(question, isStockWriteTarget(question), isPriceWriteTarget(question));
+            if (route.isBlank()) route = "/";
+            return guidedActionResult(question, route,
+                    "/stock/replenishment".equals(route), "/stock/capped-pricing".equals(route));
         }
         WorkflowRouteRouter.Override workflow = WorkflowRouteRouter.maybeOverride(question);
         String intent = workflow == null
@@ -230,9 +260,15 @@ public class ClassifyQueryNode implements NodeAction {
             log.info("Forced intent {} -> {} for explicit workflow request", result.intent(), intent);
         }
 
-        Map<String, String> slots = FollowUpSupport.mergeMissingSlots(result.slots(), lastSlots);
+        Map<String, String> slots = FollowUpSupport.mergeFollowUpSlots(
+                question, lastIntent, result.slots(), lastSlots);
         String summary = result.summary();
-        if ("/sommelier".equals(route) || "/stock/replenishment".equals(route)
+        AssistantCard assistantCard = null;
+        if ("/recommend/grocery".equals(route)) {
+            WorkflowChatResult workflowResult = workflowChatResult(route, question);
+            summary = workflowResult.answer();
+            assistantCard = workflowResult.card();
+        } else if ("/sommelier".equals(route) || "/stock/replenishment".equals(route)
                 || "/stock/capped-pricing".equals(route)) {
             summary = workflowChatSummary(route, question);
         }
@@ -247,6 +283,7 @@ public class ClassifyQueryNode implements NodeAction {
         out.put("ui_view", nullToEmpty(result.view()));
         out.put("ui_route", route);
         out.put("ui_action", nullToEmpty(result.action()));
+        if (assistantCard != null) out.put("assistant_card", assistantCard);
         out.put("fast_path_id", "llm_classifier");
         out.put("route_source", "llm");
         out.put("llm_fallback", true);
@@ -280,6 +317,19 @@ public class ClassifyQueryNode implements NodeAction {
         return "Opening the requested workflow.";
     }
 
+    private WorkflowChatResult workflowChatResult(String route, String question) {
+        if ("/recommend/grocery".equals(route) && groceryChatBrief != null) {
+            GroceryChatBrief brief = groceryChatBrief.getIfAvailable();
+            if (brief != null) {
+                GroceryChatBrief.Brief result = brief.result(question, AssistantTenantContext.get());
+                return new WorkflowChatResult(result.answer(), result.card());
+            }
+        }
+        return new WorkflowChatResult(workflowChatSummary(route, question), null);
+    }
+
+    private record WorkflowChatResult(String answer, AssistantCard card) {}
+
     private static boolean isStockWriteTarget(String question) {
         if (question == null) {
             return false;
@@ -293,6 +343,13 @@ public class ClassifyQueryNode implements NodeAction {
         // Mutation review destinations stay deterministic even when a classifier is unavailable.
         if (priceTarget) return "/stock/capped-pricing";
         if (isInvoiceWriteTarget(question)) return "/invoices";
+        if (isStocktakeTarget(question)) return "/stocktake";
+        if (isCustomerBalanceTarget(question)) return "/customers/balances";
+        if (isCustomerGroupTarget(question)) return "/customer-groups";
+        if (isPriceListTarget(question)) return "/pricelists";
+        if (isGiftCardTarget(question)) return "/giftcards";
+        if (isClassificationTarget(question)) return "/classifications";
+        if (isBuyingPeriodTarget(question)) return "/stock/buying-periods";
         if (stockTarget || isStockMutationTarget(question)) return "/stock/replenishment";
         // Purchase/order language must win over a product noun in phrases such as
         // "buy these items" or "order these products".
@@ -303,6 +360,90 @@ public class ClassifyQueryNode implements NodeAction {
         return "";
     }
 
+    static Map<String, Object> guidedActionResult(
+            String question, String route, boolean stockTarget, boolean priceTarget) {
+        boolean chinese = question != null && question.matches("(?s).*[\\u3400-\\u9fff].*");
+        String summary;
+        if (stockTarget) {
+            summary = chinese
+                    ? "我不能在聊天中直接调整库存。请在补货页面核对商品、订货数量和供应商，再由你确认订单。"
+                    : "I cannot adjust stock from chat. Review the items, order quantities and supplier on the replenishment page before confirming an order.";
+        } else if (priceTarget) {
+            summary = chinese
+                    ? "我不能在聊天中直接改价。请在价格复核页面核对每项价格和受影响商品，再由你确认应用。"
+                    : "I cannot change prices from chat. Review each proposed price and affected product on the price review page before applying changes.";
+        } else {
+            String target = guidedTargetName(route, chinese);
+            boolean unknownTarget = "/".equals(route);
+            summary = chinese
+                    ? unknownTarget
+                            ? "我不能在聊天中直接执行写入。请先说明要操作的对象和具体变更；你可以从工作区页面继续，核对目标记录和影响后再确认。"
+                            : "我可以引导你处理" + target + "。请在对应页面填写必填信息，核对目标记录和变更内容后再完成操作；聊天不会直接写入业务数据。"
+                    : unknownTarget
+                            ? "I cannot perform writes from chat. Please specify the target and exact change, then continue from the workspace and verify the record and impact before confirming."
+                            : "I can guide this " + target + " change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.";
+        }
+        return shortcutResult("guided_action", summary, Map.of(), "", "", route, "");
+    }
+
+    public static String resolveGuidedActionRoute(String question, String entity, String surface) {
+        String route = writeRouteForQuestion(question, isStockWriteTarget(question), isPriceWriteTarget(question));
+        if (route.isBlank()) route = guidedRouteForTarget(entity);
+        return route.isBlank() ? fallbackRouteForSurface(surface) : route;
+    }
+
+    static String fallbackRouteForSurface(String surface) {
+        if (surface == null) return "/";
+        return switch (surface.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "products" -> "/products";
+            case "customers" -> "/customers";
+            case "stock" -> "/stock/replenishment";
+            case "invoices" -> "/invoices";
+            case "sommelier" -> "/sommelier";
+            case "sell", "reports", "" -> "/";
+            default -> "/";
+        };
+    }
+
+    private static String guidedTargetName(String route, boolean chinese) {
+        if (chinese) {
+            return switch (route == null ? "" : route) {
+                case "/customers" -> "客户资料变更";
+                case "/products" -> "商品目录变更";
+                case "/orders" -> "采购订单变更";
+                case "/invoices" -> "供应商发票操作";
+                case "/suppliers/odoo" -> "供应商资料变更";
+                case "/stocktake" -> "库存盘点";
+                case "/customers/balances" -> "客户余额变更";
+                case "/customer-groups" -> "客户分组变更";
+                case "/pricelists" -> "价目表变更";
+                case "/giftcards" -> "礼品卡操作";
+                case "/classifications" -> "商品分类变更";
+                case "/stock/buying-periods" -> "采购周期变更";
+                case "/stock/replenishment" -> "补货操作";
+                case "/" -> "销售页面操作";
+                default -> "这项业务变更";
+            };
+        }
+        return switch (route == null ? "" : route) {
+            case "/customers" -> "customer";
+            case "/products" -> "product catalogue";
+            case "/orders" -> "purchase order";
+            case "/invoices" -> "supplier invoice";
+            case "/suppliers/odoo" -> "supplier";
+            case "/stocktake" -> "stocktake";
+            case "/customers/balances" -> "customer balance";
+            case "/customer-groups" -> "customer group";
+            case "/pricelists" -> "price list";
+            case "/giftcards" -> "gift card";
+            case "/classifications" -> "product classification";
+            case "/stock/buying-periods" -> "buying period";
+            case "/stock/replenishment" -> "replenishment";
+            case "/" -> "POS";
+            default -> "business";
+        };
+    }
+
     private static boolean isPriceWriteTarget(String question) {
         if (question == null) {
             return false;
@@ -311,7 +452,10 @@ public class ClassifyQueryNode implements NodeAction {
                 "(?is).*(?:把.+?(?:价格|售价)\\s*(?:改成|调整为|设为)\\s*\\$?\\d+"
                         + "|(?:(?:帮我)?(?:直接\\s*)?)把.*?(?:价格|售价)(?:改了|改掉|改成|调整为|设为)"
                         + "|\\b(?:set|change|raise|lower)\\b.+?\\b(?:price|to)\\b\\s*\\$?\\d+"
-                        + "|\\b(?:set|change|raise|lower|update|apply)\\b.+?\\bprices?\\b"
+                        + "|\\b(?:set|change|raise|lower|update|apply|save|submit|confirm|reprice)\\b.+?\\b(?:prices?|pricing)\\b"
+                        + "|\\b(?:prices?|pricing)\\b.+?\\b(?:set|change|raise|lower|update|apply|save|submit|confirm|reprice)\\b"
+                        + "|(?:更新|应用|保存|提交|确认|设置|修改|调价|改价).*?(?:价格|售价|价目)"
+                        + "|(?:价格|售价|价目).*?(?:更新|应用|保存|提交|确认|设置|修改|调价|改价)"
                         + "|\\b(?:apply|save|submit|execute)\\b.+?\\b(?:prices?|pricing)\\b"
                         + "|直接(?:调价|改价)|(?:保存|提交|执行|应用|调价|改价|设置|修改)(?:这些|那些)?(?:价格|售价|价目|价格建议|调价)).*");
     }
@@ -340,6 +484,34 @@ public class ClassifyQueryNode implements NodeAction {
         return question != null && question.matches("(?is).*(?:supplier|vendor|供应商).*");
     }
 
+    private static boolean isStocktakeTarget(String question) {
+        return question != null && question.matches("(?is).*(?:stocktake|stock take|盘点).*");
+    }
+
+    private static boolean isCustomerBalanceTarget(String question) {
+        return question != null && question.matches("(?is).*(?:(?:customer\\s+)?balances?|客户余额).*");
+    }
+
+    private static boolean isCustomerGroupTarget(String question) {
+        return question != null && question.matches("(?is).*(?:customer\\s+group|customer groups|客户分组).*");
+    }
+
+    private static boolean isPriceListTarget(String question) {
+        return question != null && question.matches("(?is).*(?:price\\s+lists?|价目表|价格表).*");
+    }
+
+    private static boolean isGiftCardTarget(String question) {
+        return question != null && question.matches("(?is).*(?:gift\\s*cards?|礼品卡).*");
+    }
+
+    private static boolean isClassificationTarget(String question) {
+        return question != null && question.matches("(?is).*(?:classifications?|分类).*");
+    }
+
+    private static boolean isBuyingPeriodTarget(String question) {
+        return question != null && question.matches("(?is).*(?:buying\\s+periods?|采购周期).*");
+    }
+
     private static boolean isWriteEntityResult(SanitizedIntent result) {
         if (result == null || !"entity_action".equals(result.intent())) return false;
         String op = result.slots().get("op");
@@ -361,6 +533,13 @@ public class ClassifyQueryNode implements NodeAction {
             case "supplier", "vendor" -> "/suppliers/odoo";
             case "order", "purchase" -> "/orders";
             case "stock", "inventory" -> "/stock/replenishment";
+            case "classification", "category" -> "/classifications";
+            case "customer_group", "customer group" -> "/customer-groups";
+            case "price_list", "price list" -> "/pricelists";
+            case "gift_card", "gift card" -> "/giftcards";
+            case "stocktake", "stock_take" -> "/stocktake";
+            case "buying_period", "buying period" -> "/stock/buying-periods";
+            case "balance", "customer_balance", "customer balance" -> "/customers/balances";
             default -> "";
         };
     }
@@ -388,28 +567,127 @@ public class ClassifyQueryNode implements NodeAction {
     private Map<String, Object> productCountShortcut(AssistantFastPathRouter.Match fast) {
         TenantContext tenant = AssistantTenantContext.get();
         if (tenant == null) {
+            String message = isChinese(question)
+                    ? "请先登录门店账号，才能查询实时商品总数。"
+                    : "Sign in to a store to read the live product total.";
             return shortcutResult("product_count",
-                    "Sign in to a store to read the live product total. Open Products to browse.",
+                    message,
                     Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
         }
         if (tenant.requireOutletId() == null) {
+            String message = isChinese(question)
+                    ? "当前账号尚未绑定门店，暂时无法查询实时商品总数。"
+                    : "Your account is not bound to a store, so the live product total is unavailable.";
             return shortcutResult("product_count",
-                    "Your account is not bound to a store, so the live product total is unavailable. Open Products to check the catalogue.",
+                    message,
                     Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
         }
         if (!tenant.canQueryReport()) {
+            String message = isChinese(question)
+                    ? "你没有权限查询实时商品总数。"
+                    : "You do not have permission to query the live product total.";
             return shortcutResult("product_count",
-                    "You do not have permission to query the live product total. Open Products to browse the catalogue.",
+                    message,
                     Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
         }
-        Integer count = null;
+        OdooReportQueryService.ProductCountResult result = null;
         if (reportQueryService != null) {
-            count = reportQueryService.countSellableProducts(tenant);
+            result = reportQueryService.countSellableProducts(tenant);
         }
-        String summary = count != null
-                ? "This store has " + count + " sellable products in the catalogue. Open Products to browse."
-                : "Live product count is unavailable right now. Open Products to browse or try again shortly.";
+        boolean chinese = isChinese(question);
+        String error = result == null ? "ODOO_REPORT_UNAVAILABLE" : result.error();
+        String summary = result != null && result.count() != null && error == null
+                ? productCountSummary(result.count(), chinese)
+                : productCountFailureMessage(error, chinese);
         return shortcutResult("product_count", summary, Map.of(), fast.panel(), fast.view(), fast.route(), fast.action());
+    }
+
+    private Map<String, Object> productSearchShortcut(AssistantFastPathRouter.Match fast, String question) {
+        String query = fast.slots().get("query").trim();
+        TenantContext tenant = AssistantTenantContext.get();
+        OdooReportQueryService.ProductSearchResult result = reportQueryService == null
+                ? null : reportQueryService.searchProducts(tenant, query, 5);
+        String summary;
+        if (result == null || result.error() != null) {
+            String error = result == null ? "ODOO_REPORT_UNAVAILABLE" : result.error();
+            summary = productSearchFailureMessage(error, isChinese(question));
+        } else if (result.rows() == null || result.rows().isEmpty()) {
+            summary = isChinese(question)
+                    ? "商品目录中没有找到与“" + query + "”匹配的商品。"
+                    : "No catalogue matches found for \"" + query + "\".";
+        } else {
+            boolean chinese = isChinese(question);
+            String lines = result.rows().stream()
+                    .limit(5)
+                    .map(row -> productSearchLine(row, chinese))
+                    .collect(Collectors.joining("\n"));
+            summary = (chinese ? "找到以下商品：\n" : "Matching products:\n") + lines;
+        }
+        return shortcutResult("search_product", summary, fast.slots(), fast.panel(), fast.view(),
+                fast.route(), fast.action());
+    }
+
+    private static String productSearchLine(Map<String, Object> row, boolean chinese) {
+        String name = String.valueOf(row.getOrDefault("name", "")).trim();
+        if (name.isBlank()) name = chinese ? "未命名商品" : "Unnamed product";
+        Object price = row.get("list_price");
+        Object quantity = row.get("quantity");
+        String priceLabel = price == null ? "" : (chinese ? "售价 $" : "$") + price;
+        String stockLabel = quantity == null ? "" : (chinese ? "库存 " : "stock ") + quantity;
+        String details = java.util.stream.Stream.of(priceLabel, stockLabel)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.joining(" · "));
+        return details.isBlank() ? "• " + name : "• " + name + " — " + details;
+    }
+
+    private static String productSearchFailureMessage(String error, boolean chinese) {
+        return switch (error == null ? "" : error) {
+            case "NO_STORE", "NO_OUTLET" -> chinese
+                    ? "当前账号未绑定门店，暂时无法查询商品。"
+                    : "This account is not bound to a store, so products cannot be searched.";
+            case "NO_PERMISSION" -> chinese
+                    ? "当前账号没有权限查询商品，请联系管理员检查门店权限。"
+                    : "This account does not have permission to search products.";
+            case "NEED_PRODUCT" -> chinese
+                    ? "请提供商品名称或条码，我再帮你查找。"
+                    : "Tell me a product name or barcode to search for.";
+            case "ODOO_REPORT_NOT_CONFIGURED", "ODOO_REPORT_STORE_UNLINKED" -> chinese
+                    ? "当前门店的 Odoo 商品目录不可用，请稍后重试或打开商品目录。"
+                    : "The Odoo product catalogue is unavailable for this store. Please try again or open Products.";
+            default -> chinese
+                    ? "暂时无法查询商品目录，请稍后重试或打开商品目录。"
+                    : "The product catalogue is unavailable right now. Please try again or open Products.";
+        };
+    }
+
+    private static String productCountSummary(int count, boolean chinese) {
+        return chinese
+                ? "本店商品目录共有 " + count + " 个可售商品。"
+                : "This store has " + count + " sellable products in the catalogue.";
+    }
+
+    private static String productCountFailureMessage(String error, boolean chinese) {
+        return switch (error == null ? "" : error) {
+            case "NO_PERMISSION" -> chinese
+                    ? "你没有权限查询实时商品总数。"
+                    : "You do not have permission to query the live product total.";
+            case "NO_OUTLET" -> chinese
+                    ? "当前账号尚未绑定门店，暂时无法查询实时商品总数。"
+                    : "Your account is not bound to a store, so the live product total is unavailable.";
+            case "ODOO_REPORT_NOT_CONFIGURED" -> chinese
+                    ? "当前门店尚未配置 Odoo，暂时无法获取商品总数。"
+                    : "Odoo is not configured for this store, so the live product total is unavailable.";
+            case "ODOO_REPORT_STORE_UNLINKED" -> chinese
+                    ? "当前门店尚未连接 Odoo，暂时无法获取商品总数。"
+                    : "This store is not linked to Odoo, so the live product total is unavailable.";
+            default -> chinese
+                    ? "当前暂时无法获取商品总数，请稍后重试。"
+                    : "Live product count is unavailable right now. Please try again shortly.";
+        };
+    }
+
+    private static boolean isChinese(String text) {
+        return text != null && text.matches("(?s).*[\\u3400-\\u9fff].*");
     }
 
     private static boolean isProductCountUtterance(String question) {
@@ -422,6 +700,7 @@ public class ClassifyQueryNode implements NodeAction {
                 .replace('！', '!')
                 .replace('。', '.');
         return q.matches(".*(?:有多少(?:个)?(?:产品|商品)|(?:产品|商品)(?:一共|总共|总数|数量)(?:有多少|是多少)?|(?:产品|商品)(?:现在)?(?:有多少(?:个|种)?|有几(?:个|种))|一共有多少(?:个)?(?:产品|商品)|(?:产品|商品)有几种|有几种(?:产品|商品)|(?:产品|商品)总共有多少|(?:店里|目录|商品目录)?(?:有多少种|一共有多少种|总共有多少种)(?:产品|商品)|(?:目录|商品目录)(?:里)?(?:有多少|共有多少)(?:个)?(?:商品|产品)?|(?:sku|商品)总数(?:是多少|有多少)?).*[?!.]?$")
+                || q.matches(".*(?:我们|店里|门店|本店)(?:店里)?(?:现在)?(?:一共|总共)?有多少(?:个|种)?(?:产品|商品).*[?!.]?$")
                 || q.matches(".*(?:how many|number of|what(?:'s| is) the number of|total number of) (?:our )?(?:products?|items?|skus?)(?: do we have(?: in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop))?| are there| do we stock| we stock| in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop)| (?:are|is) in (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop))?[?!.]?$" )
                 || q.matches(".*how many (?:products?|items?|skus?) (?:are|is) (?:in|on) (?:the )?(?:product )?catalog(?:ue)?[?!.]?$")
                 || q.matches(".*how many (?:products?|items?|skus?) (?:in|on) (?:our |the )?(?:(?:product )?catalog(?:ue)?|store|shop)[?!.]?$")

@@ -104,6 +104,10 @@ class WorkflowRouteRouterTest {
         assertRoute("牛排配什么酒", "/sommelier");
         assertRoute("红酒配牛排", "/sommelier");
         assertRoute("晚餐喝什么酒", "/sommelier");
+        assertRoute("Recommend beer for a BBQ under $20", "/recommend/grocery");
+        assertRoute("Find me some snacks", "/recommend/grocery");
+        assertRoute("推荐啤酒", "/recommend/grocery");
+        assertRoute("推荐零食", "/recommend/grocery");
         assertRoute("识别这张发票", "/invoices");
         assertRoute("Scan this supplier bill", "/invoices");
         assertRoute("Can you read this bill?", "/invoices");
@@ -115,6 +119,7 @@ class WorkflowRouteRouterTest {
         assertRoute("Take a photo of this invoice", "/invoices");
         assertRoute("Snap this supplier invoice", "/invoices");
         assertRoute("Read this supplier invoice", "/invoices");
+        assertRoute("帮我看一下这张供应商发票", "/invoices");
         assertRoute("Who are our suppliers?", "/suppliers/odoo");
     }
 
@@ -138,6 +143,7 @@ class WorkflowRouteRouterTest {
         assertNull(WorkflowRouteRouter.maybeOverride("Upload an invoice"));
         assertNull(WorkflowRouteRouter.maybeOverride("上传这张账单"));
         assertNull(WorkflowRouteRouter.maybeOverride("上传供应商发票"));
+        assertNull(WorkflowRouteRouter.maybeOverride("供应商发票还有吗？"));
         assertNull(WorkflowRouteRouter.maybeOverride("帮我上传这张发票"));
         assertNull(WorkflowRouteRouter.maybeOverride("把供应商账单传上去"));
         assertNull(WorkflowRouteRouter.maybeOverride("Send this supplier bill"));
@@ -221,6 +227,26 @@ class WorkflowRouteRouterTest {
         assertTrue(WorkflowRouteRouter.hasWriteIntent("编辑这个产品"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Delete this supplier"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Receive this stock"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Archive this customer"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Restore this product"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Cancel this purchase order"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Deactivate this gift card"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("归档客户资料"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("恢复这个商品"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("取消这张采购订单"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("停用礼品卡"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Update the price"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("更新这个商品售价"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Save it"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Could you update it?"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("Please delete that"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("请保存一下"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("请帮忙保存一下"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("麻烦帮我确认一下"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("保存了吗？"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("商品删除了没有？"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("删除它"));
+        assertTrue(WorkflowRouteRouter.hasWriteIntent("帮我确认一下"));
 
         assertTrue(WorkflowRouteRouter.hasWriteIntent("Upload this supplier bill"));
         assertTrue(WorkflowRouteRouter.hasWriteIntent("上传这张账单"));
@@ -237,6 +263,8 @@ class WorkflowRouteRouterTest {
         assertFalse(WorkflowRouteRouter.hasWriteIntent("AI 能自动下采购单吗"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("AI会自动改价吗"));
         assertFalse(WorkflowRouteRouter.hasWriteIntent("Will you place orders?"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("Show archived products"));
+        assertFalse(WorkflowRouteRouter.hasWriteIntent("List cancelled orders"));
     }
 
     @Test

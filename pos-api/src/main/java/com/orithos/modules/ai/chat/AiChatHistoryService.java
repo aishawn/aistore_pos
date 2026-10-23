@@ -1,7 +1,11 @@
 package com.orithos.modules.ai.chat;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.BusinessException;
 import com.orithos.modules.ai.AiConversationMemory;
+import com.orithos.modules.ai.PosAssistantGraphService;
+import com.orithos.modules.ai.report.AiReportSnapshotService;
 import com.orithos.modules.ai.report.TenantContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,15 +29,31 @@ public class AiChatHistoryService {
 
     private final AiChatHistoryMapper mapper;
     private final ObjectProvider<AiConversationMemory> conversationMemory;
+    private final AiReportSnapshotService reportSnapshotService;
+    private final ObjectMapper objectMapper;
 
     public AiChatHistoryService(AiChatHistoryMapper mapper,
-                                ObjectProvider<AiConversationMemory> conversationMemory) {
+                                ObjectProvider<AiConversationMemory> conversationMemory,
+                                AiReportSnapshotService reportSnapshotService,
+                                ObjectMapper objectMapper) {
         this.mapper = mapper;
         this.conversationMemory = conversationMemory;
+        this.reportSnapshotService = reportSnapshotService;
+        this.objectMapper = objectMapper;
     }
 
     public void appendTurn(TenantContext tenant, String sessionKey, String question,
                            String intent, String answer) {
+        appendTurn(tenant, sessionKey, question, intent, answer, null, Map.of());
+    }
+
+    public void appendTurn(TenantContext tenant, String sessionKey, String question,
+                           String intent, String answer, Long reportId) {
+        appendTurn(tenant, sessionKey, question, intent, answer, reportId, Map.of());
+    }
+
+    public void appendTurn(TenantContext tenant, String sessionKey, String question,
+                           String intent, String answer, Long reportId, Map<String, String> slots) {
         if (tenant == null || sessionKey == null || sessionKey.isBlank()
                 || question == null || question.isBlank()) {
             return;
@@ -62,12 +82,15 @@ public class AiChatHistoryService {
             userMsg.setIntent(null);
             mapper.insertMessage(userMsg);
 
-            if (answer != null && !answer.isBlank()) {
+            if ((answer != null && !answer.isBlank()) || reportId != null
+                    || (slots != null && !slots.isEmpty())) {
                 AiChatMessage assistantMsg = new AiChatMessage();
                 assistantMsg.setThreadId(thread.getId());
                 assistantMsg.setRole("assistant");
-                assistantMsg.setTextContent(answer.trim());
+                assistantMsg.setTextContent(answer == null ? "" : answer.trim());
                 assistantMsg.setIntent(intent);
+                assistantMsg.setReportId(reportId);
+                assistantMsg.setSlotsJson(serializeSlots(slots));
                 mapper.insertMessage(assistantMsg);
             }
         } catch (DataAccessException e) {
@@ -99,6 +122,7 @@ public class AiChatHistoryService {
         }
         List<AiChatMessage> messages = mapper.listMessages(thread.getId(), MAX_MESSAGES);
         List<Map<String, Object>> msgOut = new ArrayList<>();
+        String pendingQuestion = null;
         for (AiChatMessage m : messages) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", m.getId());
@@ -106,6 +130,26 @@ public class AiChatHistoryService {
             row.put("text", m.getTextContent());
             row.put("intent", m.getIntent());
             row.put("createdAt", m.getCreatedAt());
+            if ("assistant".equalsIgnoreCase(m.getRole()) && m.getReportId() != null) {
+                try {
+                    var report = reportSnapshotService.getOwned(m.getReportId(), tenant);
+                    row.put("reportId", report.id());
+                    row.put("table", report.table());
+                } catch (BusinessException e) {
+                    log.warn("AI chat report snapshot restore skipped id={} code={}", m.getReportId(), e.getCode());
+                } catch (DataAccessException e) {
+                    log.warn("AI chat report snapshot restore skipped id={} type={}",
+                            m.getReportId(), e.getClass().getSimpleName());
+                }
+            }
+            if ("user".equalsIgnoreCase(m.getRole())) {
+                pendingQuestion = m.getTextContent();
+            } else if ("assistant".equalsIgnoreCase(m.getRole()) && pendingQuestion != null) {
+                List<?> cards = PosAssistantGraphService.cardsForHistory(
+                        m.getIntent(), m.getTextContent(), pendingQuestion);
+                if (!cards.isEmpty()) row.put("cards", cards);
+                pendingQuestion = null;
+            }
             msgOut.add(row);
         }
         rehydrateActiveContext(thread.getSessionKey(), messages);
@@ -140,7 +184,8 @@ public class AiChatHistoryService {
                 turns.add(new AiConversationMemory.Turn(
                         pendingQuestion,
                         message.getIntent() == null ? "" : message.getIntent(),
-                        message.getTextContent() == null ? "" : message.getTextContent()));
+                        message.getTextContent() == null ? "" : message.getTextContent(),
+                        deserializeSlots(message.getSlotsJson())));
                 pendingQuestion = null;
             }
         }
@@ -151,6 +196,31 @@ public class AiChatHistoryService {
             turns = turns.subList(turns.size() - REHYDRATE_TURNS, turns.size());
         }
         memory.rehydrate(sessionKey, turns);
+    }
+
+    private String serializeSlots(Map<String, String> slots) {
+        try {
+            return objectMapper.writeValueAsString(slots == null ? Map.of() : slots);
+        } catch (Exception e) {
+            log.warn("AI chat slots persist skipped type={}", e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private Map<String, String> deserializeSlots(String slotsJson) {
+        if (slotsJson == null || slotsJson.isBlank()) return Map.of();
+        try {
+            Map<String, String> slots = objectMapper.readValue(slotsJson, new TypeReference<>() {});
+            if (slots == null || slots.isEmpty()) return Map.of();
+            Map<String, String> clean = new LinkedHashMap<>();
+            slots.forEach((key, value) -> {
+                if (key != null && value != null && !key.isBlank()) clean.put(key, value);
+            });
+            return clean;
+        } catch (Exception e) {
+            log.warn("AI chat slots restore skipped type={}", e.getClass().getSimpleName());
+            return Map.of();
+        }
     }
 
     private static String titleFrom(String question) {

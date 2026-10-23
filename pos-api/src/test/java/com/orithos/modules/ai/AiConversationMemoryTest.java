@@ -51,6 +51,7 @@ class AiConversationMemoryTest {
         memory.clear("thread");
 
         verify(redis).delete("ai:chat:thread");
+        verify(redis).delete("ai:slots:thread");
     }
 
     @Test
@@ -77,5 +78,22 @@ class AiConversationMemoryTest {
 
         verify(values).set(eq("ai:slots:thread"),
                 org.mockito.ArgumentMatchers.contains("Shiraz"), eq(Duration.ofMinutes(120)));
+    }
+
+    @Test
+    void loadsLastSlotsOnlyFromTheSuppliedTenantUserThreadKey() {
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> values = mock(ValueOperations.class);
+        when(redis.opsForValue()).thenReturn(values);
+        when(values.get("ai:slots:7:11:thread-a"))
+                .thenReturn("{\"intent\":\"report_stock\",\"slots\":{\"query\":\"Shiraz\"}}");
+        AiConversationMemory memory = new AiConversationMemory(redis, new com.fasterxml.jackson.databind.ObjectMapper(),
+                new AiProperties(true, null, null, null, null, 0.1, 1024, 40, 6, 120));
+
+        AiConversationMemory.LastSlots last = memory.loadLastSlots("7:11:thread-a");
+
+        assertEquals("report_stock", last.intent());
+        assertEquals("Shiraz", last.slots().get("query"));
+        verify(values).get("ai:slots:7:11:thread-a");
     }
 }

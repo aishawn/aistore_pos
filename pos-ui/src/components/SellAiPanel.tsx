@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { Eraser, ExternalLink, History, MessageCircle, Mic, Plus, RefreshCw, Send, X } from "lucide-react";
@@ -17,11 +17,11 @@ import {
   type AssistantResponse,
 } from "@/lib/api";
 import {
-  executeEntityDelete,
   resolveEntityAction,
-  type PendingEntityDelete,
 } from "@/lib/ai-entity-actions";
-import { normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
+import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
+import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
+import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
 import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
@@ -80,6 +80,7 @@ interface ChatCta {
 interface ChatMessage {
   role: "user" | "assistant";
   text: string;
+  question?: string;
   table?: { columns: string[]; rows: Record<string, unknown>[] } | null;
   reportId?: number | null;
   cards?: AssistantCard[] | null;
@@ -354,9 +355,6 @@ export function SellAiPanel({
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
   const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [pendingEntityDelete, setPendingEntityDelete] = useState<PendingEntityDelete | null>(null);
-  const [entityDeleteBusy, setEntityDeleteBusy] = useState(false);
-  const entityDeleteBusyRef = useRef(false);
   const [voiceAlert, setVoiceAlert] = useState<string | null>(null);
   const [compactViewport, setCompactViewport] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -386,7 +384,20 @@ export function SellAiPanel({
   const fullscreenPanel =
     pagePresentation || forceFullscreen || mobileOnly || compactViewport;
 
-  const dismissPanel = () => collapsePanel();
+  const dismissPanel = useCallback(() => {
+    if (!document.activeElement?.closest('[role="dialog"]')) {
+      restoreFocusRef.current = null;
+      restoreFabRef.current = false;
+    }
+    onExpandedChange(false);
+    voicePressedRef.current = false;
+    voiceSessionRef.current += 1;
+    voiceStopRef.current?.();
+    voiceStopRef.current = null;
+    setListening(false);
+    setVoiceStatus(null);
+    onRequestClose?.();
+  }, [onExpandedChange, onRequestClose]);
   // Page mode keeps Sidebar interactive — Escape closes, but no focus trap.
   useDialogFocus(
     expanded && !pagePresentation,
@@ -404,7 +415,7 @@ export function SellAiPanel({
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [pagePresentation, expanded]);
+  }, [pagePresentation, expanded, dismissPanel]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -756,15 +767,23 @@ export function SellAiPanel({
     setHistoryError(null);
     try {
       const detail = await fetchAiChatThread(id);
+      let previousQuestion: string | undefined;
       const restored: ChatMessage[] = detail.messages
         .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({
-          role: m.role as "user" | "assistant",
-          text: m.text || "",
-          diagnostics: m.role === "assistant" && m.intent
-            ? { intent: m.intent, latencyMs: 0, status: "ok" as const }
-            : undefined,
-        }));
+        .map((m) => {
+          const message: ChatMessage = {
+            role: m.role as "user" | "assistant",
+            text: m.text || "",
+            ...(m.role === "assistant" ? { reportId: m.reportId ?? null, table: m.table ?? null } : {}),
+            ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion) : {}),
+            ...(m.role === "assistant" && previousQuestion ? { question: previousQuestion } : {}),
+            diagnostics: m.role === "assistant" && m.intent
+              ? { intent: m.intent, latencyMs: 0, status: "ok" as const }
+              : undefined,
+          };
+          previousQuestion = m.role === "user" ? m.text || "" : undefined;
+          return message;
+        });
       setMessages(
         restored.length
           ? restored
@@ -864,10 +883,11 @@ export function SellAiPanel({
           appendReply({
               role: "assistant",
               text: answerText,
+              question: text,
               table: result.table ?? null,
               reportId: result.reportId ?? null,
               cards: result.cards ?? null,
-              retryQuestion: result.cards?.some((card) => card.status === "unavailable") ? text : null,
+              retryQuestion: retryQuestionForAssistantCards(result.cards, text) ?? null,
               cta,
               links: cta ? [cta] : recoveryLinks.length ? recoveryLinks : null,
               diagnostics: {
@@ -887,6 +907,7 @@ export function SellAiPanel({
         (e instanceof Error && e.name === "AbortError");
       appendReply({
           role: "assistant",
+          question: text,
           text: aborted
             ? "The assistant timed out. Try a shorter question, or use Today's sales / Check stock shortcuts."
             : aiFailureMessage(e, "chat"),
@@ -976,22 +997,25 @@ export function SellAiPanel({
       return { kind: "messaged" };
     }
 
+    if (intent === "sale_action") {
+      return { kind: "deferred", href: assistantSaleActionHref(ui.action) };
+    }
+
     if (intent === "search_product") {
       openProductLookup(slots.query ?? "");
       return { kind: "messaged" };
     }
 
     if (intent === "entity_action") {
-      const operation = String(slots.op ?? "").toLowerCase();
-      if (!/^(list|search|view|get|lookup|find|show)$/.test(operation)) {
-        const entity = String(slots.entity ?? "").toLowerCase();
-        const href = entity.includes("customer") || entity.includes("client") ? "/customers"
-          : entity.includes("product") || entity.includes("item") || entity.includes("catalog") ? "/products"
-            : entity.includes("invoice") || entity.includes("bill") ? "/invoices"
-              : entity.includes("order") || entity.includes("purchase") ? "/orders"
-                : entity.includes("supplier") || entity.includes("vendor") ? "/suppliers/odoo"
-                : "/stock/replenishment";
-        return { kind: "deferred", href };
+      if (!isReadOnlyEntityOperation(slots.op)) {
+        const entityRoute = entityActionPage(slots.entity);
+        const suggestedRoute = typeof ui.route === "string"
+          && ui.route.startsWith("/")
+          && !ui.route.startsWith("//")
+          ? normalizeAssistantHref(ui.route)
+          : null;
+        const href = entityRoute ?? suggestedRoute;
+        return href ? { kind: "deferred", href } : { kind: "messaged" };
       }
       await handleEntityAction(slots.entity, slots.op, slots.query);
       return { kind: "messaged" };
@@ -1007,24 +1031,14 @@ export function SellAiPanel({
     }
 
     let deferred: IntentDispatch = { kind: "none" };
-    if (ui.route && ui.route.startsWith("/") && !ui.route.startsWith("//")) {
-      if (!mobileOnly || isMobileAllowedHref(ui.route)) {
-        deferred = { kind: "deferred", href: ui.route };
+    const assistantRoute = normalizeAssistantHref(ui.route);
+    if (assistantRoute) {
+      if (!mobileOnly || isMobileAllowedHref(assistantRoute)) {
+        deferred = { kind: "deferred", href: assistantRoute };
       } else {
         pushAssistantNote("Open the WEB app to continue this action.");
         return { kind: "messaged" };
       }
-    }
-
-    if (intent === "sale_action" && ui.action) {
-      const action = ui.action;
-      if (action === "Create Customer") {
-        return { kind: "deferred", href: "/customers" };
-      }
-      if (action === "Create Product") {
-        return { kind: "deferred", href: "/products" };
-      }
-      setPendingAction(action);
     }
 
     return deferred;
@@ -1039,10 +1053,6 @@ export function SellAiPanel({
         if (!(mobileOnly && result.scope === "product")) {
           onExpandedChange(true);
         }
-        return;
-      }
-      if (result.kind === "confirm_delete") {
-        setPendingEntityDelete(result.pending);
         return;
       }
       if (result.kind === "navigate" || result.kind === "pick_list") {
@@ -1070,25 +1080,6 @@ export function SellAiPanel({
     const action = pendingAction;
     setPendingAction(null);
     runSellAction(action);
-  }
-
-  async function confirmEntityDelete() {
-    if (!pendingEntityDelete || entityDeleteBusyRef.current) return;
-    entityDeleteBusyRef.current = true;
-    setEntityDeleteBusy(true);
-    try {
-      await executeEntityDelete(pendingEntityDelete);
-      pushAssistantNote(
-        `Deleted ${pendingEntityDelete.entity.replaceAll("_", " ")} “${pendingEntityDelete.name}”.`,
-      );
-      setPendingEntityDelete(null);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Delete failed";
-      pushAssistantNote(msg);
-    } finally {
-      entityDeleteBusyRef.current = false;
-      setEntityDeleteBusy(false);
-    }
   }
 
   /** Cloud-only STT via DashScope; no browser Web Speech fallback. */
@@ -1367,25 +1358,6 @@ export function SellAiPanel({
         variant="default"
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
-      />
-      <ConfirmDialog
-        open={!!pendingEntityDelete}
-        title="Confirm Delete"
-        message={
-          pendingEntityDelete
-            ? `Delete ${pendingEntityDelete.entity.replaceAll("_", " ")} “${pendingEntityDelete.name}”? This cannot be undone from AI.`
-            : ""
-        }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        variant="danger"
-        busy={entityDeleteBusy}
-        onConfirm={() => {
-          void confirmEntityDelete();
-        }}
-        onCancel={() => {
-          if (!entityDeleteBusy) setPendingEntityDelete(null);
-        }}
       />
       <AlertDialog
         open={!!voiceAlert}
@@ -1754,14 +1726,17 @@ function DialogueView({
           const cardCtas = cards.map(resolveAssistantCardCta);
           const cardRoutes = new Set(cardCtas.flatMap((cta) => cta ? [cta.href] : []));
           const fallbackLinks = links.filter((link) => !cardRoutes.has(link.href));
+          const hasStructuredCards = msg.role === "assistant" && cards.length > 0;
           return (
           <div
             key={i}
             className={cn(
-              "max-w-[92%] rounded-[var(--oh-radius)] px-3.5 py-2.5 text-[14px] leading-relaxed",
+              "max-w-[92%] text-[14px] leading-relaxed",
               msg.role === "user"
-                ? "ml-auto border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] text-[var(--oh-text)]"
-                : "mr-auto whitespace-pre-wrap border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-text)] shadow-sm",
+                ? "ml-auto rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3.5 py-2.5 text-[var(--oh-text)]"
+                : hasStructuredCards
+                  ? "mr-auto whitespace-pre-wrap text-[var(--oh-text)]"
+                  : "mr-auto whitespace-pre-wrap rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-white px-3.5 py-2.5 text-[var(--oh-text)] shadow-sm",
             )}
           >
             {msg.role === "assistant" && msg.reportId && cards.length === 0 ? (
@@ -1788,14 +1763,16 @@ function DialogueView({
               <div className="space-y-2">
                 {cards.map((card, cardIndex) => {
                   const cardCta = cardCtas[cardIndex];
+                  const chineseCard = /[\u3400-\u9fff]/.test(`${msg.question ?? ""} ${card.summary ?? ""}`);
+                  const title = assistantCardTitle(card.type, card.title, chineseCard);
                   return (
                   <section
                     key={`${card.type}-${cardIndex}`}
-                    aria-label={card.title}
+                    aria-label={title}
                     className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] p-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <strong className="text-[13px] text-[var(--oh-text)]">{card.title}</strong>
+                      <strong className="text-[13px] text-[var(--oh-text)]">{title}</strong>
                       <span className={cn(
                         "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                         card.status === "unavailable"
@@ -1804,7 +1781,11 @@ function DialogueView({
                             ? "bg-amber-50 text-amber-700"
                             : "bg-emerald-50 text-emerald-700",
                       )}>
-                        {card.status === "unavailable" ? "Unavailable" : card.status === "empty" ? "No match" : "Ready"}
+                        {card.status === "unavailable"
+                          ? chineseCard ? "暂不可用" : "Unavailable"
+                          : card.status === "empty"
+                            ? chineseCard ? "暂无匹配" : "No match"
+                            : chineseCard ? "可用" : "Ready"}
                       </span>
                     </div>
                     {card.summary ? (
@@ -1828,7 +1809,7 @@ function DialogueView({
                         onClick={() => onOpenLink(cardCta.href)}
                         className={cn(chatNavLinkClassName, "mt-1.5")}
                       >
-                        {cardCta.label}
+                        {assistantCardCtaLabel(cardCta, chineseCard)}
                         <ExternalLink className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       </button>
                     ) : null}
@@ -1840,7 +1821,7 @@ function DialogueView({
                         className={cn(chatNavLinkClassName, "mt-1.5 disabled:cursor-not-allowed disabled:opacity-50")}
                       >
                         <RefreshCw className="h-3 w-3 shrink-0" aria-hidden />
-                        Retry
+                        {chineseCard ? "重试" : "Retry"}
                       </button>
                     ) : null}
                   </section>
@@ -1877,7 +1858,7 @@ function DialogueView({
                 ) : null}
               </>
             )}
-            {msg.role === "assistant" && !msg.reportId && msg.table && msg.table.rows.length > 0 && (
+            {msg.role === "assistant" && msg.table && msg.table.rows.length > 0 && (
               <div className="mt-2 overflow-x-auto">
                 <table aria-label="Assistant result table" className="w-full border-collapse text-[13px]">
                   <thead>

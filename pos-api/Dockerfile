@@ -13,8 +13,8 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
 COPY src ./src
 ARG SOURCE_COMMIT=
 RUN printf 'commit=%s\nbuiltAt=%s\n' "$SOURCE_COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/main/resources/build-identity.properties
-# Deploy builds compile and package the service; the full test gate runs separately.
-RUN --mount=type=cache,target=/root/.m2 mvn -B clean package -DskipTests
+# The exact Java 21 image candidate must pass the full Maven test suite before packaging.
+RUN --mount=type=cache,target=/root/.m2 mvn -B clean verify
 
 # ============================================
 # Stage 2: Run the JAR on a slim JRE

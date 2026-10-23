@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS ai_chat_message (
   role VARCHAR(16) NOT NULL,
   text_content MEDIUMTEXT NOT NULL,
   intent VARCHAR(64) NULL,
+  report_id BIGINT NULL,
+  slots_json MEDIUMTEXT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_ai_chat_message_thread (thread_id, id),
   CONSTRAINT fk_ai_chat_message_thread

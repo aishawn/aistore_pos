@@ -10,6 +10,8 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ReplenishmentChatBriefTest {
@@ -35,15 +37,57 @@ class ReplenishmentChatBriefTest {
     }
 
     @Test
-    void briefSoftFallsBackWhenPlanUnavailable() {
+    void briefFormatsChineseSuggestionsWithTheSameSourceValues() {
+        OdooReplenishmentClient client = mock(OdooReplenishmentClient.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenReturn(new ReplenishmentPlan(
+                21, 5, List.of(new ReplenishmentSuggestion(1, "Shiraz", "Units", 12, 5.0, 1.0))));
+
+        String text = new ReplenishmentChatBrief(client).brief("哪些商品需要补货？", tenant);
+
+        assertTrue(text.contains("建议补货（覆盖 21 天）：5 个商品需要补货。"));
+        assertTrue(text.contains("\n• Shiraz — 建议订购 12（约剩 5.0 天）"));
+        assertTrue(text.contains("打开补货页面审核数量并确认订单。"));
+    }
+
+    @Test
+    void briefMarksMissingPlanUnavailableAndOffersRetry() {
         OdooReplenishmentClient client = mock(OdooReplenishmentClient.class);
         TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
         when(client.plan(tenant)).thenReturn(null);
 
         String text = new ReplenishmentChatBrief(client).brief("补货建议", tenant);
 
-        assertTrue(text.toLowerCase().contains("replenishment"));
-        assertTrue(text.toLowerCase().contains("tap below"));
+        assertTrue(text.contains("暂不可用"));
+        assertTrue(text.contains("重试"));
+
+        String missingTenant = new ReplenishmentChatBrief(client).brief("补货建议", null);
+        assertTrue(missingTenant.contains("暂不可用"));
+        verify(client, times(1)).plan(tenant);
+    }
+
+    @Test
+    void briefMarksClientFailureUnavailableAndOffersRetry() {
+        OdooReplenishmentClient client = mock(OdooReplenishmentClient.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenThrow(new IllegalStateException("upstream unavailable"));
+
+        String text = new ReplenishmentChatBrief(client).brief("What should I restock?", tenant);
+
+        assertTrue(text.toLowerCase().contains("unavailable"));
+        assertTrue(text.toLowerCase().contains("retry"));
+    }
+
+    @Test
+    void briefMarksChineseClientFailureUnavailableInChinese() {
+        OdooReplenishmentClient client = mock(OdooReplenishmentClient.class);
+        TenantContext tenant = new TenantContext(1L, 1L, 1L, List.of(1L), Set.of("ROLE_ADMIN"));
+        when(client.plan(tenant)).thenThrow(new IllegalStateException("upstream unavailable"));
+
+        String text = new ReplenishmentChatBrief(client).brief("给我补货建议", tenant);
+
+        assertTrue(text.contains("暂不可用"));
+        assertTrue(text.contains("重试"));
     }
 
     @Test

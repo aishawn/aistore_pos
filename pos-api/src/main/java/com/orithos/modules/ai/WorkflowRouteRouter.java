@@ -58,16 +58,16 @@ public final class WorkflowRouteRouter {
     /** Explicit invoice OCR / preview — not bare “invoice” wording (reports use that too). */
     private static final Pattern INVOICE = Pattern.compile(
             "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you (?:read|check) (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|"
-                    + "读取.*(?:供应商)?(?:单据|发票|账单)|识别.*(?:供应商)?(?:发票|账单)|上传.*(?:供应商)?(?:发票|账单)|拍照.*(?:供应商)?(?:发票|账单)|请识别.*(?:发票|账单)",
+                    + "读取.*(?:供应商)?(?:单据|发票|账单)|识别.*(?:供应商)?(?:发票|账单)|上传.*(?:供应商)?(?:发票|账单)|拍照.*(?:供应商)?(?:发票|账单)|请识别.*(?:发票|账单)|(?:帮我)?(?:看一下|看下|看看|查看)(?:一下)?(?:这张|该张)(?:供应商)?(?:发票|账单)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_NATURAL = Pattern.compile(
             "snap (?:this|an?|the) (?:supplier )?(?:invoice|bill)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern INVOICE_MUTATION = Pattern.compile(
-            "\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
-                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
-                    + "(?:创建|添加|编辑|修改|删除|移除|导入|上传|传上去|传一下|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并).*?(?:发票|账单)|"
-                    + "(?:发票|账单).*?(?:创建|添加|编辑|修改|删除|移除|导入|上传|传上去|传一下|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并)",
+            "\\b(?:create|add|edit|update|delete|remove|archive|restore|cancel|void|close|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b.*\\b(?:invoice|bill)\\b|"
+                    + "\\b(?:invoice|bill)\\b.*\\b(?:create|add|edit|update|delete|remove|archive|restore|cancel|void|close|import|upload|receive|return|transfer|adjust|confirm|approve|save|start|begin|submit|send|publish|post|book|merge)\\b|"
+                    + "(?:创建|添加|编辑|修改|删除|移除|归档|恢复|取消|作废|关闭|导入|上传|传上去|传一下|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并).*?(?:发票|账单)|"
+                    + "(?:发票|账单).*?(?:创建|添加|编辑|修改|删除|移除|归档|恢复|取消|作废|关闭|导入|上传|传上去|传一下|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布|入账|登记|合并)",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern REPORT_CONTEXT = Pattern.compile(
             "sales|sold|revenue|takings|units|quantity|how much .*sold|how many .*invoice|how many .*supplier bills?|(?:do we have|any) .*invoices?|(?:have we|did we) receive .*bills?|invoice.*(?:received|total|count|paid|cost|price|exist|available|left|还有|有没有|有吗)|bill.*(?:received|total|count|paid|cost|exist|available)|(?:paid|pay|cost).*invoice|supplier.*(?:paid|payment|spend)|销量|销售|卖了|营业额|发票.*(?:多少|数量|总额|花了|成本|价格|收到|存在|还有|有没有|有吗)|账单.*(?:多少|数量|总额|收到|存在|还有|有没有|有吗)|(?:付款|支付).*发票|供应商.*(?:付款|支出)",
@@ -85,15 +85,23 @@ public final class WorkflowRouteRouter {
                     + "新增|添加|创建|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern ENTITY_WRITE = Pattern.compile(
-            "(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory|classification|category|customer group|price list|gift card|stocktake|buying period|balance)\\b|"
-                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory|classification|category|customer group|price list|gift card|stocktake|buying period|balance)\\b.*\\b(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b|"
-                    + "(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存|分类|客户分组|价目表|价格表|礼品卡|盘点|采购周期|客户余额)|"
-                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存|分类|客户分组|价目表|价格表|礼品卡|盘点|采购周期|客户余额).*?(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布)",
+            "(?:create|add|edit|update|delete|remove|archive|restore|activate|deactivate|cancel|void|close|suspend|duplicate|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory|classification|category|customer group|price list|gift card|stocktake|buying period|balance)\\b|"
+                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory|classification|category|customer group|price list|gift card|stocktake|buying period|balance)\\b.*\\b(?:create|add|edit|update|delete|remove|archive|restore|activate|deactivate|cancel|void|close|suspend|duplicate|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b|"
+                    + "(?:创建|添加|编辑|修改|更新|删除|移除|归档|恢复|启用|停用|取消|作废|关闭|暂停|复制|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|采购订单|订单|库存|分类|客户分组|价目表|价格表|礼品卡|盘点|采购周期|客户余额)|"
+                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|采购订单|订单|库存|分类|客户分组|价目表|价格表|礼品卡|盘点|采购周期|客户余额).*?(?:创建|添加|编辑|修改|更新|删除|移除|归档|恢复|启用|停用|取消|作废|关闭|暂停|复制|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布)",
             Pattern.CASE_INSENSITIVE);
+    /** Ambiguous imperative mutations still need a guided clarification, never LLM classification. */
+    private static final Pattern GENERIC_WRITE_REQUEST = Pattern.compile(
+            "^(?:(?:please\\s+)?(?:can|could|would|will)\\s+you\\s+(?:please\\s+)?|please\\s+)?"
+                    + "(?:save|delete|remove|edit|update|change|modify|create|add|submit|confirm|approve|send|publish|merge|import|archive|restore|cancel|void|receive|adjust|transfer|return|activate|deactivate|duplicate|close)\\b.*$|"
+                    + "^(?:请帮我|请帮忙|麻烦帮我|麻烦|帮我|帮忙|请)?(?:保存|删除|移除|编辑|修改|更新|创建|添加|提交|确认|批准|发送|发布|合并|导入|归档|恢复|取消|作废|收货|调整|调拨|退货|启用|停用|复制|关闭).*$",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern GENERIC_WRITE_STATUS_QUESTION = Pattern.compile(
+            "^(?=.*(?:保存|删除|移除|编辑|修改|更新|创建|添加|提交|确认|批准|发送|发布|合并|导入|归档|恢复|取消|作废|收货|调整|调拨|退货|启用|停用|复制|关闭)).*(?:了吗|了没有|没有|吗|么)[?!.]*$");
     /** Imperative purchase/price wording must fail closed before model routing. */
     private static final Pattern EXPLICIT_EXECUTION = Pattern.compile(
             "\\b(?:place|send|create|approve|apply|execute|finalize|commit)\\s+(?:the\\s+)?(?:purchase\\s+)?(?:order|replenishment|restock|suggestions?|prices?|pricing)\\b|"
-                    + "\\b(?:submit|confirm|save|publish|approve|apply|send|create|set|change)\\s+(?:(?:this|the|these|a|an|new|suggested|recommended|proposed)\\s+)*(?:purchase\\s+)?(?:order|price changes?|prices?|replenishment|restock)\\b|"
+                    + "\\b(?:submit|confirm|save|publish|approve|apply|send|create|set|change|update|raise|lower|reprice)\\s+(?:(?:this|the|these|a|an|new|suggested|recommended|proposed)\\s+)*(?:purchase\\s+)?(?:order|price changes?|prices?|price|pricing|replenishment|restock)\\b|"
                     + "\\b(?:buy|purchase|order)\\s+(?:these|those|the items?|the products?|it|them|now|today)\\b|"
                     + "(?:下单|采购这些|购买这些|执行补货|提交补货|提交采购订单|确认采购单|确认这些订单|确认这个订单|发送采购订单|保存价格变更|保存这些价格|应用这些价格|确认这些价格|发布价格|执行调价|直接调价|直接改价|设置这些价格|修改这些价格)",
             Pattern.CASE_INSENSITIVE);
@@ -281,6 +289,8 @@ public final class WorkflowRouteRouter {
         boolean historicalQuestion = normalized.matches(
                 "^(?:what|how|did|were|was)\\b.*\\b(?:today|yesterday|last|past|previous|week|month)\\b.*$");
         if (historicalQuestion && !EXPLICIT_EXECUTION.matcher(normalized).find()) return false;
+        if (GENERIC_WRITE_STATUS_QUESTION.matcher(normalized).matches()) return false;
+        if (GENERIC_WRITE_REQUEST.matcher(normalized).matches()) return true;
         boolean reportQuestion = REPORT_CONTEXT.matcher(normalized).find();
         if ((!reportQuestion && INVOICE_MUTATION.matcher(normalized).find())
                 || DIRECT_EXECUTION_ZH.matcher(normalized).find()

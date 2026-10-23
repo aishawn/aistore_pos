@@ -56,9 +56,22 @@ class PosAssistantToolsTest {
         TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of("ROLE_ADMIN"));
         AssistantTenantContext.set(tenant);
         OdooReportQueryService query = mock(OdooReportQueryService.class);
-        when(query.countSellableProducts(tenant)).thenReturn(42);
+        when(query.countSellableProducts(tenant))
+                .thenReturn(new OdooReportQueryService.ProductCountResult(42, null));
         PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
         assertTrue(tools.countProducts().contains("42"));
+    }
+
+    @Test
+    void countProductsExplainsPermissionFailureInsteadOfClaimingSourceUnavailable() {
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        when(query.countSellableProducts(tenant))
+                .thenReturn(new OdooReportQueryService.ProductCountResult(null, "NO_PERMISSION"));
+        PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
+
+        assertTrue(tools.countProducts().startsWith("NO_PERMISSION"));
     }
 
     @Test
@@ -66,5 +79,23 @@ class PosAssistantToolsTest {
         AssistantTenantContext.set(new TenantContext(1L, 2L, 3L, List.of(3L), Set.of("ROLE_ADMIN")));
         PosAssistantTools tools = new PosAssistantTools(mock(OdooReportQueryService.class), new ReportPeriodResolver());
         assertTrue(tools.searchProducts(" ").startsWith("NEED_PRODUCT"));
+    }
+
+    @Test
+    void searchProductsDistinguishesNoMatchFromUnavailableSource() {
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        OdooReportQueryService query = mock(OdooReportQueryService.class);
+        when(query.searchProducts(tenant, "Shiraz", 8))
+                .thenReturn(new OdooReportQueryService.ProductSearchResult(List.of(), null));
+        when(query.searchProducts(tenant, "Merlot", 8))
+                .thenReturn(new OdooReportQueryService.ProductSearchResult(List.of(), "ODOO_REPORT_UNAVAILABLE"));
+        when(query.searchProducts(tenant, "Cabernet", 8))
+                .thenReturn(new OdooReportQueryService.ProductSearchResult(List.of(), "NO_PERMISSION"));
+        PosAssistantTools tools = new PosAssistantTools(query, new ReportPeriodResolver());
+
+        assertTrue(tools.searchProducts("Shiraz").startsWith("No catalogue matches"));
+        assertTrue(tools.searchProducts("Merlot").startsWith("Product search unavailable"));
+        assertTrue(tools.searchProducts("Cabernet").startsWith("NO_PERMISSION"));
     }
 }

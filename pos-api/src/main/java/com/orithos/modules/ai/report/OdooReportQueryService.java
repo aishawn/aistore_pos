@@ -44,6 +44,7 @@ public class OdooReportQueryService {
     private static final List<String> PAID_STATES = List.of("paid", "done", "invoiced");
     private static final int MAX_GROUPS = 1000;
     private static final int MAX_LIST_ROWS = 50;
+    private static final int MAX_RECOMMENDATION_PRODUCTS = 1000;
     private static final long TIMEZONE_CACHE_MILLIS = Duration.ofMinutes(30).toMillis();
 
     private final ObjectMapper objectMapper;
@@ -84,14 +85,13 @@ public class OdooReportQueryService {
             return Result.fail("UNKNOWN_TEMPLATE");
         }
 
-        Vendor vendor = vendorMapper.findById(tenant.vendorId());
-        if (vendor == null || vendor.getOdooCompanyId() == null
-                || vendor.getOdooCompanyId() <= 0
-                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
-            return Result.fail("ODOO_REPORT_STORE_UNLINKED");
-        }
-
         try {
+            Vendor vendor = vendorMapper.findById(tenant.vendorId());
+            if (vendor == null || vendor.getOdooCompanyId() == null
+                    || vendor.getOdooCompanyId() <= 0
+                    || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+                return Result.fail("ODOO_REPORT_STORE_UNLINKED");
+            }
             long companyId = vendor.getOdooCompanyId();
             String sessionId = authenticate();
             ZoneId timezone = cachedTimezone(companyId);
@@ -124,54 +124,62 @@ public class OdooReportQueryService {
         }
     }
 
-    /**
-     * Count sellable POS products for the vendor company. Read-only; returns null when
-     * Odoo is unavailable so callers can fall back to a catalogue CTA.
-     */
-    public Integer countSellableProducts(TenantContext tenant) {
-        if (tenant == null || !configured()) {
-            return null;
-        }
-        Vendor vendor = vendorMapper.findById(tenant.vendorId());
-        if (vendor == null || vendor.getOdooCompanyId() == null
-                || vendor.getOdooCompanyId() <= 0
-                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
-            return null;
-        }
+    /** Count sellable POS products for the vendor company without hiding the failure reason. */
+    public ProductCountResult countSellableProducts(TenantContext tenant) {
+        if (tenant == null) return ProductCountResult.fail("NO_STORE");
+        if (tenant.requireOutletId() == null) return ProductCountResult.fail("NO_OUTLET");
+        if (!tenant.canQueryReport()) return ProductCountResult.fail("NO_PERMISSION");
+        if (!configured()) return ProductCountResult.fail("ODOO_REPORT_NOT_CONFIGURED");
         try {
+            Vendor vendor = vendorMapper.findById(tenant.vendorId());
+            if (vendor == null || vendor.getOdooCompanyId() == null
+                    || vendor.getOdooCompanyId() <= 0
+                    || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+                return ProductCountResult.fail("ODOO_REPORT_STORE_UNLINKED");
+            }
             long companyId = vendor.getOdooCompanyId();
             String sessionId = authenticate();
             ZoneId timezone = cachedTimezone(companyId);
             Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
-            return searchCount(sessionId, "product.product", productDomain(companyId), context);
+            return ProductCountResult.ok(searchCount(
+                    sessionId, "product.product", productDomain(companyId), context));
         } catch (Exception e) {
-            log.warn("AI product count failed vendorId={} causeType={}",
-                    tenant.vendorId(), e.getClass().getSimpleName());
-            return null;
+            OdooReportFailure failure = e instanceof OdooReportFailure reportFailure ? reportFailure : null;
+            String error = failure != null && "ODOO_RPC_ERROR".equals(failure.kind())
+                    && "AccessError".equals(failure.rpcType())
+                    ? "NO_PERMISSION" : "ODOO_REPORT_UNAVAILABLE";
+            log.warn("AI product count failed vendorId={} failureKind={} rpcType={} causeType={}",
+                    tenant.vendorId(), failure == null ? "" : failure.kind(),
+                    failure == null ? "" : failure.rpcType(), e.getClass().getSimpleName());
+            return ProductCountResult.fail(error);
         }
     }
 
-    /**
-     * Search sellable products by name fragment. Never invents rows; empty list on miss.
-     */
-    public List<Map<String, Object>> searchProducts(TenantContext tenant, String query, int limit) {
-        if (tenant == null || query == null || query.isBlank() || !configured()) {
-            return List.of();
-        }
-        Vendor vendor = vendorMapper.findById(tenant.vendorId());
-        if (vendor == null || vendor.getOdooCompanyId() == null
-                || vendor.getOdooCompanyId() <= 0
-                || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
-            return List.of();
-        }
+    /** Search sellable products while keeping an empty match distinct from a failed lookup. */
+    public ProductSearchResult searchProducts(TenantContext tenant, String query, int limit) {
+        if (tenant == null) return ProductSearchResult.fail("NO_STORE");
+        if (tenant.requireOutletId() == null) return ProductSearchResult.fail("NO_OUTLET");
+        if (!tenant.canQueryReport()) return ProductSearchResult.fail("NO_PERMISSION");
+        if (query == null || query.isBlank()) return ProductSearchResult.fail("NEED_PRODUCT");
+        if (!configured()) return ProductSearchResult.fail("ODOO_REPORT_NOT_CONFIGURED");
         int capped = Math.max(1, Math.min(limit <= 0 ? 8 : limit, MAX_LIST_ROWS));
         try {
+            Vendor vendor = vendorMapper.findById(tenant.vendorId());
+            if (vendor == null || vendor.getOdooCompanyId() == null
+                    || vendor.getOdooCompanyId() <= 0
+                    || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+                return ProductSearchResult.fail("ODOO_REPORT_STORE_UNLINKED");
+            }
             long companyId = vendor.getOdooCompanyId();
             String sessionId = authenticate();
             ZoneId timezone = cachedTimezone(companyId);
             Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
             List<Object> domain = productDomain(companyId);
+            domain.add("|");
+            domain.add("|");
             domain.add(List.of("name", "ilike", query.trim()));
+            domain.add(List.of("default_code", "ilike", query.trim()));
+            domain.add(List.of("barcode", "ilike", query.trim()));
             List<Map<String, Object>> products = searchRead(sessionId, "product.product", domain,
                     List.of("id", "display_name", "list_price", "qty_available"), context, capped,
                     "display_name asc");
@@ -184,17 +192,87 @@ public class OdooReportQueryService {
                 row.put("quantity", decimal(product.get("qty_available")));
                 rows.add(row);
             }
-            return rows;
+            return ProductSearchResult.ok(rows);
         } catch (Exception e) {
-            log.warn("AI product search failed vendorId={} causeType={}",
-                    tenant.vendorId(), e.getClass().getSimpleName());
-            return List.of();
+            OdooReportFailure failure = e instanceof OdooReportFailure reportFailure ? reportFailure : null;
+            String error = failure != null && "ODOO_RPC_ERROR".equals(failure.kind())
+                    && "AccessError".equals(failure.rpcType())
+                    ? "NO_PERMISSION" : "ODOO_REPORT_UNAVAILABLE";
+            log.warn("AI product search failed vendorId={} failureKind={} rpcType={} causeType={}",
+                    tenant.vendorId(), failure == null ? "" : failure.kind(),
+                    failure == null ? "" : failure.rpcType(), e.getClass().getSimpleName());
+            return ProductSearchResult.fail(error);
+        }
+    }
+
+    /** Read the tenant's sellable, in-stock catalogue for deterministic recommendation ranking. */
+    public ProductCatalogResult listRecommendationProducts(TenantContext tenant) {
+        if (tenant == null) return ProductCatalogResult.fail("NO_STORE");
+        if (tenant.requireOutletId() == null) return ProductCatalogResult.fail("NO_OUTLET");
+        if (!tenant.canQueryReport()) return ProductCatalogResult.fail("NO_PERMISSION");
+        if (!configured()) return ProductCatalogResult.fail("ODOO_REPORT_NOT_CONFIGURED");
+        try {
+            Vendor vendor = vendorMapper.findById(tenant.vendorId());
+            if (vendor == null || vendor.getOdooCompanyId() == null
+                    || vendor.getOdooCompanyId() <= 0
+                    || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
+                return ProductCatalogResult.fail("ODOO_REPORT_STORE_UNLINKED");
+            }
+            long companyId = vendor.getOdooCompanyId();
+            String sessionId = authenticate();
+            ZoneId timezone = cachedTimezone(companyId);
+            Map<String, Object> context = context(companyId, vendor.getOdooWarehouseId(), timezone);
+            List<Map<String, Object>> products;
+            try {
+                products = searchRead(sessionId, "product.product", productDomain(companyId),
+                        List.of("id", "display_name", "name", "list_price", "lst_price",
+                                "free_qty", "qty_available", "categ_id"),
+                        context, MAX_RECOMMENDATION_PRODUCTS + 1, "display_name asc, id asc");
+            } catch (Exception unsupportedFreeQuantity) {
+                products = searchRead(sessionId, "product.product", productDomain(companyId),
+                        List.of("id", "display_name", "name", "list_price", "lst_price", "qty_available", "categ_id"),
+                        context, MAX_RECOMMENDATION_PRODUCTS + 1, "display_name asc, id asc");
+            }
+            if (products.size() > MAX_RECOMMENDATION_PRODUCTS) {
+                return ProductCatalogResult.fail("ODOO_REPORT_TOO_LARGE");
+            }
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Map<String, Object> product : products) {
+                BigDecimal quantity = decimal(product.containsKey("free_qty")
+                        ? product.get("free_qty") : product.get("qty_available"));
+                if (quantity.signum() <= 0) continue;
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", product.get("id"));
+                row.put("name", product.getOrDefault("display_name", product.getOrDefault("name", "")));
+                row.put("list_price", decimal(product.get("list_price")));
+                row.put("sell_price", decimal(product.containsKey("lst_price")
+                        ? product.get("lst_price") : product.get("list_price")));
+                row.put("quantity", quantity);
+                row.put("category", relationName(product.get("categ_id")));
+                rows.add(row);
+            }
+            return ProductCatalogResult.ok(rows);
+        } catch (Exception e) {
+            OdooReportFailure failure = e instanceof OdooReportFailure reportFailure ? reportFailure : null;
+            String error = failure != null && "ODOO_RPC_ERROR".equals(failure.kind())
+                    && "AccessError".equals(failure.rpcType()) ? "NO_PERMISSION" : "ODOO_REPORT_UNAVAILABLE";
+            log.warn("AI product recommendations unavailable vendorId={} failureKind={} rpcType={} causeType={}",
+                    tenant.vendorId(), failure == null ? "" : failure.kind(),
+                    failure == null ? "" : failure.rpcType(), e.getClass().getSimpleName());
+            return ProductCatalogResult.fail(error);
         }
     }
 
     public ZoneId businessTimezone(TenantContext tenant) {
         if (tenant == null || !tenant.canQueryReport() || !configured()) return AustraliaTime.ZONE;
-        Vendor vendor = vendorMapper.findById(tenant.vendorId());
+        Vendor vendor;
+        try {
+            vendor = vendorMapper.findById(tenant.vendorId());
+        } catch (Exception e) {
+            log.warn("AI report timezone vendor lookup failed vendorId={} causeType={}",
+                    tenant.vendorId(), e.getClass().getSimpleName());
+            return AustraliaTime.ZONE;
+        }
         if (vendor == null || vendor.getOdooCompanyId() == null || vendor.getOdooCompanyId() <= 0
                 || !"ready".equalsIgnoreCase(vendor.getOdooProvisionStatus())) {
             return AustraliaTime.ZONE;
@@ -469,7 +547,7 @@ public class OdooReportQueryService {
         Map<String, Object> kwargs = new LinkedHashMap<>();
         kwargs.put("context", context);
         JsonNode result = callScalar(session, model, "search_count", List.of(domain), kwargs);
-        if (result == null || !result.isNumber()) {
+        if (result == null || !result.isIntegralNumber() || !result.canConvertToInt() || result.asInt() < 0) {
             throw new OdooReportFailure("ODOO_INVALID_RESPONSE", null, "", "", model, "search_count",
                     result == null ? "MISSING" : result.getNodeType().name());
         }
@@ -723,6 +801,36 @@ public class OdooReportQueryService {
 
         static Result fail(String error) {
             return new Result(List.of(), error);
+        }
+    }
+
+    public record ProductSearchResult(List<Map<String, Object>> rows, String error) {
+        static ProductSearchResult ok(List<Map<String, Object>> rows) {
+            return new ProductSearchResult(rows, null);
+        }
+
+        static ProductSearchResult fail(String error) {
+            return new ProductSearchResult(List.of(), error);
+        }
+    }
+
+    public record ProductCountResult(Integer count, String error) {
+        static ProductCountResult ok(int count) {
+            return new ProductCountResult(count, null);
+        }
+
+        static ProductCountResult fail(String error) {
+            return new ProductCountResult(null, error);
+        }
+    }
+
+    public record ProductCatalogResult(List<Map<String, Object>> rows, String error) {
+        static ProductCatalogResult ok(List<Map<String, Object>> rows) {
+            return new ProductCatalogResult(rows, null);
+        }
+
+        static ProductCatalogResult fail(String error) {
+            return new ProductCatalogResult(List.of(), error);
         }
     }
 }

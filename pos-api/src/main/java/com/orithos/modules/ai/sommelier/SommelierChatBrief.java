@@ -22,12 +22,13 @@ import java.util.regex.Pattern;
 public class SommelierChatBrief {
 
     private static final Pattern UNDER_BUDGET = Pattern.compile(
-            "(?:under|below|less than|最多|不超过|以内)\\s*\\$?(\\d+(?:\\.\\d{1,2})?)",
+            "(?:under|below|less than|最多|不超过|以内)\\s*\\$?(\\d+(?:\\.\\d{1,2})?)|"
+                    + "\\$?(\\d+(?:\\.\\d{1,2})?)\\s*(?:元|澳元|刀)?\\s*(?:以内|以下)",
             Pattern.CASE_INSENSITIVE);
-    private static final Pattern RED = Pattern.compile("\\b(?:red|红酒|红葡萄酒)\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern WHITE = Pattern.compile("\\b(?:white|白酒|白葡萄酒)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RED = Pattern.compile("\\bred\\b|红(?:葡萄)?酒", Pattern.CASE_INSENSITIVE);
+    private static final Pattern WHITE = Pattern.compile("\\bwhite\\b|白葡萄酒|白酒", Pattern.CASE_INSENSITIVE);
     private static final Pattern SPARKLING = Pattern.compile(
-            "\\b(?:sparkling|香槟|起泡)\\b", Pattern.CASE_INSENSITIVE);
+            "\\bsparkling\\b|香槟|起泡(?:酒)?", Pattern.CASE_INSENSITIVE);
 
     private final SommelierService sommelierService;
 
@@ -36,31 +37,39 @@ public class SommelierChatBrief {
     }
 
     public String brief(String question, TenantContext tenant) {
+        boolean chinese = isChinese(question);
         if (tenant == null) {
-            return "Open wine recommendations when you are ready. Tap below to continue.";
+            return unavailableMessage(question);
         }
         try {
             RecommendRequest request = fromQuestion(question);
             RecommendResponse response = sommelierService.recommend(request, tenant);
             if (response.emptyReason() != null && !response.emptyReason().isBlank()
                     && (response.recommendations() == null || response.recommendations().isEmpty())) {
-                return response.emptyReason() + " Tap below to open the wine assistant.";
+                return chinese
+                        ? "目前没有符合条件的酒款：" + response.emptyReason() + "。打开品鉴推荐页面调整条件。"
+                        : response.emptyReason() + " Tap below to open the wine assistant.";
             }
             if (response.recommendations() == null || response.recommendations().isEmpty()) {
-                return "I could not pick wines from this catalogue yet. Tap below to open wine recommendations.";
+                return chinese
+                        ? "当前目录中没有匹配的酒款。可以调整类型或预算，或打开品鉴推荐页面查看。"
+                        : "I could not pick wines from this catalogue yet. Tap below to open wine recommendations.";
             }
-            StringBuilder sb = new StringBuilder("Here are in-stock picks");
+            StringBuilder sb = new StringBuilder(chinese ? "为你推荐以下有库存的酒款" : "Here are in-stock picks");
             if (request.wineType() != null && !request.wineType().isBlank()) {
-                sb.append(" (").append(request.wineType()).append(')');
+                sb.append(chinese ? "（" : " (").append(chinese ? wineTypeLabel(request.wineType()) : request.wineType())
+                        .append(chinese ? '）' : ')');
             }
             if (request.budgetMax() != null) {
-                sb.append(" under $").append(AssistantDisplayText.money(request.budgetMax()));
+                sb.append(chinese ? "，预算不超过 $" : " under $")
+                        .append(AssistantDisplayText.money(request.budgetMax()));
             }
-            sb.append(":\n");
+            sb.append(chinese ? "：\n" : ":\n");
             int n = Math.min(3, response.recommendations().size());
             for (int i = 0; i < n; i++) {
                 RecommendCard card = response.recommendations().get(i);
-                String badge = card.badge() == null || card.badge().isBlank() ? "Pick" : card.badge();
+                String badge = card.badge() == null || card.badge().isBlank()
+                        ? (chinese ? "推荐" : "Pick") : chinese ? wineBadgeLabel(card.badge()) : card.badge();
                 String name = AssistantDisplayText.productName(card.name());
                 sb.append("\n• ").append(badge).append(" — ").append(name);
                 BigDecimal price = card.sellPrice() != null ? card.sellPrice() : card.listPrice();
@@ -68,11 +77,38 @@ public class SommelierChatBrief {
                     sb.append(" — $").append(AssistantDisplayText.money(price));
                 }
             }
-            sb.append("\n\nTap below to open the full wine assistant.");
+            sb.append(chinese ? "\n\n打开品鉴推荐页面查看全部酒款。" : "\n\nTap below to open the full wine assistant.");
             return sb.toString();
         } catch (Exception e) {
-            return "Open wine recommendations when you are ready. Tap below to continue.";
+            return unavailableMessage(question);
         }
+    }
+
+    private static String unavailableMessage(String question) {
+        return isChinese(question)
+                ? "品鉴推荐暂不可用，请打开品鉴页面重试。"
+                : "Wine recommendations are unavailable right now. Open Sommelier to retry.";
+    }
+
+    private static boolean isChinese(String text) {
+        return text != null && text.matches("(?s).*[\\u3400-\\u9fff].*");
+    }
+
+    private static String wineTypeLabel(String wineType) {
+        return switch (wineType) {
+            case "red" -> "红葡萄酒";
+            case "white" -> "白葡萄酒";
+            case "sparkling" -> "起泡酒";
+            default -> wineType;
+        };
+    }
+
+    private static String wineBadgeLabel(String badge) {
+        return switch (badge.toLowerCase(Locale.ROOT)) {
+            case "great value", "best value" -> "高性价比";
+            case "best match", "top pick" -> "优选";
+            default -> "推荐";
+        };
     }
 
     static RecommendRequest fromQuestion(String question) {
@@ -89,7 +125,7 @@ public class SommelierChatBrief {
         Matcher budget = UNDER_BUDGET.matcher(q);
         if (budget.find()) {
             try {
-                budgetMax = new BigDecimal(budget.group(1));
+                budgetMax = new BigDecimal(budget.group(1) != null ? budget.group(1) : budget.group(2));
             } catch (NumberFormatException ignored) {
                 budgetMax = null;
             }

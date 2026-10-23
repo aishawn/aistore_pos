@@ -50,6 +50,23 @@ public final class FollowUpSupport {
         return out;
     }
 
+    public static Map<String, String> mergeFollowUpSlots(
+            String question, String previousIntent,
+            Map<String, String> current, Map<String, String> previous) {
+        if (!isRelativeFollowUp(question) || !isReportIntent(previousIntent)
+                || "report_adhoc".equals(previousIntent)) {
+            return current == null ? Map.of() : new HashMap<>(current);
+        }
+        Map<String, String> priorFilters = new HashMap<>();
+        if (previous != null) {
+            for (String key : new String[] {"category", "query"}) {
+                String value = previous.get(key);
+                if (value != null && !value.isBlank()) priorFilters.put(key, value);
+            }
+        }
+        return mergeMissingSlots(current, priorFilters);
+    }
+
     public static String normalizeSurface(String surface) {
         if (surface == null || surface.isBlank()) {
             return "";

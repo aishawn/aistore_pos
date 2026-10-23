@@ -776,6 +776,7 @@ export interface AssistantCard {
   ctaLabel?: string | null;
   ctaRoute?: string | null;
   cta?: { label?: string | null; route?: string | null } | null;
+  retryable?: boolean | null;
 }
 
 export interface AssistantResponse {
@@ -892,6 +893,9 @@ export interface AiChatThreadDetail {
     role: string;
     text: string;
     intent: string | null;
+    cards?: AssistantCard[] | null;
+    reportId?: number | null;
+    table?: AssistantReportTable | null;
     createdAt: string | null;
   }>;
 }

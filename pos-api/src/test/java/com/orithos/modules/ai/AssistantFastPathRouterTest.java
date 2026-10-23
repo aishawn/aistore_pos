@@ -103,6 +103,10 @@ class AssistantFastPathRouterTest {
         assertEquals("report_stock", stockLevel.intent());
         assertEquals("VB Cans", stockLevel.slots().get("query"));
 
+        AssistantFastPathRouter.Match skuStock = AssistantFastPathRouter.maybeMatch("Find SKU VB-375");
+        assertEquals("report_stock", skuStock.intent());
+        assertEquals("VB-375", skuStock.slots().get("query"));
+
         AssistantFastPathRouter.Match quantity = AssistantFastPathRouter.maybeMatch("How many Carlton Draught do we have in stock?");
         assertEquals("report_stock", quantity.intent());
         assertEquals("Carlton Draught", quantity.slots().get("query"));
@@ -114,6 +118,7 @@ class AssistantFastPathRouterTest {
         AssistantFastPathRouter.Match reverseChinese = AssistantFastPathRouter.maybeMatch("VB Cans库存还有多少？");
         assertEquals("report_stock", reverseChinese.intent());
         assertEquals("VB Cans", reverseChinese.slots().get("query"));
+
     }
 
     @Test
@@ -224,6 +229,35 @@ class AssistantFastPathRouterTest {
     }
 
     @Test
+    void routesShortStockAndNoResultsQuestionsWithoutTheClassifier() {
+        for (String question : new String[]{
+                "Stock?",
+                "What's in stock?",
+                "How's our stock looking?",
+                "库存情况怎么样？"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("navigate", match.intent(), question);
+            assertEquals("/stock/list", match.route(), question);
+        }
+
+        for (String question : new String[]{
+                "为什么查不到库存？",
+                "Why can't I find anything?",
+                "Nothing comes up for inventory",
+                "No results for stock",
+                "什么都查不到",
+                "什么也找不到"
+        }) {
+            AssistantFastPathRouter.Match match = AssistantFastPathRouter.maybeMatch(question);
+            assertNotNull(match, question);
+            assertEquals("qa", match.intent(), question);
+            assertEquals("", match.route(), question);
+        }
+    }
+
+    @Test
     void answersCommonHelpQuestionsWithoutTheClassifier() {
         for (String question : new String[]{
                 "Help", "What can you do?", "How can you help?", "What data do you use for suggestions?",
@@ -303,6 +337,11 @@ class AssistantFastPathRouterTest {
         assertNotNull(stock);
         assertEquals("report_stock", stock.intent());
         assertEquals("VB Cans", stock.slots().get("query"));
+
+        AssistantFastPathRouter.Match availability = AssistantFastPathRouter.maybeMatch("库存里有 VB Cans 吗");
+        assertNotNull(availability);
+        assertEquals("report_stock", availability.intent());
+        assertEquals("VB Cans", availability.slots().get("query"));
     }
 
     @Test

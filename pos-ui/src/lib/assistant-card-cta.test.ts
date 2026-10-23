@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeAssistantHref, resolveAssistantCardCta } from "./assistant-card-cta.ts";
+import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "./assistant-card-cta.ts";
+
+test("keeps legacy sale actions inside their page workflow", () => {
+  assert.equal(assistantSaleActionHref("Create Customer"), "/customers/odoo");
+  assert.equal(assistantSaleActionHref("Create Product"), "/products/odoo");
+  assert.equal(assistantSaleActionHref("Complete Sale"), "/");
+  assert.equal(assistantSaleActionHref("Refund Sale"), "/");
+});
 
 test("replaces a generic workflow label with its destination on the wine card", () => {
   assert.deepEqual(resolveAssistantCardCta({
@@ -47,6 +54,47 @@ test("keeps a specific server-provided action label", () => {
     label: "Review prices",
     href: "/stock/capped-pricing",
   });
+});
+
+test("localizes card chrome and destination CTA for Chinese questions", () => {
+  const cta = resolveAssistantCardCta({
+    type: "sommelier",
+    title: "Wine recommendations",
+    ctaLabel: "Open Sommelier",
+    ctaRoute: "/sommelier",
+  });
+
+  assert.equal(assistantCardTitle("sommelier", "Wine recommendations", true), "品鉴推荐");
+  assert.equal(assistantCardCtaLabel(cta!, true), "打开品鉴推荐");
+  assert.equal(assistantCardTitle("sommelier", "Wine recommendations", false), "Wine recommendations");
+  assert.equal(assistantCardCtaLabel(cta!, false), "Open Sommelier");
+});
+
+test("localizes the safe generic workspace CTA for Chinese guided actions", () => {
+  const cta = resolveAssistantCardCta({
+    type: "guided_action",
+    title: "Action guide",
+    ctaLabel: "Open workspace",
+    ctaRoute: "/",
+  });
+
+  assert.equal(assistantCardCtaLabel(cta!, true), "打开工作区");
+});
+
+test("resolves the stock history unavailable card to the live stock page", () => {
+  const card = {
+    type: "stock_history",
+    title: "Historical stock",
+    status: "unavailable",
+    cta: { label: "Open stock list", route: "/stock/list" },
+    ctaLabel: "Open stock list",
+    ctaRoute: "/stock/list",
+  };
+  const cta = resolveAssistantCardCta(card);
+
+  assert.deepEqual(cta, { label: "Open stock list", href: "/stock/list" });
+  assert.equal(assistantCardTitle(card.type, card.title, true), "历史库存");
+  assert.equal(assistantCardCtaLabel(cta!, true), "打开库存列表");
 });
 
 test("does not invent a link when the card has no route", () => {

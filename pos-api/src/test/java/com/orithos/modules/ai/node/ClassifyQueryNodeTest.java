@@ -5,14 +5,20 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
+import com.orithos.modules.ai.AssistantTenantContext;
+import com.orithos.modules.ai.report.OdooReportQueryService;
+import com.orithos.modules.ai.report.TenantContext;
 import com.orithos.modules.ai.pricing.PricingChatBrief;
 import com.orithos.modules.ai.replenishment.ReplenishmentChatBrief;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.ObjectProvider;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +31,11 @@ import static org.mockito.Mockito.when;
 
 class ClassifyQueryNodeTest {
 
+    @AfterEach
+    void clearTenant() {
+        AssistantTenantContext.clear();
+    }
+
     @Test
     void classifierRequestUsesEndpointForItsSelectedModel() {
         DashScopeChatOptions textOptions = ClassifyQueryNode.classifyOptions(aiProperties("qwen-flash"));
@@ -34,6 +45,169 @@ class ClassifyQueryNodeTest {
         DashScopeChatOptions multimodalOptions = ClassifyQueryNode.classifyOptions(aiProperties("qwen3.8-flash"));
         assertEquals("qwen3.8-flash", multimodalOptions.getModel());
         assertTrue(multimodalOptions.getMultiModel());
+    }
+
+    @Test
+    void productCountFastPathAnswersFromOdooWithoutCallingClassifier() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        when(reports.countSellableProducts(tenant))
+                .thenReturn(new OdooReportQueryService.ProductCountResult(286, null));
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
+                reports, null);
+
+        for (String question : new String[]{
+                "有多少个产品？", "商品总数", "how many products do we have?", "catalogue size"
+        }) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("product_count", result.get("intent"), question);
+            String expected = question.matches("(?s).*[\\u3400-\\u9fff].*")
+                    ? "本店商品目录共有 286 个可售商品。"
+                    : "This store has 286 sellable products in the catalogue.";
+            assertEquals(expected, result.get("intent_summary"), question);
+            assertEquals("/products", result.get("ui_route"), question);
+            assertFalse(Boolean.parseBoolean(String.valueOf(result.get("llm_fallback"))), question);
+        }
+        org.mockito.Mockito.verify(reports, org.mockito.Mockito.times(4)).countSellableProducts(tenant);
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void namedProductFastPathReturnsOdooMatchesInTheChatAnswer() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        when(reports.searchProducts(tenant, "Shiraz", 5)).thenReturn(
+                new OdooReportQueryService.ProductSearchResult(List.of(
+                        Map.of("name", "Shiraz Reserve", "list_price", "24.99", "quantity", "4")), null));
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties, reports, null);
+
+        for (String question : List.of("Search for Shiraz", "帮我查一下 Shiraz")) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+            String summary = String.valueOf(result.get("intent_summary"));
+
+            assertEquals("search_product", result.get("intent"));
+            assertTrue(summary.startsWith(question.matches("(?s).*[\\u3400-\\u9fff].*")
+                    ? "找到以下商品：" : "Matching products:"), question);
+            assertTrue(summary.contains("Shiraz Reserve"), question);
+            assertTrue(summary.contains("24.99"), question);
+            assertTrue(summary.contains("4"), question);
+            assertEquals("/products", result.get("ui_route"));
+        }
+        org.mockito.Mockito.verify(reports, org.mockito.Mockito.times(2)).searchProducts(tenant, "Shiraz", 5);
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void namedProductFastPathDistinguishesNoMatchFromUnavailableSource() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        when(reports.searchProducts(tenant, "Shiraz", 5)).thenReturn(
+                new OdooReportQueryService.ProductSearchResult(List.of(), null),
+                new OdooReportQueryService.ProductSearchResult(List.of(), "ODOO_REPORT_UNAVAILABLE"));
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties, reports, null);
+
+        OverAllState noMatchState = mock(OverAllState.class);
+        when(noMatchState.value("question", String.class)).thenReturn(Optional.of("Find Shiraz"));
+        String noMatch = String.valueOf(node.apply(noMatchState).get("intent_summary"));
+        assertTrue(noMatch.contains("No catalogue matches"));
+
+        OverAllState unavailableState = mock(OverAllState.class);
+        when(unavailableState.value("question", String.class)).thenReturn(Optional.of("Find Shiraz"));
+        String unavailable = String.valueOf(node.apply(unavailableState).get("intent_summary"));
+        assertTrue(unavailable.contains("catalogue is unavailable"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void productCountFastPathPreservesZeroAndFailsClosedOnUnavailableData() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        TenantContext tenant = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(tenant);
+        when(reports.countSellableProducts(tenant)).thenReturn(
+                new OdooReportQueryService.ProductCountResult(0, null),
+                new OdooReportQueryService.ProductCountResult(null, "NO_PERMISSION"),
+                new OdooReportQueryService.ProductCountResult(null, "ODOO_REPORT_UNAVAILABLE"));
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
+                reports, null);
+
+        OverAllState zeroState = mock(OverAllState.class);
+        when(zeroState.value("question", String.class)).thenReturn(Optional.of("商品总数"));
+        Map<String, Object> zero = node.apply(zeroState);
+        assertTrue(String.valueOf(zero.get("intent_summary")).contains("商品目录共有 0 个可售商品"));
+
+        OverAllState deniedState = mock(OverAllState.class);
+        when(deniedState.value("question", String.class)).thenReturn(Optional.of("商品总数"));
+        Map<String, Object> denied = node.apply(deniedState);
+        assertTrue(String.valueOf(denied.get("intent_summary")).contains("没有权限"));
+
+        OverAllState unavailableState = mock(OverAllState.class);
+        when(unavailableState.value("question", String.class)).thenReturn(Optional.of("商品总数"));
+        Map<String, Object> unavailable = node.apply(unavailableState);
+        assertTrue(String.valueOf(unavailable.get("intent_summary")).contains("暂时无法获取商品总数"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void productCountFastPathExplainsMissingTenantAndPermissionWithoutOdooCall() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        OdooReportQueryService reports = mock(OdooReportQueryService.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties,
+                reports, null);
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of("How many products do we have?"));
+
+        Map<String, Object> noTenant = node.apply(state);
+        assertTrue(String.valueOf(noTenant.get("intent_summary")).contains("Sign in"));
+
+        when(state.value("question", String.class)).thenReturn(Optional.of("有多少个产品？"));
+        Map<String, Object> noTenantChinese = node.apply(state);
+        assertTrue(String.valueOf(noTenantChinese.get("intent_summary")).contains("请先登录门店账号"));
+
+        TenantContext missingOutlet = new TenantContext(9L, 8L, null, List.of(), Set.of(TenantContext.PERM_QUERY));
+        AssistantTenantContext.set(missingOutlet);
+        when(state.value("question", String.class)).thenReturn(Optional.of("How many products do we have?"));
+        Map<String, Object> unboundStore = node.apply(state);
+        assertTrue(String.valueOf(unboundStore.get("intent_summary")).contains("not bound to a store"));
+
+        when(state.value("question", String.class)).thenReturn(Optional.of("有多少个产品？"));
+        Map<String, Object> unboundStoreChinese = node.apply(state);
+        assertTrue(String.valueOf(unboundStoreChinese.get("intent_summary")).contains("尚未绑定门店"));
+
+        TenantContext noPermission = new TenantContext(9L, 8L, 7L, List.of(7L), Set.of());
+        AssistantTenantContext.set(noPermission);
+        Map<String, Object> denied = node.apply(state);
+        assertTrue(String.valueOf(denied.get("intent_summary")).contains("没有权限"));
+        org.mockito.Mockito.verifyNoInteractions(reports);
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 
     private static AiProperties aiProperties(String classifyModel) {
@@ -132,6 +306,33 @@ class ClassifyQueryNodeTest {
     }
 
     @Test
+    void unspecifiedWriteRequestsAskForTargetWithoutCallingClassifier() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        for (String question : new String[]{
+                "Save it", "Could you update it?", "Please delete that",
+                "请保存一下", "请帮忙保存一下", "麻烦帮我确认一下", "删除它"
+        }) {
+            OverAllState state = mock(OverAllState.class);
+            when(state.value("question", String.class)).thenReturn(Optional.of(question));
+
+            Map<String, Object> result = node.apply(state);
+
+            assertEquals("guided_action", result.get("intent"), question);
+            assertEquals("/", result.get("ui_route"), question);
+            String guidance = String.valueOf(result.get("intent_summary"));
+            assertTrue(guidance.contains("specify the target") || guidance.contains("请先说明要操作的对象"), question);
+            assertTrue(String.valueOf(result.get("ui_action")).isBlank(), question);
+        }
+
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
     void stockWriteIntentFailsClosedWithoutRouteOrClassifier() {
         ChatClient chatClient = mock(ChatClient.class);
         IntentConfigService config = mock(IntentConfigService.class);
@@ -159,16 +360,40 @@ class ClassifyQueryNodeTest {
 
         for (String[] sample : new String[][] {
                 {"Create a customer", "/customers"},
+                {"创建一个客户", "/customers"},
+                {"Archive this customer", "/customers"},
+                {"归档客户资料", "/customers"},
                 {"编辑这个产品", "/products"},
+                {"创建一个产品", "/products"},
+                {"Restore this product", "/products"},
+                {"恢复这个商品", "/products"},
                 {"Receive this stock", "/stock/replenishment"},
                 {"Receive this supplier invoice", "/invoices"},
                 {"Upload an invoice", "/invoices"},
                 {"上传这张账单", "/invoices"},
                 {"Submit replenishment suggestions", "/stock/replenishment"},
                 {"Apply these prices", "/stock/capped-pricing"},
+                {"Update the price", "/stock/capped-pricing"},
+                {"更新这个商品售价", "/stock/capped-pricing"},
                 {"Execute pricing", "/stock/capped-pricing"},
                 {"Buy these items now", "/orders"},
                 {"Order these products", "/orders"},
+                {"Cancel this purchase order", "/orders"},
+                {"取消这张采购订单", "/orders"},
+                {"Create a classification", "/classifications"},
+                {"创建分类", "/classifications"},
+                {"编辑客户分组", "/customer-groups"},
+                {"Create a price list", "/pricelists"},
+                {"创建价目表", "/pricelists"},
+                {"Delete a gift card", "/giftcards"},
+                {"删除礼品卡", "/giftcards"},
+                {"Deactivate this gift card", "/giftcards"},
+                {"停用礼品卡", "/giftcards"},
+                {"确认库存盘点", "/stocktake"},
+                {"Update buying period", "/stock/buying-periods"},
+                {"更新采购周期", "/stock/buying-periods"},
+                {"Edit customer balance", "/customers/balances"},
+                {"编辑客户余额", "/customers/balances"},
                 {"Order 50 units of beer", "/orders"},
                 {"现在帮我把啤酒订 50 件", "/orders"},
                 {"下单啤酒 12 箱", "/orders"},
@@ -190,6 +415,51 @@ class ClassifyQueryNodeTest {
             assertEquals(sample[1], result.get("ui_route"), sample[0]);
         }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void writeGuidanceUsesQuestionLanguageAndNamesThePageTarget() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        assertGuidance(node, "创建一个客户", "/customers", "客户资料变更", "必填信息");
+        assertGuidance(node, "修改客户资料", "/customers", "客户资料变更", "必填信息");
+        assertGuidance(node, "编辑这个产品", "/products", "商品目录变更", "必填信息");
+        assertGuidance(node, "Archive this customer", "/customers", "customer change", "required fields");
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void unknownWriteTargetUsesSurfaceRouteOrSafeWorkspaceFallback() {
+        assertEquals("/products", ClassifyQueryNode.resolveGuidedActionRoute("Update it", "unknown", "products"));
+        assertEquals("/customers", ClassifyQueryNode.resolveGuidedActionRoute("Update it", "customer", "products"));
+        assertEquals("/stock/replenishment", ClassifyQueryNode.resolveGuidedActionRoute("Update it", null, " STOCK "));
+        assertEquals("/stock/capped-pricing", ClassifyQueryNode.resolveGuidedActionRoute(
+                "Set these prices now", "customer", "customers"));
+        assertEquals("/", ClassifyQueryNode.resolveGuidedActionRoute("Update it", "unknown", "unknown"));
+        assertEquals("/", ClassifyQueryNode.resolveGuidedActionRoute("Update it", null, null));
+
+        Map<String, Object> clarification = ClassifyQueryNode.guidedActionResult("Update it", "/", false, false);
+        assertEquals("guided_action", clarification.get("intent"));
+        assertEquals("/", clarification.get("ui_route"));
+        assertTrue(String.valueOf(clarification.get("intent_summary")).contains("specify the target"));
+    }
+
+    private static void assertGuidance(
+            ClassifyQueryNode node, String question, String route, String target, String requiredInfo) {
+        OverAllState state = mock(OverAllState.class);
+        when(state.value("question", String.class)).thenReturn(Optional.of(question));
+        Map<String, Object> result = node.apply(state);
+
+        assertEquals("guided_action", result.get("intent"), question);
+        assertEquals(route, result.get("ui_route"), question);
+        String summary = String.valueOf(result.get("intent_summary"));
+        assertTrue(summary.contains(target), question);
+        assertTrue(summary.contains(requiredInfo), question);
+        assertTrue(summary.toLowerCase().contains("business data") || summary.contains("业务数据"), question);
     }
 
     @Test
@@ -252,6 +522,9 @@ class ClassifyQueryNodeTest {
         for (String question : new String[]{
                 "有多少个产品？",
                 "商品总数",
+                "我们现在有多少种商品？",
+                "我们店里有多少产品？",
+                "本店一共有多少个商品？",
                 "商品总共有多少！",
                 "产品数量是多少。",
                 "How many products are there?",
@@ -266,6 +539,9 @@ class ClassifyQueryNodeTest {
             Map<String, Object> result = node.apply(state);
 
             assertEquals("product_count", result.get("intent"), question);
+            assertEquals("product_count", result.get("fast_path_id"), question);
+            assertEquals("/products", result.get("ui_route"), question);
+            assertEquals(false, result.get("llm_fallback"), question);
             verifyNoInteractions(chatClient, config, sanitizer, properties);
         }
     }
@@ -286,6 +562,34 @@ class ClassifyQueryNodeTest {
 
         assertEquals("report_sales", result.get("intent"));
         assertEquals(Map.of("category", "beer"), result.get("slots"));
+        verifyNoInteractions(chatClient, config, sanitizer, properties);
+    }
+
+    @Test
+    void historicalStockFollowUpIsRefusedInsteadOfReusingLiveSnapshot() {
+        ChatClient chatClient = mock(ChatClient.class);
+        IntentConfigService config = mock(IntentConfigService.class);
+        IntentSanitizeService sanitizer = mock(IntentSanitizeService.class);
+        AiProperties properties = mock(AiProperties.class);
+        ClassifyQueryNode node = new ClassifyQueryNode(chatClient, config, sanitizer, properties);
+
+        for (String lastIntent : List.of("report_stock", "stock_history_unavailable")) {
+            for (String question : List.of("那昨天呢", "and last week?")) {
+                OverAllState state = mock(OverAllState.class);
+                when(state.value("question", String.class)).thenReturn(Optional.of(question));
+                when(state.value("last_intent", String.class)).thenReturn(Optional.of(lastIntent));
+                when(state.value("last_slots")).thenReturn(Optional.of(Map.of("category", "beer")));
+
+                Map<String, Object> result = node.apply(state);
+
+                assertEquals("stock_history_unavailable", result.get("intent"));
+                assertEquals("historical_stock_unavailable", result.get("fast_path_id"));
+                assertEquals(Map.of(), result.get("slots"));
+                assertEquals("/stock/list", result.get("ui_route"));
+                assertTrue(((String) result.get("intent_summary")).contains(
+                        question.matches(".*[\\u3400-\\u9fff].*") ? "历史库存" : "historical stock"));
+            }
+        }
         verifyNoInteractions(chatClient, config, sanitizer, properties);
     }
 

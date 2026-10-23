@@ -45,9 +45,14 @@ public class GenerateResponseNode implements NodeAction {
                 .orElseThrow(() -> new IllegalStateException("question is required"));
         String intent = state.value("intent", String.class).orElse("unknown");
         String summary = state.value("intent_summary", String.class).orElse("");
+        String fastPathId = state.value("fast_path_id", String.class).orElse("");
+
+        if ("historical_stock_unavailable".equals(fastPathId)) {
+            return Map.of("answer", summary);
+        }
 
         if (!LLM_INTENTS.contains(intent)) {
-            return Map.of("answer", cannedAnswer(intent, summary));
+            return Map.of("answer", cannedAnswer(intent, summary, question));
         }
 
         String system = configService.getSnapshot()
@@ -81,15 +86,27 @@ public class GenerateResponseNode implements NodeAction {
         return Map.of("answer", answer == null ? "" : answer);
     }
 
-    private static String cannedAnswer(String intent, String summary) {
+    private static String cannedAnswer(String intent, String summary, String question) {
         if (summary != null && !summary.isBlank()) {
+            if ("product_count".equals(intent)) {
+                return summary.replaceFirst(
+                        "(?i)\\s*(?:open products to browse(?: the catalogue)?|打开商品(?:页|目录)查看(?:目录)?)[。.!！]*\\s*$",
+                        "").trim();
+            }
             return summary;
         }
         return switch (intent) {
             case "search_product", "search_customer" -> "Searching…";
             case "navigate" -> "Opening…";
             case "sale_action" -> "Confirm the suggested action to continue.";
+            case "product_count" -> isChinese(question)
+                    ? "暂时无法获取实时商品总数，请稍后重试。"
+                    : "Live product count is unavailable right now. Please try again shortly.";
             default -> "OK";
         };
+    }
+
+    private static boolean isChinese(String text) {
+        return text != null && text.matches("(?s).*[\\u3400-\\u9fff].*");
     }
 }

@@ -20,34 +20,54 @@ public class ReplenishmentChatBrief {
     }
 
     public String brief(String question, TenantContext tenant) {
+        boolean chinese = isChinese(question);
         if (tenant == null) {
-            return "Open replenishment to review suggestions. Tap below when you are ready.";
+            return unavailableMessage(question);
         }
         try {
             ReplenishmentPlan plan = client.plan(tenant);
             if (plan == null) {
-                return "Open replenishment to review suggestions. Tap below when you are ready.";
+                return unavailableMessage(question);
             }
             if (plan.itemsNeedingOrder() <= 0 || plan.top() == null || plan.top().isEmpty()) {
-                return "No restock quantities are suggested right now — forecast stock covers the target window. "
-                        + "Tap below to open replenishment.";
+                return chinese
+                        ? "当前库存可覆盖目标周期，暂时没有补货数量建议。打开补货页面查看。"
+                        : "No restock quantities are suggested right now — forecast stock covers the target window. "
+                                + "Tap below to open replenishment.";
             }
             StringBuilder sb = new StringBuilder();
-            sb.append("Top restock suggestions (").append(plan.coverageDays()).append("d cover): ")
-                    .append(plan.itemsNeedingOrder()).append(" item")
-                    .append(plan.itemsNeedingOrder() == 1 ? "" : "s").append(" need order.\n");
+            if (chinese) {
+                sb.append("建议补货（覆盖 ").append(plan.coverageDays()).append(" 天）：")
+                        .append(plan.itemsNeedingOrder()).append(" 个商品需要补货。\n");
+            } else {
+                sb.append("Top restock suggestions (").append(plan.coverageDays()).append("d cover): ")
+                        .append(plan.itemsNeedingOrder()).append(" item")
+                        .append(plan.itemsNeedingOrder() == 1 ? "" : "s").append(" need order.\n");
+            }
             for (ReplenishmentSuggestion item : plan.top()) {
                 sb.append("\n• ").append(AssistantDisplayText.productName(item.name()))
-                        .append(" — order ").append(formatQty(item.suggestedQuantity()));
+                        .append(chinese ? " — 建议订购 " : " — order ").append(formatQty(item.suggestedQuantity()));
                 if (item.daysOfStock() != null) {
-                    sb.append(" (≈").append(formatDays(item.daysOfStock())).append("d left)");
+                    sb.append(chinese ? "（约剩 " : " (≈").append(formatDays(item.daysOfStock()))
+                            .append(chinese ? " 天）" : "d left)");
                 }
             }
-            sb.append("\n\nTap below to review quantities and confirm any order.");
+            sb.append(chinese ? "\n\n打开补货页面审核数量并确认订单。"
+                    : "\n\nTap below to review quantities and confirm any order.");
             return sb.toString();
         } catch (Exception e) {
-            return "Open replenishment to review suggestions. Tap below when you are ready.";
+            return unavailableMessage(question);
         }
+    }
+
+    private static String unavailableMessage(String question) {
+        return isChinese(question)
+                ? "补货建议暂不可用，请打开补货页面重试。"
+                : "Replenishment suggestions are unavailable right now. Open replenishment to retry.";
+    }
+
+    private static boolean isChinese(String text) {
+        return text != null && text.matches("(?s).*[\\u3400-\\u9fff].*");
     }
 
     private static String formatQty(double qty) {

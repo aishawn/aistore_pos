@@ -62,11 +62,18 @@ public class PosAssistantTools {
         if (tenant == null) {
             return "NO_STORE: sign in to a store first.";
         }
-        Integer count = queryService.countSellableProducts(tenant);
-        if (count == null) {
-            return "Product count unavailable. Open Products to browse the catalogue.";
+        OdooReportQueryService.ProductCountResult result = queryService.countSellableProducts(tenant);
+        if (result == null || result.error() != null || result.count() == null) {
+            String error = result == null ? "ODOO_REPORT_UNAVAILABLE" : result.error();
+            return switch (error == null ? "ODOO_REPORT_UNAVAILABLE" : error) {
+                case "NO_OUTLET" -> "NO_STORE: this account is not bound to a store.";
+                case "NO_PERMISSION" -> "NO_PERMISSION: product count is not permitted for this account.";
+                case "ODOO_REPORT_NOT_CONFIGURED" -> "Product count unavailable: Odoo is not configured.";
+                case "ODOO_REPORT_STORE_UNLINKED" -> "Product count unavailable: this store is not linked to Odoo.";
+                default -> "Product count unavailable. Open Products to browse the catalogue.";
+            };
         }
-        return "Sellable products in catalogue: " + count;
+        return "Sellable products in catalogue: " + result.count();
     }
 
     @Tool(description = "Search products by name in the current store catalogue. Read-only.")
@@ -79,8 +86,19 @@ public class PosAssistantTools {
         if (tenant == null) {
             return "NO_STORE: sign in to a store first.";
         }
-        List<Map<String, Object>> rows = queryService.searchProducts(tenant, productName.trim(), 8);
-        if (rows.isEmpty()) {
+        OdooReportQueryService.ProductSearchResult result = queryService.searchProducts(tenant, productName.trim(), 8);
+        if (result.error() != null) {
+            return switch (result.error()) {
+                case "NO_OUTLET" -> "NO_STORE: this account is not bound to a store.";
+                case "NO_PERMISSION" -> "NO_PERMISSION: product search is not permitted for this account.";
+                case "ODOO_REPORT_NOT_CONFIGURED" -> "Product search unavailable: Odoo is not configured.";
+                case "ODOO_REPORT_STORE_UNLINKED" -> "Product search unavailable: this store is not linked to Odoo.";
+                case "NEED_PRODUCT" -> "NEED_PRODUCT: tell me which product name to search.";
+                default -> "Product search unavailable. Please try again shortly.";
+            };
+        }
+        List<Map<String, Object>> rows = result.rows();
+        if (rows == null || rows.isEmpty()) {
             return "No catalogue matches for \"" + productName.trim() + "\".";
         }
         return rows.stream()

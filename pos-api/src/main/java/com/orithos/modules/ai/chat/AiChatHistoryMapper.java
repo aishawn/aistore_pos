@@ -59,15 +59,15 @@ public interface AiChatHistoryMapper {
     int touchThread(@Param("id") long id, @Param("title") String title);
 
     @Insert("""
-            INSERT INTO ai_chat_message (thread_id, role, text_content, intent)
-            VALUES (#{threadId}, #{role}, #{textContent}, #{intent})
+            INSERT INTO ai_chat_message (thread_id, role, text_content, intent, report_id, slots_json)
+            VALUES (#{threadId}, #{role}, #{textContent}, #{intent}, #{reportId}, #{slotsJson})
             """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertMessage(AiChatMessage message);
 
     @Select("""
             SELECT id, thread_id AS threadId, role, text_content AS textContent,
-                   intent, created_at AS createdAt
+                   intent, report_id AS reportId, slots_json AS slotsJson, created_at AS createdAt
             FROM ai_chat_message
             WHERE thread_id = #{threadId}
             ORDER BY id ASC

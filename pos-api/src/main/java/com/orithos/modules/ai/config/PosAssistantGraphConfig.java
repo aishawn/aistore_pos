@@ -17,6 +17,7 @@ import com.orithos.modules.ai.AiProperties;
 import com.orithos.modules.ai.PosAssistantTools;
 import com.orithos.modules.ai.configstore.IntentConfigService;
 import com.orithos.modules.ai.configstore.IntentSanitizeService;
+import com.orithos.modules.ai.grocery.GroceryChatBrief;
 import com.orithos.modules.ai.node.ClassifyQueryNode;
 import com.orithos.modules.ai.node.GenerateResponseNode;
 import com.orithos.modules.ai.report.FillReportSlotsNode;
@@ -80,12 +81,16 @@ public class PosAssistantGraphConfig {
             strategies.put(CorrelationIdContext.STATE_KEY, new ReplaceStrategy());
             strategies.put("intent", new ReplaceStrategy());
             strategies.put("intent_summary", new ReplaceStrategy());
+            strategies.put("fast_path_id", new ReplaceStrategy());
+            strategies.put("source", new ReplaceStrategy());
+            strategies.put("llm_fallback", new ReplaceStrategy());
             strategies.put("slots", new ReplaceStrategy());
             strategies.put("ui_panel", new ReplaceStrategy());
             strategies.put("ui_view", new ReplaceStrategy());
             strategies.put("ui_route", new ReplaceStrategy());
             strategies.put("ui_action", new ReplaceStrategy());
             strategies.put("answer", new ReplaceStrategy());
+            strategies.put("assistant_card", new ReplaceStrategy());
             strategies.put("vendor_id", new ReplaceStrategy());
             strategies.put("user_id", new ReplaceStrategy());
             strategies.put("outlet_id", new ReplaceStrategy());
@@ -120,12 +125,13 @@ public class PosAssistantGraphConfig {
             OdooReportQueryService odooReportQueryService,
             ObjectProvider<SommelierChatBrief> sommelierChatBriefProvider,
             ObjectProvider<ReplenishmentChatBrief> replenishmentChatBriefProvider,
-            ObjectProvider<PricingChatBrief> pricingChatBriefProvider) throws GraphStateException {
+            ObjectProvider<PricingChatBrief> pricingChatBriefProvider,
+            ObjectProvider<GroceryChatBrief> groceryChatBriefProvider) throws GraphStateException {
 
         var classify = node_async(withCorrelationContext(new ClassifyQueryNode(
                 posAssistantChatClient, intentConfigService, intentSanitizeService, properties,
                 odooReportQueryService, sommelierChatBriefProvider,
-                replenishmentChatBriefProvider, pricingChatBriefProvider)));
+                replenishmentChatBriefProvider, pricingChatBriefProvider, groceryChatBriefProvider)));
         var respond = node_async(withCorrelationContext(new GenerateResponseNode(
                 posAssistantChatClient, intentConfigService, properties, posAssistantTools)));
         return new StateGraph(properties.graphName(), posAssistantKeyStrategyFactory)

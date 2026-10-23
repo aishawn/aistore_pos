@@ -5,6 +5,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.orithos.common.AustraliaTime;
 import com.orithos.modules.vendor.Vendor;
 import com.orithos.modules.vendor.VendorMapper;
 import com.sun.net.httpserver.HttpServer;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class OdooReportQueryServiceTest {
@@ -145,6 +147,242 @@ class OdooReportQueryServiceTest {
         assertEquals("ODOO_REPORT_STORE_UNLINKED", service.query(tenant, "report_sales", Map.of(), window).error());
         assertEquals("ODOO_REPORT_UNSUPPORTED", service.query(tenant, "report_adhoc", Map.of(), window).error());
         assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void productCountUsesOdooSearchCountWithSellableAndCompanyScope() throws Exception {
+        List<JsonNode> requests = startStockServer("286");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        OdooReportQueryService.ProductCountResult result = service.countSellableProducts(tenant);
+
+        assertEquals(Integer.valueOf(286), result.count());
+        assertNull(result.error());
+        assertEquals(2, requests.size());
+        JsonNode params = requests.get(1).path("params");
+        assertEquals("product.product", params.path("model").asText());
+        assertEquals("search_count", params.path("method").asText());
+        assertEquals(77, params.path("kwargs").path("context").path("force_company").asInt());
+        assertEquals(List.of(77), MAPPER.convertValue(params.path("kwargs").path("context")
+                        .path("allowed_company_ids"),
+                MAPPER.getTypeFactory().constructCollectionType(List.class, Integer.class)));
+        String domain = params.path("args").get(0).toString();
+        assertTrue(domain.contains("available_in_pos"));
+        assertTrue(domain.contains("\"company_id\",\"=\",77"));
+        assertTrue(domain.contains("\"company_id\",\"=\",false"));
+    }
+
+    @Test
+    void productCountPreservesZeroAsARealOdooResult() throws Exception {
+        startStockServer("0");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        OdooReportQueryService.ProductCountResult result = service.countSellableProducts(tenant);
+
+        assertEquals(Integer.valueOf(0), result.count());
+        assertNull(result.error());
+    }
+
+    @Test
+    void productCountDoesNotQueryOdooWithoutReportPermission() throws Exception {
+        List<JsonNode> requests = startStockServer("286");
+        VendorMapper vendors = mock(VendorMapper.class);
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of());
+
+        assertEquals("NO_PERMISSION", service.countSellableProducts(tenant).error());
+
+        assertTrue(requests.isEmpty());
+        verifyNoInteractions(vendors);
+    }
+
+    @Test
+    void recommendationCatalogueDoesNotQueryOdooWithoutReportPermission() throws Exception {
+        List<JsonNode> requests = startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of());
+
+        assertEquals("NO_PERMISSION", service.listRecommendationProducts(tenant).error());
+
+        assertTrue(requests.isEmpty());
+        verifyNoInteractions(vendors);
+    }
+
+    @Test
+    void productCountDoesNotQueryOdooWithoutOutlet() throws Exception {
+        List<JsonNode> requests = startStockServer("286");
+        VendorMapper vendors = mock(VendorMapper.class);
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, null, List.of(), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("NO_OUTLET", service.countSellableProducts(tenant).error());
+
+        assertTrue(requests.isEmpty());
+        verifyNoInteractions(vendors);
+    }
+
+    @Test
+    void productCountExplainsMissingOdooConfigurationWithoutLookingUpVendor() {
+        VendorMapper vendors = mock(VendorMapper.class);
+        OdooReportQueryService service = new OdooReportQueryService(
+                MAPPER, vendors, "", "testdb", "service", "secret");
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("ODOO_REPORT_NOT_CONFIGURED", service.countSellableProducts(tenant).error());
+        verifyNoInteractions(vendors);
+    }
+
+    @Test
+    void productCountExplainsUnlinkedStoreWithoutCallingOdoo() throws Exception {
+        List<JsonNode> requests = startStockServer("286");
+        VendorMapper vendors = mock(VendorMapper.class);
+        Vendor unlinked = readyVendor(false);
+        unlinked.setOdooProvisionStatus("unmapped");
+        when(vendors.findById(42L)).thenReturn(unlinked);
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("ODOO_REPORT_STORE_UNLINKED", service.countSellableProducts(tenant).error());
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void productCountReturnsPermissionErrorOnOdooAccessError() throws Exception {
+        startStockServer("{\"error\":{\"code\":200,\"message\":\"AccessError\","
+                + "\"data\":{\"name\":\"odoo.exceptions.AccessError\"}}}");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("NO_PERMISSION", service.countSellableProducts(tenant).error());
+    }
+
+    @Test
+    void productSearchDistinguishesEmptyMatchesFromOdooFailure() throws Exception {
+        List<JsonNode> emptyRequests = startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        OdooReportQueryService.ProductSearchResult empty = service.searchProducts(tenant, "No match", 8);
+
+        assertNull(empty.error());
+        assertTrue(empty.rows().isEmpty());
+        JsonNode searchParams = emptyRequests.get(1).path("params");
+        assertEquals("product.product", searchParams.path("model").asText());
+        assertEquals("search_read", searchParams.path("method").asText());
+        String searchDomain = searchParams.path("args").get(0).toString();
+        assertTrue(searchDomain.contains("No match"));
+        assertTrue(searchDomain.contains("default_code"));
+        assertTrue(searchDomain.contains("barcode"));
+        assertTrue(searchDomain.contains("\"|\""));
+        assertTrue(searchDomain.contains("available_in_pos"));
+        assertTrue(searchDomain.contains("\"company_id\",\"=\",77"));
+        assertTrue(searchDomain.contains("\"company_id\",\"=\",false"));
+        assertFalse(emptyRequests.stream().anyMatch(request -> Set.of("create", "write", "unlink")
+                .contains(request.path("params").path("method").asText())));
+
+        stopServer();
+        List<JsonNode> failedRequests = startStockServer(
+                "{\"error\":{\"code\":200,\"message\":\"AccessError\","
+                        + "\"data\":{\"name\":\"odoo.exceptions.AccessError\"}}}");
+        OdooReportQueryService.ProductSearchResult denied = service(vendors).searchProducts(tenant, "Shiraz", 8);
+
+        assertEquals("NO_PERMISSION", denied.error());
+        assertTrue(denied.rows().isEmpty());
+        assertEquals(2, failedRequests.size());
+        assertFalse(failedRequests.stream().anyMatch(request -> Set.of("create", "write", "unlink")
+                .contains(request.path("params").path("method").asText())));
+    }
+
+    @Test
+    void productSearchRequiresReportPermissionAndOutletBeforeOdooAccess() throws Exception {
+        List<JsonNode> requests = startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        OdooReportQueryService service = service(vendors);
+        TenantContext noPermission = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of());
+        TenantContext noOutlet = new TenantContext(42L, 7L, null, List.of(), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("NO_PERMISSION", service.searchProducts(noPermission, "Shiraz", 8).error());
+        assertEquals("NO_OUTLET", service.searchProducts(noOutlet, "Shiraz", 8).error());
+        assertTrue(requests.isEmpty());
+        verifyNoInteractions(vendors);
+    }
+
+    @Test
+    void productCountFailsClosedWhenVendorLookupThrows() throws Exception {
+        List<JsonNode> requests = startStockServer("286");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenThrow(new IllegalStateException("vendor storage unavailable"));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("ODOO_REPORT_UNAVAILABLE", service.countSellableProducts(tenant).error());
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void productSearchReturnsUnavailableWhenVendorLookupThrows() throws Exception {
+        List<JsonNode> requests = startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenThrow(new IllegalStateException("vendor storage unavailable"));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        OdooReportQueryService.ProductSearchResult result = service.searchProducts(tenant, "Shiraz", 8);
+
+        assertEquals("ODOO_REPORT_UNAVAILABLE", result.error());
+        assertTrue(result.rows().isEmpty());
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void reportReturnsUnavailableWhenVendorLookupThrows() throws Exception {
+        List<JsonNode> requests = startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenThrow(new IllegalStateException("vendor storage unavailable"));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+        ReportPeriodResolver.Window window = new ReportPeriodResolver.Window(
+                LocalDate.of(2026, 10, 16), LocalDate.of(2026, 10, 16));
+
+        OdooReportQueryService.Result result = service.query(
+                tenant, "report_stock", Map.of("query", "Shiraz"), window);
+
+        assertEquals("ODOO_REPORT_UNAVAILABLE", result.error());
+        assertTrue(result.rows().isEmpty());
+        assertTrue(requests.isEmpty());
+    }
+
+    @Test
+    void businessTimezoneFallsBackWhenVendorLookupThrows() throws Exception {
+        startStockServer("[]");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenThrow(new IllegalStateException("vendor storage unavailable"));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals(AustraliaTime.ZONE, service.businessTimezone(tenant));
+    }
+
+    @Test
+    void productCountRejectsNonIntegralOdooResponseInsteadOfTruncatingIt() throws Exception {
+        startStockServer("286.5");
+        VendorMapper vendors = mock(VendorMapper.class);
+        when(vendors.findById(42L)).thenReturn(readyVendor(false));
+        OdooReportQueryService service = service(vendors);
+        TenantContext tenant = new TenantContext(42L, 7L, 3L, List.of(3L), Set.of(TenantContext.PERM_QUERY));
+
+        assertEquals("ODOO_REPORT_UNAVAILABLE", service.countSellableProducts(tenant).error());
     }
 
     @Test
