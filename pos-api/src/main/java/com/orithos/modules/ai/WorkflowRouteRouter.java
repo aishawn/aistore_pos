@@ -30,6 +30,31 @@ public final class WorkflowRouteRouter {
                     + "葡萄酒推荐|推荐.*葡萄酒|推荐.*红酒|推荐.*白酒|红酒配牛排|白酒配海鲜|"
                     + "配餐|搭配.*酒|.*配.*酒|适合.*酒|清爽.*酒|晚餐喝什么酒|红酒推荐|白葡萄酒推荐",
             Pattern.CASE_INSENSITIVE);
+    /** In-stock grocery / beer / snacks — checked before wine when no wine keywords. */
+    private static final Pattern GROCERY_RECOMMEND = Pattern.compile(
+            "recommend(?: me)?(?: a| some)? (?:beer|lager|ale|ipa|spirits?|vodka|gin|rum|whisky|whiskey|snack|chips|nuts|soft drink|cola|cider)|"
+                    + "suggest(?: me)?(?: a| some)? (?:beer|lager|ale|ipa|spirits?|snack|chips|soft drink)|"
+                    + "something in stock for (?:a )?bbq|"
+                    + "in stock for (?:a )?bbq|"
+                    + "recommend(?: something)?(?: in stock)? for (?:a )?bbq|"
+                    + "suggest(?: something)?(?: in stock)? for (?:a )?bbq|"
+                    + "find (?:me )?(?:a |some )?(?:beer|snacks?|chips|soft drinks?|spirits?)|"
+                    + "beer recommendation|snack recommendation|grocery recommendation|"
+                    + "推荐.*(?:啤酒|零食|软饮|可乐|烈酒|杂货)|(?:啤酒|零食|软饮|烈酒|杂货)推荐|"
+                    + "烧烤.*(?:推荐|配)|(?:推荐|找).*(?:啤酒|零食)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern WINE_KEYWORD = Pattern.compile(
+            "\\bwine\\b|pairing|shiraz|chardonnay|葡萄酒|红酒|白酒|香槟|配餐|配牛排|配海鲜",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern FOOD_PAIRING_OCCASION = Pattern.compile(
+            "\\b(?:steak|lamb|fish|seafood|chicken|pasta|cheese)\\b|牛排|海鲜|羊肉",
+            Pattern.CASE_INSENSITIVE);
+    /** Vague product recommend — open the Wine/Grocery hub. */
+    private static final Pattern RECOMMEND_HUB = Pattern.compile(
+            "^(?:please\\s+)?(?:recommend|suggest)(?:\\s+me)?(?:\\s+something)?(?:\\s+in\\s+stock)?$|"
+                    + "open (?:the )?recommend(?:ations?)?|product recommend(?:ation)?s?|find (?:me )?something in stock|"
+                    + "^(?:请)?推荐(?:点|些)?(?:东西|商品)?$|打开推荐|商品推荐|找(?:点|些)?在库(?:商品)?",
+            Pattern.CASE_INSENSITIVE);
     /** Explicit invoice OCR / preview — not bare “invoice” wording (reports use that too). */
     private static final Pattern INVOICE = Pattern.compile(
             "scan(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|read(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|can you (?:read|check) (?:this|an?|the) (?:supplier )?(?:invoice|bill)|upload(?: (?:this|an?|the))? (?:supplier )?(?:invoice|bill)|capture(?: (?:this|an?|the))? (?:supplier )?invoice|take a photo of (?:this|an?|the) (?:supplier )?(?:invoice|bill)|invoice capture|invoice scan|invoice photo|"
@@ -60,10 +85,10 @@ public final class WorkflowRouteRouter {
                     + "新增|添加|创建|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|确认|批准|保存|开始|启动|提交|发送|发布",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern ENTITY_WRITE = Pattern.compile(
-            "(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b|"
-                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory)\\b.*\\b(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b|"
-                    + "(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存)|"
-                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存).*?(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布)",
+            "(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b.*\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory|classification|category|customer group|price list|gift card|stocktake|buying period|balance)\\b|"
+                    + "\\b(?:customer|client|product|item|catalogue|catalog|supplier|vendor|order|stock|inventory|classification|category|customer group|price list|gift card|stocktake|buying period|balance)\\b.*\\b(?:create|add|edit|update|delete|remove|merge|import|upload|receive|return|transfer|adjust|save|confirm|approve|submit|send|publish)\\b|"
+                    + "(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布).*?(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存|分类|客户分组|价目表|价格表|礼品卡|盘点|采购周期|客户余额)|"
+                    + "(?:客户|顾客|产品|商品|目录|供应商|采购单|订单|库存|分类|客户分组|价目表|价格表|礼品卡|盘点|采购周期|客户余额).*?(?:创建|添加|编辑|修改|更新|删除|移除|合并|导入|上传|收货|退货|调拨|调整|保存|确认|批准|提交|发送|发布)",
             Pattern.CASE_INSENSITIVE);
     /** Imperative purchase/price wording must fail closed before model routing. */
     private static final Pattern EXPLICIT_EXECUTION = Pattern.compile(
@@ -128,7 +153,10 @@ public final class WorkflowRouteRouter {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern BULK_PRICE_LOOKUP = Pattern.compile(
             "(?:show|open|view|list|search|find|check)(?:\\s+me)?\\s+(?:the\\s+)?(?:bulk price edit(?:ing)?|bulk pricing|bulk price review)|"
-                    + "(?:查看|打开|查询|搜索)(?:批量改价|批量定价|批量价格编辑|批量改价页面)",
+                    + "(?:查看|打开|查询|搜索)?(?:批量改价|批量定价|批量价格编辑|批量改价页面)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern STOCK_LIST_LOOKUP = Pattern.compile(
+            "^(?:stock|inventory|what(?:'s| is)\\s+(?:in\\s+)?stock|what(?:'s| is)\\s+(?:our\\s+)?inventory|how(?:'s| is)\\s+(?:our\\s+)?stock(?:\\s+looking)?|inventory\\s+status|库存情况(?:怎么样|如何)?|现在库存怎么样|店里有什么库存|有什么现货)$",
             Pattern.CASE_INSENSITIVE);
 
     private WorkflowRouteRouter() {}
@@ -162,6 +190,10 @@ public final class WorkflowRouteRouter {
         if (invoiceScan != null) {
             return invoiceScan;
         }
+        String normalized = AssistantFastPathRouter.normalize(question);
+        if (STOCK_LIST_LOOKUP.matcher(normalized).matches()) {
+            return new Override("navigate", "/stock/list");
+        }
         AssistantFastPathRouter.Match capabilityQuestion = AssistantFastPathRouter.maybeMatch(question);
         if (capabilityQuestion != null
                 && ("qa".equals(capabilityQuestion.intent())
@@ -169,7 +201,6 @@ public final class WorkflowRouteRouter {
             return null;
         }
         if (hasWriteIntent(question)) return null;
-        String normalized = AssistantFastPathRouter.normalize(question);
         if (!READ_ONLY_ACTION.matcher(normalized).find() && SUPPLIER_LOOKUP.matcher(normalized).find()) {
             return new Override("navigate", "/suppliers/odoo");
         }
@@ -199,7 +230,9 @@ public final class WorkflowRouteRouter {
         if (!READ_ONLY_ACTION.matcher(normalized).find() && BALANCE_LOOKUP.matcher(normalized).find()) {
             return new Override("navigate", "/customers/balances");
         }
-        if (!READ_ONLY_ACTION.matcher(normalized).find() && BULK_PRICE_LOOKUP.matcher(normalized).find()) {
+        // Bulk-price phrases often include 编辑/edit; the lookup pattern is specific enough
+        // that the generic write-action guard must not block page navigation.
+        if (BULK_PRICE_LOOKUP.matcher(normalized).find()) {
             return new Override("navigate", "/stock/bulk-price-edit");
         }
         if ((REPLENISHMENT.matcher(normalized).find() || REPLENISHMENT_NATURAL.matcher(normalized).find())
@@ -212,8 +245,23 @@ public final class WorkflowRouteRouter {
                 && !WORKFLOW_REPORT_CONTEXT.matcher(normalized).find()) {
             return new Override("navigate", "/stock/capped-pricing");
         }
+        if (GROCERY_RECOMMEND.matcher(normalized).find()
+                && !WINE_KEYWORD.matcher(normalized).find()
+                && !REPORT_CONTEXT.matcher(normalized).find()) {
+            return new Override("navigate", "/recommend/grocery");
+        }
         if (SOMMELIER.matcher(normalized).find() && !REPORT_CONTEXT.matcher(normalized).find()) {
+            // BBQ / party snack phrasing without wine stays on grocery even if SOMMELIER's
+            // broad "recommend something for …" also matched.
+            if (GROCERY_RECOMMEND.matcher(normalized).find()
+                    && !WINE_KEYWORD.matcher(normalized).find()
+                    && !FOOD_PAIRING_OCCASION.matcher(normalized).find()) {
+                return new Override("navigate", "/recommend/grocery");
+            }
             return new Override("navigate", "/sommelier");
+        }
+        if (RECOMMEND_HUB.matcher(normalized).find() && !REPORT_CONTEXT.matcher(normalized).find()) {
+            return new Override("navigate", "/recommend");
         }
         return null;
     }

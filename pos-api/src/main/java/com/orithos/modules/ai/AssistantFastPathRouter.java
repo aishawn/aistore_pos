@@ -191,7 +191,7 @@ public final class AssistantFastPathRouter {
             "^(?:do we have|is there|can you check)\\s+(?:any\\s+)?stock\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
                     + "^how much\\s+stock\\s+do we have\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
                     + "^what\\s+stock\\s+do we have\\s+(?:of|for)\\s+(.+?)[?.!]*$|"
-                    + "^(?:库存里有|有没有)\\s*(.+?)(?:的)?库存(?:吗)?[？?。]*$|"
+                    + "^(?:库存里有|库存中有|有没有)\\s*(.+?)(?:的)?(?:库存|现货)(?:吗)?[？?。]*$|"
                     + "^(.+?)(?:有库存吗|有货吗)[？?。]*$|"
                     + "^(?:查|搜索|查询)(?:一下)?\\s*(?:条码|barcode)\\s*[:：]?\\s*([A-Za-z0-9-]{4,})[？?。.!]*$|"
                     + "^(?:找|搜索|查询)(?:一下)?\\s*(?:SKU|sku)\\s*[:：]?\\s*([A-Za-z0-9_-]{2,})[？?。.!]*$|"
@@ -339,6 +339,16 @@ public final class AssistantFastPathRouter {
                     "",
                     "");
         }
+        var directStockQuery = STOCK_QUERY_DIRECT.matcher(question.trim());
+        if (directStockQuery.matches()) {
+            String query = cleanQuery(firstNonNull(
+                    directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
+                    directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
+                    directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9)));
+            if (query != null) {
+                return new Match("report_stock", "Stock report", Map.of("query", query), "", "", "", "");
+            }
+        }
         var productQuery = LOOKUP_PRODUCT_QUERY.matcher(question.trim());
         if (productQuery.matches()) {
             String query = cleanQuery(firstNonNull(
@@ -437,23 +447,6 @@ public final class AssistantFastPathRouter {
                     "",
                     "",
                     "");
-        }
-        var directStockQuery = STOCK_QUERY_DIRECT.matcher(question.trim());
-        if (directStockQuery.matches()) {
-            String query = cleanQuery(firstNonNull(
-                    directStockQuery.group(1), directStockQuery.group(2), directStockQuery.group(3),
-                    directStockQuery.group(4), directStockQuery.group(5), directStockQuery.group(6),
-                    directStockQuery.group(7), directStockQuery.group(8), directStockQuery.group(9)));
-            if (query != null) {
-                return new Match(
-                        "report_stock",
-                        "Stock report",
-                        Map.of("query", query),
-                        "",
-                        "",
-                        "",
-                        "");
-            }
         }
         var stockQuery = STOCK_QUERY.matcher(question.trim());
         if (stockQuery.matches()) {
