@@ -99,7 +99,7 @@ export default function LoginPage() {
         window.location.assign(controlPlaneLandingPath(returnPath));
         return;
       }
-      window.location.assign(storeLandingPath(returnPath, mode));
+      window.location.assign(storeLandingPath(returnPath, mode, res.user));
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn’t sign you in. Check your details and try again.");
     } finally {
