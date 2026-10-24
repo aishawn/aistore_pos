@@ -105,7 +105,15 @@ function isAuthExemptPath(path: string): boolean {
     || path.startsWith("/api/public/");
 }
 
+/** The development preview has no backend session to refresh or expire. */
+export function isLocalPreviewSession(): boolean {
+  return process.env.NODE_ENV === "development"
+    && typeof document !== "undefined"
+    && document.cookie.split(";").some((cookie) => cookie.trim() === "orithos_local_preview=1");
+}
+
 function handleAuthFailure(path: string, status: number, code: number) {
+  if (isLocalPreviewSession()) return;
   if (isAuthExemptPath(path)) return;
   // Wrong password is HTTP 200 + code 40101 — not a session expiry.
   if (code === 40101) return;
@@ -168,7 +176,7 @@ async function recoverOdooSession(): Promise<boolean> {
 }
 
 async function refreshAccessToken(): Promise<boolean> {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || isLocalPreviewSession()) return false;
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     try {
@@ -211,7 +219,8 @@ async function request<T>(
     /* non-JSON response */
   }
 
-  const authExpired = res.status === 401 || json?.code === 40100 || json?.code === 40103;
+  const authExpired = !isLocalPreviewSession()
+    && (res.status === 401 || json?.code === 40100 || json?.code === 40103);
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   const isOdooRead = canReplay && path.startsWith("/api/odoo/") && path !== "/api/odoo/session";
   if (authExpired && isOdooRead && !retriedAfterRefresh && await recoverOdooSession()) {
@@ -793,6 +802,14 @@ export interface AssistantResponse {
   fastPathId?: string | null;
   source?: string | null;
   llmFallback?: boolean;
+  /** Optional explainability and confirmation metadata from newer providers. */
+  confidence?: number | null;
+  clarificationRequired?: boolean;
+  clarifyingQuestion?: string | null;
+  dataAsOf?: string | null;
+  suggestedFollowUps?: string[] | null;
+  requiresConfirmation?: boolean;
+  actionPreview?: Record<string, unknown> | null;
 }
 
 export interface AiReportSnapshot {

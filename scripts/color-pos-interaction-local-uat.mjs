@@ -14,8 +14,8 @@ if (!(targetUrl.hostname === "demo.lvh.me" && targetUrl.port === "3102") && !/^(
 
 const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const sourceTreeDirty = Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim());
-const screenshotDir = path.resolve(root, "docs/screenshots/2026-10-24-color-consistency/checkout");
-const outputPath = path.resolve(root, "docs/UAT_COLOR_POS_INTERACTION_LOCAL_2026-10-24.json");
+const screenshotDir = path.resolve(root, "docs/screenshots/2026-10-24-local-ui-sync/checkout");
+const outputPath = path.resolve(root, "docs/UAT_LOCAL_UI_SYNC_CHECKOUT_2026-10-24.json");
 fs.mkdirSync(screenshotDir, { recursive: true });
 
 const user = { id: "fixture-user", username: "pos-checkout-fixture", name: "POS Checkout Fixture", isAdmin: true, vendorId: 41, outletId: 1 };

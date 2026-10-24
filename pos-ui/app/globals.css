@@ -109,6 +109,38 @@
   --sidebar-ring: var(--brand-focus);
 }
 
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.theme-transition,
+html.theme-transition body,
+html.theme-transition body * {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, fill 180ms ease, stroke 180ms ease;
+}
+
+::selection {
+  background: var(--brand-tint-strong);
+  color: var(--brand-ink-strong);
+}
+
+html.dark ::selection {
+  background: var(--brand-tint-strong);
+  color: var(--brand-ink-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition,
+  html.theme-transition body,
+  html.theme-transition body * {
+    transition: none !important;
+  }
+}
+
 .dark {
   --background: var(--brand-canvas);
   --foreground: var(--brand-ink);
@@ -299,7 +331,7 @@
 .oh-brand-mark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: var(--oh-text);
   white-space: nowrap;
 }
@@ -324,16 +356,16 @@
 }
 .oh-brand-mark-img {
   display: block;
-  width: 32px;
   height: 32px;
+  width: auto;
   flex: 0 0 auto;
-  border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
 }
+.oh-brand-mark-img-compact { height: 28px; }
 .oh-brand-wordmark {
   color: currentColor;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1;
 }
@@ -344,7 +376,6 @@
 }
 .oh-brand-mark-inverse .oh-brand-symbol > span { background: #fff; }
 .oh-brand-mark-compact .oh-brand-symbol { width: 28px; height: 28px; border-width: 2.5px; }
-.oh-brand-mark-compact .oh-brand-mark-img { width: 28px; height: 28px; }
 
 @layer base {
   * {

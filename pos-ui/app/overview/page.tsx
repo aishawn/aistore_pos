@@ -1,5 +1,5 @@
-import { OrithosOverviewPage } from "@/components/OrithosOverviewPage";
+import { redirect } from "next/navigation";
 
 export default function OverviewPage() {
-  return <OrithosOverviewPage />;
+  redirect("/dashboard");
 }

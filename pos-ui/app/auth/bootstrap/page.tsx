@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OrithosLogo } from "@/components/OrithosLogo";
 import { api, apiFailureMessage } from "@/lib/api";
+import { storeLandingPath } from "@/lib/tenant-host";
 
 interface BootstrapResponse {
   user: {
@@ -11,6 +12,7 @@ interface BootstrapResponse {
     name: string;
     username: string;
     isAdmin: boolean;
+    roleCode?: string;
     outletId?: number;
     vendorId?: number;
     email?: string | null;
@@ -36,7 +38,7 @@ export default function BootstrapPage() {
         if (cancelled) return;
         const user = { ...res.user, id: String(res.user.id) };
         localStorage.setItem(USER_KEY, JSON.stringify(user));
-        window.location.replace("/overview");
+        window.location.replace(storeLandingPath(null, "web", user));
       } catch (err) {
         if (!cancelled) {
           setError(apiFailureMessage(err, "Could not open your store session.", "Session expired"));

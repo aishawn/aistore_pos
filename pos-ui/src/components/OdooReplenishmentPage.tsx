@@ -337,7 +337,7 @@ export function OdooReplenishmentPage() {
   );
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
+    <main className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 md:gap-5 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
@@ -747,7 +747,7 @@ export function OdooReplenishmentPage() {
             <div className="grid min-w-0 gap-4 overflow-y-auto p-5 md:px-6">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Supplier <span className="text-red-700">*</span></span>
                 <select ref={rfqSupplierRef} value={rfqSupplierId} onChange={(event) => setRfqSupplierId(event.target.value)} required disabled={rfqLoadingSuppliers || rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
-                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : "No suppliers available"}</option>
+                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : rfqSupplierError ? "Supplier list unavailable" : "No suppliers available"}</option>
                   {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
                 </select>
               </label>

@@ -1,6 +1,6 @@
 "use client";
 import "./overview.css";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
 import {
   BarChart3,
@@ -56,6 +56,7 @@ export function RadialPie({
   centerHint,
   centerHref,
   onNavigate,
+  onCenterClick,
   entered = true,
   variant = "page",
   className,
@@ -66,6 +67,7 @@ export function RadialPie({
   centerHint?: string;
   centerHref?: string;
   onNavigate?: () => void;
+  onCenterClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   entered?: boolean;
   variant?: "page" | "modal";
   className?: string;
@@ -81,11 +83,11 @@ export function RadialPie({
   const activeId = pinned || preview;
   const active = destinations.find((item) => item.id === activeId);
   const listMode =
-    compact || (size.width > 0 && (size.width < 900 || size.height < 430));
+    compact || (size.width > 0 && (size.width < 700 || size.height < 430));
   const originX = size.width / 2;
   const radius = Math.max(
     0,
-    Math.min(size.width / 2 - 90, size.height / 2 - 70, (size.width / 2 - 340) / 0.866, 205),
+    Math.min(size.width / 2 - 90, size.height / 2 - 70, (size.width / 2 - 150) / 0.866, 205),
   );
   const close = (restore = false) => {
     const target = pinned || preview;
@@ -126,7 +128,7 @@ export function RadialPie({
   };
   const center = (
     <>
-      <span className="ov-eyebrow">{centerTitle}</span>
+      {centerTitle !== centerCaption ? <span className="ov-eyebrow">{centerTitle}</span> : null}
       <strong>{centerCaption}</strong>
       {centerHint ? <span>{centerHint}</span> : null}
     </>
@@ -157,7 +159,10 @@ export function RadialPie({
           className="ov-ring-center"
           style={listMode ? undefined : { left: originX }}
           href={centerHref}
-          onClick={onNavigate}
+          onClick={(event) => {
+            onNavigate?.();
+            onCenterClick?.(event);
+          }}
         >
           {center}
         </Link>
@@ -214,6 +219,7 @@ export function RadialPie({
                 {item.label}
                 {item.children?.length ? <ChevronDown size={12} /> : null}
               </span>
+              {item.description ? <small>{item.description}</small> : null}
             </>
           );
           return (

@@ -1,21 +1,10 @@
 import { api, searchCustomers, searchProducts } from "@/lib/api";
+import {
+  AI_ENTITY_LIST_ROUTE as LIST_ROUTE,
+  type AiEntity,
+} from "@/lib/ai-entity-routing";
 
-export type AiEntity =
-  | "product"
-  | "classification"
-  | "supplier"
-  | "order"
-  | "stocktake"
-  | "stock_list"
-  | "stock_more"
-  | "customer"
-  | "customer_group"
-  | "price_list"
-  | "balance"
-  | "gift_card"
-  | "buying_period"
-  | "capped_pricing"
-  | "bulk_price_edit";
+export type { AiEntity } from "@/lib/ai-entity-routing";
 
 export type AiOp =
   | "list"
@@ -23,7 +12,6 @@ export type AiOp =
   | "create"
   | "view"
   | "edit"
-  | "delete"
   | "merge"
   | "import"
   | "export";
@@ -33,17 +21,9 @@ export interface NamedEntity {
   name: string;
 }
 
-export interface PendingEntityDelete {
-  entity: AiEntity;
-  id: string;
-  name: string;
-  deletePath: string;
-}
-
 export type EntityActionResult =
   | { kind: "navigate"; href: string; note?: string }
   | { kind: "search_panel"; scope: "product" | "customer"; query: string }
-  | { kind: "confirm_delete"; pending: PendingEntityDelete }
   | { kind: "pick_list"; href: string; note: string }
   | { kind: "message"; text: string };
 
@@ -222,25 +202,6 @@ function customerEditPatches(query: string): CustomerEditPrefill {
   return patch;
 }
 
-const LIST_ROUTE: Record<AiEntity, string> = {
-  // Odoo is the authoritative catalogue for the current store pilot.
-  product: "/products/odoo",
-  classification: "/classifications",
-  supplier: "/suppliers/odoo",
-  order: "/orders",
-  stocktake: "/stocktake",
-  stock_list: "/stock/list",
-  stock_more: "/stock/more",
-  customer: "/customers/odoo",
-  customer_group: "/customer-groups",
-  price_list: "/pricelists",
-  balance: "/customers/balances",
-  gift_card: "/giftcards",
-  buying_period: "/stock/buying-periods",
-  capped_pricing: "/stock/capped-pricing",
-  bulk_price_edit: "/stock/bulk-price-edit",
-};
-
 function entityLabel(entity: AiEntity): string {
   if (entity === "balance") return "customer balance";
   return entity.replaceAll("_", " ");
@@ -276,14 +237,6 @@ const IMPORT_ROUTE: Partial<Record<AiEntity, string>> = {
 // page actually is and can send staff toward the wrong workflow.
 const EXPORT_ENTITIES = new Set<AiEntity>(["product", "customer", "gift_card", "stocktake"]);
 
-const DELETE_PATH: Partial<Record<AiEntity, (id: string) => string>> = {
-  product: (id) => `/api/products/${id}`,
-  supplier: (id) => `/api/suppliers/${id}`,
-  customer: (id) => `/api/customers/${id}`,
-  customer_group: (id) => `/api/customers/groups/${id}`,
-  price_list: (id) => `/api/price-lists/${id}`,
-};
-
 function withQuery(path: string, q?: string | null): string {
   const trimmed = q?.trim();
   if (!trimmed) return path;
@@ -308,7 +261,6 @@ function asOp(raw?: string | null): AiOp | null {
     "create",
     "view",
     "edit",
-    "delete",
     "merge",
     "import",
     "export",
@@ -630,56 +582,7 @@ export async function resolveEntityAction(
       };
     }
 
-    case "delete": {
-      const deleteBuilder = DELETE_PATH[entity];
-      if (!deleteBuilder) {
-        return {
-          kind: "navigate",
-          href: withQuery(list, query),
-          note: `Delete via API is not wired for ${entityLabel(entity)}. Opened the list so you can delete there.`,
-        };
-      }
-      if (!query) {
-        return {
-          kind: "navigate",
-          href: list,
-          note: "Specify a name to delete, e.g. “delete customer xiaoli”.",
-        };
-      }
-      const lookup =
-        entity === "customer" ? customerLookupQuery(query) : query;
-      const resolved = await resolveOne(entity, lookup);
-      if (resolved.one) {
-        return {
-          kind: "confirm_delete",
-          pending: {
-            entity,
-            id: resolved.one.id,
-            name: resolved.one.name,
-            deletePath: deleteBuilder(resolved.one.id),
-          },
-        };
-      }
-      if (resolved.many?.length) {
-        const names = resolved.many.slice(0, 5).map((h) => h.name).join(", ");
-        return {
-          kind: "pick_list",
-          href: withQuery(list, lookup),
-          note: `Multiple matches for delete (${names}). Pick one on the list, then delete.`,
-        };
-      }
-      return {
-        kind: "pick_list",
-        href: withQuery(list, lookup),
-        note: `No match for “${lookup}”. Opened the list.`,
-      };
-    }
-
     default:
       return { kind: "navigate", href: list };
   }
-}
-
-export async function executeEntityDelete(pending: PendingEntityDelete): Promise<void> {
-  await api.del(pending.deletePath);
 }

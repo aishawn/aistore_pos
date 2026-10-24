@@ -136,7 +136,7 @@ export function SellPage() {
 
       {/* Tab order is shortcuts → payment → cart. Grid placement keeps payment on top and the cart on the left. */}
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
-        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
+        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
             <TabButton
               active={tab === "keys" && !overlayView}
@@ -606,7 +606,7 @@ function CheckoutPanel({ className }: { className?: string }) {
   return (
     <aside
       className={cn(
-        "flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:w-[380px]",
+        "flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:w-[380px]",
         className,
       )}
     >
@@ -896,7 +896,7 @@ function PromotionsPanel() {
             <span className="text-[13px]">▼</span>
           </button>
           {sell.promotionMenuOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 min-w-[120px] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-lg">
+            <div className="absolute left-0 top-full z-10 mt-1 min-w-[120px] rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-lg">
               {(["all", "current", "future"] as const).map((p) => (
                 <button
                   key={p}
@@ -1003,7 +1003,7 @@ function ProductsPanel() {
               key={item.id}
               type="button"
               onClick={() => sell.pickBrowseProduct(item)}
-              className="flex min-h-[116px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-3 text-center text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)] active:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
+              className="flex min-h-[116px] cursor-pointer flex-col items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-3 text-center text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition-colors hover:border-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)] active:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]"
             >
               <ProductImage productId={item.id} name={item.name} className="h-12 w-12" />
               <span className="line-clamp-2 text-[13px] font-medium leading-snug">
@@ -1042,7 +1042,7 @@ function ToolBtn({
         "min-h-11 cursor-pointer rounded-lg border px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] aria-disabled:cursor-not-allowed aria-disabled:opacity-40",
         variant === "danger"
           ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] text-[var(--oh-tile-red-text)] hover:opacity-90"
-          : "border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] hover:text-[var(--oh-text)]",
+          : "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] hover:text-[var(--oh-text)]",
       )}
     >
       {label}

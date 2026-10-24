@@ -150,6 +150,32 @@ async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: 
 }
 
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === "development" && request.cookies.get("orithos_local_preview")?.value === "1") {
+    return NextResponse.json({
+      rangeHours: 24,
+      company: "Orithos Local Preview",
+      currency: "AUD",
+      timezone: "Australia/Adelaide",
+      revenue: 1234.5,
+      grossSales: 1234.5,
+      refunds: 0,
+      refundTransactions: 0,
+      tax: 112.23,
+      transactions: 18,
+      itemsSold: 24,
+      openRegisters: 1,
+      // Explicitly local-preview-only, so the UI can exercise the insight
+      // affordances without implying that production reporting has these fields.
+      opportunities: 1,
+      lowStockCount: 3,
+      newCustomers: 0,
+      trend: [],
+      recentSales: [],
+      topProducts: [],
+      byCategory: [],
+      compare: { revenue: 0, transactions: 0, itemsSold: 0, revenueDeltaPct: null, transactionsDeltaPct: null, itemsSoldDeltaPct: null, averageSaleDeltaPct: null },
+    });
+  }
   const correlationId = request.headers.get("x-correlation-id");
   if (!isSameOrigin(request)) return errorResponse("Cross-origin requests are not allowed", 403, correlationId);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;

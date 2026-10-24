@@ -35,10 +35,16 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
 
   return (
     <SommelierShell
-      title="Wine Assistant"
+      title="Wine · Recommend"
       subtitle="Help the customer find the right bottle from this store — then help sell it."
     >
       <div className="grid gap-4">
+        <p className="text-[13px] text-[var(--oh-muted)]">
+          <Link href={mobile ? "/m" : "/recommend"} className="font-semibold text-[var(--oh-primary)]">
+            ← All recommendations
+          </Link>
+          {" "}(Wine and Grocery)
+        </p>
         {aiEnabled === false ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-5 text-amber-950">
             Store AI chat and label photos are off. Find a wine still matches this store&apos;s catalogue; name and barcode search still work on Identify.

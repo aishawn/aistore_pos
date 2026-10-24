@@ -10,20 +10,24 @@ import { useAiAssistant } from "@/lib/ai-assistant";
  */
 export default function AssistantPage() {
   const router = useRouter();
-  const { setExpanded } = useAiAssistant();
+  const { setExpanded, startAssistantExit, notifyAssistantReady } = useAiAssistant();
 
   useEffect(() => {
     setExpanded(true);
+    notifyAssistantReady();
     return () => setExpanded(false);
-  }, [setExpanded]);
+  }, [setExpanded, notifyAssistantReady]);
 
   const onRequestClose = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.replace("/overview");
-  }, [router]);
+    startAssistantExit();
+    window.setTimeout(() => {
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back();
+        return;
+      }
+      router.replace("/dashboard");
+    }, 180);
+  }, [router, startAssistantExit]);
 
   return (
     <div className="relative h-full min-h-0 overflow-hidden">
@@ -33,6 +37,7 @@ export default function AssistantPage() {
           setExpanded(next);
         }}
         presentation="page"
+        workspace
         launcherVisible={false}
         onRequestClose={onRequestClose}
       />

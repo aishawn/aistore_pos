@@ -99,7 +99,7 @@ export default function LoginPage() {
         window.location.assign(controlPlaneLandingPath(returnPath));
         return;
       }
-      window.location.assign(storeLandingPath(returnPath, mode));
+      window.location.assign(storeLandingPath(returnPath, mode, res.user));
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn’t sign you in. Check your details and try again.");
     } finally {
@@ -110,6 +110,13 @@ export default function LoginPage() {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await doLogin("web");
+  }
+
+  function enterLocalPreview() {
+    if (process.env.NODE_ENV !== "development") return;
+    document.cookie = "orithos_local_preview=1;path=/;max-age=3600;samesite=lax";
+    const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
+    window.location.assign(returnPath || "/dashboard");
   }
 
   // Keep the SSR and browser markup identical across local HTTP and production HTTPS.
@@ -218,6 +225,16 @@ export default function LoginPage() {
             <LogIn size={18} aria-hidden="true" />
             {busy === "web" ? "Signing in…" : "Login"}
           </button>
+
+          {process.env.NODE_ENV === "development" ? (
+            <button
+              type="button"
+              onClick={enterLocalPreview}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-orange-light)] text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-orange-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+            >
+              Preview Dashboard locally
+            </button>
+          ) : null}
 
           {!controlPlane && (
             <button

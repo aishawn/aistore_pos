@@ -52,7 +52,7 @@ export function SellPad() {
   if (sell.view === "products") return <ProductsBrowsePanel />;
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-black">
+    <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)]">
       <SearchBar />
       <div className="relative flex-1 bg-[var(--sf-pad-bg)]">
         {sell.view === "parked" ? (
@@ -70,7 +70,7 @@ export function SellPad() {
             style={{ width: sell.view === "parked" ? "100%" : sell.keypadPage === 1 ? "80%" : "40%" }}
           />
         </div>
-        <ul role="tablist" aria-label="Sell views" className="flex h-[50px] items-center justify-between bg-white">
+        <ul role="tablist" aria-label="Sell views" className="flex h-[50px] items-center justify-between bg-[var(--oh-surface-elevated)]">
           <li className="flex flex-1">
             <button
               type="button"
@@ -80,7 +80,7 @@ export function SellPad() {
               aria-controls="sell-keys-panel"
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-center text-[19.2px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
-              sell.view === "keys" ? "text-[var(--sf-tab-blue)]" : "text-black",
+              sell.view === "keys" ? "text-[var(--sf-tab-blue)]" : "text-[var(--oh-text)]",
             )}
             >
               <KeyboardIcon size={19} strokeWidth={1.5} className="mr-2" />
@@ -96,7 +96,7 @@ export function SellPad() {
               aria-controls="parked-sales-panel"
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-center text-[19.2px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
-              sell.view === "parked" ? "text-[var(--sf-tab-blue)]" : "text-black",
+              sell.view === "parked" ? "text-[var(--sf-tab-blue)]" : "text-[var(--oh-text)]",
             )}
             >
               <ParkingIcon size={19} strokeWidth={1.5} className="mr-2" />
@@ -142,12 +142,12 @@ function SearchBar() {
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => !isParked && sell.setSearchOpen(true)}
         onKeyDown={onKeyDown}
-        className="h-[50px] w-full border border-[var(--sf-muted)] bg-white px-4 text-[16px] text-black outline-none placeholder:text-[var(--sf-placeholder)]"
+        className="h-[50px] w-full border border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] px-4 text-[16px] text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
       />
       <button
         type="button"
         aria-label="Options"
-        className="flex h-[50px] w-[50px] shrink-0 items-center justify-center border border-l-0 border-[var(--sf-muted)] bg-white text-[24px] leading-none text-[var(--sf-placeholder)] lg:hidden"
+        className="flex h-[50px] w-[50px] shrink-0 items-center justify-center border border-l-0 border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] text-[24px] leading-none text-[var(--sf-placeholder)] lg:hidden"
       >
         ···
       </button>
@@ -164,7 +164,7 @@ function SearchDropdown() {
   if (products.length === 0 && customers.length === 0) return null;
 
   return (
-    <div id="sell-search-results" role="listbox" aria-label="Product and customer search results" className="absolute left-0 right-0 top-[50px] z-20 max-h-[320px] overflow-y-auto border border-[var(--sf-muted)] bg-white shadow-lg">
+    <div id="sell-search-results" role="listbox" aria-label="Product and customer search results" className="absolute left-0 right-0 top-[50px] z-20 max-h-[320px] overflow-y-auto border border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] shadow-lg">
       {products.map((p) => (
         <button
           key={p.id}
@@ -174,7 +174,7 @@ function SearchDropdown() {
           onClick={() => sell.pickSearchProduct(p)}
           className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-black/5"
         >
-          <span className="text-[16px] text-black">{p.name}</span>
+          <span className="text-[16px] text-[var(--oh-text)]">{p.name}</span>
           <span className="text-[16px] text-[var(--sf-muted)]">${p.price.toFixed(2)}</span>
         </button>
       ))}
@@ -188,7 +188,7 @@ function SearchDropdown() {
           className="flex w-full cursor-pointer items-center justify-between border-t border-[#eee] px-4 py-3 text-left hover:bg-black/5"
         >
           <span>
-            <span className="block text-[16px] text-black">{c.name}</span>
+            <span className="block text-[16px] text-[var(--oh-text)]">{c.name}</span>
             <span className="block text-[13px] text-[var(--sf-muted)]">{c.groupName}</span>
           </span>
           <span className="text-[14px] text-[var(--sf-muted)]">{c.loyaltyPoints} pts</span>
@@ -205,7 +205,7 @@ function ParkedSalesPanel() {
     <div id="parked-sales-panel" className="absolute inset-0 flex flex-col overflow-hidden">
       {sell.lines.length > 0 && (
         <div className="flex shrink-0 items-center justify-between border-b border-[#eee] bg-[rgb(206,229,252)] px-4 py-3">
-          <span className="text-[15px] text-black">
+          <span className="text-[15px] text-[var(--oh-text)]">
             Active sale — {sell.itemCount} items, ${sell.total.toFixed(2)}
           </span>
           <button
@@ -239,14 +239,14 @@ function ParkedSalesPanel() {
                 className="flex w-full cursor-pointer items-center justify-between border-b border-[#eee] px-4 py-4 text-left hover:bg-black/5 disabled:opacity-50"
               >
                 <span>
-                  <span className="block text-[18px] text-black">
+                  <span className="block text-[18px] text-[var(--oh-text)]">
                     {sale.customerName ?? "No customer"}
                   </span>
                   <span className="block text-[14px] text-[var(--sf-muted)]">
                     {sale.totalQuantity} items
                   </span>
                 </span>
-                <span className="text-[18px] font-bold text-black">
+                <span className="text-[18px] font-bold text-[var(--oh-text)]">
                   ${total.whole}.{total.cents}
                 </span>
               </button>
@@ -407,12 +407,12 @@ function PromotionsPanel() {
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-black bg-white">
+    <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)]">
       <div className="flex h-[50px] shrink-0 items-center gap-3 border-b border-[#e0e0e0] px-4">
         <button
           type="button"
           onClick={() => sell.backToKeys()}
-          className="flex cursor-pointer items-center gap-2 text-[16px] text-black hover:opacity-70"
+          className="flex cursor-pointer items-center gap-2 text-[16px] text-[var(--oh-text)] hover:opacity-70"
         >
           <span className="text-[18px]">←</span> Back
         </button>
@@ -420,13 +420,13 @@ function PromotionsPanel() {
           <button
             type="button"
             onClick={() => sell.setPromotionMenuOpen(!sell.promotionMenuOpen)}
-            className="flex cursor-pointer items-center gap-2 rounded border border-[var(--sf-muted)] px-3 py-1.5 text-[16px] text-black"
+            className="flex cursor-pointer items-center gap-2 rounded border border-[var(--sf-muted)] px-3 py-1.5 text-[16px] text-[var(--oh-text)]"
           >
             {PERIOD_LABELS[sell.promotionPeriod]}
             <span className="text-[13px]">▼</span>
           </button>
           {sell.promotionMenuOpen && (
-            <div className="absolute left-0 top-full z-20 mt-1 min-w-[120px] border border-[var(--sf-muted)] bg-white shadow-lg">
+            <div className="absolute left-0 top-full z-20 mt-1 min-w-[120px] border border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] shadow-lg">
               {(["all", "current", "future"] as const).map((p) => (
                 <button
                   key={p}
@@ -434,7 +434,7 @@ function PromotionsPanel() {
                   onClick={() => sell.setPromotionPeriod(p)}
                   className={cn(
                     "block w-full cursor-pointer px-4 py-2 text-left text-[16px] hover:bg-black/5",
-                    sell.promotionPeriod === p ? "bg-[rgb(206,229,252)]" : "text-black",
+                    sell.promotionPeriod === p ? "bg-[rgb(206,229,252)]" : "text-[var(--oh-text)]",
                   )}
                 >
                   {PERIOD_LABELS[p]}
@@ -451,7 +451,7 @@ function PromotionsPanel() {
           defaultValue={sell.promotionFilter}
           placeholder="Filter by product, classification or promotional category..."
           onChange={(e) => onFilter(e.target.value)}
-          className="h-[44px] w-full border border-[var(--sf-muted)] bg-white px-4 text-[16px] text-black outline-none placeholder:text-[var(--sf-placeholder)]"
+          className="h-[44px] w-full border border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] px-4 text-[16px] text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -471,11 +471,11 @@ function PromotionsPanel() {
               onClick={() => sell.pickPromotionProduct(item)}
               className={cn(
                 "flex w-full cursor-pointer items-center justify-between border-b border-[#eee] px-4 py-3 text-left hover:bg-black/5",
-                i % 2 === 0 ? "bg-[#f8f8f8]" : "bg-white",
+                i % 2 === 0 ? "bg-[#f8f8f8]" : "bg-[var(--oh-surface-elevated)]",
               )}
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] text-black">{item.productName}</span>
+                <span className="block truncate text-[16px] text-[var(--oh-text)]">{item.productName}</span>
                 <span className="block text-[13px] text-[var(--sf-muted)]">
                   {item.promotionName}
                   {item.promotionCategoryName ? ` · ${item.promotionCategoryName}` : ""}
@@ -486,7 +486,7 @@ function PromotionsPanel() {
                   </span>
                 )}
               </span>
-              <span className="ml-3 shrink-0 text-[16px] text-black">
+              <span className="ml-3 shrink-0 text-[16px] text-[var(--oh-text)]">
                 ${Number(item.price).toFixed(2)}
               </span>
             </button>
@@ -502,16 +502,16 @@ function ProductsBrowsePanel() {
   const sell = useSellScreen();
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col border-[0.667px] border-black bg-[#c8c8c8]">
-      <div className="relative flex h-[50px] shrink-0 items-center justify-center border-b border-[#e0e0e0] bg-white">
+    <div className="relative flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[#c8c8c8]">
+      <div className="relative flex h-[50px] shrink-0 items-center justify-center border-b border-[#e0e0e0] bg-[var(--oh-surface-elevated)]">
         <button
           type="button"
           onClick={() => sell.backToKeys()}
-          className="absolute left-4 flex cursor-pointer items-center gap-2 text-[16px] text-black hover:opacity-70"
+          className="absolute left-4 flex cursor-pointer items-center gap-2 text-[16px] text-[var(--oh-text)] hover:opacity-70"
         >
           <span className="text-[18px]">←</span> Back
         </button>
-        <span className="text-[16px] font-semibold text-black">{sell.productFolder}</span>
+        <span className="text-[16px] font-semibold text-[var(--oh-text)]">{sell.productFolder}</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {sell.productLoading ? (
@@ -519,7 +519,7 @@ function ProductsBrowsePanel() {
             Loading…
           </div>
         ) : sell.productItems.length === 0 ? (
-          <div className="flex h-32 items-center justify-center bg-white text-[16px] text-[var(--sf-muted)]">
+          <div className="flex h-32 items-center justify-center bg-[var(--oh-surface-elevated)] text-[16px] text-[var(--sf-muted)]">
             No products found
           </div>
         ) : (
@@ -553,28 +553,28 @@ function CustomerPicker() {
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-black bg-white">
+    <div className="flex min-w-0 flex-1 flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)]">
       <div className="flex h-[50px] shrink-0">
         <input
           type="text"
           aria-label="Search customers"
           placeholder="Search for Customers..."
           onChange={(e) => onSearch(e.target.value)}
-          className="h-[50px] w-full border border-[var(--sf-muted)] bg-white px-4 text-[16px] text-black outline-none placeholder:text-[var(--sf-placeholder)]"
+          className="h-[50px] w-full border border-[var(--sf-muted)] bg-[var(--oh-surface-elevated)] px-4 text-[16px] text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
         />
       </div>
       <div className="flex h-[48px] shrink-0 items-center gap-6 border-b border-[#e0e0e0] px-4">
         <button
           type="button"
           onClick={() => sell.setView("keys")}
-          className="flex cursor-pointer items-center gap-2 text-[16px] text-black hover:opacity-70"
+          className="flex cursor-pointer items-center gap-2 text-[16px] text-[var(--oh-text)] hover:opacity-70"
         >
           <span className="text-[18px]">←</span> Back
         </button>
         <button
           type="button"
           onClick={() => sell.runAction("Create Customer")}
-          className="flex cursor-pointer items-center gap-2 text-[16px] text-black hover:opacity-70"
+          className="flex cursor-pointer items-center gap-2 text-[16px] text-[var(--oh-text)] hover:opacity-70"
         >
           <SearchIcon size={16} strokeWidth={1.5} /> Create New
         </button>
@@ -590,15 +590,15 @@ function CustomerPicker() {
             }}
             className={cn(
               "flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left hover:bg-black/5",
-              i % 2 === 0 ? "bg-[#e0e0e0]" : "bg-white",
+              i % 2 === 0 ? "bg-[#e0e0e0]" : "bg-[var(--oh-surface-elevated)]",
             )}
           >
             <span>
-              <span className="block text-[18px] text-black">{c.name}</span>
+              <span className="block text-[18px] text-[var(--oh-text)]">{c.name}</span>
               <span className="block text-[14px] text-[var(--sf-muted)]">{c.group}</span>
             </span>
             <span className="text-right">
-              <span className="block text-[18px] text-black">{c.loyaltyPoints}</span>
+              <span className="block text-[18px] text-[var(--oh-text)]">{c.loyaltyPoints}</span>
               <span className="block text-[14px] text-[var(--sf-muted)]">Loyalty Points</span>
             </span>
           </button>

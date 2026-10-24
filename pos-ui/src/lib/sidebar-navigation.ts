@@ -53,13 +53,18 @@ export type SidebarIcon =
   | "settings"
   | "marketing";
 
-/** Primary nav: Odoo-backed surfaces only. Sell first; Overview just above Setup. */
+/** Primary nav: Odoo-backed surfaces only. Dashboard follows Sell for quick access. */
 export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
   {
     label: "Sell",
     href: "/",
     icon: "sales",
     permission: "sell.checkout",
+  },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: "overview",
   },
   {
     label: "Stock",
@@ -94,11 +99,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Find Grocery", href: "/recommend/grocery", permission: "ai.grocery" },
       { label: "Price Suggestions", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
     ],
-  },
-  {
-    label: "Overview",
-    href: "/overview/workspace",
-    icon: "overview",
   },
   {
     label: "Reports",

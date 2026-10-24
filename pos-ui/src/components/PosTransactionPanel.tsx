@@ -25,7 +25,7 @@ export function PosTransactionPanel() {
   }
 
   return (
-    <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-[var(--oh-shadow-card)]">
+    <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
       {/* Header row */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-border)] px-5 py-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -42,7 +42,7 @@ export function PosTransactionPanel() {
           <button
             type="button"
             onClick={() => sell.runAction("Quick Or/Flows")}
-            className="cursor-pointer rounded-lg border border-[var(--oh-border)] bg-white px-4 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface)]"
+            className="cursor-pointer rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface)]"
           >
             Quick Or/Flows
           </button>
@@ -199,8 +199,8 @@ function BottomBtn({
       className={cn(
         "cursor-pointer rounded-[var(--oh-radius)] py-3.5 text-[14px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
         variant === "primary" && "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]",
-        variant === "danger" && "border border-[var(--oh-border)] bg-white text-[var(--oh-danger-text)] hover:bg-[var(--oh-tile-red-bg)]",
-        variant === "default" && "border border-[var(--oh-border)] bg-white text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
+        variant === "danger" && "border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-danger-text)] hover:bg-[var(--oh-tile-red-bg)]",
+        variant === "default" && "border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]",
         disabled && "cursor-not-allowed opacity-40",
       )}
     >
@@ -215,7 +215,7 @@ function SearchDropdown() {
   if (products.length === 0 && customers.length === 0) return null;
 
   return (
-    <div id="pos-search-results" role="listbox" aria-label="Product and customer search results" className="absolute left-5 right-5 top-full z-20 mt-1 max-h-[240px] overflow-y-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-lg">
+    <div id="pos-search-results" role="listbox" aria-label="Product and customer search results" className="absolute left-5 right-5 top-full z-20 mt-1 max-h-[240px] overflow-y-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-lg">
       {products.map((p) => (
         <button
           key={p.id}
@@ -256,7 +256,7 @@ function CustomerOverlay() {
   }
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col rounded-[var(--oh-radius)] bg-white">
+    <div className="absolute inset-0 z-10 flex flex-col rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)]">
       <div className="flex items-center gap-3 border-b border-[var(--oh-border)] px-5 py-3">
         <button
           type="button"

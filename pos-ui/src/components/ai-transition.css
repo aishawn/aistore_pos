@@ -1,0 +1,158 @@
+.ai-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: auto;
+  background: transparent;
+}
+.ai-transition-wash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--ai-transition-x, 50%) var(--ai-transition-y, 50%), #fff8f0 0%, #f4f8ff 48%, #e8f1ff 100%);
+}
+.ai-transition-core {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: var(--ai-transition-core-size, clamp(120px, 18vw, 220px));
+  aspect-ratio: 1;
+  border: 1px solid #ffffffde;
+  border-radius: 50%;
+  background: transparent;
+  isolation: isolate;
+  box-shadow: inset 0 0 0 1px #f0c7a36b, 0 0 48px #f6a04422;
+}
+.ai-transition-core::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -2;
+  background:
+    radial-gradient(ellipse at 78% 30%, #e3effa99, transparent 48%),
+    radial-gradient(circle at 32% 24%, #ffffff 0%, #fff4e8 53%, #fbe3ce 100%);
+}
+.ai-transition-core::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  z-index: -1;
+  background: url('/images/ai-orb-polished.webp') center / contain no-repeat;
+  opacity: .5;
+  filter: saturate(.6) blur(.9px);
+}
+.ai-transition-light-field {
+  position: absolute;
+  left: var(--ai-transition-x, 50%);
+  top: var(--ai-transition-y, 50%);
+  translate: -50% -50%;
+  width: max(100vw, 980px);
+  aspect-ratio: 16 / 9;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: url('/images/ai-light-streaks.webp') center / cover no-repeat;
+  mix-blend-mode: normal;
+  filter: saturate(.72) brightness(1.04);
+}
+.ai-transition-core { padding: 16px; gap: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ai-transition-spark { color: #f05a17; font-size: 32px; line-height: 1; }
+.ai-transition-caption { display: flex; flex-direction: column; gap: 6px; text-align: center; max-width: 100%; }
+.ai-transition-caption strong { color: #20242d; font-size: 20px; line-height: 1.25; letter-spacing: -.04em; }
+.ai-transition-caption span { color: #52657e; font-size: 13px; line-height: 1.4; }
+.ai-transition-flare {
+  position: absolute;
+  left: var(--ai-transition-x, 50%);
+  top: var(--ai-transition-y, 50%);
+  translate: -50% -50%;
+  width: min(85vw, 840px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #fff5, #ffe1be, #fff, #ffe1be, #fff5, transparent);
+  box-shadow: 0 0 18px #ffb97577;
+  opacity: 0;
+}
+.ai-transition-orbits { position: absolute; z-index: 1; width: min(86vw, 720px); height: min(86vw, 720px); overflow: visible; }
+.ai-transition-core,
+.ai-transition-orbits {
+  left: var(--ai-transition-x, 50%);
+  top: var(--ai-transition-y, 50%);
+  translate: -50% -50%;
+}
+.ai-transition-orbit { fill: none; stroke: #fff; stroke-width: 2; opacity: .8; transform-origin: 300px 300px; }
+.ai-transition-orbit-two { stroke: #ffc28f; opacity: .65; }
+.ai-transition-orbit-three { stroke: #fff; opacity: .55; }
+.ai-transition-orbit-arc { stroke-width: 2.5; stroke-dasharray: 340 180 100 423; }
+.ai-transition-particles { fill: #f8a464; opacity: .8; }
+.ai-transition-phase-revealing { animation: ai-transition-reveal var(--ai-transition-reveal, 180ms) both ease-out; }
+@keyframes ai-transition-reveal { from { opacity: 1; } to { opacity: 0; } }
+.ai-transition-entering .ai-transition-wash { animation: ai-transition-wash-in var(--ai-transition-duration) both linear; }
+.ai-transition-entering .ai-transition-core { animation: ai-transition-core-in var(--ai-transition-duration) both cubic-bezier(.22,.61,.36,1); }
+.ai-transition-entering .ai-transition-caption { animation: ai-transition-caption-out 160ms both ease-out; }
+.ai-transition-entering .ai-transition-spark { animation: ai-transition-spark-in var(--ai-transition-duration) both ease-in-out; }
+.ai-transition-entering .ai-transition-core::before { animation: ai-transition-glass-out var(--ai-transition-duration) both ease-in-out; }
+.ai-transition-entering .ai-transition-core::after { animation: ai-transition-surface-out var(--ai-transition-duration) both ease-in-out; }
+.ai-transition-entering .ai-transition-orbit-one { animation: ai-transition-orbit-in 540ms 420ms both ease-out; }
+.ai-transition-entering .ai-transition-orbit-two { animation: ai-transition-orbit-in 500ms 480ms both ease-out; }
+.ai-transition-entering .ai-transition-orbit-three { animation: ai-transition-orbit-in 440ms 560ms both ease-out; }
+.ai-transition-entering .ai-transition-orbit-arc { animation: ai-transition-orbit-arc-in 580ms 440ms both ease-out; }
+.ai-transition-entering .ai-transition-particles { transform-origin: 300px 300px; animation: ai-transition-particles-in 500ms 480ms both ease-out; }
+.ai-transition-entering .ai-transition-flare { animation: ai-transition-flare-in 540ms 480ms both ease-out; }
+.ai-transition-entering .ai-transition-light-field { animation: ai-transition-light-field-in 720ms 430ms both cubic-bezier(.2,.7,.2,1); }
+.ai-transition-leaving .ai-transition-wash { animation: ai-transition-wash-out 180ms both ease-in; }
+.ai-transition-leaving .ai-transition-core { animation: ai-transition-core-out 180ms both ease-in; }
+.ai-transition-leaving .ai-transition-orbits { animation: ai-transition-orbits-out 180ms both ease-in; }
+@keyframes ai-transition-wash-in { 0%, 16% { opacity: 0; } 47% { opacity: .55; } 88%, 100% { opacity: 1; } }
+@keyframes ai-transition-wash-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes ai-transition-core-in {
+  0% { transform: scale(1); }
+  16% { transform: scale(1.025); box-shadow: 0 0 32px #ffb97455; }
+  47% { transform: scale(1.3); border-color: #fff9; box-shadow: 0 0 64px #ffc68c66; }
+  88%, 100% { transform: scale(1.5); border-color: transparent; box-shadow: 0 0 90px #ffce9922; }
+}
+@keyframes ai-transition-caption-out { to { opacity: 0; } }
+@keyframes ai-transition-glass-out { 0%, 40% { opacity: .5; } 88%, 100% { opacity: 0; } }
+@keyframes ai-transition-surface-out { 0%, 47% { opacity: 1; } 88%, 100% { opacity: 0; } }
+@keyframes ai-transition-spark-in {
+  0%, 16% { transform: translateY(0) scale(1); }
+  47%, 100% { transform: translateY(30px) scale(1.15); }
+}
+@keyframes ai-transition-core-out { from { opacity: 1; transform: scale(1.08); } to { opacity: 0; transform: scale(.35); } }
+@keyframes ai-transition-orbit-in { from { opacity: 0; transform: scale(.45); } 40% { opacity: .85; } to { opacity: .25; transform: scale(1.25); } }
+@keyframes ai-transition-orbit-arc-in { from { opacity: 0; transform: scale(.45) rotate(-22deg); } 45% { opacity: .95; } to { opacity: .25; transform: scale(1.25) rotate(22deg); } }
+@keyframes ai-transition-orbits-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(.4); } }
+@keyframes ai-transition-particles-in { from { opacity: 0; transform: scale(.55) rotate(-8deg); } 35% { opacity: .6; } to { opacity: 0; transform: scale(1.2) rotate(8deg); } }
+@keyframes ai-transition-flare-in { from { opacity: 0; scale: .5 1; } 50% { opacity: .7; } to { opacity: .2; scale: 1 1; } }
+@keyframes ai-transition-light-field-in {
+  from { opacity: 0; scale: .72; filter: saturate(.45) brightness(1); }
+  45% { opacity: .9; }
+  to { opacity: .6; scale: 1.08; filter: saturate(.72) brightness(1.04); }
+}
+.ov-ai-departing .ov-ring-center { visibility: hidden; }
+.ov-ai-departing .ov-ring-node,
+.ov-ai-departing .ov-radial-side,
+.ov-ai-departing .ov-ai-bar { animation: ai-dashboard-depart 320ms 160ms both ease-out !important; }
+@keyframes ai-dashboard-depart { from { opacity: 1; } to { opacity: 0; } }
+.ai-transition-error {
+  position: fixed; bottom: 24px; left: 50%; translate: -50% 0; z-index: 120;
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  width: max-content; max-width: calc(100vw - 32px); border-radius: 16px;
+  background: #fff; color: #263344; box-shadow: 0 8px 32px #24334b22;
+}
+.ai-transition-error button { min-height: 44px; padding: 8px 12px; border-radius: 10px; background: #fff0e4; color: #9b390d; white-space: nowrap; }
+.ai-transition-error button:focus-visible { outline: 2px solid #f67832; outline-offset: 3px; }
+@media (max-width: 767px) {
+  .ai-transition-orbits { width: 112vw; height: 112vw; }
+  .ai-transition-orbit-two, .ai-transition-orbit-three, .ai-transition-orbit-arc, .ai-transition-particles { display: none; }
+  .ai-transition-light-field { width: 150vw; opacity: .24; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-transition-core, .ai-transition-orbits { display: none; }
+  .ai-transition-flare { display: none; }
+  .ai-transition-light-field { display: none; }
+  .ai-transition-phase-revealing { animation-duration: 80ms; }
+  .ov-ai-departing .ov-ring-node,
+  .ov-ai-departing .ov-radial-side,
+  .ov-ai-departing .ov-ai-bar { animation-duration: 80ms !important; animation-delay: 0ms !important; }
+  .ai-transition-wash, .ai-transition-core, .ai-transition-orbits, .ai-transition-particles { animation-duration: 140ms !important; animation-delay: 0ms !important; }
+  .ai-transition-orbit-two, .ai-transition-orbit-three, .ai-transition-particles { display: none; }
+}

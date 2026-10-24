@@ -17,6 +17,9 @@ export type OverviewPulse = {
   revenue: number;
   transactions?: number;
   openRegisters?: number;
+  opportunities?: number;
+  lowStockCount?: number;
+  newCustomers?: number;
 };
 export function money(value: number, currency: string) {
   try {
@@ -51,7 +54,7 @@ export function useOverview() {
       setConnection(response.status === 401);
       if (!response.ok)
         throw new OdooApiError(
-          payload?.message || "Could not load your store overview.",
+          payload?.message || "Could not load your store dashboard.",
           response.status,
         );
       if (!Number.isFinite(payload?.revenue))
@@ -67,12 +70,15 @@ export function useOverview() {
         openRegisters: Number.isFinite(payload.openRegisters)
           ? payload.openRegisters
           : undefined,
+        opportunities: Number.isFinite(payload.opportunities) ? payload.opportunities : undefined,
+        lowStockCount: Number.isFinite(payload.lowStockCount) ? payload.lowStockCount : undefined,
+        newCustomers: Number.isFinite(payload.newCustomers) ? payload.newCustomers : undefined,
       });
     } catch (cause) {
       if (current === revision.current) {
         setConnection(cause instanceof OdooApiError && cause.status === 401);
         setError(
-          cause instanceof Error ? cause.message : "Could not load overview.",
+          cause instanceof Error ? cause.message : "Could not load dashboard.",
         );
       }
     } finally {
@@ -140,6 +146,6 @@ export function useOverview() {
     }),
     destinations: buildLaunchDestinations(
       getSidebarNavigation({ isAdmin: Boolean(user?.isAdmin), hasPermission }),
-    ).filter((item) => item.id !== "overview"),
+    ).filter((item) => item.id !== "overview" && item.id !== "dashboard"),
   };
 }

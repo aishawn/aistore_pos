@@ -90,16 +90,18 @@ export function controlPlaneLandingPath(next: string | null | undefined): string
   return "/platform/stores";
 }
 
-/** Default store web landing after login (Overview, not Sell `/`). */
-export const STORE_WEB_LANDING_PATH = "/overview/workspace";
+/** Default store web landing for administrators and managers. */
+export const STORE_WEB_LANDING_PATH = "/dashboard";
 
 /** Safe post-login path on a store host. */
 export function storeLandingPath(
   next: string | null | undefined,
   mode: "web" | "mobile" = "web",
+  user?: { isAdmin: boolean; roleCode?: string },
 ): string {
   if (
     next
+    && next !== "/"
     && next.startsWith("/")
     && !next.startsWith("//")
     && !next.includes("\\")
@@ -111,7 +113,9 @@ export function storeLandingPath(
   ) {
     return next;
   }
-  return mode === "mobile" ? "/m" : STORE_WEB_LANDING_PATH;
+  if (mode === "mobile") return "/m";
+  if (user?.roleCode === "CLERK" && !user.isAdmin) return "/";
+  return STORE_WEB_LANDING_PATH;
 }
 
 export function storeOrigin(slug: string, protocol?: string): string {

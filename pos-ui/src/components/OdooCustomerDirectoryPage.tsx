@@ -73,6 +73,9 @@ export function OdooCustomerDirectoryPage() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const requestRevision = useRef(0);
   const customerNameInputRef = useRef<HTMLInputElement>(null);
+  const queryPending = query.trim() !== debouncedQuery;
+  const resultsBusy = loading || queryPending;
+  const rowActionsDisabled = resultsBusy || Boolean(error);
   useDialogFocus(createOpen, () => {
     if (!creating) {
       setCreateOpen(false);
@@ -82,7 +85,6 @@ export function OdooCustomerDirectoryPage() {
 
   function clearSearch() {
     setQuery("");
-    setDebouncedQuery("");
     setOffset(0);
   }
 
@@ -227,7 +229,7 @@ export function OdooCustomerDirectoryPage() {
   };
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6">
+    <main className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:p-6 max-xl:overflow-x-hidden max-xl:overflow-y-auto">
       <header className="flex shrink-0 flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Customers</h1>
@@ -238,7 +240,7 @@ export function OdooCustomerDirectoryPage() {
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={openCreate} disabled={connected !== true} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white transition-colors hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"><Plus size={16} /> New customer</button>
-          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh customers" title="Refresh customers" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
+          <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={resultsBusy} aria-label="Refresh customers" title="Refresh customers" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
             {loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
         </div>
@@ -260,12 +262,13 @@ export function OdooCustomerDirectoryPage() {
         <>
           <label className="flex h-11 w-full max-w-xl shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 transition-colors focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-primary)]/15">
             <Search size={17} className="text-[var(--oh-muted)]" />
-            <input aria-label="Search customers by name, phone, email or customer code" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
+            <input aria-label="Search customers by name, phone, email or customer code" aria-busy={queryPending} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, phone, email or customer code" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--oh-placeholder)]" />
           </label>
+          {resultsBusy && items.length > 0 && <p role="status" aria-live="polite" className="text-sm text-[var(--oh-muted)]">{queryPending ? "Waiting to apply search…" : "Updating customer results…"} Existing rows are temporarily read-only.</p>}
           {lookupError && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">{lookupError} Price list and group assignment may be limited until this recovers.</div>}
-          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
+          {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => { setConnectionRetryKey((value) => value + 1); setRefreshKey((value) => value + 1); }} disabled={resultsBusy} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{resultsBusy ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
-          <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <section aria-busy={resultsBusy} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] max-xl:flex-none max-xl:overflow-visible">
             <table aria-label="Odoo customers" className="hidden w-full min-w-[1100px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
@@ -296,7 +299,7 @@ export function OdooCustomerDirectoryPage() {
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "—"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{groupName(customer.category_id)}</td>
                     <td className="px-4 py-3 text-right font-medium text-[var(--oh-text)]">{money(customer.credit)}</td>
-                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><Pencil size={14} /> Edit</button></td>
+                    <td className="px-4 py-3 text-right"><button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled} className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -323,7 +326,7 @@ export function OdooCustomerDirectoryPage() {
                     {Array.isArray(customer.property_product_pricelist) ? customer.property_product_pricelist[1] : "No price list"} · {groupName(customer.category_id)}
                   </p>
                   <footer className="mt-3 flex justify-end border-t border-[var(--oh-border)] pt-3">
-                    <button type="button" onClick={() => openEdit(customer)} disabled={connected !== true} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><Pencil size={14} /> Edit</button>
+                    <button type="button" onClick={() => openEdit(customer)} disabled={connected !== true || rowActionsDisabled} className="inline-flex h-11 items-center gap-1.5 rounded-lg border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-50"><Pencil size={14} /> Edit</button>
                   </footer>
                 </article>
               ))}
@@ -333,8 +336,8 @@ export function OdooCustomerDirectoryPage() {
           <footer className="flex shrink-0 flex-col gap-2 text-sm text-[var(--oh-muted)] sm:flex-row sm:items-center sm:justify-between">
             <span>{items.length ? `Page ${Math.floor(offset / PAGE_SIZE) + 1} · Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex w-full items-center gap-2 sm:w-auto">
-              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
-              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || loading} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
+              <button type="button" onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} disabled={offset === 0 || resultsBusy} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"><ChevronLeft size={16} /> Previous</button>
+              <button type="button" onClick={() => setOffset((value) => value + PAGE_SIZE)} disabled={!hasNext || resultsBusy} className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none">Next <ChevronRight size={16} /></button>
             </div>
           </footer>
         </>
@@ -391,7 +394,7 @@ export function OdooCustomerDirectoryPage() {
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium text-[var(--oh-text)]">Customer groups</legend>
               {groups.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-3 text-sm text-[var(--oh-muted)]">No Odoo customer groups are configured for this store.</p>
+                <p className="rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-3 text-sm text-[var(--oh-muted)]">No Odoo customer groups are configured. A store admin can add groups under Customer Groups.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {groups.map((group) => {

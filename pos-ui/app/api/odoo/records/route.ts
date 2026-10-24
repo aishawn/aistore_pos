@@ -3,6 +3,8 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { catalogueDomain } from "@/lib/product-catalogue";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,7 +176,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; status?: string; period?: string; filters?: Record<string, unknown> };
+  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -195,6 +197,19 @@ export async function POST(request: NextRequest) {
   const offset = Math.max(0, Math.floor(requestedOffset));
   const query = body.query?.trim().slice(0, 120);
   const domain: unknown[] = [...config.baseDomain];
+  if (body.catalogueView !== undefined) {
+    if (type !== "products") return NextResponse.json({ message: "Catalogue views require products" }, { status: 400 });
+    try {
+      domain.splice(0, domain.length, ...catalogueDomain(body.catalogueView));
+    } catch {
+      return NextResponse.json({ message: "Product catalogue view is invalid" }, { status: 400 });
+    }
+    try {
+      await requirePermission(request, "stock.products.view");
+    } catch (error) {
+      return NextResponse.json({ message: "Could not access this store's catalogue" }, { status: error instanceof StoreAccessError ? error.status : 503 });
+    }
+  }
   if (type === "products" && body.categoryId !== undefined) {
     if (!Number.isInteger(body.categoryId) || body.categoryId <= 0) {
       return NextResponse.json({ message: "Product category is invalid" }, { status: 400 });

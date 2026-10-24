@@ -1,7 +1,7 @@
 "use client";
 
-import { SommelierHome } from "@/components/sommelier/SommelierHome";
+import { RecommendHome } from "@/components/recommend/RecommendHome";
 
 export default function MobilePage() {
-  return <SommelierHome showPosAssistant />;
+  return <RecommendHome showPosAssistant />;
 }

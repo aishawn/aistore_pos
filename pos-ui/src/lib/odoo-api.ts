@@ -1,3 +1,5 @@
+import { isLocalPreviewSession } from "./api";
+
 export type OdooRecordType =
   | "products"
   | "purchaseProducts"
@@ -404,7 +406,7 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry;
   let response = await fetch(input, init);
-  if (response.status !== 401) return response;
+  if (response.status !== 401 || isLocalPreviewSession()) return response;
 
   // Odoo-backed routes use their own session cookie. Recover it before refreshing
   // the unrelated Orithos access token, then replay only requests proven safe.
@@ -583,7 +585,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
+  options: { query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -597,6 +599,7 @@ export async function searchOdooRecords<T>(
       offset: options.offset,
       categoryId: options.categoryId,
       stockOnly: options.stockOnly,
+      catalogueView: options.catalogueView,
       status: options.status,
       period: options.period,
     }),

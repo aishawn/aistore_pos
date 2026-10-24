@@ -1,0 +1,278 @@
+{
+  "generatedAt": "2026-10-24T15:56:00.502Z",
+  "sourceCommit": "e8f363cac0ae6ebd355845330d1d5158138e9df2",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3104",
+  "environment": "local Next.js dev server; Playwright runner Node v24.19.0; browser API fixtures",
+  "routeCount": 9,
+  "routeFilter": [
+    "/",
+    "/dashboard",
+    "/dashboard/workspace",
+    "/assistant",
+    "/stock/list",
+    "/recommend",
+    "/settings/account",
+    "/login",
+    "/m"
+  ],
+  "viewports": [
+    390,
+    768,
+    1440
+  ],
+  "checksPassed": 27,
+  "checksTotal": 27,
+  "failures": [],
+  "checks": [
+    {
+      "route": "/",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/login",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/m",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/login",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/m",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/login",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/m",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    }
+  ],
+  "screenshots": [],
+  "interceptedWrites": [],
+  "interceptedReadOnlyRecordPosts": 0,
+  "productionBusinessWrites": 0,
+  "status": "PASS",
+  "screenshotDirectory": null
+}

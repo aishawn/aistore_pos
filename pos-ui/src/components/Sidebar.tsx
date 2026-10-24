@@ -25,7 +25,6 @@ import {
   type SidebarItem,
 } from "@/lib/sidebar-navigation";
 import { useAuth } from "@/lib/auth";
-import { openLaunchRing } from "@/lib/overview-launch";
 import { useUnsavedChangesOptional } from "@/lib/unsaved-changes";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +46,9 @@ function isGroup(entry: SidebarItem | SidebarGroup): entry is SidebarGroup {
 
 function isActive(href: string, pathname: string) {
   if (href === "/") return pathname === "/";
-  if (href === "/overview/workspace") return pathname === "/overview" || pathname.startsWith("/overview/");
+  if (href === "/dashboard") {
+    return pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname === "/overview" || pathname.startsWith("/overview/");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -121,21 +122,18 @@ export function Sidebar({
     >
       <div className="flex min-w-[var(--oh-sidebar-width)] flex-1 flex-col">
       <div className="flex h-[var(--oh-header-height)] items-center border-b border-[var(--oh-sidebar-border)] px-4">
-        <button
-          type="button"
-          aria-label="Open store quick menu"
-          title="Quick menu"
+        <Link
+          href="/dashboard"
+          aria-label="Open Dashboard"
+          title="Dashboard"
           onClick={(event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            openLaunchRing({
-              originX: rect.left + rect.width / 2,
-              originY: rect.top + rect.height / 2,
-            });
+            guardNav(event, "/dashboard");
+            if (!event.defaultPrevented) onNavigate?.();
           }}
           className="inline-flex min-h-11 min-w-11 items-center rounded-lg px-1 transition-colors hover:bg-[var(--oh-sidebar-active-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
         >
           <OrithosLogo />
-        </button>
+        </Link>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">

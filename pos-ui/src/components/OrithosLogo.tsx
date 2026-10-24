@@ -22,12 +22,12 @@ export function OrithosLogo({ compact = false, inverse = false }: { compact?: bo
           compact ? "oh-brand-mark-img-compact h-7 w-7" : "h-8 w-auto",
         )}
       />
-      {!compact && <span className="oh-brand-wordmark">orithos</span>}
+      {!compact && <span className="oh-brand-wordmark">Orithos</span>}
     </span>
   );
 }
 
 /** Kept as a small alias for existing login metadata and headings. */
 export function OrithosWordmark({ className }: { className?: string }) {
-  return <span className={cn("oh-brand-wordmark", className)}>orithos</span>;
+  return <span className={cn("oh-brand-wordmark", className)}>Orithos</span>;
 }

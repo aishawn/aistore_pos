@@ -113,6 +113,8 @@ export async function middleware(request: NextRequest) {
     : crypto.randomUUID();
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const tenantSlug = parseTenantSlugFromHost(host);
+  const localPreview = process.env.NODE_ENV === "development"
+    && request.cookies.get("orithos_local_preview")?.value === "1";
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-correlation-id", correlationId);
@@ -132,7 +134,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !(await hasOrithosSession(request))) {
+  if (pathname.startsWith("/api/odoo/") && pathname !== "/api/odoo/session" && !localPreview && !(await hasOrithosSession(request))) {
     return withHeaders(
       NextResponse.json({ message: "Orithos session expired" }, { status: 401 }),
       tenantSlug,
@@ -163,8 +165,7 @@ export async function middleware(request: NextRequest) {
   const hasSession =
     Boolean(request.cookies.get(ACCESS_COOKIE)?.value)
     || Boolean(request.cookies.get(REFRESH_COOKIE)?.value);
-
-  if (!hasSession) {
+  if (!hasSession && !localPreview) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     const nextPath = onControlPlane
