@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./brand-tokens.css";
+
+@source not "../.next-aiqa";
+@source not "../.next-aiqa-webpack";
+@source not "../.next-uat-clear";
+@source not "../.next-aiqa-validation";
 
 @keyframes reveal-slow-status {
   to {
@@ -48,6 +54,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -62,77 +69,78 @@
 }
 
 :root {
-  /* Scheme A — light retail blue (Shopfront / Odoo / ERPNext style) */
-  --oh-ink: #1f2937;
-  --oh-ink-soft: #64748b;
-  --oh-paper: #f5f7fa;
-  --oh-orange-dark: #1d4ed8;
-  --background: #f5f7fa;
-  --foreground: #1f2937;
-  --card: #ffffff;
-  --card-foreground: #1f2937;
-  --popover: #ffffff;
-  --popover-foreground: #1f2937;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --secondary: #eef2f7;
-  --secondary-foreground: #1f2937;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #eff6ff;
-  --accent-foreground: #1d4ed8;
-  --destructive: #dc2626;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #2563eb;
-  --chart-1: #2563eb;
-  --chart-2: #0ea5e9;
-  --chart-3: #16a36a;
-  --chart-4: #f59e0b;
-  --chart-5: #6366f1;
+  /* Orithos shared palette — Dashboard / Workspace reference */
+  --oh-ink: var(--brand-ink);
+  --oh-ink-soft: var(--brand-muted);
+  --oh-paper: var(--brand-canvas);
+  --oh-orange-dark: var(--brand-action);
+  --background: var(--brand-canvas);
+  --foreground: var(--brand-ink);
+  --card: var(--brand-surface);
+  --card-foreground: var(--brand-ink);
+  --popover: var(--brand-surface);
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-control);
+  --primary-foreground: var(--brand-on-control);
+  --secondary: var(--brand-surface-muted);
+  --secondary-foreground: var(--brand-ink);
+  --muted: var(--brand-surface-muted);
+  --muted-foreground: var(--brand-muted);
+  --accent: var(--brand-tint);
+  --accent-foreground: var(--brand-link);
+  --destructive: var(--brand-danger);
+  --border: var(--brand-line);
+  --input: var(--brand-line-strong);
+  --ring: var(--brand-focus);
+  --chart-1: var(--brand-module-blue);
+  --chart-2: var(--brand-module-teal);
+  --chart-3: var(--brand-module-green);
+  --chart-4: var(--brand-module-orange);
+  --chart-5: var(--brand-module-purple);
+  --primary-hover: var(--brand-control-hover);
   --radius: 0.5rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1f2937;
-  --sidebar-primary: #2563eb;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eff6ff;
-  --sidebar-accent-foreground: #1d4ed8;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #2563eb;
+  --sidebar: var(--brand-surface);
+  --sidebar-foreground: var(--brand-ink);
+  --sidebar-primary: var(--brand-control);
+  --sidebar-primary-foreground: var(--brand-on-control);
+  --sidebar-accent: var(--brand-tint);
+  --sidebar-accent-foreground: var(--brand-action);
+  --sidebar-border: var(--brand-line);
+  --sidebar-ring: var(--brand-focus);
 }
 
 .dark {
-  --background: oklch(0.21 0.015 250);
-  --foreground: oklch(0.95 0.006 250);
-  --card: oklch(0.26 0.016 250);
-  --card-foreground: oklch(0.95 0.006 250);
-  --popover: oklch(0.26 0.016 250);
-  --popover-foreground: oklch(0.95 0.006 250);
-  --primary: oklch(0.72 0.12 235);
-  --primary-foreground: oklch(0.22 0.018 250);
-  --secondary: oklch(0.32 0.018 250);
-  --secondary-foreground: oklch(0.91 0.006 250);
-  --muted: oklch(0.27 0.016 250);
-  --muted-foreground: oklch(0.73 0.012 250);
-  --accent: oklch(0.34 0.025 250);
-  --accent-foreground: oklch(0.92 0.006 250);
-  --destructive: oklch(0.6368 0.2078 25.3313);
-  --border: oklch(0.4 0.018 250);
-  --input: oklch(0.4 0.018 250);
-  --ring: oklch(0.72 0.12 235);
-  --chart-1: oklch(0.72 0.12 235);
-  --chart-2: oklch(0.72 0.08 210);
-  --chart-3: oklch(0.73 0.15 48);
-  --chart-4: oklch(0.68 0.12 25);
-  --chart-5: oklch(0.72 0.07 285);
-  --sidebar: oklch(0.23 0.015 250);
-  --sidebar-foreground: oklch(0.95 0.006 250);
-  --sidebar-primary: oklch(0.72 0.12 235);
-  --sidebar-primary-foreground: oklch(0.22 0.018 250);
-  --sidebar-accent: oklch(0.34 0.02 250);
-  --sidebar-accent-foreground: oklch(0.92 0.006 250);
-  --sidebar-border: oklch(0.4 0.018 250);
-  --sidebar-ring: oklch(0.72 0.12 235);
+  --background: var(--brand-canvas);
+  --foreground: var(--brand-ink);
+  --card: var(--brand-surface);
+  --card-foreground: var(--brand-ink);
+  --popover: var(--brand-surface);
+  --popover-foreground: var(--brand-ink);
+  --primary: var(--brand-control);
+  --primary-foreground: var(--brand-on-control);
+  --secondary: var(--brand-surface-muted);
+  --secondary-foreground: var(--brand-ink);
+  --muted: var(--brand-surface-muted);
+  --muted-foreground: var(--brand-muted);
+  --accent: var(--brand-tint);
+  --accent-foreground: var(--brand-link);
+  --destructive: var(--brand-danger);
+  --border: var(--brand-line);
+  --input: var(--brand-line-strong);
+  --ring: var(--brand-focus);
+  --chart-1: var(--brand-module-blue);
+  --chart-2: var(--brand-module-teal);
+  --chart-3: var(--brand-module-green);
+  --chart-4: var(--brand-module-orange);
+  --chart-5: var(--brand-module-purple);
+  --sidebar: var(--brand-surface);
+  --sidebar-foreground: var(--brand-ink);
+  --sidebar-primary: var(--brand-control);
+  --sidebar-primary-foreground: var(--brand-on-control);
+  --sidebar-accent: var(--brand-tint);
+  --sidebar-accent-foreground: var(--brand-action);
+  --sidebar-border: var(--brand-line);
+  --sidebar-ring: var(--brand-focus);
 }
 
 @theme inline {
@@ -141,7 +149,7 @@
   --text-xs: 0.8125rem;
 }
 
-/* ── Orithos design tokens — Scheme A light retail blue ── */
+/* ── Orithos semantic aliases — shared brand palette ── */
 :root {
   /* Layout */
   --oh-sidebar-width: 256px;
@@ -150,32 +158,32 @@
   --oh-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04);
 
   /* Sidebar — light (Odoo / ERPNext style) */
-  --oh-sidebar-bg: #ffffff;
-  --oh-sidebar-text: #64748b;
-  --oh-sidebar-text-hover: #1f2937;
-  --oh-sidebar-active: #2563eb;
-  --oh-sidebar-active-bg: #f1f5f9;
-  --oh-sidebar-border: #e2e8f0;
-  --oh-sidebar-active-pill: #eff6ff;
+  --oh-sidebar-bg: var(--brand-surface);
+  --oh-sidebar-text: var(--brand-muted);
+  --oh-sidebar-text-hover: var(--brand-ink);
+  --oh-sidebar-active: var(--brand-action);
+  --oh-sidebar-active-bg: var(--brand-surface-muted);
+  --oh-sidebar-border: var(--brand-line);
+  --oh-sidebar-active-pill: var(--brand-tint);
 
-  /* Brand / action — single retail blue */
-  --oh-orange: #2563eb;
-  --oh-orange-hover: #1d4ed8;
-  --oh-orange-light: #eff6ff;
-  --oh-orange-muted: rgba(37, 99, 235, 0.12);
+  /* Brand / action — single retail orange */
+  --oh-orange: var(--brand-action);
+  --oh-orange-hover: var(--brand-action-hover);
+  --oh-orange-light: var(--brand-tint);
+  --oh-orange-muted: color-mix(in srgb, var(--brand-orange) 14%, transparent);
 
   /* Surfaces */
-  --oh-header-bg: #ffffff;
-  --oh-surface: #f5f7fa;
-  --oh-surface-elevated: #ffffff;
-  --oh-border: #e2e8f0;
-  --oh-border-strong: #cbd5e1;
+  --oh-header-bg: var(--brand-surface);
+  --oh-surface: var(--brand-canvas);
+  --oh-surface-elevated: var(--brand-surface);
+  --oh-border: var(--brand-line);
+  --oh-border-strong: var(--brand-line-strong);
 
   /* Text colors */
-  --oh-text: #1f2937;
-  --oh-text-secondary: #64748b;
-  --oh-muted: #64748b;
-  --oh-placeholder: #94a3b8;
+  --oh-text: var(--brand-ink);
+  --oh-text-secondary: var(--brand-muted);
+  --oh-muted: var(--brand-muted);
+  --oh-placeholder: var(--brand-placeholder);
 
   /* Type scale — compact retail (1A); body min 16px */
   --oh-text-display: 1.75rem;    /* 28px — greeting / hero total */
@@ -186,48 +194,48 @@
   --oh-text-label: 0.875rem;     /* 14px — secondary labels / nav */
   --oh-text-meta: 0.8125rem;     /* 13px — true metadata only */
 
-  /* Buttons — one primary blue for Sell + admin */
-  --oh-primary: #2563eb;
-  --oh-primary-hover: #1d4ed8;
-  --oh-navy: #1e293b;
+  /* Buttons — one primary orange for Sell + admin */
+  --oh-primary: var(--brand-action);
+  --oh-primary-hover: var(--brand-action-hover);
+  --oh-navy: var(--brand-ink-strong);
 
   /* Status tiles */
-  --oh-tile-blue-bg: #eff6ff;
+  --oh-tile-blue-bg: var(--brand-info-tint);
   --oh-tile-blue-border: #bfdbfe;
-  --oh-tile-blue-text: #1d4ed8;
-  --oh-tile-red-bg: #fef2f2;
+  --oh-tile-blue-text: var(--brand-module-blue);
+  --oh-tile-red-bg: var(--brand-danger-tint);
   --oh-tile-red-border: #fecaca;
-  --oh-tile-red-text: #b91c1c;
-  --oh-tile-green-bg: #ecfdf5;
+  --oh-tile-red-text: var(--brand-danger);
+  --oh-tile-green-bg: var(--brand-success-tint);
   --oh-tile-green-border: #a7f3d0;
-  --oh-tile-green-text: #047857;
-  --oh-tile-orange-bg: #fffbeb;
+  --oh-tile-green-text: var(--brand-success);
+  --oh-tile-orange-bg: var(--brand-warning-tint);
   --oh-tile-orange-border: #fde68a;
-  --oh-tile-orange-text: #b45309;
+  --oh-tile-orange-text: var(--brand-warning);
 
   /* Semantic */
-  --oh-success: #16a36a;
-  --oh-danger: #dc2626;
-  --oh-danger-text: #dc2626;
-  --oh-info: #2563eb;
-  --oh-warning: #d97706;
+  --oh-success: var(--brand-success);
+  --oh-danger: var(--brand-danger);
+  --oh-danger-text: var(--brand-danger);
+  --oh-info: var(--brand-info);
+  --oh-warning: var(--brand-warning);
 
   /* Sell / Finalise / tabs — same primary as admin */
-  --sf-cta: #2563eb;
-  --sf-cta-hover: #1d4ed8;
-  --sf-tab-blue: #2563eb;
-  --sf-online-green: #16a36a;
-  --sf-pad-bg: #f5f7fa;
-  --sf-summary: #e2e8f0;
+  --sf-cta: var(--brand-action);
+  --sf-cta-hover: var(--brand-action-hover);
+  --sf-tab-blue: var(--brand-action);
+  --sf-online-green: var(--brand-success);
+  --sf-pad-bg: var(--brand-canvas);
+  --sf-summary: var(--brand-line);
 
   /* Compat aliases */
   --oh-accent: var(--oh-primary);
   --oh-accent-light: var(--oh-orange-light);
   --sf-header-bg: var(--oh-header-bg);
   --sf-on-dark: #f8fafc;
-  --sf-muted: #94a3b8;
+  --sf-muted: var(--brand-muted);
   --sf-link-blue: var(--sf-cta);
-  --sf-placeholder: #94a3b8;
+  --sf-placeholder: var(--brand-placeholder);
   --sf-divider: var(--oh-border);
 }
 
@@ -268,6 +276,24 @@
   font-size: var(--oh-text-meta);
   line-height: 1.4;
   font-weight: 500;
+}
+
+/* Shared light workspace canvas for authenticated admin pages. */
+.oh-workspace-main {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: var(--oh-surface);
+  background-image: var(--brand-wash);
+  background-position: center;
+  background-size: cover;
+}
+
+/* Page roots own spacing and scrolling; let the shared canvas show through. */
+.oh-workspace-main > main,
+.oh-workspace-main > div {
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 .oh-brand-mark {

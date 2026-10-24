@@ -93,15 +93,15 @@ function nextWiderRange(hours: number) {
 }
 
 const MARK_TONES = [
-  { bg: "#eff6ff", fg: "#1d4ed8" },
-  { bg: "#ecfdf5", fg: "#047857" },
-  { bg: "#fff7ed", fg: "#c2410c" },
-  { bg: "#f5f3ff", fg: "#6d28d9" },
-  { bg: "#fdf2f8", fg: "#be185d" },
-  { bg: "#ecfeff", fg: "#0e7490" },
+  { bg: "var(--brand-module-blue-tint)", fg: "var(--brand-module-blue)" },
+  { bg: "var(--brand-module-green-tint)", fg: "var(--brand-module-green)" },
+  { bg: "var(--brand-module-orange-tint)", fg: "var(--brand-module-orange)" },
+  { bg: "var(--brand-module-purple-tint)", fg: "var(--brand-module-purple)" },
+  { bg: "var(--brand-module-gray-tint)", fg: "var(--brand-module-gray)" },
+  { bg: "var(--brand-module-teal-tint)", fg: "var(--brand-module-teal)" },
 ] as const;
 
-const CATEGORY_COLORS = ["#2563eb", "#0ea5e9", "#16a36a", "#f59e0b", "#6366f1", "#94a3b8"];
+const CATEGORY_COLORS = ["var(--brand-module-blue)", "var(--brand-module-teal)", "var(--brand-module-green)", "var(--brand-module-orange)", "var(--brand-module-purple)", "var(--brand-module-gray)"];
 
 function formatMoney(value: number, currency: string) {
   try {

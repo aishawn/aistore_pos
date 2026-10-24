@@ -36,7 +36,7 @@ import {
 } from "@/lib/voice";
 
 const FLOAT_SHADOW =
-  "0 4px 24px rgba(37, 99, 235, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06)";
+  "0 4px 24px rgba(240, 90, 23, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06)";
 const FLOAT_POS_KEY = "orithos-ai-float-anchor";
 const DRAG_THRESHOLD_PX = 6;
 

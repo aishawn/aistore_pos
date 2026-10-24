@@ -122,9 +122,9 @@ function MonthPanel({
                 onClick={() => onSelect(date)}
                 className={cn(
                   "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
-                  "text-[var(--oh-info)] hover:bg-[#e8f2fb]",
-                  isSelected && "ring-2 ring-[var(--oh-info)] ring-offset-1",
-                  !isSelected && isToday && "bg-[#e8f2fb]",
+                  "text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]",
+                  isSelected && "ring-2 ring-[var(--oh-primary)] ring-offset-1",
+                  !isSelected && isToday && "bg-[var(--oh-orange-light)]",
                 )}
               >
                 {date.getDate()}
@@ -159,9 +159,9 @@ function MonthPanel({
               onClick={() => onSelect(date)}
               className={cn(
                 "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
-                inMonth ? "text-[var(--oh-info)] hover:bg-[#e8f2fb]" : "text-[var(--oh-placeholder)]",
-                isSelected && "ring-2 ring-[var(--oh-info)] ring-offset-1",
-                !isSelected && isToday && inMonth && "bg-[#e8f2fb]",
+                inMonth ? "text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]" : "text-[var(--oh-placeholder)]",
+                isSelected && "ring-2 ring-[var(--oh-primary)] ring-offset-1",
+                !isSelected && isToday && inMonth && "bg-[var(--oh-orange-light)]",
               )}
             >
               {date.getDate()}
@@ -309,7 +309,7 @@ export function FormDatePicker({
                   }}
                   className={cn(
                     "w-12 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]",
-                    segmentFocus === "year" && "rounded bg-[#e8f2fb] text-[var(--oh-info)]",
+                    segmentFocus === "year" && "rounded bg-[var(--oh-orange-light)] text-[var(--oh-primary)]",
                   )}
                 />
                 <span className="text-[var(--oh-muted)]">/</span>
@@ -327,7 +327,7 @@ export function FormDatePicker({
                   }}
                   className={cn(
                     "w-8 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]",
-                    segmentFocus === "month" && "rounded bg-[#e8f2fb] text-[var(--oh-info)]",
+                    segmentFocus === "month" && "rounded bg-[var(--oh-orange-light)] text-[var(--oh-primary)]",
                   )}
                 />
                 <span className="text-[var(--oh-muted)]">/</span>
@@ -345,16 +345,16 @@ export function FormDatePicker({
                   }}
                   className={cn(
                     "w-8 bg-transparent text-center outline-none placeholder:text-[var(--oh-placeholder)]",
-                    segmentFocus === "day" && "rounded bg-[#e8f2fb] text-[var(--oh-info)]",
+                    segmentFocus === "day" && "rounded bg-[var(--oh-orange-light)] text-[var(--oh-primary)]",
                   )}
                 />
               </div>
-              <Calendar size={16} className="mt-2 text-[var(--oh-info)]" strokeWidth={1.75} />
+              <Calendar size={16} className="mt-2 text-[var(--oh-primary)]" strokeWidth={1.75} />
             </div>
             <button
               type="button"
               onClick={() => selectDate(today)}
-              className="min-h-11 shrink-0 px-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-info)]"
+              className="min-h-11 shrink-0 px-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-primary)]"
             >
               Current Day
             </button>

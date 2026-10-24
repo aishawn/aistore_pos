@@ -238,10 +238,10 @@ function RangeMonthPanel({
               onMouseLeave={() => onHover(null)}
               className={cn(
                 "mx-auto flex h-8 w-8 items-center justify-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]",
-                inMonth ? "text-[var(--oh-info)] hover:bg-[#e8f2fb]" : "text-[var(--oh-placeholder)]",
-                inRange && inMonth && "bg-[#e8f2fb]",
-                isSelected && "ring-2 ring-[var(--oh-info)] ring-offset-1",
-                !isSelected && isToday && inMonth && "bg-[#e8f2fb]",
+                inMonth ? "text-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]" : "text-[var(--oh-placeholder)]",
+                inRange && inMonth && "bg-[var(--oh-orange-light)]",
+                isSelected && "ring-2 ring-[var(--oh-primary)] ring-offset-1",
+                !isSelected && isToday && inMonth && "bg-[var(--oh-orange-light)]",
               )}
             >
               {date.getDate()}
@@ -387,12 +387,12 @@ export function FormDateRangePicker({
                   onChange={(value) => onChange(normalizeRange(start, value))}
                 />
               </div>
-              <Calendar size={16} className="mt-2 text-[var(--oh-info)]" strokeWidth={1.75} />
+              <Calendar size={16} className="mt-2 text-[var(--oh-primary)]" strokeWidth={1.75} />
             </div>
             <button
               type="button"
               onClick={setCurrentDay}
-              className="min-h-11 shrink-0 px-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-info)]"
+              className="min-h-11 shrink-0 px-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:text-[var(--oh-primary)]"
             >
               Current Day
             </button>

@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
-/** Brand blue — matches Scheme A / login CTA (`--oh-primary`). */
-const BRAND_BLUE = "#2563eb";
-const BRAND_BLUE_DOT = "#93c5fd";
-const BRAND_BLUE_SPARK = "#bfdbfe";
+/** Brand action — shares login CTA (`--oh-primary`). */
+const BRAND_BLUE = "var(--brand-action)";
+const BRAND_BLUE_DOT = "var(--brand-tint-strong)";
+const BRAND_BLUE_SPARK = "var(--brand-tint)";
 
-/** Orithos-branded AI entry mark — Scheme A retail blue (hardcoded for deploy safety). */
+/** Orithos-branded AI entry mark — shared brand palette. */
 export function AiFabIcon({
   size = 56,
   className,

@@ -199,7 +199,7 @@ export function SommelierIdentifyPage() {
             <button
               type="button"
               onClick={() => router.push(`/sommelier/wine/${item.productId}`)}
-              className="w-full rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left shadow-[var(--oh-shadow-card)] transition hover:border-blue-300"
+              className="w-full rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)]"
             >
               <div className="flex items-baseline justify-between gap-3">
                 <p className="text-[15px] font-semibold text-[var(--oh-text)] sm:text-[16px]">{item.name}</p>
