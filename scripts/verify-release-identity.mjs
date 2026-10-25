@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const expected = process.env.SOURCE_COMMIT ?? "";
-if (!/^[a-f0-9]{40}$/.test(expected)) throw new Error("Set SOURCE_COMMIT to the full candidate SHA.");
+const expected = process.env.PILOT_EXPECTED_SOURCE_COMMIT ?? "";
+if (!/^[a-f0-9]{40}$/.test(expected)) throw new Error("Set PILOT_EXPECTED_SOURCE_COMMIT to the full candidate SHA.");
 const base = new URL(process.env.PILOT_BASE_URL ?? "https://demo.orithos.com.au");
 if (base.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(base.hostname) && !base.hostname.endsWith(".localhost")) throw new Error("Use HTTPS for remote verification.");
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");

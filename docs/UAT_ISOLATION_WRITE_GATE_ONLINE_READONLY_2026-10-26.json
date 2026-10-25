@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-10-25T19:24:45Z",
+  "target": "https://uat.orithos.com.au",
+  "sourceCommit": "4f9bdb703e2bb4774dff25c1f15c6aedaad20e1f",
+  "demoRuntime": {
+    "frontendCommit": "bf98f83914e315b68373a052847ad7feb1c2780e",
+    "backendCommit": "bf98f83914e315b68373a052847ad7feb1c2780e",
+    "composeSourceCommit": "bf98f83914e315b68373a052847ad7feb1c2780e",
+    "database": "aipos",
+    "isolationDatabase": "aipos_uat"
+  },
+  "uatRuntime": {
+    "frontendCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+    "backendCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+    "composeSourceCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+    "database": "aipos_uat",
+    "isolationDatabase": "aipos_uat",
+    "runtimeEnvironment": "uat",
+    "containers": {
+      "frontend": "running",
+      "backend": "running",
+      "mysql": "running_healthy",
+      "r2Sync": "running",
+      "redis": "running_healthy"
+    }
+  },
+  "localDatabaseGate": {
+    "configured": true,
+    "matchesExpectedIsolation": true
+  },
+  "uatLogin": {
+    "httpStatus": 200,
+    "authenticated": false,
+    "applicationCode": 40410,
+    "message": "Platform operator store is not provisioned"
+  },
+  "remoteUatAttestation": {
+    "httpStatus": null,
+    "isolated": false,
+    "databaseMatchesLocalIsolation": false,
+    "databaseNameRecorded": false
+  },
+  "writeGate": "BLOCKED",
+  "businessWrites": 0,
+  "pilot": "NO-GO"
+}
