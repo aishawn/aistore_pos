@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-10-26",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "7c0b58cd006c7eb099705c87bad3564e1dafc105",
+  "runtimeVerified": {
+    "frontendCommit": "2e1392d7b4048fb930bb36c52f261dd8a5a38ac4",
+    "backendCommit": "2e1392d7b4048fb930bb36c52f261dd8a5a38ac4",
+    "sourceContainsCandidate": true
+  },
+  "scope": "Authenticated read-only mobile POS catalogue and category navigation. Login/session and record-list reads only; no sale was added or finalized.",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checks": [
+    {
+      "name": "Runtime identity",
+      "status": "PASS",
+      "result": "Frontend and backend both reported the runtime SHA above, which contains the candidate source commit."
+    },
+    {
+      "name": "Demo admin authentication",
+      "status": "PASS",
+      "result": "POST /api/auth/login returned HTTP 200. The password value was not recorded."
+    },
+    {
+      "name": "Category and product reads",
+      "status": "PASS",
+      "result": "The category records request returned HTTP 200 with 13 categories. Product records requests returned HTTP 200 with 50 items and hasNext=true."
+    },
+    {
+      "name": "Mobile catalogue overlay and Cart return",
+      "status": "PASS",
+      "result": "At 390px the category view opened as a 794px fixed panel. Cart closed the panel and restored the register layout."
+    },
+    {
+      "name": "Responsive browser health",
+      "status": "PASS",
+      "result": "No horizontal overflow or browser page errors."
+    },
+    {
+      "name": "Business write boundary",
+      "status": "PASS",
+      "result": "No checkout, payment, sale or other business write was sent; the read-only request guard reported zero blocked non-read requests."
+    }
+  ],
+  "checksPassed": 6,
+  "checksTotal": 6,
+  "businessWrites": 0,
+  "result": "PASS_READ_ONLY_UI_ONLY",
+  "limitations": [
+    "This verifies the catalogue UI and read APIs only; it is not sale/payment acceptance.",
+    "Odoo isolated-write attestation is not verified. Pilot remains NO-GO for business transaction acceptance."
+  ]
+}
