@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     shopfront_inventory_query: str = "{ products(first: 100) { edges { node { id name inventory { quantity outlet { id name } } } } } }"
     shopfront_sale_detail_query: str = ""
 
+    def model_post_init(self, __context: object) -> None:
+        """Accept the old documented scope name while using Shopfront's current name."""
+        self.shopfront_scopes = " ".join(
+            "see_history" if scope == "see_sales" else scope
+            for scope in self.shopfront_scopes.split()
+        )
+
     def stores(self) -> dict[str, dict[str, str]]:
         result: dict[str, dict[str, str]] = {}
         for item in self.shopfront_stores.split(","):

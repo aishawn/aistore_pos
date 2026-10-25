@@ -30,6 +30,15 @@ async def startup() -> None:
     db = next(get_db())
     try:
         ensure_stores(db, settings)
+        # A process restart must not leave durable jobs stuck in ``running``.
+        # Requeue them and resume from their persisted cursor below.
+        interrupted = db.scalars(select(SyncJob).where(SyncJob.status == "running")).all()
+        for job in interrupted:
+            job.status = "queued"
+            job.error = "requeued after crawler restart"
+        db.commit()
+        interrupted_history_ids = [job.id for job in interrupted if job.job_type == "history"]
+        interrupted_discovery_ids = [job.id for job in interrupted if job.job_type == "discover"]
     finally:
         db.close()
     scheduler.add_job(
@@ -39,6 +48,10 @@ async def startup() -> None:
         replace_existing=True,
     )
     scheduler.start()
+    for job_id in interrupted_history_ids:
+        __import__("asyncio").create_task(run_history_job(job_id))
+    for job_id in interrupted_discovery_ids:
+        __import__("asyncio").create_task(run_history_discovery(job_id))
 
 
 @app.on_event("shutdown")
@@ -254,7 +267,8 @@ async def run_history_job(job_id: int) -> None:
         job.status = "running"
         job.started_at = datetime.now(timezone.utc)
         db.commit()
-        await run_sync_background(job.store_key, date.fromisoformat(job.from_date), date.fromisoformat(job.to_date), job.id)
+        start = date.fromisoformat(job.cursor_date or job.from_date)
+        await run_sync_background(job.store_key, start, date.fromisoformat(job.to_date), job.id)
         db.refresh(job)
         if job.status == "cancelled":
             return
