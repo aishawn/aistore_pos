@@ -1,6 +1,6 @@
 # Dokploy deployment
 
-This repository deploys the Spring Boot + MySQL + Redis services and the Next.js frontend from the root `docker-compose.yml`. The web app account is authenticated by the Spring API. Odoo is a separate business-data connection: the cashier signs in to Orithos first, then connects an Odoo staff account under **Setup → Integrations**.
+This repository deploys the Spring Boot + PostgreSQL + Redis services and the Next.js frontend from the root `docker-compose.yml`. The web app account is authenticated by the Spring API. Odoo is a separate business-data connection: the cashier signs in to Orithos first, then connects an Odoo staff account under **Setup → Integrations**.
 
 ## Configure the Dokploy application
 
@@ -30,7 +30,7 @@ This repository deploys the Spring Boot + MySQL + Redis services and the Next.js
 - The Odoo staff user must have access to the relevant company, POS configuration, session, products, customers, payment methods, taxes and sale orders. Use an individual staff account, not a shared administrator password.
 - Keep an Odoo POS session open before selling. Orithos can close a session from **Close Register** (`/api/odoo/session/close`); opening a session is still done in Odoo.
 - The Odoo register resolves pricelist / customer prices via Odoo, supports GST, cash rounding, pack/case factors, park (local), full-sale refunds from history, and register close. Cross-currency pricelists and credit sales remain unsupported. See `docs/CAPABILITY_STATUS.md`.
-- Pilot navigation exposes Odoo surfaces only (Sell, history, products, customers, purchases, replenishment, reporting). Classic MySQL is reference-only and not synchronized.
+- Pilot navigation exposes Odoo surfaces only (Sell, history, products, customers, purchases, replenishment, reporting). Classic POS tables are reference-only and not synchronized.
 
 ## Updating the deployment
 
@@ -65,4 +65,4 @@ docker compose build
 docker compose up -d
 ```
 
-Do not commit `.env` files or database dumps. Back up MySQL before changing its schema or volume configuration.
+Do not commit `.env` files or database dumps. The legacy MySQL source was backed up before migration; keep the backup until the PostgreSQL cutover is accepted.
