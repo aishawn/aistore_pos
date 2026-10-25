@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import RedirectResponse
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -345,7 +346,7 @@ async def import_products_to_pos(store: str, db: Session = Depends(get_db)) -> d
     require_store(store, db)
     run = await _stage_pos_import(store, "products", db)
     products = db.scalars(select(Product).where(Product.store_key == store)).all()
-    payload = {"store_key": store, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price} for p in products]}
+    payload = jsonable_encoder({"store_key": store, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price} for p in products]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
@@ -370,7 +371,7 @@ async def import_inventory_to_pos(store: str, db: Session = Depends(get_db)) -> 
     require_store(store, db)
     run = await _stage_pos_import(store, "inventory", db)
     rows = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store)).all()
-    payload = {"store_key": store, "replace": True, "items": [{"source_id": x.shopfront_product_id, "quantity": x.quantity, "timestamp": x.inventory_timestamp} for x in rows]}
+    payload = jsonable_encoder({"store_key": store, "replace": True, "items": [{"source_id": x.shopfront_product_id, "quantity": x.quantity, "timestamp": x.inventory_timestamp} for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
@@ -401,7 +402,7 @@ async def import_sales_to_pos(store: str, db: Session = Depends(get_db)) -> dict
         run.counts = {"sales": len(rows), "blocked": len(incomplete)}
         db.commit()
         return {"status": run.status, "run_id": run.id, "counts": run.counts, "error": run.error}
-    payload = {"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [{"source_product_id": i.shopfront_product_id, "name": i.product_name, "quantity": i.quantity, "unit_price": i.unit_price, "line_total": i.line_total} for i in x.items]} for x in rows]}
+    payload = jsonable_encoder({"store_key": store, "items": [{"external_id": x.shopfront_sale_id, "invoice_id": x.invoice_id, "status": x.status, "created_at": x.created_at, "updated_at": x.updated_at, "total_price": x.total_price, "total_tax": x.total_tax, "items": [{"source_product_id": i.shopfront_product_id, "name": i.product_name, "quantity": i.quantity, "unit_price": i.unit_price, "line_total": i.line_total} for i in x.items]} for x in rows]})
     client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
     try:
         if settings.pos_import_enabled:
