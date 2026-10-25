@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,6 +21,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/integrations/shopfront")
 public class ShopfrontIntegrationController {
+    private static final Logger log = LoggerFactory.getLogger(ShopfrontIntegrationController.class);
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
     private final String token;
@@ -38,12 +41,17 @@ public class ShopfrontIntegrationController {
     @GetMapping("/mappings")
     public ApiResult<Map<String, String>> mappings(@RequestHeader("X-Shopfront-Integration-Token") String supplied) {
         authorize(supplied);
-        ensureMappingTable();
-        var rows = jdbc.queryForList("SELECT store_key, shopfront_outlet, company_id, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
-        Map<String, String> result = new LinkedHashMap<>();
-        result.put("count", Integer.toString(rows.size()));
-        result.put("items", rows.toString());
-        return ApiResult.ok(result);
+        try {
+            ensureMappingTable();
+            var rows = jdbc.queryForList("SELECT store_key, shopfront_outlet, company_id, outlet_id, enabled FROM shopfront_store_mapping ORDER BY store_key");
+            Map<String, String> result = new LinkedHashMap<>();
+            result.put("count", Integer.toString(rows.size()));
+            result.put("items", rows.toString());
+            return ApiResult.ok(result);
+        } catch (Exception e) {
+            log.error("Shopfront mapping read failed: message={}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to read Shopfront mappings", e);
+        }
     }
 
     @PutMapping("/mappings/{storeKey}")
@@ -108,6 +116,7 @@ public class ShopfrontIntegrationController {
             Long id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
             return ApiResult.ok(Map.of("id", id, "status", status, "type", type, "item_count", items.size(), "mapping_ready", !mapping.isEmpty(), "business_write", false));
         } catch (Exception e) {
+            log.error("Shopfront staging failed: type={}, store={}, message={}", type, store, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront import", e);
         }
     }
