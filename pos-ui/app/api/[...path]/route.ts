@@ -44,14 +44,18 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const accessToken = request.cookies.get(ACCESS_COOKIE)?.value;
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
 
-  // Preserve browser Host so the API can resolve {slug}.orithos.com.au tenants.
-  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
-    || request.headers.get("host");
-  if (forwardedHost) headers.set("x-forwarded-host", forwardedHost);
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
-  if (forwardedProto) headers.set("x-forwarded-proto", forwardedProto);
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+  // Shopfront is a service-token boundary and must not inherit a tenant Host.
+  // Tenant-aware POS requests still forward the original host below.
+  const isShopfrontIntegration = path[0] === "integrations" && path[1] === "shopfront";
+  if (!isShopfrontIntegration) {
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim()
+      || request.headers.get("host");
+    if (forwardedHost) headers.set("x-forwarded-host", forwardedHost);
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
+    if (forwardedProto) headers.set("x-forwarded-proto", forwardedProto);
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+  }
 
   const method = request.method.toUpperCase();
   try {
