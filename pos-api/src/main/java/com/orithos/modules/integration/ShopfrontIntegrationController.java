@@ -133,7 +133,14 @@ public class ShopfrontIntegrationController {
                 jdbc.update("INSERT INTO shopfront_import_run (store_key, import_type, status, item_count, payload_json) VALUES (?, ?, ?, ?, ?)", store, type, status, items.size(), json);
                 id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
             }
-            return ApiResult.ok(Map.of("id", id, "status", status, "type", type, "item_count", items.size(), "mapping_ready", mappingReady, "business_write", false));
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("id", id);
+            result.put("status", status);
+            result.put("type", type);
+            result.put("item_count", items.size());
+            result.put("mapping_ready", mappingReady);
+            result.put("business_write", false);
+            return ApiResult.ok(result);
         } catch (Exception e) {
             Throwable root = e;
             while (root.getCause() != null && root.getCause() != root) root = root.getCause();
