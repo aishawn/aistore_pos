@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-10-26",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "b9526b4b753911b3c3c8153b0adbf236bd007d7e",
+  "runtimeVerified": {
+    "frontendCommit": "b9526b4b753911b3c3c8153b0adbf236bd007d7e",
+    "backendCommit": "b9526b4b753911b3c3c8153b0adbf236bd007d7e"
+  },
+  "scope": "Authenticated live POS quote flow at 390px. One product was added only to a temporary Playwright cart. Checkout, payment and business writes were prohibited.",
+  "quoteHandlerReview": {
+    "path": "pos-ui/app/api/odoo/checkout/quote/route.ts",
+    "odooMethods": ["search_read", "map_tax", "compute_all"],
+    "createWriteOrUnlinkCalls": 0,
+    "assessment": "Read-only Odoo pricing, tax and register lookups."
+  },
+  "login": {
+    "status": "PASS",
+    "httpStatus": 200,
+    "credentialValuesRecorded": false
+  },
+  "cartQuote": {
+    "status": "PASS",
+    "httpStatus": 200,
+    "currency": "AUD",
+    "subtotal": 4.55,
+    "tax": 0.45,
+    "total": 5.0,
+    "lines": 1,
+    "quotedTotalVisibleInCart": true
+  },
+  "browser": {
+    "viewport": 390,
+    "pageErrors": 0
+  },
+  "businessWrites": {
+    "checkoutRequests": 0,
+    "paymentRequests": 0,
+    "sales": 0,
+    "stockCashOrRegisterClose": 0,
+    "blockedBusinessRequests": 0
+  },
+  "result": "PASS_READ_ONLY_QUOTE_ONLY",
+  "limitations": [
+    "The temporary browser cart was discarded when the Playwright context closed.",
+    "This does not verify checkout, payment capture, receipt persistence, refunds, cash movements, register close or sale/stock reconciliation.",
+    "Odoo isolated-write attestation is not verified. Pilot remains NO-GO for business transaction acceptance."
+  ]
+}
