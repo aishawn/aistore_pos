@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.access.AccessDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,7 +128,7 @@ public class ShopfrontIntegrationController {
 
     private void authorize(String supplied) {
         if (!enabled || token.isBlank() || supplied == null || !java.security.MessageDigest.isEqual(token.getBytes(), supplied.getBytes())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Shopfront integration is disabled or unauthorized");
+            throw new AccessDeniedException("Shopfront integration is disabled or unauthorized");
         }
     }
 }
