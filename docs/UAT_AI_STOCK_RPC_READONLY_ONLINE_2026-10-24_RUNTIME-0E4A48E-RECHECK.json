@@ -1,0 +1,205 @@
+{
+  "generatedAt": "2026-10-22T19:06:27.243Z",
+  "sourceCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "worktreeDirty": true,
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only AI stock RPC diagnostic; no business writes",
+  "checks": [
+    {
+      "name": "dynamic store product sample is available",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "catalogueRows": 20,
+        "sampleNameOmitted": true
+      }
+    },
+    {
+      "name": "tenant company binding alignment",
+      "status": "PASS",
+      "evidence": {
+        "bindingReady": true,
+        "tenantCompanyConfigured": true,
+        "tenantCompanyMatchesOdooSession": true,
+        "companyIdentityOmitted": true
+      }
+    },
+    {
+      "name": "store warehouse binding state",
+      "status": "INFO",
+      "evidence": {
+        "httpStatus": 200,
+        "warehouseConfigured": false,
+        "bindingStatus": "ready",
+        "detail": "No explicit warehouse id; application omits the warehouse context. Direct queries test both company and warehouse contexts."
+      }
+    },
+    {
+      "name": "AI service account has a tenant-scoped active product sample",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 2,
+        "storeCatalogueSampleMatchesById": false,
+        "productNameOmitted": true
+      }
+    },
+    {
+      "name": "AI service account can read tenant-bound company",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 1,
+        "rpcErrorType": null,
+        "companyIdentityOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: minimal product read",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 16,
+        "requestedFieldsPresent": true,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: active product filter",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 2,
+        "requestedFieldsPresent": true,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: POS product filter",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: tenant company visibility filter",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 2,
+        "requestedFieldsPresent": true,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: sample product name filter",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: store catalogue filter read",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": false,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: current AI stock domain without stock fields",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: current AI stock domain with stock fields",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": false,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: tenant-scoped inventory domain without POS filter",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": true,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "Odoo RPC: tenant-scoped inventory domain with stock fields",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "requestedFieldsPresent": false,
+        "stockValuesNumeric": false,
+        "rpcErrorType": null,
+        "rowValuesOmitted": true
+      }
+    },
+    {
+      "name": "company warehouses can be read for context comparison",
+      "status": "PASS",
+      "evidence": {
+        "warehouseCount": 1,
+        "warehouseNamesAndIdsOmitted": true
+      }
+    },
+    {
+      "name": "AI stock RPC with company warehouse 1",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingRows": 0,
+        "stockValuesNumeric": false,
+        "rpcErrorType": null,
+        "warehouseIdentityOmitted": true
+      }
+    }
+  ],
+  "writeBusinessData": false,
+  "passed": 7,
+  "blocked": 9,
+  "failed": 0,
+  "info": 1,
+  "status": "BLOCKED"
+}

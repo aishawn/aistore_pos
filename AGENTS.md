@@ -157,6 +157,15 @@ When Dokploy exposes backend logs, record the Maven result, deployed SHA, and co
 | R2 archive / cold history | [docs/R2_ARCHIVE_SYNC_PLAN.md](docs/R2_ARCHIVE_SYNC_PLAN.md), [docs/R2_COLD_HISTORY_POLICY.md](docs/R2_COLD_HISTORY_POLICY.md) |
 | Telegram / Hermes product agent | [docs/ORITHOPOS_AGENT.md](docs/ORITHOPOS_AGENT.md) (runtime product-agent instructions; not this repo’s Cursor/Codex brief) |
 | Scale / suspend ops | [docs/SCALE_OPS_RUNBOOK.md](docs/SCALE_OPS_RUNBOOK.md) |
+| Website logo / hero / stock images | Personal skill `website-images` (junction → `C:\shawn\1code\1project-new\tools\网站图像\SKILL.md`); live ModKie docs <https://modkie.com/docs> |
+
+### Website images (cross-project skill)
+
+When the user asks for logo、配图、hero、OG、AI 生成图 or AI 搜图 for this or any other site:
+
+1. Read and follow `website-images` (`%USERPROFILE%\.agents\skills\website-images\SKILL.md` or `C:\shawn\1code\1project-new\tools\网站图像\SKILL.md`).
+2. Generate via ModKie (`MODKIE_KEY` / `MODKIE_SYSTEM_API_KEY` in ignored `C:\shawn\1code\1project-new\api\v1\.env`). Search stock via backend_media using `PEXELS_API_KEY` / `PIXABAY_API_KEY` from that same `.env` — never print or commit key values.
+3. Prefer search for real photography; generate for logos and original brand art. Save under the target project’s `public/` (or agreed path) and update references.
 
 UAT evidence lives as `docs/UAT_*.json` — prefer those over chat recall for “what passed on which SHA”. Do not edit a historical UAT deployment SHA to make it match a newer commit; create a new evidence file instead.
 

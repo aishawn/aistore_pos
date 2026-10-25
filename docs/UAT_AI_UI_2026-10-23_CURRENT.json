@@ -1,16 +1,12 @@
 {
-  "generatedAt": "2026-10-20T16:51:15.462Z",
-  "sourceCommit": "96b577338e4315b63e71af130dab613febda0e9f",
+  "generatedAt": "2026-10-22T16:52:47.933Z",
+  "sourceCommit": "d62b596eeebd3135aa105645fc841a01407121de",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
   "checks": 2,
-  "passed": 1,
-  "failed": 1,
-  "failures": [
-    {
-      "failure": "IDENTIFY_EMPTY_URL_https://demo.orithos.com.au/sommelier/identify_results=0_all=13_orithos Overview Register Stock Customers Reporting Orithos AI Wine Assistant Find a wine or identify a label Find a Wine Recommend in-stock bottles by budget and taste Identify Wine Label Search by name, barcode, or label photo Price Suggestions Suggested shelf prices. You apply changes Scan Supplier Invoice Preview only. Does not create a purchase AI Report Metrics Admin-only query health and latency Setup ONLINE admin Skip to main content Wine Assistant Identify a wine Photograph the bottle l"
-    }
-  ],
+  "passed": 2,
+  "failed": 0,
+  "failures": [],
   "results": [
     {
       "viewport": 390,
@@ -23,7 +19,14 @@
       "pageErrors": []
     },
     {
-      "failure": "IDENTIFY_EMPTY_URL_https://demo.orithos.com.au/sommelier/identify_results=0_all=13_orithos Overview Register Stock Customers Reporting Orithos AI Wine Assistant Find a wine or identify a label Find a Wine Recommend in-stock bottles by budget and taste Identify Wine Label Search by name, barcode, or label photo Price Suggestions Suggested shelf prices. You apply changes Scan Supplier Invoice Preview only. Does not create a purchase AI Report Metrics Admin-only query health and latency Setup ONLINE admin Skip to main content Wine Assistant Identify a wine Photograph the bottle l"
+      "viewport": 1440,
+      "recommendationCards": 3,
+      "identifyItems": 48,
+      "assistantAvailable": true,
+      "transcriptionAvailable": true,
+      "sendButton": true,
+      "fabSafeBottom": true,
+      "pageErrors": []
     }
   ]
 }

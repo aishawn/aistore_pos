@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-10-23T00:47:55.164Z",
+  "sourceCommit": "4b1d75961cdfc0ff682266f415be753a11629de1",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v24.19.0",
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3101",
+  "scope": "price suggestions read-only UI; APIs intercepted; no Odoo price writes",
+  "screenshots": [
+    "docs/screenshots/2026-10-24-price-suggestions-goal-rerun/price-suggestions-320.png",
+    "docs/screenshots/2026-10-24-price-suggestions-goal-rerun/price-suggestions-390.png",
+    "docs/screenshots/2026-10-24-price-suggestions-goal-rerun/price-suggestions-768.png",
+    "docs/screenshots/2026-10-24-price-suggestions-goal-rerun/price-suggestions-1024.png",
+    "docs/screenshots/2026-10-24-price-suggestions-goal-rerun/price-suggestions-1440.png"
+  ],
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "production app route wrapper",
+      "status": "PASS",
+      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\app\\stock\\price-suggestions\\page.tsx"
+    },
+    {
+      "name": "production stock hub links pricing",
+      "status": "PASS",
+      "evidence": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\pos-ui\\app\\stock\\more\\page.tsx"
+    },
+    {
+      "name": "live pricing page is not cached",
+      "status": "PASS",
+      "evidence": "no-cache, must-revalidate"
+    },
+    {
+      "name": "price suggestions page",
+      "status": "PASS",
+      "evidence": "Heading, DEMO row, raise badge and read-only guidance visible"
+    },
+    {
+      "name": "product and SKU search",
+      "status": "PASS",
+      "evidence": "SKU query keeps the matching product visible"
+    },
+    {
+      "name": "empty search state",
+      "status": "PASS",
+      "evidence": "Unmatched query explains that no products match"
+    },
+    {
+      "name": "status filter",
+      "status": "PASS",
+      "evidence": "Raise price filter keeps the matching row visible"
+    },
+    {
+      "name": "status empty state",
+      "status": "PASS",
+      "evidence": "Missing cost filter hides non-matching rows"
+    },
+    {
+      "name": "apply CTA present",
+      "status": "PASS",
+      "evidence": "Open product link present; no apply-price write control"
+    },
+    {
+      "name": "bulk edit deep link",
+      "status": "PASS",
+      "evidence": "/stock/bulk-price-edit?search=DEMO-SHIRAZ"
+    },
+    {
+      "name": "read-only CSV export",
+      "status": "PASS",
+      "evidence": "orithos-price-suggestions-2026-10-23.csv ﻿\"Product\",\"SKU\",\"Status\",\"Standard cost (AUD)\",\"Current shelf incl GST (AUD)\",\"Suggested shelf incl GST (AUD)\",\"Current net margin\",\"Suggested net margin\",\"Sold units (28d)\",\"On h"
+    },
+    {
+      "name": "run",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Error: strict mode violation: getByPlaceholder('Search product or SKU') resolved to 2 elements:\n    1) <input value=\"DEMO-SHIRAZ\" placeholder=\"Search product or SKU\" aria-label=\"Search bulk price products\" class=\"h-11 w-full min-w-0 rounded border px-3 sm:flex-1\"/> aka getByRole('textbox', { name: 'Search bulk price products' })\n    2) <input value=\"DEMO-SHIRAZ\" placeholder=\"Search product or SKU\" aria-label=\"Search bulk price products\" class=\"h-11 w-full min-w-0 rounded border px-3 sm:flex-1\"/> aka getByPlaceholder('Search product or SKU').nth(1)\n\nCall log:\n\u001b[2m  - waiting for getByPlaceholder('Search product or SKU') to be visible\u001b[22m\n\u001b[2m    4 × locator resolved to hidden <input value=\"DEMO-SHIRAZ\" placeholder=\"Search product or SKU\" aria-label=\"Search bulk price products\" class=\"h-11 w-full min-w-0 rounded border px-3 sm:flex-1\"/>\u001b[22m\n"
+    }
+  ],
+  "writes": []
+}

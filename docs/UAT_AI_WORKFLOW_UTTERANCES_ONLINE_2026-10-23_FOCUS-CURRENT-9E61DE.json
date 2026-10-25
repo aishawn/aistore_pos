@@ -1,0 +1,138 @@
+{
+  "generatedAt": "2026-10-22T17:26:49.184Z",
+  "sourceCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+    "frontendBuiltAt": "2026-10-22T17:13:34.993Z",
+    "backendCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+    "backendBuiltAt": "2026-10-22T17:13:34Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 320,
+  "selectedCount": 4,
+  "selectedIds": [
+    "pricing-zh",
+    "invoice-colloquial-en",
+    "invoice-upload-indefinite-en",
+    "bulk-price-lookup-zh"
+  ],
+  "checks": [
+    {
+      "id": "pricing-zh",
+      "question": "帮我看看哪些商品需要调价",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "afd1a2f7-307b-4c94-8e9f-c0cc1aa1ed86"
+      }
+    },
+    {
+      "id": "invoice-colloquial-en",
+      "question": "Upload this supplier bill",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6619293f-345d-48af-932d-22d951abb1d7"
+      }
+    },
+    {
+      "id": "invoice-upload-indefinite-en",
+      "question": "Upload an invoice",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ac2eaee1-18bf-43ad-900b-73fce60fbc82"
+      }
+    },
+    {
+      "id": "bulk-price-lookup-zh",
+      "question": "查看批量改价",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "d9502cac-e421-4060-bd56-e6eab494d582"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 2,
+  "blocked": 0,
+  "failed": 2,
+  "status": "FAIL"
+}

@@ -1,0 +1,207 @@
+{
+  "generatedAt": "2026-10-21T21:22:16.563Z",
+  "sourceCommit": "53b56d3c29d77c7069197d9b6ae7a2db1b62c312",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "53b56d3c29d77c7069197d9b6ae7a2db1b62c312",
+    "frontendBuiltAt": "2026-10-21T21:17:33.687Z",
+    "backendCommit": "53b56d3c29d77c7069197d9b6ae7a2db1b62c312",
+    "backendBuiltAt": "2026-10-21T21:17:33Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 6,
+  "selectedIds": [
+    "date-sales-how-were-en",
+    "date-sales-au-revenue-en",
+    "date-sales-australian-en",
+    "date-sales-revenue-en",
+    "date-sales-turnover-en",
+    "date-sales-amount-zh"
+  ],
+  "checks": [
+    {
+      "id": "date-sales-how-were-en",
+      "question": "How were sales on 16 October 2026?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "7909e3d3-6807-4533-b3b3-2f0aab89f7b1",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-au-revenue-en",
+      "question": "16/10/2026 revenue",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "b3c741c4-29ac-40fd-851e-e4b68e5e3b7e",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-australian-en",
+      "question": "What were our takings on 16/10/2026?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "cc1f826f-3742-4007-abc5-b5c5cbc695cc",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-revenue-en",
+      "question": "Revenue for 16/10/2026",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "c7a91acb-a26f-4b08-94de-25349631856e",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-turnover-en",
+      "question": "16 October 2026 turnover",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "e073accc-1729-4b75-80bc-2f423b9c29ad",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-amount-zh",
+      "question": "收入多少：2026年10月16日",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "1974b6f1-bb3c-4226-87e1-74d706e8b571",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 6,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

@@ -1,3 +1,5 @@
+import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
+import { validateCategoryIds } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -115,13 +117,7 @@ export async function POST(request: NextRequest) {
     const context = { ...(info.user_context ?? {}), allowed_company_ids: companyIds, force_company: companyId };
 
     const categoryIds = [...new Set(products.flatMap((product) => product.pos_categ_ids))];
-    if (categoryIds.length) {
-      const categories = await callOdoo<Array<{ id: number }>>(sessionId, "pos.category", "search_read", [[
-        ["id", "in", categoryIds],
-      ]], { fields: ["id"], limit: 100, context }, correlationId);
-      const existingIds = new Set((categories ?? []).map((category) => category.id));
-      if (categoryIds.some((id) => !existingIds.has(id))) throw new OdooImportError("One or more selected POS categories are unavailable in this Odoo account.", 400);
-    }
+    await validateCategoryIds(await scopedOdoo(request), categoryIds);
 
     const skus = [...new Set(products.map((product) => product.default_code.trim()).filter(Boolean))];
     const barcodes = [...new Set(products.map((product) => product.barcode.trim()).filter(Boolean))];
@@ -178,7 +174,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ created: toCreate.length, skipped }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
-    const status = error instanceof OdooImportError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    const status = error instanceof OdooImportError || error instanceof OdooScopeError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }
 }

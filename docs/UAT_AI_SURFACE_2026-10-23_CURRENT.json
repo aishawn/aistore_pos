@@ -1,0 +1,65 @@
+{
+  "generatedAt": "2026-10-22T16:51:17.616Z",
+  "sourceCommit": "d62b596eeebd3135aa105645fc841a01407121de",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated AI surface regression; no business, feedback, or AI configuration writes",
+  "checks": [
+    {
+      "name": "AI client config",
+      "status": "PASS",
+      "evidence": "Loaded 44 trigger keywords; enabled=true."
+    },
+    {
+      "name": "AI config intents",
+      "status": "PASS",
+      "evidence": "Loaded 14 records."
+    },
+    {
+      "name": "AI config slots",
+      "status": "PASS",
+      "evidence": "Loaded 12 records."
+    },
+    {
+      "name": "AI config slot-values",
+      "status": "PASS",
+      "evidence": "Loaded 123 records."
+    },
+    {
+      "name": "AI config prompts",
+      "status": "PASS",
+      "evidence": "Loaded 3 records."
+    },
+    {
+      "name": "AI assistant product lookup",
+      "status": "PASS",
+      "evidence": "Returned intent search_product."
+    },
+    {
+      "name": "Voice input validation",
+      "status": "PASS",
+      "evidence": "Empty audio is rejected with code 40010 (HTTP 200)."
+    },
+    {
+      "name": "Label image validation",
+      "status": "PASS",
+      "evidence": "Empty image is rejected with code 40010 (HTTP 200)."
+    },
+    {
+      "name": "Anonymous AI assistant guard",
+      "status": "PASS",
+      "evidence": "Assistant API returns HTTP 401 after logout."
+    },
+    {
+      "name": "Anonymous AI report guard",
+      "status": "PASS",
+      "evidence": "Report snapshot API returns HTTP 401 after logout."
+    },
+    {
+      "name": "Anonymous AI route matrix",
+      "status": "PASS",
+      "evidence": "27 protected config, voice, label, and Sommelier routes returned HTTP 401; assistant and report were checked separately."
+    }
+  ],
+  "passed": 11,
+  "failed": 0
+}

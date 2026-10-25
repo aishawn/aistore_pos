@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-22T00:12:38.355Z",
-  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
-  "target": "https://demo.orithos.com.au",
+  "generatedAt": "2026-10-23T00:27:17.436Z",
+  "sourceCommit": "fbd2871e2628088791f673a96952c98f4070fba8",
+  "target": "https://uatpilot3.orithos.com.au",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated pricing and stock pages; non-GET API calls blocked; no business writes",
   "status": "BLOCKED",
@@ -33,7 +33,7 @@
       "dataBlocked": false,
       "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/stock-list-390.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/stock-list-390.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -59,7 +59,7 @@
       "dataBlocked": true,
       "blockedReason": "",
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/capped-pricing-390.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/capped-pricing-390.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -85,7 +85,7 @@
       "dataBlocked": false,
       "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/bulk-price-edit-390.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/bulk-price-edit-390.png"
     },
     {
       "route": "/stock/price-suggestions",
@@ -111,7 +111,7 @@
       "dataBlocked": false,
       "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/price-suggestions-390.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/price-suggestions-390.png"
     },
     {
       "route": "/stock/list",
@@ -134,7 +134,7 @@
       "dataBlocked": false,
       "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/stock-list-1440.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/stock-list-1440.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -157,7 +157,7 @@
       "dataBlocked": true,
       "blockedReason": "",
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/capped-pricing-1440.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/capped-pricing-1440.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -180,7 +180,7 @@
       "dataBlocked": false,
       "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/bulk-price-edit-1440.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/bulk-price-edit-1440.png"
     },
     {
       "route": "/stock/price-suggestions",
@@ -203,7 +203,7 @@
       "dataBlocked": false,
       "blockedReason": null,
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-22-pricing-success-recheck/price-suggestions-1440.png"
+      "screenshot": "docs/screenshots/2026-10-23-uatpilot3-pricing/price-suggestions-1440.png"
     }
   ],
   "blockedWrites": []

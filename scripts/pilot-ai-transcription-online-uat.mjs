@@ -18,19 +18,20 @@ const localEnv = fs.existsSync(envPath)
 
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const password = process.env.INITIAL_ADMIN_PASSWORD || localEnv.INITIAL_ADMIN_PASSWORD;
+const fixtureDirectory = path.join(root, "scripts", "fixtures", "ai-transcription");
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
   : path.join(root, "docs", "UAT_AI_TRANSCRIPTION_ONLINE.json");
 const cases = [
   {
     id: "asr-en-store-question",
-    fixture: process.env.PILOT_AUDIO_FIXTURE_EN,
+    fixture: process.env.PILOT_AUDIO_FIXTURE_EN || path.join(fixtureDirectory, "sales-question-en.wav"),
     lang: "en-AU",
     expected: /sales/i,
   },
   {
     id: "asr-zh-store-question",
-    fixture: process.env.PILOT_AUDIO_FIXTURE_ZH,
+    fixture: process.env.PILOT_AUDIO_FIXTURE_ZH || path.join(fixtureDirectory, "sales-question-zh.wav"),
     lang: "zh-CN",
     expected: /营业额|销售额|销售/i,
   },

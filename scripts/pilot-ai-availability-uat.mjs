@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const runStamp = new Date().toISOString().replace(/[-:.]/g, "");
 const env = Object.fromEntries(
   fs.readFileSync(path.join(root, ".env"), "utf8")
     .split(/\r?\n/)
@@ -79,7 +81,10 @@ try {
   } catch {
     // Direct navigation already happened, so there is no CTA to click.
   }
-  await page.waitForURL((url) => url.pathname === "/products", { timeout: 15000, waitUntil: "commit" });
+  await page.waitForURL((url) => url.pathname === "/products" || url.pathname === "/products/odoo", {
+    timeout: 15000,
+    waitUntil: "commit",
+  });
   record("Quick action remains available", "PASS", "The Products shortcut navigated without an AI or business write request.");
   await context.request.post(`${base}/api/auth/logout`, { headers: { Origin: base } });
 } catch (error) {
@@ -90,7 +95,7 @@ try {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  sourceCommit,
   deployment: process.env.PILOT_DEPLOYMENT_VERIFIED === "true" && /^[\da-f]{40}$/i.test(process.env.PILOT_DEPLOYMENT_SHA ?? "")
     ? process.env.PILOT_DEPLOYMENT_SHA.toLowerCase()
     : "unverified-after-deploy",
@@ -101,7 +106,7 @@ const output = {
 };
 const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   ? path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH)
-  : path.join(root, "docs", "UAT_AI_AVAILABILITY_2026-10-19_AUTHFIX.json");
+  : path.join(root, "docs", `UAT_AI_AVAILABILITY_ONLINE_${runStamp}_${sourceCommit.slice(0, 8)}.json`);
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, passed: output.passed, failed: output.failed, checks }));

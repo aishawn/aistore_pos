@@ -1,3 +1,4 @@
+import { companyDomain } from "@/lib/customer-access";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
@@ -13,23 +14,24 @@ type CategoryRow = {
   name: string;
   color: number;
   parent_id: Many2One;
+  company_id: Many2One;
 };
 
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
-    // Reads are available to any connected Odoo staff account; writes stay admin-gated.
+    await requirePermission(request, "customers.view", "customers.edit", "customers.groups", "sell.checkout");
     const scope = await scopedOdoo(request);
     const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? 50);
     const offsetRaw = Number(request.nextUrl.searchParams.get("offset") ?? 0);
     const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 50));
     const offset = Math.max(0, Number.isFinite(offsetRaw) ? Math.floor(offsetRaw) : 0);
     const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 120) ?? "";
-    const domain: unknown[] = [];
+    const domain: unknown[] = companyDomain(scope.companyIds, true);
     if (query) domain.push(["name", "ilike", query]);
 
     const rows = await scope.rpc<CategoryRow[]>("res.partner.category", "search_read", [domain], {
-      fields: ["id", "name", "color", "parent_id"],
+      fields: ["id", "name", "color", "parent_id", "company_id"],
       limit: limit + 1,
       offset,
       order: "name asc, id asc",
@@ -38,20 +40,16 @@ export async function GET(request: NextRequest) {
     const categoryIds = page.map((row) => row.id);
     const counts = new Map<number, number>();
     if (categoryIds.length) {
-      const partners = await scope.rpc<Array<{ id: number; category_id: number[] }>>("res.partner", "search_read", [[
-        ["customer_rank", ">", 0],
-        ["category_id", "in", categoryIds],
-      ]], { fields: ["id", "category_id"], limit: 5000 });
-      for (const partner of partners ?? []) {
-        for (const categoryId of partner.category_id ?? []) {
-          if (categoryIds.includes(categoryId)) {
-            counts.set(categoryId, (counts.get(categoryId) ?? 0) + 1);
-          }
-        }
+      for (const categoryId of categoryIds) {
+        const count = await scope.rpc<number>("res.partner", "search_count", [[
+          ["customer_rank", ">", 0], ["category_id", "in", [categoryId]], ...companyDomain(scope.companyIds),
+        ]]);
+        counts.set(categoryId, count);
       }
     }
 
     const items = page.map((row) => ({
+      writable: Array.isArray(row.company_id) && scope.companyIds.includes(row.company_id[0]),
       id: row.id,
       name: row.name,
       color: Number(row.color) || 0,
@@ -87,7 +85,7 @@ export async function POST(request: NextRequest) {
     if (!name || name.length > 120) {
       return NextResponse.json({ message: "Group name is required and must be 120 characters or fewer" }, { status: 400 });
     }
-    const id = await scope.rpc<number>("res.partner.category", "create", [{ name }]);
+    const id = await scope.rpc<number>("res.partner.category", "create", [{ name, company_id: scope.companyIds[0] }]);
     if (!Number.isSafeInteger(id) || id < 1) {
       return NextResponse.json({ message: "Odoo did not confirm the new customer group" }, { status: 502 });
     }

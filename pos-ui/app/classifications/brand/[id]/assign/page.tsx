@@ -1,10 +1,2 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { AssignClassificationPage } from "@/components/admin/AssignClassificationPage";
-
-export default function BrandAssignRoute() {
-  const params = useParams();
-  const id = params.id as string;
-  return <AssignClassificationPage type="brand" id={id} />;
-}
+import { redirect } from "next/navigation";
+export default function LegacyClassificationRoute() { redirect("/products/odoo?dialog=categories"); }

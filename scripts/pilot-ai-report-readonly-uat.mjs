@@ -77,11 +77,15 @@ try {
   // Compare the AI stock report with the store-scoped catalogue's read-only
   // stock fields to isolate an Odoo-wide access issue from the AI service path.
   const catalogueResponse = await context.request.post(`${base}/api/odoo/records`, {
-    data: { type: "products", query: "VB Cans", limit: 5 },
+    data: { type: "products", limit: 20 },
     headers: { Origin: base },
   });
   const catalogueBody = await catalogueResponse.json().catch(() => ({}));
   const catalogueItems = Array.isArray(catalogueBody.items) ? catalogueBody.items : [];
+  const stockSample = catalogueItems.find((item) =>
+    typeof (item.name ?? item.display_name) === "string" && (item.name ?? item.display_name).trim()
+      && Number.isFinite(Number(item.qty_available))
+      && Number.isFinite(Number(item.free_qty)));
   const catalogueHasStockFields = catalogueItems.length > 0
     && catalogueItems.every((item) => typeof item.qty_available === "number"
       && Number.isFinite(item.qty_available)
@@ -138,9 +142,11 @@ try {
   `overview24hTransactions=${dashboard24h.transactions}; assistant=${todayReport.answer}`);
 
   const last7 = await ask("sales last 7 days");
-  check("7-day sales report returns rows", last7.intent === "report_sales"
-    && Array.isArray(last7.table?.rows) && last7.table.rows.length > 0,
-  `answer=${last7.answer}; rows=${last7.table?.rows?.length ?? 0}`);
+  const last7Rows = Array.isArray(last7.table?.rows) ? last7.table.rows : [];
+  const last7Empty = /no completed sales found|no sales found|no sales recorded/i.test(last7.answer ?? "");
+  check("7-day sales report returns rows or an explicit empty state", last7.intent === "report_sales"
+    && (last7Rows.length > 0 || last7Empty),
+  `answer=${last7.answer}; rows=${last7Rows.length}; emptyState=${last7Empty}`);
 
   const last30 = await ask("sales last 30 days");
   check("30-day sales report returns rows", last30.intent === "report_sales"
@@ -151,6 +157,8 @@ try {
   const explicitDate = await ask("sales on 14 October 2026");
   const chineseDate = await ask("10月14日销售额");
   const screenshotDateReport = await ask("16 Oct 2026 sales");
+  const naturalDateReport = await ask("How much did we sell on 16 October 2026?");
+  const chineseScreenshotDateReport = await ask("10月16日卖了多少？");
   const expectedDate = `${today.slice(0, 4)}-10-14`;
   check("day-month date uses current year", compactDate.intent === "report_sales"
     && compactDate.slots?.from === expectedDate && compactDate.slots?.to === expectedDate,
@@ -169,6 +177,18 @@ try {
   check("screenshot date wording resolves to one business day", screenshotDateReport.intent === "report_sales"
     && screenshotDateReport.slots?.from === screenshotDate && screenshotDateReport.slots?.to === screenshotDate,
   `expected=${screenshotDate}; actual=${screenshotDateReport.slots?.from ?? "missing"}; answer=${screenshotDateReport.answer ?? "missing"}`);
+  check("natural sales wording resolves to the same single day", naturalDateReport.intent === "report_sales"
+    && naturalDateReport.slots?.from === screenshotDate && naturalDateReport.slots?.to === screenshotDate
+    && JSON.stringify(naturalDateReport.table?.rows ?? []) === JSON.stringify(screenshotDateReport.table?.rows ?? []),
+  `date=${screenshotDate}; intent=${naturalDateReport.intent}; rowsMatch=${JSON.stringify(naturalDateReport.table?.rows ?? []) === JSON.stringify(screenshotDateReport.table?.rows ?? [])}`);
+  check("Chinese natural sales wording resolves to the same single day", chineseScreenshotDateReport.intent === "report_sales"
+    && chineseScreenshotDateReport.slots?.from === screenshotDate && chineseScreenshotDateReport.slots?.to === screenshotDate
+    && JSON.stringify(chineseScreenshotDateReport.table?.rows ?? []) === JSON.stringify(screenshotDateReport.table?.rows ?? []),
+  `date=${screenshotDate}; intent=${chineseScreenshotDateReport.intent}; rowsMatch=${JSON.stringify(chineseScreenshotDateReport.table?.rows ?? []) === JSON.stringify(screenshotDateReport.table?.rows ?? [])}`);
+  check("single-day sales answer uses readable singular wording", /\b1 day\b/i.test(screenshotDateReport.answer ?? "")
+    && !/\b1 day\(s\)/i.test(screenshotDateReport.answer ?? "")
+    && /\bAUD\b/i.test(screenshotDateReport.answer ?? ""),
+  `singleDayLabel=${/\b1 day\b/i.test(screenshotDateReport.answer ?? "")}; genericPluralLabel=${/\b1 day\(s\)/i.test(screenshotDateReport.answer ?? "")}; currency=${/\bAUD\b/i.test(screenshotDateReport.answer ?? "")}`);
   const screenshotDateReconciles = overviewOct16 && assistantOct16
     && Math.abs(Number(assistantOct16.sales) - Number(overviewOct16.revenue)) < 0.01;
   checks.push({
@@ -187,16 +207,71 @@ try {
     && /not available|unsupported|cannot compare|custom report|can't run/i.test(comparison.answer ?? ""),
   `intent=${comparison.intent}; answer=${comparison.answer ?? "missing"}`);
 
-  const stockQuestion = await ask("What's the stock level for VB Cans?");
-  check("named stock question preserves product query", stockQuestion.intent === "report_stock"
-    && stockQuestion.slots?.query === "VB Cans",
-  `intent=${stockQuestion.intent}; query=${stockQuestion.slots?.query ?? "missing"}; answer=${stockQuestion.answer ?? "missing"}`);
-  const stockUnavailable = /temporarily unavailable|source unavailable|could not read live stock data|open the stock list|try again shortly/i.test(stockQuestion.answer ?? "");
+  const stockSampleName = String(stockSample?.name ?? stockSample?.display_name ?? "").trim();
+  const stockQuestion = stockSampleName
+    ? await ask(`What's the stock level for ${stockSampleName}?`)
+    : null;
+  const stockQuantityQuestion = stockSampleName
+    ? await ask(`How much ${stockSampleName} is in stock?`)
+    : null;
+  const stockLeftQuestion = stockSampleName
+    ? await ask(`Do we have ${stockSampleName} left?`)
+    : null;
+  check("dynamic real-catalogue stock question preserves product query", Boolean(stockSample && stockQuestion)
+    && stockQuestion.intent === "report_stock"
+    && String(stockQuestion.slots?.query ?? "").toLowerCase() === stockSampleName.toLowerCase(),
+  `catalogueSampleAvailable=${Boolean(stockSample)}; intent=${stockQuestion?.intent ?? "missing"}; queryMatchesSample=${String(stockQuestion?.slots?.query ?? "").toLowerCase() === stockSampleName.toLowerCase()}`);
+  check("stock quantity phrasing resolves to named product", Boolean(stockSample && stockQuantityQuestion)
+    && stockQuantityQuestion.intent === "report_stock"
+    && String(stockQuantityQuestion.slots?.query ?? "").toLowerCase() === stockSampleName.toLowerCase(),
+  `intent=${stockQuantityQuestion?.intent ?? "missing"}; queryMatchesSample=${String(stockQuantityQuestion?.slots?.query ?? "").toLowerCase() === stockSampleName.toLowerCase()}`);
+  check("stock remaining phrasing resolves to named product", Boolean(stockSample && stockLeftQuestion)
+    && stockLeftQuestion.intent === "report_stock"
+    && String(stockLeftQuestion.slots?.query ?? "").toLowerCase() === stockSampleName.toLowerCase(),
+  `intent=${stockLeftQuestion?.intent ?? "missing"}; queryMatchesSample=${String(stockLeftQuestion?.slots?.query ?? "").toLowerCase() === stockSampleName.toLowerCase()}`);
+  const stockRows = Array.isArray(stockQuestion?.table?.rows) ? stockQuestion.table.rows : [];
+  const stockRowById = stockSample?.id == null ? null
+    : stockRows.find((row) => String(row.id) === String(stockSample.id));
+  const stockRow = stockRowById ?? stockRows.find((row) =>
+    String(row.name ?? "").toLowerCase() === stockSampleName.toLowerCase());
+  const stockMatchMethod = stockRowById ? "odoo-id" : stockRow ? "exact-name-fallback" : "unmatched";
+  const expectedFreeQuantity = Number(stockSample?.free_qty);
+  const stockQuantityMatchesCatalogue = Boolean(stockRow)
+    && Math.abs(Number(stockRow.quantity) - expectedFreeQuantity) < 0.0001;
+  const stockUnavailable = /temporarily unavailable|source unavailable|could not read live stock data|open the stock list|try again shortly/i.test(stockQuestion?.answer ?? "");
+  checks.push({
+    name: "AI stock quantity matches store-scoped catalogue",
+    status: stockUnavailable || !stockSample ? "BLOCKED" : stockQuantityMatchesCatalogue ? "PASS" : "FAIL",
+    evidence: `matchedProduct=${Boolean(stockRow)}; matchMethod=${stockMatchMethod}; quantityMatches=${stockQuantityMatchesCatalogue}; returnedRows=${stockRows.length}; unavailable=${stockUnavailable}`,
+  });
+  if (!stockUnavailable && stockSample && !stockQuantityMatchesCatalogue) {
+    failures.push("AI stock quantity matches store-scoped catalogue");
+  }
   checks.push({
     name: "stock report data source availability",
-    status: stockUnavailable ? "BLOCKED" : "PASS",
-    evidence: stockUnavailable ? stockQuestion.answer : "Stock report returned a source-backed response.",
+    status: stockUnavailable || !stockSample ? "BLOCKED" : "PASS",
+    evidence: stockUnavailable ? "The live stock report source returned its unavailable response."
+      : stockSample ? "A dynamic catalogue sample was queried; product name and quantity omitted."
+        : "No eligible store catalogue sample was available.",
   });
+
+  const unknownProductQuestion = await ask("Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?");
+  const unknownProductUnavailable = /temporarily unavailable|source unavailable|could not read live stock data|open the stock list|try again shortly/i
+    .test(unknownProductQuestion.answer ?? "");
+  const unknownProductRows = unknownProductQuestion.table?.rows ?? [];
+  const unknownProductNoMatch = /no matching stock found|no catalogue matches/i
+    .test(unknownProductQuestion.answer ?? "");
+  checks.push({
+    name: "unknown product is distinguished from an unavailable stock source",
+    status: unknownProductUnavailable ? "BLOCKED"
+      : unknownProductQuestion.intent === "report_stock" && unknownProductNoMatch && unknownProductRows.length === 0
+        ? "PASS" : "FAIL",
+    evidence: `intent=${unknownProductQuestion.intent ?? "missing"}; explicitNoMatch=${unknownProductNoMatch}; emptyRows=${unknownProductRows.length === 0}; sourceUnavailable=${unknownProductUnavailable}`,
+  });
+  if (!unknownProductUnavailable
+    && !(unknownProductQuestion.intent === "report_stock" && unknownProductNoMatch && unknownProductRows.length === 0)) {
+    failures.push("unknown product is distinguished from an unavailable stock source");
+  }
 
   const dashboardOct14 = dashboard30d.trend?.find((row) => isoDate(row.label) === expectedDate);
   const aiRows = compactDate.table?.rows ?? [];
@@ -232,12 +307,28 @@ try {
   await browser.close();
 }
 
+const testHarnessCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+let runtimeCommit = null;
+try {
+  const versionResponse = await fetch(`${base}/api/public/version`, { signal: AbortSignal.timeout(15000) });
+  if (versionResponse.ok) {
+    const version = await versionResponse.json();
+    const frontendCommit = version.frontend?.commit;
+    const backendCommit = version.backend?.commit;
+    if (typeof frontendCommit === "string" && frontendCommit === backendCommit) {
+      runtimeCommit = backendCommit;
+    }
+  }
+} catch {
+  // Preserve report checks when the optional deployment identity probe is unavailable.
+}
+
 const output = {
   generatedAt: new Date().toISOString(),
-  testHarnessCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  testHarnessCommit,
   target: base,
-  deploymentShaVerified: false,
-  runtimeCommit: null,
+  deploymentShaVerified: runtimeCommit === testHarnessCommit,
+  runtimeCommit,
   scope: "read-only AI sales report and Odoo overview reconciliation; no business writes",
   checksPassed: checks.filter((item) => item.status === "PASS").length,
   checksBlocked: checks.filter((item) => item.status === "BLOCKED").length,

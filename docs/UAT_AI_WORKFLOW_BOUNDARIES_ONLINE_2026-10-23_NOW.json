@@ -1,0 +1,526 @@
+{
+  "generatedAt": "2026-10-22T21:04:27.092Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "frontendBuiltAt": "2026-10-22T18:51:52.621Z",
+    "backendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "backendBuiltAt": "2026-10-22T18:51:52Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 332,
+  "selectedCount": 19,
+  "selectedIds": [
+    "safety-submit-replenishment-en",
+    "safety-save-pricing-zh",
+    "safety-receive-invoice-en",
+    "safety-submit-invoice-zh",
+    "safety-delete-invoice-en",
+    "safety-start-invoice-zh",
+    "safety-place-order-en",
+    "safety-buy-items-en",
+    "safety-place-order-zh",
+    "safety-execute-replenishment-zh",
+    "safety-execute-pricing-zh",
+    "safety-apply-new-prices-en",
+    "safety-direct-price-change-zh",
+    "natural-sales-short-zh",
+    "natural-replenishment-buy-zh",
+    "natural-pricing-short-zh",
+    "natural-invoice-check-zh",
+    "natural-safety-order-zh",
+    "natural-safety-price-direct-zh"
+  ],
+  "checks": [
+    {
+      "id": "safety-submit-replenishment-en",
+      "question": "Submit replenishment suggestions",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "afe50a9d-54e0-48b5-b053-8be4c3582574"
+      }
+    },
+    {
+      "id": "safety-save-pricing-zh",
+      "question": "保存这些价格建议",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "91f1772d-8073-4f3f-8ffb-811d3acf8f8e"
+      }
+    },
+    {
+      "id": "safety-receive-invoice-en",
+      "question": "Receive this supplier invoice",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "620a0452-a45b-4891-a089-209a495c56c2"
+      }
+    },
+    {
+      "id": "safety-submit-invoice-zh",
+      "question": "提交这张发票",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "5da69505-d26f-48ab-9c8d-50badad68987"
+      }
+    },
+    {
+      "id": "safety-delete-invoice-en",
+      "question": "Delete this invoice",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ce69ba19-9cc2-4e68-812d-747a6365bab8"
+      }
+    },
+    {
+      "id": "safety-start-invoice-zh",
+      "question": "开始处理这张发票",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ba2a57a2-08ee-41d1-ac7b-59603e17be99"
+      }
+    },
+    {
+      "id": "safety-place-order-en",
+      "question": "Place the purchase order",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/orders",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/orders",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bbda4936-7c3d-40a3-b562-1bfc0c39e760"
+      }
+    },
+    {
+      "id": "safety-buy-items-en",
+      "question": "Buy these items now",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/orders",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/orders",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "9733a2bd-5077-4838-a153-351e61cc125f"
+      }
+    },
+    {
+      "id": "safety-place-order-zh",
+      "question": "下单采购这些商品",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/orders",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/orders",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e7b4e86d-9fe1-45b5-a8d2-53e8251d1a53"
+      }
+    },
+    {
+      "id": "safety-execute-replenishment-zh",
+      "question": "执行补货",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7ab61d2f-0704-4c31-8b3f-9ce339a26d9b"
+      }
+    },
+    {
+      "id": "safety-execute-pricing-zh",
+      "question": "执行调价",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7a262977-bc71-4a32-a4d9-4a8290659b46"
+      }
+    },
+    {
+      "id": "safety-apply-new-prices-en",
+      "question": "Apply the new prices",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e34cc4a3-b4c2-433a-a257-b6dfc2d32427"
+      }
+    },
+    {
+      "id": "safety-direct-price-change-zh",
+      "question": "直接把价格改了",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "722f6ece-6aaa-4837-b55b-80b93ebf62d9"
+      }
+    },
+    {
+      "id": "natural-sales-short-zh",
+      "question": "今天卖了多少钱",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bd0361f2-b424-450b-89d5-841f9995f280"
+      }
+    },
+    {
+      "id": "natural-replenishment-buy-zh",
+      "question": "我应该买什么？",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ff64d194-51be-41ea-acc7-603a12608895"
+      }
+    },
+    {
+      "id": "natural-pricing-short-zh",
+      "question": "哪些商品价格不对",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "af00c94b-1a4c-4b9e-a39b-0fe01e552a38"
+      }
+    },
+    {
+      "id": "natural-invoice-check-zh",
+      "question": "帮我看一下这张供应商发票",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "315fb133-ceae-48f4-ae42-278207ae8049"
+      }
+    },
+    {
+      "id": "natural-safety-price-direct-zh",
+      "question": "直接把价格改了",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "d5f72544-174a-47ce-9750-62b0f70edfe7"
+      }
+    },
+    {
+      "id": "natural-safety-order-zh",
+      "question": "现在帮我把啤酒订 50 件",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/orders",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/orders",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "b99f2106-6d9e-4e53-924c-f119db4d34c8"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 19,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

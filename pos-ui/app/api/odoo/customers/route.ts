@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
-import { withRequestCorrelation } from "@/lib/request-correlation";
+import { customerWriteScope } from "@/lib/customer-access";
+import { OdooScopeError } from "@/lib/odoo-scope";
+import { StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const SESSION_COOKIE = "orithos_odoo_session";
-
-function odooBaseUrl() {
-  const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
-  const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
-  return value;
-}
 
 function parseCustomerValues(body: Record<string, unknown>, { requireName }: { requireName: boolean }) {
   const allowed = new Set([
@@ -91,8 +83,6 @@ function parseCustomerValues(body: Record<string, unknown>, { requireName }: { r
 
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
-  const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
@@ -108,36 +98,13 @@ export async function POST(request: NextRequest) {
   const values = { ...parsed.values!, type: "contact", customer_rank: 1 };
 
   try {
-    const response = await fetch(`${odooBaseUrl()}/web/dataset/call_kw`, {
-      method: "POST",
-      headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` }, request),
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "call",
-        params: {
-          model: "res.partner",
-          method: "create",
-          args: [values],
-          kwargs: {},
-        },
-        id: Date.now(),
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) return NextResponse.json({ message: "Odoo customer service is unavailable" }, { status: 502 });
-    const payload = await response.json() as { result?: unknown; error?: { message?: string; data?: { message?: string; name?: string } } };
-    if (payload.error) {
-      const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""}`;
-      if (/session|authenticate|log in/i.test(detail)) return NextResponse.json({ message: "Your Odoo session has expired. Sign in to Odoo again." }, { status: 401 });
-      if (/accesserror|access denied|permission/i.test(detail)) return NextResponse.json({ message: "Your Odoo account does not have permission to create customers." }, { status: 403 });
-      return NextResponse.json({ message: "Odoo rejected the customer record. Check that the contact details are valid." }, { status: 422 });
-    }
-    if (!Number.isSafeInteger(payload.result) || Number(payload.result) < 1) return NextResponse.json({ message: "Odoo did not confirm the new customer" }, { status: 502 });
-    return NextResponse.json({ id: payload.result, name: parsed.name }, { status: 201, headers: { "Cache-Control": "no-store" } });
+    const scope = await customerWriteScope(request, values);
+    const id = await scope.rpc<number>("res.partner", "create", [{ ...values, company_id: scope.companyIds[0] }]);
+    if (!Number.isSafeInteger(id) || id < 1) return NextResponse.json({ message: "Odoo did not confirm the new customer" }, { status: 502 });
+    return NextResponse.json({ id, name: parsed.name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
-    const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }
 }

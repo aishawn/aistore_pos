@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-22T18:41:38.094Z",
+  "sourceCommit": "a44fd650d6cdd7a3f1e3669de2f176d783739e90",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant' }).locator('section[aria-label=\"Wine recommendations\"]') to be visible\u001b[22m\n"
+    }
+  ],
+  "results": [
+    {
+      "failure": "locator.waitFor: Timeout 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Orithos AI assistant' }).locator('section[aria-label=\"Wine recommendations\"]') to be visible\u001b[22m\n"
+    }
+  ]
+}

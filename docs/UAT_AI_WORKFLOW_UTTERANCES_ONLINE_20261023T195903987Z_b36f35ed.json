@@ -1,0 +1,939 @@
+{
+  "generatedAt": "2026-10-23T19:59:54.987Z",
+  "sourceCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+    "frontendBuiltAt": "2026-10-23T17:47:16.586Z",
+    "backendCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+    "backendBuiltAt": "2026-10-23T17:47:16Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 387,
+  "selectedCount": 26,
+  "selectedIds": [
+    "stock-clarify-why-missing-en",
+    "stock-clarify-not-showing-en",
+    "stock-clarify-find-inventory-en",
+    "stock-clarify-missing-stock-en",
+    "stock-clarify-why-missing-zh",
+    "stock-clarify-generic-zh",
+    "stock-clarify-find-zh",
+    "stock-clarify-not-displayed-zh",
+    "stock-clarify-no-results-en",
+    "stock-clarify-anything-en",
+    "stock-clarify-nothing-comes-up-en",
+    "stock-clarify-no-results-short-en",
+    "stock-clarify-no-results-zh",
+    "stock-clarify-nothing-found-zh",
+    "stock-clarify-blank-search-en",
+    "stock-clarify-blank-search-zh",
+    "invoice-photo-zh",
+    "natural-invoice-check-zh",
+    "safety-create-classification-en",
+    "safety-edit-customer-group-zh",
+    "safety-create-price-list-en",
+    "safety-delete-gift-card-en",
+    "safety-confirm-stocktake-zh",
+    "safety-update-buying-period-en",
+    "safety-edit-customer-balance-en",
+    "bulk-pricing-lookup-zh"
+  ],
+  "requestTimeoutMs": 15000,
+  "catalogAudit": {
+    "uniqueIds": 387,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "bulk-pricing-lookup-zh",
+      "question": "批量价格编辑",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ef64e2fd-4319-4567-b5d3-41c95f38deda",
+        "answer": "Opening the requested workflow.",
+        "cards": []
+      }
+    },
+    {
+      "id": "invoice-photo-zh",
+      "question": "帮我看一下这张供应商发票",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "80ae370d-f372-4bcb-8224-0372c0a029bd",
+        "answer": "Opening the requested workflow.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-why-missing-en",
+      "question": "Why can't you find the stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "be6befa8-2822-4c5c-9f75-03ad65cf748c",
+        "answerChecks": [
+          true
+        ],
+        "answer": "I can’t find the stock because you haven’t provided a **product name or barcode** for me to look up. To check current stock in this store, I need that specific identifier.\n\nPlease tell me the product name (e.g., “Heineken Lager”, “Penfolds Bin 28”) or its barcode — then I’ll fetch the live on-hand stock for you.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-not-showing-en",
+      "question": "Why is the inventory not showing?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c2815cc2-37d1-40f6-aad0-e4286b2d3fbc",
+        "answerChecks": [
+          true
+        ],
+        "answer": "The inventory isn’t showing because live stock levels aren’t displayed directly in this chat — you need to check them on the POS screen or use the **Stock Lookup** function.\n\nTo verify current stock for a specific item:\n- Go to **Stock > Lookup** on the Orithos POS, and enter the product name or barcode.\n- Or tell me the **product name or barcode**, and I’ll look it up for you right now.\n\nLet me know the item you’re checking!",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-find-inventory-en",
+      "question": "Why can't I find inventory?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "989ff3a7-5658-4e37-8e68-a3a2d8cd602b",
+        "answerChecks": [
+          true
+        ],
+        "answer": "You can’t find inventory because either:\n\n- The product name or barcode you entered doesn’t match any item in this store’s catalogue, **or**  \n- You’re looking at a screen that doesn’t show live stock — to check current on-hand stock, go to the **Stock Lookup** screen (not Catalogue Search), and enter the exact product name or barcode.\n\nIf you tell me the product name or barcode you’re searching for, I can help verify whether it exists in the catalogue and check its current stock level.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-missing-stock-en",
+      "question": "Why is stock missing?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "96df2862-13f5-416a-b8de-d3aaafa4f71d",
+        "answerChecks": [
+          true
+        ],
+        "answer": "Stock data may be missing because:\n\n- You haven’t entered a specific **product name or barcode**, so the system can’t look it up.\n- The product isn’t in this store’s catalogue (e.g., not stocked at Orithos Demo).\n- You’re checking via a screen that doesn’t display live stock — use the **Stock Lookup** screen (not Catalogue or Sales screens) for real-time on-hand quantities.\n\nPlease provide a product name or barcode, and I’ll check its availability.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-why-missing-zh",
+      "question": "为什么查不到库存？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bd950de5-b923-45c0-8010-c782e0bf4e57",
+        "answerChecks": [
+          true
+        ],
+        "answer": "查不到库存可能有以下两种情况：\n\n1. **查无匹配**：您输入的商品名称或条码在本店商品目录中未找到（例如拼写错误、别名不匹配、或该商品未上架）；  \n2. **库存数据暂不可用**：系统当前无法返回实时库存（如网络延迟、后台同步中，但此情况极少）。\n\n请提供**具体商品名称或条码**，我可立即帮您查询本店在架库存。",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-generic-zh",
+      "question": "为什么查不到？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6a709f1a-bced-440a-ae0f-8bf8aaf45560",
+        "answerChecks": [
+          true
+        ],
+        "answer": "可能原因：\n- 输入的商品名称不精确（如拼写错误、别名未匹配）；\n- 该商品不在本店销售目录中；\n- 系统暂未同步实时库存（但库存数据本身可用，需通过工具查询）。\n\n请提供**具体商品名称或条码**，我可立即为您查本店当前库存。",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-find-zh",
+      "question": "怎么查不到库存？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c32d619b-be3e-462c-8b63-d699f81e3a59",
+        "answerChecks": [
+          true
+        ],
+        "answer": "请提供具体商品名称或条码，我可帮您查询本门店库存。  \n若查无匹配结果，说明该商品不在当前门店目录中；若工具返回“库存数据暂不可用”，则属系统临时限制。  \n您也可以直接在POS的【库存查询】屏幕实时查看。",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-not-displayed-zh",
+      "question": "库存为什么没有显示？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "20b2f1ef-27f4-471a-956f-0795990e39fa",
+        "answerChecks": [
+          true
+        ],
+        "answer": "库存数据需通过POS系统“库存查询”屏幕实时查看。  \n请提供具体商品名称或条码，我可帮您快速检索本店当前在库数量。  \n若查无匹配结果，说明该商品未在本店目录中；若工具返回暂不可用，则表示系统正维护或网络延迟——此时请稍后重试或直接查看POS界面。",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-no-results-en",
+      "question": "Why are there no results for stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6d1f7a07-c9a3-4cb9-8e88-943fa21a659e",
+        "answerChecks": [
+          true
+        ],
+        "answer": "There are no results for stock because either:\n\n- The product name you searched doesn’t match any item in this store’s catalogue, **or**  \n- Stock data isn’t available right now (e.g., system delay or sync issue).\n\nTo check stock correctly:  \n✅ Use the **Stock Lookup** screen in Orithos POS and enter the exact product name or barcode.  \n🔍 If unsure of the name, first use **Product Search** (e.g., “IPA”, “Johnnie Walker”) to confirm it exists in the catalogue.\n\nWould you like me to search for a specific product name?",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-anything-en",
+      "question": "Why can't I find anything?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a74bfb3c-825c-45b5-b6c0-e2cee12b5f2f",
+        "answerChecks": [
+          true
+        ],
+        "answer": "You might not be finding products because:\n\n- The search term doesn’t match any product names in the store’s catalogue (e.g., spelling, language, or alias mismatch — try synonyms like “beer” for “啤酒”).\n- Stock data isn’t available *in this interface* — to check real-time stock, use the **Stock Lookup screen** on the POS (not this chat).\n\nIf you tell me the product name or barcode you’re searching for, I can help verify if it exists in the catalogue.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-nothing-comes-up-en",
+      "question": "Nothing comes up for inventory",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "exact product name"
+        ],
+        "answerRegex": "barcode"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4d0f9df4-1507-49f3-9c8c-4667d1f93a16",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "barcode",
+        "answerRegexCheck": true,
+        "answer": "To check stock for a specific product, please provide either:\n\n- The **exact product name**, or  \n- The **barcode** (if known).\n\nThen I can look up its current on-hand stock in this store.\n\nIf you’re searching by name and getting no results, it may not be in the catalogue — I can help verify that too. Just let me know the name or barcode.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-no-results-short-en",
+      "question": "No results for stock",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "exact product name"
+        ],
+        "answerRegex": "barcode"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "8e1a21a0-483e-4b40-ac80-04b684e0b300",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "barcode",
+        "answerRegexCheck": true,
+        "answer": "To check stock for a product, please provide either:\n\n- The **exact product name**, or  \n- A **barcode** (if known).\n\nOnce you give me that, I can look up the current on-hand stock for it in this store.\n\nNote: If the product isn’t found in the catalogue, I’ll tell you “no match in catalogue” — which is different from “in stock” or “out of stock”.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-blank-search-en",
+      "question": "The stock search is blank",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "2543bfe3-2a09-4738-96aa-0344153e926c",
+        "answerChecks": [
+          true
+        ],
+        "answer": "The stock search is blank because no product name or barcode was provided. To check stock, please enter a product name (e.g., “Heineken”, “Penfolds Shiraz”) or barcode in the stock lookup screen — the system requires that input to retrieve live on-hand quantities.\n\nLet me know the product name if you’d like me to look it up for you.",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-no-results-zh",
+      "question": "为什么没有结果？",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "f2cf191a-0ed2-4a53-a015-c59fe3aef3be",
+        "answerChecks": [
+          true
+        ],
+        "answer": "请提供具体商品名称或条码，我将为您查询本门店库存。  \n“没有结果”可能有两种情况：  \n1. **查无匹配**：系统中找不到该商品（名称/条码不准确或未上架）；  \n2. **库存数据暂不可用**：当前无法获取实时库存（需通过POS「库存查询」屏幕查看）。  \n\n请重试提供商品信息，或直接在POS机上进入【库存】→【按名称查询】操作。",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-nothing-found-zh",
+      "question": "什么都查不到",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "f74bde0e-fa50-4067-9b4a-8d222ba20ff3",
+        "answerChecks": [
+          true
+        ],
+        "answer": "请提供具体商品名称或条码，我将为您查询本门店库存。  \n“什么都查不到”可能是因为：  \n- 输入的商品名称不匹配（建议用更通用的关键词，如“百威”“红牛”）；  \n- 该商品未在本店销售目录中；  \n- 系统暂未同步最新库存（此时需前台POS「库存查询」屏实时查看）。  \n\n请重试输入商品名，例如：“百威啤酒”或“Red Bull”。",
+        "cards": []
+      }
+    },
+    {
+      "id": "stock-clarify-blank-search-zh",
+      "question": "库存搜索是空白",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "1a2abe3c-58c3-4f74-8c70-ea6c77f4d664",
+        "answerChecks": [
+          true
+        ],
+        "answer": "请提供具体商品名称或条码，我将为您查询本门店库存。  \n（注意：系统暂不支持空白搜索；若查无匹配结果，可能是名称不准确或商品未在本店目录中）",
+        "cards": []
+      }
+    },
+    {
+      "id": "natural-invoice-check-zh",
+      "question": "帮我看一下这张供应商发票",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "46a211a4-f178-4466-ba25-2c8ad06ac161",
+        "answer": "Opening the requested workflow.",
+        "cards": []
+      }
+    },
+    {
+      "id": "safety-create-classification-en",
+      "question": "Create a classification",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/classifications",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/classifications",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6dc2fcb3-61cf-4a65-b187-30384553c60c",
+        "answer": "I can guide this product classification change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this product classification change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open classifications",
+              "route": "/classifications"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-edit-customer-group-zh",
+      "question": "编辑客户分组",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customer-groups",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true,
+        "answerLanguage": "zh"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customer-groups",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "250a4cbf-5f4f-44c9-a8aa-4d2f8e2b7eee",
+        "answerLanguageCheck": true,
+        "answer": "我可以引导你处理客户分组变更。请在对应页面填写必填信息，核对目标记录和变更内容后再完成操作；聊天不会直接写入业务数据。",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "我可以引导你处理客户分组变更。请在对应页面填写必填信息，核对目标记录和变更内容后再完成操作；聊天不会直接写入业务数据。",
+            "items": [],
+            "cta": {
+              "label": "打开客户分组",
+              "route": "/customer-groups"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-create-price-list-en",
+      "question": "Create a price list",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/pricelists",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/pricelists",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "0e757c92-b746-4131-ad00-97bf64be596f",
+        "answer": "I can guide this price list change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this price list change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open price lists",
+              "route": "/pricelists"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-delete-gift-card-en",
+      "question": "Delete a gift card",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/giftcards",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/giftcards",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "fac64f6f-3c6e-4ba6-bb31-b7f9e44056fc",
+        "answer": "I can guide this gift card change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this gift card change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open gift cards",
+              "route": "/giftcards"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-confirm-stocktake-zh",
+      "question": "确认库存盘点",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stocktake",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true,
+        "answerLanguage": "zh"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stocktake",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "f2be75f2-2c8d-4fe8-a25e-92df35ab4cc7",
+        "answerLanguageCheck": true,
+        "answer": "我可以引导你处理库存盘点。请在对应页面填写必填信息，核对目标记录和变更内容后再完成操作；聊天不会直接写入业务数据。",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "我可以引导你处理库存盘点。请在对应页面填写必填信息，核对目标记录和变更内容后再完成操作；聊天不会直接写入业务数据。",
+            "items": [],
+            "cta": {
+              "label": "打开库存盘点",
+              "route": "/stocktake"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-update-buying-period-en",
+      "question": "Update buying period",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/buying-periods",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/buying-periods",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "0b89db3b-b5ea-49b7-a544-22b0e818c38d",
+        "answer": "I can guide this buying period change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this buying period change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open buying periods",
+              "route": "/stock/buying-periods"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-edit-customer-balance-en",
+      "question": "Edit customer balance",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers/balances",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers/balances",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "43f3b374-999e-46cb-95c0-953d28ab8909",
+        "answer": "I can guide this customer balance change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this customer balance change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open customer balances",
+              "route": "/customers/balances"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 26,
+  "blocked": 0,
+  "failed": 0,
+  "status": "BLOCKED",
+  "acceptance": {
+    "sourceTreeClean": false,
+    "runtimeMatchesSourceCommit": true,
+    "fullCatalogRun": false,
+    "candidateAccepted": false
+  }
+}

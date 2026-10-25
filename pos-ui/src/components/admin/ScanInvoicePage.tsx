@@ -298,8 +298,8 @@ export function ScanInvoicePage() {
                 Step 1 of 3: capture and review OCR. Saving does not put stock into Products — matching and receive come next.
               </p>
             </div>
-            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
-              Invoice history
+            <Link href="/purchases/odoo?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">
+              Back to Purchasing
             </Link>
           </div>
           <InvoiceWorkflowSteps active="capture" />
@@ -487,7 +487,7 @@ export function ScanInvoicePage() {
         <div className="mx-auto flex w-full max-w-5xl flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-5 text-[var(--oh-muted)]">{scan ? "Next: match each line to Products, then confirm to receive stock." : "Choose a PDF or photo to begin."}</p>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Cancel</Link>
+            <Link href="/purchases/odoo?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)]">Cancel</Link>
             <button type="button" onClick={() => void saveDraft()} disabled={!scan || saving || loading} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
               {saving ? "Saving…" : "Save draft → match products"}
             </button>

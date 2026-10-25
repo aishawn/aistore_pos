@@ -413,7 +413,7 @@ export function FinaliseSalePage() {
 
         {/* Main — keypad + payment methods */}
 
-        <section className="flex min-w-0 w-full flex-col rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:min-h-0 lg:flex-1 lg:overflow-hidden">
+        <section className="flex min-w-0 w-full flex-col rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:min-h-0 lg:flex-1 lg:overflow-hidden">
 
           <div className="shrink-0 border-b border-[var(--oh-border)] px-4 py-3 text-center sm:py-4">
 
@@ -475,7 +475,7 @@ export function FinaliseSalePage() {
 
                           ? "bg-[var(--oh-primary)] text-white hover:bg-[var(--oh-primary-hover)]"
 
-                          : "border border-[var(--oh-tile-blue-border)] bg-white text-[var(--oh-tile-blue-text)] hover:bg-[var(--oh-tile-blue-bg)]",
+                          : "border border-[var(--oh-tile-blue-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-tile-blue-text)] hover:bg-[var(--oh-tile-blue-bg)]",
 
                       )}
 
@@ -523,7 +523,7 @@ export function FinaliseSalePage() {
 
                     "min-h-12 cursor-pointer rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 py-3 text-[13px] font-semibold leading-snug text-[var(--oh-text)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] sm:px-3 sm:py-4 sm:text-[13px]",
 
-                    "hover:border-[var(--oh-orange)] hover:bg-white disabled:cursor-not-allowed disabled:opacity-50",
+                    "hover:border-[var(--oh-orange)] hover:bg-[var(--oh-surface-elevated)] disabled:cursor-not-allowed disabled:opacity-50",
 
 
                   )}
@@ -766,7 +766,7 @@ function FinaliseSidebar({
 
   return (
 
-    <aside className="flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:w-[360px] xl:w-[380px]">
+    <aside className="flex w-full min-w-0 shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:w-[360px] xl:w-[380px]">
 
       {/* Customer */}
 
@@ -1016,7 +1016,7 @@ function FinaliseSidebar({
 
           onClick={onReturn}
 
-          className="min-h-12 w-full cursor-pointer border-t border-[var(--oh-border)] bg-white px-4 py-3 text-[14px] font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-orange)]"
+          className="min-h-12 w-full cursor-pointer border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 text-[14px] font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-orange)]"
 
         >
 
@@ -1102,7 +1102,7 @@ function CustomerPickerModal({ onClose }: { onClose: () => void }) {
 
         aria-label="Select customer"
 
-        className="flex max-h-[80vh] w-[420px] max-w-[90vw] flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-xl"
+        className="flex max-h-[80vh] w-[420px] max-w-[90vw] flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-xl"
 
         onClick={(e) => e.stopPropagation()}
 

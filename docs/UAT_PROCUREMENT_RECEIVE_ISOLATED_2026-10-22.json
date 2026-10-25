@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-10-22",
+  "scope": "Isolated tenant vendor 48, Odoo company 41; real procurement writes in isolated UAT only",
+  "status": "PASS",
+  "tenant": {
+    "vendorId": 48,
+    "odooCompanyId": 41,
+    "odooPosConfigId": 85
+  },
+  "purchase": {
+    "id": 11,
+    "name": "P00013",
+    "supplierId": 411,
+    "productId": 5980,
+    "orderedQuantity": 1,
+    "receivedQuantity": 1,
+    "stateAfterConfirmation": "purchase",
+    "receiptStatusAfterReceive": "full"
+  },
+  "receipt": {
+    "pickingId": 117424,
+    "pickingName": "CODEX/IN/00004",
+    "stateBeforeReceive": "assigned",
+    "stateAfterReceive": "done",
+    "moveId": 175376,
+    "qtyDone": 1
+  },
+  "inventory": {
+    "productId": 5980,
+    "quantityAfterReceive": 28,
+    "freeQuantityAfterReceive": 28,
+    "observedDelta": 1
+  },
+  "recovery": {
+    "duplicateReceiveHttpStatus": 200,
+    "duplicateReceiveResultState": "already_completed",
+    "duplicateCreatedNoAdditionalStock": true
+  },
+  "businessWrites": "isolated UAT tenant only",
+  "demoWrites": false
+}

@@ -52,7 +52,7 @@ const liveStatusPages = [
 
 /** Allow phones on the LAN to use `http://<lan-ip>:3000` in `next dev`. */
 function lanDevOrigins(): string[] {
-  const hosts = new Set<string>(["192.168.1.10"]);
+  const hosts = new Set<string>(["192.168.1.10", "lvh.me", "demo.lvh.me"]);
   for (const addrs of Object.values(os.networkInterfaces())) {
     for (const addr of addrs ?? []) {
       if (addr.internal) continue;
@@ -71,6 +71,7 @@ function lanDevOrigins(): string[] {
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   devIndicators: false,
   allowedDevOrigins: lanDevOrigins(),
   // Browser calls same-origin /api/*; Next.js proxies to the Spring Boot backend.

@@ -1,13 +1,13 @@
 "use client";
 
-import { OrithosBrandMarkIcon } from "@/components/OrithosBrandMark";
+import { OrithosLogo } from "@/components/OrithosLogo";
 import { UserIcon } from "@/components/icons";
 import { useOverviewChrome } from "@/components/OverviewChromeContext";
-import { openLaunchRing } from "@/lib/overview-launch";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
-/** Logo (LaunchRing) + account trigger for chromeless Overview pages. */
-export function OverviewAccountControl({ className }: { className?: string }) {
+/** Dashboard home link + account trigger for chromeless Overview pages. */
+export function OverviewAccountControl({ className, showLogo = true }: { className?: string; showLogo?: boolean }) {
   const chrome = useOverviewChrome();
   if (!chrome) return null;
 
@@ -17,24 +17,14 @@ export function OverviewAccountControl({ className }: { className?: string }) {
     <div
       className={cn("flex shrink-0 items-center gap-1.5 sm:gap-2", className)}
     >
-      <button
-        type="button"
-        aria-label="Open store quick menu"
-        title="Quick menu"
-        onClick={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          openLaunchRing({
-            originX: rect.left + rect.width / 2,
-            originY: rect.top + rect.height / 2,
-          });
-        }}
+      {showLogo ? <Link
+        href="/dashboard"
+        aria-label="Open Dashboard"
+        title="Dashboard"
         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-1.5 transition-colors hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
       >
-        <span className="oh-brand-mark">
-          <OrithosBrandMarkIcon className="h-7 w-7" />
-          <span className="oh-brand-wordmark">orithos</span>
-        </span>
-      </button>
+        <OrithosLogo />
+      </Link> : null}
       <button
         type="button"
         onClick={toggleUserMenu}

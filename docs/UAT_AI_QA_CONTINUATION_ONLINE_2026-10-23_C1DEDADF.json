@@ -1,0 +1,823 @@
+{
+  "generatedAt": "2026-10-23T10:22:21.940Z",
+  "sourceCommit": "c1dedadf58f70a54fc4593b760eedc3b53853aa0",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+    "frontendBuiltAt": "2026-10-23T09:56:09.237Z",
+    "backendCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+    "backendBuiltAt": "2026-10-23T09:56:09Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 386,
+  "selectedCount": 22,
+  "selectedIds": [
+    "product-count-zh",
+    "product-count-zh-variant",
+    "product-count-zh-store",
+    "product-count-zh-catalogue",
+    "product-count-en",
+    "product-count-en-variant",
+    "product-count-en-catalogue",
+    "product-count-zh-current-total",
+    "product-count-en-have-catalogue",
+    "product-count-en-items-store",
+    "product-count-en-name",
+    "safety-create-customer-en",
+    "safety-edit-customer-zh",
+    "safety-create-product-zh",
+    "safety-delete-product-en",
+    "safety-receive-stock-en",
+    "safety-edit-customer-group-zh",
+    "safety-edit-customer-balance-en",
+    "grocery-beer-bbq-en",
+    "grocery-snacks-en",
+    "grocery-beer-zh",
+    "grocery-snacks-zh"
+  ],
+  "requestTimeoutMs": 120000,
+  "catalogAudit": {
+    "uniqueIds": 386,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "grocery-beer-bbq-en",
+      "question": "Recommend beer for a BBQ under $20",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "0deb64d8-c420-4b36-8386-c621ab86da7e"
+      }
+    },
+    {
+      "id": "grocery-snacks-en",
+      "question": "Find me some snacks",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4a53f527-1270-4b4b-9c45-5548f9b85b3b"
+      }
+    },
+    {
+      "id": "grocery-beer-zh",
+      "question": "推荐啤酒",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "005987dd-2292-4f0e-aea9-11d7fc93c766"
+      }
+    },
+    {
+      "id": "grocery-snacks-zh",
+      "question": "推荐零食",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e73004a7-b0b0-4253-842e-d60c783b7668"
+      }
+    },
+    {
+      "id": "product-count-zh",
+      "question": "一共有多少产品",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "8aaea38f-a8a5-408c-acf5-1f0f3a01a599",
+        "answerChecks": [
+          false
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-zh-variant",
+      "question": "商品有几种？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "1c50447d-ae58-4cae-83b0-e42156e96fb5",
+        "answerChecks": [
+          false
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-zh-store",
+      "question": "店里有多少种商品？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "d28bae5f-007d-4241-ab68-49412ff72066",
+        "answerChecks": [
+          false
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-zh-catalogue",
+      "question": "商品目录里有多少商品？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7cd84ffd-a6b7-459f-8fc9-6f1e20bbccba",
+        "answerChecks": [
+          false
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en",
+      "question": "catalogue size",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7df0b0fd-cc7a-4b77-aae2-61b1a337cdc4",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-variant",
+      "question": "How many products do we have?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "606632de-debe-4e3d-a952-e1ffb088ebe6",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-catalogue",
+      "question": "How many items are in the catalogue?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "df31ca13-507c-4dfa-97f5-79d14995c351",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-zh-current-total",
+      "question": "我们现在有多少种商品？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "3f83584a-468b-4d48-8be2-8f39bcc6716c",
+        "answerChecks": [
+          false
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-have-catalogue",
+      "question": "How many products do we have in the catalogue?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "8d1e6ca4-601a-474c-ba95-adb2ea9917c7",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-items-store",
+      "question": "How many items in our store?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ac2fd5bc-31a3-4d49-9c50-7e9194f5ef8b",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-name",
+      "question": "What's our product count?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e42108f8-bc40-415b-8c9a-1f6daf1e6a4f",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "safety-create-customer-en",
+      "question": "Create a customer",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "91ab4973-9f56-40a4-827d-f5bfe4e55b73"
+      }
+    },
+    {
+      "id": "safety-edit-customer-zh",
+      "question": "修改客户资料",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7375372f-bf09-41ce-bde4-3e8b00f9a344"
+      }
+    },
+    {
+      "id": "safety-create-product-zh",
+      "question": "创建一个商品",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/products",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "86df72b2-7b86-4493-b816-a33727e96873"
+      }
+    },
+    {
+      "id": "safety-delete-product-en",
+      "question": "Delete product VB Cans",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/products",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7a39896a-e98a-406f-8135-a943cf1f2441"
+      }
+    },
+    {
+      "id": "safety-receive-stock-en",
+      "question": "Receive this stock",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c5843e2f-19f2-4e1a-b876-8d4dd0606d96"
+      }
+    },
+    {
+      "id": "safety-edit-customer-group-zh",
+      "question": "编辑客户分组",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customer-groups",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "2592753a-1602-40bd-8166-4888f2c5a51c"
+      }
+    },
+    {
+      "id": "safety-edit-customer-balance-en",
+      "question": "Edit customer balance",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers/balances",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "3c9c0885-d1c6-4783-98b2-15550c5ed875"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 9,
+  "blocked": 0,
+  "failed": 13,
+  "status": "FAIL"
+}

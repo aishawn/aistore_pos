@@ -1,8 +1,2 @@
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
-import { OdooCustomerGroupsPage } from "@/components/OdooCustomerGroupsPage";
-
-export default function CustomerGroupsRoute() {
-  return <OdooCustomerGroupsPage />;
-}
+import { redirect } from "next/navigation";
+export default function CustomerGroupsRoute() { redirect("/customers/odoo?manage=groups"); }

@@ -5,6 +5,8 @@ import { AlertTriangle, LoaderCircle, Plus, RefreshCw, Search, Trash2 } from "lu
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { api, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { parseStocktakeDraft, stocktakeDraftKey } from "@/lib/stocktake-draft";
 
 type StocktakeLocation = { id: number; name: string };
 type StocktakeProduct = {
@@ -39,7 +41,14 @@ function delta(expected: number, counted: string) {
 }
 
 /** Count / adjust Odoo on-hand qty. Used inside Products (tab), not a Stock sidebar item. */
-export function OdooStocktakePanel() {
+export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?: (busy: boolean) => void; onApplied?: () => void }) {
+  const { user, ready } = useAuth();
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [draftRetry, setDraftRetry] = useState(0);
+  const applyLock = useRef(false);
+  const hydratedDraft = useRef<string | null>(null);
   const [locations, setLocations] = useState<StocktakeLocation[]>([]);
   const [locationId, setLocationId] = useState("");
   const [writeEnabled, setWriteEnabled] = useState(false);
@@ -62,6 +71,60 @@ export function OdooStocktakePanel() {
   const debouncedQuery = useDebouncedValue(query, 250);
   const searchTerm = query.trim();
   const searchRevision = useRef(0);
+
+  const draftKey = ready && user && locationId && typeof window !== "undefined"
+    ? stocktakeDraftKey(window.location.host, user.vendorId ?? user.subdomain ?? window.location.host, user.id, locationId) : null;
+
+  useEffect(() => {
+    onBusyChange?.(applying);
+    const preventLeave = (event: BeforeUnloadEvent) => { if (applyLock.current) event.preventDefault(); };
+    window.addEventListener("beforeunload", preventLeave);
+    return () => window.removeEventListener("beforeunload", preventLeave);
+  }, [applying, onBusyChange]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    let cancelled = false;
+    hydratedDraft.current = null;
+    setDraftReady(false);
+    setDraftError(null);
+    setCountLines([]);
+    setCountUnconfirmed(false);
+    async function restore() {
+      try {
+        const raw = localStorage.getItem(draftKey!);
+        const draft = parseStocktakeDraft(raw);
+        if (raw && !draft) throw new Error("The saved draft could not be read. Discard this draft to start again.");
+        if (draft?.lines.length) {
+          const response = await api.get<StocktakeResponse>("/api/odoo/stocktake", { locationId, ids: draft.lines.map((line) => line.id).join(",") });
+          if (cancelled) return;
+          if (response.products.length !== draft.lines.length) throw new Error("Some draft products are no longer available. Retry or discard this draft before counting.");
+          const changed = draft.lines.some((line) => response.products.find((product) => product.id === line.id)?.expectedQty !== line.expectedQty);
+          setCountLines(draft.lines.map((line) => ({ ...response.products.find((product) => product.id === line.id)!, countedQty: line.countedQty })));
+          setCountUnconfirmed(draft.uncertain);
+          setDraftNotice(changed ? "Stock has changed since this draft was saved. Review the refreshed expected quantities before applying." : "Saved count restored. Check physical quantities before applying.");
+        }
+        if (!cancelled) { hydratedDraft.current = draftKey; setDraftReady(true); }
+      } catch (error) { if (!cancelled) setDraftError(error instanceof Error ? error.message : "Could not restore this draft."); }
+    }
+    void restore();
+    return () => { cancelled = true; };
+  }, [draftKey, locationId, draftRetry]);
+
+  function persistDraft(uncertain = countUnconfirmed) {
+    if (!draftKey) throw new Error("Sign in before saving a stocktake draft.");
+    localStorage.setItem(draftKey, JSON.stringify({ version: 1, updatedAt: new Date().toISOString(), uncertain, lines: countLines.map(({ id, countedQty, expectedQty }) => ({ id, countedQty, expectedQty })) }));
+  }
+
+  useEffect(() => {
+    if (!draftKey || hydratedDraft.current !== draftKey || !draftReady || applyLock.current) return;
+    try {
+      if (!countLines.length && !countUnconfirmed) localStorage.removeItem(draftKey);
+      else persistDraft();
+    } catch { setDraftError("Browser storage is unavailable. Enable storage before applying this count."); }
+    // Persist only the current identity/location's restored count.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countLines, countUnconfirmed, draftKey, draftReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,7 +186,7 @@ export function OdooStocktakePanel() {
     const amount = delta(line.expectedQty, line.countedQty);
     return amount !== null && Math.abs(amount) > 0.000001;
   });
-  const canReview = writeEnabled && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying && !countUnconfirmed;
+  const canReview = writeEnabled && countLines.length > 0 && invalidCount === 0 && changedLines.length > 0 && !applying && !countUnconfirmed && draftReady && !draftError && countLines.every((line) => line.eligible);
   const totalIncrease = changedLines.reduce((sum, line) => sum + Math.max(0, Number(line.countedQty) - line.expectedQty), 0);
   const totalDecrease = changedLines.reduce((sum, line) => sum + Math.max(0, line.expectedQty - Number(line.countedQty)), 0);
 
@@ -137,7 +200,7 @@ export function OdooStocktakePanel() {
   }
 
   function addProduct(product: StocktakeProduct) {
-    setCountLines((current) => !product.eligible || current.length >= MAX_COUNT_LINES || current.some((line) => line.id === product.id)
+    setCountLines((current) => !draftReady || !!draftError || countUnconfirmed || !product.eligible || current.length >= MAX_COUNT_LINES || current.some((line) => line.id === product.id)
       ? current
       : [...current, { ...product, countedQty: "" }]);
     setSuccess(null);
@@ -155,7 +218,10 @@ export function OdooStocktakePanel() {
   }
 
   async function applyCount() {
-    if (!canReview || !selectedLocation || countUnconfirmed) return;
+    if (!canReview || !selectedLocation || countUnconfirmed || applyLock.current) return;
+    try { persistDraft(true); } catch { setDraftError("Could not save the count before submitting. No adjustment was sent."); return; }
+    applyLock.current = true;
+    onBusyChange?.(true);
     setApplying(true);
     setApplyError(null);
     try {
@@ -173,17 +239,25 @@ export function OdooStocktakePanel() {
       setSuccess(`Applied ${result.applied} stock ${result.applied === 1 ? "adjustment" : "adjustments"} at ${result.locationName}${references.length ? ` (Odoo quant ${references.join(", ")})` : ""}.`);
       setCountLines([]);
       setQuery("");
+      try { if (draftKey) localStorage.removeItem(draftKey); } catch { setDraftError("Adjustment confirmed. Browser storage could not be cleared; discard the old draft before starting again."); }
+      onApplied?.();
     } catch (error) {
-      if ((error instanceof ApiError && error.code === 50290) || error instanceof TypeError) { setCountUnconfirmed(true); setReviewOpen(false); }
+      if ((error instanceof ApiError && (error.code >= 50000 || error.status >= 500)) || !(error instanceof ApiError)) { setCountUnconfirmed(true); setReviewOpen(false); }
+      else { try { persistDraft(false); } catch { setDraftError("Could not save this draft."); } }
       setApplyError(error instanceof Error ? error.message : "Could not apply the stocktake.");
     } finally {
+      applyLock.current = false;
+      onBusyChange?.(false);
       setApplying(false);
     }
   }
 
   return (
     <>
-        <div className="space-y-5">
+        <fieldset disabled={applying} className="min-w-0 space-y-5" aria-busy={applying}>
+          {draftNotice && <p role="status" className="rounded-md bg-amber-50 p-3 text-sm text-amber-950">{draftNotice}</p>}
+          {draftError && <div role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-900">{draftError}<button type="button" onClick={() => setDraftRetry((value) => value + 1)} className="ml-3 underline">Retry draft</button><button type="button" onClick={() => setClearCountOpen(true)} className="ml-3 underline">Discard draft</button></div>}
+          {!draftReady && !draftError && locationId && <p role="status">Restoring count…</p>}
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[min(100%,280px)] flex-1">
               <label htmlFor="stocktake-location" className="mb-1.5 block text-sm font-medium text-[var(--oh-text)]">Stock location</label>
@@ -346,15 +420,20 @@ export function OdooStocktakePanel() {
               </>
             )}
           </section>
-        </div>
+        </fieldset>
 
       <ConfirmDialog
         open={clearCountOpen}
         title="Clear this count?"
         message={`Discard all ${countLines.length} products and their counted quantities? Odoo stock will not change.`}
-        confirmLabel="Clear count"
-        onConfirm={() => { setCountLines([]); setApplyError(null); setCountUnconfirmed(false); setClearCountOpen(false); }}
-        onCancel={() => setClearCountOpen(false)}
+        confirmLabel="Discard draft"
+        busy={applying}
+        onConfirm={() => {
+          if (applyLock.current) return;
+          try { if (draftKey) localStorage.removeItem(draftKey); } catch { setDraftError("Could not discard the saved draft."); return; }
+          setCountLines([]); setApplyError(null); setCountUnconfirmed(false); setDraftError(null); setDraftNotice(null); hydratedDraft.current = draftKey; setDraftReady(true); setClearCountOpen(false);
+        }}
+        onCancel={() => { if (!applyLock.current) setClearCountOpen(false); }}
       />
 
       <ConfirmDialog

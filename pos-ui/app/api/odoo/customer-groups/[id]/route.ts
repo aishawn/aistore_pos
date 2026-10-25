@@ -1,3 +1,4 @@
+import { companyDomain } from "@/lib/customer-access";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
@@ -35,7 +36,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ message: "Group name is required and must be 120 characters or fewer" }, { status: 400 });
     }
 
-    const existing = await scope.rpc<Array<{ id: number }>>("res.partner.category", "search_read", [[["id", "=", groupId]]], {
+    const existing = await scope.rpc<Array<{ id: number }>>("res.partner.category", "search_read", [[["id", "=", groupId], ...companyDomain(scope.companyIds)]], {
       fields: ["id"],
       limit: 1,
     });
@@ -59,12 +60,14 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     const groupId = parseId((await context.params).id);
     if (!groupId) return NextResponse.json({ message: "Invalid customer group ID" }, { status: 400 });
 
-    const existing = await scope.rpc<Array<{ id: number }>>("res.partner.category", "search_read", [[["id", "=", groupId]]], {
+    const existing = await scope.rpc<Array<{ id: number }>>("res.partner.category", "search_read", [[["id", "=", groupId], ...companyDomain(scope.companyIds)]], {
       fields: ["id"],
       limit: 1,
     });
     if (!existing?.length) return NextResponse.json({ message: "Customer group was not found" }, { status: 404 });
 
+    const used = await scope.rpc<number>("res.partner", "search_count", [[["category_id", "in", [groupId]]]], { active_test: false });
+    if (used > 0) return NextResponse.json({ message: "This group is assigned to customers. Remove those assignments before deleting it." }, { status: 409 });
     const ok = await scope.rpc<boolean>("res.partner.category", "unlink", [[groupId]]);
     if (ok !== true) return NextResponse.json({ message: "Odoo did not confirm the customer group delete" }, { status: 502 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });

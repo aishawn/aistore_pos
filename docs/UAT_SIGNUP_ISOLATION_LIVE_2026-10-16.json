@@ -1,7 +1,6 @@
 {
-  "generatedAt": "2026-10-16T03:02:35.224Z",
-  "result": "PASS",
-  "issuer": "shopfront",
+  "generatedAt": "2026-10-22T06:56:11.099Z",
+  "result": "FAIL",
   "shawn": {
     "binding": {
       "vendorId": 2,
@@ -12,12 +11,14 @@
       "odooStockLocationId": 18,
       "odooProvisionStatus": "ready",
       "odooProvisionError": null,
-      "r2Prefix": "shopfront/shawn/"
+      "r2Prefix": "shopfront/shawn/",
+      "dummyDataRequested": false,
+      "sampleDataClearedAt": null
     },
     "companies": [
       2
     ],
-    "productCount": 0,
+    "productCount": 1,
     "productMessage": null,
     "configs": [
       {

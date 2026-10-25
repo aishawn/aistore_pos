@@ -196,20 +196,10 @@ export function OdooCloseRegisterForm({
     setCashEntryMode("denomination");
   }
 
-  function syncCountedFromDenominations(nextCounts: Record<string, string>) {
-    const total = CASH_DENOMINATIONS.reduce(
-      (sum, denomination) => sum + denomination.value * (Number(nextCounts[String(denomination.value)]) || 0),
-      0,
-    );
-    const hasAny = Object.values(nextCounts).some((entry) => entry.trim() !== "");
-    setCountedCash(hasAny ? total.toFixed(2) : "");
-  }
-
   function updateCashDenomination(value: number, count: string) {
     const cleaned = count.replace(/[^\d]/g, "");
     const next = { ...cashCounts, [String(value)]: cleaned };
     setCashCounts(next);
-    syncCountedFromDenominations(next);
   }
 
   function stepCashDenomination(value: number, delta: number) {
@@ -220,12 +210,8 @@ export function OdooCloseRegisterForm({
 
   function switchCashEntryMode(mode: CashEntryMode) {
     if (mode === cashEntryMode) return;
-    if (mode === "direct") {
-      if (hasDenominationCount) setCountedCash(denominationTotal.toFixed(2));
-      setCashCounts({});
-    } else {
-      setCashCounts({});
-      setCountedCash("");
+    if (mode === "direct" && !countedCash.trim() && hasDenominationCount) {
+      setCountedCash(denominationTotal.toFixed(2));
     }
     setCashEntryMode(mode);
   }
@@ -261,13 +247,19 @@ export function OdooCloseRegisterForm({
         }, 1_200);
       }
     } catch (cause) {
+      setConfirming(false);
       setError(cause instanceof Error ? cause.message : "Could not close the register.");
     } finally {
       setBusy(false);
     }
   }
 
-  const canReview = Boolean(selected?.session) && !busy && (!requiresCashCount || countedAmount != null);
+  const countedCashValid = countedAmount == null
+    || (Number.isFinite(countedAmount) && countedAmount >= 0 && countedAmount <= 1_000_000);
+  const canReview = Boolean(selected?.session)
+    && !busy
+    && (!requiresCashCount || countedAmount != null)
+    && countedCashValid;
 
   const shellClass = isModal
     ? "flex h-full min-h-0 flex-col bg-white"

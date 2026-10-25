@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-10-22T18:42:33.274Z",
+  "sourceCommit": "a44fd650d6cdd7a3f1e3669de2f176d783739e90",
+  "worktreeDirty": true,
+  "deployment": "a44fd650d6cdd7a3f1e3669de2f176d783739e90",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "a44fd650d6cdd7a3f1e3669de2f176d783739e90",
+    "frontendBuiltAt": "2026-10-22T18:38:10.609Z",
+    "backendCommit": "a44fd650d6cdd7a3f1e3669de2f176d783739e90",
+    "backendBuiltAt": "2026-10-22T18:38:11Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 323,
+  "selectedCount": 2,
+  "selectedIds": [
+    "date-sales-sold-amount-no-currency-zh",
+    "date-sales-sold-amount-zh"
+  ],
+  "checks": [
+    {
+      "id": "date-sales-sold-amount-no-currency-zh",
+      "question": "10月16日卖了多少？",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "fastPathId": "report_sales",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7f1c5bb1-b239-49e9-bf47-5bb99efa86d9",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "date-sales-sold-amount-zh",
+      "question": "10月16日卖了多少钱",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "fastPathId": "report_sales",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "472bc36c-55bb-4911-9fac-01754076f2d7",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 2,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

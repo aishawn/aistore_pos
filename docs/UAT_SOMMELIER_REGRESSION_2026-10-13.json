@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-22T00:35:50.672Z",
-  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+  "generatedAt": "2026-10-23T20:17:33.256Z",
+  "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated Odoo-backed Sommelier reads only; no model, image, feedback, sale, purchase, inventory, or register write",
   "checks": [

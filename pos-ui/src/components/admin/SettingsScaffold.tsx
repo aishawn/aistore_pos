@@ -128,7 +128,7 @@ export function TextRow({
         <SettingLabel label={label} description={description} />
         <input
           defaultValue={value}
-          className={`mt-3 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[#5cb3e0] ${FIELD_WIDTH}`}
+            className={`mt-3 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH}`}
         />
       </div>
     );
@@ -142,7 +142,7 @@ export function TextRow({
       </div>
       <input
         defaultValue={value}
-        className={`mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[#5cb3e0] ${FIELD_WIDTH}`}
+        className={`mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH}`}
       />
     </div>
   );
@@ -165,7 +165,7 @@ export function NumberRow({
         <input
           type="number"
           defaultValue={value}
-          className={`mt-3 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[#5cb3e0] ${FIELD_WIDTH_NARROW}`}
+            className={`mt-3 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH_NARROW}`}
         />
       </div>
     );
@@ -180,7 +180,7 @@ export function NumberRow({
       <input
         type="number"
         defaultValue={value}
-        className={`mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[#5cb3e0] ${FIELD_WIDTH_NARROW}`}
+        className={`mt-1 h-[52px] rounded-lg border border-neutral-300 px-4 text-[16px] text-black outline-none focus:border-[var(--oh-primary)] ${FIELD_WIDTH_NARROW}`}
       />
     </div>
   );
@@ -196,7 +196,7 @@ export function EditReasonsRow({ label }: { label: string }) {
       </div>
       <button
         type="button"
-        className={`mt-1 flex h-[52px] items-center justify-center gap-2 rounded-lg border border-[#5cb3e0] text-[16px] font-semibold text-[var(--sf-tab-blue)] ${FIELD_WIDTH}`}
+        className={`mt-1 flex h-[52px] items-center justify-center gap-2 rounded-lg border border-[var(--oh-border-strong)] text-[16px] font-semibold text-[var(--sf-tab-blue)] ${FIELD_WIDTH}`}
       >
         <EditIcon size={18} /> Edit Reasons
       </button>

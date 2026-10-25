@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-22T00:24:10.732Z",
+  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+  "sourceWorkingTree": true,
+  "testedFiles": [
+    "pos-ui/src/components/Header.tsx",
+    "pos-ui/src/components/AiFloatHost.tsx",
+    "pos-ui/src/components/SellAiPanel.tsx",
+    "pos-ui/src/components/admin/StockListPage.tsx",
+    "pos-ui/src/components/admin/CappedPricingPage.tsx",
+    "pos-ui/src/components/admin/BulkPriceEditPage.tsx",
+    "pos-ui/src/lib/ai-entry-placement.ts",
+    "scripts/pilot-stock-tables-responsive-local-uat.mjs"
+  ],
+  "environment": "local-dev-fixtures",
+  "nodeVersion": "v24.19.0",
+  "target": "http://demo.localhost:3036",
+  "scope": "Stock List/Capped Pricing/Bulk Price Edit mobile content width, card fields, editing and controls; desktop column alignment; header AI opens/closes and floating launcher is suppressed on dense routes; API requests intercepted; no business writes",
+  "status": "FAIL",
+  "passed": 0,
+  "failed": 1,
+  "checks": [
+    {
+      "route": "/stock/list 320",
+      "status": "FAIL",
+      "evidence": "locator.waitFor: Timeout 20000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'Stock List', exact: true }) to be visible\u001b[22m\n",
+      "requests": [],
+      "blockedWrites": []
+    }
+  ],
+  "requests": [],
+  "forbiddenLegacyRequests": [],
+  "blockedWrites": []
+}

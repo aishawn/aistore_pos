@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
+import { AssistantComposer } from "@/components/AssistantComposer";
+import { OrithosLogo } from "@/components/OrithosLogo";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Eraser, ExternalLink, History, MessageCircle, Mic, Plus, RefreshCw, Send, X } from "lucide-react";
+import { BarChart3, Boxes, Eraser, ExternalLink, History, Lightbulb, MessageCircle, MoreHorizontal, PackageSearch, Plus, RefreshCw, ShoppingCart, Sparkles, Store, X } from "lucide-react";
 import { cn, formatReportColumnHeader } from "@/lib/utils";
 import {
   askAssistant,
   fetchAiChatThread,
   fetchAiChatThreads,
   fetchAiClientConfig,
-  transcribeAudio,
   ApiError,
   type AssistantCard,
   type AiChatThreadSummary,
@@ -22,18 +24,13 @@ import {
 import { entityActionPage, isReadOnlyEntityOperation } from "@/lib/ai-entity-routing";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "@/lib/assistant-card-cta";
 import { restoredAssistantCardFields, retryQuestionForAssistantCards } from "@/lib/assistant-chat-history";
-import { AlertDialog } from "@/components/admin/AlertDialog";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AiFabIcon } from "@/components/AiFabIcon";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 import { useOptionalSellScreen, type LeftView } from "@/lib/sell-screen";
 import { getUiMode, isMobileAllowedHref } from "@/lib/ui-mode";
-import {
-  canUseMediaRecorder,
-  startMediaRecording,
-  type VoiceEndpointPhase,
-} from "@/lib/voice";
+
 
 const FLOAT_SHADOW =
   "0 4px 24px rgba(37, 99, 235, 0.10), 0 1px 4px rgba(15, 23, 42, 0.06)";
@@ -53,7 +50,7 @@ function loadAnchor(): FloatAnchor {
     const raw = sessionStorage.getItem(FLOAT_POS_KEY);
     if (!raw) return defaultAnchor();
     const parsed = JSON.parse(raw) as FloatAnchor;
-    if (typeof parsed?.x === "number" && typeof parsed?.y === "number") return parsed;
+    if (Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)) return parsed;
   } catch {
     /* ignore */
   }
@@ -89,6 +86,12 @@ interface ChatMessage {
   /** @deprecated prefer links — kept for single-CTA call sites */
   cta?: ChatCta | null;
   retryQuestion?: string | null;
+  source?: string | null;
+  dataAsOf?: string | null;
+  suggestedFollowUps?: string[] | null;
+  clarificationRequired?: boolean;
+  clarifyingQuestion?: string | null;
+  requiresConfirmation?: boolean;
   diagnostics?: {
     intent: string;
     latencyMs: number;
@@ -321,6 +324,8 @@ interface SellAiPanelProps {
   forceFullscreen?: boolean;
   /** Called after collapse when the host should leave a dedicated route. */
   onRequestClose?: () => void;
+  /** Dedicated AI workspace chrome used by the /assistant route. */
+  workspace?: boolean;
 }
 
 /** Sell page AI chat panel — intent → frontend dispatcher. */
@@ -331,6 +336,7 @@ export function SellAiPanel({
   presentation = "float",
   forceFullscreen = false,
   onRequestClose,
+  workspace = false,
 }: SellAiPanelProps) {
   const pagePresentation = presentation === "page";
   const mobileOnly = getUiMode() === "mobile";
@@ -342,27 +348,25 @@ export function SellAiPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", text: ENABLED_GREETING },
   ]);
-  const [listening, setListening] = useState(false);
-  const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [thinkingHint, setThinkingHint] = useState<string | null>(null);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const historyRequestRef = useRef(false);
   const [historyThreads, setHistoryThreads] = useState<AiChatThreadSummary[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [quickActionsOpen, setQuickActionsOpen] = useState(true);
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [clientConfigReady, setClientConfigReady] = useState(false);
   const [transcriptionAvailable, setTranscriptionAvailable] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [voiceAlert, setVoiceAlert] = useState<string | null>(null);
   const [compactViewport, setCompactViewport] = useState(false);
+  const [storeContextOpen, setStoreContextOpen] = useState(false);
+  const [storeHost, setStoreHost] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const busyRef = useRef(false);
-  const voiceStopRef = useRef<(() => void) | null>(null);
-  const voiceSessionRef = useRef(0);
-  const voicePressedRef = useRef(false);
   const floatRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -390,12 +394,6 @@ export function SellAiPanel({
       restoreFabRef.current = false;
     }
     onExpandedChange(false);
-    voicePressedRef.current = false;
-    voiceSessionRef.current += 1;
-    voiceStopRef.current?.();
-    voiceStopRef.current = null;
-    setListening(false);
-    setVoiceStatus(null);
     onRequestClose?.();
   }, [onExpandedChange, onRequestClose]);
   // Page mode keeps Sidebar interactive — Escape closes, but no focus trap.
@@ -411,11 +409,15 @@ export function SellAiPanel({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       event.preventDefault();
+      if (historyOpen) {
+        setHistoryOpen(false);
+        return;
+      }
       dismissPanel();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [pagePresentation, expanded, dismissPanel]);
+  }, [pagePresentation, expanded, dismissPanel, historyOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
@@ -558,26 +560,34 @@ export function SellAiPanel({
   useEffect(() => {
     setMounted(true);
     setAnchor(loadAnchor());
+    setStoreHost(window.location.hostname || null);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
+    // The expanded panel fills the viewport edge; its size must never move the orb.
+    if (!mounted || expanded || pagePresentation || workspace || !launcherVisible) return;
     function reclamp() {
       const el = floatRef.current;
       if (!el) return;
       setAnchor((prev) => {
         const next = clampAnchor(prev, el.offsetWidth, el.offsetHeight);
-        sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
+        try {
+          sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
+        } catch {
+          // Dragging still works when browser storage is unavailable.
+        }
         return next;
       });
     }
     reclamp();
     window.addEventListener("resize", reclamp);
     return () => window.removeEventListener("resize", reclamp);
-  }, [mounted, expanded]);
+  }, [mounted, expanded, pagePresentation, workspace, launcherVisible]);
 
   function beginDrag(e: React.PointerEvent) {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !e.isPrimary || dragRef.current) return;
+    // A canceled drag may not generate a click. Each new press starts cleanly.
+    suppressClickRef.current = false;
     const target = e.currentTarget as HTMLElement;
     target.setPointerCapture(e.pointerId);
     dragRef.current = {
@@ -597,6 +607,7 @@ export function SellAiPanel({
     const dy = e.clientY - drag.startY;
     if (!drag.moved && dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return;
     drag.moved = true;
+    e.preventDefault();
     suppressClickRef.current = true;
     setDragging(true);
     const el = floatRef.current;
@@ -622,7 +633,11 @@ export function SellAiPanel({
         if (!el) return;
         setAnchor((prev) => {
           const next = clampAnchor(prev, el.offsetWidth, el.offsetHeight);
-          sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
+          try {
+            sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
+          } catch {
+            // Position remains usable for this mount without browser storage.
+          }
           return next;
         });
       });
@@ -630,11 +645,12 @@ export function SellAiPanel({
     return moved;
   }
 
-  function onFabClick() {
-    if (suppressClickRef.current) {
+  function onFabClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (suppressClickRef.current && e.detail !== 0) {
       suppressClickRef.current = false;
       return;
     }
+    suppressClickRef.current = false;
     restoreFabRef.current = true;
     restoreFocusRef.current = null;
     openPanel();
@@ -661,7 +677,7 @@ export function SellAiPanel({
         setAiEnabled(chatOn);
         // Voice has its own provider capability. Do not expose a microphone when chat works
         // but transcription is unavailable or misconfigured.
-        setTranscriptionAvailable(config.transcriptionAvailable ?? config.enabled);
+        setTranscriptionAvailable(config.transcriptionAvailable === true);
         setMessages((prev) => {
           if (prev.length !== 1 || prev[0]?.role !== "assistant" || !isStockGreeting(prev[0].text)) {
             return prev;
@@ -677,7 +693,7 @@ export function SellAiPanel({
         if (!cancelled) {
           setTranscriptionAvailable(false);
         }
-      });
+      }).finally(() => { if (!cancelled) setClientConfigReady(true); });
     return () => { cancelled = true; };
   }, []);
 
@@ -685,13 +701,6 @@ export function SellAiPanel({
     if (!expanded || !ai?.launchMode) return;
     ai.clearLaunchMode();
   }, [expanded, ai]);
-
-  useEffect(() => {
-    return () => {
-      voiceStopRef.current?.();
-      voiceStopRef.current = null;
-    };
-  }, []);
 
   function openPanel() {
     onExpandedChange(true);
@@ -705,20 +714,10 @@ export function SellAiPanel({
       restoreFabRef.current = false;
     }
     onExpandedChange(false);
-    stopVoiceCapture();
     // In-chat navigations already push a new route; do not also exit /assistant.
     if (!options?.skipRouteExit) {
       onRequestClose?.();
     }
-  }
-
-  function stopVoiceCapture() {
-    voicePressedRef.current = false;
-    voiceSessionRef.current += 1;
-    voiceStopRef.current?.();
-    voiceStopRef.current = null;
-    setListening(false);
-    setVoiceStatus(null);
   }
 
   function pushAssistantNote(text: string) {
@@ -742,12 +741,14 @@ export function SellAiPanel({
     if (busy || busyRef.current) return;
     setMessages([{ role: "assistant", text: greetingText(aiEnabled) }]);
     setThreadId(null);
+    setInput("");
     setHistoryOpen(false);
     setQuickActionsOpen(true);
   }
 
   async function openHistory() {
-    if (busy || busyRef.current) return;
+    if (busy || busyRef.current || historyRequestRef.current) return;
+    historyRequestRef.current = true;
     setHistoryOpen(true);
     setHistoryLoading(true);
     setHistoryError(null);
@@ -757,12 +758,14 @@ export function SellAiPanel({
       setHistoryError(aiFailureMessage(e, "chat"));
       setHistoryThreads([]);
     } finally {
+      historyRequestRef.current = false;
       setHistoryLoading(false);
     }
   }
 
   async function loadHistoryThread(id: number) {
-    if (busy || busyRef.current) return;
+    if (busy || busyRef.current || historyRequestRef.current) return;
+    historyRequestRef.current = true;
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -776,6 +779,14 @@ export function SellAiPanel({
             text: m.text || "",
             ...(m.role === "assistant" ? { reportId: m.reportId ?? null, table: m.table ?? null } : {}),
             ...(m.role === "assistant" ? restoredAssistantCardFields(m.cards, previousQuestion) : {}),
+            ...(m.role === "assistant" ? {
+              source: m.source ?? null,
+              dataAsOf: m.dataAsOf ?? null,
+              suggestedFollowUps: m.suggestedFollowUps ?? null,
+              clarificationRequired: m.clarificationRequired === true,
+              clarifyingQuestion: m.clarifyingQuestion ?? null,
+              requiresConfirmation: m.requiresConfirmation === true,
+            } : {}),
             ...(m.role === "assistant" && previousQuestion ? { question: previousQuestion } : {}),
             diagnostics: m.role === "assistant" && m.intent
               ? { intent: m.intent, latencyMs: 0, status: "ok" as const }
@@ -795,6 +806,7 @@ export function SellAiPanel({
     } catch (e) {
       setHistoryError(aiFailureMessage(e, "chat"));
     } finally {
+      historyRequestRef.current = false;
       setHistoryLoading(false);
     }
   }
@@ -805,13 +817,6 @@ export function SellAiPanel({
       inputRef.current.value = "";
       inputRef.current.blur();
     }
-  }
-
-  async function submitInput() {
-    const trimmed = input.trim();
-    if (!trimmed || busy || busyRef.current || aiEnabled === false) return;
-    setQuickActionsOpen(false);
-    await runIntent(trimmed);
   }
 
   async function runIntent(text: string, retryExistingMessage = false) {
@@ -882,12 +887,20 @@ export function SellAiPanel({
               : [];
           appendReply({
               role: "assistant",
-              text: answerText,
+              text: result.clarificationRequired && result.clarifyingQuestion
+                ? result.clarifyingQuestion
+                : answerText,
               question: text,
               table: result.table ?? null,
               reportId: result.reportId ?? null,
               cards: result.cards ?? null,
               retryQuestion: retryQuestionForAssistantCards(result.cards, text) ?? null,
+              source: result.source ?? null,
+              dataAsOf: result.dataAsOf ?? null,
+              suggestedFollowUps: result.suggestedFollowUps ?? null,
+              clarificationRequired: result.clarificationRequired === true,
+              clarifyingQuestion: result.clarifyingQuestion ?? null,
+              requiresConfirmation: result.requiresConfirmation === true,
               cta,
               links: cta ? [cta] : recoveryLinks.length ? recoveryLinks : null,
               diagnostics: {
@@ -1082,117 +1095,18 @@ export function SellAiPanel({
     runSellAction(action);
   }
 
-  /** Cloud-only STT via DashScope; no browser Web Speech fallback. */
-  async function startVoice() {
-    if (busy || listening) return;
-    // null = client config still loading — do not pop a modal on a stray press.
-    if (transcriptionAvailable == null) return;
-    if (transcriptionAvailable !== true) {
-      setVoiceAlert(
-        aiEnabled === false
-          ? "AI voice transcription is not enabled for this store. Type your request instead."
-          : "AI voice transcription is unavailable for this store. Type your request instead.",
-      );
-      return;
-    }
-    const session = ++voiceSessionRef.current;
-
-    if (!canUseMediaRecorder()) {
-      pushAssistantNote(
-        "Cloud voice needs a browser that supports microphone recording. Please type instead.",
-      );
-      return;
-    }
-
-    try {
-      setListening(true);
-      setVoiceStatus("Listening… speak now");
-      const phaseLabel = (phase: VoiceEndpointPhase) => {
-        if (phase === "speech") return "Listening…";
-        if (phase === "ending") return "Finishing…";
-        return "Listening… speak now";
-      };
-      const recording = await startMediaRecording({
-        maxMs: 15_000,
-        onStarted: () => setVoiceStatus("Listening… speak now"),
-        vad: {
-          silenceMs: 1200,
-          minSpeechMs: 160,
-          noSpeechTimeoutMs: 12_000,
-          minRms: 0.006,
-          onPhaseChange: (phase) => {
-            if (session === voiceSessionRef.current) {
-              setVoiceStatus(phaseLabel(phase));
-            }
-          },
-        },
-      });
-      if (session !== voiceSessionRef.current) {
-        recording.stop();
-        return;
-      }
-      voiceStopRef.current = () => recording.stop();
-      // A quick press can release before getUserMedia resolves. Stop as soon
-      // as the recorder is ready instead of leaving the microphone running.
-      if (!voicePressedRef.current) {
-        recording.stop();
-      }
-
-      const { blob, mimeType, hadSpeech } = await recording.done;
-      voiceStopRef.current = null;
-      if (session !== voiceSessionRef.current) return;
-
-      const likelyAudio = blob.size >= 1500;
-      if (!hadSpeech && !likelyAudio) {
-        setListening(false);
-        setVoiceStatus(null);
-        setVoiceAlert(
-          "No speech captured. Please speak after tapping Voice, then pause briefly when finished.",
-        );
-        return;
-      }
-
-      setVoiceStatus("Transcribing…");
-      const ext = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
-      const result = await transcribeAudio(blob, undefined, `voice.${ext}`);
-      if (session !== voiceSessionRef.current) return;
-      setListening(false);
-      setVoiceStatus(null);
-      setInput(result.text);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    } catch (e) {
-      if (session !== voiceSessionRef.current) return;
-      setListening(false);
-      setVoiceStatus(null);
-      voiceStopRef.current = null;
-      setVoiceAlert(aiFailureMessage(e, "voice"));
-    }
-  }
-
-  function beginVoicePress() {
-    // Chrome still dispatches pointerdown on disabled buttons; refuse before
-    // any listening UI or alert unless transcription is confirmed available.
-    if (busy || listening || transcriptionAvailable !== true) return;
-    voicePressedRef.current = true;
-    if (!expanded) {
-      openPanel();
-    }
-    void startVoice();
-  }
-
-  function endVoicePress() {
-    voicePressedRef.current = false;
-    voiceStopRef.current?.();
-    voiceStopRef.current = null;
-  }
-
-  function cancelVoicePress() {
-    voicePressedRef.current = false;
-    stopVoiceCapture();
-  }
-
   function runQuickAction(action: string) {
+    if (busy || busyRef.current) return;
+    setHistoryOpen(false);
     setQuickActionsOpen(false);
+    if (workspace && (action === "Check stock" || action === "Today's sales")) {
+      if (aiEnabled === false) {
+        openWorkspace(action === "Check stock" ? "/stock/replenishment" : "/reports/last-week-sales", "Open the report when you are ready.", { immediate: true });
+      } else {
+        void runIntent(action === "Check stock" ? "Analyse low stock items and suggest what to reorder" : "Show me this week's sales performance");
+      }
+      return;
+    }
     // Route sample questions through the assistant; keep direct navigation available when chat is off.
     if (action === "Today's sales") {
       if (aiEnabled === false) {
@@ -1203,6 +1117,21 @@ export function SellAiPanel({
       return;
     }
     const workflows: Record<string, { question: string; href: string; note: string }> = {
+      "Create purchase order": {
+        question: "Create a purchase order for low stock items",
+        href: "/orders/new",
+        note: "Open a new purchase order when you are ready.",
+      },
+      "Top selling products": {
+        question: "Show me the top selling products",
+        href: "/reports/sales",
+        note: "Open sales reports when you are ready.",
+      },
+      "Customer insights": {
+        question: "Show me customer insights",
+        href: "/customers",
+        note: "Open customer insights when you are ready.",
+      },
       "What should I restock?": {
         question: "What should I restock?",
         href: "/stock/replenishment",
@@ -1244,107 +1173,139 @@ export function SellAiPanel({
     runSellAction(action);
   }
 
+  function navigateSidebarItem(label: string) {
+    const destinations: Record<string, { href: string; note: string }> = {
+      "Low stock analysis": { href: "/stock/replenishment", note: "Opened replenishment." },
+      "Create purchase order": { href: "/orders/new", note: "Opened a new purchase order." },
+      "Sales performance": { href: "/reports/last-week-sales", note: "Opened sales performance." },
+      "Top selling products": { href: "/reports/sales", note: "Opened top selling products." },
+      "Customer insights": { href: "/customers", note: "Opened customer insights." },
+      "Stock recommendations": { href: "/stock/replenishment", note: "Opened stock recommendations." },
+      "Price optimisation": { href: "/stock/capped-pricing", note: "Opened price optimisation." },
+      "Find a wine": { href: "/sommelier", note: "Opened wine recommendations." },
+    };
+    const destination = destinations[label];
+    if (!destination || busy || busyRef.current) return;
+    openWorkspace(destination.href, destination.note, { immediate: true });
+  }
+
   const chatOff = aiEnabled === false;
+  const submitPendingQuestion = useEffectEvent(() => {
+    if (!pagePresentation || !clientConfigReady) return;
+    const question = ai?.takePendingQuestion();
+    if (!question) return;
+    if (aiEnabled === false) { setInput(question); return; }
+    setQuickActionsOpen(false);
+    void runIntent(question);
+  });
+  useEffect(() => { submitPendingQuestion(); }, [pagePresentation, clientConfigReady]);
+
   const composer = (
-    <form
-      className="flex w-full items-center gap-2.5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submitInput();
-      }}
-    >
+    <AssistantComposer value={input} onChange={setInput} inputRef={inputRef} disabled={busy || chatOff || !expanded} voiceAvailable={transcriptionAvailable} placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"} onSend={async question => {
+      if (busyRef.current || chatOff) return;
+      setQuickActionsOpen(false);
+      await runIntent(question);
+    }} />
+  );
+
+  const workspaceActions = [
+    { title: "Check stock levels", description: "Find low stock items and reorder suggestions", icon: BarChart3, tone: "orange", action: "Check stock" },
+    { title: "Analyse sales", description: "Show me this week’s performance", icon: BarChart3, tone: "blue", action: "Today's sales" },
+    { title: "Create purchase order", description: "Generate PO for low stock items", icon: Boxes, tone: "green", action: "Create purchase order" },
+    { title: "Find opportunities", description: "Suggest ways to grow my store", icon: Lightbulb, tone: "amber", action: "What should I restock?" },
+  ] as const;
+  const sidebarWorkflows = [
+    { label: "Low stock analysis", icon: PackageSearch },
+    { label: "Create purchase order", icon: ShoppingCart },
+    { label: "Sales performance", icon: BarChart3 },
+    { label: "Top selling products", icon: Boxes },
+    { label: "Customer insights", icon: Store },
+    { label: "Stock recommendations", icon: PackageSearch },
+    { label: "Price optimisation", icon: BarChart3 },
+    { label: "Find a wine", icon: Sparkles },
+  ] as const;
+
+  const workspaceUi = (
+    <div className="pointer-events-auto relative z-10 flex h-full w-full overflow-hidden bg-[var(--oh-surface)]">
       <div
-        className={cn(
-          "flex h-[48px] min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[var(--oh-border)] bg-white px-4 transition-[border-color,box-shadow] focus-within:border-[var(--oh-primary)] focus-within:ring-2 focus-within:ring-[var(--oh-orange-muted)]",
-          (busy || chatOff) && "pointer-events-none opacity-60",
-        )}
-        style={{ boxShadow: FLOAT_SHADOW }}
-      >
-        <MessageCircle size={16} className="shrink-0 text-[var(--oh-primary)]" />
-        <input
-          ref={inputRef}
-          aria-label="Ask Orithos AI"
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
-            e.preventDefault();
-            void submitInput();
-          }}
-          disabled={busy || chatOff}
-          readOnly={busy || chatOff}
-          placeholder={chatOff ? "AI chat is off for this store" : busy ? "Waiting for reply…" : "Ask Orithos AI…"}
-          className="min-w-0 flex-1 bg-transparent text-[15px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] disabled:cursor-not-allowed"
-        />
-      </div>
-      <button
-        type="submit"
-        aria-label="Send message"
-        title="Send message"
-        disabled={busy || chatOff || !input.trim()}
-        className="flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white text-[var(--oh-primary)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-50"
-        style={{ boxShadow: FLOAT_SHADOW }}
-      >
-        <Send size={18} />
-      </button>
-      <button
-        type="button"
-        onPointerDown={(event) => {
-          event.preventDefault();
-          beginVoicePress();
-        }}
-        onPointerUp={endVoicePress}
-        onPointerCancel={cancelVoicePress}
-        onPointerLeave={() => {
-          if (voicePressedRef.current) endVoicePress();
-        }}
-        onKeyDown={(event) => {
-          if ((event.key === " " || event.key === "Enter") && !event.repeat) {
-            event.preventDefault();
-            beginVoicePress();
-          }
-        }}
-        onKeyUp={(event) => {
-          if (event.key === " " || event.key === "Enter") {
-            event.preventDefault();
-            endVoicePress();
-          }
-        }}
-        onBlur={() => {
-          if (voicePressedRef.current) endVoicePress();
-        }}
-        aria-label={
-          listening
-            ? "Release to stop voice input"
-            : transcriptionAvailable === true
-              ? "Hold to speak"
-              : "Voice input"
-        }
-        aria-pressed={listening}
-        title={
-          aiEnabled === false
-            ? "Voice input is disabled for this store"
-            : transcriptionAvailable == null
-              ? "Checking voice availability…"
-              : transcriptionAvailable === false
-                ? "Voice transcription is unavailable for this store"
-                : "Hold to speak, release to add text"
-        }
-        disabled={busy || transcriptionAvailable !== true}
-        className={cn(
-          // disabled:pointer-events-none — Chrome still fires pointerdown on
-          // disabled buttons; without this, hold-to-speak pops the alert modal.
-          "flex h-[48px] w-[48px] shrink-0 cursor-pointer items-center justify-center rounded-2xl border border-[var(--oh-border)] bg-white transition-colors disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-          listening
-            ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"
-            : "text-[var(--oh-placeholder)] hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)]",
-        )}
-        style={{ boxShadow: FLOAT_SHADOW }}
-      >
-        <Mic size={18} />
-      </button>
-    </form>
+        className="pointer-events-none absolute inset-0 z-0 bg-[url('/images/ai-assistant-background.webp')] bg-cover bg-[center_bottom] opacity-75"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[68%] bg-gradient-to-t from-[#edf2fa]/10 via-[#edf2fa]/38 to-transparent"
+        aria-hidden="true"
+      />
+      <aside className="relative z-10 hidden w-[256px] shrink-0 flex-col border-r border-white/70 bg-[var(--oh-surface-elevated)]/55 px-4 py-5 backdrop-blur-xl md:flex">
+        <div className="flex items-center gap-2.5 px-3 pb-7">
+          <Link href="/dashboard" aria-label="Open Dashboard" title="Dashboard" className="inline-flex min-h-11 items-center rounded-lg transition hover:bg-[var(--oh-surface-elevated)]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2">
+            <OrithosLogo />
+          </Link>
+        </div>
+        <nav className="space-y-1 text-[14px]" aria-label="AI assistant navigation">
+          <button type="button" onClick={() => setHistoryOpen(false)} className={cn("flex h-11 w-full items-center gap-3 rounded-xl px-3 focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)]", !historyOpen ? "bg-[var(--oh-orange-light)] font-semibold text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)]")} aria-current={!historyOpen ? "page" : undefined}>
+            <Sparkles size={17} /> AI Assistant
+          </button>
+          <button type="button" onClick={clearChat} disabled={busy || historyLoading} className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]">
+            <MessageCircle size={17} /> New chat
+          </button>
+          <button type="button" onClick={() => void openHistory()} disabled={busy || historyLoading} aria-current={historyOpen ? "page" : undefined} className={cn("flex h-11 w-full items-center gap-3 rounded-xl px-3 transition focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50", historyOpen ? "bg-[var(--oh-orange-light)] font-semibold text-[var(--oh-primary)]" : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]")}>
+            <History size={17} /> History
+          </button>
+        </nav>
+        <div className="mt-7 overflow-y-auto text-[13px] text-[var(--oh-muted)]">
+          <p className="px-3 pb-2 font-medium">Suggested workflows</p>
+          <div className="space-y-0.5">
+            {sidebarWorkflows.map((item) => {
+              const Icon = item.icon;
+              return <button key={item.label} type="button" onClick={() => navigateSidebarItem(item.label)} disabled={busy} className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left transition hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-50"><Icon size={15} />{item.label}</button>;
+            })}
+          </div>
+        </div>
+      </aside>
+      <section className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,.82),transparent_54%),linear-gradient(180deg,rgba(237,242,250,.2),rgba(237,242,250,.55))]" aria-hidden="true" />
+        <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between px-5 sm:px-8 lg:px-10">
+          <div className="flex items-center gap-2 md:hidden"><Link href="/dashboard" aria-label="Open Dashboard" title="Dashboard" className="inline-flex min-h-11 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2"><OrithosLogo /></Link></div>
+          <div className="relative ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setStoreContextOpen((open) => !open)}
+              aria-expanded={storeContextOpen}
+              aria-controls="assistant-store-context"
+              className="hidden min-h-11 items-center gap-2 rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 px-3.5 py-2 text-[12px] font-medium text-[var(--oh-muted)] shadow-sm backdrop-blur transition hover:bg-[var(--oh-surface-elevated)]/80 hover:text-[var(--oh-text)] sm:flex"
+            >
+              <Store size={15} /> Store context
+            </button>
+            {storeContextOpen ? (
+              <div
+                id="assistant-store-context"
+                role="status"
+                className="absolute right-11 top-11 z-30 w-64 rounded-2xl border border-white/90 bg-[var(--oh-surface-elevated)]/95 p-3 text-left shadow-[0_12px_32px_rgba(65,87,126,.18)] backdrop-blur-xl"
+              >
+                <p className="text-[12px] font-semibold text-[var(--oh-text)]">Current store context</p>
+                <p className="mt-1 break-all text-[12px] leading-5 text-[var(--oh-muted)]">
+                  {storeHost ?? "Store host will appear after sign-in."}
+                </p>
+                <p className="mt-2 text-[11px] leading-4 text-[var(--oh-muted)]">
+                  Assistant answers use the active store and outlet session.
+                </p>
+              </div>
+            ) : null}
+            <button type="button" onClick={() => void openHistory()} disabled={busy || historyLoading} aria-label="Chat history" title="Chat history" className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--oh-muted)] transition hover:bg-[var(--oh-surface-elevated)]/70"><MoreHorizontal size={18} /></button>
+          </div>
+        </header>
+        <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
+          {historyOpen ? <HistoryView loading={historyLoading} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
+            <div className="mx-auto flex min-h-full w-full max-w-[1080px] -translate-y-7 flex-col justify-center py-8 sm:-translate-y-11 sm:py-12 lg:-translate-y-14">
+              <div className="mb-8 text-center sm:mb-10"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur"><Sparkles size={38} strokeWidth={1.7} /></div><h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#142239] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-2 text-[18px] text-[#52627a] sm:text-[22px]">How can I help with your store today?</p></div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[158px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-5 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)]"><span className={cn("mb-5 flex h-9 w-9 items-center justify-center rounded-xl", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", item.tone === "amber" && "bg-[#fff5df] text-[#ec9a22]")}><Icon size={20} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b]">{item.title}</span><span className="mt-1.5 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
+              {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} busy={busy} thinkingHint={thinkingHint} compact /></div>}
+            </div>
+          )}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 z-20 px-4 pb-4 sm:px-8 sm:pb-7 lg:px-10"><div className="mx-auto max-w-[1080px] rounded-[28px] border border-white/90 bg-[var(--oh-surface-elevated)]/80 p-2 shadow-[0_12px_35px_rgba(65,87,126,.14)] backdrop-blur-xl">{composer}</div></div>
+      </section>
+    </div>
   );
 
   const panelDialogs = (
@@ -1359,18 +1320,15 @@ export function SellAiPanel({
         onConfirm={confirmPendingAction}
         onCancel={() => setPendingAction(null)}
       />
-      <AlertDialog
-        open={!!voiceAlert}
-        title="Voice Input"
-        message={voiceAlert ?? ""}
-        okLabel="OK"
-        variant="warning"
-        onClose={() => setVoiceAlert(null)}
-      />
+
     </>
   );
 
-  const floatUi = (
+  const floatUi = workspace ? (
+    <div className="pointer-events-none absolute inset-0 z-10 h-full w-full">
+      {expanded ? workspaceUi : null}
+    </div>
+  ) : (
     <div
       ref={floatRef}
       className={cn(
@@ -1406,13 +1364,13 @@ export function SellAiPanel({
           aria-modal={pagePresentation ? undefined : true}
           className={cn(
             "pointer-events-auto relative z-10 flex h-full w-full flex-col",
-            !fullscreenPanel && "border-l border-[var(--oh-border)] bg-white",
+            !fullscreenPanel && "border-l border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]",
           )}
           style={{ boxShadow: fullscreenPanel ? "none" : FLOAT_SHADOW }}
         >
           <div
             className={cn(
-              "flex h-full w-full flex-col overflow-hidden bg-white",
+              "flex h-full w-full flex-col overflow-hidden bg-[var(--oh-surface-elevated)]",
               fullscreenPanel ? "rounded-none border-0" : "rounded-none",
             )}
           >
@@ -1447,7 +1405,7 @@ export function SellAiPanel({
                   title="Chat history"
                   aria-label="Chat history"
                   disabled={busy || chatOff}
-                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-white/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-[var(--oh-surface-elevated)]/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <History size={16} />
                 </button>
@@ -1456,7 +1414,7 @@ export function SellAiPanel({
                   onClick={dismissPanel}
                   title="Close"
                   aria-label="Close assistant"
-                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-white/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+                  className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] outline-none transition-colors hover:bg-[var(--oh-surface-elevated)]/80 hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
                 >
                   <X size={16} />
                 </button>
@@ -1494,7 +1452,7 @@ export function SellAiPanel({
             {quickActionsOpen ? (
               <div
                 id="orithos-ai-quick-actions"
-                className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2.5"
+                className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3.5 py-2.5"
               >
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-[13px] font-bold uppercase tracking-wider text-[var(--oh-muted)]">
@@ -1515,7 +1473,7 @@ export function SellAiPanel({
                 </div>
               </div>
             ) : (
-              <div className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2">
+              <div className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3.5 py-2">
                 <div className="flex min-h-11 items-center justify-between gap-2">
                   <button
                     type="button"
@@ -1531,10 +1489,6 @@ export function SellAiPanel({
                     <p className="min-w-0 truncate text-right text-[12px] text-[var(--oh-muted)]">
                       Shortcuts still work
                     </p>
-                  ) : voiceStatus ? (
-                    <p className="min-w-0 flex-1 truncate text-right text-[13px] font-medium text-[var(--oh-primary)]">
-                      {voiceStatus}
-                    </p>
                   ) : (
                     <p className="min-w-0 truncate text-right text-[12px] text-[var(--oh-muted)]">
                       {fullscreenPanel ? "Tap send" : "Enter to send"}
@@ -1545,7 +1499,7 @@ export function SellAiPanel({
             )}
 
             <div
-              className="shrink-0 border-t border-[var(--oh-border)] bg-white px-3.5 py-2"
+              className="shrink-0 border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3.5 py-2"
               style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
             >
               {composer}
@@ -1562,9 +1516,11 @@ export function SellAiPanel({
           onPointerMove={onDragMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          onLostPointerCapture={endDrag}
+          onDragStart={(e) => e.preventDefault()}
           aria-label="Open Orithos AI assistant"
           className={cn(
-            "pointer-events-auto shrink-0 touch-none transition-transform",
+            "pointer-events-auto shrink-0 touch-none select-none border-0 bg-transparent p-0 leading-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2",
             dragging ? "cursor-grabbing" : "cursor-grab hover:-translate-y-0.5 hover:scale-105",
             !dragging && "active:scale-95",
           )}
@@ -1603,6 +1559,19 @@ function HistoryView({
   onSelect: (id: number) => void;
   onRefresh: () => void;
 }) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleThreads = normalizedQuery
+    ? threads.filter((thread) => `${thread.title} ${thread.sessionKey}`.toLowerCase().includes(normalizedQuery))
+    : threads;
+  const groupedThreads = visibleThreads.reduce<Record<string, AiChatThreadSummary[]>>((groups, thread) => {
+    const date = thread.updatedAt || thread.createdAt;
+    const age = date ? Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000) : 999;
+    const group = age < 1 ? "Today" : age < 7 ? "Last 7 days" : "Earlier";
+    (groups[group] ??= []).push(thread);
+    return groups;
+  }, {});
+  const groupOrder = ["Today", "Last 7 days", "Earlier"];
   return (
     <div className="flex h-full flex-col p-3.5">
       <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -1614,14 +1583,14 @@ function HistoryView({
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="rounded-md px-2 py-1 text-[13px] font-medium text-[var(--oh-muted)] hover:bg-white hover:text-[var(--oh-text)] disabled:opacity-40"
+            className="min-h-11 rounded-md px-2.5 py-2 text-[13px] font-medium text-[var(--oh-muted)] hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)] disabled:opacity-40"
           >
             Refresh
           </button>
           <button
             type="button"
             onClick={onBack}
-            className="rounded-md px-2 py-1 text-[13px] font-medium text-[var(--oh-primary)] hover:bg-white"
+            className="min-h-11 rounded-md px-2.5 py-2 text-[13px] font-medium text-[var(--oh-primary)] hover:bg-[var(--oh-surface-elevated)]"
           >
             Back
           </button>
@@ -1630,6 +1599,16 @@ function HistoryView({
       <p className="mb-2.5 text-[12px] text-[var(--oh-muted)]">
         Your chats on this store only. Opening a thread continues that conversation.
       </p>
+      {threads.length > 0 ? (
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search chats"
+          aria-label="Search chats"
+          className="mb-2.5 min-h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[13px] text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+        />
+      ) : null}
       {error ? (
         <p role="alert" className="mb-2 rounded-md bg-rose-50 px-2.5 py-2 text-[13px] text-rose-700">
           {error}
@@ -1639,25 +1618,26 @@ function HistoryView({
         <p className="text-[13px] text-[var(--oh-muted)]">Loading…</p>
       ) : threads.length === 0 ? (
         <p className="text-[13px] text-[var(--oh-muted)]">No saved chats yet. Ask a question to start one.</p>
+      ) : visibleThreads.length === 0 ? (
+        <p className="text-[13px] text-[var(--oh-muted)]">No chats match that search.</p>
       ) : (
-        <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
-          {threads.map((thread) => (
-            <li key={thread.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(thread.id)}
-                className="w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-left transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]"
-              >
-                <span className="block truncate text-[14px] font-medium text-[var(--oh-text)]">
-                  {thread.title || "Chat"}
-                </span>
-                <span className="mt-0.5 block text-[11px] tabular-nums text-[var(--oh-muted)]">
-                  {thread.updatedAt ? new Date(thread.updatedAt).toLocaleString() : ""}
-                </span>
-              </button>
-            </li>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+          {groupOrder.filter((group) => groupedThreads[group]?.length).map((group) => (
+            <section key={group} aria-labelledby={`history-${group.replaceAll(" ", "-").toLowerCase()}`}>
+              <h2 id={`history-${group.replaceAll(" ", "-").toLowerCase()}`} className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">{group}</h2>
+              <ul className="space-y-1.5">
+                {groupedThreads[group].map((thread) => (
+                  <li key={thread.id}>
+                    <button type="button" onClick={() => onSelect(thread.id)} className="min-h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-left transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]">
+                      <span className="block truncate text-[14px] font-medium text-[var(--oh-text)]">{thread.title || "Chat"}</span>
+                      <span className="mt-0.5 block text-[11px] tabular-nums text-[var(--oh-muted)]">{thread.updatedAt ? new Date(thread.updatedAt).toLocaleString() : ""}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
@@ -1713,7 +1693,7 @@ function DialogueView({
       {diagnosticMessages.length > 0 && !compact ? (
         <p
           aria-label="AI session diagnostics"
-          className="mb-2.5 shrink-0 rounded-md bg-white px-2.5 py-1.5 text-[11px] tabular-nums text-[var(--oh-muted)]"
+          className="mb-2.5 shrink-0 rounded-md bg-[var(--oh-surface-elevated)] px-2.5 py-1.5 text-[11px] tabular-nums text-[var(--oh-muted)]"
         >
           AI session · {diagnosticMessages.length} {diagnosticMessages.length === 1 ? "response" : "responses"}
           {" · "}{successRate}% success · {averageLatency}ms avg
@@ -1736,7 +1716,7 @@ function DialogueView({
                 ? "ml-auto rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-orange-light)] px-3.5 py-2.5 text-[var(--oh-text)]"
                 : hasStructuredCards
                   ? "mr-auto whitespace-pre-wrap text-[var(--oh-text)]"
-                  : "mr-auto whitespace-pre-wrap rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-white px-3.5 py-2.5 text-[var(--oh-text)] shadow-sm",
+                  : "mr-auto whitespace-pre-wrap rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-surface-elevated)] px-3.5 py-2.5 text-[var(--oh-text)] shadow-sm",
             )}
           >
             {msg.role === "assistant" && msg.reportId && cards.length === 0 ? (
@@ -1895,6 +1875,28 @@ function DialogueView({
             )}
             {msg.role === "assistant" && fallbackLinks.length > 0 ? (
               <ChatActionLinks links={fallbackLinks} onOpenLink={onOpenLink} />
+            ) : null}
+            {msg.role === "assistant" && msg.suggestedFollowUps?.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Suggested follow-up questions">
+                {msg.suggestedFollowUps.slice(0, 4).map((followUp) => (
+                  <button
+                    key={followUp}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onRetry(followUp)}
+                    className="min-h-10 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 py-1 text-[12px] font-medium text-[var(--oh-muted)] transition-colors hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)] hover:text-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {followUp}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {msg.role === "assistant" && (msg.source || msg.dataAsOf) ? (
+              <p className="mt-1.5 text-[11px] text-[var(--oh-muted)]">
+                {msg.source ? `Source: ${msg.source}` : ""}
+                {msg.source && msg.dataAsOf ? " · " : ""}
+                {msg.dataAsOf ? `Data as of ${new Date(msg.dataAsOf).toLocaleString()}` : ""}
+              </p>
             ) : null}
             {msg.role === "assistant" && msg.diagnostics ? (
               <span className={cn(

@@ -1,3 +1,6 @@
+import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
+import { resolveCartPrices, priceSignature } from "@/lib/odoo-pricing";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -37,31 +40,6 @@ function baseUrl() {
   return value;
 }
 
-async function rpc<T>(session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
-  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${session}` });
-  if (correlationId) headers.set("X-Correlation-ID", correlationId);
-  const response = await fetch(`${baseUrl()}/web/dataset/call_kw`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: { model, method, args, kwargs }, id: Date.now() }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new QuoteError("Odoo could not calculate the cart total.", 502);
-  const payload = await response.json() as RpcResult<T>;
-  if (payload.error) {
-    const detail = payload.error.data?.message || payload.error.message || "";
-    if (/session|log in|authenticate/i.test(detail)) throw new QuoteError("Odoo session expired", 401);
-    throw new QuoteError("Odoo could not calculate the cart total. Check product tax and register settings.", 409);
-  }
-  if (payload.result === undefined) throw new QuoteError("Odoo returned an empty cart total.", 502);
-  return payload.result;
-}
-
-async function searchRead<T>(session: string, model: string, domain: unknown[], fields: string[], limit = 100, correlationId?: string | null) {
-  return rpc<T[]>(session, model, "search_read", [domain], { fields, limit }, correlationId);
-}
-
 function roundCashTotal(amount: number, rounding: { rounding: number; rounding_method: "UP" | "DOWN" | "HALF-UP" }) {
   if (!Number.isFinite(rounding.rounding) || rounding.rounding <= 0) throw new QuoteError("This register has an invalid cash rounding setting.", 409);
   const ratio = amount / rounding.rounding;
@@ -85,6 +63,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await requirePermission(request, "sell.checkout");
+    const pricingScope = await scopedOdoo(request);
     const sessionInfoResponse = await fetch(`${baseUrl()}/web/session/get_session_info`, {
       method: "POST", headers: withRequestCorrelation({ "Content-Type": "application/json", Cookie: `session_id=${session}` }, request),
       body: JSON.stringify({ jsonrpc: "2.0", method: "call", params: {}, id: Date.now() }), cache: "no-store", signal: AbortSignal.timeout(12_000),
@@ -97,12 +77,15 @@ export async function POST(request: NextRequest) {
     const companyIds = forced.companyIds;
     if (!companyIds.length) throw new QuoteError("This Odoo user has no accessible company.", 403);
 
+    const rpc = <T>(_session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T>(model, method, args, kwargs); };
+    const searchRead = <T>(_session: string, model: string, domain: unknown[], fields: string[], limit = 100, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T[]>(model, "search_read", [domain], { fields, limit }); };
+
     const configs = await searchRead<PosConfig>(session, "pos.config", [["id", "=", body.configId], ["company_id", "in", companyIds]], ["id", "name", "company_id", "current_session_id", "payment_method_ids", "pricelist_id", "default_fiscal_position_id", "currency_id", "cash_rounding", "only_round_cash_method", "rounding_method"], 1, correlationId);
     const config = configs[0];
     if (!config) throw new QuoteError("This register is not available to your Odoo user.", 403);
     if (!Array.isArray(config.current_session_id)) throw new QuoteError("This register has no open POS session.", 409);
     if (!config.payment_method_ids.includes(body.paymentMethodId!)) throw new QuoteError("That payment method is not enabled for this register.", 403);
-    if (config.pricelist_id) throw new QuoteError("This register uses an Odoo pricelist. Configure a POS pricelist before quoting this cart.", 409);
+
     const [sessionId] = config.current_session_id;
     const opened = await searchRead<{ id: number }>(session, "pos.session", [["id", "=", sessionId], ["state", "=", "opened"], ["config_id", "=", config.id]], ["id"], 1, correlationId);
     if (!opened.length) throw new QuoteError("The POS session has closed. Refresh the register.", 409);
@@ -123,37 +106,40 @@ export async function POST(request: NextRequest) {
 
     let fiscalPosition: Relation = config.default_fiscal_position_id;
     if (body.customerId != null) {
-      if (!Number.isInteger(body.customerId)) throw new QuoteError("The customer selection is invalid.", 400);
-      const customers = await searchRead<{ id: number; property_account_position_id: Relation }>(session, "res.partner", [["id", "=", body.customerId]], ["id", "property_account_position_id"], 1, correlationId);
+      if ((!Number.isSafeInteger(body.customerId) || body.customerId < 1)) throw new QuoteError("The customer selection is invalid.", 400);
+      const customers = await searchRead<{ id: number; property_account_position_id: Relation }>(session, "res.partner", [["id", "=", body.customerId], ["company_id", "in", companyIds]], ["id", "property_account_position_id"], 1, correlationId);
       if (!customers.length) throw new QuoteError("The selected customer is unavailable.", 409);
       fiscalPosition = customers[0].property_account_position_id || fiscalPosition;
-      const customerPricing = await searchRead<{ property_product_pricelist: Relation }>(session, "res.partner", [["id", "=", body.customerId]], ["property_product_pricelist"], 1, correlationId);
-      if (customerPricing[0]?.property_product_pricelist) throw new QuoteError("This customer has an Odoo pricelist. Configure POS pricing before quoting this cart.", 409);
+
     }
+    const prices = await resolveCartPrices(pricingScope, config.id, body.customerId, body.lines);
     const fiscalPositionId = Array.isArray(fiscalPosition) ? fiscalPosition[0] : null;
     let subtotal = 0;
     let total = 0;
-    const quotedLines: { productId: number; quantity: number; uomFactor: number; subtotal: number; tax: number; total: number }[] = [];
+    const quotedLines: { productId: number; quantity: number; uomFactor: number; unitPrice: number; priceSource: string; subtotal: number; tax: number; total: number }[] = [];
     for (const line of body.lines) {
       const product = productMap.get(line.productId)!;
       let taxIds = product.taxes_id;
       if (fiscalPositionId && taxIds.length) taxIds = await rpc<number[]>(session, "account.fiscal.position", "map_tax", [[fiscalPositionId], taxIds], {}, correlationId);
       const effectiveQuantity = line.quantity * (line.uomFactor ?? 1);
+      const unitPrice = prices.prices.find((price) => price.productId === product.id)!.unitPrice;
       const totals = taxIds.length
-        ? await rpc<TaxTotals>(session, "account.tax", "compute_all", [taxIds, Number(product.lst_price), null, effectiveQuantity, false, false], {}, correlationId)
-        : { total_excluded: Number(product.lst_price) * effectiveQuantity, total_included: Number(product.lst_price) * effectiveQuantity };
+        ? await rpc<TaxTotals>(session, "account.tax", "compute_all", [taxIds, unitPrice, null, effectiveQuantity, false, false], {}, correlationId)
+        : { total_excluded: unitPrice * effectiveQuantity, total_included: unitPrice * effectiveQuantity };
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) throw new QuoteError(`Could not calculate tax for ${product.name}.`);
       subtotal += totals.total_excluded;
       total += totals.total_included;
       quotedLines.push({
         productId: product.id,
         quantity: line.quantity,
+        unitPrice, priceSource: prices.priceSourceName,
         uomFactor: line.uomFactor ?? 1,
         subtotal: Math.round(totals.total_excluded * 100) / 100,
         tax: Math.round((totals.total_included - totals.total_excluded) * 100) / 100,
         total: Math.round(totals.total_included * 100) / 100,
       });
     }
+    const taxTotal = Math.round((total - subtotal) * 100) / 100;
     subtotal = Math.round(subtotal * 100) / 100;
     total = Math.round(total * 100) / 100;
 
@@ -166,10 +152,11 @@ export async function POST(request: NextRequest) {
       if (!rounding) throw new QuoteError("The register cash rounding rule is unavailable.", 409);
     }
     const amountDue = rounding ? roundCashTotal(total, rounding) : total;
-    return NextResponse.json({ subtotal, tax: Math.round((total - subtotal) * 100) / 100, total: amountDue, unroundedTotal: total, lines: quotedLines }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    const signature = priceSignature({ configId: config.id, paymentMethodId: body.paymentMethodId!, customerId: body.customerId ?? null, lines: body.lines, prices, totals: { subtotal, tax: taxTotal, total: amountDue } });
+    return NextResponse.json({ signature, priceSource: prices.priceSourceName, currency: prices.currency, subtotal, tax: taxTotal, total: amountDue, unroundedTotal: total, lines: quotedLines }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo could not calculate the cart total.";
-    const status = error instanceof QuoteError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    const status = error instanceof QuoteError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }
 }

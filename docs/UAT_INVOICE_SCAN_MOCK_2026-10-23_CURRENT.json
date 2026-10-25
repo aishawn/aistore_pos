@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-10-22T18:04:01.546Z",
+  "sourceCommit": "65b332c94fcd3387005f54d443cd7e4be6f047ee",
+  "deployment": null,
+  "target": "https://demo.orithos.com.au",
+  "status": "PASS",
+  "fixture": "invoice preview, AI capability, Odoo session and Odoo records intercepted in browser; no model call or business writes",
+  "viewport": 390,
+  "checks": [
+    "invoice AI availability retry recovers after a transient failure",
+    "Odoo session and supplier/outlet lookups are isolated by fixtures",
+    "invoice scan retry reuses the selected file after a transient OCR failure",
+    "invoice preview has no received-order save button before scanning",
+    "mock scan image preview and details render",
+    "invoice line is editable before leaving preview",
+    "Odoo purchasing links are shown and no business write was sent"
+  ],
+  "scanCalls": 2,
+  "capabilityCalls": 3,
+  "odooSessionCalls": 2,
+  "odooRecordTypes": [
+    "suppliers",
+    "outlets"
+  ],
+  "unexpectedOdooRecordTypes": [],
+  "businessWrites": []
+}

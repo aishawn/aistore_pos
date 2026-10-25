@@ -6,14 +6,17 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
-if (!new URL(base).hostname.endsWith(".localhost") && new URL(base).hostname !== "localhost") throw new Error("LOCAL_FIXTURE_TARGET_REQUIRED");
+if (!new URL(base).hostname.endsWith(".localhost")) throw new Error("LOCAL_TENANT_FIXTURE_TARGET_REQUIRED");
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_PURCHASE_BUSY_LOCAL_CURRENT.json");
 const screenshotDir = path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR ?? "docs/screenshots/purchase-busy-local");
 fs.mkdirSync(screenshotDir, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--no-proxy-server", "--host-resolver-rules=MAP demo.localhost 127.0.0.1"],
+});
 const checks = [], fixtureWrites = [], blockedWrites = [];
 try {
-  for (const width of [390, 1024, 1440]) {
+  for (const width of [320, 390, 768, 1024, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
     await context.addInitScript(() => localStorage.setItem("sf_user", JSON.stringify({ id: 1, username: "admin", name: "Fixture Admin", isAdmin: true })));

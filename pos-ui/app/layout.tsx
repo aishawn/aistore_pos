@@ -3,6 +3,18 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { ORITHOS_BRAND } from "@/components/OrithosBrandMark";
 import { AuthProvider } from "@/lib/auth";
+import { ThemeProvider } from "@/components/ThemeProvider";
+
+const themeInitScript = `(() => {
+  try {
+    const stored = localStorage.getItem("orithos-theme");
+    const theme = stored === "dark" ? "dark" : "light";
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme === "dark");
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+  } catch {}
+})()`;
 
 // Authenticated tenant pages must not be emitted as reusable static HTML.
 // Client data is scoped by the HttpOnly session cookie and tenant host.
@@ -24,11 +36,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en-AU" className="h-full antialiased">
+    <html lang="en-AU" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full bg-[var(--oh-surface)]">
-        <AuthProvider>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

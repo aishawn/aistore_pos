@@ -307,7 +307,7 @@ export function SommelierWinePage({ productId }: { productId: string }) {
             type="button"
             disabled={busy !== null}
             onClick={() => void ask(q)}
-            className="min-h-9 rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)] hover:border-blue-300 hover:text-[var(--oh-primary)] disabled:opacity-50"
+            className="min-h-9 rounded-full border border-[var(--oh-border)] bg-white px-2.5 py-1 text-[13px] text-[var(--oh-text-secondary)] hover:border-[var(--oh-primary)] hover:text-[var(--oh-primary)] disabled:opacity-50"
           >
             {q}
           </button>

@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-10-22T23:53:02.839Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Playwright runner Node v24.19.0; browser API fixtures",
+  "routeCount": 1,
+  "routeFilter": [
+    "/orders/receive/new"
+  ],
+  "viewports": [
+    320,
+    390,
+    1440
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "failures": [],
+  "checks": [
+    {
+      "route": "/orders/receive/new",
+      "viewport": 320,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/orders/receive/new",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/orders/receive/new",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    }
+  ],
+  "screenshots": [
+    "docs/screenshots/2026-10-23-receive-form-responsive/320-orders_receive_new.png",
+    "docs/screenshots/2026-10-23-receive-form-responsive/390-orders_receive_new.png",
+    "docs/screenshots/2026-10-23-receive-form-responsive/1440-orders_receive_new.png"
+  ],
+  "interceptedWrites": [],
+  "interceptedReadOnlyRecordPosts": 0,
+  "productionBusinessWrites": 0,
+  "status": "PASS",
+  "screenshotDirectory": "docs/screenshots/2026-10-23-receive-form-responsive"
+}

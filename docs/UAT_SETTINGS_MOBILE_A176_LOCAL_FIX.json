@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-10-22T12:51:16.858Z",
+  "sourceCommit": "65da2034439094142f065728fe4691f7f3585e6f",
+  "deployment": "b4719e7c51c2ffebdcd8b0916e7186480c55201d",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated read-only production UI checks; no Odoo write",
+  "status": "BLOCKED",
+  "viewports": [
+    390,
+    1440
+  ],
+  "checks": [
+    "/settings/payment: Odoo cards, source notice and no overflow at 390px",
+    "/settings/tax: Odoo cards, source notice and no overflow at 390px",
+    "/settings/registers-outlets: Odoo cards, source notice and no overflow at 390px",
+    "/settings/receipts: honest capability status and no overflow at 390px",
+    "/settings/customerdisplay: honest capability status, hardware link and no overflow at 390px",
+    "/settings/hardware: local device status and no overflow at 390px",
+    "/settings/loyalty: sample and unavailable states, no overflow at 390px",
+    "/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at 390px",
+    "/settings/surcharging: honest sample states and no checkout effect claim at 390px",
+    "/settings/statements: preview link, explicit disconnected preferences and no overflow at 390px",
+    "/settings/pricesets: live management entry, separate price-list notice and no overflow at 390px",
+    "/settings/rules: honest control status and no overflow at 390px",
+    "/settings/users: BLOCKED - mobile staff cards are missing at 390px",
+    "/settings/payment: semantic Odoo table(s), source notice and no overflow at 1440px",
+    "/settings/tax: semantic Odoo table(s), source notice and no overflow at 1440px",
+    "/settings/registers-outlets: semantic Odoo table(s), source notice and no overflow at 1440px",
+    "/settings/receipts: honest capability status and no overflow at 1440px",
+    "/settings/customerdisplay: honest capability status, hardware link and no overflow at 1440px",
+    "/settings/hardware: local device status and no overflow at 1440px",
+    "/settings/loyalty: sample and unavailable states, no overflow at 1440px",
+    "/settings/barcodes -> /utilities/barcodes: honest unavailable state, no overflow at 1440px",
+    "/settings/surcharging: honest sample states and no checkout effect claim at 1440px",
+    "/settings/statements: preview link, explicit disconnected preferences and no overflow at 1440px",
+    "/settings/pricesets: live management entry, separate price-list notice and no overflow at 1440px",
+    "/settings/rules: honest control status and no overflow at 1440px",
+    "/settings/users: BLOCKED - missing semantic staff headers at 1440px: Name, Username, Email, Role, Status, Actions"
+  ]
+}

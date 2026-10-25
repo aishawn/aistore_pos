@@ -1,0 +1,180 @@
+{
+  "generatedAt": "2026-10-22T20:14:30.827Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "runtimeCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated assistant API-only card contract; no business writes",
+  "checks": [
+    {
+      "id": "product-count",
+      "question": "How many products do we have?",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "product_count",
+      "card": {
+        "type": "product_count",
+        "title": "Product catalogue",
+        "summary": "This store has 4491 sellable products in the catalogue. Open Products to browse.",
+        "items": [],
+        "source": "odoo",
+        "generatedAt": "2026-10-22T20:14:24.979841595Z",
+        "emptyReason": null,
+        "status": "ready",
+        "ctaLabel": "Open products",
+        "ctaRoute": "/products"
+      },
+      "writeRequests": []
+    },
+    {
+      "id": "product-count-zh",
+      "question": "商品总数",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "product_count",
+      "card": {
+        "type": "product_count",
+        "title": "Product catalogue",
+        "summary": "This store has 4491 sellable products in the catalogue. Open Products to browse.",
+        "items": [],
+        "source": "odoo",
+        "generatedAt": "2026-10-22T20:14:26.020851106Z",
+        "emptyReason": null,
+        "status": "ready",
+        "ctaLabel": "Open products",
+        "ctaRoute": "/products"
+      },
+      "writeRequests": []
+    },
+    {
+      "id": "replenishment",
+      "question": "What should I restock?",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "navigate",
+      "card": {
+        "type": "replenishment",
+        "title": "Replenishment suggestions",
+        "summary": "Top restock suggestions (21d cover): 38 items need order.",
+        "items": [
+          {
+            "label": "C/DRY 330ML — order 66 (≈0.0d left)"
+          },
+          {
+            "label": "C/DRAUGHT CAN 375ML — order 26 (≈0.0d left)"
+          },
+          {
+            "label": "C/DRY CAN 375ML — order 25 (≈0.0d left)"
+          }
+        ],
+        "source": "odoo",
+        "generatedAt": "2026-10-22T20:14:27.351375115Z",
+        "emptyReason": null,
+        "status": "ready",
+        "ctaLabel": "Open workflow",
+        "ctaRoute": "/stock/replenishment"
+      },
+      "writeRequests": []
+    },
+    {
+      "id": "pricing",
+      "question": "Which prices should I review?",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "navigate",
+      "card": {
+        "type": "pricing",
+        "title": "Price review suggestions",
+        "summary": "Prices that need review (target ≈30% net margin):",
+        "items": [
+          {
+            "label": "C/DRY 330ML — $4.00 → suggest $80.15"
+          },
+          {
+            "label": "CORONA EXTRA 355ML — $5.00 → suggest $85.36"
+          },
+          {
+            "label": "VB CANS 375ML — $4.00 → suggest $85.36"
+          }
+        ],
+        "source": "odoo",
+        "generatedAt": "2026-10-22T20:14:28.834267492Z",
+        "emptyReason": null,
+        "status": "ready",
+        "ctaLabel": "Open price review",
+        "ctaRoute": "/stock/capped-pricing"
+      },
+      "writeRequests": []
+    },
+    {
+      "id": "sommelier",
+      "question": "Recommend a red wine under $30",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "navigate",
+      "card": {
+        "type": "sommelier",
+        "title": "Wine recommendations",
+        "summary": "Here are in-stock picks (red) under $30.00:",
+        "items": [
+          {
+            "label": "Great Value — PIZZINI SANGIOVESE SHIRAZ 750M — $19.99"
+          },
+          {
+            "label": "Best Match — RARE PENNY SHIRAZ — $13.63"
+          },
+          {
+            "label": "Premium Choice — JIMMY PINOT NOIR 750ML — $22.72"
+          }
+        ],
+        "source": "catalogue",
+        "generatedAt": "2026-10-22T20:14:30.130645017Z",
+        "emptyReason": null,
+        "status": "ready",
+        "ctaLabel": "Open workflow",
+        "ctaRoute": "/sommelier"
+      },
+      "writeRequests": []
+    },
+    {
+      "id": "guided-customer",
+      "question": "Create a customer",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "card": null,
+      "writeRequests": []
+    },
+    {
+      "id": "guided-product-edit",
+      "question": "编辑这个产品",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "card": null,
+      "writeRequests": []
+    },
+    {
+      "id": "guided-receive",
+      "question": "Receive this stock",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "card": null,
+      "writeRequests": []
+    },
+    {
+      "id": "guided-price-save",
+      "question": "保存这些价格",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "card": null,
+      "writeRequests": []
+    }
+  ],
+  "passed": 0,
+  "failed": 9,
+  "writeRequests": [
+    "none: assistant API only"
+  ]
+}

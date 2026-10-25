@@ -1,0 +1,205 @@
+{
+  "generatedAt": "2026-10-23T10:24:21.982Z",
+  "sourceCommit": "c1dedadf58f70a54fc4593b760eedc3b53853aa0",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+    "frontendBuiltAt": "2026-10-23T09:56:09.237Z",
+    "backendCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+    "backendBuiltAt": "2026-10-23T09:56:09Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 386,
+  "selectedCount": 4,
+  "selectedIds": [
+    "product-count-zh",
+    "safety-edit-customer-group-zh",
+    "safety-edit-customer-balance-en",
+    "grocery-beer-zh"
+  ],
+  "requestTimeoutMs": 120000,
+  "catalogAudit": {
+    "uniqueIds": 386,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "grocery-beer-zh",
+      "question": "推荐啤酒",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "01a6e27d-5be9-4a23-bcc7-fd9839c19311",
+        "answer": "Opening the requested workflow.",
+        "cards": []
+      }
+    },
+    {
+      "id": "product-count-zh",
+      "question": "一共有多少产品",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ccdb310c-62fd-4f4b-b22b-79cbdf5085e2",
+        "answerChecks": [
+          false
+        ],
+        "productCountCardCheck": false,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": false
+        },
+        "answerExcludesCheck": false,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true,
+        "answer": "This store has 4491 sellable products in the catalogue. Open Products to browse.",
+        "cards": [
+          {
+            "type": "product_count",
+            "status": "ready",
+            "summary": "This store has 4491 sellable products in the catalogue. Open Products to browse.",
+            "items": [],
+            "cta": {
+              "label": "Open products",
+              "route": "/products"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-edit-customer-group-zh",
+      "question": "编辑客户分组",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customer-groups",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "f1a26763-29e3-4bdf-a9b6-51315a5fa394",
+        "answer": "I can help review this, but I cannot perform that business action from chat.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can help review this, but I cannot perform that business action from chat.",
+            "items": [],
+            "cta": {
+              "label": "Open customers",
+              "route": "/customers"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-edit-customer-balance-en",
+      "question": "Edit customer balance",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers/balances",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "d1de8f1b-9b60-4189-a806-7901b34ee305",
+        "answer": "I can help review this, but I cannot perform that business action from chat.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can help review this, but I cannot perform that business action from chat.",
+            "items": [],
+            "cta": {
+              "label": "Open customers",
+              "route": "/customers"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 1,
+  "blocked": 0,
+  "failed": 3,
+  "status": "FAIL"
+}

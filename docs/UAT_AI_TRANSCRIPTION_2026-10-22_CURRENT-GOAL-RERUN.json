@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-22T11:56:20.889Z",
+  "sourceCommit": "22cbd19b24f27e0a3b5c6f29e53e75cc8fb10597",
+  "worktreeDirty": true,
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated synthetic speech transcription only; no assistant submission or business writes",
+  "writeBusinessData": false,
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "transcription capability config",
+      "status": "PASS",
+      "detail": "available=true"
+    },
+    {
+      "name": "asr-en-store-question",
+      "status": "BLOCKED",
+      "detail": "synthetic speech fixture was not supplied"
+    },
+    {
+      "name": "asr-zh-store-question",
+      "status": "BLOCKED",
+      "detail": "synthetic speech fixture was not supplied"
+    }
+  ],
+  "passed": 2,
+  "blocked": 2,
+  "failed": 0,
+  "status": "BLOCKED"
+}

@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-22T19:53:32.159Z",
+  "sourceCommit": "e81145d12a70cb74842ec51f29a3fe61ecf85e04",
+  "worktreeDirty": true,
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated synthetic speech transcription only; no assistant submission or business writes",
+  "writeBusinessData": false,
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "transcription capability config",
+      "status": "PASS",
+      "detail": "available=true"
+    },
+    {
+      "name": "asr-en-store-question",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "apiCode": 0,
+        "language": "en",
+        "transcriptMatchedExpectedTerm": true,
+        "transcriptLength": 24,
+        "transcriptOmitted": true
+      }
+    },
+    {
+      "name": "asr-zh-store-question",
+      "status": "PASS",
+      "detail": {
+        "httpStatus": 200,
+        "apiCode": 0,
+        "language": "zh",
+        "transcriptMatchedExpectedTerm": true,
+        "transcriptLength": 10,
+        "transcriptOmitted": true
+      }
+    }
+  ],
+  "passed": 4,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

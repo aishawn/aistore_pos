@@ -1,0 +1,211 @@
+{
+  "generatedAt": "2026-10-22T18:53:18.967Z",
+  "sourceCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "4493163e11d76a5144fca1b5e9c07dc9ea9ebcf9",
+    "frontendBuiltAt": "2026-10-22T18:45:58.284Z",
+    "backendCommit": "4493163e11d76a5144fca1b5e9c07dc9ea9ebcf9",
+    "backendBuiltAt": "2026-10-22T18:50:19Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 323,
+  "selectedCount": 7,
+  "selectedIds": [
+    "recommendation-en",
+    "recommendation-colloquial-en",
+    "recommendation-find-en",
+    "recommendation-direct-en",
+    "recommendation-party-en",
+    "recommendation-pairing-en",
+    "help-capabilities-how-en"
+  ],
+  "checks": [
+    {
+      "id": "recommendation-en",
+      "question": "Recommend a red wine under $30",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "145e7e4b-1653-457e-ba9c-49ebe36e6d9b"
+      }
+    },
+    {
+      "id": "recommendation-colloquial-en",
+      "question": "What wine goes with steak?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "5815412c-77ad-4fa2-b1e4-84351992b793"
+      }
+    },
+    {
+      "id": "recommendation-find-en",
+      "question": "Find me a wine for steak",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "8d57822e-7ce7-40fd-9567-55f4a3195cd3"
+      }
+    },
+    {
+      "id": "recommendation-direct-en",
+      "question": "Recommend wine for steak",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a71e787b-0d32-4120-9447-987c5e19b5c3"
+      }
+    },
+    {
+      "id": "recommendation-party-en",
+      "question": "Suggest white wine for a party",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "13db9b59-031c-4ce1-9a2f-7e1f3869bee2"
+      }
+    },
+    {
+      "id": "recommendation-pairing-en",
+      "question": "Pair a wine with lamb",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7e7b5ad1-59c8-4858-9b76-964694311048"
+      }
+    },
+    {
+      "id": "help-capabilities-how-en",
+      "question": "How can you help?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c4df3775-5947-4965-ac7b-bd8ae6ec71e3"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 7,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

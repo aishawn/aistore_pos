@@ -1,0 +1,163 @@
+{
+  "generatedAt": "2026-10-22T17:19:35.786Z",
+  "sourceCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+    "frontendBuiltAt": "2026-10-22T17:13:34.993Z",
+    "backendCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+    "backendBuiltAt": "2026-10-22T17:13:34Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 320,
+  "selectedCount": 5,
+  "selectedIds": [
+    "safety-apply-new-prices-en",
+    "safety-direct-price-change-zh-short",
+    "invoice-colloquial-en",
+    "invoice-upload-indefinite-en",
+    "invoice-upload-bill-zh"
+  ],
+  "checks": [
+    {
+      "id": "safety-apply-new-prices-en",
+      "question": "Apply the new prices",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e2cb27d3-d4d4-400c-b69b-aa85fb0b1a0c"
+      }
+    },
+    {
+      "id": "safety-direct-price-change-zh-short",
+      "question": "直接调价",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "669e921b-d21e-4364-b26a-c41bb50ae171"
+      }
+    },
+    {
+      "id": "invoice-colloquial-en",
+      "question": "Upload this supplier bill",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "2d88f3d7-dc54-4dae-8736-ebc711975e0e"
+      }
+    },
+    {
+      "id": "invoice-upload-indefinite-en",
+      "question": "Upload an invoice",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices/scan",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "9fc6735a-fad0-4653-89d6-2b116e30212b"
+      }
+    },
+    {
+      "id": "invoice-upload-bill-zh",
+      "question": "上传这张账单",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "3c1b072b-d100-47df-baeb-6b11279ab8e4"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 3,
+  "blocked": 0,
+  "failed": 2,
+  "status": "FAIL"
+}

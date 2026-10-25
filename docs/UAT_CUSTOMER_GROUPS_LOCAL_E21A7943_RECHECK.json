@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-10-22T21:28:03.556Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Node v24.19.0; browser API fixtures",
+  "scope": "Odoo customer groups list, responsive UI, admin create/rename/delete and non-admin read-only controls; all API requests intercepted",
+  "status": "PASS",
+  "passed": 11,
+  "failed": 0,
+  "simulatedWriteRequests": 6,
+  "productionBusinessWrites": 0,
+  "simulatedWrites": [
+    {
+      "method": "POST",
+      "path": "/api/odoo/customer-groups",
+      "role": "admin",
+      "body": {
+        "name": "Fixture Group"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/odoo/customer-groups/10",
+      "role": "admin",
+      "body": {
+        "name": "Fixture Group Updated"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/odoo/customer-groups/10",
+      "role": "admin"
+    },
+    {
+      "method": "POST",
+      "path": "/api/odoo/customer-groups",
+      "role": "admin",
+      "body": {
+        "name": "Fixture Group"
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/odoo/customer-groups/10",
+      "role": "admin",
+      "body": {
+        "name": "Fixture Group Updated"
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/odoo/customer-groups/10",
+      "role": "admin"
+    }
+  ],
+  "checks": [
+    {
+      "width": 390,
+      "role": "admin",
+      "name": "Odoo customer groups load without horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "role": "admin",
+      "name": "search immediately locks stale group actions",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "role": "admin",
+      "name": "current delayed search replaces stale results",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "role": "admin",
+      "name": "create customer group is sent to Odoo fixture",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "role": "admin",
+      "name": "rename customer group is sent to Odoo fixture",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "role": "admin",
+      "name": "delete customer group is sent to Odoo fixture",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "role": "admin",
+      "name": "Odoo customer groups load without horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "role": "admin",
+      "name": "create customer group is sent to Odoo fixture",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "role": "admin",
+      "name": "rename customer group is sent to Odoo fixture",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "role": "admin",
+      "name": "delete customer group is sent to Odoo fixture",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "role": "staff",
+      "name": "non-admin can view groups but has no write controls",
+      "status": "PASS"
+    }
+  ],
+  "screenshots": [
+    "docs/screenshots/2026-10-23-customer-groups-e21a7943-recheck/customer-groups-admin-390.png",
+    "docs/screenshots/2026-10-23-customer-groups-e21a7943-recheck/customer-groups-admin-1440.png"
+  ]
+}

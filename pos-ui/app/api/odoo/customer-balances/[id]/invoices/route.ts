@@ -1,3 +1,4 @@
+import { companyDomain } from "@/lib/customer-access";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
@@ -34,10 +35,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     const partners = await scope.rpc<Array<{ id: number; name: string; credit: number }>>("res.partner", "search_read", [[
       ["id", "=", partnerId],
-      ["customer_rank", ">", 0],
+      ["customer_rank", ">", 0], ...companyDomain(scope.companyIds),
     ]], { fields: ["id", "name", "credit"], limit: 1 });
     if (!partners?.length) return NextResponse.json({ message: "Customer was not found" }, { status: 404 });
 
+    const limit = Math.min(100, Math.max(1, Math.floor(Number(request.nextUrl.searchParams.get("limit")) || 50)));
+    const offset = Math.max(0, Math.floor(Number(request.nextUrl.searchParams.get("offset")) || 0));
+    if (!Number.isSafeInteger(offset)) return NextResponse.json({ message: "Invalid pagination" }, { status: 400 });
     const openOnly = request.nextUrl.searchParams.get("openOnly") !== "false";
     const domain: unknown[] = [
       ["partner_id", "=", partnerId],
@@ -47,29 +51,29 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       ["company_id", "=", false],
       ["company_id", "in", scope.companyIds],
     ];
-    if (openOnly) domain.push(["payment_state", "in", ["not_paid", "partial", "in_payment"]]);
+    if (openOnly) domain.push(["amount_residual", "!=", 0]);
 
     const rows = await scope.rpc<InvoiceRow[]>("account.move", "search_read", [domain], {
       fields: ["id", "name", "move_type", "invoice_date", "invoice_date_due", "amount_total", "amount_residual", "payment_state", "state", "currency_id"],
-      limit: 50,
+      limit: limit + 1, offset,
       order: "invoice_date_due asc, id desc",
     });
 
-    const items = (rows ?? []).map((row) => ({
+    const items = (rows ?? []).slice(0, limit).map((row) => ({
       id: row.id,
       name: row.name,
       moveType: row.move_type,
       invoiceDate: row.invoice_date || null,
       dueDate: row.invoice_date_due || null,
-      amountTotal: Number(row.amount_total) || 0,
-      amountResidual: Number(row.amount_residual) || 0,
+      amountTotal: (row.move_type === "out_refund" ? -1 : 1) * Math.abs(Number(row.amount_total) || 0),
+      amountResidual: (row.move_type === "out_refund" ? -1 : 1) * Math.abs(Number(row.amount_residual) || 0),
       paymentState: row.payment_state,
       currency: Array.isArray(row.currency_id) ? row.currency_id[1] : null,
     }));
 
     return NextResponse.json({
       customer: { id: partners[0].id, name: partners[0].name, credit: Number(partners[0].credit) || 0 },
-      items,
+      items, limit, offset, hasNext: rows.length > limit,
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo customer invoices are unavailable";

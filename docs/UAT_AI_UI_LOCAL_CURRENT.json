@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-22T09:02:56.233Z",
+  "sourceCommit": "043a8a0df6a0d586463db9d86cc34b19065a6276",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "apiRequestContext.post: socket hang up\nCall log:\n\u001b[2m  - → POST https://demo.orithos.com.au/api/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.7339.16 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - Origin: https://demo.orithos.com.au\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 98\u001b[22m\n"
+    }
+  ],
+  "results": [
+    {
+      "failure": "apiRequestContext.post: socket hang up\nCall log:\n\u001b[2m  - → POST https://demo.orithos.com.au/api/auth/login\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.7339.16 Safari/537.36\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - Origin: https://demo.orithos.com.au\u001b[22m\n\u001b[2m    - content-type: application/json\u001b[22m\n\u001b[2m    - content-length: 98\u001b[22m\n"
+    }
+  ]
+}

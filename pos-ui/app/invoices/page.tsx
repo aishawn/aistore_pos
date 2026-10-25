@@ -1,7 +1,2 @@
-"use client";
-
-import { InvoiceScansListPage } from "@/components/admin/InvoiceScansListPage";
-
-export default function InvoicesHubPage() {
-  return <InvoiceScansListPage />;
-}
+import { redirect } from "next/navigation";
+export default function LegacyRoute() { redirect("/purchases/odoo?tab=invoices"); }

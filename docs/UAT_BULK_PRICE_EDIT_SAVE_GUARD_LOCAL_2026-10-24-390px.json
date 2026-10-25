@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-23T00:51:29.525Z",
+  "sourceCommit": "2b6468c17c9ce8905e9f161c1f2424c0aa7fef2a",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v24.19.0",
+  "viewport": 390,
+  "environment": "local-dev-fixtures",
+  "target": "http://demo.localhost:3101",
+  "scope": "bulk price edit save error containment; PATCH intercepted; no business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "bulk page loads",
+      "status": "PASS",
+      "evidence": "200"
+    },
+    {
+      "name": "deep-link search is usable",
+      "status": "PASS",
+      "evidence": "DEMO-SHIRAZ"
+    },
+    {
+      "name": "unknown save is announced",
+      "status": "PASS",
+      "evidence": "read-back result is explicitly pending confirmation"
+    },
+    {
+      "name": "uncertain value stays visible",
+      "status": "PASS",
+      "evidence": "13.50"
+    },
+    {
+      "name": "automatic retry is disabled",
+      "status": "PASS",
+      "evidence": "[{\"list_price\":13.5,\"expectedListPrice\":12}]"
+    },
+    {
+      "name": "no page errors",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "patchAttempts": 1,
+  "patches": [
+    {
+      "list_price": 13.5,
+      "expectedListPrice": 12
+    }
+  ]
+}

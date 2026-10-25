@@ -1,0 +1,117 @@
+{
+  "passed": true,
+  "scope": "Local browser fixture only; no live Odoo acceptance",
+  "liveBusinessWrites": 0,
+  "checks": [
+    {
+      "width": 390,
+      "name": "server filters and directory rows"
+    },
+    {
+      "width": 390,
+      "name": "customer detail and Escape"
+    },
+    {
+      "width": 390,
+      "name": "embedded group management"
+    },
+    {
+      "width": 390,
+      "name": "quick create advanced fields and retry preservation"
+    },
+    {
+      "width": 390,
+      "name": "read-only price rules and assigned customers"
+    },
+    {
+      "width": 390,
+      "name": "credit signs currencies and invoice pagination"
+    },
+    {
+      "width": 390,
+      "name": "gift card currency"
+    },
+    {
+      "width": 390,
+      "name": "gift capability distinguishes missing module from failure"
+    },
+    {
+      "width": 390,
+      "name": "legacy group route opens integrated manager"
+    },
+    {
+      "width": 768,
+      "name": "server filters and directory rows"
+    },
+    {
+      "width": 768,
+      "name": "customer detail and Escape"
+    },
+    {
+      "width": 768,
+      "name": "embedded group management"
+    },
+    {
+      "width": 768,
+      "name": "quick create advanced fields and retry preservation"
+    },
+    {
+      "width": 768,
+      "name": "read-only price rules and assigned customers"
+    },
+    {
+      "width": 768,
+      "name": "credit signs currencies and invoice pagination"
+    },
+    {
+      "width": 768,
+      "name": "gift card currency"
+    },
+    {
+      "width": 768,
+      "name": "gift capability distinguishes missing module from failure"
+    },
+    {
+      "width": 768,
+      "name": "legacy group route opens integrated manager"
+    },
+    {
+      "width": 1440,
+      "name": "server filters and directory rows"
+    },
+    {
+      "width": 1440,
+      "name": "customer detail and Escape"
+    },
+    {
+      "width": 1440,
+      "name": "embedded group management"
+    },
+    {
+      "width": 1440,
+      "name": "quick create advanced fields and retry preservation"
+    },
+    {
+      "width": 1440,
+      "name": "read-only price rules and assigned customers"
+    },
+    {
+      "width": 1440,
+      "name": "credit signs currencies and invoice pagination"
+    },
+    {
+      "width": 1440,
+      "name": "gift card currency"
+    },
+    {
+      "width": 1440,
+      "name": "gift capability distinguishes missing module from failure"
+    },
+    {
+      "width": 1440,
+      "name": "legacy group route opens integrated manager"
+    }
+  ],
+  "errors": [],
+  "simulatedWrites": 6
+}

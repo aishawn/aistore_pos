@@ -1,0 +1,128 @@
+{
+  "generatedAt": "2026-10-22T01:47:22.655Z",
+  "sourceCommit": "3fc821cde40f70bb05857909ac0f505a8e56a014",
+  "worktreeDirty": true,
+  "deployment": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+    "frontendBuiltAt": "2026-10-22T01:33:13.690Z",
+    "backendCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+    "backendBuiltAt": "2026-10-22T01:33:13Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 5,
+  "selectedIds": [
+    "replenishment-restock-en",
+    "pricing-en",
+    "recommendation-en",
+    "invoice-en",
+    "sales-paraphrase-show-today"
+  ],
+  "checks": [
+    {
+      "id": "replenishment-restock-en",
+      "question": "What should I restock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "correlationId": "4115d86c-3145-40e7-816f-37734b0ca8f9"
+      }
+    },
+    {
+      "id": "pricing-en",
+      "question": "Which prices should I review?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/capped-pricing",
+        "correlationId": "53b616ce-9ea8-421d-91eb-20fee22c0b88"
+      }
+    },
+    {
+      "id": "recommendation-en",
+      "question": "Recommend a red wine under $30",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/sommelier",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "correlationId": "23bcf08d-5d30-4ead-ba9a-11efb863693f"
+      }
+    },
+    {
+      "id": "invoice-en",
+      "question": "Scan this supplier invoice",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "correlationId": "6d9780b6-cb5a-4181-89d2-271134f879e3"
+      }
+    },
+    {
+      "id": "sales-paraphrase-show-today",
+      "question": "Show me today's sales",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "67245da5-6890-49d2-97b4-ddb9910256d2"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 5,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

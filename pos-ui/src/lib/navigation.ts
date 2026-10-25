@@ -23,12 +23,9 @@ export const NAVIGATION: NavEntry[] = [
     group: {
       label: "Stock",
       items: [
-        { label: "Products", href: "/products" },
-        { label: "Classifications", href: "/classifications" },
-        { label: "Suppliers", href: "/suppliers" },
-        { label: "Orders & Invoices", href: "/orders" },
-        { label: "Stocktake", href: "/stock/stocktake" },
-        { label: "More", href: "/stock/more" },
+        { label: "Products", href: "/products/odoo" },
+        { label: "Purchasing", href: "/purchases/odoo" },
+        { label: "Suppliers", href: "/suppliers/odoo" },
       ],
     },
   },

@@ -1,3 +1,5 @@
+import { isLocalPreviewSession } from "./api";
+
 export type OdooRecordType =
   | "products"
   | "purchaseProducts"
@@ -99,6 +101,7 @@ export interface OdooPricelistRecord {
 }
 
 export interface OdooCustomerGroupRecord {
+  writable?: boolean;
   id: number;
   name: string;
   color: number;
@@ -114,6 +117,7 @@ export interface OdooCustomerBalanceRecord {
   email: string | null;
   ref: string | null;
   credit: number;
+  currency?: string | null;
   totalInvoiced: number;
   pricelist: string | null;
 }
@@ -134,6 +138,7 @@ export interface OdooGiftCardRecord {
   id: number;
   code: string;
   balance: number;
+  currency?: string | null;
   partner: string | null;
   program: string | null;
   expiry: string | null;
@@ -309,6 +314,7 @@ export interface OdooPosBootstrap {
 }
 
 export interface OdooCheckoutRequest {
+  expectedQuote?: string;
   externalPaymentConfirmed?: boolean;
   configId: number;
   paymentMethodId: number;
@@ -335,11 +341,14 @@ export interface OdooCheckoutResult {
 }
 
 export interface OdooCheckoutQuote {
+  signature: string;
+  priceSource?: string;
+  currency?: string;
   subtotal: number;
   tax: number;
   total: number;
   unroundedTotal: number;
-  lines: { productId: number; quantity: number; uomFactor: number; subtotal: number; tax: number; total: number }[];
+  lines: { productId: number; quantity: number; uomFactor: number; unitPrice?: number; priceSource?: string; subtotal: number; tax: number; total: number }[];
 }
 
 export interface OdooCloseSessionResult {
@@ -404,7 +413,7 @@ async function fetchOdooApi(input: RequestInfo | URL, init?: RequestInit, safeTo
   const method = init?.method?.toUpperCase() ?? (input instanceof Request ? input.method.toUpperCase() : "GET");
   const canReplay = ["GET", "HEAD", "OPTIONS"].includes(method) || safeToRetry;
   let response = await fetch(input, init);
-  if (response.status !== 401) return response;
+  if (response.status !== 401 || isLocalPreviewSession()) return response;
 
   // Odoo-backed routes use their own session cookie. Recover it before refreshing
   // the unrelated Orithos access token, then replay only requests proven safe.
@@ -583,7 +592,7 @@ export function logoutFromOdoo() {
 /** Read a named, server-allowlisted dataset through the user's Odoo session. */
 export async function searchOdooRecords<T>(
   type: OdooRecordType,
-  options: { query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
+  options: { groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: import("./product-catalogue").CatalogueView; status?: OdooSalesStatusFilter; period?: OdooSalesPeriodFilter } = {},
 ): Promise<OdooPage<T>> {
   const response = await fetchOdooApi("/api/odoo/records", {
     method: "POST",
@@ -592,11 +601,14 @@ export async function searchOdooRecords<T>(
     cache: "no-store",
     body: JSON.stringify({
       type,
+      groupId: options.groupId,
+      pricelistId: options.pricelistId,
       query: options.query,
       limit: options.limit,
       offset: options.offset,
       categoryId: options.categoryId,
       stockOnly: options.stockOnly,
+      catalogueView: options.catalogueView,
       status: options.status,
       period: options.period,
     }),
@@ -908,11 +920,12 @@ export async function getOdooCustomerBalances(options: { query?: string; owingOn
   return readOdooListPage<OdooCustomerBalanceRecord>(`/api/odoo/customer-balances?${params}`);
 }
 
-export async function getOdooCustomerInvoices(customerId: number, openOnly = true): Promise<{
+export async function getOdooCustomerInvoices(customerId: number, openOnly = true, offset = 0, limit = 50): Promise<{
   customer: { id: number; name: string; credit: number };
   items: OdooCustomerInvoiceRecord[];
+  hasNext: boolean;
 }> {
-  const params = new URLSearchParams({ openOnly: openOnly ? "true" : "false" });
+  const params = new URLSearchParams({ openOnly: openOnly ? "true" : "false", offset: String(offset), limit: String(limit) });
   const response = await fetchOdooApi(`/api/odoo/customer-balances/${customerId}/invoices?${params}`, {
     credentials: "same-origin",
     cache: "no-store",
@@ -920,12 +933,13 @@ export async function getOdooCustomerInvoices(customerId: number, openOnly = tru
   const payload = await response.json().catch(() => null) as {
     customer?: { id: number; name: string; credit: number };
     items?: OdooCustomerInvoiceRecord[];
+    hasNext?: boolean;
     message?: string;
   } | null;
   if (!response.ok || !payload?.customer || !Array.isArray(payload.items)) {
     throw new OdooApiError(payload?.message || `Customer invoices failed (${response.status})`, response.status || 502);
   }
-  return { customer: payload.customer, items: payload.items };
+  return { customer: payload.customer, items: payload.items, hasNext: Boolean(payload.hasNext) };
 }
 
 export async function getOdooGiftCards(query?: string, offset = 0, limit = 40): Promise<{

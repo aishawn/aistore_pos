@@ -1,5 +1,37 @@
 # AI Assistant Function-Spec Coverage
 
+## 2026-10-24 Barcode/SKU and “查不到” coverage
+
+The current executable catalogue has **360 unique utterances**. New cases cover
+product names, barcodes and SKUs in English and Chinese, plus unqualified stock
+clarification. The candidate router maps the identifier forms to read-only
+`report_stock`; the report query matches Odoo `name`, `barcode`, and
+`default_code` while preserving tenant/company scope. Empty identifiers remain
+`qa` clarification and never invent a quantity.
+
+The 12-case online diagnostic returned **0 PASS / 0 BLOCKED / 12 FAIL** on
+runtime `0e4a48ea`, which does not match candidate source `e21a7943`; it is
+therefore a served-runtime gap report, not candidate acceptance. Evidence:
+`UAT_AI_STOCK_IDENTIFIER_CLARIFICATION_ONLINE_2026-10-24_RUNTIME-0E4A48EA.json`.
+The full source-matched rerun remains pending the Java 21 Dokploy exact-SHA gate.
+
+## 2026-10-24 Natural Stock Wording Expansion (current source)
+
+The executable catalogue now contains **357 unique assistant utterances**. This
+iteration adds nine read-only stock controls for common “stock of/for” wording
+in English and Chinese, plus three unqualified empty-inventory questions. The
+new stock controls must extract only the product name (`report_stock`, empty
+route); they must never pass `stock of ...` as the product query. The empty
+inventory controls return `qa`, ask for a product name or barcode, and never
+invent zero stock or navigate to a write workflow.
+
+Focused Java regression coverage was added in
+`AssistantFastPathRouterTest.extractsProductFromExplicitStockOfPhrasing` and
+`asksForAProductInsteadOfGuessingWhenStockQuestionHasNoName`. The full online
+catalogue must be rerun only after the candidate is frozen, passes the required
+Java 21 Dokploy `mvn -B clean verify` gate, and the deployed runtime SHA matches
+the tested source. No business writes are part of these cases.
+
 ## 2026-10-22 聊天摘要 + CTA / 可读性（源码覆盖）
 
 补货、调价、侍酒工作流在规范上由「仅跳页」调整为 **聊天 Top‑3 摘要 + 底栏 CTA**

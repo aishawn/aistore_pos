@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-22T18:37:16.742Z",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "a44fd650d6cdd7a3f1e3669de2f176d783739e90",
+  "runtime": {
+    "frontendCommit": "01f96f98d79f61e66f1d1d7d8066b179f8bd8307",
+    "backendCommit": "01f96f98d79f61e66f1d1d7d8066b179f8bd8307",
+    "matchesSourceCommit": false
+  },
+  "login": {
+    "status": 200,
+    "authenticated": true
+  },
+  "localDatabaseGate": {
+    "configured": true,
+    "matchesExpectedIsolation": true
+  },
+  "remoteUatAttestation": {
+    "httpStatus": 409,
+    "isolated": false,
+    "databaseMatchesLocalIsolation": false,
+    "databaseNameRecorded": false
+  },
+  "writeGate": "BLOCKED",
+  "businessWrites": 0
+}

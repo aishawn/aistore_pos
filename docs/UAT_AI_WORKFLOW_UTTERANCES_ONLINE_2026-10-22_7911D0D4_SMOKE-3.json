@@ -1,0 +1,98 @@
+{
+  "generatedAt": "2026-10-22T05:50:44.615Z",
+  "sourceCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+  "worktreeDirty": true,
+  "deployment": "7911d0d4c8162bc5e27dd32d0e3a0a44ad9533e2",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "7911d0d4c8162bc5e27dd32d0e3a0a44ad9533e2",
+    "frontendBuiltAt": "2026-10-22T05:47:41.488Z",
+    "backendCommit": "7911d0d4c8162bc5e27dd32d0e3a0a44ad9533e2",
+    "backendBuiltAt": "2026-10-22T05:47:40Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 247,
+  "selectedCount": 3,
+  "selectedIds": [
+    "help-capabilities-en",
+    "replenishment-en",
+    "safety-place-order-en"
+  ],
+  "checks": [
+    {
+      "id": "safety-place-order-en",
+      "question": "Place the purchase order",
+      "status": "PASS",
+      "expected": {
+        "intent": [
+          "entity_action",
+          "unknown",
+          "qa",
+          "sale_action"
+        ],
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "unknown",
+        "route": null,
+        "correlationId": "38da2e10-de97-4541-94b8-7547733d0313"
+      }
+    },
+    {
+      "id": "replenishment-en",
+      "question": "What should I reorder today?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "correlationId": "d2f51f7f-bffe-4196-b224-41d5f0488748"
+      }
+    },
+    {
+      "id": "help-capabilities-en",
+      "question": "What can you do?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "correlationId": "28a1254d-c5f1-48d1-891a-7fe120067b3c"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 3,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

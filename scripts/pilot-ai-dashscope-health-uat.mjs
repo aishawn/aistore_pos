@@ -70,6 +70,9 @@ if (!apiKey) {
       status: "BLOCKED",
       evidence: {
         errorType: error instanceof Error ? error.name : "UnknownError",
+        networkErrorCode: error && typeof error === "object" && "cause" in error
+          ? error.cause?.code ?? null
+          : null,
         elapsedMs: Date.now() - startedAt,
         responseBodyAndCredentialOmitted: true,
       },

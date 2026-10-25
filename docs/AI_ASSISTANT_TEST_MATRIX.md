@@ -1,5 +1,238 @@
 # AI Assistant Test Matrix
 
+## 2026-10-24 Stock identifier diagnostic
+
+The executable catalogue now contains **360 unique cases**, including barcode
+and SKU questions (`查条码 9311234567890`, `找 SKU VB-375`, `Check barcode ...`,
+`Find SKU ...`). A focused read-only run of 12 stock/clarification cases against
+Demo returned **0 PASS / 0 BLOCKED / 12 FAIL**. The served runtime is
+`0e4a48ead3e32c57623ed726e3583cee5945d0ca`; the test runner source was
+`e21a794356594de3aed15805664dc0fcac482c5f` (`matchesSourceCommit=false`).
+The shared branch later advanced to `7fd56990` through a documentation-only
+commit; backend candidate changes remain dirty on top of that tip.
+Failures are expected runtime/source mismatch diagnostics: the old runtime sends
+stock-of/for and Chinese stock forms to `entity_action`/`search_product`, and
+barcode/SKU forms to the classifier. The candidate deterministic router and
+Odoo name/barcode/SKU domain fix are not yet online. Evidence:
+`UAT_AI_STOCK_IDENTIFIER_CLARIFICATION_ONLINE_2026-10-24_RUNTIME-0E4A48EA.json`.
+All requests were Assistant API-only with zero business writes.
+
+## 2026-10-24 Current Source Expansion Rerun
+
+The executable catalogue contains **357 unique cases**. The latest read-only
+Demo run returned **327 PASS / 0 BLOCKED / 29 FAIL** with
+`writeRequests=["none: assistant API only"]`. The 29 failures are isolated to
+the old runtime: 3 bulk-pricing phrases, 7 explicit stock-of/for product
+phrases, and 19 unqualified empty-stock clarification phrases. The candidate
+source has deterministic coverage and focused Java assertions for these cases.
+
+Runtime frontend/backend is `0e4a48ead3e32c57623ed726e3583cee5945d0ca`; source
+is `e21a794356594de3aed15805664dc0fcac482c5f`, so the result is diagnostic only.
+Companion read-only suites passed: features **14/14**, availability **3/3**,
+routes **9/9**, and reports **23/23**. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T231906600Z_e21a7943.json` plus the
+current suite outputs. Candidate acceptance still requires the Java 21 exact-SHA
+gate and a matching deployment.
+
+## 2026-10-24 Current Full Rerun
+
+The executable catalogue now contains **344 cases**, including eight new
+unqualified stock “no results/blank search” variants and four bulk-pricing
+navigation variants. The read-only Demo run returned **325 PASS / 0 BLOCKED /
+19 FAIL**; 16 failures are stock clarification cases and 3 are bulk-pricing
+phrases missing from the served runtime. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_CURRENT_FULL-344-RERUN.json`.
+
+Runtime frontend/backend is `0e4a48ead3e32c57623ed726e3583cee5945d0ca`; source
+is `e21a794356594de3aed15805664dc0fcac482c5f`, so this is a runtime diagnosis,
+not candidate acceptance. AI feature surface is **14/14 PASS** and the old
+card contract is **0/9 PASS**. Companion availability/routes/surface-auth/reports
+checks are **3/3**, **9/9**, **11/11**, and **23/23 PASS**. No business writes were issued. Candidate
+acceptance remains pending the Java 21 exact-SHA gate and matched deployment.
+
+## 2026-10-23 Full Feature Recheck
+
+Each suite below captured its own source SHA because the shared branch HEAD moved during the run. All online checks targeted the older Demo runtime (`0e4a48ea`) unless stated otherwise; do not treat the combined results as one SHA-matched candidate release.
+
+The executable utterance catalogue now has 332 cases. The current full run
+returned **324 PASS / 0 BLOCKED / 8 FAIL**; every failure is an unqualified stock
+clarification question answered by the old runtime as `unknown`. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-332-RERUN-CURRENT.json`.
+The candidate deterministic router expects `qa`, no route, a product name/barcode
+request and an empty write list for all eight.
+
+| Area | Result | Evidence / note |
+|---|---:|---|
+| Natural-language matrix | 324 PASS / 0 BLOCKED / 8 FAIL of 332 | Eight generic stock questions lack product identity; old runtime answered `unknown`. Assistant API only, no business writes. Latest rerun evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-332-RERUN-CURRENT.json`. |
+| Features; reports | 14/14; 23/23 PASS | `UAT_AI_FEATURES_VERIFY_ONLINE_2026-10-23_GOAL-RECHECK-SOURCE-12A7243B.json`; `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-23_GOAL-RECHECK-RUNTIME-0E4A48EA.json` |
+| Availability; routes; surface/auth | 3/3; 9/9; 11/11 PASS | Three separate online evidence files suffixed `GOAL-RECHECK.json`; these verify the served app, not current source. |
+| Metrics; transcription; synthetic invoice OCR | 9/9; 4/4; 9/9 assertions PASS | Metrics runtime unverified; transcription used synthetic audio and submitted no assistant prompt; OCR used a synthetic invoice image and made zero Odoo writes. |
+| Browser AI card UI | Live old runtime: 1 FAIL; local candidate fixture: 35/35 PASS | Seven card/safety scenarios across 320/390/768/1024/1440px. Route-specific CTA text, deferred navigation, no overflow, external-link rejection, zero business writes and no page errors. Evidence `UAT_AI_CARD_UI_LOCAL_2026-10-23_CURRENT.json`; fixture verification does not prove deployment. |
+| Assistant card API contract | 0/9 PASS, 9 FAIL | Served card responses lack structured `cta`; guided-action responses also lack the Action guide card. This is an old-runtime mismatch, not a verdict on the current DTO candidate. |
+| Provider health | 1 BLOCKED | DashScope request ended with `ECONNRESET`; no response body/key recorded. |
+
+Frontend unit tests pass **17/17**, `npm run typecheck` passes after Next dev regenerated the malformed route declarations, and targeted ESLint/script syntax checks pass. Local production build was not run. Backend pre-push gate remains exact-SHA Java 21 `mvn -B clean verify`.
+
+## 2026-10-23 Current Goal Recheck
+
+| Area | Result | Finding / next assertion |
+|---|---:|---|
+| Natural-language utterances | 324 PASS / 0 BLOCKED / 8 FAIL of 332 | Eight failures are generic stock-discovery questions without a product identifier. Expected clarification is `qa`, request a product name/barcode, no route and no invented stock value. Evidence source `e21a7943` differs from Demo runtime `0e4a48ea`; this is old-runtime diagnosis, not candidate acceptance. |
+| Stock clarification variants | 1 PASS / 0 BLOCKED / 12 FAIL of 13 | Dedicated runner covers empty-result English/Chinese variants plus named unknown-product and named known-product controls. The named unknown-product control passed on the old runtime; the 12 clarification failures are runtime/source mismatch evidence. `UAT_AI_STOCK_CLARIFICATION_VARIANTS_ONLINE_CURRENT.json` |
+| Named unknown product contrast | Candidate case added | `Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?` must be read-only `report_stock` and distinguish no catalogue match from unavailable source. |
+| Guided-action card contract | 5 PASS / 4 FAIL of 9 | Existing Demo lacks Action guide cards for create customer, edit product, receive stock and save prices. Candidate implementation awaits Java 21 same-SHA gate and matched-runtime check. |
+| AI metrics | 9/9 PASS | Admin metrics, anonymous 401, responsive UI and table accessibility pass; runtime SHA unverified; zero business/configuration writes. |
+
+All utterance and card checks call the assistant API only. Keep `writeRequests=[]`; do not turn explicit write phrases into completed actions. Candidate backend changes are not deployable until Java 21 `mvn -B clean verify` passes for the exact SHA.
+
+## Current Recheck (2026-10-23)
+
+On matched Demo runtime `0e4a48ead3e32c57623ed726e3583cee5945d0ca`: natural utterances **323/323 PASS**; reports **23/23 PASS**, including an unknown-product read that distinguishes a valid no-match from source failure; sales chat UI **2/2 PASS** at 390px and 1440px. Companion suites on the Demo target passed: Sommelier **10/10**, AI routes **9/9**, AI surface/auth **11/11**, and synthetic speech **4/4**; their evidence files record deployment SHA as unverified. Capability-gate PASS is a fault-injected unavailable-voice UI check; transcription itself reported available and passed both languages but did not capture runtime SHA. Evidence files use `GOAL-RECHECK` in their names, except the full utterance matrix `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_0E4A48EA.json`.
+
+Pricing pages are **8 PASS / 2 BLOCKED / 0 FAIL** because Demo has no Odoo price rules configured for Capped Pricing, so data-state assertions could not be completed. No business write was issued. Java 21 Dokploy exact-SHA gate logs and isolated business-flow acceptance remain outstanding; overall pilot remains **NO-GO**.
+
+## 最新截图问题复验（2026-10-23）
+
+HEAD 与 Demo frontend/backend runtime 均为 `0e4a48ea`。最新完整线上自然问法矩阵 **323/323 PASS**，销售/库存报表 **22/22 PASS**，截图聊天 UI 在 390/1440px **2/2 PASS**；各证据均声明或探测到匹配 runtime SHA。相关证据：`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_HEAD-0E4A48EA-FINAL.json`、`UAT_AI_REPORTS_READONLY_2026-10-23_FINAL.json`、`UAT_AI_SALES_CHAT_UI_2026-10-23_HEAD-0E4A48EA-FINAL.json`。
+
+全量问法覆盖查询、推荐/建议、导航、发票状态/扫描/上传对照及明确写操作保护，Assistant API only，`writeRequests=["none: assistant API only"]`。独立原始 RPC 名称筛选仍有 4 个 BLOCKED，但应用层动态库存商品与数量对账已通过。Java 21 Dokploy exact-SHA 完整日志未归档，Pilot 仍 NO-GO。
+
+## Historical Acceptance Snapshot (Superseded Above)
+
+Report recheck: **19 PASS / 2 BLOCKED / 1 FAIL**. The screenshot date, English
+natural sales wording, single-day/AUD copy, Overview reconciliation, and two
+natural stock-route variants pass. One Chinese sales paraphrase (`10月16日卖了多少？`)
+was incorrectly classified as `report_qty` by the deployed runtime. A backend
+candidate now routes that dated sales phrase to `report_sales`, with a Java
+regression case; Java 21 verification and matched-runtime recheck are pending.
+Live stock answer and quantity reconciliation remain BLOCKED because the deployed
+AI report returns an unavailable response. Dynamic Odoo RPC diagnosis found
+the current POS availability filter returns zero rows, while a tenant-scoped
+inventory query without that filter returns stock fields. A backend candidate
+removes that POS-only filter for stock/dead-stock reports; Java 21 exact-SHA
+verification and matched-runtime acceptance are pending. Evidence:
+`UAT_AI_REPORTS_READONLY_2026-10-23_ITERATION.json` and
+`UAT_AI_STOCK_RPC_READONLY_2026-10-23_DYNAMIC.json`.
+
+The current deployed runtime is verified against HEAD `65b332c94fcd3387005f54d443cd7e4be6f047ee`. The full **322-case** Assistant API-only matrix passed **322 PASS / 0 BLOCKED / 0 FAIL**, including Chinese/English invoice upload, scan, and arrival-query contrast cases. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T180421573Z_65b332c9.json`; `writeRequests=["none: assistant API only"]`.
+
+The invoice preview UI mock passed **7/7** at 390px, including capability/OCR retry, editable review fields, Odoo read-only lookup isolation, and no business writes. Evidence: `UAT_INVOICE_SCAN_MOCK_2026-10-23_CURRENT.json`. This does not verify live OCR provider/model configuration.
+
+The prior 5-case boundary recheck on the older runtime returned **4 PASS / 0 BLOCKED / 1 FAIL**:
+`UAT_AI_WORKFLOW_BOUNDARY_CANDIDATE_2026-10-24.json`. The two price actions and
+both English invoice upload requests returned `guided_action`; `上传这张账单`
+still returned `navigate` on runtime `9e61de5d`. Runtime SHA does not match
+source `00e4a5af`, so this is a diagnostic of the older deployed service, not
+the dirty candidate. At the time, the candidate added Chinese `上传`, `传上去`
+and `传一下` in an invoice/bill context as write intent. The later matched-
+runtime 322-case run above verifies the routing fix; Java 21 exact-SHA gate logs
+still need to be archived separately.
+
+The action distinction is intentional: upload/submit/receive requests require
+`guided_action` to `/invoices/scan`; scan/identify/read requests navigate to the
+preview; invoice arrival/count questions stay read-only. Every branch must
+assert `writeRequests=[]`.
+
+The latest complete 320-question read-only run is
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_CURRENT-110F585.json`:
+**277 PASS / 38 BLOCKED / 5 FAIL**. All 38 blocks were `50210`; Demo runtime
+`b4719e7c` did not match source `2a9d2cf1`. Three failures were an outdated
+`guided_action` expectation for upload phrases that opened the invoice preview;
+two were price execution mismatches.
+
+The earlier 5-case recheck `UAT_AI_WORKFLOW_BOUNDARY_RECHECK_9E61DE5.json` returned
+**3 PASS / 0 BLOCKED / 2 FAIL** on runtime SHA `9e61de5d`, matching HEAD but
+not the dirty worktree. Both price cases now pass. Two English upload phrases
+still return `guided_action` while Chinese upload returns `navigate`; the
+candidate aligns all upload phrases to open the preview only. Its Java 21
+exact-SHA gate has not run. Keep the pilot **NO-GO**.
+
+Every case should assert: intent and route; answer/slots and source-data
+fallback; tenant/date/currency boundaries; positive and negative contrast
+behavior; and `writeRequests=[]`. For explicit mutations, require
+`guided_action`, an appropriate review page, and zero writes. For questions
+about status, capabilities or procedures, require `qa`/read-only reporting and
+no write-workflow navigation.
+
+Previously source-matched evidence of 216/216 PASS is recorded in
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_SHA-VERIFIED.json` for SHA
+`7c5e9817`. The current worktree has advanced beyond that SHA, so it is a
+historical verified baseline, not proof of the current candidate.
+
+## 2026-10-22 latest full run (310 utterances)
+
+Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T155514915Z_8a4c56e5.json` returned **266 PASS / 36 BLOCKED / 8 FAIL**. All blocked calls returned `50210`; no business writes were issued. Demo frontend/backend SHA `b4719e7c51c2ffebdcd8b0916e7186480c55201d` differs from source SHA `8a4c56e51e40317bd16183ee8ebb7148e9841082`, so this is old-runtime evidence only.
+
+The eight old-runtime mismatches are three price execution prompts missing `/stock/capped-pricing`, three Chinese invoice-arrival prompts opening `/invoices/scan`, `商品有几种？` classified as `report_adhoc`, and `How do I close the till?` opening `/close`. Candidate regression coverage now includes deterministic routing for each family plus positive controls for invoice scanning and explicit price writes. Newly added catalogue variants exercise invoice arrival, product counts and till phrasing in English and Chinese. All candidate expectations remain pending the same-SHA Java 21 gate and runtime-matched rerun.
+
+## 2026-10-22 current recheck (304 utterances)
+
+The current runner catalogue returned **265 PASS / 33 BLOCKED / 6 FAIL** across 304 assistant-only questions. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T151353424Z_d7ae6395.json`. All 33 blocked responses were `50210`. The six failures were three pricing execution phrases missing `/stock/capped-pricing` and three invoice-arrival questions routed to `/invoices/scan`. Runtime frontend/backend were `b4719e7c51c2ffebdcd8b0916e7186480c55201d`; source HEAD was `d7ae6395ab4b4fe984afc81ceb15934c7f146fcb` with a dirty worktree, so this does not verify the current source. No business writes were issued.
+
+Companion rechecks: features **14 PASS / 1 FAIL** (invoice OCR probe HTTP 500 / `50000`), reports **15/16** (live stock source unavailable with a safe response), availability 3/3, route matrix 9/9, surface/auth 11/11, UI 2/2, transcription 4/4, metrics 9/9, capability/enabled gates PASS. History/platform was 9 PASS / 2 BLOCKED; stock RPC was 4 PASS / 5 BLOCKED / 1 INFO because several AI-domain queries returned no product rows. The local invoice preview browser mock passed 6 checks, but is not real OCR verification. Evidence files use `2026-10-22_CURRENT-RECHECK` or timestamped `d7ae6395` names. Java 21 exact-SHA verification and runtime-matched acceptance remain pending.
+
+## 2026-10-22 D7AE served-runtime full regression
+
+The 301-case Assistant API-only run returned **265 PASS / 32 BLOCKED / 4 FAIL**. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-301-D7AE6395.json`. Runtime frontend/backend were both `b4719e7c51c2ffebdcd8b0916e7186480c55201d`, while the source was `d7ae6395ab4b4fe984afc81ceb15934c7f146fcb`; this is not source-matched acceptance. All 32 blocked cases returned `50210`. All requests used Assistant API only and no business write was issued.
+
+The four stable mismatches are three price execution phrases (`Set these prices now`, `Change these prices`, `设置这些价格`) classified as `guided_action` without the expected `/stock/capped-pricing` review route, and `收到发票了吗？` navigated to `/invoices/scan` instead of read-only `report_adhoc`. Java source tests already assert the expected behaviors; exact-SHA Java 21 `mvn -B clean verify` and a matching runtime rerun remain required. Companion suites: availability 3/3, route 9/9, surface/auth 11/11, UI 2/2, metrics 9/9 and capability/enabled gates PASS; features 14 PASS/1 BLOCKED (retired OCR 41001), reports 15/16 (live stock source unavailable), transcription 2 PASS/2 BLOCKED (missing audio fixtures), history/platform 9 PASS/2 BLOCKED (missing second-store and operator credentials).
+
+## 2026-10-22 current-candidate read-only diagnostic
+
+The runner executed all **301** entries from its `cases` array: **247 PASS / 28 BLOCKED / 26 FAIL**. It called the Assistant API only and recorded `writeRequests=["none: assistant API only"]`. Evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-301-BC4159C.json`. Demo frontend/backend SHA was `b4719e7c51c2ffebdcd8b0916e7186480c55201d`; the source commit was `bc4159c34e6a51e2f4d47718d35838820581d50c` with `worktreeDirty=true`, so results diagnose the served old runtime and do not verify the candidate.
+
+The 26 failed responses all had business code `0` and an empty `writeRequests` list. Fourteen guided write requests lacked a review route; the remaining failures include incorrect routes for purchase commands, an invoice-count question misrouted to invoice capture, and AI capability questions classified as actions/navigation instead of `qa`. The 28 blocked responses returned `50210`. Candidate fixes require the Java 21 exact-SHA gate and a runtime-matched rerun before acceptance.
+
+## 2026-10-22 current workspace 299-case diagnostic
+
+The Assistant API-only run returned **247 PASS / 28 BLOCKED / 24 FAIL** with
+`writeRequests=["none: assistant API only"]`. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-299-D3EC716.json`.
+Demo frontend/backend were `b4719e7c`; the runner source was `d3ec7165` and
+`worktreeDirty=true`, so this is old-runtime diagnostic evidence, not
+current-candidate acceptance.
+All 28 blocks returned `50210`. Source review found a direct Chinese price
+change phrase without a review destination; the candidate now maps that phrase
+to `/stock/capped-pricing` and adds regression assertions. The executable
+catalog now has 301 unique cases (counted from the runner's `cases` array). Java 21 exact-SHA verification remains
+required before backend changes can be pushed or deployed.
+
+The read-only UI rechecks against the served Demo pass Availability **3/3** and
+Route Matrix **9/9**. Evidence: `UAT_AI_AVAILABILITY_2026-10-22_CURRENT-D3EC716-RECHECK.json`
+and `UAT_AI_ROUTE_MATRIX_2026-10-22_CURRENT-D3EC716-RECHECK.json`. The earlier
+availability navigation timeout and route setup socket hang up did not recur.
+These verify the served pages and interactions, not source/runtime identity.
+
+A later 7-case write-boundary subset returned **3 PASS / 0 BLOCKED / 4 FAIL**
+on that older runtime. The four observed mismatches were missing or incorrect
+review destinations for replenishment submission, buying items, Chinese order
+submission, and pricing execution. The source/runtime SHA mismatch means these
+are not current-source verdicts. The browser card suite separately passed at
+390px and 1440px, covering product count and sommelier response cards.
+Other recent suites remain limited by retired OCR (`41001`), live stock-source
+unavailability, missing second-store/operator accounts, and missing audio
+fixtures; their recorded source SHA does not match this current candidate.
+
+## 2026-10-22 latest 290-case read-only run
+
+Evidence: `UAT_AI_WORKFLOW_B4719_FULL_RECHECK.json`. Demo runtime was
+`b4719e7c`; candidate source was `a176a107`, so this is runtime evidence, not
+candidate acceptance. The 290 cases returned **251 PASS / 14 FAIL / 25
+BLOCKED**, with no business writes. Twelve failures reflect the runner's old
+requirement for a route on fail-closed `guided_action` replies; the runner now
+accepts a null route while requiring any returned route to match the case's
+expected review destination. The other two are old-runtime misroutes covered
+by candidate fixes and Java regression assertions; they still need the Java 21
+same-SHA gate and runtime-matched recheck.
+
+Companion read-only suites: Availability 3/3, Routes 9/9, Surface/Auth 11/11,
+Metrics 9/9, AI UI 2/2, and capability gates PASS. Features 14 PASS / 1 BLOCKED
+(retired invoice OCR endpoint `41001`); Reports 15/16 (live stock source
+unavailable); History/platform 9 PASS / 2 BLOCKED (missing second-store and
+platform-operator accounts); transcription 2 PASS / 2 BLOCKED (no audio
+fixtures). See the matching `UAT_AI_*_2026-10-22_CURRENT-GOAL-RERUN.json`
+files for per-case evidence.
+
 ## 2026-10-22 配套能力矩阵
 
 | Area | Result | Boundary |
@@ -901,7 +1134,7 @@ and `Show me the price suggestions` go to price review.
 - Goal continuation UAT: the latest Demo report run remains **13 PASS / 1 BLOCKED**; sales/date/Overview reconciliation passes, while the named stock report still returns the safe temporary-unavailable message. The expanded workflow run is **38 PASS / 1 FAIL / 3 BLOCKED**: the live runtime misroutes `帮我看看哪些商品需要调价` to `report_stock`, while help/unknown/forged-route prompts returned the generic `50210` graph error. The local fast-path fix now requires an explicit stock signal for the broad Chinese `看看...` form and adds regression coverage so pricing/replenishment requests reach workflow routing. Evidence: `UAT_AI_REPORTS_READONLY_2026-10-20_GOAL-CONTINUATION.json`, `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-20_GOAL-CONTINUATION.json`.
 - Vision configuration diagnosis: the latest Demo feature run is **14 PASS / 1 FAIL**; invoice OCR returned HTTP 200 JSON business code `50213` (provider/model configuration failure). A local data-free provider comparison returned HTTP 200 for `qwen3.8-flash` with the native multimodal payload, while the same credential returned `InvalidParameter` for `qwen-vl-plus`. `application.yml` now defaults `AI_VISION_MODEL` to the configured `AI_DASHSCOPE_MODEL` (fallback `qwen3.8-flash`) while preserving explicit overrides. Evidence: `UAT_AI_FEATURES_VERIFY_2026-10-20_GOAL-CONTINUATION-DIAGNOSTIC.json`, local provider probes (response bodies omitted).
 - Java 21 gate after the fast-path and vision-default changes: `mvn -B clean verify` passed **246 tests, 0 failures, 0 errors**. No frontend build was run. The current Demo runtime SHA remains unverified and predates these source changes; deployment and post-deploy UAT are still required.
-- UI source checks: the assistant panel passes `npx eslint src/components/SellAiPanel.tsx` and a full-source `npx tsc --noEmit --project tsconfig.ai-qa.json` using a temporary config that excludes `.next`. The standard `npm run typecheck` remains blocked by malformed generated `.next/dev/types/routes.d.ts`, imported by `next-env.d.ts`; the temporary config was removed and `.next` was left untouched.
+- Historical UI source check: the assistant panel passed targeted ESLint and a full-source `tsc` using a temporary config. At that point standard `npm run typecheck` was blocked by malformed generated `.next` declarations; a later Next dev restart regenerated them, and the current standard typecheck now passes.
 - Deployment identity: current runtime SHA and Dokploy build result remain unverified; webhook attempts for `055468b` and the latest pushed `0de4790` returned HTTP 301 `Branch Not Match`. Online evidence is for the runtime that served Demo at test time, not proof of the current backend source. Latest trigger evidence: `UAT_DEPLOYMENT_2026-10-20_0DE4790_BRANCH-BLOCK.json`.
 - Read-only scope: no sales, purchase, receiving, inventory, cash or register-close data was written during online checks.
 
@@ -941,3 +1174,21 @@ and `Show me the price suggestions` go to price review.
 4. Treat report behavior as passing the current read-only data reconciliation (`9/9`), while keeping deployment identity separate: the runtime SHA and remote build are still unverified. Non-report AI feature UAT is `14/14 PASS`, but generated invoice OCR, voice hold/release/cancel and provider failure results do not certify arbitrary real invoices or every browser/device.
 
 The read-only online report suite is `scripts/pilot-ai-report-readonly-uat.mjs`. It checks store-date resolution, empty-day semantics, 7/30-day rows, the `14,oct` year, and a day-level reconciliation against Overview.
+
+### Short stock-list wording (2026-10-24)
+
+Add these no-entity controls to the workflow matrix. They must navigate to the
+read-only stock list with empty slots; they must not be interpreted as a product
+lookup, replenishment command, or inventory mutation:
+
+| ID | Utterance | Expected intent/route |
+|---|---|---|
+| N-13 | `Stock?` | `navigate` / `/stock/list` |
+| N-14 | `What's in stock?` | `navigate` / `/stock/list` |
+| N-15 | `How's our stock looking?` | `navigate` / `/stock/list` |
+| N-16 | `Inventory status` | `navigate` / `/stock/list` |
+| N-17 | `库存情况怎么样？` | `navigate` / `/stock/list` |
+| N-18 | `有什么现货` | `navigate` / `/stock/list` |
+
+Contrast controls remain `为什么查不到？` (clarification `qa`, product/barcode
+required) and `Do we have <named product> in stock?` (read-only `report_stock`).

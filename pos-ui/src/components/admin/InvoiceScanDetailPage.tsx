@@ -1,5 +1,8 @@
 "use client";
 
+import { useAuth } from "@/lib/auth";
+
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -53,6 +56,8 @@ function isLowConfidence(value?: number | null) {
 }
 
 export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
+  const { hasPermission } = useAuth();
+  const canReceiveStock = hasPermission("stock.purchases") && hasPermission("stock.receive");
   const router = useRouter();
   const [session, setSession] = useState<InvoiceScanSession | null>(null);
   const [suppliers, setSuppliers] = useState<Named[]>([]);
@@ -256,6 +261,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   }
 
   async function confirmAndReceive() {
+    if (!canReceiveStock) return;
     if (!session || !canConfirm || !session.odooSupplierId) return;
     setConfirming(true);
     setError(null);
@@ -319,6 +325,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
   }
 
   async function finishReceive() {
+    if (!canReceiveStock) return;
     if (!session?.odooPoId) return;
     setReceiving(true);
     setError(null);
@@ -388,7 +395,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
     if (!window.confirm("Discard this draft invoice scan?")) return;
     try {
       await discardInvoiceScan(session.id);
-      router.push("/invoices");
+      router.push("/purchases/odoo?tab=invoices");
     } catch (cause) {
       setError(apiFailureMessage(cause, "Could not discard this draft.", "Please sign in again."));
     }
@@ -407,7 +414,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] px-4 text-center">
         <div>
           <p className="text-sm text-rose-800">{error || "Invoice scan not found."}</p>
-          <Link href="/invoices" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to invoices</Link>
+          <Link href="/purchases/odoo?tab=invoices" className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to Purchasing</Link>
         </div>
       </main>
     );
@@ -425,7 +432,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{session.invoiceNumber || `Scan #${session.id}`}</h1>
               <p className="mt-1 text-sm text-[var(--oh-muted)]">{statusLabel(String(session.status))}</p>
             </div>
-            <Link href="/invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">History</Link>
+            <Link href="/purchases/odoo?tab=invoices" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Back to Purchasing</Link>
           </div>
           <InvoiceWorkflowSteps active={step} />
         </div>
@@ -689,7 +696,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               <button
                 type="button"
                 onClick={() => void finishReceive()}
-                disabled={receiving}
+                disabled={receiving || !canReceiveStock}
                 className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:opacity-60"
               >
                 {receiving ? "Receiving…" : "Finish receive"}
@@ -699,7 +706,7 @@ export function InvoiceScanDetailPage({ scanId }: { scanId: number }) {
               <button
                 type="button"
                 onClick={() => setConfirmOpen(true)}
-                disabled={!canConfirm || confirming || saving}
+                disabled={!canConfirm || confirming || saving || !canReceiveStock}
                 className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {confirming ? "Confirming…" : "Confirm → PO → receive"}

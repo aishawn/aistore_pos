@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, registerAuthFailureHandler } from "@/lib/api";
+import { api, isLocalPreviewSession, registerAuthFailureHandler } from "@/lib/api";
 
 export type StoreRoleCode = "ADMIN" | "MANAGER" | "CLERK" | "NONE" | string;
 
@@ -73,6 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // hydration mismatch and stale local user data.
     /* eslint-disable react-hooks/set-state-in-effect */
     let active = true;
+    if (isLocalPreviewSession()) {
+      setUser(normalizeUser({
+        id: "local-preview",
+        name: "Local Preview",
+        username: "preview",
+        isAdmin: true,
+      }));
+      setReady(true);
+      return () => { active = false; };
+    }
     const cached = typeof localStorage !== "undefined" ? localStorage.getItem(USER_KEY) : null;
     if (cached) {
       try { setUser(normalizeUser(JSON.parse(cached) as CurrentUserResponse)); } catch { localStorage.removeItem(USER_KEY); }
@@ -117,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     if (typeof localStorage !== "undefined") localStorage.removeItem(USER_KEY);
+    if (typeof document !== "undefined") document.cookie = "orithos_local_preview=;path=/;max-age=0;samesite=lax";
   }, []);
 
   const hasPermission = useCallback((safeName: string) => {

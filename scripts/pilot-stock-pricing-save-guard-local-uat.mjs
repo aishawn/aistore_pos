@@ -119,6 +119,7 @@ const failed = checks.filter((check) => check.status === "FAIL").length;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  nodeVersion: process.version,
   environment: "local-dev-fixtures",
   target: base,
   scope: "Stock List and Capped Pricing save error handling; writes intercepted by Playwright",

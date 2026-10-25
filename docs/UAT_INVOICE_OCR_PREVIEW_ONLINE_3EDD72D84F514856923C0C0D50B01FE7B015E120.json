@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-22T00:36:34.250Z",
+  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+  "worktreeDirty": true,
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "target": "https://demo.orithos.com.au",
+  "scope": "real provider invoice OCR preview only; no supplier, purchase, receipt, inventory, or configuration writes",
+  "status": "FAIL",
+  "checks": [
+    {
+      "name": "admin login",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "provider OCR response",
+      "status": "FAIL",
+      "detail": "code=41001 message=This Classic POS API is retired; use the Odoo workflow."
+    },
+    {
+      "name": "preview-only write boundary",
+      "status": "PASS",
+      "detail": "unexpected="
+    }
+  ],
+  "writes": [],
+  "providerCode": 41001
+}

@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-23T06:49:50.647Z",
+  "target": "https://uatpilot3.orithos.com.au",
+  "expectedCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+  "sourceWorkingTree": false,
+  "scope": "version endpoint only; no business writes",
+  "status": "PASS",
+  "deploymentShaVerified": true,
+  "services": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+      "builtAt": "2026-10-23T06:47:42.691Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+      "builtAt": "2026-10-23T06:47:43Z"
+    }
+  }
+}

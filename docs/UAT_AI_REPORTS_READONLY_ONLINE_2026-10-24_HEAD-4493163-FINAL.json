@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-10-22T18:50:53.551Z",
+  "testHarnessCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": false,
+  "runtimeCommit": null,
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 5,
+  "checksBlocked": 0,
+  "checksTotal": 6,
+  "checks": [
+    {
+      "name": "store-scoped catalogue reads product stock fields",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingProducts": 20,
+        "stockFieldsReadable": true,
+        "source": "read-only /api/odoo/records; product names and quantities omitted"
+      }
+    },
+    {
+      "name": "today uses store business date",
+      "status": "PASS",
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-23; actual=2026-10-23"
+    },
+    {
+      "name": "empty today agrees with 24-hour overview",
+      "status": "PASS",
+      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-23. Try a wider range — for example ask: sales last 7 days, or yesterday / last week."
+    },
+    {
+      "name": "7-day sales report returns rows or an explicit empty state",
+      "status": "PASS",
+      "evidence": "answer=No completed sales found for 2026-10-17 to 2026-10-23. Try a wider range — for example ask: sales last 7 days.; rows=0; emptyState=true"
+    },
+    {
+      "name": "30-day sales report returns rows",
+      "status": "PASS",
+      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-24 to 2026-10-23 total AUD 16536.98 (7 days).; rows=7"
+    },
+    {
+      "name": "AI assistant availability",
+      "status": "FAIL",
+      "evidence": "AI_REPORT_HTTP_502"
+    }
+  ],
+  "failures": [
+    "AI_REPORT_HTTP_502"
+  ],
+  "result": "FAIL"
+}

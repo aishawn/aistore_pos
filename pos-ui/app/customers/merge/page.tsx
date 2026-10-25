@@ -1,7 +1,2 @@
-"use client";
-
-import { CustomerMergePage } from "@/components/admin/CustomerMergePage";
-
-export default function CustomerMergeRoute() {
-  return <CustomerMergePage />;
-}
+import { redirect } from "next/navigation";
+export default function LegacyCustomerRoute() { redirect("/customers/odoo"); }

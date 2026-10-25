@@ -5,6 +5,7 @@ import { RefreshCw, X } from "lucide-react";
 import { AsyncState } from "@/components/admin/AsyncState";
 import { getOdooPriceRules, updateOdooProduct } from "@/lib/odoo-api";
 import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
+import { friendlyProductName } from "@/lib/product-display-name";
 import { Pagination } from "@/components/admin/Pagination";
 import { useDebouncedValue } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ interface CappedPriceRow {
   cost?: number | null;
 }
 
-const TAB_LABELS: Record<SourceTab, string> = { PROVIDED: "Odoo price rules" };
+const TAB_LABELS: Record<SourceTab, string> = { PROVIDED: "Product base shelf prices" };
 
 function formatDate(value?: string | null) {
   if (!value) return "";
@@ -111,12 +112,13 @@ function CappedPriceRowEditor({
     row.cappedPrice != null &&
     !Number.isNaN(currentNum) &&
     currentNum > row.cappedPrice;
+  const productLabel = friendlyProductName(row.productName);
 
   return (
     <div data-testid="capped-pricing-card" className="mb-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded border border-neutral-200 bg-white p-3 text-[13px] text-black xl:mb-0 xl:flex xl:items-start xl:gap-x-0 xl:gap-y-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-2">
       <div className="col-span-2 min-w-0 xl:w-[24%] xl:shrink-0 xl:px-3">
         <div className="text-[13px] text-neutral-500">{row.priceSetName ?? "Default Price Set"}</div>
-        <div className="mt-0.5 font-semibold leading-snug">{row.productName}</div>
+        <div className="mt-0.5 font-semibold leading-snug" title={row.productName}>{productLabel}</div>
       </div>
       <div className="min-w-0 xl:w-[18%] xl:shrink-0 xl:px-3 xl:leading-snug">
         <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Source</div>
@@ -143,7 +145,7 @@ function CappedPriceRowEditor({
             min="0"
             step="0.01"
             className={cellInput(cn("pl-5", overCap && "text-[#e2231a]"))}
-            aria-label={`Current price for ${row.productName}`}
+            aria-label={`Current price for ${productLabel}`}
             value={current}
             aria-busy={saving}
             aria-invalid={saveError ? true : undefined}
@@ -198,7 +200,8 @@ export function CappedPricingPage() {
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-neutral-200 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
-        <h1 className="text-xl font-bold text-black sm:text-[28px]">Capped Pricing</h1>
+        <h1 className="text-xl font-bold text-black sm:text-[28px]">Product Base Prices</h1>
+        <p className="mt-1 text-sm text-neutral-600">Saving changes the standard shelf price for this product. Member and wholesale rules are managed under Price Lists.</p>
         <div className="ml-auto flex items-center gap-2 text-xs text-neutral-600 sm:text-[14px]">
           <span
             className={cn(

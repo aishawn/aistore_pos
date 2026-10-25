@@ -1,3 +1,4 @@
+import { companyDomain } from "@/lib/customer-access";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
@@ -32,8 +33,8 @@ export async function GET(request: NextRequest) {
     const owingOnly = request.nextUrl.searchParams.get("owingOnly") === "true";
 
     // `credit` is a non-stored monetary field in Odoo 19 — usable in domain on some
-    // builds, but never as SQL ORDER BY. Always sort by stored fields, then rank in memory.
-    const domain: unknown[] = [["customer_rank", ">", 0]];
+    // builds, but never as SQL ORDER BY. Keep a stable stored-field order for every page.
+    const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds)];
     if (owingOnly) domain.push(["credit", ">", 0]);
     if (query) {
       domain.push("|", "|", "|",
@@ -44,44 +45,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const fetchLimit = Math.min(500, Math.max(limit + 1, offset + limit + 1));
+    const fields = ["id", "name", "phone", "email", "ref", "credit", "total_invoiced", "property_product_pricelist"];
     let rows: PartnerBalance[];
     try {
       rows = await scope.rpc<PartnerBalance[]>("res.partner", "search_read", [domain], {
-        fields: ["id", "name", "phone", "email", "ref", "credit", "total_invoiced", "property_product_pricelist"],
-        limit: fetchLimit,
-        offset: 0,
-        order: "name asc, id asc",
-      }) ?? [];
+        fields, limit: limit + 1, offset, order: "name asc, id asc",
+      });
     } catch (firstError) {
-      // Some Odoo builds also reject non-stored `credit` in domains — fall back and filter in memory.
-      if (!owingOnly) throw firstError;
-      const fallbackDomain: unknown[] = [["customer_rank", ">", 0]];
-      if (query) {
-        fallbackDomain.push("|", "|", "|",
-          ["name", "ilike", query],
-          ["phone", "ilike", query],
-          ["email", "ilike", query],
-          ["ref", "ilike", query],
-        );
+      if (!owingOnly || !(firstError instanceof OdooScopeError) || firstError.status !== 422) throw firstError;
+      const fallbackDomain = domain.filter((clause) => !(Array.isArray(clause) && clause[0] === "credit"));
+      const deadline = Date.now() + 20_000;
+      const matched: PartnerBalance[] = [];
+      let scanOffset = 0;
+      while (matched.length < offset + limit + 1) {
+        if (Date.now() > deadline) throw new OdooScopeError("The balance search timed out. Narrow the search and retry.", 504);
+        const batch = await scope.rpc<PartnerBalance[]>("res.partner", "search_read", [fallbackDomain], {
+          fields, limit: 200, offset: scanOffset, order: "name asc, id asc",
+        });
+        if (Date.now() > deadline) throw new OdooScopeError("The balance search timed out. Narrow the search and retry.", 504);
+        matched.push(...batch.filter((row) => Number(row.credit) > 0));
+        if (batch.length < 200) break;
+        scanOffset += batch.length;
       }
-      const all = await scope.rpc<PartnerBalance[]>("res.partner", "search_read", [fallbackDomain], {
-        fields: ["id", "name", "phone", "email", "ref", "credit", "total_invoiced", "property_product_pricelist"],
-        limit: 500,
-        offset: 0,
-        order: "name asc, id asc",
-      }) ?? [];
-      rows = all.filter((row) => (Number(row.credit) || 0) > 0);
+      rows = matched.slice(offset, offset + limit + 1);
     }
-
-    rows = [...rows].sort((a, b) => {
-      const creditDiff = (Number(b.credit) || 0) - (Number(a.credit) || 0);
-      if (creditDiff !== 0) return creditDiff;
-      return a.name.localeCompare(b.name) || a.id - b.id;
-    });
-
-    const page = rows.slice(offset, offset + limit);
+    const companies = await scope.rpc<Array<{ currency_id: Many2One }>>("res.company", "search_read", [[["id", "=", scope.companyIds[0]]]], { fields: ["currency_id"], limit: 1 });
+    const currency = Array.isArray(companies[0]?.currency_id) ? companies[0].currency_id[1] : null;
+    const page = rows.slice(0, limit);
     const items = page.map((row) => ({
+      currency,
       id: row.id,
       name: row.name,
       phone: row.phone || null,
@@ -91,7 +83,7 @@ export async function GET(request: NextRequest) {
       totalInvoiced: Number(row.total_invoiced) || 0,
       pricelist: Array.isArray(row.property_product_pricelist) ? row.property_product_pricelist[1] : null,
     }));
-    return NextResponse.json({ items, limit, offset, hasNext: rows.length > offset + limit }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ items, limit, offset, hasNext: rows.length > limit }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo customer balances are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;

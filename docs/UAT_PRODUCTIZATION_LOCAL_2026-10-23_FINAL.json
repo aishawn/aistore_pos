@@ -1,0 +1,137 @@
+{
+  "generatedAt": "2026-10-22T20:57:43.084Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v24.19.0",
+  "environment": "local-route-fixtures",
+  "scope": "Real TypeScript route handlers; all network intercepted; no live Odoo writes; no deployment or hardware acceptance",
+  "status": "PASS",
+  "passed": 31,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "GST-inclusive prices use net margin and Odoo tax totals",
+      "status": "PASS"
+    },
+    {
+      "name": "GST-exclusive Odoo list price is distinct from shelf price",
+      "status": "PASS"
+    },
+    {
+      "name": "Explicit zero-rate tax is supported without assuming GST",
+      "status": "PASS"
+    },
+    {
+      "name": "Missing or unsupported tax suppresses prices: {\"taxIds\":[]}",
+      "status": "PASS"
+    },
+    {
+      "name": "Missing or unsupported tax suppresses prices: {\"taxType\":\"fixed\"}",
+      "status": "PASS"
+    },
+    {
+      "name": "Missing or unsupported tax suppresses prices: {\"taxAmount\":-10}",
+      "status": "PASS"
+    },
+    {
+      "name": "Cashier cannot retrieve cost or price suggestions",
+      "status": "PASS"
+    },
+    {
+      "name": "Pagination exposes a continuation instead of truncating silently",
+      "status": "PASS"
+    },
+    {
+      "name": "Malformed page offset is rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Cross-company product IDs cannot be updated",
+      "status": "PASS"
+    },
+    {
+      "name": "Changed original price rejects a stale suggestion",
+      "status": "PASS"
+    },
+    {
+      "name": "Confirmed price save reads back Odoo and uses company context",
+      "status": "PASS"
+    },
+    {
+      "name": "Lost price-write response is unknown; GET safely reconciles without a second write",
+      "status": "PASS"
+    },
+    {
+      "name": "Cashier cannot mutate products through a shared Odoo account",
+      "status": "PASS"
+    },
+    {
+      "name": "Checkout recovery is read-only and tenant/config constrained",
+      "status": "PASS"
+    },
+    {
+      "name": "Missing checkout remains pending and cannot trigger a replay",
+      "status": "PASS"
+    },
+    {
+      "name": "Tenant binding outside the Odoo session fails closed",
+      "status": "PASS"
+    },
+    {
+      "name": "Receipt identity is required; retry cannot select a backorder",
+      "status": "PASS"
+    },
+    {
+      "name": "Completed receipt retries return read-only confirmation",
+      "status": "PASS"
+    },
+    {
+      "name": "Partial receipt requires explicit zero quantities for remaining moves",
+      "status": "PASS"
+    },
+    {
+      "name": "Lost receipt validation response is recovered without replay",
+      "status": "PASS"
+    },
+    {
+      "name": "Unfinished receipt is unknown instead of success: {\"incompleteReceipt\":true}",
+      "status": "PASS"
+    },
+    {
+      "name": "Unfinished receipt is unknown instead of success: {\"loseMoveResponse\":true}",
+      "status": "PASS"
+    },
+    {
+      "name": "Cross-company and cashier receipt access fails before writes",
+      "status": "PASS"
+    },
+    {
+      "name": "Unbound stock location cannot accept adjustments",
+      "status": "PASS"
+    },
+    {
+      "name": "Concurrent stock movement rejects stale count",
+      "status": "PASS"
+    },
+    {
+      "name": "Already matching count observes state without another adjustment",
+      "status": "PASS"
+    },
+    {
+      "name": "Lost inventory write response remains unknown with preserved identity",
+      "status": "PASS"
+    },
+    {
+      "name": "Runtime version response whitelists public metadata",
+      "status": "PASS"
+    },
+    {
+      "name": "Local database variables cannot attest a production runtime",
+      "status": "PASS"
+    },
+    {
+      "name": "Both services must explicitly agree on a dedicated UAT database",
+      "status": "PASS"
+    }
+  ]
+}

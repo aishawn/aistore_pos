@@ -1,0 +1,123 @@
+{
+  "generatedAt": "2026-10-23T00:12:10.579Z",
+  "sourceCommit": "c40a0b3798ff77b3c451848cc21332a4df3d1de2",
+  "worktreeDirty": true,
+  "runtimeCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated assistant API-only card contract; no business writes",
+  "checks": [
+    {
+      "id": "product-count",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "product_count",
+      "cardPresent": true,
+      "cardStatus": "ready",
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "product-count-zh",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "product_count",
+      "cardPresent": true,
+      "cardStatus": "ready",
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "replenishment",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "navigate",
+      "cardPresent": true,
+      "cardStatus": "ready",
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "pricing",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "navigate",
+      "cardPresent": true,
+      "cardStatus": "ready",
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "sommelier",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "navigate",
+      "cardPresent": true,
+      "cardStatus": "ready",
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "guided-customer",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "cardPresent": false,
+      "cardStatus": null,
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "guided-product-edit",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "cardPresent": false,
+      "cardStatus": null,
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "guided-receive",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "cardPresent": false,
+      "cardStatus": null,
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    },
+    {
+      "id": "guided-price-save",
+      "status": "FAIL",
+      "httpStatus": 200,
+      "intent": "guided_action",
+      "cardPresent": false,
+      "cardStatus": null,
+      "ctaRouteMatches": false,
+      "ctaLabelMatches": false,
+      "answerMatches": true,
+      "writeRequestCount": 0
+    }
+  ],
+  "passed": 0,
+  "failed": 9,
+  "writeRequests": [
+    "none: assistant API only"
+  ]
+}

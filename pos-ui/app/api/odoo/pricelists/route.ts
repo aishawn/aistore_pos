@@ -19,7 +19,7 @@ type PricelistRow = {
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
-    // Reads are available to any connected Odoo staff account; writes stay admin-gated.
+    await requirePermission(request, "customers.view", "customers.edit", "customers.pricelists", "sell.checkout");
     const scope = await scopedOdoo(request);
     const limitRaw = Number(request.nextUrl.searchParams.get("limit") ?? 50);
     const offsetRaw = Number(request.nextUrl.searchParams.get("offset") ?? 0);

@@ -155,7 +155,7 @@ try {
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
         "base64",
       );
-    const invoice = await context.request.post(`${base}/api/orders/receives/scan`, {
+    const invoice = await context.request.post(`${base}/api/ai/invoice/preview`, {
       multipart: {
         file: {
           name: "valid-image.png",

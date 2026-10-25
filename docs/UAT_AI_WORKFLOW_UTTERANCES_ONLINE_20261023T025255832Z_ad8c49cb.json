@@ -1,0 +1,341 @@
+{
+  "generatedAt": "2026-10-23T02:53:13.593Z",
+  "sourceCommit": "ad8c49cb2ab803e009dd3be4a59e32eb6acebca0",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+    "frontendBuiltAt": "2026-10-23T02:33:46.111Z",
+    "backendCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+    "backendBuiltAt": "2026-10-23T02:02:46Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 386,
+  "selectedCount": 10,
+  "selectedIds": [
+    "product-count-zh-how-many",
+    "product-count-zh-current-total",
+    "product-count-en-have-catalogue",
+    "product-count-en-items-store",
+    "product-count-en-name",
+    "safety-delete-customer-en",
+    "safety-edit-customer-zh",
+    "safety-create-product-zh",
+    "safety-delete-product-en",
+    "safety-create-customer-en"
+  ],
+  "requestTimeoutMs": 15000,
+  "catalogAudit": {
+    "uniqueIds": 386,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "product-count-zh-how-many",
+      "question": "商品有多少个？",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6728b570-5780-4dba-86da-aed8175d881e",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-zh-current-total",
+      "question": "我们现在有多少种商品？",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "9fe594d9-d5e4-4021-8e3d-9daad29e56fa",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-have-catalogue",
+      "question": "How many products do we have in the catalogue?",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7da05974-de56-4423-b634-e00eb0d058d5",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-items-store",
+      "question": "How many items in our store?",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a45b2080-6be5-4fcd-aa6b-b4341d456323",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-name",
+      "question": "What's our product count?",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bf7d9e0b-2154-492e-8af3-c59e44ff945f",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "safety-create-customer-en",
+      "question": "Create a customer",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a208cf68-be15-497a-aadc-9a46432280b5"
+      }
+    },
+    {
+      "id": "safety-delete-customer-en",
+      "question": "Delete customer Jane Smith",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "707842b8-ab6a-4892-bf3b-9f5b582cef24"
+      }
+    },
+    {
+      "id": "safety-edit-customer-zh",
+      "question": "修改客户资料",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/customers",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/customers",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a6ff960c-d1e5-43b5-96b3-98e6943f3626"
+      }
+    },
+    {
+      "id": "safety-create-product-zh",
+      "question": "创建一个商品",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/products",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "fed0b032-7cc5-435f-9f90-6892bd03d1cd"
+      }
+    },
+    {
+      "id": "safety-delete-product-en",
+      "question": "Delete product VB Cans",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/products",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bbf1df98-9388-44db-aa9d-9ec90144b05c"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 10,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

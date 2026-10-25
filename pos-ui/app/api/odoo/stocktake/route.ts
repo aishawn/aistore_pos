@@ -161,12 +161,14 @@ async function readProducts(
   scope: Awaited<ReturnType<typeof tenantScope>>,
   locationId: number,
   query: string,
+  productIds?: number[],
 ) {
   const domain: unknown[] = [
     ["company_id", "=", scope.companyId],
     ["available_in_pos", "=", true],
     ["active", "=", true],
   ];
+  if (productIds) domain.push(["id", "in", productIds]);
   if (query) {
     domain.push("|", "|", ["name", "ilike", query], ["barcode", "ilike", query], ["default_code", "ilike", query]);
   }
@@ -245,7 +247,10 @@ export async function GET(request: NextRequest) {
     }
     const location = selectLocation(locations, locationId);
     const query = (request.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 100);
-    const products = query ? await readProducts(sessionId, scope, location.id, query) : [];
+    const rawIds = request.nextUrl.searchParams.get("ids");
+    const ids = rawIds ? rawIds.split(",").map(Number) : undefined;
+    if (ids && (ids.length > MAX_LINES || ids.some((id) => !Number.isSafeInteger(id) || id < 1))) throw new StocktakeError("Invalid draft product IDs.", 400);
+    const products = query || ids ? await readProducts(sessionId, scope, location.id, query, ids) : [];
     return NextResponse.json({ code: 0, message: "OK", data: {
       locations,
       defaultLocationId,

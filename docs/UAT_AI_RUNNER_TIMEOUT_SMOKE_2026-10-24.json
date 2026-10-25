@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2026-10-23T01:22:21.636Z",
+  "sourceCommit": "10083bc8520da26bb2910f74d0f44ce7cd683774",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "frontendBuiltAt": "2026-10-23T01:03:52.329Z",
+    "backendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "backendBuiltAt": "2026-10-23T00:50:33Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 375,
+  "selectedCount": 1,
+  "selectedIds": [
+    "replenishment-need-buy-en"
+  ],
+  "requestTimeoutMs": 10000,
+  "catalogAudit": {
+    "uniqueIds": 375,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "replenishment-need-buy-en",
+      "question": "What do we need to buy?",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "70b38982-5cb1-4516-80db-166f7a28a891"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 1,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

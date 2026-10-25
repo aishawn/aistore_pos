@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-10-23T00:49:38.312Z",
+  "sourceCommit": "4b1d75961cdfc0ff682266f415be753a11629de1",
+  "sourceWorkingTree": true,
+  "nodeVersion": "v24.19.0",
+  "environment": "local-browser-fixtures",
+  "target": "http://demo.localhost:3101",
+  "scope": "All browser APIs intercepted; only fixture PATCH/GET; no real business writes",
+  "status": "PASS",
+  "passed": 14,
+  "failed": 0,
+  "checks": [
+    {
+      "width": 390,
+      "name": "Suggestion tax and net margin labels",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Suggestion product name hides the R2 marker and preserves the source title",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Suggestion prefill requires manual confirmation",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Lost write response reconciles by GET without replay",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "A confirmed row can be edited again",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Unconfirmed results block further writes and retain input",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "No page errors or horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Suggestion tax and net margin labels",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Suggestion product name hides the R2 marker and preserves the source title",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Suggestion prefill requires manual confirmation",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Lost write response reconciles by GET without replay",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "A confirmed row can be edited again",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Unconfirmed results block further writes and retain input",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "No page errors or horizontal overflow",
+      "status": "PASS"
+    }
+  ]
+}

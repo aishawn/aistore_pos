@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-21T21:31:00Z",
+  "scope": "two active tenant read-only isolation probe",
+  "businessWrites": [],
+  "tenantA": {
+    "host": "demo.orithos.com.au",
+    "loginHttpStatus": 200,
+    "allowedCompanyIds": [
+      1
+    ]
+  },
+  "tenantB": {
+    "vendorId": 48,
+    "host": "codex-replenishment-2212304093.orithos.com.au",
+    "odooCompanyId": 41,
+    "bootstrapHttpStatus": 200,
+    "allowedCompanyIds": [
+      41
+    ],
+    "productReadHttpStatus": 200,
+    "productCount": 2
+  },
+  "crossTenantRead": {
+    "requestHost": "demo.orithos.com.au",
+    "sessionTenant": "vendor-48",
+    "checks": [
+      { "path": "/api/auth/me", "httpStatus": 403, "code": 40310, "rejected": true },
+      { "path": "/api/tenant/odoo-binding", "httpStatus": 403, "code": 40310, "rejected": true },
+      { "path": "/api/odoo/session", "httpStatus": 200, "allowedCompanyIds": [], "rejected": true },
+      { "path": "/api/odoo/records", "httpStatus": 503, "businessWrite": false, "rejected": true }
+    ]
+  },
+  "status": "PASS"
+}

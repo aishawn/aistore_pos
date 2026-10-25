@@ -3,7 +3,7 @@ import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 
 export class OdooScopeError extends Error {
-  constructor(message: string, public readonly status: number) { super(message); }
+  constructor(message: string, public readonly status: number, public readonly code?: string) { super(message); }
 }
 
 const CORRELATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -26,8 +26,9 @@ export async function scopedOdoo(request: NextRequest) {
       cache: "no-store", signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new OdooScopeError("Odoo is temporarily unavailable.", 502);
-    const payload = await response.json() as { result?: T; error?: { data?: { name?: string }; message?: string } };
+    const payload = await response.json() as { result?: T; error?: { data?: { name?: string; message?: string }; message?: string } };
     if (payload.error) {
+      if (/^(builtins\.)?KeyError$/.test(payload.error.data?.name ?? "") && payload.error.data?.message === "'loyalty.card'") throw new OdooScopeError("Gift card module is not installed.", 422, "LOYALTY_NOT_INSTALLED");
       const detail = `${payload.error.data?.name ?? ""} ${payload.error.message ?? ""}`;
       if (/session|authenticate|log in/i.test(detail)) throw new OdooScopeError("Odoo session expired.", 401);
       if (/accesserror|access denied|permission/i.test(detail)) throw new OdooScopeError("Your account cannot perform this operation.", 403);
@@ -46,7 +47,12 @@ export async function scopedOdoo(request: NextRequest) {
     companyIds: forced.companyIds,
     uid: info.uid,
     binding: forced.binding,
-    rpc: <T>(model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) =>
-      envelope<T>("/web/dataset/call_kw", { model, method, args, kwargs: { ...kwargs, context } }),
+    rpc: <T>(model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) => {
+      const { active_test: activeTest, context: suppliedContext, ...methodKwargs } = kwargs;
+      return envelope<T>("/web/dataset/call_kw", { model, method, args, kwargs: {
+        ...methodKwargs,
+        context: { ...(suppliedContext as Record<string, unknown> | undefined), ...(activeTest === false ? { active_test: false } : {}), ...context },
+      } });
+    },
   };
 }

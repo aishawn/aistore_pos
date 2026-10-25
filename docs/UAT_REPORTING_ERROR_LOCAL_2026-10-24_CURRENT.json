@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-10-22T18:14:09.068Z",
+  "sourceCommit": "01f96f98d79f61e66f1d1d7d8066b179f8bd8307",
+  "target": "http://demo.localhost:3101",
+  "scope": "local browser fixture; reporting API intercepted; no live business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "scenario": "temporary Odoo outage",
+      "status": 503,
+      "expectedHeading": "Overview could not load",
+      "retryVisible": true,
+      "connectVisible": false,
+      "requestIdVisible": true,
+      "calls": [
+        "GET /api/tenant/sample-data/status",
+        "GET /api/odoo/session",
+        "GET /api/r2-archive/sales",
+        "GET /api/sell/parked",
+        "GET /api/ai/config/client",
+        "GET /api/auth/me",
+        "GET /api/odoo/reporting-dashboard"
+      ],
+      "writes": [],
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false
+    },
+    {
+      "scenario": "missing Odoo session",
+      "status": 401,
+      "expectedHeading": "Connect Odoo to open Overview",
+      "retryVisible": false,
+      "connectVisible": true,
+      "requestIdVisible": false,
+      "calls": [
+        "GET /api/tenant/sample-data/status",
+        "GET /api/odoo/session",
+        "GET /api/r2-archive/sales",
+        "GET /api/sell/parked",
+        "GET /api/ai/config/client",
+        "GET /api/auth/me",
+        "GET /api/odoo/reporting-dashboard",
+        "GET /api/odoo/session",
+        "GET /api/odoo/reporting-dashboard",
+        "POST /api/auth/refresh",
+        "GET /api/odoo/reporting-dashboard",
+        "GET /api/odoo/session",
+        "GET /api/odoo/reporting-dashboard"
+      ],
+      "writes": [
+        "POST /api/auth/refresh"
+      ],
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false
+    }
+  ]
+}

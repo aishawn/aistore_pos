@@ -1,0 +1,106 @@
+--- a/addons/orithos_au_retail/__manifest__.py
++++ b/addons/orithos_au_retail/__manifest__.py
+@@ -1,6 +1,6 @@
+ {
+     "name": "Orithos AU Retail",
+-    "version": "19.0.1.1.0",
++    "version": "19.0.1.2.0",
+     "category": "Sales/Point of Sale",
+     "summary": "Australian liquor & grocery product fields and retail helpers",
+     "description": """
+@@ -13,6 +13,7 @@
+     "depends": ["product", "stock", "purchase", "point_of_sale"],
+     "data": [
+         "security/pos_category_rules.xml",
++        "security/customer_category_rules.xml",
+         "views/product_template_views.xml",
+     ],
+     "installable": True,
+--- a/addons/orithos_au_retail/models/__init__.py
++++ b/addons/orithos_au_retail/models/__init__.py
+@@ -1,2 +1,4 @@
+ from . import product_template
+ from . import pos_category
++
++from . import pos_pricing
+--- /dev/null
++++ b/addons/orithos_au_retail/models/pos_pricing.py
+@@ -0,0 +1,68 @@
++import math
++
++from odoo import fields, models
++from odoo.exceptions import AccessError, ValidationError
++
++
++class PosConfig(models.Model):
++    _inherit = "pos.config"
++
++    def orithos_quote_prices(self, quantities, partner_id=False):
++        """Read-only, company-scoped public bridge to Odoo's pricing engine."""
++        self.ensure_one()
++        self.check_access("read")
++        if not self.env.user.has_group("point_of_sale.group_pos_user"):
++            raise AccessError("POS access is required.")
++        allowed = self.env.context.get("allowed_company_ids", [])
++        if self.company_id.id not in allowed or self.company_id not in self.env.user.company_ids:
++            raise AccessError("This register is not available to this company.")
++        config = self.with_company(self.company_id)
++        partner = self.env["res.partner"]
++        if partner_id is not False and (type(partner_id) is not int or partner_id <= 0):
++            raise ValidationError("Invalid customer ID.")
++        if partner_id:
++            partner = partner.browse(partner_id).exists()
++            partner.check_access("read")
++            if len(partner) != 1 or partner.company_id != config.company_id:
++                raise AccessError("Customer is not available to this store.")
++            partner = partner.with_company(config.company_id)
++        customer_list = partner.property_product_pricelist if partner else False
++        pricelist = customer_list or config.pricelist_id
++        if pricelist:
++            pricelist.check_access("read")
++            if not pricelist.active or (pricelist.company_id and pricelist.company_id != config.company_id):
++                raise AccessError("Price list is not available to this store.")
++            if pricelist.currency_id != config.currency_id:
++                raise ValidationError("Price list currency must match the register.")
++        if not isinstance(quantities, list) or not 1 <= len(quantities) <= 80:
++            raise ValidationError("Invalid product quantities.")
++        result = []
++        seen = set()
++        for item in quantities:
++            if not isinstance(item, dict):
++                raise ValidationError("Invalid product quantity.")
++            product_id, quantity = item.get("productId"), item.get("quantity")
++            if type(product_id) is not int or product_id <= 0 or product_id in seen or type(quantity) not in (int, float) or not math.isfinite(quantity) or quantity <= 0:
++                raise ValidationError("Invalid product quantity.")
++            seen.add(product_id)
++            product = self.env["product.product"].with_company(config.company_id).browse(product_id).exists()
++            product.check_access("read")
++            if len(product) != 1 or not product.available_in_pos or (product.company_id and product.company_id != config.company_id):
++                raise AccessError("Product is not available to this store.")
++            price = pricelist._get_product_price(product, quantity, date=fields.Datetime.now()) if pricelist else product.lst_price
++            if not math.isfinite(price) or price < 0:
++                raise ValidationError("Product has no valid price.")
++            result.append({"productId": product_id, "unitPrice": price})
++        return {
++            "prices": result,
++            "pricelistId": pricelist.id if pricelist else False,
++            "priceSource": "customer" if customer_list else "register" if pricelist else "base",
++            "priceSourceName": pricelist.name if pricelist else "Standard price",
++            "currency": config.currency_id.name,
++        }
++
++
++class PartnerCategory(models.Model):
++    _inherit = "res.partner.category"
++
++    company_id = fields.Many2one("res.company", index=True)
+--- /dev/null
++++ b/addons/orithos_au_retail/security/customer_category_rules.xml
+@@ -0,0 +1,7 @@
++<odoo>
++    <record id="orithos_customer_category_company_rule" model="ir.rule">
++        <field name="name">Customer groups: allowed companies and legacy shared groups</field>
++        <field name="model_id" ref="base.model_res_partner_category"/>
++        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
++    </record>
++</odoo>

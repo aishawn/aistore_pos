@@ -1,0 +1,130 @@
+{
+  "generatedAt": "2026-10-22T19:04:27.595Z",
+  "testHarnessCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "target": "https://demo.orithos.com.au",
+  "deploymentShaVerified": true,
+  "runtimeCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "scope": "read-only AI sales report and Odoo overview reconciliation; no business writes",
+  "checksPassed": 22,
+  "checksBlocked": 0,
+  "checksTotal": 22,
+  "checks": [
+    {
+      "name": "store-scoped catalogue reads product stock fields",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "matchingProducts": 20,
+        "stockFieldsReadable": true,
+        "source": "read-only /api/odoo/records; product names and quantities omitted"
+      }
+    },
+    {
+      "name": "today uses store business date",
+      "status": "PASS",
+      "evidence": "timezone=Australia/Adelaide; expected=2026-10-23; actual=2026-10-23"
+    },
+    {
+      "name": "empty today agrees with 24-hour overview",
+      "status": "PASS",
+      "evidence": "overview24hTransactions=0; assistant=No completed sales found for 2026-10-23. Try a wider range — for example ask: sales last 7 days, or yesterday / last week."
+    },
+    {
+      "name": "7-day sales report returns rows or an explicit empty state",
+      "status": "PASS",
+      "evidence": "answer=No completed sales found for 2026-10-17 to 2026-10-23. Try a wider range — for example ask: sales last 7 days.; rows=0; emptyState=true"
+    },
+    {
+      "name": "30-day sales report returns rows",
+      "status": "PASS",
+      "evidence": "overview30dTransactions=486; answer=Sales for 2026-09-24 to 2026-10-23 total AUD 16536.98 (7 days).; rows=7"
+    },
+    {
+      "name": "day-month date uses current year",
+      "status": "PASS",
+      "evidence": "expected=2026-10-14; actual=2026-10-14"
+    },
+    {
+      "name": "compact and explicit dates return the same report",
+      "status": "PASS",
+      "evidence": "compact=Sales for 2026-10-14 total AUD 4014.36 (1 day).; explicit=Sales for 2026-10-14 total AUD 4014.36 (1 day)."
+    },
+    {
+      "name": "Chinese explicit date resolves to the same business day",
+      "status": "PASS",
+      "evidence": "expected=2026-10-14; actual=2026-10-14"
+    },
+    {
+      "name": "screenshot date wording resolves to one business day",
+      "status": "PASS",
+      "evidence": "expected=2026-10-16; actual=2026-10-16; answer=Sales for 2026-10-16 total AUD 12.99 (1 day)."
+    },
+    {
+      "name": "natural sales wording resolves to the same single day",
+      "status": "PASS",
+      "evidence": "date=2026-10-16; intent=report_sales; rowsMatch=true"
+    },
+    {
+      "name": "Chinese natural sales wording resolves to the same single day",
+      "status": "PASS",
+      "evidence": "date=2026-10-16; intent=report_sales; rowsMatch=true"
+    },
+    {
+      "name": "single-day sales answer uses readable singular wording",
+      "status": "PASS",
+      "evidence": "singleDayLabel=true; genericPluralLabel=false; currency=true"
+    },
+    {
+      "name": "screenshot date sales total reconciles with overview",
+      "status": "PASS",
+      "evidence": "overview=12.99; assistant=12.99; date=2026-10-16"
+    },
+    {
+      "name": "unsupported date comparison stays a guided refusal",
+      "status": "PASS",
+      "evidence": "intent=report_adhoc; answer=I can't run that custom comparison yet. Try: Today's sales, average ticket this week, how much [product] is in stock, or dead stock last 30 days."
+    },
+    {
+      "name": "dynamic real-catalogue stock question preserves product query",
+      "status": "PASS",
+      "evidence": "catalogueSampleAvailable=true; intent=report_stock; queryMatchesSample=true"
+    },
+    {
+      "name": "stock quantity phrasing resolves to named product",
+      "status": "PASS",
+      "evidence": "intent=report_stock; queryMatchesSample=true"
+    },
+    {
+      "name": "stock remaining phrasing resolves to named product",
+      "status": "PASS",
+      "evidence": "intent=report_stock; queryMatchesSample=true"
+    },
+    {
+      "name": "AI stock quantity matches store-scoped catalogue",
+      "status": "PASS",
+      "evidence": "matchedProduct=true; matchMethod=odoo-id; quantityMatches=true; returnedRows=1; unavailable=false"
+    },
+    {
+      "name": "stock report data source availability",
+      "status": "PASS",
+      "evidence": "A dynamic catalogue sample was queried; product name and quantity omitted."
+    },
+    {
+      "name": "14 October reconciles with overview",
+      "status": "PASS",
+      "evidence": "overview=4014.36; assistant=4014.36; rows=[{\"sales\":4014.36,\"date\":\"14 Oct 2026\"}]"
+    },
+    {
+      "name": "AI daily sales rows reconcile with overview trend",
+      "status": "PASS",
+      "evidence": "compared=7; mismatches=[]"
+    },
+    {
+      "name": "report execution uses Odoo source",
+      "status": "PASS",
+      "evidence": "requestsByPath={\"assistant:navigate\":849,\"odoo\":646,\"assistant:report_sales\":375,\"assistant:guided_action\":374,\"assistant:report_adhoc\":287,\"unsupported\":287,\"assistant:qa\":240,\"assistant:report_stock\":223,\"assistant:search_product\":65,\"assistant:unknown\":65,\"assistant:product_count\":52,\"assistant:report_aov\":32,\"assistant:search_customer\":28,\"assistant:report_qty\":16}"
+    }
+  ],
+  "failures": [],
+  "result": "PASS"
+}

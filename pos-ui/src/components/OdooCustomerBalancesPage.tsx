@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { ModalOverlay } from "@/components/ModalOverlay";
+
+import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { OdooRecordLink } from "@/components/OdooRecordLink";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { AlertCircle, ChevronLeft, LoaderCircle, RefreshCw, Search, Wallet } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
 import {
@@ -14,9 +18,14 @@ import {
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
-const money = (amount: number) => `$${Number(amount).toFixed(2)}`;
+const money = (amount: number, currency?: string | null) => `${currency ?? ""} ${Number(amount).toFixed(2)}`;
 
 export function OdooCustomerBalancesPage() {
+  const revision = useRef(0);
+  const invoiceRevision = useRef(0);
+  const autoOpened = useRef(false);
+  const [invoiceOffset, setInvoiceOffset] = useState(0);
+  const [invoiceHasNext, setInvoiceHasNext] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [items, setItems] = useState<OdooCustomerBalanceRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -32,12 +41,20 @@ export function OdooCustomerBalancesPage() {
   const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
+  useDialogFocus(Boolean(selected), () => { invoiceRevision.current++; setSelected(null); });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("q")) setQuery(params.get("q")!);
+    if (params.get("customerId")) setOwingOnly(false);
+  }, []);
+
   useEffect(() => {
     void getOdooSession().then((user) => setConnected(Boolean(user))).catch(() => setConnected(false));
   }, [refreshKey]);
 
   const load = useCallback(async () => {
     if (connected !== true) return;
+    const request = ++revision.current;
     setLoading(true);
     setError(null);
     try {
@@ -47,36 +64,49 @@ export function OdooCustomerBalancesPage() {
         offset,
         limit: PAGE_SIZE,
       });
+      if (request !== revision.current) return;
       setItems(page.items);
       setHasNext(page.hasNext);
     } catch (cause) {
+      if (request !== revision.current) return;
       setError(cause instanceof Error ? cause.message : "Could not load customer balances.");
     } finally {
-      setLoading(false);
+      if (request === revision.current) setLoading(false);
     }
   }, [connected, debouncedQuery, owingOnly, offset]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
   useEffect(() => { setOffset(0); }, [debouncedQuery, owingOnly]);
 
-  async function openStatements(customer: OdooCustomerBalanceRecord) {
+  const openStatements = useCallback(async (customer: OdooCustomerBalanceRecord, nextOffset = 0) => {
+    const request = ++invoiceRevision.current;
+    setInvoiceOffset(nextOffset);
     setSelected(customer);
     setInvoiceLoading(true);
     setInvoiceError(null);
     try {
-      const result = await getOdooCustomerInvoices(customer.id, true);
+      const result = await getOdooCustomerInvoices(customer.id, true, nextOffset);
+      if (request !== invoiceRevision.current) return;
       setInvoices(result.items);
+      setInvoiceHasNext(result.hasNext);
     } catch (cause) {
+      if (request !== invoiceRevision.current) return;
       setInvoices([]);
       setInvoiceError(cause instanceof Error ? cause.message : "Could not load open invoices.");
     } finally {
-      setInvoiceLoading(false);
+      if (request === invoiceRevision.current) setInvoiceLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("customerId"));
+    const customer = items.find((row) => row.id === id);
+    if (!autoOpened.current && customer) { autoOpened.current = true; void openStatements(customer); }
+  }, [items, openStatements]);
 
   if (connected === false) {
     return (
-      <AdminPageLayout title="Balances" subtitle="Customer receivable balances from Odoo">
+      <AdminPageLayout title="Receivables" subtitle="Customer receivable balances from Odoo">
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950">
           <AlertCircle className="mb-2" size={20} />
           <p className="font-semibold">Connect Odoo to view balances</p>
@@ -88,8 +118,8 @@ export function OdooCustomerBalancesPage() {
 
   return (
     <AdminPageLayout
-      title="Balances"
-      subtitle="Odoo total receivable (credit) and open customer invoices. Payments stay in Odoo Accounting for this pilot."
+      title="Receivables"
+      subtitle="Current receivables and open invoices. Record and reconcile payments in Odoo Accounting."
       count={loading || error ? undefined : items.length}
       countLabel="Customers on this page"
       actions={
@@ -98,6 +128,7 @@ export function OdooCustomerBalancesPage() {
         </AdminSecondaryButton>
       }
     >
+      <div className="mb-4"><OdooRecordLink model="account.move">Open Odoo Accounting</OdooRecordLink></div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <label className="flex h-11 max-w-xl flex-1 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3">
           <Search size={16} className="text-[var(--oh-muted)]" />
@@ -116,6 +147,7 @@ export function OdooCustomerBalancesPage() {
         </div>
       )}
 
+      {!error && items.length === 0 && <p role="status" className="mb-4 text-sm lg:hidden">{loading ? "Loading receivables…" : "No matching customer balances"}</p>}
       <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
         <table className="hidden w-full text-left text-sm lg:table">
           <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
@@ -139,16 +171,17 @@ export function OdooCustomerBalancesPage() {
                   <p className="text-xs text-[var(--oh-muted)]">Odoo #{row.id}{row.ref ? ` · ${row.ref}` : ""}</p>
                 </td>
                 <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{row.pricelist ?? "—"}</td>
-                <td className="px-4 py-3 text-right text-[var(--oh-text-secondary)]">{money(row.totalInvoiced)}</td>
-                <td className="px-4 py-3 text-right font-semibold text-[var(--oh-text)]">{money(row.credit)}</td>
+                <td className="px-4 py-3 text-right text-[var(--oh-text-secondary)]">{money(row.totalInvoiced, row.currency)}</td>
+                <td className="px-4 py-3 text-right font-semibold text-[var(--oh-text)]">{money(row.credit, row.currency)}</td>
                 <td className="px-4 py-3 text-right">
-                  <button type="button" onClick={() => void openStatements(row)} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] px-3">Open invoices</button>
+                  <button type="button" disabled={loading || Boolean(error)} onClick={() => void openStatements(row)} className="inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] px-3">Open invoices</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="divide-y divide-[var(--oh-border)] lg:hidden">
+          {!items.length && !error && <p role="status" className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">{loading ? "Loading receivables…" : "No customers found"}</p>}
           {items.map((row) => (
             <article key={row.id} className="px-4 py-3">
               <div className="flex items-start justify-between gap-3">
@@ -156,15 +189,15 @@ export function OdooCustomerBalancesPage() {
                   <p className="font-semibold text-[var(--oh-text)]">{row.name}</p>
                   <p className="text-xs text-[var(--oh-muted)]">{row.pricelist ?? "No price list"}</p>
                 </div>
-                <p className="font-semibold text-[var(--oh-text)]">{money(row.credit)}</p>
+                <p className="font-semibold text-[var(--oh-text)]">{money(row.credit, row.currency)}</p>
               </div>
-              <button type="button" onClick={() => void openStatements(row)} className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[var(--oh-border)]">Open invoices</button>
+              <button type="button" disabled={loading || Boolean(error)} onClick={() => void openStatements(row)} className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-lg border border-[var(--oh-border)]">Open invoices</button>
             </article>
           ))}
         </div>
       </section>
 
-      <footer className="mt-4 flex items-center justify-between gap-2 text-sm text-[var(--oh-muted)]">
+      <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 pr-32 text-sm text-[var(--oh-muted)]">
         <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
         <div className="flex gap-2">
           <button type="button" disabled={offset === 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 disabled:opacity-40">Previous</button>
@@ -173,20 +206,20 @@ export function OdooCustomerBalancesPage() {
       </footer>
 
       {selected && (
-        <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/40 p-0 sm:place-items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
+        <ModalOverlay className="fixed inset-0 z-[90] grid place-items-end bg-slate-950/40 p-0 sm:place-items-center sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="balance-invoices-title" className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl sm:rounded-xl">
             <header className="flex items-start justify-between gap-3">
               <div>
                 <button type="button" onClick={() => setSelected(null)} className="mb-2 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--oh-primary)] sm:hidden"><ChevronLeft size={16} /> Back</button>
                 <h2 id="balance-invoices-title" className="text-lg font-semibold text-[var(--oh-text)]">{selected.name}</h2>
-                <p className="mt-1 text-sm text-[var(--oh-muted)]">Owing {money(selected.credit)} · open posted invoices</p>
+                <p className="mt-1 text-sm text-[var(--oh-muted)]">Owing {money(selected.credit, selected.currency)} · open posted invoices</p>
               </div>
               <button type="button" onClick={() => setSelected(null)} className="hidden h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold sm:inline-flex sm:items-center">Close</button>
             </header>
             {invoiceLoading ? (
               <p className="mt-6 flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading invoices…</p>
             ) : invoiceError ? (
-              <p role="alert" className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{invoiceError}</p>
+              <p role="alert" className="mt-6 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{invoiceError} <button type="button" onClick={() => void openStatements(selected, invoiceOffset)} className="min-h-11 underline">Retry invoices</button></p>
             ) : invoices.length === 0 ? (
               <p className="mt-6 text-sm text-[var(--oh-muted)]">No open invoices for this customer.</p>
             ) : (
@@ -202,15 +235,17 @@ export function OdooCustomerBalancesPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-[var(--oh-text)]">{money(invoice.amountResidual)}</p>
-                      <p className="text-xs text-[var(--oh-muted)]">of {money(invoice.amountTotal)}</p>
+                      <p className="font-semibold text-[var(--oh-text)]">{money(invoice.amountResidual, invoice.currency)}</p>
+                      <p className="text-xs text-[var(--oh-muted)]">of {money(invoice.amountTotal, invoice.currency)}</p>
                     </div>
                   </li>
                 ))}
               </ul>
             )}
+            {!invoiceLoading && !invoiceError && <div className="mt-4 flex justify-between"><button type="button" disabled={invoiceOffset === 0} onClick={() => void openStatements(selected, Math.max(0, invoiceOffset - 50))} className="min-h-11 disabled:opacity-40">Previous invoices</button><button type="button" disabled={!invoiceHasNext} onClick={() => void openStatements(selected, invoiceOffset + 50)} className="min-h-11 disabled:opacity-40">Next invoices</button></div>}
+            <div className="mt-4"><OdooRecordLink model="res.partner" id={selected.id}>View account in Odoo</OdooRecordLink></div>
           </section>
-        </div>
+        </ModalOverlay>
       )}
     </AdminPageLayout>
   );

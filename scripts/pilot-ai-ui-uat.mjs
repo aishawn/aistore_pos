@@ -39,7 +39,7 @@ async function runViewport(viewport) {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto(`${base}/sommelier/find`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${base}/sommelier/find`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Find a wine" }).waitFor({ timeout: 30000 });
   for (const label of ["Not sure", "No preference", "Not sure", "Full Body", "🍽 No food", "Dinner tonight"]) {
     await page.getByRole("button", { name: label, exact: true }).click();
@@ -60,19 +60,40 @@ async function runViewport(viewport) {
   await page.getByRole("heading", { name: "Wine recommendations" }).waitFor({ timeout: 120000 });
   const recommendationCards = await page.locator("article").count();
 
-  await page.goto(`${base}/sommelier/identify`, { waitUntil: "networkidle", timeout: 60000 });
+  const identifyConfigResponse = page.waitForResponse(
+    (response) => response.request().method() === "GET"
+      && response.url().includes("/api/ai/config/client"),
+    { timeout: 30000 },
+  );
+  await page.goto(`${base}/sommelier/identify`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await identifyConfigResponse;
   await page.getByPlaceholder("Penfolds Bin 28 or barcode").waitFor({ state: "visible", timeout: 30000 });
   const search = page.getByPlaceholder("Penfolds Bin 28 or barcode");
   // Use a catalogue term that is present in the current Odoo-backed demo
   // fixture; generic DEMO labels are not guaranteed to be wine records.
-  await search.fill("Shiraz");
+  // Wait for hydration and use keyboard events so the controlled form state is
+  // updated even when this page follows the recommendation flow in one tab.
+  await search.click();
+  await search.fill("");
+  await search.pressSequentially("Shiraz");
+  const searchButton = page.getByRole("button", { name: "Search", exact: true });
+  await page.waitForFunction(() => {
+    const button = Array.from(document.querySelectorAll("button"))
+      .find((candidate) => candidate.textContent?.trim() === "Search");
+    return Boolean(button && !(button instanceof HTMLButtonElement && button.disabled));
+  }, undefined, { timeout: 30000 });
   const identifyResponse = page.waitForResponse(
     (response) => response.request().method() === "GET"
       && response.url().includes("/api/ai/sommelier/identify?q=Shiraz"),
     { timeout: 60000 },
   );
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-  const identifyHttp = await identifyResponse;
+  // The identify control is a form submit. Start listening before the click and
+  // avoid Playwright's implicit navigation wait so a slow Odoo response cannot
+  // close or invalidate the response waiter.
+  const [identifyHttp] = await Promise.all([
+    identifyResponse,
+    searchButton.click({ noWaitAfter: true }),
+  ]);
   if (!identifyHttp.ok()) throw new Error(`IDENTIFY_HTTP_${identifyHttp.status()}`);
   await page.waitForTimeout(500);
   // The application shell also contains sidebar navigation lists. Scope this
@@ -91,7 +112,13 @@ async function runViewport(viewport) {
   await page.getByText(/cheaper|No cheaper/i).first().waitFor({ timeout: 60000 });
 
   // Every signed-in store page, including overview, exposes the floating assistant.
-  const overviewResponse = await page.goto(`${base}/overview`, { waitUntil: "networkidle", timeout: 60000 });
+  const overviewConfigResponse = page.waitForResponse(
+    (response) => response.request().method() === "GET"
+      && response.url().includes("/api/ai/config/client"),
+    { timeout: 30000 },
+  );
+  const overviewResponse = await page.goto(`${base}/overview`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await overviewConfigResponse;
   const permissionsPolicy = overviewResponse?.headers()["permissions-policy"] ?? "";
   const aiConfigResponse = await context.request.get(`${base}/api/ai/config/client`);
   const aiConfigBody = await aiConfigResponse.json().catch(() => ({}));
@@ -189,7 +216,7 @@ async function runViewport(viewport) {
       "Wine recommendations",
       "SOMMELIER",
       /wine|recommend|unavailable|no match|no recommendation/i,
-      "Open wine recommendations",
+      "Open Sommelier",
     );
     await askCard(
       "Create a customer",

@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-10-23T02:40:33.347Z",
+  "sourceCommit": "8c7f488ef89fe8571c8da185f879c7d45544396a",
+  "workingTreeDirty": true,
+  "environment": "local-next-dev-with-intercepted-apis",
+  "target": "http://demo.localhost:3101",
+  "scope": "AI card rendering, legacy/structured CTA compatibility, deferred navigation, and responsive overflow; business APIs blocked",
+  "status": "PASS",
+  "checks": [
+    {
+      "viewport": 1440,
+      "scenario": "pricing-empty",
+      "diagnosticCorrect": true,
+      "cardVisible": true,
+      "statusVisible": true,
+      "answerCorrect": true,
+      "expectedItemsVisible": true,
+      "forbiddenItemsHidden": true,
+      "emptyReasonNotDuplicated": true,
+      "statusConsistent": true,
+      "ctaVisible": true,
+      "unsafeCtaHidden": false,
+      "deferredUntilClick": true,
+      "expectedDestination": "/stock/capped-pricing",
+      "destination": "/stock/capped-pricing",
+      "destinationCorrect": true,
+      "destinationReady": true,
+      "sourceNoHorizontalOverflow": true,
+      "destinationNoHorizontalOverflow": true,
+      "noHorizontalOverflow": true,
+      "pageErrors": [],
+      "screenshot": "docs/screenshots/ai-card-pricing-empty-1440-diag/pricing-empty-1440.png",
+      "destinationScreenshot": "docs/screenshots/ai-card-pricing-empty-1440-diag/pricing-empty-destination-1440.png"
+    }
+  ],
+  "blockedBusinessWrites": [],
+  "fixtureRequests": [
+    "GET /api/tenant/sample-data/status",
+    "GET /api/odoo/session",
+    "GET /api/r2-archive/sales",
+    "GET /api/sell/parked",
+    "GET /api/ai/config/client",
+    "GET /api/auth/me",
+    "GET /api/odoo/reporting-dashboard",
+    "GET /api/tenant/sample-data/status",
+    "POST /api/ai/assistant",
+    "GET /api/odoo/pricelist-items",
+    "GET /api/odoo/pricelist-items"
+  ],
+  "pageErrors": []
+}

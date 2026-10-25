@@ -6,16 +6,22 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = (process.env.PILOT_BASE_URL || "https://demo.orithos.com.au").replace(/\/+$/, "");
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+const worktreeDirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
+  cwd: root,
+  encoding: "utf8",
+}).trim().length > 0;
 const response = await fetch(`${base}/api/public/version`, { headers: { Accept: "application/json" } });
 const body = await response.json().catch(() => ({}));
 const frontendCommit = body.frontend?.commit ?? null;
 const backendCommit = body.backend?.commit ?? null;
 const matchesSourceCommit = response.ok
+  && !worktreeDirty
   && frontendCommit === sourceCommit
   && backendCommit === sourceCommit;
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit,
+  worktreeDirty,
   runtimeCommit: frontendCommit === backendCommit ? frontendCommit : null,
   frontendCommit,
   backendCommit,
@@ -28,5 +34,5 @@ const outputPath = process.env.PILOT_UAT_OUTPUT_PATH
   : path.join(root, "docs", "UAT_RELEASE_IDENTITY_CURRENT.json");
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
-console.log(JSON.stringify({ outputPath, sourceCommit, runtimeCommit: output.runtimeCommit, matchesSourceCommit }));
+console.log(JSON.stringify({ outputPath, sourceCommit, worktreeDirty, runtimeCommit: output.runtimeCommit, matchesSourceCommit }));
 if (!matchesSourceCommit) process.exitCode = 2;

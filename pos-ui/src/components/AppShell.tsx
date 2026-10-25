@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { UnsavedChangesProvider } from "@/lib/unsaved-changes";
 import { AiFloatHost } from "@/components/AiFloatHost";
 import { LaunchRingHost } from "@/components/LaunchRingHost";
+import { AiTransitionOverlay } from "@/components/AiTransitionOverlay";
 import { AiAssistantProvider } from "@/lib/ai-assistant";
 import { SellScreenProvider } from "@/lib/sell-screen";
 import { MobileTopBar } from "@/components/MobileAiApp";
@@ -34,7 +35,11 @@ function isPlatformPath(pathname: string): boolean {
 
 /** Overview keeps auth/providers but hides Sidebar + Header (in-page launcher is nav). */
 function isOverviewPath(pathname: string): boolean {
-  return pathname === "/overview" || pathname.startsWith("/overview/");
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname === "/overview" || pathname.startsWith("/overview/");
+}
+
+function isAssistantPath(pathname: string): boolean {
+  return pathname === "/assistant" || pathname.startsWith("/assistant/");
 }
 const SIDEBAR_OPEN_KEY = "orithos-sidebar-open";
 const ODOO_REGISTER_PATHS = new Set(["/", "/register/odoo"]);
@@ -191,6 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
           <AiFloatHost />
           <LaunchRingHost />
+          <AiTransitionOverlay />
         </div>
       </AiAssistantProvider>
       </SellScreenProvider>
@@ -219,6 +225,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </AppShellChrome>
         </SalesHistoryUiProvider>
       </CloseRegisterUiProvider>
+      <AiTransitionOverlay />
       </AiAssistantProvider>
     </UnsavedChangesProvider>
   );
@@ -252,7 +259,7 @@ function AppShellChrome({
 }) {
   const { openCloseRegister } = useCloseRegisterUi();
   const { openSalesHistory } = useSalesHistoryUi();
-  const hideStoreChrome = isOverviewPath(pathname);
+  const hideStoreChrome = isOverviewPath(pathname) || isAssistantPath(pathname);
 
   const userMenu = (
     <UserMenu
@@ -280,7 +287,15 @@ function AppShellChrome({
   );
 
   const main = (
-    <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 outline-none">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className={`relative min-h-0 flex-1 outline-none ${
+        !isOverviewPath(pathname) && !isAssistantPath(pathname)
+          ? "oh-workspace-main"
+          : ""
+      }`}
+    >
       {ODOO_REGISTER_PATHS.has(pathname) ? children : <SellScreenProvider>{children}</SellScreenProvider>}
     </main>
   );

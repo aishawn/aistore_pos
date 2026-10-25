@@ -7,26 +7,26 @@ import {
 import { getSidebarNavigation } from "../pos-ui/src/lib/sidebar-navigation.ts";
 import { buildLaunchDestinations } from "../pos-ui/src/lib/overview-launch.ts";
 test("Workspace is the default, explicit Radial/checkout links remain intact", () => {
-  assert.equal(storeLandingPath(null), "/overview/workspace");
+  assert.equal(storeLandingPath(null), "/dashboard/workspace");
   assert.equal(storeLandingPath("/overview"), "/overview");
   assert.equal(storeLandingPath("/?sale=42"), "/?sale=42");
   assert.equal(storeLandingPath(null, "mobile"), "/m");
   assert.equal(
     storeLandingPath("https://external.invalid"),
-    "/overview/workspace",
+    "/dashboard/workspace",
   );
   assert.equal(controlPlaneLandingPath(null), "/platform/stores");
 });
 test("Sidebar and launch ring share the Workspace destination", () => {
   const navigation = getSidebarNavigation({ isAdmin: true });
   assert.equal(
-    navigation.find((item) => item.label === "Overview").href,
-    "/overview/workspace",
+    navigation.find((item) => item.label === "Dashboard").href,
+    "/dashboard/workspace",
   );
   assert.equal(
-    buildLaunchDestinations(navigation).find((item) => item.id === "overview")
+    buildLaunchDestinations(navigation).find((item) => item.id === "dashboard")
       .href,
-    "/overview/workspace",
+    "/dashboard/workspace",
   );
 });
 test("Cashier destinations contain only allowed parent and child routes", () => {
@@ -38,7 +38,7 @@ test("Cashier destinations contain only allowed parent and child routes", () => 
   );
   assert.deepEqual(
     destinations.map((item) => item.id),
-    ["sell", "customers", "overview"],
+    ["sell", "dashboard", "customers"],
   );
   assert.deepEqual(
     destinations

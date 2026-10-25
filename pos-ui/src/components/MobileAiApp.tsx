@@ -17,7 +17,7 @@ export function MobileTopBar({ backHref }: { backHref?: string }) {
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--oh-border)] bg-white px-3">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[var(--oh-border)] bg-[var(--oh-header-bg)] px-3">
       {backHref ? (
         <button
           type="button"

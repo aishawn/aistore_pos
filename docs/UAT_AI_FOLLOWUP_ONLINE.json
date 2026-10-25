@@ -1,0 +1,257 @@
+{
+  "generatedAt": "2026-10-23T20:31:34.495Z",
+  "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
+  "workingTreeDirty": true,
+  "runtimeCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+  "matchesSourceCommit": false,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated history-reopen sales and stock follow-ups; assistant API only; no business writes",
+  "checks": [
+    {
+      "id": "runtime-identity",
+      "status": "BLOCKED",
+      "evidence": {
+        "httpStatus": 200,
+        "runtimeCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+        "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
+        "workingTreeDirty": true,
+        "matchesSourceCommit": false
+      }
+    },
+    {
+      "id": "en-seed",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_sales",
+        "threadIdPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "en-history-open",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "messagesPresent": true,
+        "seedQuestionRestored": true
+      }
+    },
+    {
+      "id": "en-followup-after-history-open",
+      "status": "FAIL",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_sales",
+        "sameThread": true,
+        "singleDayRange": false,
+        "staleDaysCleared": false,
+        "previousDayMatches": true,
+        "retainedFilters": true,
+        "answerPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "en-previous-day-seed",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_sales",
+        "threadIdPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "en-previous-day-history-open",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "messagesPresent": true,
+        "seedQuestionRestored": true
+      }
+    },
+    {
+      "id": "en-previous-day-followup-after-history-open",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_sales",
+        "sameThread": true,
+        "singleDayRange": true,
+        "staleDaysCleared": false,
+        "previousDayMatches": true,
+        "retainedFilters": true,
+        "answerPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "zh-seed",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_sales",
+        "threadIdPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "zh-history-open",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "messagesPresent": true,
+        "seedQuestionRestored": true
+      }
+    },
+    {
+      "id": "zh-followup-after-history-open",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_sales",
+        "sameThread": true,
+        "singleDayRange": true,
+        "staleDaysCleared": false,
+        "previousDayMatches": true,
+        "retainedFilters": true,
+        "answerPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "stock-en-seed",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_stock",
+        "threadIdPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "stock-en-history-open",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "messagesPresent": true,
+        "seedQuestionRestored": true
+      }
+    },
+    {
+      "id": "stock-en-followup-after-history-open",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "stock_history_unavailable",
+        "fastPathId": "historical_stock_unavailable",
+        "sameThread": true,
+        "cardType": "stock_history",
+        "cardStatus": "unavailable",
+        "cardRoute": "/stock/list",
+        "cardItems": 0,
+        "noFabricatedStock": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "stock-en-unavailable-card-restored",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "historicalAnswerPresent": true,
+        "cardType": "stock_history",
+        "cardStatus": "unavailable",
+        "cardRoute": "/stock/list",
+        "retryable": false,
+        "cardItems": 0
+      }
+    },
+    {
+      "id": "stock-en-repeat-relative-followup-remains-unavailable",
+      "status": "FAIL",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "unknown",
+        "fastPathId": "llm_classifier",
+        "cardStatus": null,
+        "cardItems": null,
+        "tablePresent": false,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "stock-zh-seed",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_stock",
+        "threadIdPresent": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "stock-zh-history-open",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "messagesPresent": true,
+        "seedQuestionRestored": true
+      }
+    },
+    {
+      "id": "stock-zh-followup-after-history-open",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "stock_history_unavailable",
+        "fastPathId": "historical_stock_unavailable",
+        "sameThread": true,
+        "cardType": "stock_history",
+        "cardStatus": "unavailable",
+        "cardRoute": "/stock/list",
+        "cardItems": 0,
+        "noFabricatedStock": true,
+        "writeRequests": []
+      }
+    },
+    {
+      "id": "stock-zh-unavailable-card-restored",
+      "status": "PASS",
+      "evidence": {
+        "listHttpStatus": 200,
+        "detailHttpStatus": 200,
+        "historicalAnswerPresent": true,
+        "cardType": "stock_history",
+        "cardStatus": "unavailable",
+        "cardRoute": "/stock/list",
+        "retryable": false,
+        "cardItems": 0
+      }
+    },
+    {
+      "id": "stock-zh-repeat-relative-followup-remains-unavailable",
+      "status": "FAIL",
+      "evidence": {
+        "httpStatus": 200,
+        "intent": "report_adhoc",
+        "fastPathId": "llm_classifier",
+        "cardStatus": null,
+        "cardItems": null,
+        "tablePresent": false,
+        "writeRequests": []
+      }
+    }
+  ],
+  "passed": 16,
+  "blocked": 1,
+  "failed": 3,
+  "writeRequests": []
+}

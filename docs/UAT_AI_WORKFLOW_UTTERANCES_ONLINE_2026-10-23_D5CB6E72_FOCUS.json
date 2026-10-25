@@ -1,0 +1,346 @@
+{
+  "generatedAt": "2026-10-23T06:59:31.081Z",
+  "sourceCommit": "bb048d73da255fb4d0fffc69461555d7536359c0",
+  "worktreeDirty": true,
+  "deployment": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+  "target": "https://uatpilot3.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+    "frontendBuiltAt": "2026-10-23T06:47:42.691Z",
+    "backendCommit": "d5cb6e726aebdfc4576c06a4bb0563ca2d698b4c",
+    "backendBuiltAt": "2026-10-23T06:47:43Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 386,
+  "selectedCount": 11,
+  "selectedIds": [
+    "stock-short-en",
+    "stock-in-stock-en",
+    "stock-looking-en",
+    "stock-short-zh",
+    "product-count-en-variant",
+    "product-count-zh-how-many",
+    "product-count-en-have-catalogue",
+    "bulk-pricing-lookup-zh",
+    "stock-lookup-inventory-zh",
+    "stock-lookup-sku-en",
+    "product-lookup-natural-en"
+  ],
+  "requestTimeoutMs": 15000,
+  "catalogAudit": {
+    "uniqueIds": 386,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "stock-short-en",
+      "question": "Stock?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c8b4158a-6412-48a4-95c2-393e3ab070b6"
+      }
+    },
+    {
+      "id": "stock-in-stock-en",
+      "question": "What's in stock?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "d78c33c0-877d-4cc1-a419-6d6aef938e23"
+      }
+    },
+    {
+      "id": "stock-looking-en",
+      "question": "How's our stock looking?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e483510d-312f-43fb-887e-c45312b2ca5d"
+      }
+    },
+    {
+      "id": "stock-short-zh",
+      "question": "库存情况怎么样？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bf037ab2-4038-4533-ba50-32e3251b7fa9"
+      }
+    },
+    {
+      "id": "product-count-en-variant",
+      "question": "How many products do we have?",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "8bf6ff83-4bfd-4d19-a870-1aa759646c72",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-zh-how-many",
+      "question": "商品有多少个？",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4aa11f0b-67d0-46ee-a22e-c7064d3b1542",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-count-en-have-catalogue",
+      "question": "How many products do we have in the catalogue?",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "db1bfa9c-3d1c-4c74-a506-fd0053cf63e1",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "product-lookup-natural-en",
+      "question": "Search for the product VB Cans",
+      "status": "PASS",
+      "expected": {
+        "intent": "search_product",
+        "route": "/products",
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "fastPathId": "search_product",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a9e721df-37d4-4bfc-ab24-1ce729b1a075",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "bulk-pricing-lookup-zh",
+      "question": "批量价格编辑",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "de6792b8-20b0-447a-ae96-39024318671b"
+      }
+    },
+    {
+      "id": "stock-lookup-inventory-zh",
+      "question": "库存里有 VB Cans 吗",
+      "status": "FAIL",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "entity_action",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "468d3b77-02d8-469b-b5d6-37fc6f5dc88e",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "stock-lookup-sku-en",
+      "question": "Find SKU VB-375",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB-375",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "157a008c-fe16-411d-9f28-486977deb6bb",
+        "query": "VB-375"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 6,
+  "blocked": 0,
+  "failed": 5,
+  "status": "FAIL"
+}

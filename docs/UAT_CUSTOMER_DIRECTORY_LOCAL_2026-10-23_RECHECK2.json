@@ -1,0 +1,170 @@
+{
+  "generatedAt": "2026-10-22T21:30:53.668Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Node v24.19.0; browser API fixtures",
+  "scope": "Odoo customer directory search/create form and responsive UI; all API requests intercepted",
+  "status": "PASS",
+  "passed": 26,
+  "failed": 0,
+  "simulatedWriteRequests": 8,
+  "productionBusinessWrites": 0,
+  "simulatedWrites": [
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers"
+  ],
+  "checks": [
+    {
+      "width": 390,
+      "name": "customer directory loads Odoo fixture records",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "responsive layout has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "short customer result sets keep pagination close to the records",
+      "status": "PASS",
+      "details": {
+        "listHeight": 271.65625
+      }
+    },
+    {
+      "width": 390,
+      "name": "search immediately locks stale customer edits",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "current delayed search replaces stale customer rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "fresh customer rows re-enable edit controls",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "empty group state gives accurate Odoo setup guidance",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "create failure preserves form values for retry",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "create retry sends selected price list and group",
+      "status": "PASS"
+    },
+    {
+      "width": 768,
+      "name": "customer directory loads Odoo fixture records",
+      "status": "PASS"
+    },
+    {
+      "width": 768,
+      "name": "responsive layout has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 768,
+      "name": "short customer result sets keep pagination close to the records",
+      "status": "PASS",
+      "details": {
+        "listHeight": 219.65625
+      }
+    },
+    {
+      "width": 768,
+      "name": "empty group state gives accurate Odoo setup guidance",
+      "status": "PASS"
+    },
+    {
+      "width": 768,
+      "name": "create failure preserves form values for retry",
+      "status": "PASS"
+    },
+    {
+      "width": 768,
+      "name": "create retry sends selected price list and group",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "customer directory loads Odoo fixture records",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "responsive layout has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "short customer result sets keep pagination close to the records",
+      "status": "PASS",
+      "details": {
+        "listHeight": 219.65625
+      }
+    },
+    {
+      "width": 1024,
+      "name": "empty group state gives accurate Odoo setup guidance",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "create failure preserves form values for retry",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "create retry sends selected price list and group",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "customer directory loads Odoo fixture records",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "responsive layout has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "empty group state gives accurate Odoo setup guidance",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "create failure preserves form values for retry",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "create retry sends selected price list and group",
+      "status": "PASS"
+    }
+  ],
+  "screenshots": [
+    "docs/screenshots/2026-10-23-customer-directory-local-recheck2/customers-390.png",
+    "docs/screenshots/2026-10-23-customer-directory-local-recheck2/customers-768.png",
+    "docs/screenshots/2026-10-23-customer-directory-local-recheck2/customers-1024.png",
+    "docs/screenshots/2026-10-23-customer-directory-local-recheck2/customers-1440.png"
+  ]
+}

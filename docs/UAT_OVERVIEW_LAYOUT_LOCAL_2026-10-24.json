@@ -1,0 +1,227 @@
+{
+  "generatedAt": "2026-10-22T18:14:51.461Z",
+  "sourceCommit": "01f96f98d79f61e66f1d1d7d8066b179f8bd8307",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Node v24.19.0; browser API fixtures",
+  "scope": "Overview trend layout, responsive cards, range switching and keyboard access; API requests intercepted",
+  "status": "PASS",
+  "passed": 10,
+  "failed": 0,
+  "productionBusinessWrites": 0,
+  "interceptedWrites": [],
+  "checks": [
+    {
+      "width": 320,
+      "name": "overview cards and trend plot remain visible without overlap or overflow",
+      "status": "PASS",
+      "layout": {
+        "viewportWidth": 320,
+        "scrollWidth": 320,
+        "topProducts": {
+          "x": 12,
+          "y": 1219.0625,
+          "right": 308,
+          "bottom": 1353.25,
+          "width": 296,
+          "height": 134.1875
+        },
+        "trend": {
+          "x": 12,
+          "y": 1361.25,
+          "right": 308,
+          "bottom": 1617.25,
+          "width": 296,
+          "height": 256
+        },
+        "categories": {
+          "x": 12,
+          "y": 1625.25,
+          "right": 308,
+          "bottom": 1881.25,
+          "width": 296,
+          "height": 256
+        },
+        "plotHeight": 144,
+        "plotWidth": 274,
+        "trendPoints": 12
+      }
+    },
+    {
+      "width": 320,
+      "name": "range control updates data and keeps trend bars keyboard-addressable",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "overview cards and trend plot remain visible without overlap or overflow",
+      "status": "PASS",
+      "layout": {
+        "viewportWidth": 390,
+        "scrollWidth": 390,
+        "topProducts": {
+          "x": 12,
+          "y": 1219.0625,
+          "right": 378,
+          "bottom": 1353.25,
+          "width": 366,
+          "height": 134.1875
+        },
+        "trend": {
+          "x": 12,
+          "y": 1361.25,
+          "right": 378,
+          "bottom": 1617.25,
+          "width": 366,
+          "height": 256
+        },
+        "categories": {
+          "x": 12,
+          "y": 1625.25,
+          "right": 378,
+          "bottom": 1881.25,
+          "width": 366,
+          "height": 256
+        },
+        "plotHeight": 144,
+        "plotWidth": 344,
+        "trendPoints": 12
+      }
+    },
+    {
+      "width": 390,
+      "name": "range control updates data and keeps trend bars keyboard-addressable",
+      "status": "PASS"
+    },
+    {
+      "width": 768,
+      "name": "overview cards and trend plot remain visible without overlap or overflow",
+      "status": "PASS",
+      "layout": {
+        "viewportWidth": 768,
+        "scrollWidth": 768,
+        "topProducts": {
+          "x": 268,
+          "y": 793.5,
+          "right": 756,
+          "bottom": 927.6875,
+          "width": 488,
+          "height": 134.1875
+        },
+        "trend": {
+          "x": 268,
+          "y": 935.6875,
+          "right": 508,
+          "bottom": 1191.6875,
+          "width": 240,
+          "height": 256
+        },
+        "categories": {
+          "x": 516,
+          "y": 935.6875,
+          "right": 756,
+          "bottom": 1191.6875,
+          "width": 240,
+          "height": 256
+        },
+        "plotHeight": 144,
+        "plotWidth": 218,
+        "trendPoints": 12
+      }
+    },
+    {
+      "width": 768,
+      "name": "range control updates data and keeps trend bars keyboard-addressable",
+      "status": "PASS"
+    },
+    {
+      "width": 1024,
+      "name": "overview cards and trend plot remain visible without overlap or overflow",
+      "status": "PASS",
+      "layout": {
+        "viewportWidth": 1024,
+        "scrollWidth": 1024,
+        "topProducts": {
+          "x": 270,
+          "y": 843.5,
+          "right": 718,
+          "bottom": 977.6875,
+          "width": 448,
+          "height": 134.1875
+        },
+        "trend": {
+          "x": 270,
+          "y": 985.6875,
+          "right": 490,
+          "bottom": 1241.6875,
+          "width": 220,
+          "height": 256
+        },
+        "categories": {
+          "x": 498,
+          "y": 985.6875,
+          "right": 718,
+          "bottom": 1241.6875,
+          "width": 220,
+          "height": 256
+        },
+        "plotHeight": 144,
+        "plotWidth": 198,
+        "trendPoints": 12
+      }
+    },
+    {
+      "width": 1024,
+      "name": "range control updates data and keeps trend bars keyboard-addressable",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "overview cards and trend plot remain visible without overlap or overflow",
+      "status": "PASS",
+      "layout": {
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "topProducts": {
+          "x": 270,
+          "y": 531.25,
+          "right": 1134,
+          "bottom": 665.4375,
+          "width": 864,
+          "height": 134.1875
+        },
+        "trend": {
+          "x": 270,
+          "y": 673.4375,
+          "right": 698,
+          "bottom": 929.4375,
+          "width": 428,
+          "height": 256
+        },
+        "categories": {
+          "x": 706,
+          "y": 673.4375,
+          "right": 1134,
+          "bottom": 929.4375,
+          "width": 428,
+          "height": 256
+        },
+        "plotHeight": 144,
+        "plotWidth": 406,
+        "trendPoints": 12
+      }
+    },
+    {
+      "width": 1440,
+      "name": "range control updates data and keeps trend bars keyboard-addressable",
+      "status": "PASS"
+    }
+  ],
+  "screenshots": [
+    "docs/screenshots/2026-10-24-overview-layout-local/overview-320.png",
+    "docs/screenshots/2026-10-24-overview-layout-local/overview-390.png",
+    "docs/screenshots/2026-10-24-overview-layout-local/overview-768.png",
+    "docs/screenshots/2026-10-24-overview-layout-local/overview-1024.png",
+    "docs/screenshots/2026-10-24-overview-layout-local/overview-1440.png"
+  ]
+}

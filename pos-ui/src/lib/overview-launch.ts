@@ -33,6 +33,7 @@ export type LaunchDestination = {
   icon: SidebarIcon;
   tone: LaunchTone;
   hint: string;
+  description?: string;
   children?: LaunchChild[];
   featured?: boolean;
 };
@@ -70,7 +71,7 @@ function hintFor(label: string, children?: LaunchChild[]): string {
       .join(" · ");
   }
   if (label === "Sell") return "Open the register";
-  if (label === "Overview") return "Store launcher";
+  if (label === "Dashboard") return "Store launcher";
   if (label === "Reports") return "Sales pulse & trends";
   return "Open";
 }
@@ -95,6 +96,7 @@ export function buildLaunchDestinations(
         icon: entry.icon,
         tone: toneFor(entry.label, entry.icon),
         hint: hintFor(entry.label, children),
+        description: entry.label === "Stock" ? "Manage products and inventory" : entry.label === "Customers" ? "Manage customers and loyalty" : entry.label === "Orithos AI" ? "Ask, discover and decide" : entry.label === "Setup" ? "Configure your store" : undefined,
         children,
         featured: false,
       };
@@ -106,6 +108,7 @@ export function buildLaunchDestinations(
       icon: entry.icon,
       tone: toneFor(entry.label, entry.icon),
       hint: hintFor(entry.label),
+      description: entry.label === "Sell" ? "Process sales, serve customers" : entry.label === "Reports" ? "Insights and performance" : undefined,
       featured: entry.label === "Sell",
     };
   });

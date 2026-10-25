@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-22T17:49:33.448Z",
+  "sourceCommit": "bbdaacef4ec179beffbb34270eee0cc8e63ff9ed",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "AI_FOCUS_NOT_RESTORED_390_{\"active\":{\"tag\":\"BUTTON\",\"label\":\"Open Orithos AI assistant\",\"text\":\"\"},\"launchers\":[],\"dialogs\":[]}"
+    }
+  ],
+  "results": [
+    {
+      "failure": "AI_FOCUS_NOT_RESTORED_390_{\"active\":{\"tag\":\"BUTTON\",\"label\":\"Open Orithos AI assistant\",\"text\":\"\"},\"launchers\":[],\"dialogs\":[]}"
+    }
+  ]
+}

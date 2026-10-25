@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-21T16:19:18.004Z",
+  "sourceCommit": "1c36a118894ce605b68faf57592e5b008db32a7d",
+  "worktreeDirty": true,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "checks": [
+    {
+      "id": "setup",
+      "status": "BLOCKED",
+      "evidence": {
+        "error": "LOGIN_FAILED_502"
+      }
+    }
+  ],
+  "writeRequests": [],
+  "passed": 0,
+  "blocked": 1,
+  "failed": 0,
+  "status": "BLOCKED"
+}

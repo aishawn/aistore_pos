@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-10-22T00:04:00Z",
+  "scope": "Dokploy backup runtime check; no restore and no business writes",
+  "compose": {
+    "project": "aistore",
+    "service": "aistorepos",
+    "databaseService": "mysql",
+    "status": "running"
+  },
+  "configuredBackup": {
+    "databaseType": "mysql",
+    "database": "orithos",
+    "schedule": "0 0 * * *",
+    "prefix": "orithos/",
+    "keepLatest": 7,
+    "enabled": true,
+    "destinationConfigured": true
+  },
+  "manualBackup": {
+    "endpoint": "backup.manualBackupMySql",
+    "httpStatus": 400,
+    "errorCode": "BAD_REQUEST",
+    "errorMessage": "Error running manual MySQL backup"
+  },
+  "dokployApiKeyProbe": {
+    "scope": "temporary one-day key generation attempt; no key was created",
+    "httpStatus": 500,
+    "errorMessage": "Failed to generate API key"
+  },
+  "r2Readback": {
+    "prefix": "orithos/",
+    "objectCount": 0
+  },
+  "status": "BLOCKED",
+  "blockedReason": "Dokploy manual MySQL backup failed before producing an R2 object; restore input is unavailable."
+}

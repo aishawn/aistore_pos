@@ -7,6 +7,8 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+const importedProductName = "[R2-11eee66f71b39c7abc790636865404] R2 TEST | DEMO Shiraz";
+const editedProductName = "DEMO Shiraz staff label";
 const fixtureUser = { id: 1, name: "Admin", username: "admin", isAdmin: true, outletId: 1, vendorId: 1, pendingPasswordReset: false };
 const pageData = (items) => ({ code: 0, message: "ok", data: { items, total: items.length, page: 1, size: 20 } });
 const routes = [
@@ -22,10 +24,15 @@ const outputDir = process.env.PILOT_SCREENSHOT_DIR
   ? path.resolve(root, process.env.PILOT_SCREENSHOT_DIR)
   : path.join(root, "docs", "screenshots", "2026-10-19-stock-tables-local");
 fs.mkdirSync(outputDir, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--no-proxy-server", "--host-resolver-rules=MAP demo.localhost 127.0.0.1"],
+});
 const checks = [];
 const blockedWrites = [];
 const requests = [];
+const odooProductQueries = [];
+const productNamePatches = [];
 let activeRoute = "";
 
 try {
@@ -40,15 +47,22 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       requests.push(`${request.method()} ${url.pathname}`);
+      if (request.method() === "PATCH" && url.pathname === "/api/odoo/products/101") {
+        let body = {};
+        try { body = request.postDataJSON() ?? {}; } catch { body = {}; }
+        productNamePatches.push(body);
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: 101, name: body.name }) });
+      }
       if (request.method() === "POST" && url.pathname === "/api/odoo/records") {
         let body = {};
         try { body = request.postDataJSON() ?? {}; } catch { body = {}; }
         if (body?.type === "products") {
+          odooProductQueries.push(body);
           return route.fulfill({
             status: 200,
             contentType: "application/json",
             body: JSON.stringify({
-              items: [{ id: 101, name: "DEMO Shiraz", display_name: "DEMO Shiraz", barcode: false, default_code: "DEMO-SHIRAZ", list_price: 14, taxes_id: [], price_included: 14, price_tax: 0, qty_available: 4, free_qty: 4, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }],
+              items: [{ id: 101, name: importedProductName, display_name: importedProductName, barcode: false, default_code: "DEMO-SHIRAZ", list_price: 11.8091, taxes_id: [], price_included: 11.8091, price_tax: 0, qty_available: 4, free_qty: 4, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }],
               limit: 30,
               offset: body.offset ?? 0,
             }),
@@ -79,7 +93,7 @@ try {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(pageData([{ id: "p1", name: "DEMO Shiraz", categoryName: "Wine", priceSetName: "Default", caseQuantity: 6, casesOnHand: 2, itemsOnHand: 4, priceQuantity: 1, priceId: "price-1", cost: 10, price: 14 }])) });
       }
       if (url.pathname === "/api/odoo/pricelist-items") {
-        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: "rule-1", productId: 101, productName: "DEMO Shiraz", sku: "DEMO-SHIRAZ", priceSetName: "Demo Retail", source: "Odoo price rule", sourceType: "PROVIDED", startDate: "2026-01-01", endDate: "2026-12-31", quantity: 1, cappedPrice: 16, currentPrice: 14, cost: null, ruleType: "fixed" }], limit: 30, offset: 0, hasNext: false }) });
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: "rule-1", productId: 101, productName: importedProductName, sku: "DEMO-SHIRAZ", priceSetName: "Demo Retail", source: "Odoo price rule", sourceType: "PROVIDED", startDate: "2026-01-01", endDate: "2026-12-31", quantity: 1, cappedPrice: 16, currentPrice: 14, cost: null, ruleType: "fixed" }], limit: 30, offset: 0, hasNext: false }) });
       }
       if (url.pathname === "/api/capped-pricing") {
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(pageData([{ id: "c1", productId: "p1", priceId: "price-1", productName: "DEMO Shiraz", priceSetName: "Default", source: "Supplier", sourceType: "PROVIDED", startDate: "2026-01-01", endDate: "2026-12-31", quantity: 1, cappedPrice: 16, currentPrice: 14, cost: 10 }])) });
@@ -102,6 +116,33 @@ try {
         ? page.getByRole("textbox", { name: "Product name for DEMO Shiraz" })
         : page.getByText("DEMO Shiraz", { exact: true });
       await sampleRow.waitFor({ state: "visible", timeout: 20000 });
+      let productNameDisplaySafe = null;
+      let productNameEditSubmitsExplicitInput = null;
+      if (route.path === "/stock/list") {
+        const beforeWrites = blockedWrites.length;
+        const nameInput = page.getByRole("textbox", { name: "Product name for DEMO Shiraz" });
+        productNameDisplaySafe = await nameInput.inputValue() === "DEMO Shiraz"
+          && await nameInput.getAttribute("title") === importedProductName;
+        await nameInput.focus();
+        await heading.click();
+        await page.waitForTimeout(75);
+        productNameDisplaySafe = productNameDisplaySafe && blockedWrites.length === beforeWrites;
+        const patchCountBeforeEdit = productNamePatches.length;
+        const namePatchResponse = page.waitForResponse((candidate) => candidate.request().method() === "PATCH"
+          && new URL(candidate.url()).pathname === "/api/odoo/products/101");
+        await nameInput.fill(editedProductName);
+        await heading.click();
+        await namePatchResponse;
+        const namePatch = productNamePatches[patchCountBeforeEdit];
+        productNameEditSubmitsExplicitInput = productNamePatches.length === patchCountBeforeEdit + 1
+          && namePatch?.name === editedProductName
+          && Object.keys(namePatch).length === 1;
+      } else {
+        const productName = page.getByText("DEMO Shiraz", { exact: true });
+        productNameDisplaySafe = await productName.isVisible()
+          && await productName.textContent() === "DEMO Shiraz"
+          && await productName.getAttribute("title") === importedProductName;
+      }
       const countTestId = route.path === "/stock/list" ? "stock-list-product-count" : null;
       const productCountText = countTestId
         ? (await page.getByTestId(countTestId).locator("..").textContent())?.replace(/\s+/g, " ").trim() ?? ""
@@ -129,8 +170,31 @@ try {
         })
         : null;
       let clearFiltersAccessible = null;
+      let stockOnlyFilterAccessible = null;
+      let stockOnlyQueryWorks = null;
+      let searchCopyAccurate = null;
+      let categoryCopyAccurate = null;
       if (route.path === "/stock/list") {
+        const stockOnlySwitch = page.getByRole("switch", { name: "In-stock products only" });
+        stockOnlyFilterAccessible = await stockOnlySwitch.isVisible();
         const searchBox = page.getByRole("textbox", { name: "Search stock products" });
+        searchCopyAccurate = await searchBox.getAttribute("placeholder") === "Search name, SKU or barcode";
+        categoryCopyAccurate = await page.getByLabel("Category").locator("option").first().textContent() === "All categories";
+        const stockOnlyResponse = page.waitForResponse((candidate) => {
+          const request = candidate.request();
+          if (candidate.url().includes("/api/odoo/records") && request.method() === "POST") {
+            try {
+              const body = request.postDataJSON();
+              return body?.type === "products" && body?.stockOnly === true;
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        });
+        await stockOnlySwitch.click();
+        await stockOnlyResponse;
+        stockOnlyQueryWorks = odooProductQueries.some((query) => query.stockOnly === true);
         await searchBox.fill("Shiraz");
         const clear = page.getByRole("button", { name: "Clear stock list filters" });
         clearFiltersAccessible = await clear.isVisible();
@@ -255,6 +319,17 @@ try {
         };
       });
       const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: window.innerWidth }));
+      const priceInputFits = route.path === "/stock/list" && viewport.width >= 1280
+        ? await page.locator('input[aria-label="Price for DEMO Shiraz"]:visible').evaluate((input) => {
+          const style = getComputedStyle(input);
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) return false;
+          context.font = style.font;
+          const availableWidth = input.clientWidth - Number.parseFloat(style.paddingLeft) - Number.parseFloat(style.paddingRight);
+          return context.measureText(`$ ${input.value}`).width <= availableWidth + 1;
+        })
+        : null;
       const aiEntryPlacement = {
         headerVisible: await page.getByRole("button", { name: "Open Orithos AI assistant" }).isVisible(),
         floatingEntryHidden: await page.getByRole("button", { name: "Open Orithos AI", exact: true }).count() === 0,
@@ -277,7 +352,14 @@ try {
         controlsAccessible,
         costManagement,
         clearFiltersAccessible,
+        stockOnlyFilterAccessible,
+        stockOnlyQueryWorks,
+        searchCopyAccurate,
+        categoryCopyAccurate,
         sampleRowVisible: await sampleRow.isVisible(),
+        productNameDisplaySafe,
+        productNameEditSubmitsExplicitInput,
+        priceInputFits,
         mobileCardFields,
         mobileCardFieldResults,
         importPanelAccessible,
@@ -312,8 +394,15 @@ const failures = checks.filter((check) => check.status === "FAIL"
   || check.costManagement?.fits === false
   || (check.costManagement && check.costManagement.description !== "Cost is managed in purchasing.")
   || check.sampleRowVisible === false
+  || check.productNameDisplaySafe === false
+  || check.productNameEditSubmitsExplicitInput === false
+  || check.priceInputFits === false
   || check.mobileCardFields === false
   || check.clearFiltersAccessible === false
+  || check.stockOnlyFilterAccessible === false
+  || check.stockOnlyQueryWorks === false
+  || check.searchCopyAccurate === false
+  || check.categoryCopyAccurate === false
   || check.importPanelAccessible === false
   || check.addedQuantityAccessible === false
   || (check.mobileSearchWidth != null && check.mobileSearchWidth < 160)

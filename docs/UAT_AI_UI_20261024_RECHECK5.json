@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-23T20:24:29.314Z",
+  "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "page.waitForFunction: Timeout 30000ms exceeded."
+    }
+  ],
+  "results": [
+    {
+      "failure": "page.waitForFunction: Timeout 30000ms exceeded."
+    }
+  ]
+}

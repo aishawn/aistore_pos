@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-10-22T19:17:20.655Z",
+  "sourceCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "deployment": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+  "target": "https://demo.orithos.com.au",
+  "scope": "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal permitted; business API mutations blocked; no inventory/RFQ/order writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "Odoo session warmup",
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "new search retires old results during debounce",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "pending search reports busy and collapsed",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "current empty search completes",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "served replenishment page exposes retry after a read failure",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "retry recovers real Odoo read",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "actualViewport": 390,
+      "name": "no page errors or viewport overflow",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "new search retires old results during debounce",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "pending search reports busy and collapsed",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "current empty search completes",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "served replenishment page exposes retry after a read failure",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "retry recovers real Odoo read",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "actualViewport": 1440,
+      "name": "no page errors or viewport overflow",
+      "status": "PASS",
+      "evidence": []
+    }
+  ],
+  "blockedWrites": [],
+  "sessionRenewals": []
+}

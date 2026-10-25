@@ -17,10 +17,10 @@ export type AiEntity =
 
 export const AI_ENTITY_LIST_ROUTE: Readonly<Record<AiEntity, string>> = {
   product: "/products/odoo",
-  classification: "/classifications",
+  classification: "/products/odoo?dialog=categories",
   supplier: "/suppliers/odoo",
-  order: "/orders",
-  stocktake: "/stocktake",
+  order: "/purchases/odoo",
+  stocktake: "/products/odoo?dialog=stocktake",
   stock_list: "/stock/list",
   stock_more: "/stock/more",
   customer: "/customers/odoo",

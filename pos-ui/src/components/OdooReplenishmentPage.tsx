@@ -74,7 +74,8 @@ function trendLabel(product: ReplenishmentProduct, periodDays: number) {
   return <span className="text-sm text-[var(--oh-muted)]" title={`Trend · ${periodDays}d`}>—</span>;
 }
 
-export function OdooReplenishmentPage() {
+export function OdooReplenishmentPage({ embedded = false }: { embedded?: boolean }) {
+  const Container = embedded ? "section" : "main";
   const [data, setData] = useState<ReplenishmentData | null>(null);
   const [coverageDays, setCoverageDays] = useState(21);
   const [listFilter, setListFilter] = useState<ListFilter>("suggestions");
@@ -315,34 +316,34 @@ export function OdooReplenishmentPage() {
   if (loading && !data) return <ReplenishmentSkeleton />;
 
   if (needsConnection && !data) return (
-    <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+    <Container className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
         <Store className="mx-auto text-amber-600" size={30} />
         <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to plan replenishment</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">This view uses Odoo POS sales and on-hand stock for your current company.</p>
         <div className="mt-5 flex flex-wrap justify-center gap-2"><button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button><Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link></div>
       </section>
-    </main>
+    </Container>
   );
 
   if (error && !data) return (
-    <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+    <Container className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section role="alert" className="w-full max-w-lg rounded-xl border border-red-200 bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
         <AlertCircle className="mx-auto text-red-700" size={30} />
         <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load replenishment</h1>
         <p className="mt-2 text-sm leading-6 text-red-800">{error}</p>
         <button type="button" onClick={() => void load()} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button>
       </section>
-    </main>
+    </Container>
   );
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
+    <Container className="relative flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 md:gap-5 md:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock planning · {data?.company}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment</h1>
+            {!embedded && <h1 className="text-2xl font-semibold tracking-tight text-[var(--oh-text)]">Replenishment</h1>}
             <button
               ref={helpButtonRef}
               type="button"
@@ -392,10 +393,10 @@ export function OdooReplenishmentPage() {
           </span>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/purchases/odoo"
+              href={createdRfq ? `/purchases/odoo?orderId=${createdRfq.id}` : "/purchases/odoo"}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
             >
-              View in Purchases
+              View Order
             </Link>
             <a href={createdRfq.url} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-emerald-300 bg-white px-3 font-semibold text-emerald-900 hover:bg-emerald-100">
               Open in Odoo <ExternalLink size={14} />
@@ -747,7 +748,7 @@ export function OdooReplenishmentPage() {
             <div className="grid min-w-0 gap-4 overflow-y-auto p-5 md:px-6">
               <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]"><span>Supplier <span className="text-red-700">*</span></span>
                 <select ref={rfqSupplierRef} value={rfqSupplierId} onChange={(event) => setRfqSupplierId(event.target.value)} required disabled={rfqLoadingSuppliers || rfqSubmitting} className="h-11 w-full min-w-0 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-normal text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
-                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : "No suppliers available"}</option>
+                  <option value="">{rfqLoadingSuppliers ? "Loading suppliers…" : rfqSuppliers.length ? "Select an Odoo supplier" : rfqSupplierError ? "Supplier list unavailable" : "No suppliers available"}</option>
                   {rfqSuppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}{supplier.email ? ` · ${supplier.email}` : ""}</option>)}
                 </select>
               </label>
@@ -776,20 +777,20 @@ export function OdooReplenishmentPage() {
           </form>
         </section>
       </div>}
-    </main>
+    </Container>
   );
 }
 
 function ReplenishmentSkeleton() {
   return (
-    <main aria-busy="true" aria-label="Loading replenishment" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
+    <section aria-busy="true" aria-label="Loading replenishment" className="flex h-full min-h-0 flex-col gap-4 overflow-hidden bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div className="grid gap-2"><span className="h-3 w-40 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-8 w-48 animate-pulse rounded bg-[var(--oh-border)]" /><span className="h-4 w-80 max-w-[80vw] animate-pulse rounded bg-[var(--oh-border)]" /></div>
         <div className="h-11 w-64 animate-pulse rounded-md bg-[var(--oh-border)]" />
       </header>
       <div className="h-12 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
       <section className="min-h-0 flex-1 animate-pulse rounded-lg border border-[var(--oh-border)] bg-white" />
-    </main>
+    </section>
   );
 }
 

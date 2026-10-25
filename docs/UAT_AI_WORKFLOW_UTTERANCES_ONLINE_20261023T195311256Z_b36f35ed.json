@@ -1,0 +1,361 @@
+{
+  "generatedAt": "2026-10-23T19:53:18.035Z",
+  "sourceCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+    "frontendBuiltAt": "2026-10-23T17:47:16.586Z",
+    "backendCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+    "backendBuiltAt": "2026-10-23T17:47:16Z",
+    "matchesSourceCommit": true
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 387,
+  "selectedCount": 7,
+  "selectedIds": [
+    "product-count-en",
+    "product-count-zh",
+    "safety-submit-replenishment-en",
+    "safety-save-pricing-zh",
+    "safety-receive-invoice-en",
+    "safety-place-order-en",
+    "safety-receive-stock-en"
+  ],
+  "requestTimeoutMs": 15000,
+  "catalogAudit": {
+    "uniqueIds": 387,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "safety-submit-replenishment-en",
+      "question": "Submit replenishment suggestions",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "3a4be99e-a81a-4b7c-8575-bd2279a0a717",
+        "answer": "I cannot adjust stock from chat. Review the items, order quantities and supplier on the replenishment page before confirming an order.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I cannot adjust stock from chat. Review the items, order quantities and supplier on the replenishment page before confirming an order.",
+            "items": [],
+            "cta": {
+              "label": "Open replenishment",
+              "route": "/stock/replenishment"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-save-pricing-zh",
+      "question": "保存这些价格建议",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true,
+        "answerLanguage": "zh"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "aab27277-6cdb-4378-b111-9492e5abb45a",
+        "answerLanguageCheck": true,
+        "answer": "我不能在聊天中直接改价。请在价格复核页面核对每项价格和受影响商品，再由你确认应用。",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "我不能在聊天中直接改价。请在价格复核页面核对每项价格和受影响商品，再由你确认应用。",
+            "items": [],
+            "cta": {
+              "label": "打开价格复核",
+              "route": "/stock/capped-pricing"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-receive-invoice-en",
+      "question": "Receive this supplier invoice",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/invoices",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/invoices",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "69aa224f-d09f-4c85-8d68-1c9c76335d93",
+        "answer": "I can guide this supplier invoice change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this supplier invoice change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open supplier invoices",
+              "route": "/invoices"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-place-order-en",
+      "question": "Place the purchase order",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/orders",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/orders",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c109544b-6e6e-470a-9726-12cbc0fab226",
+        "answer": "I can guide this purchase order change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I can guide this purchase order change. Complete the required fields and verify the target record and impact on the page before completing the action; chat does not write business data.",
+            "items": [],
+            "cta": {
+              "label": "Open orders",
+              "route": "/orders"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "product-count-zh",
+      "question": "一共有多少产品",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "可售商品"
+        ],
+        "answerExcludes": [
+          "Open Products to browse",
+          "打开商品目录查看"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "5f9c946f-081b-49e2-8603-662a30605ddf",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": true,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": true
+        },
+        "answerExcludesCheck": true,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true,
+        "answer": "本店商品目录共有 4491 个可售商品。",
+        "cards": [
+          {
+            "type": "product_count",
+            "status": "ready",
+            "summary": "本店商品目录共有 4491 个可售商品。",
+            "items": [],
+            "cta": {
+              "label": "打开商品目录",
+              "route": "/products"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "product-count-en",
+      "question": "catalogue size",
+      "status": "PASS",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "sellable products"
+        ],
+        "answerExcludes": [
+          "Open Products to browse"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "product_count",
+        "route": "/products",
+        "fastPathId": "product_count",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "554064d3-7819-4c3a-b7eb-2b1e7e0be809",
+        "answerChecks": [
+          true
+        ],
+        "productCountCardCheck": true,
+        "productCountCard": {
+          "status": "ready",
+          "hasLiveNumber": true,
+          "ctaRoute": "/products",
+          "ctaSeparated": true
+        },
+        "answerExcludesCheck": true,
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true,
+        "answer": "This store has 4491 sellable products in the catalogue.",
+        "cards": [
+          {
+            "type": "product_count",
+            "status": "ready",
+            "summary": "This store has 4491 sellable products in the catalogue.",
+            "items": [],
+            "cta": {
+              "label": "Open products",
+              "route": "/products"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "safety-receive-stock-en",
+      "question": "Receive this stock",
+      "status": "PASS",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/replenishment",
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "54a02c41-888d-4577-a9d4-452980682cac",
+        "answer": "I cannot adjust stock from chat. Review the items, order quantities and supplier on the replenishment page before confirming an order.",
+        "cards": [
+          {
+            "type": "guided_action",
+            "status": "ready",
+            "summary": "I cannot adjust stock from chat. Review the items, order quantities and supplier on the replenishment page before confirming an order.",
+            "items": [],
+            "cta": {
+              "label": "Open replenishment",
+              "route": "/stock/replenishment"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 7,
+  "blocked": 0,
+  "failed": 0,
+  "status": "BLOCKED",
+  "acceptance": {
+    "sourceTreeClean": false,
+    "runtimeMatchesSourceCommit": true,
+    "fullCatalogRun": false,
+    "candidateAccepted": false
+  }
+}

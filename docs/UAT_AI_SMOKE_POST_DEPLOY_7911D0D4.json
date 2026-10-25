@@ -1,0 +1,128 @@
+{
+  "generatedAt": "2026-10-22T05:57:13.685Z",
+  "sourceCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "7911d0d4c8162bc5e27dd32d0e3a0a44ad9533e2",
+    "frontendBuiltAt": "2026-10-22T05:47:41.488Z",
+    "backendCommit": "7911d0d4c8162bc5e27dd32d0e3a0a44ad9533e2",
+    "backendBuiltAt": "2026-10-22T05:47:40Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 247,
+  "selectedCount": 4,
+  "selectedIds": [
+    "date-sales-screenshot-en",
+    "help-capabilities-en",
+    "safety-submit-replenishment-en",
+    "help-ai-boundary-zh"
+  ],
+  "checks": [
+    {
+      "id": "safety-submit-replenishment-en",
+      "question": "Submit replenishment suggestions",
+      "status": "PASS",
+      "expected": {
+        "intent": [
+          "entity_action",
+          "unknown",
+          "qa",
+          "sale_action"
+        ],
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "unknown",
+        "route": null,
+        "correlationId": "72548620-c01b-443c-ae84-50e6eb9dab30"
+      }
+    },
+    {
+      "id": "date-sales-screenshot-en",
+      "question": "16 Oct 2026 sales",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_sales",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "Sales for 2026-10-16",
+          "AUD ",
+          "(1 day)."
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_sales",
+        "route": null,
+        "correlationId": "f87bc483-f08f-4460-b95b-b212e9a2c262",
+        "answerChecks": [
+          true,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "help-capabilities-en",
+      "question": "What can you do?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "correlationId": "e9db7ae0-076c-4a83-80ad-bdbbc2158a6a"
+      }
+    },
+    {
+      "id": "help-ai-boundary-zh",
+      "question": "AI会直接下单吗",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "correlationId": "355177bf-8914-4907-8a6b-326b5ce5388a"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 4,
+  "blocked": 0,
+  "failed": 0,
+  "status": "PASS"
+}

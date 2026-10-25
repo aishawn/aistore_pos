@@ -2,14 +2,28 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Archive, Check, CircleAlert, CircleHelp, Clock3, DoorClosed, History, LayoutGrid, List, LoaderCircle, Minus, Plus, Printer, RefreshCw, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { Check, CircleAlert, CircleHelp, DoorClosed, History, LoaderCircle, Printer, RefreshCw, X } from "lucide-react";
 import { useCloseRegisterUiOptional } from "@/components/CloseRegisterUiProvider";
 import { useSalesHistoryUiOptional } from "@/components/SalesHistoryUiProvider";
 import { ODOO_REGISTER_CLOSED_EVENT } from "@/components/OdooCloseRegisterForm";
+import { OdooSellCartAside } from "@/components/odoo-sell/OdooSellCartAside";
+import { OdooSellCatalogWorkspace } from "@/components/odoo-sell/OdooSellCatalogWorkspace";
+import { OdooSellParkedList } from "@/components/odoo-sell/OdooSellParkedList";
+import { OdooSellPaymentBar } from "@/components/odoo-sell/OdooSellPaymentBar";
+import {
+  CASE_PACK_OPTIONS,
+  money,
+  provisionalLineUnit,
+  type CartLine,
+  type CatalogDensity,
+  type ParkedOdooSale,
+  type WorkspaceTab,
+} from "@/components/odoo-sell/shared";
 import {
   getOdooPosBootstrap,
   getOdooSession,
   quoteOdooPosOrder,
+  postOdooSessionCash,
   searchOdooRecords,
   submitOdooPosOrder,
   recoverOdooPosOrder,
@@ -21,9 +35,7 @@ import {
   type OdooPosCategoryRecord,
   type OdooProductRecord,
 } from "@/lib/odoo-api";
-import { CartIcon, KeyboardIcon, ParkingIcon, PlusIcon } from "@/components/icons";
-import { AdminNavyButton, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
-import { ProductImage } from "@/components/ProductImage";
+import { KeyboardIcon, ParkingIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { splitMoney } from "@/lib/sell-screen";
@@ -31,31 +43,6 @@ import { formatOdooDateTime } from "@/lib/odoo-date";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useAuth } from "@/lib/auth";
 
-type WorkspaceTab = "keys" | "parked" | "more";
-
-const CATEGORY_TILE_TONES = [
-  { bg: "var(--oh-tile-orange-bg)", border: "var(--oh-tile-orange-border)", text: "var(--oh-tile-orange-text)" },
-  { bg: "var(--oh-tile-red-bg)", border: "var(--oh-tile-red-border)", text: "var(--oh-tile-red-text)" },
-  { bg: "var(--oh-tile-blue-bg)", border: "var(--oh-tile-blue-border)", text: "var(--oh-tile-blue-text)" },
-  { bg: "var(--oh-tile-green-bg)", border: "var(--oh-tile-green-border)", text: "var(--oh-tile-green-text)" },
-] as const;
-
-type CartLine = { product: OdooProductRecord; quantity: number; /** Units per pack (1 = bottle/each, 12 = case). */ packFactor: number };
-const CASE_PACK_OPTIONS = [1, 6, 12, 24] as const;
-type ParkedOdooSale = {
-  id: string;
-  ownerUserId: string;
-  companyId: number;
-  companyName: string;
-  registerName: string;
-  registerId?: number;
-  sessionName: string;
-  timezone?: string;
-  paymentMethodId: number | null;
-  customer: { id: number; name: string } | null;
-  lines: CartLine[];
-  createdAt: string;
-};
 type CompletedReceipt = {
   reference: string;
   total: number;
@@ -80,21 +67,6 @@ const PRODUCT_PAGE_SIZE = 50;
 const HIDE_OOS_KEY = "orithos-odoo-hide-oos-v1";
 const CATALOG_DENSITY_KEY = "orithos-odoo-catalog-density-v1";
 
-type CatalogDensity = "grid" | "list";
-
-function shelfUnitPrice(product: OdooProductRecord): number | null {
-  return product.price_included;
-}
-
-function provisionalLineUnit(product: OdooProductRecord, packFactor: number): number {
-  const unit = shelfUnitPrice(product);
-  return (unit ?? product.list_price) * packFactor;
-}
-
-function formatStockQty(qty: number) {
-  return new Intl.NumberFormat("en-AU", { maximumFractionDigits: 2 }).format(qty);
-}
-
 type ActiveCartDraft = {
   pendingOrder?: OdooCheckoutRequest | null;
   lines: CartLine[];
@@ -103,6 +75,28 @@ type ActiveCartDraft = {
   cashTendered: string;
   savedAt: string;
 };
+
+function ActionGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={`action-group-${title.toLowerCase()}`}>
+      <h3 id={`action-group-${title.toLowerCase()}`} className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">{title}</h3>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{children}</div>
+    </section>
+  );
+}
+
+function ActionButton({ label, onClick, tone = "blue" }: { label: string; onClick: () => void; tone?: "blue" | "orange" | "neutral" }) {
+  const styles = {
+    blue: "border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] text-[var(--oh-tile-blue-text)]",
+    orange: "border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] text-[var(--oh-tile-orange-text)]",
+    neutral: "border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] text-[var(--oh-text)]",
+  }[tone];
+  return <button type="button" onClick={onClick} className={`flex min-h-[4.5rem] items-center justify-center rounded-[var(--oh-radius)] border px-2 py-3 text-center text-[13px] font-semibold shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-orange)] hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)] ${styles}`}>{label}</button>;
+}
+
+function ActionLink({ label, href }: { label: string; href: string }) {
+  return <Link href={href} className="flex min-h-[4.5rem] items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 py-3 text-center text-[13px] font-semibold text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-orange)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]">{label}</Link>;
+}
 
 function isParkedOdooSale(value: unknown): value is ParkedOdooSale {
   if (!value || typeof value !== "object") return false;
@@ -139,8 +133,6 @@ function isActiveCartDraft(value: unknown): value is ActiveCartDraft {
     && typeof draft.cashTendered === "string"
     && typeof draft.savedAt === "string";
 }
-
-const money = (amount: number) => new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(amount);
 
 export function OdooRegisterPage() {
   const { hasPermission } = useAuth();
@@ -187,9 +179,14 @@ export function OdooRegisterPage() {
   const [confirmedPaymentKey, setConfirmedPaymentKey] = useState<string | null>(null);
   const checkoutBusy = useRef(false);
   const paymentConfirmRef = useRef<HTMLButtonElement | null>(null);
+  const productSearchRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<CompletedReceipt | null>(null);
   const [cashTendered, setCashTendered] = useState("");
+  const [cashOutOpen, setCashOutOpen] = useState(false);
+  const [cashOutAmount, setCashOutAmount] = useState("");
+  const [cashOutReason, setCashOutReason] = useState("");
+  const [cashOutBusy, setCashOutBusy] = useState(false);
   const [parkedSales, setParkedSales] = useState<ParkedOdooSale[]>([]);
   const [parkedLoaded, setParkedLoaded] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("keys");
@@ -320,11 +317,12 @@ export function OdooRegisterPage() {
     openCloseRegister();
   }
 
-  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
+  const dialogOpen = helpOpen || closeRegisterCartWarn || clearSaleConfirm || cashOutOpen || Boolean(receipt) || Boolean(parkedAction) || pendingRegisterId !== null;
   useDialogFocus(dialogOpen, () => {
     if (helpOpen) setHelpOpen(false);
     else if (closeRegisterCartWarn) setCloseRegisterCartWarn(false);
     else if (clearSaleConfirm) setClearSaleConfirm(false);
+    else if (cashOutOpen && !cashOutBusy) setCashOutOpen(false);
     else if (parkedAction) setParkedAction(null);
     else if (pendingRegisterId !== null) setPendingRegisterId(null);
     else if (receipt) setReceipt(null);
@@ -531,6 +529,12 @@ export function OdooRegisterPage() {
   }
 
   const selectedConfig = bootstrap?.configs.find((item) => item.id === configId) ?? null;
+  const sessionOpen = Boolean(selectedConfig?.session);
+  useEffect(() => {
+    if (!sessionOpen || typeof window === "undefined" || !window.matchMedia("(pointer: fine)").matches) return;
+    const frame = window.requestAnimationFrame(() => productSearchRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [sessionOpen]);
   const currentQuoteFingerprint = JSON.stringify({
     configId,
     paymentMethodId,
@@ -551,7 +555,6 @@ export function OdooRegisterPage() {
   );
   const subtotal = quoteIsCurrent ? quote!.subtotal : fallbackSubtotal;
   const taxTotal = quoteIsCurrent ? quote!.tax : 0;
-  const total = quoteIsCurrent ? quote!.unroundedTotal : fallbackSubtotal;
   const selectedPayment = paymentMethods.find((method) => method.id === paymentMethodId);
   const isCashMethod = (method: { type: string; is_cash_count?: boolean }) =>
     method.type === "cash" || Boolean(method.is_cash_count);
@@ -613,6 +616,35 @@ export function OdooRegisterPage() {
 
   function formatStoreDate(value: string, timezone: string) {
     return formatOdooDateTime(value, timezone);
+  }
+
+  async function submitCashOut() {
+    const amount = Number(cashOutAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter a cash out amount greater than $0.00.");
+      return;
+    }
+    if (!selectedConfig) {
+      setError("Open a register session before recording cash out.");
+      return;
+    }
+    setCashOutBusy(true);
+    setError(null);
+    try {
+      await postOdooSessionCash({
+        configId: selectedConfig.id,
+        direction: "out",
+        amount: Math.round(amount * 100) / 100,
+        reason: cashOutReason.trim() || undefined,
+      });
+      setCashOutOpen(false);
+      setCashOutAmount("");
+      setCashOutReason("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Cash out could not be recorded.");
+    } finally {
+      setCashOutBusy(false);
+    }
   }
 
   async function loadMoreProducts() {
@@ -864,6 +896,7 @@ export function OdooRegisterPage() {
         orderUuid: stableOrderUuid,
         customerId: customer?.id ?? null,
         tendered: tenderedAmount,
+        expectedQuote: quote?.signature,
         lines: lines.map((line) => ({ productId: line.product.id, quantity: line.quantity, uomFactor: line.packFactor || 1 })),
       };
       if (!pendingCheckout) {
@@ -902,7 +935,12 @@ export function OdooRegisterPage() {
       checkoutFingerprint.current = null;
     } catch (cause) {
       if (cause instanceof OdooCheckoutPendingError) setPendingCheckout(cause.order);
-      else setPendingCheckout(null);
+      else {
+        setPendingCheckout(null);
+        if (cause instanceof Error && /Prices or taxes have changed/.test(cause.message)) {
+          setQuote(null); setConfirmedPaymentKey(null); setQuoteRetryKey((value) => value + 1);
+        }
+      }
       setError(cause instanceof Error ? cause.message : "Odoo could not confirm the sale. Keep this order open and retry only after checking sales history.");
     } finally {
       checkoutBusy.current = false;
@@ -922,17 +960,17 @@ export function OdooRegisterPage() {
   if (loading) return (
     <main aria-busy="true" aria-label="Loading register" className="flex h-[calc(100dvh-50px)] min-h-0 flex-col gap-3 overflow-hidden bg-[var(--oh-surface)] p-3 sm:p-4">
       <header className="flex h-12 shrink-0 items-center justify-between gap-3">
-        <div className="h-11 w-56 animate-pulse rounded-full border border-[var(--oh-border)] bg-white" />
+        <div className="h-11 w-56 animate-pulse rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]" />
         <div className="h-4 w-36 animate-pulse rounded bg-slate-200" />
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row">
-        <section className="flex min-h-[18rem] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-3">
+        <section className="flex min-h-[18rem] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3">
           <div className="h-11 shrink-0 animate-pulse rounded-md bg-slate-100" />
           <div className="mt-3 grid flex-1 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }, (_, index) => <div key={index} className="min-h-28 animate-pulse rounded-lg border border-[var(--oh-border)] bg-slate-50" />)}
           </div>
         </section>
-        <section className="flex min-h-52 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white p-3 xl:w-[400px]">
+        <section className="flex min-h-52 flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 xl:w-[400px]">
           <div className="h-11 animate-pulse rounded-md bg-slate-100" />
           <div className="flex-1" />
           <div className="h-24 animate-pulse rounded-md bg-slate-100" />
@@ -942,7 +980,7 @@ export function OdooRegisterPage() {
   );
   if (connected === null) return (
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
-      <section role="alert" className="max-w-lg rounded-xl border border-rose-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+      <section role="alert" className="max-w-lg rounded-xl border border-rose-200 bg-[var(--oh-surface-elevated)] p-7 text-center shadow-[var(--oh-shadow-card)]">
         <CircleAlert className="mx-auto text-rose-700" size={30} />
         <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load the Odoo register</h1>
         <p className="mt-2 text-sm leading-6 text-rose-800">{error ?? "The register details could not be read."}</p>
@@ -952,7 +990,7 @@ export function OdooRegisterPage() {
   );
   if (connected === false) return (
     <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
-      <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+      <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-7 text-center shadow-[var(--oh-shadow-card)]">
         <CircleAlert className="mx-auto text-amber-600" size={30} />
         <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to open the register</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Sign in with your Odoo staff account in Integrations first. This register reads products, customers, sessions and payments from Odoo.</p>
@@ -984,19 +1022,29 @@ export function OdooRegisterPage() {
               : !paymentMethodId
                 ? "Select payment"
                 : awaitingCardConfirm
-                  ? "Approve terminal first"
+                  ? "Review terminal approval"
                   : isCashPayment && !cashEnough
                     ? "Enter cash received"
                     : "Finalise Sale";
-  const sessionOpen = Boolean(selectedConfig?.session);
 
   function focusPaymentConfirm() {
     paymentConfirmRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     paymentConfirmRef.current?.focus();
   }
-  const sessionHint = selectedConfig?.session?.name
-    ? selectedConfig.session.name
-    : "No open session";
+
+  function handleFinaliseClick() {
+    if (awaitingCardConfirm) {
+      focusPaymentConfirm();
+      return;
+    }
+    void checkout();
+  }
+
+  const finaliseTitle = canFinalise
+    ? "Complete this sale in Odoo"
+    : awaitingCardConfirm
+      ? "Review the terminal approval control before finalising"
+      : finaliseLabel;
 
   function selectRegister(id: number) {
     selectedConfigIdRef.current = id;
@@ -1124,8 +1172,6 @@ export function OdooRegisterPage() {
     return aName.localeCompare(bName);
   });
   const showCatalogHome = catalogHome && !query.trim();
-  const saleKeyTileClass =
-    "flex min-h-[4.5rem] cursor-pointer flex-col items-center justify-center rounded-[var(--oh-radius)] border px-2 py-3 text-center text-[14px] font-semibold shadow-[var(--oh-shadow-card)] transition-all hover:opacity-95 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]";
   const productCount = lines.length;
   const cashMethod = paymentMethods.find((item) => isCashMethod(item)) ?? null;
   const nonCashMethods = paymentMethods.filter((item) => !isCashMethod(item));
@@ -1144,7 +1190,7 @@ export function OdooRegisterPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div
-            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--oh-border)] bg-white py-1 pl-3 pr-1 shadow-sm"
+            className="inline-flex max-w-full items-center gap-2 rounded-full border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 pl-3 pr-1 shadow-sm"
             title={selectedConfig?.session ? `${selectedConfig.name} · ${selectedConfig.session.name}` : selectedConfig?.name}
           >
             <span className={cn("h-2 w-2 shrink-0 rounded-full", sessionOpen ? "bg-[var(--oh-success)]" : "bg-amber-500")} aria-hidden="true" />
@@ -1212,7 +1258,7 @@ export function OdooRegisterPage() {
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
-        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
+        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
             <button
               type="button"
@@ -1255,605 +1301,191 @@ export function OdooRegisterPage() {
 
           <div className="relative min-h-0 flex-1 overflow-y-auto p-4">
             {workspaceTab === "parked" ? (
-              <div className="space-y-3">
-                <p className="flex items-start gap-2 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface)] p-3 text-xs leading-5 text-[var(--oh-text-secondary)]">
-                  <Clock3 size={15} className="mt-0.5 shrink-0" />
-                  Parked sales are saved on this terminal.
-                </p>
-                {visibleParkedSales.length ? (
-                  <div className="grid gap-2">
-                    {visibleParkedSales.map((sale) => {
-                      const parkedQty = sale.lines.reduce((sum, line) => sum + line.quantity, 0);
-                      const parkedTotal = sale.lines.reduce((sum, line) => sum + provisionalLineUnit(line.product, line.packFactor || 1) * line.quantity, 0);
-                      return (
-                        <article key={sale.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white p-3 shadow-sm">
-                          <div className="min-w-0 flex-1">
-                            <h3 className="truncate text-sm font-semibold text-[var(--oh-text)]">{sale.customer?.name ?? "Walk-in customer"}</h3>
-                            <p className="mt-0.5 text-xs text-[var(--oh-text-secondary)]">{formatParkedDate(sale.createdAt, sale.timezone)} · {sale.registerName}</p>
-                            <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--oh-text)]">
-                              {parkedQty} {parkedQty === 1 ? "item" : "items"} · {money(parkedTotal)}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <button type="button" onClick={() => requestResumeParkedSale(sale)} className="inline-flex h-11 min-w-[7.5rem] items-center justify-center gap-2 rounded-md bg-[var(--sf-cta)] px-3 text-sm font-semibold text-white hover:bg-[var(--sf-cta-hover)]"><RotateCcw size={15} /> Resume</button>
-                            <button type="button" onClick={() => setParkedAction({ type: "discard", saleId: sale.id })} className="h-11 rounded-md border border-[var(--oh-border)] px-3 text-sm font-medium text-[var(--oh-text-secondary)] hover:border-red-300 hover:text-red-700">Discard</button>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="grid place-items-center py-10 text-center">
-                    <Archive size={24} className="mx-auto text-[var(--oh-border-strong)]" />
-                    <p className="mt-2 text-sm font-medium text-[var(--oh-text)]">No parked sales</p>
-                    <p className="mt-1 text-[13px] text-[var(--oh-muted)]">Park the current cart to resume it later from this list</p>
-                  </div>
-                )}
-              </div>
+              <OdooSellParkedList
+                sales={visibleParkedSales}
+                formatDate={formatParkedDate}
+                onResume={requestResumeParkedSale}
+                onDiscard={(saleId) => setParkedAction({ type: "discard", saleId })}
+              />
             ) : workspaceTab === "more" ? (
-              <div className="space-y-3">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Register actions</p>
                   <button type="button" onClick={() => setWorkspaceTab("keys")} className="cursor-pointer text-[13px] font-medium text-[var(--oh-orange)] hover:underline">
                     ← Back to Quick Keys
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <button type="button" onClick={() => { setWorkspaceTab("keys"); openCategory(null); }} className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] px-2 py-3 text-[13px] font-semibold text-[var(--oh-tile-blue-text)] shadow-[var(--oh-shadow-card)] hover:opacity-95">
-                    All products
-                  </button>
-                  <button type="button" onClick={() => openSalesHistory()} className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] px-2 py-3 text-[13px] font-semibold text-[var(--oh-tile-blue-text)] shadow-[var(--oh-shadow-card)] hover:opacity-95">
-                    Sales History
-                  </button>
-                  <button type="button" onClick={() => setHelpOpen(true)} className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-2 py-3 text-[13px] font-semibold text-[var(--oh-tile-orange-text)] shadow-[var(--oh-shadow-card)] hover:opacity-95">
-                    POS Help
-                  </button>
-                  <button type="button" onClick={requestCloseRegister} className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-2 py-3 text-[13px] font-semibold text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] hover:border-[var(--oh-orange)]">
-                    Close Register
-                  </button>
-                </div>
-              </div>
-            ) : showCatalogHome ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Sale keys</p>
-                    <span className="text-[13px] text-[var(--oh-muted)]">Home Keys</span>
-                  </div>
-                  {categoriesError && (
-                    <div role="status" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                      <span>{categoriesError}</span>
-                      <button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoriesLoading} className="inline-flex min-h-11 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 font-semibold">
-                        {categoriesLoading ? "Retrying…" : "Retry categories"}
-                      </button>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    <button
-                      type="button"
-                      onClick={() => openCategory(null)}
-                      className={saleKeyTileClass}
-                      style={{ backgroundColor: "var(--oh-tile-green-bg)", borderColor: "var(--oh-tile-green-border)", color: "var(--oh-tile-green-text)" }}
-                    >
-                      All products
-                    </button>
-                    {categoryTiles.map((category, index) => {
-                      const tone = CATEGORY_TILE_TONES[index % CATEGORY_TILE_TONES.length];
-                      const label = friendlyProductName(category.name);
-                      return (
-                        <button
-                          key={category.id}
-                          type="button"
-                          onClick={() => openCategory(category.id)}
-                          className={saleKeyTileClass}
-                          style={{ backgroundColor: tone.bg, borderColor: tone.border, color: tone.text }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {categoryTiles.length === 0 && !categoriesLoading && !categoriesError && (
-                    <div role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-950">
-                      <p className="font-medium">No POS category keys yet</p>
-                      <p className="mt-1 leading-5">
-                        Sale Keys come from Odoo POS categories linked on products (<code className="text-[12px]">pos_categ_ids</code>).
-                        Assign categories in the product catalogue, then refresh this register.
-                      </p>
-                      <Link href="/products/odoo" className="mt-2 inline-flex min-h-11 items-center font-semibold text-[var(--oh-orange)] underline underline-offset-2">
-                        Open product catalogue
-                      </Link>
-                    </div>
-                  )}
-                  <p className="mt-3 text-[13px] text-[var(--oh-muted)]">
-                    Tap a category to browse products, or search in the cart panel.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line quantity</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={!lines.length} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, 1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">+ Qty</button>
-                    <button type="button" disabled={!lines.length || (targetCartLine()?.quantity ?? 0) <= 1} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">− Qty</button>
-                  </div>
-                </div>
+                <ActionGroup title="Transaction">
+                  <ActionButton label="All products" onClick={() => { setWorkspaceTab("keys"); openCategory(null); }} />
+                  <ActionButton label="Sales History" onClick={() => openSalesHistory()} />
+                  <ActionButton label="Parked Sales" onClick={() => setWorkspaceTab("parked")} />
+                  <ActionButton label="POS Help" onClick={() => setHelpOpen(true)} tone="orange" />
+                </ActionGroup>
+                <ActionGroup title="Operations">
+                  <ActionLink label="Gift Cards" href="/giftcards" />
+                  <ActionLink label="Customer Payments" href="/customers/balances" />
+                  <ActionLink label="Sales Reports" href="/reports/sales" />
+                  <ActionButton label="Close Register" onClick={requestCloseRegister} />
+                </ActionGroup>
               </div>
             ) : (
-              <div className="flex h-full min-h-0 flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={backToCatalogHome} className="min-h-11 cursor-pointer rounded-lg px-2 text-[13px] font-medium text-[var(--oh-orange)] hover:underline">
-                    ← Back to Quick Keys
-                  </button>
-                  <span className="text-[15px] font-semibold text-[var(--oh-text)]">
-                    {categoryId === null
-                      ? (query.trim() ? `Search: ${query.trim()}` : "All products")
-                      : friendlyProductName(posCategories.find((item) => item.id === categoryId)?.name ?? "Products")}
-                  </span>
-                  <div className="ml-auto flex flex-wrap items-center gap-2">
-                    <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)]">
-                      <input type="checkbox" className="h-4 w-4 rounded border-[var(--oh-border)]" checked={hideOutOfStock} onChange={(event) => setHideOutOfStock(event.target.checked)} />
-                      Hide out of stock
-                    </label>
-                    <div className="inline-flex rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] p-0.5" role="group" aria-label="Catalogue density">
-                      <button type="button" aria-pressed={catalogDensity === "grid"} aria-label="Grid view" onClick={() => setCatalogDensity("grid")} className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "grid" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}>
-                        <LayoutGrid size={16} />
-                      </button>
-                      <button type="button" aria-pressed={catalogDensity === "list"} aria-label="List view" onClick={() => setCatalogDensity("list")} className={cn("grid h-10 w-10 place-items-center rounded", catalogDensity === "list" ? "bg-white text-[var(--oh-primary)] shadow-sm" : "text-[var(--oh-text-secondary)]")}>
-                        <List size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div id="pos-product-results" className="min-h-0 flex-1 overflow-y-auto rounded-lg bg-[var(--sf-pad-bg)] p-3">
-                  {productsLoading && !products.length ? (
-                    <div aria-label="Loading products" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4")}>
-                      {Array.from({ length: 8 }, (_, index) => <div key={index} className={cn("animate-pulse rounded-lg border border-[var(--oh-border)] bg-white", catalogDensity === "list" ? "h-16" : "min-h-36")} />)}
-                    </div>
-                  ) : productsError && !products.length ? (
-                    <div role="alert" className="grid min-h-48 place-items-center px-5 text-center">
-                      <div className="max-w-sm">
-                        <CircleAlert size={26} className="mx-auto text-red-700" />
-                        <p className="mt-2 font-semibold text-[var(--oh-text)]">Products could not load</p>
-                        <p className="mt-1 text-sm text-[var(--oh-muted)]">{productsError}</p>
-                        <button type="button" onClick={() => setProductRetryKey((value) => value + 1)} disabled={productsLoading} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold">
-                          {productsLoading ? "Retrying…" : "Retry search"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : products.length ? (
-                    <div className="flex min-h-full flex-col">
-                      <div role="listbox" aria-label="POS product search results" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4")}>
-                        {products.map((product, index) => {
-                          const fullName = product.display_name || product.name;
-                          const label = friendlyProductName(fullName);
-                          const shelfPrice = shelfUnitPrice(product);
-                          const inStock = product.free_qty > 0;
-                          const disabled = !selectedConfig?.session || !inStock;
-                          const selected = index === productActiveIndex;
-                          if (catalogDensity === "list") {
-                            return (
-                              <button key={product.id} id={`pos-product-option-${product.id}`} type="button" role="option" aria-selected={selected} title={fullName} onClick={() => addProduct(product)} disabled={disabled} className={cn("flex min-h-14 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-3 py-2 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}>
-                                <ProductImage productId={product.id} name={label} className="h-11 w-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-orange-light)]" fallbackClassName="text-lg" />
-                                <span className="min-w-0 flex-1">
-                                  <span className="oh-type-body block truncate font-semibold text-[var(--oh-text)]">{label}</span>
-                                  <span className={cn("oh-type-label", inStock ? "text-[var(--oh-text-secondary)]" : "font-medium text-amber-800")}>{inStock ? `${formatStockQty(product.free_qty)} avail.` : "No stock"}</span>
-                                </span>
-                                <span className="shrink-0 text-right">
-                                  {shelfPrice === null ? <span className="oh-type-label font-semibold text-amber-800">No price</span> : <span className="text-lg font-bold tabular-nums text-[var(--oh-text)]">{money(shelfPrice)}</span>}
-                                </span>
-                              </button>
-                            );
-                          }
-                          return (
-                            <button key={product.id} id={`pos-product-option-${product.id}`} type="button" role="option" aria-selected={selected} title={fullName} onClick={() => addProduct(product)} disabled={disabled} className={cn("flex min-h-[118px] flex-col rounded-xl border border-[var(--oh-border)] bg-white p-2.5 text-left shadow-sm transition-colors hover:border-[var(--oh-primary)]/45 hover:bg-[var(--oh-orange-light)] disabled:cursor-not-allowed disabled:opacity-45", selected && "border-[var(--oh-primary)] bg-[var(--oh-orange-light)]")}>
-                              <div className="mb-1.5 flex items-start justify-between gap-2">
-                                <ProductImage productId={product.id} name={label} className="h-11 w-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-orange-light)]" fallbackClassName="text-lg" />
-                                {shelfPrice === null
-                                  ? <span className="oh-type-label shrink-0 pt-0.5 font-semibold text-amber-800">No price</span>
-                                  : <span className="shrink-0 text-lg font-bold tabular-nums leading-none text-[var(--oh-text)]">{money(shelfPrice)}</span>}
-                              </div>
-                              <span className="oh-type-body line-clamp-2 font-semibold leading-5 text-[var(--oh-text)]">{label}</span>
-                              {!inStock ? <span className="oh-type-label mt-auto pt-1 font-medium text-amber-800">No stock</span> : product.free_qty <= 3 ? <span className="oh-type-label mt-auto pt-1 font-medium text-amber-800">{formatStockQty(product.free_qty)} left</span> : <span className="mt-auto" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {productsHasNext && (
-                        <div className="mt-3 flex justify-center">
-                          <button type="button" onClick={() => void loadMoreProducts()} disabled={productsLoadingMore || productsLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-60">
-                            {productsLoadingMore ? <LoaderCircle size={15} className="animate-spin" /> : null}
-                            {productsLoadingMore ? "Loading…" : "Load more products"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="grid h-full place-items-center px-5 text-center text-sm text-[var(--oh-text-secondary)]">
-                      <div>
-                        <Search size={28} className="mx-auto mb-2 text-[var(--oh-border-strong)]" />
-                        <p className="font-medium text-[var(--oh-text)]">No products here</p>
-                        <p className="mt-1">{hideOutOfStock ? "No in-stock products match. Clear filters or show out-of-stock items." : "Search or scan a barcode to find stock."}</p>
-                        <button type="button" onClick={backToCatalogHome} className="mt-3 font-semibold text-[var(--sf-tab-blue)] underline underline-offset-2">Back to Quick Keys</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line quantity</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" disabled={!lines.length} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, 1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">+ Qty</button>
-                    <button type="button" disabled={!lines.length || (targetCartLine()?.quantity ?? 0) <= 1} onClick={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }} className="min-h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2 text-[13px] font-medium text-[var(--oh-text-secondary)] hover:border-[var(--oh-orange)] disabled:cursor-not-allowed disabled:opacity-40">− Qty</button>
-                  </div>
-                </div>
-              </div>
+              <OdooSellCatalogWorkspace
+                showCatalogHome={showCatalogHome}
+                categoriesError={categoriesError}
+                categoriesLoading={categoriesLoading}
+                categoryTiles={categoryTiles}
+                onRetryCategories={() => setCategoryRetryKey((value) => value + 1)}
+                onOpenCategory={openCategory}
+                linesLength={lines.length}
+                targetLineQuantity={targetCartLine()?.quantity ?? 0}
+                onIncrementQty={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, 1); }}
+                onDecrementQty={() => { const line = targetCartLine(); if (line) changeQuantity(line.product.id, line.packFactor || 1, -1); }}
+                backToCatalogHome={backToCatalogHome}
+                categoryId={categoryId}
+                query={query}
+                posCategories={posCategories}
+                hideOutOfStock={hideOutOfStock}
+                onHideOutOfStockChange={setHideOutOfStock}
+                catalogDensity={catalogDensity}
+                onCatalogDensityChange={setCatalogDensity}
+                products={products}
+                productsLoading={productsLoading}
+                productsError={productsError}
+                productsHasNext={productsHasNext}
+                productsLoadingMore={productsLoadingMore}
+                productActiveIndex={productActiveIndex}
+                sessionOpen={sessionOpen}
+                onRetryProducts={() => setProductRetryKey((value) => value + 1)}
+                onLoadMoreProducts={() => void loadMoreProducts()}
+                onAddProduct={addProduct}
+              />
             )}
           </div>
         </section>
 
-        <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {eftposSelected ? (
-              <AdminNavyButton
-                className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1"
-                onClick={() => selectCardPayment()}
-                disabled={!lines.length || !cardMethod}
-              >
-                EFTPOS
-              </AdminNavyButton>
-            ) : (
-              <AdminSecondaryButton
-                className={cn("min-h-11", (!lines.length || !cardMethod) && "opacity-45")}
-                onClick={() => selectCardPayment()}
-                disabled={!lines.length || !cardMethod}
-                title={!lines.length ? "Add items before choosing EFTPOS" : !cardMethod ? "No card payment method on this register" : cardMethod.name}
-              >
-                EFTPOS
-              </AdminSecondaryButton>
-            )}
-            {cashSelected ? (
-              <AdminNavyButton
-                className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1"
-                onClick={() => selectCashPayment(true)}
-                disabled={!lines.length || !cashMethod}
-              >
-                Exact Cash
-              </AdminNavyButton>
-            ) : (
-              <AdminSecondaryButton
-                className={cn("min-h-11", (!lines.length || !cashMethod) && "opacity-45")}
-                onClick={() => selectCashPayment(true)}
-                disabled={!lines.length || !cashMethod}
-                title={!lines.length ? "Add items before choosing Exact Cash" : !cashMethod ? "No cash payment method on this register" : "Select cash and fill the exact amount due"}
-              >
-                Exact Cash
-              </AdminSecondaryButton>
-            )}
-            <AdminSecondaryButton
-              className={cn("min-h-11", !lines.length && "opacity-45")}
-              onClick={applyCaseQuantity}
-              disabled={!lines.length}
-              title={lines.length ? "Cycle pack size on the selected line (Each → 6 → 12 → 24)" : "Add a product first"}
-            >
-              Case Quantity
-            </AdminSecondaryButton>
-            <AdminSecondaryButton
-              className={cn("min-h-11", (!lines.length || !parkedLoaded || !selectedConfig || busy) && "opacity-45")}
-              onClick={() => parkCurrentSale()}
-              disabled={!lines.length || !parkedLoaded || !selectedConfig || busy}
-              title={!lines.length ? "Nothing to park" : "Save this cart on this terminal"}
-            >
-              Park Sale
-            </AdminSecondaryButton>
-            <AdminSecondaryButton
-              className={cn(
-                "min-h-11",
-                !lines.length && "opacity-45",
-                lines.length > 0 && "border-[var(--oh-tile-red-border)] text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)]",
-              )}
-              onClick={requestClearSale}
-              disabled={!lines.length}
-              title={lines.length ? "Clear the current cart" : "Cart is already empty"}
-            >
-              Clear Sale
-            </AdminSecondaryButton>
-            <div className="ml-auto flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-1.5 shadow-sm">
-              <span className={cn("text-[22px] font-bold leading-none tabular-nums", lines.length ? "text-[var(--oh-text)]" : "text-[var(--oh-border-strong)]")}>
-                ${totalWhole}
-                <span className="text-[14px]">.{totalCents}</span>
-              </span>
-              <button
-                type="button"
-                disabled={!canFinalise && !awaitingCardConfirm}
-                onClick={() => {
-                  if (awaitingCardConfirm) {
-                    focusPaymentConfirm();
-                    return;
-                  }
-                  void checkout();
-                }}
-                aria-disabled={!canFinalise}
-                title={
-                  canFinalise
-                    ? "Complete this sale in Odoo"
-                    : awaitingCardConfirm
-                      ? "Approve the terminal payment below, then finalise"
-                      : finaliseLabel
-                }
-                className={cn(
-                  "min-h-11 rounded-[var(--oh-radius)] px-5 text-[14px] font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-orange)]",
-                  canFinalise
-                    ? "cursor-pointer bg-[var(--oh-primary)] hover:bg-[var(--oh-primary-hover)]"
-                    : awaitingCardConfirm
-                      ? "cursor-pointer bg-amber-600 hover:bg-amber-700"
-                      : "cursor-not-allowed bg-[var(--oh-border-strong)] opacity-70",
-                )}
-              >
-                {finaliseLabel}
-              </button>
-            </div>
-          </div>
-          {(isCashPayment || (!isCashPayment && paymentMethodId)) && lines.length > 0 && (
-            <div
-              className={cn(
-                "mt-2 flex flex-wrap items-end gap-3 rounded-lg border bg-white px-3 py-2",
-                awaitingCardConfirm ? "border-amber-300 ring-1 ring-amber-200" : "border-[var(--oh-border)]",
-              )}
-            >
-              {isCashPayment && (
-                <label className="grid min-w-[160px] flex-1 gap-1 text-[13px] font-medium text-[var(--oh-text-secondary)]">
-                  Cash received
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min={amountToCollect}
-                    max={1_000_000}
-                    step="0.01"
-                    value={cashTendered}
-                    onChange={(event) => {
-                      setExactCashArmed(false);
-                      setCashTendered(event.target.value);
-                    }}
-                    placeholder={amountToCollect.toFixed(2)}
-                    className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-semibold tabular-nums outline-none focus:border-[var(--oh-primary)]"
-                  />
-                  {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && (
-                    <span className="text-[13px] text-[var(--oh-muted)]">Change {money(changeDue)}</span>
-                  )}
-                </label>
-              )}
-              {!isCashPayment && paymentMethodId && (
-                <div className="flex min-w-[280px] flex-1 flex-col gap-1.5">
-                  <p className="text-[12px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
-                    Card checkout · Step {cardPaymentConfirmed ? "2 of 2" : "1 of 2"}
-                  </p>
-                  <button
-                    ref={paymentConfirmRef}
-                    id="odoo-payment-terminal-confirm"
-                    type="button"
-                    role="switch"
-                    aria-checked={confirmedPaymentKey === paymentConfirmationKey}
-                    disabled={busy || !quoteIsCurrent}
-                    onClick={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
-                    className={cn(
-                      "flex min-h-14 items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                      confirmedPaymentKey === paymentConfirmationKey
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-                        : "border-amber-400 bg-amber-50 text-amber-950 hover:bg-amber-100",
-                    )}
-                  >
-                    <span aria-hidden="true" className={cn("mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full px-0.5 transition-colors", confirmedPaymentKey === paymentConfirmationKey ? "bg-emerald-600" : "bg-amber-500")}>
-                      <span className={cn("h-6 w-6 rounded-full bg-white shadow transition-transform", confirmedPaymentKey === paymentConfirmationKey && "translate-x-5")} />
-                    </span>
-                    <span>
-                      <span className="block font-semibold">
-                        {confirmedPaymentKey === paymentConfirmationKey
-                          ? "Terminal approved — ready to finalise"
-                          : "1. Payment approved on terminal"}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-5 opacity-90">
-                        {confirmedPaymentKey === paymentConfirmationKey
-                          ? "Then press Finalise Sale to record this payment in Odoo."
-                          : "Flip this after the customer pays on the EFTPOS terminal. Orithos records the payment only — it does not charge the card."}
-                      </span>
-                    </span>
-                  </button>
-                </div>
-              )}
-              {selectedPayment && (
-                <p className="text-[13px] text-[var(--oh-muted)]">Paying with {selectedPayment.name}</p>
-              )}
-            </div>
-          )}
-        </div>
+        {quoteIsCurrent && quote?.priceSource && <p role="status" className="px-3 text-xs text-[var(--oh-muted)]">Pricing: {quote.priceSource} · {quote.currency}</p>}
+        <OdooSellPaymentBar
+          linesLength={lines.length}
+          eftposSelected={eftposSelected}
+          cashSelected={cashSelected}
+          cardMethod={cardMethod}
+          cashMethod={cashMethod}
+          selectedPayment={selectedPayment ?? null}
+          parkedLoaded={parkedLoaded}
+          hasConfig={Boolean(selectedConfig)}
+          busy={busy}
+          isCashPayment={isCashPayment}
+          paymentMethodId={paymentMethodId}
+          amountToCollect={amountToCollect}
+          cashTendered={cashTendered}
+          tenderedAmount={tenderedAmount}
+          changeDue={changeDue}
+          cardPaymentConfirmed={cardPaymentConfirmed}
+          confirmedMatches={confirmedPaymentKey === paymentConfirmationKey}
+          quoteIsCurrent={quoteIsCurrent}
+          totalWhole={totalWhole}
+          totalCents={totalCents}
+          awaitingCardConfirm={awaitingCardConfirm}
+          paymentConfirmRef={paymentConfirmRef}
+          onSelectCard={() => selectCardPayment()}
+          onSelectCash={() => selectCashPayment(true)}
+          onCashOut={() => { setCashOutAmount(""); setCashOutReason(""); setCashOutOpen(true); }}
+          onCaseQuantity={applyCaseQuantity}
+          onPark={() => parkCurrentSale()}
+          onClear={requestClearSale}
+          onCashTenderedChange={(value) => { setExactCashArmed(false); setCashTendered(value); }}
+          onToggleTerminalConfirm={() => setConfirmedPaymentKey((current) => (current === paymentConfirmationKey ? null : paymentConfirmationKey))}
+        />
 
-        <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
-          <div className="border-b border-[var(--oh-border)] px-4 py-3">
-            {customer ? (
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-navy)] text-[13px] font-bold text-white">
-                  {customer.name.charAt(0)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-medium text-[var(--oh-text)]">{customer.name}</p>
-                  <p className="text-[13px] text-[var(--oh-muted)]">Odoo customer</p>
-                </div>
-                <button type="button" aria-label="Remove customer" onClick={() => setCustomer(null)} className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)]">
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex min-h-11 w-full cursor-text items-center gap-2 rounded-lg border border-dashed border-[var(--oh-border)] px-3 py-2.5">
-                <PlusIcon size={15} strokeWidth={1.75} className="text-[var(--oh-text-secondary)]" />
-                <input
-                  value={customerQuery}
-                  aria-label="Search customers"
-                  role="combobox"
-                  aria-autocomplete="list"
-                  aria-controls="customer-search-results"
-                  aria-expanded={customers.length > 0}
-                  aria-activedescendant={customerActiveIndex >= 0 ? `customer-option-${customers[customerActiveIndex]?.id}` : undefined}
-                  onChange={(event) => { setCustomers([]); setCustomerQuery(event.target.value); }}
-                  onKeyDown={handleCustomerSearchKeyDown}
-                  placeholder="Add customer"
-                  className="h-full min-w-0 flex-1 bg-transparent text-[13px] font-medium text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-text-secondary)]"
-                />
-              </label>
-            )}
-            {!customer && customerSearchLoading && <p role="status" className="mt-2 text-xs text-[var(--oh-muted)]">Searching customers…</p>}
-            {!customer && customerSearchError && (
-              <div role="alert" className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-red-900">
-                <span>{customerSearchError}</span>
-                <button type="button" onClick={() => setCustomerSearchKey((value) => value + 1)} className="font-semibold underline">Retry</button>
-              </div>
-            )}
-            {!customer && customers.length > 0 && (
-              <div id="customer-search-results" role="listbox" aria-label="Customer search results" className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-[var(--oh-border)]">
-                {customers.map((item, index) => (
-                  <button id={`customer-option-${item.id}`} key={item.id} type="button" role="option" aria-selected={index === customerActiveIndex} onClick={() => selectCustomer(item)} className={cn("flex min-h-11 w-full items-center border-b border-[var(--oh-border)] px-3 py-2 text-left text-sm last:border-b-0 hover:bg-[var(--oh-orange-light)]", index === customerActiveIndex && "bg-[var(--oh-orange-light)]")}>
-                    {item.name}<span className="ml-2 text-xs text-[var(--oh-text-secondary)]">{item.phone || item.email}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="border-b border-[var(--oh-border)] px-4 py-3">
-            <div className="flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3">
-              <Search size={16} className="shrink-0 text-[var(--sf-placeholder)]" />
-              <input
-                aria-label="Search products by name, barcode or code"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-controls="pos-product-results"
-                aria-expanded={products.length > 0}
-                aria-activedescendant={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
-                value={query}
-                onChange={(event) => {
-                  setProductsError(null);
-                  setProductActiveIndex(-1);
-                  setQuery(event.target.value);
-                  setCatalogHome(false);
-                  setWorkspaceTab("keys");
-                }}
-                onKeyDown={(event) => void handleProductSearchKeyDown(event)}
-                placeholder="Search or scan to add a product"
-                className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-[var(--oh-text)] outline-none placeholder:text-[var(--sf-placeholder)]"
-              />
-              {productsLoading && <LoaderCircle size={14} className="animate-spin text-[var(--sf-placeholder)]" />}
-            </div>
-          </div>
-
-          <div className="min-h-[120px] flex-1 overflow-y-auto">
-            {!lines.length ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
-                <CartIcon size={28} className="text-[var(--oh-border-strong)]" />
-                <p className="text-[14px] font-medium text-[var(--oh-text-secondary)]">Cart is empty</p>
-                <p className="text-[13px] text-[var(--oh-muted)]">Search or tap a quick key to add items</p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-[var(--oh-border)]">
-                {lines.map(({ product, quantity: qty, packFactor }) => {
-                  const factor = packFactor || 1;
-                  const key = lineKey(product.id, factor);
-                  const quotedLine = quoteIsCurrent ? quote?.lines.find((line) => line.productId === product.id && line.uomFactor === factor) : undefined;
-                  const provisionalUnit = provisionalLineUnit(product, factor);
-                  const lineTotal = splitMoney(quotedLine?.total ?? provisionalUnit * qty);
-                  const unitPrice = quotedLine ? quotedLine.total / qty : provisionalUnit;
-                  const fullName = product.display_name || product.name;
-                  const label = friendlyProductName(fullName);
-                  const selected = selectedLineKey === key;
-                  return (
-                    <li key={key}>
-                      <div
-                        role="button"
-                        tabIndex={-1}
-                        onClick={() => setSelectedLineKey(key)}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors",
-                          selected ? "bg-[var(--oh-orange-light)]/50" : "hover:bg-[var(--oh-surface)]",
-                        )}
-                      >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] text-[13px] font-semibold text-[var(--oh-text-secondary)]">
-                          {qty}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-medium text-[var(--oh-text)]" title={fullName}>{label}</p>
-                          <p className="text-[13px] text-[var(--oh-muted)]">
-                            {factor > 1 ? `${money(unitPrice)} / case · ${factor}` : `${money(unitPrice)} each`}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-[13px] font-semibold text-[var(--oh-text)]">${lineTotal.whole}.{lineTotal.cents}</span>
-                        <button
-                          type="button"
-                          aria-label={`Remove ${label}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setLines((current) => current.filter((line) => !(line.product.id === product.id && (line.packFactor || 1) === factor)));
-                            if (selectedLineKey === key) setSelectedLineKey(null);
-                          }}
-                          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)]"
-                        >
-                          <Trash2 size={15} strokeWidth={1.75} />
-                        </button>
-                      </div>
-                      {selected && (
-                        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/40 px-4 py-2 pl-[4.25rem]">
-                          <button type="button" aria-label={`Decrease ${label}`} onClick={() => changeQuantity(product.id, factor, -1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-white"><Minus size={15} /></button>
-                          <button type="button" aria-label={`Increase ${label}`} onClick={() => changeQuantity(product.id, factor, 1)} className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-white"><Plus size={15} /></button>
-                          <label className="flex items-center gap-2 text-[13px] text-[var(--oh-text-secondary)]">
-                            Pack
-                            <select aria-label={`Pack size for ${label}`} value={factor} onChange={(event) => { const next = Number(event.target.value); setLinePackFactor(product.id, factor, next); setSelectedLineKey(lineKey(product.id, next)); }} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-[13px] font-semibold text-[var(--oh-text)]">
-                              {CASE_PACK_OPTIONS.map((size) => <option key={size} value={size}>{size === 1 ? "Each" : `Case ×${size}`}</option>)}
-                            </select>
-                          </label>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="border-t border-[var(--oh-border)] bg-[var(--oh-surface)]/50 p-4">
-            <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1 text-[13px] text-[var(--oh-muted)]">
-              <span>{quantity} {quantity === 1 ? "item" : "items"}</span>
-              <span className="text-right">{productCount} products</span>
-              <span>Subtotal {money(subtotal)}</span>
-              <span className="text-right">GST {quoteLoading ? "…" : money(taxTotal)}</span>
-            </div>
-            {quoteError && connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0 && (
-              <div role="alert" className="mb-3 grid gap-1.5 text-left text-xs text-red-800">
-                <span>{quoteError}</span>
-                <button type="button" onClick={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50">
-                  <RefreshCw size={14} /> Retry quote
-                </button>
-              </div>
-            )}
-            {awaitingCardConfirm && (
-              <button
-                type="button"
-                onClick={focusPaymentConfirm}
-                className="mb-2 w-full rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-left text-xs font-medium text-amber-950 hover:bg-amber-100"
-              >
-                Approve terminal payment above, then Finalise Sale
-              </button>
-            )}
-            {!canFinalise && !awaitingCardConfirm && lines.length > 0 && !busy && isOnline && selectedConfig?.session && finaliseLabel !== "Finalise Sale" && (
-              <p role="status" className="mb-2 text-xs font-medium text-amber-800">{finaliseLabel}</p>
-            )}
-            <div className="flex items-end justify-between">
-              <span className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Total</span>
-              <p className="text-[32px] font-bold leading-none text-[var(--oh-text)]">
-                ${totalWhole}
-                <span className="text-[20px]">.{totalCents}</span>
-              </p>
-            </div>
-          </div>
-        </aside>
+        <OdooSellCartAside
+          customer={customer}
+          customerQuery={customerQuery}
+          customers={customers}
+          customerSearchLoading={customerSearchLoading}
+          customerSearchError={customerSearchError}
+          customerActiveIndex={customerActiveIndex}
+          onCustomerQueryChange={(value) => { setCustomers([]); setCustomerQuery(value); }}
+          onCustomerSearchKeyDown={handleCustomerSearchKeyDown}
+          onSelectCustomer={selectCustomer}
+          onRemoveCustomer={() => setCustomer(null)}
+          onRetryCustomerSearch={() => setCustomerSearchKey((value) => value + 1)}
+          query={query}
+          productSearchRef={productSearchRef}
+          productsLength={products.length}
+          productActiveOptionId={productActiveIndex >= 0 ? `pos-product-option-${products[productActiveIndex]?.id}` : undefined}
+          productsLoading={productsLoading}
+          onProductQueryChange={(value) => {
+            setProductsError(null);
+            setProductActiveIndex(-1);
+            setQuery(value);
+            setCatalogHome(false);
+            setWorkspaceTab("keys");
+          }}
+          onProductSearchKeyDown={(event) => void handleProductSearchKeyDown(event)}
+          lines={lines}
+          selectedLineKey={selectedLineKey}
+          quote={quote}
+          quoteIsCurrent={quoteIsCurrent}
+          onSelectLine={setSelectedLineKey}
+          onRemoveLine={(productId, packFactor, key) => {
+            setLines((current) => current.filter((line) => !(line.product.id === productId && (line.packFactor || 1) === packFactor)));
+            if (selectedLineKey === key) setSelectedLineKey(null);
+          }}
+          onChangeQuantity={changeQuantity}
+          onSetPackFactor={(productId, currentFactor, nextFactor) => {
+            setLinePackFactor(productId, currentFactor, nextFactor);
+            setSelectedLineKey(lineKey(productId, nextFactor));
+          }}
+          lineKey={lineKey}
+          quantity={quantity}
+          productCount={productCount}
+          subtotal={subtotal}
+          taxTotal={taxTotal}
+          quoteLoading={quoteLoading}
+          quoteError={quoteError}
+          showQuoteRetry={Boolean(connected && isOnline && selectedConfig?.session && paymentMethodId && lines.length > 0)}
+          onRetryQuote={() => { setQuoteFailure(null); setQuoteRetryKey((value) => value + 1); }}
+          awaitingCardConfirm={awaitingCardConfirm}
+          onFocusTerminalConfirm={focusPaymentConfirm}
+          canFinalise={canFinalise}
+          finaliseLabel={finaliseLabel}
+          finaliseTitle={finaliseTitle}
+          onFinalise={handleFinaliseClick}
+          showFinaliseHint={!canFinalise && !awaitingCardConfirm && lines.length > 0 && !busy && isOnline && Boolean(selectedConfig?.session) && finaliseLabel !== "Finalise Sale"}
+          totalWhole={totalWhole}
+          totalCents={totalCents}
+          busy={busy}
+        />
       </div>
 
+      {cashOutOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !cashOutBusy) setCashOutOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="cash-out-title" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="cash-out-title" className="text-lg font-semibold text-[var(--oh-text)]">Cash Out</h2>
+                <p className="mt-1 text-sm text-[var(--oh-muted)]">Record cash removed from this open register session.</p>
+              </div>
+              <button type="button" onClick={() => setCashOutOpen(false)} disabled={cashOutBusy} aria-label="Close cash out" className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] disabled:opacity-50"><X size={18} /></button>
+            </div>
+            <label className="mt-5 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
+              Amount
+              <input autoFocus type="number" min="0.01" step="0.01" inputMode="decimal" value={cashOutAmount} onChange={(event) => setCashOutAmount(event.target.value)} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 tabular-nums outline-none focus:border-[var(--oh-primary)]" placeholder="0.00" />
+            </label>
+            <label className="mt-4 grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">
+              Reason <span className="font-normal text-[var(--oh-muted)]">(optional)</span>
+              <input type="text" value={cashOutReason} onChange={(event) => setCashOutReason(event.target.value)} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 outline-none focus:border-[var(--oh-primary)]" placeholder="Safe drop, supplier payment…" />
+            </label>
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" onClick={() => setCashOutOpen(false)} disabled={cashOutBusy} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={() => void submitCashOut()} disabled={cashOutBusy} className="min-h-11 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">{cashOutBusy ? "Recording…" : "Record cash out"}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
             {receipt && <div role="dialog" aria-modal="true" aria-labelledby="sale-complete-title" className="receipt-overlay fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setReceipt(null); }}>
-        <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
+        <section className="receipt-print my-auto w-full max-w-sm rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
           <header className="receipt-print-hidden mb-4 flex items-center justify-between gap-4 border-b border-[var(--oh-border)] pb-3"><div className="flex items-center gap-2 text-emerald-700"><Check size={20} /><h2 id="sale-complete-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale complete</h2></div><button type="button" onClick={() => setReceipt(null)} aria-label="Close receipt" className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button></header>
           <div className="text-center"><p className="text-sm font-bold uppercase tracking-[.15em] text-[var(--oh-text)]">{receipt.companyName}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">Sales receipt</p><h3 className="mt-3 text-lg font-bold text-[var(--oh-text)]">{receipt.reference}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{formatStoreDate(receipt.date, receipt.timezone)}</p></div>
           <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1 border-y border-dashed border-[var(--oh-border)] py-3 text-xs"><dt className="text-[var(--oh-muted)]">Customer</dt><dd className="text-right font-medium text-[var(--oh-text)]">{receipt.customerName}</dd><dt className="text-[var(--oh-muted)]">Register</dt><dd className="text-right text-[var(--oh-text)]">{receipt.session}</dd></dl>
@@ -1865,14 +1497,14 @@ export function OdooRegisterPage() {
         </section>
       </div>}
       {parkedAction && parkedActionSale && <div role="presentation" className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setParkedAction(null); }}>
-        <section role="alertdialog" aria-modal="true" aria-labelledby="parked-action-title" aria-describedby="parked-action-description" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
+        <section role="alertdialog" aria-modal="true" aria-labelledby="parked-action-title" aria-describedby="parked-action-description" className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
           <h2 id="parked-action-title" className="text-lg font-semibold text-[var(--oh-text)]">{parkedAction.type === "resume" ? "Replace the current sale?" : "Discard this parked sale?"}</h2>
           <p id="parked-action-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">{parkedAction.type === "resume" ? "Your current cart will be replaced with the parked sale. The parked sale will be removed from this terminal." : "This removes the saved draft from this terminal. It does not cancel or change any completed Odoo sale."}</p>
           <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setParkedAction(null)} className="min-h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Cancel</button><button type="button" onClick={confirmParkedAction} className={`min-h-11 rounded-md px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] ${parkedAction.type === "discard" ? "bg-red-700 hover:bg-red-800" : "bg-[var(--sf-link-blue)] hover:brightness-95"}`}>{parkedAction.type === "resume" ? "Resume sale" : "Discard draft"}</button></div>
         </section>
       </div>}
       {pendingRegisterId !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-        <section role="alertdialog" aria-modal="true" aria-labelledby="register-change-title" aria-describedby="register-change-description" className="w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-white p-6 shadow-2xl">
+        <section role="alertdialog" aria-modal="true" aria-labelledby="register-change-title" aria-describedby="register-change-description" className="w-full max-w-md rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl">
           <h2 id="register-change-title" className="text-lg font-semibold text-[var(--oh-text)]">Park this sale before switching?</h2>
           <p id="register-change-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">The current cart belongs to {selectedConfig?.name ?? "this register"}. It will be saved on this terminal and will only appear when you return to that register.</p>
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -1882,7 +1514,7 @@ export function OdooRegisterPage() {
         </section>
       </div>}
       {helpOpen && <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/50 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setHelpOpen(false); }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="pos-help-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-2xl sm:p-6">
+        <section role="dialog" aria-modal="true" aria-labelledby="pos-help-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-2xl sm:p-6">
           <header className="flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
             <div><h2 id="pos-help-title" className="text-lg font-semibold text-[var(--oh-text)]">POS help and recovery</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Steps for the current register screen.</p></div>
             <button type="button" onClick={() => setHelpOpen(false)} aria-label="Close POS help" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
@@ -1908,7 +1540,7 @@ export function OdooRegisterPage() {
             aria-modal="true"
             aria-labelledby="close-register-cart-title"
             aria-describedby="close-register-cart-description"
-            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl"
           >
             <h2 id="close-register-cart-title" className="text-lg font-semibold text-[var(--oh-text)]">Cart has items</h2>
             <p id="close-register-cart-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">
@@ -1949,7 +1581,7 @@ export function OdooRegisterPage() {
             aria-modal="true"
             aria-labelledby="clear-sale-title"
             aria-describedby="clear-sale-description"
-            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-6 shadow-2xl"
           >
             <h2 id="clear-sale-title" className="text-lg font-semibold text-[var(--oh-text)]">Clear this sale?</h2>
             <p id="clear-sale-description" className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">

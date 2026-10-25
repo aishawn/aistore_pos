@@ -1,0 +1,418 @@
+{
+  "generatedAt": "2026-10-24T14:32:47.823Z",
+  "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.lvh.me:3102",
+  "environment": "local Next.js dev server; Playwright runner Node v24.19.0; browser API fixtures",
+  "routeCount": 14,
+  "routeFilter": [
+    "/dashboard",
+    "/dashboard/workspace",
+    "/register/odoo",
+    "/stock/list",
+    "/customers/odoo",
+    "/purchases/odoo",
+    "/reports/dashboard",
+    "/settings/account",
+    "/assistant",
+    "/m",
+    "/recommend",
+    "/sommelier",
+    "/login",
+    "/close"
+  ],
+  "viewports": [
+    390,
+    768,
+    1440
+  ],
+  "checksPassed": 42,
+  "checksTotal": 42,
+  "failures": [],
+  "checks": [
+    {
+      "route": "/assistant",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/close",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/customers/odoo",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/login",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/m",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/purchases/odoo",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/register/odoo",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/reports/dashboard",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/sommelier",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/close",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/customers/odoo",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/login",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/m",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/purchases/odoo",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/register/odoo",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/reports/dashboard",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/sommelier",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/close",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/customers/odoo",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/login",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/m",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/purchases/odoo",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/register/odoo",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/reports/dashboard",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/settings/account",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/sommelier",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/stock/list",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    }
+  ],
+  "screenshots": [],
+  "interceptedWrites": [],
+  "interceptedReadOnlyRecordPosts": 0,
+  "productionBusinessWrites": 0,
+  "status": "PASS",
+  "screenshotDirectory": null
+}

@@ -1,3 +1,6 @@
+import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
+import { validateCategoryIds } from "@/lib/odoo-categories";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
 
@@ -106,18 +109,22 @@ export async function POST(request: NextRequest) {
   const correlationId = request.headers.get("x-correlation-id");
 
   try {
+    await requirePermission(request, "stock.products.edit");
+    const scope = await scopedOdoo(request);
+    await validateCategoryIds(scope, (categoryIds as number[] | undefined) ?? []);
+    values.company_id = scope.companyIds[0];
     const availableFields = await callOdoo<Record<string, { type?: string }>>(sessionId, "fields_get", [["is_storable", "detailed_type", "type"]], { attributes: ["type"] }, correlationId);
     if (availableFields && Object.hasOwn(availableFields, "is_storable")) values.is_storable = true;
     else if (availableFields && Object.hasOwn(availableFields, "detailed_type")) values.detailed_type = "product";
     else if (availableFields && Object.hasOwn(availableFields, "type")) values.type = "product";
     else throw new OdooRequestError("This Odoo product model does not expose an inventory product type.", 422);
 
-    const productId = await callOdoo<number>(sessionId, "create", [values], {}, correlationId);
+    const productId = await callOdoo<number>(sessionId, "create", [values], { context: { allowed_company_ids: [values.company_id], force_company: values.company_id } }, correlationId);
     if (!Number.isSafeInteger(productId) || productId < 1) throw new OdooRequestError("Odoo did not confirm the new product", 502);
     return NextResponse.json({ id: productId, name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";
-    const status = error instanceof OdooRequestError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
+    const status = error instanceof OdooRequestError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }
 }

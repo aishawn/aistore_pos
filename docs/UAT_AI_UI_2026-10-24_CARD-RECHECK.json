@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-22T13:52:52.550Z",
+  "sourceCommit": "d3ec7165890fa5e8a6e3560a4524f352bea4e597",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "PRODUCT_COUNT_CARD_STATUS_MISSING_390"
+    }
+  ],
+  "results": [
+    {
+      "failure": "PRODUCT_COUNT_CARD_STATUS_MISSING_390"
+    }
+  ]
+}

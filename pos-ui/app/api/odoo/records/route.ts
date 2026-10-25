@@ -1,8 +1,13 @@
+import { scopedOdoo } from "@/lib/odoo-scope";
+import { canReadBalances, companyDomain } from "@/lib/customer-access";
+import { categoryScope, categoryDomain, categoryError } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { odooCompanyContext, resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
 import { isSameOrigin } from "@/lib/server-auth";
 import { withRequestCorrelation } from "@/lib/request-correlation";
+import { catalogueDomain } from "@/lib/product-catalogue";
+import { requirePermission, StoreAccessError } from "@/lib/store-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -174,7 +179,7 @@ export async function POST(request: NextRequest) {
   if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
-  let body: { type?: string; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; status?: string; period?: string; filters?: Record<string, unknown> };
+  let body: { type?: string; groupId?: number; pricelistId?: number; query?: string; limit?: number; offset?: number; categoryId?: number; stockOnly?: boolean; catalogueView?: string; status?: string; period?: string; filters?: Record<string, unknown> };
   try {
     body = await request.json();
   } catch {
@@ -194,7 +199,51 @@ export async function POST(request: NextRequest) {
   const limit = Math.min(MAX_LIMIT, Math.max(1, Math.floor(requestedLimit)));
   const offset = Math.max(0, Math.floor(requestedOffset));
   const query = body.query?.trim().slice(0, 120);
+  if (type === "customers") {
+    if (body.catalogueView !== undefined || body.status !== undefined || body.period !== undefined) return NextResponse.json({ message: "Unsupported customer filter" }, { status: 400 });
+    try {
+      const me = await requirePermission(request, "customers.view", "customers.edit", "sell.checkout", "sell.refund");
+      const scope = await scopedOdoo(request);
+      const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds)];
+      for (const [key, field] of [["groupId", "category_id"], ["pricelistId", "property_product_pricelist"]] as const) {
+        const value = body[key];
+        if (value !== undefined) {
+          if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) return NextResponse.json({ message: "Invalid customer filter" }, { status: 400 });
+          domain.push([field, "=", value]);
+        }
+      }
+      if (query) domain.push("|", "|", "|", ["name", "ilike", query], ["phone", "ilike", query], ["email", "ilike", query], ["ref", "ilike", query]);
+      const fields: string[] = [...RECORD_TYPES.customers.fields].filter((field) => !["credit", "total_invoiced"].includes(field));
+      if (canReadBalances(me)) fields.push("credit", "total_invoiced");
+      const rows = await scope.rpc<unknown[]>("res.partner", "search_read", [domain], { fields, limit: limit + 1, offset, order: "name asc, id asc" });
+      return NextResponse.json({ items: rows.slice(0, limit), hasNext: rows.length > limit, limit, offset }, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      return NextResponse.json({ message: error instanceof Error ? error.message : "Customers are unavailable" }, { status: error && typeof error === "object" && "status" in error ? Number(error.status) : 502 });
+    }
+  }
+
+  if (type === "posCategories") {
+    try {
+      const scope = await categoryScope(request);
+      const items = await scope.rpc<unknown[]>("pos.category", "search_read", [[...categoryDomain(scope.companyIds), ...(query ? [["name", "ilike", query]] : [])]], { fields: ["id", "name", "parent_id"], limit: limit + 1, offset, order: "name asc, id asc" });
+      return NextResponse.json({ items: items.slice(0, limit), hasNext: items.length > limit }, { headers: { "Cache-Control": "no-store" } });
+    } catch (error) { return categoryError(error); }
+  }
+
   const domain: unknown[] = [...config.baseDomain];
+  if (body.catalogueView !== undefined) {
+    if (type !== "products") return NextResponse.json({ message: "Catalogue views require products" }, { status: 400 });
+    try {
+      domain.splice(0, domain.length, ...catalogueDomain(body.catalogueView));
+    } catch {
+      return NextResponse.json({ message: "Product catalogue view is invalid" }, { status: 400 });
+    }
+    try {
+      await requirePermission(request, "stock.products.view");
+    } catch (error) {
+      return NextResponse.json({ message: "Could not access this store's catalogue" }, { status: error instanceof StoreAccessError ? error.status : 503 });
+    }
+  }
   if (type === "products" && body.categoryId !== undefined) {
     if (!Number.isInteger(body.categoryId) || body.categoryId <= 0) {
       return NextResponse.json({ message: "Product category is invalid" }, { status: 400 });
@@ -275,7 +324,7 @@ export async function POST(request: NextRequest) {
     // are excluded so a new empty company cannot inherit the demo catalog.
     if (type === "outlets") {
       domain.push(["id", "in", companyIds]);
-    } else if (type !== "posCategories") {
+    } else {
       domain.push(["company_id", "in", companyIds]);
     }
 
@@ -324,49 +373,7 @@ export async function POST(request: NextRequest) {
     const hasNext = rawItems.length > limit;
     let items = rawItems.slice(0, limit);
     if (type === "products") items = await withTaxInclusivePrices(sessionId, items, correlationId);
-    if (type === "posCategories") {
-      const productResponse = await fetch(`${getOdooBaseUrl()}/web/dataset/call_kw`, {
-        method: "POST",
-        headers: correlationHeaders(sessionId, correlationId),
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          method: "call",
-          params: {
-            model: "product.product",
-            method: "search_read",
-            args: [[["available_in_pos", "=", true], ["company_id", "in", companyIds]]],
-            kwargs: { fields: ["pos_categ_ids"], limit: 5000, order: "id asc", context },
-          },
-          id: Date.now(),
-        }),
-        cache: "no-store",
-        signal: AbortSignal.timeout(12_000),
-      });
-      if (!productResponse.ok) return NextResponse.json({ message: "Odoo product categories are unavailable" }, { status: 502 });
-      const productPayload = (await productResponse.json()) as {
-        result?: Array<{ pos_categ_ids?: unknown }>;
-        error?: { message?: string };
-      };
-      if (productPayload.error) {
-        const status = /session|log in|authenticate/i.test(productPayload.error.message ?? "") ? 401 : 502;
-        return NextResponse.json({ message: status === 401 ? "Odoo session expired" : "Odoo product categories are unavailable" }, { status });
-      }
 
-      const products = productPayload.result ?? [];
-      // If the scan reaches its cap, keep the full category list rather than
-      // accidentally hiding categories that may belong to later products.
-      if (products.length < 5000) {
-        const usedCategoryIds = new Set(
-          products.flatMap((product) => Array.isArray(product.pos_categ_ids)
-            ? product.pos_categ_ids.filter((id): id is number => typeof id === "number")
-            : []),
-        );
-        items = items.filter((item) => {
-          if (!item || typeof item !== "object" || !("id" in item)) return false;
-          return usedCategoryIds.has(Number(item.id));
-        });
-      }
-    }
     return NextResponse.json({ items, limit, offset, hasNext }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Odoo is unavailable";

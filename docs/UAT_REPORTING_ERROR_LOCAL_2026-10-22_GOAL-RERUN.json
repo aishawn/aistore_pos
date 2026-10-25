@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-10-22T15:27:11.924Z",
+  "sourceCommit": "d7ae6395ab4b4fe984afc81ceb15934c7f146fcb",
+  "target": "http://demo.localhost:3333",
+  "scope": "local browser fixture; reporting API intercepted; no live business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "scenario": "temporary Odoo outage",
+      "status": 503,
+      "expectedHeading": "Could not load the reporting dashboard",
+      "retryVisible": true,
+      "connectVisible": false,
+      "requestIdVisible": true,
+      "calls": [
+        "GET /api/odoo/reporting-dashboard",
+        "GET /api/sell/parked",
+        "GET /api/ai/config/client",
+        "GET /api/auth/me"
+      ],
+      "writes": [],
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false
+    },
+    {
+      "scenario": "missing Odoo session",
+      "status": 401,
+      "expectedHeading": "Connect Odoo to view live reports",
+      "retryVisible": false,
+      "connectVisible": true,
+      "requestIdVisible": false,
+      "calls": [
+        "GET /api/odoo/reporting-dashboard",
+        "GET /api/sell/parked",
+        "GET /api/ai/config/client",
+        "GET /api/auth/me",
+        "GET /api/odoo/session",
+        "GET /api/odoo/reporting-dashboard",
+        "POST /api/auth/refresh",
+        "GET /api/odoo/reporting-dashboard",
+        "GET /api/odoo/session",
+        "GET /api/odoo/reporting-dashboard"
+      ],
+      "writes": [
+        "POST /api/auth/refresh"
+      ],
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "generatedAt": "2026-10-22T05:46:15.549Z",
+  "sourceCommit": "7911d0d4c8162bc5e27dd32d0e3a0a44ad9533e2",
+  "target": "http://localhost:3035",
+  "scope": "local browser fixture; platform APIs intercepted; no live business writes",
+  "status": "PASS",
+  "checks": [
+    {
+      "route": "/platform/audit",
+      "viewport": 390,
+      "attempts": 3,
+      "retryRecovered": true,
+      "pageErrors": [],
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false
+    },
+    {
+      "route": "/platform/failures",
+      "viewport": 390,
+      "attempts": 3,
+      "retryRecovered": true,
+      "pageErrors": [],
+      "scrollWidth": 390,
+      "viewportWidth": 390,
+      "overflow": false
+    },
+    {
+      "route": "/platform/audit",
+      "viewport": 1440,
+      "attempts": 3,
+      "retryRecovered": true,
+      "pageErrors": [],
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false
+    },
+    {
+      "route": "/platform/failures",
+      "viewport": 1440,
+      "attempts": 3,
+      "retryRecovered": true,
+      "pageErrors": [],
+      "scrollWidth": 1440,
+      "viewportWidth": 1440,
+      "overflow": false
+    }
+  ],
+  "blockedWrites": []
+}

@@ -7,7 +7,7 @@ test("resolves legacy write intents to the correct page CTA by entity", () => {
     ["customer_group", "/customer-groups"],
     ["balance", "/customers/balances"],
     ["price_list", "/pricelists"],
-    ["stocktake", "/stocktake"],
+    ["stocktake", "/products/odoo?dialog=stocktake"],
     ["buying_period", "/stock/buying-periods"],
     ["gift_card", "/giftcards"],
     ["bulk_price_edit", "/stock/bulk-price-edit"],

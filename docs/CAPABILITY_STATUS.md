@@ -1,3 +1,15 @@
+## 2026-10-25 客户管理与定价优化（本地，尚未发布）
+
+- 客户档案与分组整合、价格表规则/客户查询、统一服务端报价、应收稳定分页和礼品卡类型/币种/到期修复已实现。Odoo 扩展目标 19.0.1.2.0，必须先升级扩展再发布前端。
+- Node 24 单测 31/31、接口 fixture 18/18、桥接 fake ORM 6/6、390/768/1440px 浏览器 fixture 27/27；TypeScript、定向 ESLint、Python AST/XML PASS。没有运行本地 build/Maven，没有真实业务写入。
+- 说明及发布顺序：`docs/CUSTOMER_OPTIMIZATION_2026-10-25.md`。本轮没有 commit/push/deploy；共享脏工作区保持原状，真实 Odoo 定价及交易一致性仍待隔离环境验收。fixture 结果不代表真实业务验收。
+
+## 2026-10-24 Odoo product catalogue workbench
+
+- Added server-side issue views (stock, price, barcode, classification and POS visibility), product details, tax-labelled prices, responsive filters and stale-result protection. Management queries require product-view permission; cashier defaults and tenant scoping are preserved. Dialog portals and pagination spacing prevent floating AI from covering actions.
+- Node 24.19.0 TypeScript/targeted lint PASS; real route with in-memory transport **13/13 PASS**; five-viewport browser fixture **107/107 PASS**, errors 0, business writes 0. Evidence: `UAT_PRODUCT_CATALOGUE_ROUTE_LOCAL_2026-10-24.json`, `UAT_PRODUCT_CATALOGUE_LOCAL_2026-10-24.json`.
+- Scope, screenshots and remaining packaging/cost/supplier work: `PRODUCT_CATALOGUE_OPTIMIZATION_2026-10-24.md`. Implemented and locally verified only; no application build, live Odoo acceptance, commit/push or deployment. Shared unrelated dirty edits preserved; pilot decision unchanged.
+
 ## 2026-10-23 库存/定价名称与价格显示复验
 
 ## 2026-10-24 AI 全量问法与功能面复验
@@ -1677,3 +1689,8 @@ Production AI defaults to `AI_ENABLED=false` until the checklist in `docs/AI_PRO
 - Demo runtime 前后端为 `0e4a48ea`，测试 source 为 `2b6468c1`（全量起始 source `fbd2871e`），均不匹配。失败集中在候选新增的无商品库存短问法、中文批量改价、中文库存实体、英文 SKU，以及旧 runtime 的回答文案差异；不作为当前候选失败结论。
 - 候选规则与回归用例已覆盖 `/stock/list` 短问法、商品名/条码/SKU 只读查询、库存澄清、批量改价导航和无目录匹配边界。证据：`docs/UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-ITERATION.json`、`docs/UAT_AI_STOCK_AND_NAVIGATION_ONLINE_2026-10-24_CURRENT-ITERATION.json`。
 - 当前仍需冻结同一候选 SHA，通过 Dokploy Java 21 `mvn -B clean verify`，再匹配部署后重跑；Pilot **NO-GO**。
+
+## 2026-10-25 Stock 工作台候选
+
+- 本地已实现 Products 分类/盘点弹窗、按租户/员工/地点隔离的本地盘点草稿、Purchasing 三页签和兼容路由。证据与剩余部署步骤见 [Stock workspace handoff](STOCK_WORKSPACE_2026-10-25.md)。
+- 本地 fixture 仅证明 UI/API 路由行为，不代表已部署或 Odoo 业务验收。Odoo addon 升级及隔离租户验证仍待完成；分类写入开关默认关闭。未执行生产写入或部署。

@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-10-24T14:30:30.836Z",
+  "status": "FAIL",
+  "source": "local Playwright fixture; all API calls intercepted when page load succeeds",
+  "nodeVersion": "v24.19.0",
+  "sourceHead": "c4923c641669451fd72d36408327c6318e598c3f",
+  "sourceTreeDirty": true,
+  "target": "http://demo.lvh.me:3102/register/odoo",
+  "checks": [
+    {
+      "id": "ai-entry-visible",
+      "status": "PASS",
+      "visibleEntries": 1,
+      "y": 872
+    },
+    {
+      "id": "register-loaded",
+      "status": "PASS"
+    },
+    {
+      "id": "immediate-input-and-debounce",
+      "status": "PASS"
+    }
+  ],
+  "failure": "old results must disappear synchronously on input\n\n1 !== 0\n",
+  "productSearchQueries": [
+    "",
+    "rapid-final"
+  ],
+  "businessWrites": [],
+  "screenshots": "docs/screenshots/2026-10-24-color-consistency/search"
+}

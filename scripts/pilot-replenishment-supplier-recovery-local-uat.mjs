@@ -6,14 +6,17 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
-if (!new URL(base).hostname.endsWith(".localhost") && new URL(base).hostname !== "localhost") throw new Error("LOCAL_FIXTURE_TARGET_REQUIRED");
+if (!new URL(base).hostname.endsWith(".localhost")) throw new Error("LOCAL_TENANT_FIXTURE_TARGET_REQUIRED");
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_REPLENISHMENT_SUPPLIER_RECOVERY_CURRENT.json");
 const screenshotDir = path.resolve(root, process.env.PILOT_UAT_SCREENSHOT_DIR ?? "docs/screenshots/replenishment-supplier-recovery-local");
 fs.mkdirSync(screenshotDir, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--no-proxy-server", "--host-resolver-rules=MAP demo.localhost 127.0.0.1"],
+});
 const checks = [], fixtureWrites = [], blockedWrites = [];
 try {
-  for (const width of [320, 390, 1024, 1440]) {
+  for (const width of [320, 390, 768, 1024, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     await context.addCookies([{ name: "orithos_access_token", value: "local-uat-session", url: base }]);
     await context.addInitScript(() => localStorage.setItem("sf_user", JSON.stringify({ id: 1, username: "admin", name: "Fixture Admin", isAdmin: true })));
@@ -57,7 +60,7 @@ try {
     });
     try {
       await page.goto(`${base}/stock/replenishment`, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.getByRole("heading", { name: /Connect Odoo to plan replenishment|Could not load the replenishment plan/, exact: true }).waitFor();
+      await page.getByRole("heading", { name: /Connect Odoo to plan replenishment|Could not load replenishment/, exact: true }).waitFor();
       const initialRetry = page.getByRole("button", { name: "Retry", exact: true });
       const hasPlanRetry = await initialRetry.isVisible();
       record("initial Odoo failure offers retry without leaving page", hasPlanRetry);
@@ -66,6 +69,7 @@ try {
       await page.getByRole("button", { name: /^Create draft RFQ/ }).click();
       const dialog = page.getByRole("dialog", { name: "Review draft RFQ", exact: true });
       await dialog.getByRole("alert").filter({ hasText: "Fixture suppliers unavailable" }).waitFor();
+      record("supplier fetch failure is not presented as an empty supplier list", await dialog.locator("select option").first().textContent() === "Supplier list unavailable");
       const quantity = dialog.getByRole("spinbutton", { name: "Order quantity", exact: true });
       await quantity.fill("7");
       record("supplier failure blocks draft creation", await dialog.getByRole("button", { name: "Create draft RFQ", exact: true }).isDisabled());
@@ -95,7 +99,7 @@ try {
       await page.getByRole("combobox", { name: "Coverage target", exact: true }).selectOption("7");
       await coverageStarted;
       record("coverage change blocks RFQ from the previous plan", await create.isDisabled());
-      record("coverage update announces pending plan", await page.getByRole("status").filter({ hasText: "Updating replenishment plan" }).isVisible());
+      record("coverage update announces pending plan", await page.getByRole("status").filter({ hasText: /Updating replenishment/ }).isVisible());
       const coverageResponse = page.waitForResponse((response) => new URL(response.url()).searchParams.get("coverageDays") === "7");
       releaseCoverage();
       await coverageResponse;

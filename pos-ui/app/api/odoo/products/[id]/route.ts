@@ -1,3 +1,4 @@
+import { validateCategoryIds } from "@/lib/odoo-categories";
 import { NextRequest, NextResponse } from "next/server";
 import { isSameOrigin } from "@/lib/server-auth";
 import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
@@ -104,6 +105,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   try {
     await requirePermission(request, "stock.products.edit");
     const scope = await scopedOdoo(request);
+    if ("pos_categ_ids" in body) await validateCategoryIds(scope, body.pos_categ_ids as number[]);
     const domain = [["id", "=", productId], ["company_id", "in", scope.companyIds]];
     const before = await scope.rpc<Array<{ id: number; list_price: number }>>("product.product", "search_read", [domain], { fields: ["id", "list_price"], limit: 1 });
     if (!before[0]) return NextResponse.json({ message: "Product not found in this store." }, { status: 404 });

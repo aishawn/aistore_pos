@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-22T07:19:59.924Z",
+  "target": "https://demo.orithos.com.au",
+  "scope": "isolation write gate probe only; no business writes",
+  "status": "BLOCKED",
+  "businessWrites": 0,
+  "localEnvGate": {
+    "odooDatabaseSet": true,
+    "isolationDatabaseSet": true,
+    "databasesEqual": true,
+    "odooIsAipos": false,
+    "looksLikeUat": true
+  },
+  "login": {
+    "httpStatus": 200,
+    "code": 0
+  },
+  "runtimeIdentity": {
+    "frontendCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+    "backendCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+    "localHead": "ref: refs/heads/main"
+  },
+  "uatContext": {
+    "httpStatus": 409,
+    "isolated": false,
+    "databasePresent": false,
+    "databaseIsAipos": false,
+    "databaseLooksLikeUat": false,
+    "code": null,
+    "message": "Both services must explicitly target the same dedicated UAT database.",
+    "keys": [
+      "isolated",
+      "message"
+    ]
+  },
+  "writeUatScriptAttempt": {
+    "script": "scripts/pilot-isolation-write-uat.mjs",
+    "priorEvidence": "docs/UAT_ISOLATION_WRITE_2026-10-22.json",
+    "result": "BLOCKED",
+    "sales": 0,
+    "refunds": 0,
+    "note": "Demo /api/odoo/uat-context is not an attested isolated UAT runtime. Local .env UAT DB name does not authorize writes against demo.orithos.com.au."
+  },
+  "blocker": "Demo runtime is not an attested isolation UAT stack. Start docker compose UAT overlay with matching ODOO_DATABASE=ISOLATION_ODOO_DATABASE, deploy that stack, attest /api/odoo/uat-context, then rerun pilot-isolation-write-uat.mjs."
+}

@@ -47,8 +47,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
     const owned = await scope.rpc<Array<{ id: number }>>("product.pricelist", "search_read", [[
       ["id", "=", pricelistId],
-      "|",
-      ["company_id", "=", false],
       ["company_id", "in", scope.companyIds],
     ]], { fields: ["id"], limit: 1 });
     if (!owned?.length) return NextResponse.json({ message: "Price list was not found for this store" }, { status: 404 });
@@ -73,8 +71,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
 
     const owned = await scope.rpc<Array<{ id: number }>>("product.pricelist", "search_read", [[
       ["id", "=", pricelistId],
-      "|",
-      ["company_id", "=", false],
       ["company_id", "in", scope.companyIds],
     ]], { fields: ["id"], limit: 1 });
     if (!owned?.length) return NextResponse.json({ message: "Price list was not found for this store" }, { status: 404 });

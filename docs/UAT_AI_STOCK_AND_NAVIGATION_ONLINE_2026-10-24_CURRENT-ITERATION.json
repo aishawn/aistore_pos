@@ -1,0 +1,744 @@
+{
+  "generatedAt": "2026-10-23T00:58:49.292Z",
+  "sourceCommit": "2b6468c17c9ce8905e9f161c1f2424c0aa7fef2a",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "frontendBuiltAt": "2026-10-23T00:47:52.540Z",
+    "backendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "backendBuiltAt": "2026-10-23T00:50:33Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 375,
+  "selectedCount": 26,
+  "selectedIds": [
+    "stock-short-en",
+    "stock-in-stock-en",
+    "stock-inventory-status-en",
+    "stock-looking-en",
+    "stock-short-zh",
+    "stock-available-zh",
+    "bulk-pricing-lookup-en",
+    "bulk-price-review-lookup-en",
+    "bulk-pricing-lookup-zh",
+    "stock-lookup-stock-of-en",
+    "stock-lookup-stock-for-en",
+    "stock-lookup-what-stock-for-en",
+    "stock-lookup-inventory-zh",
+    "stock-lookup-stock-of-zh",
+    "stock-lookup-available-zh",
+    "stock-lookup-available-en-variant",
+    "stock-lookup-barcode-zh",
+    "stock-lookup-sku-zh",
+    "stock-lookup-barcode-en",
+    "stock-lookup-sku-en",
+    "stock-clarification-see-anything-en",
+    "stock-clarification-see-inventory-en",
+    "stock-clarification-appears-en",
+    "stock-clarify-why-missing-en",
+    "stock-clarify-why-missing-zh",
+    "stock-no-catalogue-match-en"
+  ],
+  "catalogAudit": {
+    "uniqueIds": 375,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "stock-short-en",
+      "question": "Stock?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a0670a01-8bc3-4aed-9759-71aabc679d31"
+      }
+    },
+    {
+      "id": "stock-in-stock-en",
+      "question": "What's in stock?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a6ea9847-4175-4f9c-aabf-ee23c2e58c31"
+      }
+    },
+    {
+      "id": "stock-inventory-status-en",
+      "question": "Inventory status",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/list",
+        "fastPathId": "navigate",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "c5a5361f-a585-4083-9271-fa6afeea1cfd"
+      }
+    },
+    {
+      "id": "stock-looking-en",
+      "question": "How's our stock looking?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "2ce24a00-1a74-420c-866c-e6ce669a318d"
+      }
+    },
+    {
+      "id": "stock-short-zh",
+      "question": "库存情况怎么样？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "bedf3981-3ab1-4aa0-8d5b-2e075fcb6285"
+      }
+    },
+    {
+      "id": "stock-available-zh",
+      "question": "有什么现货",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/list",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/list",
+        "fastPathId": "navigate",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "affae76a-738a-4a9d-bafe-9bb74af3bbfd"
+      }
+    },
+    {
+      "id": "bulk-pricing-lookup-en",
+      "question": "Open bulk pricing",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "3009d889-19aa-4e6e-8aa6-05f7311e804d"
+      }
+    },
+    {
+      "id": "bulk-price-review-lookup-en",
+      "question": "Show me the bulk price review",
+      "status": "PASS",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "6ea81424-bc6a-4c9c-8037-cbe7a316e89d"
+      }
+    },
+    {
+      "id": "bulk-pricing-lookup-zh",
+      "question": "批量价格编辑",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/stock/bulk-price-edit",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": "/stock/bulk-price-edit",
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "921033d8-7e20-4336-aacb-7a363df8c35c"
+      }
+    },
+    {
+      "id": "stock-lookup-stock-of-en",
+      "question": "Do we have stock of VB Cans?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "52d06375-f796-4789-9c61-5d3dd35a9ddd",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "stock-lookup-stock-for-en",
+      "question": "Is there stock for Carlton Draught?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "Carlton Draught",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "935f658d-98f6-46e0-bb67-bfce5f2b227b",
+        "query": "Carlton Draught"
+      }
+    },
+    {
+      "id": "stock-lookup-what-stock-for-en",
+      "question": "What stock do we have for Carlton Draught?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "Carlton Draught",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "7ad7ee4c-a908-425c-827c-609e271cc718",
+        "query": "Carlton Draught"
+      }
+    },
+    {
+      "id": "stock-lookup-inventory-zh",
+      "question": "库存里有 VB Cans 吗",
+      "status": "FAIL",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "entity_action",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "0d506a04-949e-4efa-8ad6-f069d1789057",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "stock-lookup-stock-of-zh",
+      "question": "有没有 Carlton Draught 的库存",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "Carlton Draught",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4a7578d7-cdd2-4a3b-a34e-ddcf9559c3ad",
+        "query": "Carlton Draught"
+      }
+    },
+    {
+      "id": "stock-lookup-available-zh",
+      "question": "Shiraz有库存吗",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "Shiraz",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4cd3f899-dc58-4421-a402-70373d83bcab",
+        "query": "Shiraz"
+      }
+    },
+    {
+      "id": "stock-lookup-available-en-variant",
+      "question": "VB Cans有货吗",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB Cans",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "93f18002-d4c2-4edb-8db4-970981712dbd",
+        "query": "VB Cans"
+      }
+    },
+    {
+      "id": "stock-lookup-barcode-zh",
+      "question": "查条码 9311234567890",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "9311234567890",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "95f4ed2f-f2bb-4b08-a103-559fa342c623",
+        "query": "9311234567890"
+      }
+    },
+    {
+      "id": "stock-lookup-sku-zh",
+      "question": "找 SKU VB-375",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB-375",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "15c3f545-2bc1-4f64-90ec-36a5bb2fe4b0",
+        "query": "VB-375"
+      }
+    },
+    {
+      "id": "stock-lookup-barcode-en",
+      "question": "Check barcode 9311234567890",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "9311234567890",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "0639bcca-4f65-4ee9-9956-028e2ce92c45",
+        "query": "9311234567890"
+      }
+    },
+    {
+      "id": "stock-lookup-sku-en",
+      "question": "Find SKU VB-375",
+      "status": "FAIL",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "VB-375",
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "fastPathId": "search_product",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "1d7bc499-c975-4186-85db-3e98dcee51f1",
+        "query": "SKU VB-375"
+      }
+    },
+    {
+      "id": "stock-clarification-see-anything-en",
+      "question": "Why can't I see anything?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name",
+          "barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "214c43e1-3b99-4aa8-bffc-d21aea0f1f43",
+        "answerChecks": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "stock-clarification-see-inventory-en",
+      "question": "Why can't I see anything in inventory?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name",
+          "barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "937e0392-1224-4528-9cb4-58d1b564b163",
+        "answerChecks": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "stock-clarification-appears-en",
+      "question": "Nothing appears in inventory",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name",
+          "barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "005d564c-574a-407e-8bb8-9f709aeec585",
+        "answerChecks": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "id": "stock-clarify-why-missing-en",
+      "question": "Why can't you find the stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "product name or barcode"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "42224b13-f26e-4dfe-aac6-49fb1b112722",
+        "answerChecks": [
+          true
+        ]
+      }
+    },
+    {
+      "id": "stock-clarify-why-missing-zh",
+      "question": "为什么查不到库存？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true,
+        "answerIncludes": [
+          "具体商品名称或条码"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "qa",
+        "route": null,
+        "fastPathId": "qa",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "d3ad7b8a-296c-437d-b2ac-7854f03905d5",
+        "answerChecks": [
+          false
+        ]
+      }
+    },
+    {
+      "id": "stock-no-catalogue-match-en",
+      "question": "Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?",
+      "status": "PASS",
+      "expected": {
+        "intent": "report_stock",
+        "route": null,
+        "query": "ORITHOS-UAT-NO-MATCH-84721",
+        "noRoute": true,
+        "answerIncludes": [
+          "No matching stock found"
+        ]
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_stock",
+        "route": null,
+        "fastPathId": "report_stock",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "40a5f619-1ed1-4e65-83e1-4daacb56f767",
+        "answerChecks": [
+          true
+        ],
+        "query": "ORITHOS-UAT-NO-MATCH-84721"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 18,
+  "blocked": 0,
+  "failed": 8,
+  "status": "FAIL"
+}

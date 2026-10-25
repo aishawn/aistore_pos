@@ -1,3 +1,5 @@
+import { scopedOdoo, OdooScopeError } from "@/lib/odoo-scope";
+import { resolveCartPrices, priceSignature } from "@/lib/odoo-pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { resolveOdooAllowedCompanyIds } from "@/lib/odoo-companies";
 import { resolveTenantForcedCompanyIds } from "@/lib/odoo-tenant-company";
@@ -86,95 +88,6 @@ function roundCashTotal(amount: number, rounding: OdooCashRounding) {
   return sign * Math.round(rounded * rounding.rounding * 100) / 100;
 }
 
-async function rpc<T>(sessionId: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, correlationId?: string | null) {
-  const headers = new Headers({ "Content-Type": "application/json", Cookie: `session_id=${sessionId}` });
-  if (correlationId) headers.set("X-Correlation-ID", correlationId);
-  const response = await fetch(`${getBaseUrl()}/web/dataset/call_kw`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "call",
-      params: { model, method, args, kwargs },
-      id: Date.now(),
-    }),
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) throw new OdooCheckoutError("Odoo did not accept the POS request.", 502);
-  const payload = (await response.json()) as RpcResult<T>;
-  if (payload.error) {
-    const detail = payload.error.data?.message || payload.error.message || "";
-    if (/session|log in|authenticate/i.test(detail)) throw new OdooSessionExpiredError();
-    throw new OdooCheckoutError(detail || "Odoo rejected the POS request. Check register, tax and payment configuration.");
-  }
-  if (payload.result === undefined) throw new OdooCheckoutError("Odoo returned an empty POS response.", 502);
-  return payload.result;
-}
-
-async function searchRead<T>(sessionId: string, model: string, domain: unknown[], fields: string[], limit = 100, correlationId?: string | null) {
-  return rpc<T[]>(sessionId, model, "search_read", [domain], { fields, limit }, correlationId);
-}
-
-/** Resolve unit price via Odoo pricelist rules; fall back to list price only when no pricelist is set. */
-async function resolveUnitPrice(
-  sessionId: string,
-  pricelistId: number | null,
-  product: OdooProduct,
-  quantity: number,
-  partnerId: number | false,
-  correlationId?: string | null,
-): Promise<number> {
-  const fallback = Number(product.lst_price);
-  if (!pricelistId) {
-    if (!Number.isFinite(fallback) || fallback < 0) {
-      throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
-    }
-    return fallback;
-  }
-
-  const qty = Number.isFinite(quantity) && quantity !== 0 ? Math.abs(quantity) : 1;
-  try {
-    // Odoo record method: product.pricelist._get_product_price(product, quantity=…, partner=…)
-    const priced = await rpc<number>(
-      sessionId,
-      "product.pricelist",
-      "_get_product_price",
-      [[pricelistId], product.id],
-      { quantity: qty, partner: partnerId || false },
-      correlationId,
-    );
-    const unit = Number(priced);
-    if (Number.isFinite(unit) && unit >= 0) return unit;
-  } catch (error) {
-    if (error instanceof OdooSessionExpiredError) throw error;
-    // Some Odoo builds expect a product recordset kwargs shape instead of positional id.
-    try {
-      const priced = await rpc<number>(
-        sessionId,
-        "product.pricelist",
-        "_get_product_price",
-        [[pricelistId]],
-        { product: product.id, quantity: qty, partner: partnerId || false },
-        correlationId,
-      );
-      const unit = Number(priced);
-      if (Number.isFinite(unit) && unit >= 0) return unit;
-    } catch (inner) {
-      if (inner instanceof OdooSessionExpiredError) throw inner;
-      throw new OdooCheckoutError(
-        `Could not resolve Odoo pricelist price for ${product.name}. Check the register pricelist in Odoo.`,
-        409,
-      );
-    }
-  }
-
-  if (!Number.isFinite(fallback) || fallback < 0) {
-    throw new OdooCheckoutError(`Product ${product.name} has no valid price.`);
-  }
-  return fallback;
-}
-
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try {
@@ -190,6 +103,7 @@ export async function POST(request: NextRequest) {
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: {
+    expectedQuote?: string;
     externalPaymentConfirmed?: boolean;
     configId?: number;
     paymentMethodId?: number;
@@ -246,6 +160,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await requirePermission(request, isRefund ? "sell.refund" : "sell.checkout");
+    const pricingScope = await scopedOdoo(request);
     const sessionInfoResponse = await fetch(`${getBaseUrl()}/web/session/get_session_info`, {
       method: "POST",
       headers: {
@@ -266,6 +182,8 @@ export async function POST(request: NextRequest) {
     const companyIds = forced.companyIds;
     if (!companyIds.length) throw new OdooCheckoutError("This Odoo user has no accessible company.", 403);
 
+    const rpc = <T>(_session: string, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T>(model, method, args, kwargs); };
+    const searchRead = <T>(_session: string, model: string, domain: unknown[], fields: string[], limit = 100, _correlation?: string | null) => { void _correlation; return pricingScope.rpc<T[]>(model, "search_read", [domain], { fields, limit }); };
     const configs = await searchRead<OdooConfig>(odooSession, "pos.config", [
       ["id", "=", body.configId],
       ["company_id", "in", companyIds],
@@ -325,8 +243,8 @@ export async function POST(request: NextRequest) {
 
     let customer: OdooCustomer | null = null;
     if (body.customerId != null) {
-      if (!Number.isInteger(body.customerId)) throw new OdooCheckoutError("The customer selection is invalid.", 400);
-      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId]], ["id", "property_product_pricelist", "property_account_position_id"], 1, correlationId);
+      if ((!Number.isSafeInteger(body.customerId) || body.customerId < 1)) throw new OdooCheckoutError("The customer selection is invalid.", 400);
+      const customers = await searchRead<OdooCustomer>(odooSession, "res.partner", [["id", "=", body.customerId], ["company_id", "in", companyIds]], ["id", "property_product_pricelist", "property_account_position_id"], 1, correlationId);
       customer = customers[0] ?? null;
       if (!customer) throw new OdooCheckoutError("The selected customer is no longer available.", 409);
     }
@@ -440,8 +358,10 @@ export async function POST(request: NextRequest) {
     const partnerId = isRefund && originalOrder
       ? (Array.isArray(originalOrder.partner_id) ? originalOrder.partner_id[0] : false)
       : customer?.id ?? false;
+    const prices = isRefund ? null : await resolveCartPrices(pricingScope, config.id, body.customerId, body.lines);
     const lineCommands: unknown[] = [];
     const receiptLines: { name: string; quantity: number; subtotal: number; total: number; packFactor?: number }[] = [];
+    let subtotalTotal = 0;
     let taxTotal = 0;
     let total = 0;
 
@@ -453,7 +373,7 @@ export async function POST(request: NextRequest) {
       const effectiveQty = inputLine.quantity * packFactor;
       const priceUnit = refundSourceLine
         ? Number(refundSourceLine.price_unit)
-        : await resolveUnitPrice(odooSession, pricelist, product, effectiveQty, partnerId, correlationId);
+        : prices!.prices.find((price) => price.productId === product.id)!.unitPrice;
       const discount = refundSourceLine ? Number(refundSourceLine.discount || 0) : 0;
       if (!Number.isFinite(priceUnit) || priceUnit < 0 || !Number.isFinite(discount) || discount < 0 || discount > 100) {
         throw new OdooCheckoutError(`The source price for ${product.name} is invalid.`, 409);
@@ -476,6 +396,7 @@ export async function POST(request: NextRequest) {
       if (!Number.isFinite(totals.total_excluded) || !Number.isFinite(totals.total_included)) {
         throw new OdooCheckoutError(`Could not calculate tax for ${product.name}.`);
       }
+      subtotalTotal += totals.total_excluded;
       taxTotal += totals.total_included - totals.total_excluded;
       total += totals.total_included;
       const label = packFactor !== 1
@@ -510,6 +431,10 @@ export async function POST(request: NextRequest) {
       throw new OdooCheckoutError("The refund total does not match the original sale. Use Odoo POS to complete this refund.", 409);
     }
 
+    if (!isRefund) {
+      const signature = priceSignature({ configId: config.id, paymentMethodId: body.paymentMethodId!, customerId: body.customerId ?? null, lines: body.lines, prices: prices!, totals: { subtotal: Math.round(subtotalTotal * 100) / 100, tax: taxTotal, total } });
+      if (body.expectedQuote !== signature) return NextResponse.json({ message: "Prices or taxes have changed. Refresh the quote and confirm the new amount before completing payment.", code: "QUOTE_CHANGED" }, { status: 409 });
+    }
     const amountDue = Math.abs(total);
     const roundedTender = Math.round(tendered * 100) / 100;
     if (isRefund) {
@@ -551,7 +476,7 @@ export async function POST(request: NextRequest) {
       fiscal_position_id: fiscalPositionId || false,
       pricelist_id: isRefund && originalOrder
         ? (Array.isArray(originalOrder.pricelist_id) ? originalOrder.pricelist_id[0] : false)
-        : pricelist || false,
+        : prices?.pricelistId || false,
       name: isRefund ? `Refund ${uuid}` : `Order ${uuid}`,
       is_refund: isRefund,
       last_order_preparation_change: "{}",
@@ -612,7 +537,7 @@ export async function POST(request: NextRequest) {
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
-    const status = error instanceof OdooCheckoutError ? error.status : 502;
+    const status = error instanceof OdooCheckoutError || error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     const message = error instanceof Error ? error.message : "Odoo checkout failed.";
     return NextResponse.json({ message }, { status });
   }

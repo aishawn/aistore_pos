@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-10-21T22:29:34.390Z",
+  "scope": "second tenant owner bootstrap, Odoo read access and cross-tenant isolation",
+  "businessWrites": [],
+  "tenantA": {
+    "host": "https://demo.orithos.com.au",
+    "loginHttpStatus": 200,
+    "odooSessionHttpStatus": 200,
+    "productReadHttpStatus": 200,
+    "productCount": 5
+  },
+  "tenantB": {
+    "vendorId": 48,
+    "host": "https://codex-replenishment-2212304093.orithos.com.au",
+    "ownerBootstrapHttpStatus": 200,
+    "storeBootstrapHttpStatus": 200,
+    "storeBootstrapCode": 0,
+    "odooSessionHttpStatus": 200,
+    "allowedCompanyIds": [41],
+    "productReadHttpStatus": 200,
+    "productCount": 14
+  },
+  "crossTenant": {
+    "tokenOrigin": "codex-replenishment-2212304093.orithos.com.au",
+    "requestHost": "demo.orithos.com.au",
+    "authHttpStatus": 403,
+    "authCode": 40310,
+    "bindingHttpStatus": 403,
+    "bindingCode": 40310,
+    "recordsHttpStatus": 401,
+    "rejected": true
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-10-22T21:27:52.860Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Node v24.19.0; browser API fixtures",
+  "scope": "Odoo customer directory search/create form and responsive UI; all API requests intercepted",
+  "status": "PASS",
+  "passed": 13,
+  "failed": 0,
+  "simulatedWriteRequests": 4,
+  "productionBusinessWrites": 0,
+  "simulatedWrites": [
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers",
+    "POST /api/odoo/customers"
+  ],
+  "checks": [
+    {
+      "width": 390,
+      "name": "customer directory loads Odoo fixture records",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "responsive layout has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "search immediately locks stale customer edits",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "current delayed search replaces stale customer rows",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "fresh customer rows re-enable edit controls",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "empty group state gives accurate Odoo setup guidance",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "create failure preserves form values for retry",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "create retry sends selected price list and group",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "customer directory loads Odoo fixture records",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "responsive layout has no horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "empty group state gives accurate Odoo setup guidance",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "create failure preserves form values for retry",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "create retry sends selected price list and group",
+      "status": "PASS"
+    }
+  ],
+  "screenshots": [
+    "docs/screenshots/2026-10-23-customer-directory-e21a7943-recheck/customers-390.png",
+    "docs/screenshots/2026-10-23-customer-directory-e21a7943-recheck/customers-1440.png"
+  ]
+}

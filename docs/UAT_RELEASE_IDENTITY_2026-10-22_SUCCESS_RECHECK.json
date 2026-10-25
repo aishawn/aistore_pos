@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2026-10-22T00:12:12.491Z",
+  "target": "https://demo.orithos.com.au",
+  "expectedCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+  "sourceWorkingTree": false,
+  "scope": "version endpoint only; no business writes",
+  "status": "PASS",
+  "deploymentShaVerified": true,
+  "services": {
+    "frontend": {
+      "service": "orithos-frontend",
+      "commit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+      "builtAt": "2026-10-21T22:50:26.245Z"
+    },
+    "backend": {
+      "service": "orithos-backend",
+      "commit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+      "builtAt": "2026-10-21T22:50:25Z"
+    }
+  }
+}

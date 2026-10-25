@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-22T01:17:17.388Z",
-  "sourceCommit": "f5a2948",
+  "generatedAt": "2026-10-22T15:35:05.251Z",
+  "sourceCommit": "d7ae6395ab4b4fe984afc81ceb15934c7f146fcb",
   "deployment": null,
-  "target": "https://demo.orithos.com.au",
+  "target": "http://demo.localhost:3000",
   "status": "PASS",
   "fixture": "invoice scan endpoint intercepted in browser; no model call, supplier creation or purchase receipt write",
   "viewport": 390,
@@ -16,8 +16,5 @@
   ],
   "scanCalls": 2,
   "capabilityCalls": 3,
-  "businessWrites": [
-    "POST /api/orders/receives/scan",
-    "POST /api/orders/receives/scan"
-  ]
+  "businessWrites": []
 }

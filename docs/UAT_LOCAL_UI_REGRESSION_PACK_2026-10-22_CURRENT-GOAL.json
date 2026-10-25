@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-10-22T15:28:00+08:00",
+  "sourceCommit": "8a4c56e51e40317bd16183ee8ebb7148e9841082",
+  "sourceWorkingTree": true,
+  "onlineRuntimeCommit": "b4719e7c51c2ffebdcd8b0916e7186480c55201d",
+  "target": "http://demo.localhost:3333 and http://app.localhost:3333",
+  "environment": "local Next.js webpack dev server; Node v22.22.2; browser API fixtures",
+  "scope": "Cross-module browser UI and interaction regression; all business API requests intercepted; no production or Odoo business writes",
+  "status": "PASS",
+  "passed": 99,
+  "failed": 0,
+  "blocked": 0,
+  "businessWrites": 0,
+  "visualReview": {
+    "status": "PASS",
+    "notes": "Representative mobile and desktop screenshots were inspected; no overlap or horizontal overflow was visible.",
+    "screenshots": [
+      "docs/screenshots/2026-10-22-goal-stock-8a4c56e/stock-list-390.png",
+      "docs/screenshots/2026-10-22-goal-stock-8a4c56e/capped-pricing-390.png",
+      "docs/screenshots/2026-10-22-goal-productization-8a4c56e/suggestions-1440.png",
+      "docs/screenshots/2026-10-22-goal-purchase-busy-8a4c56e/purchase-receipt-390.png"
+    ]
+  },
+  "suites": [
+    { "name": "Stock and pricing responsive layouts plus Odoo stock filters", "checks": 15, "status": "PASS", "evidence": "docs/UAT_STOCK_TABLES_RESPONSIVE_LOCAL_2026-10-22_SHA-8A4C56E.json" },
+    { "name": "Price suggestions productization and unknown-result recovery", "checks": 12, "status": "PASS", "evidence": "docs/UAT_PRODUCTIZATION_UI_LOCAL_2026-10-22_SHA-8A4C56E.json" },
+    { "name": "Reporting 503/401 recovery", "checks": 2, "status": "PASS", "evidence": "docs/UAT_REPORTING_ERROR_LOCAL_2026-10-22_SHA-8A4C56E.json" },
+    { "name": "Stocktake count and apply boundaries", "checks": 20, "status": "PASS", "evidence": "docs/UAT_STOCKTAKE_COUNT_BOUNDARIES_LOCAL_2026-10-22_SHA-8A4C56E.json" },
+    { "name": "Platform audit and failures retry across two viewports", "checks": 4, "status": "PASS", "evidence": "docs/UAT_PLATFORM_AUDIT_FAILURES_LOCAL_2026-10-22_SHA-8A4C56E.json" },
+    { "name": "Purchase confirmation and receive recovery", "checks": 40, "status": "PASS", "evidence": "docs/UAT_PURCHASE_BUSY_RECOVERY_LOCAL_2026-10-22_SHA-8A4C56E.json" },
+    { "name": "Invoice OCR preview retry and review UI", "checks": 6, "status": "PASS", "evidence": "docs/UAT_INVOICE_SCAN_MOCK_LOCAL_2026-10-22_SHA-8A4C56E.json" }
+  ],
+  "limitations": [
+    "These are local fixture checks and do not establish live Odoo transaction acceptance or real model OCR accuracy.",
+    "The online runtime remains b4719e7c and does not match the current source candidate.",
+    "HEAD is 8a4c56e51e40317bd16183ee8ebb7148e9841082 and the worktree is dirty; evidence records the HEAD plus the local worktree state, not a clean candidate commit.",
+    "The backend Java 21 exact-SHA mvn -B clean verify gate is outstanding; this workspace has Java 8."
+  ]
+}

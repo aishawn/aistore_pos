@@ -39,13 +39,22 @@ const suggestionPayload = {
       onHand: 4,
       cost: 10,
       currentPrice: 12,
-      currentMargin: (12 - 10) / 12,
-      suggestedPrice: 14.3,
-      suggestedMargin: (14.3 - 10) / 14.3,
+      currentMargin: (12 / 1.1 - 10) / (12 / 1.1),
+      suggestedPrice: 15.75,
+      suggestedMargin: (15.75 / 1.1 - 10) / (15.75 / 1.1),
       status: "raise",
-      reason: "Current margin below target. Suggested GST-inclusive shelf from cost.",
+      reason: "Current margin below target. Suggested shelf is based on net sales excluding GST.",
       reasonParts: ["Current margin below target."],
-      method: "rules_v1_margin_on_sell",
+      method: "rules_v2_net_margin",
+      currentNetPrice: 10.91,
+      currentGst: 1.09,
+      suggestedNetPrice: 14.32,
+      suggestedGst: 1.43,
+      currentListPrice: 12,
+      suggestedListPrice: 15.75,
+      taxBasis: "odoo_sale_taxes",
+      marginBasis: "net_sales_excluding_gst",
+      costBasis: "odoo_standard_cost",
     },
   ],
 };
@@ -54,6 +63,7 @@ const browser = await chromium.launch({ headless: true });
 const writes = [];
 const bulkPriceQueries = [];
 const checks = [];
+let fixtureListPrice = 12;
 const record = (name, ok, evidence = "") => checks.push({ name, status: ok ? "PASS" : "FAIL", evidence });
 const appRoute = path.join(root, "pos-ui", "app", "stock", "price-suggestions", "page.tsx");
 const appStockHub = path.join(root, "pos-ui", "app", "stock", "more", "page.tsx");
@@ -103,7 +113,7 @@ try {
     }
     if (url.pathname === "/api/odoo/records") {
       bulkPriceQueries.push(route.request().postDataJSON()?.query ?? "");
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: 101, name: "DEMO Shiraz", display_name: "DEMO Shiraz", barcode: "", default_code: "DEMO-SHIRAZ", list_price: 24, taxes_id: [], price_included: 1, price_tax: 0, qty_available: 12, free_qty: 12, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }], limit: 30, offset: 0 }) });
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [{ id: 101, name: "DEMO Shiraz", display_name: "DEMO Shiraz", barcode: "", default_code: "DEMO-SHIRAZ", list_price: fixtureListPrice, taxes_id: [], price_included: 1, price_tax: 0, qty_available: 12, free_qty: 12, uom_id: [1, "Units"], pos_categ_ids: [], available_in_pos: true }], limit: 30, offset: 0 }) });
     }
     if (url.pathname === "/api/auth/me") {
       return route.fulfill({
@@ -143,6 +153,8 @@ try {
   await page.getByText("Raise price", { exact: true }).last().waitFor({ timeout: 10000 });
   await page.getByText("Suggestions are read-only").waitFor({ timeout: 10000 });
   record("price suggestions page", true, "Heading, DEMO row, raise badge and read-only guidance visible");
+  record("price suggestion shows GST-exclusive basis", await page.getByText("Current net $10.91 · GST $1.09 · Suggested net $14.32 · GST $1.43", { exact: true }).count() === 1, "Current and suggested net/GST amounts match the Odoo 10% tax fixture");
+  record("price suggestion shows target margin calculation", await page.getByText("Current $12.00 (8.3%)", { exact: false }).count() === 1 && await page.getByText("Suggested $15.75", { exact: false }).count() === 1, "Current net margin is 8.3%; suggested shelf price is $15.75");
   await page.screenshot({ path: path.join(screenshotDir, "price-suggestions-1440.png"), fullPage: true });
 
   const productSearch = page.getByPlaceholder("Search product or SKU");
@@ -166,9 +178,10 @@ try {
   record("apply CTA present", true, "Open product link present; no apply-price write control");
   const bulkEditLink = page.getByRole("link", { name: "Bulk edit this product" }).first();
   await bulkEditLink.waitFor({ state: "visible", timeout: 10000 });
+  const expectedBulkEditHref = "/stock/bulk-price-edit?search=DEMO-SHIRAZ&productId=101&suggestedPrice=15.75&expectedPrice=12";
   record(
-    "bulk edit deep link",
-    (await bulkEditLink.getAttribute("href")) === "/stock/bulk-price-edit?search=DEMO-SHIRAZ",
+    "bulk edit deep link carries product, suggestion and expected price",
+    (await bulkEditLink.getAttribute("href")) === expectedBulkEditHref,
     await bulkEditLink.getAttribute("href") ?? "missing href",
   );
   const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
@@ -185,11 +198,22 @@ try {
   await bulkEditLink.click();
   await page.waitForURL(/\/stock\/bulk-price-edit/);
   await page.reload({ waitUntil: "domcontentloaded" });
-  const bulkSearch = page.getByPlaceholder("Search product or SKU");
+  const bulkSearch = page.locator('input[placeholder="Search product or SKU"]:visible');
   await bulkSearch.waitFor({ state: "visible", timeout: 10000 });
   await page.waitForTimeout(1200);
   record("bulk edit pre-fills SKU", await bulkSearch.inputValue() === "DEMO-SHIRAZ", await bulkSearch.inputValue());
   record("bulk edit requests SKU query", bulkPriceQueries.includes("DEMO-SHIRAZ"), JSON.stringify(bulkPriceQueries));
+  const suggestedPriceInput = page.getByRole("spinbutton", { name: "Price for DEMO Shiraz" });
+  await suggestedPriceInput.waitFor({ state: "visible", timeout: 10000 });
+  record("bulk edit pre-fills GST-inclusive suggestion", await suggestedPriceInput.inputValue() === "15.75", await suggestedPriceInput.inputValue());
+  record("bulk edit confirms current price still matches suggestion", await page.getByText("Current list $12.00", { exact: false }).count() > 0, "Fixture Odoo list_price is 12.00; expectedPrice query is 12");
+  record("suggestion navigation performs no price write", writes.length === 0, JSON.stringify(writes));
+  fixtureListPrice = 13;
+  await page.goto(`${base}${expectedBulkEditHref}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.getByRole("alert").getByText("This suggestion is invalid or the original price has changed. Review the current price.").waitFor({ timeout: 10000 });
+  const stalePriceInput = page.getByRole("spinbutton", { name: "Price for DEMO Shiraz" });
+  record("stale suggestion is rejected after Odoo price changes", await stalePriceInput.inputValue() === "13", "Expected price 12 differs from fixture current list_price 13; no stale suggestion was applied");
+  record("stale suggestion rejection performs no write", writes.length === 0, JSON.stringify(writes));
   await page.goto(`${base}/stock/price-suggestions`, { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.getByRole("heading", { name: "Price suggestions", exact: true }).waitFor({ timeout: 30000 });
   for (const viewport of [320, 390, 768, 1024].map((width) => ({

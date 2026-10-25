@@ -68,14 +68,17 @@ try {
         return route.continue();
       });
       await page.goto(`${base}/stock/replenishment`, { waitUntil: "networkidle", timeout: 60000 });
-      await page.getByRole("heading", { name: "Connect Odoo to plan replenishment", exact: true }).waitFor();
+      await page.getByRole("heading", { name: "Could not load replenishment", exact: true }).waitFor();
       const retry = page.getByRole("button", { name: "Retry", exact: true });
       const hasRetry = await retry.isVisible();
-      record("served replenishment page exposes initial-failure retry", hasRetry);
+      record("served replenishment page exposes retry after a read failure", hasRetry);
       if (hasRetry) {
         await retry.click();
         await page.getByRole("heading", { name: "Replenishment", exact: true }).waitFor({ timeout: 60000 });
-        record("retry recovers real Odoo read", true);
+        await page.getByRole("status").filter({ hasText: "Updating replenishment" }).waitFor({ state: "hidden", timeout: 60000 });
+        const summary = page.getByRole("region", { name: "Replenishment summary", exact: true });
+        const recommendations = page.getByRole("heading", { name: "Replenishment suggestions", exact: true });
+        record("retry recovers real Odoo read", await summary.isVisible() && await recommendations.isVisible());
       }
       record("no page errors or viewport overflow", errors.length === 0 && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), errors);
       await page.screenshot({ path: path.join(screenshotDir, `replenishment-${width}.png`), fullPage: true });
@@ -90,7 +93,8 @@ try {
 } catch (error) { checks.push({ name: "run", status: "FAIL", evidence: error instanceof Error ? error.message : "Unexpected failure" }); }
 finally { await browser.close(); }
 const failed = checks.filter((check) => check.status === "FAIL").length;
-const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: "unverified-after-push", target: base, scope: "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal permitted; business API mutations blocked; no inventory/RFQ/order writes", status: failed === 0 && !blockedWrites.length ? "PASS" : "FAIL", checks, blockedWrites, sessionRenewals };
+const deploymentSha = process.env.PILOT_DEPLOYMENT_SHA ?? "";
+const output = { generatedAt: new Date().toISOString(), sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), deployment: /^[\da-f]{40}$/i.test(deploymentSha) ? deploymentSha.toLowerCase() : "unverified-after-push", target: base, scope: "Real authenticated stocktake/replenishment reads and browser-local GET fault injection; same-origin auth session renewal permitted; business API mutations blocked; no inventory/RFQ/order writes", status: failed === 0 && !blockedWrites.length ? "PASS" : "FAIL", checks, blockedWrites, sessionRenewals };
 fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, `${JSON.stringify(output, null, 2)}\n`);
 console.log(JSON.stringify({ outputPath, status: output.status, checks: checks.length, failed, blockedWrites: blockedWrites.length }));

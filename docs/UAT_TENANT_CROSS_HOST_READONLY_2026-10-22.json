@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-21T18:05:00Z",
+  "scope": "authenticated read-only cross-host tenant boundary probe",
+  "source": "demo admin session against an existing test tenant host",
+  "businessWrites": [],
+  "tenantCatalog": {
+    "returnedRows": 20,
+    "activeTrialRows": 1,
+    "deletedRows": 19,
+    "note": "The catalog contains historical Codex test tenants; no second production-ready tenant was identified."
+  },
+  "checks": [
+    { "path": "/api/auth/me", "status": 402, "result": "PASS_BOUNDARY_REJECTED" },
+    { "path": "/api/tenant/odoo-binding", "status": 402, "result": "PASS_BOUNDARY_REJECTED" },
+    { "path": "/api/odoo/session", "status": 200, "allowedCompanyIds": [], "result": "NO_USABLE_CROSS_TENANT_SESSION" }
+  ],
+  "conclusion": "This is read-only boundary evidence, not proof of two-tenant delivery. A second active tenant with a dedicated user and isolated Odoo company/database is still required."
+}

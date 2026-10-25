@@ -1,0 +1,141 @@
+{
+  "generatedAt": "2026-10-23T02:26:17.223Z",
+  "sourceCommit": "0ffd62218714274b9ecd771352e9da7da3813e21",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "frontendBuiltAt": "2026-10-23T01:03:52.329Z",
+    "backendCommit": "0e4a48ead3e32c57623ed726e3583cee5945d0ca",
+    "backendBuiltAt": "2026-10-23T00:50:33Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "cleanup": {
+    "logoutStatus": 200
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 386,
+  "selectedCount": 4,
+  "selectedIds": [
+    "grocery-beer-bbq-en",
+    "grocery-snacks-en",
+    "grocery-beer-zh",
+    "grocery-snacks-zh"
+  ],
+  "requestTimeoutMs": 15000,
+  "catalogAudit": {
+    "uniqueIds": 386,
+    "duplicateIds": []
+  },
+  "checks": [
+    {
+      "id": "grocery-beer-bbq-en",
+      "question": "Recommend beer for a BBQ under $20",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "entity_action",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "54c79ad6-cb20-4e21-ac72-e3152749f922"
+      }
+    },
+    {
+      "id": "grocery-snacks-en",
+      "question": "Find me some snacks",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "search_product",
+        "route": "/products",
+        "fastPathId": "search_product",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "fb2f9d22-28f4-4ef3-8f20-e2b30127e1ab"
+      }
+    },
+    {
+      "id": "grocery-beer-zh",
+      "question": "推荐啤酒",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "cfd43c87-4037-435e-bad2-f0f342770dbb"
+      }
+    },
+    {
+      "id": "grocery-snacks-zh",
+      "question": "推荐零食",
+      "status": "FAIL",
+      "expected": {
+        "intent": "navigate",
+        "route": "/recommend/grocery",
+        "query": null,
+        "noRoute": false
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/sommelier",
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "3d856e90-54c4-425d-92b7-24ed0a02dcb8"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 0,
+  "blocked": 0,
+  "failed": 4,
+  "status": "FAIL"
+}

@@ -46,7 +46,7 @@ export function RowActions({
           <CloneIcon size={18} /> Clone
         </RowActionItem>
       )}
-      <RowActionItem onClick={onDelete} className="flex items-center gap-1.5 text-[#e2231a]">
+      <RowActionItem onClick={onDelete} className="flex items-center gap-1.5 text-[var(--oh-danger)]">
         <DeleteIcon size={18} /> Delete
       </RowActionItem>
     </div>

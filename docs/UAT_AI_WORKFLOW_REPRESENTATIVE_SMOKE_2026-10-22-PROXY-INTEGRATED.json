@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-10-21T17:21:13.161Z",
+  "sourceCommit": "ff32021f439a7294c9968adb00fe826923d6e10a",
+  "worktreeDirty": true,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 5,
+  "selectedIds": [
+    "replenishment-restock-en",
+    "pricing-en",
+    "recommendation-en",
+    "invoice-en",
+    "sales-paraphrase-show-today"
+  ],
+  "login": {
+    "status": 502,
+    "server": "cloudflare",
+    "contentType": "text/html; charset=UTF-8",
+    "correlationId": null,
+    "attempts": 3
+  },
+  "proxyHealth": [
+    {
+      "path": "/api/auth/me",
+      "status": 502
+    },
+    {
+      "path": "/api/ai/config/client",
+      "status": 502
+    },
+    {
+      "path": "/api/ai/assistant",
+      "status": 502
+    }
+  ],
+  "checks": [
+    {
+      "id": "setup",
+      "status": "BLOCKED",
+      "evidence": {
+        "error": "LOGIN_FAILED_502"
+      }
+    }
+  ],
+  "writeRequests": [],
+  "passed": 0,
+  "blocked": 1,
+  "failed": 0,
+  "status": "BLOCKED"
+}

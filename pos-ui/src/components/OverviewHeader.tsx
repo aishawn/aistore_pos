@@ -1,8 +1,6 @@
 "use client";
 
-import { useAuth } from "@/lib/auth";
-import { MessageCircle } from "lucide-react";
-import { useAiAssistant } from "@/lib/ai-assistant";
+import { OrithosLogo } from "@/components/OrithosLogo";
 import { OverviewAccountControl } from "@/components/OverviewAccountControl";
 import { OverviewLayoutSwitcher } from "@/components/OverviewLayoutSwitcher";
 
@@ -15,32 +13,23 @@ export function OverviewHeader({
   company: string;
   active: "radial" | "workspace";
 }) {
-  const { setExpanded } = useAiAssistant();
-  const { hasPermission } = useAuth();
   return (
     <header className="ov-header">
       <div className="min-w-0">
+        {active === "radial" ? <div className="ov-brand"><OrithosLogo /></div> : null}
         <p className="ov-eyebrow">{greeting}</p>
-        <h1>
+        <h1 title={company}>
           {active === "workspace"
-            ? "Your store, at a glance."
-            : "Your store. One place."}
+            ? <><span>Your store, </span><em>at a glance.</em></>
+            : <><span>Your store. </span><em>One intelligence.</em></>}
         </h1>
-        <p className="ov-company">{company}</p>
+        {active === "radial" ? <p className="ov-tagline">Sell smarter. Manage better. Grow further with Orithos AI.</p> : null}
+        {active === "workspace" ? <p className="ov-company">{company}</p> : null}
       </div>
       <div className="ov-toolbar">
         <OverviewLayoutSwitcher active={active} />
-        <OverviewAccountControl />
-        {hasPermission("ai.assistant") ? (
-          <button
-            type="button"
-            className="ov-ai-trigger"
-            aria-label="Open Orithos AI assistant"
-            onClick={() => setExpanded(true)}
-          >
-            <MessageCircle size={21} />
-          </button>
-        ) : null}
+        <OverviewAccountControl showLogo={active !== "radial"} />
+
       </div>
     </header>
   );

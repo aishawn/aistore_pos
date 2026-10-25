@@ -123,6 +123,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   let recoveryContext: Record<string, unknown> | null = null;
   try {
     await requirePermission(request, "stock.receive");
+    await requirePermission(request, "stock.purchases");
     const companyIds = await getCompanyIds(request, sessionId);
     const correlationId = request.headers.get("x-correlation-id");
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };

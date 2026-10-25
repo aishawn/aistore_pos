@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertCircle, Download, LoaderCircle, RefreshCw, Search, X } from "lucide-react";
 import { fetchOdooRoute, getOdooPosBootstrap, getOdooSessionStatus } from "@/lib/odoo-api";
 import { formatStoreEpoch } from "@/lib/odoo-date";
+import { friendlyProductName } from "@/lib/product-display-name";
 
 type SuggestionStatus = "ok" | "raise" | "review_cost" | "review_tax" | "missing_cost" | "unsaleable";
 
@@ -340,7 +341,7 @@ export function OdooPriceSuggestionsPage() {
               <li key={product.id} className="px-4 py-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="font-semibold text-[var(--oh-text)]">{product.name}</p>
+                    <p className="font-semibold text-[var(--oh-text)]" title={product.name}>{friendlyProductName(product.name)}</p>
                     <p className="mt-0.5 text-xs text-[var(--oh-muted)]">
                       {product.sku || "No SKU"} · Sold {number.format(product.soldUnits)} · On hand {number.format(product.onHand)}
                     </p>

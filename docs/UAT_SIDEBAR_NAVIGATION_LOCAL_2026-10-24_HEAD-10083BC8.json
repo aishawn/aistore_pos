@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-10-23T01:29:17.414Z",
+  "sourceCommit": "10083bc8520da26bb2910f74d0f44ce7cd683774",
+  "sourceWorkingTreeDirty": true,
+  "nodeVersion": "v24.19.0",
+  "environment": "local Next.js dev server; browser API fixtures",
+  "target": "http://demo.localhost:3101",
+  "scope": "sidebar route visibility, customer navigation destinations, desktop/mobile drawer interaction",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "desktop sidebar remains visible on AI assistant page",
+      "status": "PASS",
+      "evidence": "http://demo.localhost:3101/assistant"
+    },
+    {
+      "name": "AI assistant route is marked active",
+      "status": "PASS",
+      "evidence": "oh-type-label relative flex items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 font-medium transition-colors bg-[var(--oh-sidebar-active-pill)] text-[var(--oh-sidebar-active)]"
+    },
+    {
+      "name": "customer menu exposes all Odoo destinations",
+      "status": "PASS",
+      "evidence": "Customers, Customer Groups, Price Lists, Balances, Gift Cards"
+    },
+    {
+      "name": "desktop sidebar navigation reaches Price Lists",
+      "status": "PASS",
+      "evidence": "http://demo.localhost:3101/pricelists"
+    },
+    {
+      "name": "mobile navigation opens as a modal drawer",
+      "status": "PASS",
+      "evidence": "role=dialog; modal=true"
+    },
+    {
+      "name": "mobile destination navigation closes the drawer",
+      "status": "PASS",
+      "evidence": "http://demo.localhost:3101/pricelists"
+    },
+    {
+      "name": "mobile customer destination is reachable",
+      "status": "PASS",
+      "evidence": "http://demo.localhost:3101/pricelists"
+    },
+    {
+      "name": "navigation interactions have no browser runtime errors",
+      "status": "PASS",
+      "evidence": "[]"
+    },
+    {
+      "name": "navigation interactions issue no API writes",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "screenshots": [
+    "docs/screenshots/2026-10-24-sidebar-navigation-head-10083bc8/sidebar-pricelists-1440.png",
+    "docs/screenshots/2026-10-24-sidebar-navigation-head-10083bc8/sidebar-mobile-open-390.png"
+  ],
+  "interceptedWrites": [],
+  "pageErrors": []
+}

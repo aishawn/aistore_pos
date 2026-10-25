@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-10-22T20:57:16.174Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "sourceWorkingTree": true,
+  "environment": "local-browser-fixtures",
+  "target": "http://demo.localhost:3035",
+  "scope": "All browser APIs intercepted; only fixture PATCH/GET; no real business writes",
+  "status": "PASS",
+  "passed": 12,
+  "failed": 0,
+  "checks": [
+    {
+      "width": 390,
+      "name": "Suggestion tax and net margin labels",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Suggestion prefill requires manual confirmation",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Lost write response reconciles by GET without replay",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "A confirmed row can be edited again",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "Unconfirmed results block further writes and retain input",
+      "status": "PASS"
+    },
+    {
+      "width": 390,
+      "name": "No page errors or horizontal overflow",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Suggestion tax and net margin labels",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Suggestion prefill requires manual confirmation",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Lost write response reconciles by GET without replay",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "A confirmed row can be edited again",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "Unconfirmed results block further writes and retain input",
+      "status": "PASS"
+    },
+    {
+      "width": 1440,
+      "name": "No page errors or horizontal overflow",
+      "status": "PASS"
+    }
+  ]
+}

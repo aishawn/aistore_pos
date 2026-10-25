@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-10-20T02:08:44.961Z",
-  "sourceCommit": "49f0874735f89f4e48fba69d42f99207343fbfdf",
+  "generatedAt": "2026-10-22T17:39:38.858Z",
+  "sourceCommit": "6e90bc21dac9921ebd59f2c3cc7ecaeb906dce10",
   "deployment": "unverified-after-deploy",
-  "target": "https://demo.orithos.com.au",
+  "target": "https://uatpilot.orithos.com.au",
   "scope": "authenticated Odoo stocktake read-only browser UAT; no inventory writes",
   "status": "PASS",
   "checks": [
@@ -23,8 +23,8 @@
       "status": "PASS",
       "httpStatus": 200,
       "binding": {
-        "odooCompanyId": 1,
-        "odooStockLocationId": null,
+        "odooCompanyId": 2,
+        "odooStockLocationId": 18,
         "odooProvisionStatus": "ready"
       }
     },
@@ -34,7 +34,7 @@
       "httpStatus": 200,
       "message": "OK",
       "locationCount": 1,
-      "locationSource": "single-warehouse-fallback",
+      "locationSource": "tenant-binding",
       "writeEnabled": false
     },
     {
@@ -57,11 +57,17 @@
       }
     },
     {
+      "name": "stocktake header AI placement 390px",
+      "status": "PASS",
+      "headerVisible": true,
+      "floatingHidden": true
+    },
+    {
       "name": "stocktake page 390px",
       "status": "PASS",
       "httpStatus": 200,
       "horizontalOverflow": false,
-      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake-online\\stocktake-390.png"
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-23-uat-stocktake\\stocktake-390.png"
     },
     {
       "name": "stocktake search combobox semantics 1440px",
@@ -83,11 +89,17 @@
       }
     },
     {
+      "name": "stocktake header AI placement 1440px",
+      "status": "PASS",
+      "headerVisible": true,
+      "floatingHidden": true
+    },
+    {
       "name": "stocktake page 1440px",
       "status": "PASS",
       "httpStatus": 200,
       "horizontalOverflow": false,
-      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-19-stocktake-online\\stocktake-1440.png"
+      "screenshotPath": "C:\\shawn\\1code\\1project-new\\aistore_pos\\v1\\orithopos-master\\docs\\screenshots\\2026-10-23-uat-stocktake\\stocktake-1440.png"
     }
   ],
   "nonGetStocktakeRequests": 0

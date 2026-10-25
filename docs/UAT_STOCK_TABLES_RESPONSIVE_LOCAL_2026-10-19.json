@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T20:20:05.667Z",
-  "sourceCommit": "091718e96193da2f2032ef66043798edea295248",
+  "generatedAt": "2026-10-22T09:58:04.288Z",
+  "sourceCommit": "ae64e0e784aec48aa7ef2293c2623bb11d203213",
   "sourceWorkingTree": true,
   "testedFiles": [
     "pos-ui/src/components/Header.tsx",
@@ -14,7 +14,7 @@
   ],
   "environment": "local-dev-fixtures",
   "nodeVersion": "v22.22.2",
-  "target": "http://demo.localhost:3035",
+  "target": "http://demo.localhost:3200",
   "scope": "Stock List/Capped Pricing/Bulk Price Edit mobile content width, card fields, editing and controls; desktop column alignment; header AI opens/closes and floating launcher is suppressed on dense routes; API requests intercepted; no business writes",
   "status": "PASS",
   "passed": 15,
@@ -27,6 +27,14 @@
       "headingVisible": true,
       "productCountText": "Stock ListExport to CSV1 Product",
       "controlsAccessible": null,
+      "costManagement": {
+        "fits": true,
+        "placeholder": "Managed",
+        "textWidth": 58.5498046875,
+        "availableWidth": 120,
+        "description": "Cost is managed in purchasing."
+      },
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -64,7 +72,7 @@
         "mobileCardWidth": 0
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-320.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/stock-list-320.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -73,6 +81,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": null,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -111,7 +121,7 @@
         "mobileCardWidth": 288
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-320.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/capped-pricing-320.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -120,6 +130,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": true,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -130,7 +142,7 @@
       ],
       "importPanelAccessible": null,
       "addedQuantityAccessible": null,
-      "mobileSearchWidth": 197.75,
+      "mobileSearchWidth": 176.75,
       "pageNoOverflow": true,
       "mobileContentWidth": true,
       "aiEntryPlacement": {
@@ -143,18 +155,18 @@
       "columnsAlignWithFirstRow": true,
       "headerTextFits": true,
       "layout": {
-        "tableWidth": 288,
-        "scrollerWidth": 320,
-        "scrollerScrollWidth": 320,
+        "tableWidth": 286,
+        "scrollerWidth": 286,
+        "scrollerScrollWidth": 286,
         "columnsDoNotOverlap": true,
         "columnsAlignWithFirstRow": true,
         "columnAlignmentIssues": [],
         "headerTextIssues": [],
         "headerTextFits": true,
-        "mobileCardWidth": 288
+        "mobileCardWidth": 286
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-320.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/bulk-price-edit-320.png"
     },
     {
       "route": "/stock/list",
@@ -163,6 +175,14 @@
       "headingVisible": true,
       "productCountText": "Stock ListExport to CSV1 Product",
       "controlsAccessible": null,
+      "costManagement": {
+        "fits": true,
+        "placeholder": "Managed",
+        "textWidth": 58.5498046875,
+        "availableWidth": 155,
+        "description": "Cost is managed in purchasing."
+      },
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -200,7 +220,7 @@
         "mobileCardWidth": 0
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/stock-list-390.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -209,6 +229,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": null,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -247,7 +269,7 @@
         "mobileCardWidth": 358
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/capped-pricing-390.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -256,6 +278,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": true,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -266,7 +290,7 @@
       ],
       "importPanelAccessible": null,
       "addedQuantityAccessible": null,
-      "mobileSearchWidth": 267.75,
+      "mobileSearchWidth": 246.75,
       "pageNoOverflow": true,
       "mobileContentWidth": true,
       "aiEntryPlacement": {
@@ -279,18 +303,18 @@
       "columnsAlignWithFirstRow": true,
       "headerTextFits": true,
       "layout": {
-        "tableWidth": 358,
-        "scrollerWidth": 390,
-        "scrollerScrollWidth": 390,
+        "tableWidth": 356,
+        "scrollerWidth": 356,
+        "scrollerScrollWidth": 356,
         "columnsDoNotOverlap": true,
         "columnsAlignWithFirstRow": true,
         "columnAlignmentIssues": [],
         "headerTextIssues": [],
         "headerTextFits": true,
-        "mobileCardWidth": 358
+        "mobileCardWidth": 356
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-390.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/bulk-price-edit-390.png"
     },
     {
       "route": "/stock/list",
@@ -299,6 +323,14 @@
       "headingVisible": true,
       "productCountText": "Stock ListExport to CSV1 Product",
       "controlsAccessible": null,
+      "costManagement": {
+        "fits": true,
+        "placeholder": "Managed",
+        "textWidth": 58.5498046875,
+        "availableWidth": 204,
+        "description": "Cost is managed in purchasing."
+      },
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -336,7 +368,7 @@
         "mobileCardWidth": 0
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-768.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/stock-list-768.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -345,6 +377,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": null,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -383,7 +417,7 @@
         "mobileCardWidth": 464
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-768.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/capped-pricing-768.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -392,6 +426,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": true,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -402,7 +438,7 @@
       ],
       "importPanelAccessible": null,
       "addedQuantityAccessible": null,
-      "mobileSearchWidth": 373.75,
+      "mobileSearchWidth": 352.75,
       "pageNoOverflow": true,
       "mobileContentWidth": true,
       "aiEntryPlacement": {
@@ -415,18 +451,18 @@
       "columnsAlignWithFirstRow": true,
       "headerTextFits": true,
       "layout": {
-        "tableWidth": 464,
-        "scrollerWidth": 512,
-        "scrollerScrollWidth": 512,
+        "tableWidth": 462,
+        "scrollerWidth": 462,
+        "scrollerScrollWidth": 462,
         "columnsDoNotOverlap": true,
         "columnsAlignWithFirstRow": true,
         "columnAlignmentIssues": [],
         "headerTextIssues": [],
         "headerTextFits": true,
-        "mobileCardWidth": 464
+        "mobileCardWidth": 462
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-768.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/bulk-price-edit-768.png"
     },
     {
       "route": "/stock/list",
@@ -435,6 +471,14 @@
       "headingVisible": true,
       "productCountText": "Stock ListExport to CSV1 Product",
       "controlsAccessible": null,
+      "costManagement": {
+        "fits": true,
+        "placeholder": "Managed",
+        "textWidth": 58.5498046875,
+        "availableWidth": 332,
+        "description": "Cost is managed in purchasing."
+      },
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -472,7 +516,7 @@
         "mobileCardWidth": 0
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-1024.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/stock-list-1024.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -481,6 +525,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": null,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -519,7 +565,7 @@
         "mobileCardWidth": 720
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-1024.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/capped-pricing-1024.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -528,6 +574,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": true,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": true,
       "mobileCardFieldResults": [
@@ -538,7 +586,7 @@
       ],
       "importPanelAccessible": null,
       "addedQuantityAccessible": null,
-      "mobileSearchWidth": 629.75,
+      "mobileSearchWidth": 608.75,
       "pageNoOverflow": true,
       "mobileContentWidth": true,
       "aiEntryPlacement": {
@@ -551,18 +599,18 @@
       "columnsAlignWithFirstRow": true,
       "headerTextFits": true,
       "layout": {
-        "tableWidth": 720,
-        "scrollerWidth": 768,
-        "scrollerScrollWidth": 768,
+        "tableWidth": 718,
+        "scrollerWidth": 718,
+        "scrollerScrollWidth": 718,
         "columnsDoNotOverlap": true,
         "columnsAlignWithFirstRow": true,
         "columnAlignmentIssues": [],
         "headerTextIssues": [],
         "headerTextFits": true,
-        "mobileCardWidth": 720
+        "mobileCardWidth": 718
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-1024.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/bulk-price-edit-1024.png"
     },
     {
       "route": "/stock/list",
@@ -571,6 +619,14 @@
       "headingVisible": true,
       "productCountText": "Stock ListExport to CSV1 Product",
       "controlsAccessible": null,
+      "costManagement": {
+        "fits": true,
+        "placeholder": "Managed",
+        "textWidth": 58.5498046875,
+        "availableWidth": 65,
+        "description": "Cost is managed in purchasing."
+      },
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": null,
       "mobileCardFieldResults": null,
@@ -599,7 +655,7 @@
         "headerTextFits": true
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/stock-list-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/stock-list-1440.png"
     },
     {
       "route": "/stock/capped-pricing",
@@ -608,6 +664,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": null,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": null,
       "mobileCardFieldResults": null,
@@ -636,7 +694,7 @@
         "headerTextFits": true
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/capped-pricing-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/capped-pricing-1440.png"
     },
     {
       "route": "/stock/bulk-price-edit",
@@ -645,6 +703,8 @@
       "headingVisible": true,
       "productCountText": null,
       "controlsAccessible": true,
+      "costManagement": null,
+      "clearFiltersAccessible": true,
       "sampleRowVisible": true,
       "mobileCardFields": null,
       "mobileCardFieldResults": null,
@@ -663,18 +723,18 @@
       "columnsAlignWithFirstRow": true,
       "headerTextFits": true,
       "layout": {
-        "tableWidth": 1136,
-        "scrollerWidth": 1184,
-        "scrollerScrollWidth": 1184,
+        "tableWidth": 1134,
+        "scrollerWidth": 1134,
+        "scrollerScrollWidth": 1134,
         "columnsDoNotOverlap": true,
         "columnsAlignWithFirstRow": true,
         "columnAlignmentIssues": [],
         "headerTextIssues": [],
         "headerTextFits": true,
-        "mobileCardWidth": 1136
+        "mobileCardWidth": 1134
       },
       "pageErrors": [],
-      "screenshot": "docs/screenshots/2026-10-19-stock-tables-local/bulk-price-edit-1440.png"
+      "screenshot": "docs/screenshots/2026-10-22-stock-tables-current/bulk-price-edit-1440.png"
     }
   ],
   "requests": [

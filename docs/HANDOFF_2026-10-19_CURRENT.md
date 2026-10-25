@@ -1,3 +1,68 @@
+## 2026-10-25 客户管理与定价优化（本地，尚未发布）
+
+- 客户档案与分组整合、价格表规则/客户查询、统一服务端报价、应收稳定分页和礼品卡类型/币种/到期修复已实现。Odoo 扩展目标 19.0.1.2.0，必须先升级扩展再发布前端。
+- Node 24 单测 31/31、接口 fixture 18/18、桥接 fake ORM 6/6、390/768/1440px 浏览器 fixture 27/27；TypeScript、定向 ESLint、Python AST/XML PASS。没有运行本地 build/Maven，没有真实业务写入。
+- 说明及发布顺序：`docs/CUSTOMER_OPTIMIZATION_2026-10-25.md`。本轮没有 commit/push/deploy；共享脏工作区保持原状，真实 Odoo 定价及交易一致性仍待隔离环境验收。fixture 结果不代表真实业务验收。
+
+## 2026-10-25 Complete local POS interface deployed
+
+- Supersedes the palette-only scope: GitHub main and production runtime frontend/backend are 8af3a57803663e77fc6593c603b1c903d6aac655. Dokploy deployment MbPbmDGrcEpOEAUEIdQJp done; normal deploy; no volume reset. Full frozen pos-ui snapshot includes Dashboard, Workspace, register, AI, recommendation, catalogue and assets. No new pos-api changes.
+- Corrected responsive fixture checks: candidate 15/15, production 15/15 at actual 390/768/1440 widths; screenshots visually compared. API fixtures only, business writes 0. Version/assets/auth-gate read-only probes pass. Pilot NO-GO unchanged.
+- Full evidence and scope: docs/LOCAL_UI_SYNC_PRODUCTION_2026-10-25.md. Earlier route-matrix viewport setup was ineffective; use the new RESPONSIVE evidence, not the earlier labelled widths. Original shared dev server reference encountered a concurrent missing module; frozen candidate and production passed.
+- Ordinary store subdomains share one production frontend; UAT is separate. Subsequent shared workspace edits are not automatically deployed.
+- Correction: earlier palette evidence branch push failed due network, despite older note saying uploaded. Production palette source itself was deployed. Current evidence is committed locally on codex/sync-local-pos-ui (09a19f51); its branch upload repeatedly failed with network resets. Product source main push and deployment succeeded.
+
+## 2026-10-24 Odoo product catalogue workbench
+
+- Added server-side issue views (stock, price, barcode, classification and POS visibility), product details, tax-labelled prices, responsive filters and stale-result protection. Management queries require product-view permission; cashier defaults and tenant scoping are preserved. Dialog portals and pagination spacing prevent floating AI from covering actions.
+- Node 24.19.0 TypeScript/targeted lint PASS; real route with in-memory transport **13/13 PASS**; five-viewport browser fixture **107/107 PASS**, errors 0, business writes 0. Evidence: `UAT_PRODUCT_CATALOGUE_ROUTE_LOCAL_2026-10-24.json`, `UAT_PRODUCT_CATALOGUE_LOCAL_2026-10-24.json`.
+- Scope, screenshots and remaining packaging/cost/supplier work: `PRODUCT_CATALOGUE_OPTIMIZATION_2026-10-24.md`. Implemented and locally verified only; no application build, live Odoo acceptance, commit/push or deployment. Shared unrelated dirty edits preserved; pilot decision unchanged.
+
+## 2026-10-24 AI workspace navigation and history
+
+- `/assistant` retains its dedicated AI sidebar. Desktop and mobile logos link to `/dashboard`. Added explicit sidebar History; renamed preset task groups to Suggested workflows and retained direct business-page navigation. Header history remains accessible on mobile.
+- History reuses existing thread APIs with duplicate-request protection. Escape returns from history to the current conversation. New chat clears current messages/thread/input without deleting saved threads. Navigation and history controls use 44px touch targets.
+- Local verification: TypeScript no-emit and targeted ESLint passed. Fixture runner `scripts/pilot-ai-assistant-workspace-local-uat.cjs` checks 1440/1024/768/390 widths, logo navigation, history list/detail restoration, New chat, restored table/report link, history Escape and replenishment navigation. Evidence: `docs/UAT_AI_ASSISTANT_WORKSPACE_LOCAL_2026-10-24.json`. These intercepted API checks do not prove live AI/provider or business acceptance.
+- Shared checkout contains unrelated in-progress changes (including the shared composer). Preserved those changes; no build, commit, push or deployment from this task. A separate release scope is required to avoid publishing unrelated dirty code.
+
+## 2026-10-24 Palette production deployment completed
+
+- GitHub main and Dokploy production: POS e8f363cac0ae6ebd355845330d1d5158138e9df2; brand f9c2880729b0ebba8deb408b25d33f1722b40a8d. App/demo frontend and backend runtime SHA match. Brand deployment source and live palette verified.
+- Public production smoke: 4 pages x 3 widths (390/768/1440), HTTP 200, expected orange tokens, no horizontal overflow. No production business writes; no authenticated business acceptance.
+- Isolated release preserves published layouts; unpublished local Dashboard artwork/layout, recommendation routes, AI workspace behavior and other dirty changes were excluded and remain local. UAT Compose unchanged. Both sites actually use Dokploy.
+- Full evidence and limitations: docs/COLOR_PRODUCTION_RELEASE_2026-10-24.md, UAT_COLOR_PRODUCTION_2026-10-24.json, UAT_COLOR_DEPLOYMENTS_2026-10-24.json. Production evidence is uploaded on codex/unify-brand-palette; main stays at the exact deployed source commits. Earlier local-only statements below describe the earlier audit phase. Pilot NO-GO remains unchanged.
+
+## 2026-10-24 Dashboard / assistant shared composer
+
+- Removed the Radial dashboard's duplicate toolbar Logo and header chat button. Workspace retains its single account-area Logo. Dashboard suggestions now fill editable text; focus never navigates. Send navigates through the existing transition and hands a question to the page-owned assistant exactly once, after client configuration resolves. A slow transition does not erase the pending request.
+- Added `AssistantComposer`, shared by Dashboard and `SellAiPanel` (page and floating presentations): full pill input, attachment picker/removal, click-to-start/stop cloud transcription with silence detection, editable voice draft, empty-send and duplicate-send protection. Voice capture is stopped on disable/unmount; stale asynchronous results are discarded.
+- Attachment scope: TXT/CSV/TSV/Markdown/JSON/log text files, up to 3 files / 20 KB aggregate. File contents are read in the browser and included in the question, with the backend's 4,000-character total question limit enforced before sending. PDF/image/Office attachment interpretation is not implemented; no fake binary upload or backend/API changes.
+- Verification: TypeScript no-emit and targeted ESLint passed; script syntax and diff whitespace passed. Browser fixture UAT **37/37 PASS**, page errors 0 at 1440/390px: focus/edit without navigation, suggestions, exact-once Unicode handoff, empty/oversize input, real attachment contents and handoff, removal/rejection, HTTP microphone feedback, generated audio through MediaRecorder/VAD with mocked transcription, editable voice text, disabled capability, control order/containment/overflow. Screenshots visually reviewed. Evidence: `docs/UAT_ASSISTANT_COMPOSER_LOCAL_2026-10-24.json`; runner: `scripts/pilot-assistant-composer-local-uat.cjs`; screenshots: `docs/screenshots/2026-10-24-assistant-composer/`.
+- `http://demo.lvh.me:3102` is an insecure browser context and cannot use real getUserMedia. Actual voice requires a secure HTTPS tenant origin and configured transcription capability. Bare localhost routes to the control plane, so it was not used as store voice acceptance. UAT installs a synthetic microphone only after verifying the real HTTP limitation; no real microphone/provider transcription or production business writes were performed.
+- Existing unrelated dirty changes in these shared files were preserved. No local build, commit, push or deployment; no production acceptance claim. Freeze a separate release scope before publishing the shared dirty checkout.
+
+## 2026-10-24 POS + brand palette consistency
+
+- Implemented the approved Dashboard/Workspace palette across POS semantic aliases and the separate brand site, including signup, CTA/link/focus states, recommendations, date controls and report colors. Both deployments keep identical `brand-tokens.css` copies; no backend, business API or Logo source changes.
+- Local verification: palette/browser **80 PASS**, representative POS routes **42/42 PASS** at 390/768/1440px, current checkout/search/density/receipt smoke **8/8 PASS**. APIs intercepted; production business writes 0; one checkout fixture only. HTTP-preview UUID is stubbed in the dedicated fixture; it is not an HTTPS/production acceptance.
+- Both TypeScript no-emit checks passed. POS targeted lint has no errors (3 existing img warnings); brand targeted lint retains 4 baseline errors, reproduced against task-start copies. Local brand `/sign-in` returns 500. Additional legacy search-race probe failed its immediate stale-result-removal assertion; product search logic was not changed. Full old checkout recovery suite is not claimed as passing.
+- Report, palette specification, screenshots and explicit limits: `docs/COLOR_CONSISTENCY_2026-10-24.md`; evidence: `UAT_COLOR_CONSISTENCY_AFTER_2026-10-24.json`, `UAT_COLOR_ROUTE_MATRIX_LOCAL_2026-10-24.json`, `UAT_COLOR_POS_INTERACTION_LOCAL_2026-10-24.json`. Dirty source snapshot hashes: `COLOR_CONSISTENCY_SOURCE_MANIFEST_2026-10-24.json`.
+- No local application build, commit, push or deployment. Shared files already contained unrelated in-progress edits and concurrent Logo updates; they were preserved rather than bundled into a release. Pilot status and production-write gates remain unchanged.
+
+## 2026-10-24 AI floating orb drag and border fix
+
+- Reproduced slow edge drags triggering native image `dragstart` → `pointercancel` (orb barely moved). `AiFabIcon` now ignores pointer hit testing, disables image dragging and text selection, and removes the explicit 3px white border. The launcher's native drag is also canceled; its button has an explicit transparent background and zero border/padding.
+- `SellAiPanel` only clamps the orb while collapsed/visible, preventing the expanded 420px/fullscreen panel dimensions from overwriting the stored orb position. Lost capture cleans up dragging, each new press resets stale click suppression, keyboard activation survives cancellation, and storage failure does not interrupt dragging. Hover scaling remains; removing transform transitions prevents drag-start lag.
+- Local Chromium fixture UAT: **31/31 PASS** at 1440/390px, slow edge/fast centre/real CDP touch drags, release without opening, open/close anchor preservation, reload persistence, touch cancellation then keyboard/click activation, offscreen clamping and 320px resize. Page errors 0; all API requests intercepted; business writes 0. Runner Node v22.22.2 against the existing local dev server, not a Node 24 build or deployed-runtime acceptance. Evidence: `docs/UAT_AI_FLOAT_LOCAL_2026-10-24.json`; runner: `scripts/pilot-ai-float-local-uat.cjs`; screenshots: `docs/screenshots/2026-10-24-ai-float/`.
+- TypeScript no-emit, targeted ESLint (0 errors; 3 existing image-element warnings), runner syntax and diff whitespace checks passed. Both edited components already contained unrelated uncommitted visual/workspace changes, including dependencies on untracked orb artwork and brand tokens. These changes are preserved. No release commit/push, build or deployment performed; bundling those existing changes would broaden this fix's scope.
+
+## 2026-10-24 Workspace dashboard visual refresh
+
+- Implemented the approved `/dashboard/workspace` content-only design: split-color heading, compact glass summary, seven pastel illustrated cards, and icon-led Next steps. Existing navigation permissions, destinations, summary data, and Radial direct links are preserved; no backend/API changes or sidebar changes.
+- Nine original ModKie illustrations (provider `kie`, model `gpt-image-2-text-to-image`) are stored as WebP under `pos-ui/public/images/workspace/`, totaling 74,298 bytes. Decorative artwork contains no live metrics or generated UI text.
+- Local browser fixture verification: **56/56 PASS** at 1752/1440/1024/768/390px, including navigation, permission filtering, zero/missing values, loading/error/retry, visible focus, and Radial regression. Browser page errors 0; real business writes 0. The records POST endpoint is read-only and was intercepted by fixtures. Evidence: `docs/UAT_WORKSPACE_DESIGN_LOCAL_2026-10-24.json`; full-page screenshots: `docs/screenshots/2026-10-24-workspace-design/`; runner: `node scripts/pilot-workspace-design-local-uat.cjs` from the repository root.
+- Targeted ESLint, TypeScript no-emit, script syntax, and diff whitespace checks passed. No local build, production verification, or deployment performed. The edited components already contained unrelated working-tree changes before this task; they were preserved and have not been bundled into a release commit.
+
 ## 2026-10-24 Stock Invoices Hub + OCR → receive
 
 - Stock sidebar adds **Invoices** (`/invoices`). **Scan Supplier Invoice** removed from Orithos AI nav and assistant quick actions; chat invoice phrases route to `/invoices` (Stock workflow, not an AI feature). Legacy `/invoices/scan` redirects to `/invoices/new`.
@@ -3527,3 +3592,44 @@ Demo 的 `frontend.commit` / `backend` 仍为空，不能把该结果解释为�
 ## 2026-10-23 Overview visual redesign
 
 Workspace-default and Radial UI implementation passed local fixture acceptance (59 browser checks, 4 navigation tests). Rehomed Reports regression passed 15 layout checks and request-race coverage. See [Overview UI handoff](HANDOFF_OVERVIEW_UI_2026-10-23.md) for screenshots, source boundaries and deployment limitations. No pilot-readiness change; online exact-SHA verification remains pending.
+
+## 2026-10-24 AI QA continuation
+
+- Rechecked the AI capability card, assistant answer/card generation, history restoration, write boundaries, routing, and existing local UI evidence. The local card UI report records **170/170 PASS** (34 scenarios × 320/390/768/1024/1440px); the assistant-page UI report records **14/14 PASS** (7 scenarios × 390/1440px). Both use intercepted API fixtures, record zero blocked business writes, and are tied to dirty source `c1dedadf`.
+- Fixed the generic assistant `ui.route` dispatch path so it runs through `normalizeAssistantHref` before mobile route checks and deferred CTA creation. Existing `followChatLink` also validates the final destination before navigation. Frontend unit tests **25/25 PASS**, typecheck PASS, targeted ESLint 0 errors / 1 existing hook warning, UAT script syntax checks and `git diff --check` PASS.
+- Found and fixed Chinese wine-type parsing where English `\\b` boundaries incorrectly wrapped Chinese terms. Red/white/sparkling aliases now match naturally embedded Chinese phrases; added regression coverage for `红酒配牛排`, `想喝白葡萄酒配海鲜`, and `推荐起泡酒`. The Java test has **not** run; no local Maven/build was run.
+- Demo `/api/public/version` currently reports frontend/backend `1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681`; source HEAD is `c1dedadf58f70a54fc4593b760eedc3b53853aa0` and the worktree remains dirty. The earlier 8-case online API-only diagnostic had 1 PASS / 7 FAIL, all with `writeRequests=[]`; those results are from the mismatched runtime and are not candidate acceptance.
+- No exact-candidate Java 21 `mvn -B clean verify` path has been verified, so do not push or deploy this `pos-api` candidate. Next: continue candidate and regression review, then freeze an intentional change set, obtain exact-SHA remote verification, deploy once, verify runtime SHA, and run the full assistant/API/UI matrix read-only. Demo `/api/odoo/uat-context` remains `409 / isolated=false`; no business writes are authorized by current evidence.
+
+### 2026-10-24 Grocery recommendation security follow-up
+
+- Candidate review found `listRecommendationProducts` did not enforce `tenant.canQueryReport()` although product count/search do. Added a fail-closed permission check before Odoo/vendor access and a regression asserting `NO_PERMISSION`, zero RPCs, and no vendor lookup. Grocery chat cards now identify their source as `catalogue`; the brief test asserts the contract.
+- Grocery chat now preserves explicit permission and missing-store errors in bilingual unavailable answers/cards instead of flattening them into a generic service outage; added English/Chinese permission-card regression coverage.
+- Added deterministic router regressions for all four known grocery utterance failures (`Recommend beer for a BBQ under $20`, `Find me some snacks`, `推荐啤酒`, `推荐零食`) so they must bypass model classification and land on `/recommend/grocery`.
+- Added optional `AssistantCard.retryable`; new grocery and generic report cards suppress retry for permission/login/store-link failures and allow retry for transient service outages. The UI uses one helper for live answers and history restoration; full UI unit suite passes 26/26, `npm run typecheck` passes, and targeted ESLint reports 0 errors / 1 existing `dismissPanel` hook warning. Checks ran under Node 22.22.2 although the package declares Node 24+; no application build was run. Older cards without the field keep their prior retry behavior.
+- Rechecked `GET https://demo.orithos.com.au/api/public/version`: frontend/backend both report `1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681` (built 2026-10-23), versus source `HEAD c1dedadf58f70a54fc4593b760eedc3b53853aa0` plus dirty candidate changes. No bulk Assistant API matrix was rerun against this mismatched runtime.
+- Java tests remain unrun under the no-local-build rule. This is still an uncommitted dirty-tree candidate; do not push/deploy until an intentional exact SHA is frozen and the Java 21 Dokploy pre-push `mvn -B clean verify` gate is available and green. No live business writes were performed.
+
+### 2026-10-24 AI history slots recovery
+
+- Durable chat history now stores assistant-turn `slots_json`; opening a saved thread restores those slots into `AiConversationMemory.Turn`, allowing Redis `ai:slots:` to be rebuilt after TTL expiry. Existing tables receive the nullable column through the schema migrator; legacy rows and malformed JSON degrade to empty slots.
+- The assistant controller passes result slots to history persistence. Regression cases cover slot serialization, history rehydration, legacy rows without slots, and malformed JSON. Changes are in the dirty candidate; Java tests were not run because local Maven/build is prohibited.
+- Node `v24.19.0` frontend unit suite passed **26/26** and `npm run typecheck` passed. `git diff --check` passed with existing line-ending warnings. No frontend build was run.
+- Demo frontend/backend SHA remains `1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681`; source HEAD is `c1dedadf58f70a54fc4593b760eedc3b53853aa0`, so runtime behavior does not verify this candidate. Current worktree reports 973 changed/untracked entries; do not deploy it as-is.
+- No remote pre-push builder or configured Dokploy webhook endpoint was found in the repository/runtime metadata. The repo has local Dokploy login variable names, but no deployment action was attempted. Before shipping, curate the AI candidate, obtain exact-SHA Java 21 `mvn -B clean verify`, deploy once, confirm runtime SHA, then run history-open follow-up, full utterance, card contract, and browser UI suites. The Demo isolation endpoint remains `409 / isolated=false`; business writes remain out of scope.
+- Follow-up review found LLM-classified independent questions could inherit the prior report's `category/query/days`. Inheritance is now limited to supported relative-date follow-ups with a previous report intent; only `category/query` carry forward, so a new relative date cannot retain stale `days`. Added helper regression coverage for Chinese/English follow-ups, unrelated questions, and `report_adhoc`.
+- Extended `scripts/pilot-ai-followup-online-uat.mjs` to run English and Chinese seed → history-open → yesterday follow-up flows. It asserts one-day dates, cleared stale `days`, retained filters, empty business `writeRequests`, and captures source/runtime identity without storing answer or live store data. Node 24 `node --check` passed. It was not run online because Demo runtime still does not match source.
+- The Java follow-up and history-restoration tests remain unrun; no local Maven/build was used. Runtime report-period resolution already prioritizes the explicit follow-up phrase in the store timezone, and the new test contract checks that the serialized slots agree with that one-day result.
+
+## 2026-10-25 Stock workspace redesign
+
+- Local implementation consolidates Stock navigation into Products, Purchasing and Suppliers; category management and stocktake are URL-backed product dialogs, and Orders/Replenishment/Supplier Invoices share the Purchasing workspace. Price Lists remains under Customers.
+- Category company ownership, tenant-scoped category APIs, product assignment validation and the stocktake local-draft flow are implemented. Keep `ODOO_CATEGORY_WRITE_ENABLED` off until `orithos_au_retail` 19.0.1.1.0 is upgraded and verified in an approved isolated Odoo environment. Existing unowned categories remain shared/read-only.
+- Verification: `tsc --noEmit` passed; targeted ESLint had zero errors; Node tests 6/6; category route fixture 13/13; intercepted browser fixture 38/38 at 390/768/1440. No live business writes, application build, addon runtime test, commit, push or deployment.
+- Detailed scope and remaining rollout steps: [STOCK_WORKSPACE_2026-10-25.md](STOCK_WORKSPACE_2026-10-25.md). Candidate curation is required because these worktrees contain extensive unrelated edits, including Java changes; any pushed Java candidate must pass the remote exact-SHA Java 21 gate.
+## 2026-10-24 本地预览登录循环修复
+
+- 用户报告 `http://demo.lvh.me:3102/login` 与 `/dashboard/workspace` 往返。点击本地预览可复现：20 秒内 68 次 navigation；`/api/sell/parked`、`/api/ai/config/client` 等返回 401，通用客户端清除预览身份并跳登录，AuthProvider 又按预览 Cookie 恢复身份并跳回工作台。
+- `api.ts` 与 `odoo-api.ts` 对 development 本地预览保留接口错误，但不触发会话清除、登录跳转或 token/session recovery；AuthProvider 复用相同预览条件。生产环境不接受该预览条件，服务端 API 认证未放宽。
+- 本地 Playwright 回归 `scripts/pilot-local-preview-auth-uat.mjs` **3/3 PASS**：预览遇 401 且刷新后稳定、正式会话过期清缓存并留在登录、有效正式会话从登录进入工作台。证据 `docs/UAT_LOCAL_PREVIEW_AUTH_2026-10-24.json`；API 均由 fixture 截获，真实业务写入 0。另在当前后台未模拟接口的预览工作台观察 10 秒，navigation 为 0，Local Preview 保持显示。
+- Node `v24.19.0`：`tsc --noEmit` 与三个修改文件定向 ESLint 均通过。本次仅修复现存本地 3102 dev server；未运行 application build、未部署线上。工作树大量既存修改未随本项提交/推送。

@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-10-23T00:39:22.751Z",
+  "sourceCommit": "fbd2871e2628088791f673a96952c98f4070fba8",
+  "nodeVersion": "v24.19.0",
+  "target": "http://demo.localhost:3101",
+  "scope": "Local read-only fixture for supplier editor visual layout and empty-name validation; no API writes permitted",
+  "status": "PASS",
+  "passed": 13,
+  "failed": 0,
+  "checks": [
+    {
+      "viewport": 390,
+      "name": "editor and Save action render without horizontal overflow",
+      "status": "PASS",
+      "evidence": {
+        "documentWidth": 390,
+        "bodyWidth": 390,
+        "viewport": 390,
+        "overlayBackground": "oklab(0.128998 -0.0038857 -0.0418156 / 0.35)",
+        "headingColor": "rgb(31, 41, 55)",
+        "saveVisible": true,
+        "saveInViewport": true,
+        "generalSectionVisible": true,
+        "contactSectionVisible": true,
+        "headerAiEntryVisible": true,
+        "aiLauncherCount": 1
+      }
+    },
+    {
+      "viewport": 390,
+      "name": "editor keeps readable scrim and title contrast",
+      "status": "PASS",
+      "evidence": {
+        "overlayBackground": "oklab(0.128998 -0.0038857 -0.0418156 / 0.35)",
+        "headingColor": "rgb(31, 41, 55)"
+      }
+    },
+    {
+      "viewport": 390,
+      "name": "save action stays inside viewport",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "AI launcher stays in the app header outside the editor form",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "empty supplier name is rejected before network write",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "no browser page errors or unexpected API writes",
+      "status": "PASS",
+      "evidence": []
+    },
+    {
+      "viewport": 1440,
+      "name": "editor and Save action render without horizontal overflow",
+      "status": "PASS",
+      "evidence": {
+        "documentWidth": 1440,
+        "bodyWidth": 1440,
+        "viewport": 1440,
+        "overlayBackground": "oklab(0.128998 -0.0038857 -0.0418156 / 0.35)",
+        "headingColor": "rgb(31, 41, 55)",
+        "saveVisible": true,
+        "saveInViewport": true,
+        "generalSectionVisible": true,
+        "contactSectionVisible": true,
+        "headerAiEntryVisible": true,
+        "aiLauncherCount": 1
+      }
+    },
+    {
+      "viewport": 1440,
+      "name": "editor keeps readable scrim and title contrast",
+      "status": "PASS",
+      "evidence": {
+        "overlayBackground": "oklab(0.128998 -0.0038857 -0.0418156 / 0.35)",
+        "headingColor": "rgb(31, 41, 55)"
+      }
+    },
+    {
+      "viewport": 1440,
+      "name": "save action stays inside viewport",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "AI launcher stays in the app header outside the editor form",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "desktop editor exposes general and contact sections",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "empty supplier name is rejected before network write",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "no browser page errors or unexpected API writes",
+      "status": "PASS",
+      "evidence": []
+    }
+  ],
+  "blockedWrites": []
+}

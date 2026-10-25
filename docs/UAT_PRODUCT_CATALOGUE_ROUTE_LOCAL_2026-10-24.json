@@ -1,0 +1,21 @@
+{
+  "sourceHead": "3e262ee0526b8c78828a93f0e02a80a75b96719f",
+  "sourceTreeDirty": true,
+  "scope": "Real route with in-memory transport; no live Odoo acceptance",
+  "businessWrites": 0,
+  "checks": [
+    "all: scoped server filtering, search/category composition and pagination",
+    "out-of-stock: scoped server filtering, search/category composition and pagination",
+    "negative-stock: scoped server filtering, search/category composition and pagination",
+    "zero-price: scoped server filtering, search/category composition and pagination",
+    "missing-barcode: scoped server filtering, search/category composition and pagination",
+    "uncategorised: scoped server filtering, search/category composition and pagination",
+    "hidden: scoped server filtering, search/category composition and pagination",
+    "cashier defaults remain POS-only",
+    "reject products/bad",
+    "reject customers/hidden",
+    "cross-origin rejected",
+    "hidden catalogue requires application product permission",
+    "foreign company rejected before product read"
+  ]
+}

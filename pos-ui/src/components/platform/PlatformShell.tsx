@@ -67,12 +67,13 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
   const demoLogin = `${storeOrigin("demo")}/login`;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[var(--oh-surface)] font-sans text-[var(--oh-text)]">
+    <div className="oh-workspace-main flex min-h-dvh flex-col font-sans text-[var(--oh-text)]">
       <header className="border-b border-[var(--oh-border)] bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex min-w-0 flex-wrap items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3">
-              <OrithosLogo compact />
+              <span className="hidden sm:inline-flex"><OrithosLogo /></span>
+              <span className="inline-flex sm:hidden"><OrithosLogo compact /></span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-[var(--oh-text)]">Platform admin</p>
                 <p className="text-xs text-[var(--oh-text-secondary)]">

@@ -3,8 +3,8 @@
  * Classic MySQL routes remain in the repo as reference only and are hidden
  * unless NEXT_PUBLIC_SHOW_CLASSIC_POS=true (admin debug).
  *
- * Customer sidebar (2026-10-23):
- * - Odoo-backed children: Customers, Groups, Price Lists, Balances, Gift Cards.
+ * Customer sidebar (2026-10-25):
+ * - Directory with groups, receivables, price lists and capability-gated gift cards.
  * - Do not confuse those Odoo routes with retired Classic MySQL pages of the same name.
  */
 
@@ -32,6 +32,7 @@ export interface SidebarGroupItem {
    * to child routes, e.g. Store → registers / payment / tax).
    */
   matchHrefs?: string[];
+  anyPermissions?: string[];
 }
 
 export interface SidebarGroup {
@@ -53,7 +54,7 @@ export type SidebarIcon =
   | "settings"
   | "marketing";
 
-/** Primary nav: Odoo-backed surfaces only. Sell first; Overview just above Setup. */
+/** Primary nav: Odoo-backed surfaces only. Dashboard follows Sell for quick access. */
 export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
   {
     label: "Sell",
@@ -62,13 +63,17 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     permission: "sell.checkout",
   },
   {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: "overview",
+  },
+  {
     label: "Stock",
     icon: "inventory",
     items: [
       { label: "Products", href: "/products/odoo", permission: "stock.products.view" },
-      { label: "Replenishment", href: "/stock/replenishment", permission: "stock.replenishment" },
-      { label: "Purchases", href: "/purchases/odoo", permission: "stock.purchases" },
-      { label: "Invoices", href: "/invoices", matchHrefs: ["/invoices/"], permission: "stock.invoices" },
+      { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
+      { label: "Purchasing", href: "/purchases/odoo", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
       { label: "Suppliers", href: "/suppliers/odoo", permission: "stock.suppliers" },
     ],
   },
@@ -76,10 +81,8 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Customers",
     icon: "customers",
     items: [
-      { label: "Customers", href: "/customers/odoo", permission: "customers.view" },
-      { label: "Customer Groups", href: "/customer-groups", permission: "customers.groups" },
-      { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
-      { label: "Balances", href: "/customers/balances", permission: "customers.balances" },
+      { label: "Customer Directory", href: "/customers/odoo", matchHrefs: ["/customer-groups"], permission: "customers.view" },
+      { label: "Receivables", href: "/customers/balances", permission: "customers.balances" },
       { label: "Gift Cards", href: "/giftcards", permission: "customers.gift_cards" },
     ],
   },
@@ -94,11 +97,6 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
       { label: "Find Grocery", href: "/recommend/grocery", permission: "ai.grocery" },
       { label: "Price Suggestions", href: "/stock/price-suggestions", permission: "ai.price_suggestions" },
     ],
-  },
-  {
-    label: "Overview",
-    href: "/overview/workspace",
-    icon: "overview",
   },
   {
     label: "Reports",
@@ -164,6 +162,7 @@ export interface SidebarNavOptions {
    * query health) stay out of cashier sidebars.
    */
   isAdmin?: boolean;
+  giftCardsAvailable?: boolean;
   /** Returns true when the user may see a permission-gated item. */
   hasPermission?: (safeName: string) => boolean;
 }
@@ -189,7 +188,7 @@ export function getSidebarNavigation(options?: SidebarNavOptions): (SidebarItem 
   const main = SIDEBAR_MAIN.flatMap<SidebarItem | SidebarGroup>((entry) => {
     if ("items" in entry) {
       if (!allowed(options, entry.permission)) return [];
-      const items = entry.items.filter((item) => allowed(options, item.permission, item.adminOnly));
+      const items = entry.items.filter((item) => (item.href !== "/giftcards" || options?.giftCardsAvailable === true) && allowed(options, item.permission, item.adminOnly) && (!item.anyPermissions || item.anyPermissions.some((permission) => allowed(options, permission))));
       if (items.length === 0) return [];
       return [{ ...entry, items }];
     }

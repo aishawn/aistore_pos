@@ -1,0 +1,13 @@
+---
+description: Use the website-images skill for logos, heroes, OG art, and Pexels/Pixabay stock search via ModKie / api/v1.
+alwaysApply: false
+---
+
+# Website images
+
+When the user asks for 配图、logo、hero、section art、og-image、AI 生成图、AI 搜图、Pexels、or Pixabay:
+
+1. Read `%USERPROFILE%\.agents\skills\website-images\SKILL.md` (same as `C:\shawn\1code\1project-new\tools\网站图像\SKILL.md`).
+2. Run scripts from that tool directory; set `API_V1_ROOT` to `C:\shawn\1code\1project-new\api\v1`.
+3. Credentials live only in that project’s ignored `.env` (`MODKIE_KEY`, `PEXELS_API_KEY`, `PIXABAY_API_KEY`). Never print or commit values.
+4. Docs: https://modkie.com/docs

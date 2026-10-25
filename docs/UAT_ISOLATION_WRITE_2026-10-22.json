@@ -1,13 +1,34 @@
 {
-  "generatedAt": "2026-10-22T08:06:43.501Z",
-  "baseUrl": "https://demo.orithos.com.au",
+  "generatedAt": "2026-10-22T17:36:31.390Z",
+  "baseUrl": "https://uatpilot.orithos.com.au",
   "isolationOdooDatabase": "aipos_uat",
   "odooDatabase": "aipos_uat",
   "isolationGate": "pass",
-  "result": "FAIL",
-  "sales": [],
-  "refunds": [],
-  "errors": [
-    "page.waitForURL: Timeout 30000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://demo.orithos.com.au/login\"\n============================================================"
-  ]
+  "result": "PARTIAL",
+  "sales": [
+    {
+      "method": "Card",
+      "receiptId": "260-1-000040",
+      "snippet": "orithos Overview Sell Stock Customers Orithos AI Setup ONLINE UAT Admin Skip to main content Orithos UAT Pilot Register Open Orithos UAT Pilot Register/00001 All categories DEMO Beer DEMO Grocery DEMO Soft drinks DEMO Spirits DEMO Wine [DEMO-CAB] DEMO Cabernet 750ml $32.00 GST-free 23 avail. [DEMO-COLA] DEMO Cola 1.25L $3.50 GST-free 42 avail. [DEMO-GIN] DEMO Gin 700ml $48.00 GST-free 24 avail. [D"
+    },
+    {
+      "method": "Cash",
+      "receiptId": "260-1-000041",
+      "snippet": "orithos Overview Sell Stock Customers Orithos AI Setup ONLINE UAT Admin Skip to main content Orithos UAT Pilot Register Open Orithos UAT Pilot Register/00001 All categories DEMO Beer DEMO Grocery DEMO Soft drinks DEMO Spirits DEMO Wine [DEMO-CAB] DEMO Cabernet 750ml $32.00 GST-free 22 avail. [DEMO-COLA] DEMO Cola 1.25L $3.50 GST-free 42 avail. [DEMO-GIN] DEMO Gin 700ml $48.00 GST-free 24 avail. [D"
+    }
+  ],
+  "refunds": [
+    {
+      "receiptId": "260-1-000040",
+      "snippet": "m DEMO Customer Alex Orithos UAT Pilot Register/00001 Paid $23.40 260-1-000011 12 Oct 2026, 07:40 pm Walk-in customer Orithos UAT Pilot Register/00001 Paid $7.00 260-1-000026 12 Oct 2026, 01:25 am Walk-in customer Orithos UAT Pilot Register/00001 Paid $5.60 260-1-000012 11 Oct 2026, 08:47 pm Walk-in customer Orithos UAT Pilot Register/00001 Paid $8.40 260-1-000027 11 Oct 2026, 01:32 am Walk-in customer Orithos UAT Pilot Register/00001 Paid $12.60 260-1-000013 10 Oct 2026, 09:54 pm DEMO Customer Alex Orithos UAT Pilot Register/00001 Paid $59.20 260-1-000028 10 Oct 2026, 02:39 am DEMO Customer Devon Orithos UAT Pilot Register/00001 Paid $6.50 Showing 1–40 Previous Next Sale receipt Review this Odoo order or print a copy. ORITHOS UAT PILOT [ORITHOS 2] 260-1-000040 23 Oct 2026, 04:06 am Orithos UAT Pilot Register/00001 · Administrator Customer Walk-in customer Status Paid ITEM QTY UNIT TOTAL [DEMO-CAB] DEMO Cabernet 750ml 1 $32.00 $32.00 Subtotal $32.00 Tax $0.00 Total $32.00 Payments Card $32.00 A refund has already been recorded for one or more items. Additional refunds are unavailable from this full-sale refund flow. Refund recorded as 260-1-000042. Total $32.00. Close Print receipt"
+    },
+    {
+      "receiptId": "260-1-000041",
+      "snippet": "AT Pilot Register/00001 Paid $165.00 260-1-000025 13 Oct 2026, 12:18 am DEMO Customer Alex Orithos UAT Pilot Register/00001 Paid $23.40 260-1-000011 12 Oct 2026, 07:40 pm Walk-in customer Orithos UAT Pilot Register/00001 Paid $7.00 260-1-000026 12 Oct 2026, 01:25 am Walk-in customer Orithos UAT Pilot Register/00001 Paid $5.60 260-1-000012 11 Oct 2026, 08:47 pm Walk-in customer Orithos UAT Pilot Register/00001 Paid $8.40 260-1-000027 11 Oct 2026, 01:32 am Walk-in customer Orithos UAT Pilot Register/00001 Paid $12.60 260-1-000013 10 Oct 2026, 09:54 pm DEMO Customer Alex Orithos UAT Pilot Register/00001 Paid $59.20 Showing 1–40 Previous Next Sale receipt Review this Odoo order or print a copy. ORITHOS UAT PILOT [ORITHOS 2] 260-1-000041 23 Oct 2026, 04:06 am Orithos UAT Pilot Register/00001 · Administrator Customer Walk-in customer Status Paid ITEM QTY UNIT TOTAL [DEMO-CAB] DEMO Cabernet 750ml 1 $32.00 $32.00 Subtotal $32.00 Tax $0.00 Total $32.00 Payments Cash (Orithos UAT Pilot Register) $32.00 A refund has already been recorded for one or more items. Additional refunds are unavailable from this full-sale refund flow. Refund recorded as 260-1-000043. Total $32.00. Close Print receipt"
+    }
+  ],
+  "errors": [],
+  "runtimeCommit": "9e61de5deed0db95d0381c32c1981781489396ea",
+  "runtimeIsolationVerified": true,
+  "note": "Sales/refunds completed; stock, payment and GST reconciliation still require separate evidence. This is not full business acceptance."
 }

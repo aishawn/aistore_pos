@@ -1,0 +1,524 @@
+{
+  "generatedAt": "2026-10-22T23:13:59.868Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "nodeVersion": "v24.19.0",
+  "target": "http://demo.localhost:3101",
+  "scope": "Local fixture for supplier directory responsive layout, create dialog, focus, native validation, duplicate ABN recovery and refresh; no Odoo requests",
+  "status": "PASS",
+  "passed": 69,
+  "failed": 0,
+  "checks": [
+    {
+      "viewport": 320,
+      "name": "directory selects mobile cards or desktop table at breakpoint",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "empty state and create action are visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "dialog receives initial focus and fits viewport",
+      "status": "PASS",
+      "evidence": {
+        "focused": true,
+        "fits": true
+      }
+    },
+    {
+      "viewport": 320,
+      "name": "Escape closes dialog and restores focus to trigger",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "malformed email is blocked by browser validation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "duplicate ABN is explained and form values are retained",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "successful creation refreshes supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "mobile contact actions are tap targets",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "latest search result renders while an older request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "late stale response cannot replace the latest search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "search empty state offers a clear recovery action",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "clearing search restores the supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 320,
+      "name": "directory has no horizontal overflow or page errors",
+      "status": "PASS",
+      "evidence": {
+        "dimensions": {
+          "document": 320,
+          "viewport": 320
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "viewport": 320,
+      "name": "all business APIs stayed inside the local fixture",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "directory selects mobile cards or desktop table at breakpoint",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "empty state and create action are visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "dialog receives initial focus and fits viewport",
+      "status": "PASS",
+      "evidence": {
+        "focused": true,
+        "fits": true
+      }
+    },
+    {
+      "viewport": 390,
+      "name": "Escape closes dialog and restores focus to trigger",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "malformed email is blocked by browser validation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "duplicate ABN is explained and form values are retained",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "successful creation refreshes supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "mobile contact actions are tap targets",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "latest search result renders while an older request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "late stale response cannot replace the latest search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "search empty state offers a clear recovery action",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "clearing search restores the supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 390,
+      "name": "directory has no horizontal overflow or page errors",
+      "status": "PASS",
+      "evidence": {
+        "dimensions": {
+          "document": 390,
+          "viewport": 390
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "viewport": 390,
+      "name": "all business APIs stayed inside the local fixture",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "directory selects mobile cards or desktop table at breakpoint",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "empty state and create action are visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "dialog receives initial focus and fits viewport",
+      "status": "PASS",
+      "evidence": {
+        "focused": true,
+        "fits": true
+      }
+    },
+    {
+      "viewport": 768,
+      "name": "Escape closes dialog and restores focus to trigger",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "malformed email is blocked by browser validation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "duplicate ABN is explained and form values are retained",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "successful creation refreshes supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "mobile contact actions are tap targets",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "latest search result renders while an older request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "late stale response cannot replace the latest search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "search empty state offers a clear recovery action",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "clearing search restores the supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 768,
+      "name": "directory has no horizontal overflow or page errors",
+      "status": "PASS",
+      "evidence": {
+        "dimensions": {
+          "document": 768,
+          "viewport": 768
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "viewport": 768,
+      "name": "all business APIs stayed inside the local fixture",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "directory selects mobile cards or desktop table at breakpoint",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "empty state and create action are visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "dialog receives initial focus and fits viewport",
+      "status": "PASS",
+      "evidence": {
+        "focused": true,
+        "fits": true
+      }
+    },
+    {
+      "viewport": 1024,
+      "name": "Escape closes dialog and restores focus to trigger",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "malformed email is blocked by browser validation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "duplicate ABN is explained and form values are retained",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "successful creation refreshes supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "mobile contact actions are tap targets",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "latest search result renders while an older request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "late stale response cannot replace the latest search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "search empty state offers a clear recovery action",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "clearing search restores the supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1024,
+      "name": "directory has no horizontal overflow or page errors",
+      "status": "PASS",
+      "evidence": {
+        "dimensions": {
+          "document": 1024,
+          "viewport": 1024
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "viewport": 1024,
+      "name": "all business APIs stayed inside the local fixture",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "directory selects mobile cards or desktop table at breakpoint",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "empty state and create action are visible",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "dialog receives initial focus and fits viewport",
+      "status": "PASS",
+      "evidence": {
+        "focused": true,
+        "fits": true
+      }
+    },
+    {
+      "viewport": 1440,
+      "name": "Escape closes dialog and restores focus to trigger",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "malformed email is blocked by browser validation",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "duplicate ABN is explained and form values are retained",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "successful creation refreshes supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "latest search result renders while an older request is pending",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "late stale response cannot replace the latest search",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "search empty state offers a clear recovery action",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "clearing search restores the supplier directory",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "viewport": 1440,
+      "name": "directory has no horizontal overflow or page errors",
+      "status": "PASS",
+      "evidence": {
+        "dimensions": {
+          "document": 1440,
+          "viewport": 1440
+        },
+        "pageErrors": []
+      }
+    },
+    {
+      "viewport": 1440,
+      "name": "all business APIs stayed inside the local fixture",
+      "status": "PASS",
+      "evidence": null
+    }
+  ],
+  "fixtureWrites": [
+    {
+      "viewport": 320,
+      "vat": "11111111111",
+      "result": "duplicate"
+    },
+    {
+      "viewport": 320,
+      "vat": "22222222222",
+      "result": "created"
+    },
+    {
+      "viewport": 390,
+      "vat": "11111111111",
+      "result": "duplicate"
+    },
+    {
+      "viewport": 390,
+      "vat": "22222222222",
+      "result": "created"
+    },
+    {
+      "viewport": 768,
+      "vat": "11111111111",
+      "result": "duplicate"
+    },
+    {
+      "viewport": 768,
+      "vat": "22222222222",
+      "result": "created"
+    },
+    {
+      "viewport": 1024,
+      "vat": "11111111111",
+      "result": "duplicate"
+    },
+    {
+      "viewport": 1024,
+      "vat": "22222222222",
+      "result": "created"
+    },
+    {
+      "viewport": 1440,
+      "vat": "11111111111",
+      "result": "duplicate"
+    },
+    {
+      "viewport": 1440,
+      "vat": "22222222222",
+      "result": "created"
+    }
+  ],
+  "blockedWrites": []
+}

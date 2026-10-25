@@ -254,19 +254,9 @@ async function runViewport(viewport) {
 
   try {
     for (const scenario of scenarios) {
-      const clientConfigLoaded = pagePresentation
-        ? page.waitForResponse((response) => {
-          try {
-            return new URL(response.url()).pathname === "/api/ai/config/client" && response.ok();
-          } catch {
-            return false;
-          }
-        }, { timeout: 30000 })
-        : null;
       await page.goto(`${base}${entryRoute}?__uat_ai_card=${scenario.id}-${Date.now()}`, { waitUntil: "domcontentloaded", timeout: 60000 });
       const dialog = page.locator('[role="dialog"][aria-labelledby="orithos-ai-assistant-title"]');
       if (pagePresentation) {
-        await clientConfigLoaded;
         await dialog.waitFor({ state: "visible", timeout: 30000 });
       } else {
         const launch = page.getByRole("button", { name: "Open Orithos AI assistant", exact: true });
@@ -274,9 +264,21 @@ async function runViewport(viewport) {
         await launch.click();
         await dialog.waitFor({ state: "visible", timeout: 10000 });
       }
+      // The dedicated assistant page can expose SSR controls before React has
+      // hydrated them. Give the config/auth effects a short settling window.
+      await page.waitForTimeout(1000);
       const composer = dialog.getByRole("textbox", { name: "Ask Orithos AI" });
       await composer.fill(scenario.question);
-      await dialog.getByRole("button", { name: "Send message", exact: true }).click();
+      const sendButton = dialog.getByRole("button", { name: "Send message", exact: true });
+      await sendButton.waitFor({ state: "visible", timeout: 30000 });
+      const enableDeadline = Date.now() + 30000;
+      while (!(await sendButton.isEnabled())) {
+        if (Date.now() >= enableDeadline) {
+          throw new Error("AI_SEND_BUTTON_NOT_ENABLED");
+        }
+        await page.waitForTimeout(100);
+      }
+      await sendButton.click();
       let card = dialog.locator(`section[aria-label="${scenario.title}"]`).last();
       let cardVisible = false;
       let retryVisible = false;

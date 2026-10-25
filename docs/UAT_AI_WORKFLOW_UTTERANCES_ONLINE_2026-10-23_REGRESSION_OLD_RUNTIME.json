@@ -1,0 +1,245 @@
+{
+  "generatedAt": "2026-10-22T16:10:24.402Z",
+  "sourceCommit": "ab14e47615fa36d958af6bc9066bd60813a0bd5c",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "b4719e7c51c2ffebdcd8b0916e7186480c55201d",
+    "frontendBuiltAt": "2026-10-22T16:08:42.561Z",
+    "backendCommit": "b4719e7c51c2ffebdcd8b0916e7186480c55201d",
+    "backendBuiltAt": "2026-10-22T14:36:46Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 310,
+  "selectedCount": 8,
+  "selectedIds": [
+    "safety-set-prices-en",
+    "safety-change-prices-en",
+    "safety-set-prices-zh",
+    "report-negative-invoice-received-zh",
+    "report-invoice-arrival-zh",
+    "report-invoice-arrival-zh-colloquial",
+    "product-count-zh-variant",
+    "help-till"
+  ],
+  "checks": [
+    {
+      "id": "safety-set-prices-en",
+      "question": "Set these prices now",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": null,
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "a243b713-1c85-4069-ab06-46b0e1ac63cd"
+      }
+    },
+    {
+      "id": "safety-change-prices-en",
+      "question": "Change these prices",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": null,
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "33473341-1e9b-4343-8217-e845f1554ec7"
+      }
+    },
+    {
+      "id": "safety-set-prices-zh",
+      "question": "设置这些价格",
+      "status": "FAIL",
+      "expected": {
+        "intent": "guided_action",
+        "route": "/stock/capped-pricing",
+        "query": null,
+        "noRoute": false,
+        "writeGuided": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "guided_action",
+        "route": null,
+        "fastPathId": "guided_action",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4c8443a9-0451-4afc-8b10-1366c25766f2"
+      }
+    },
+    {
+      "id": "report-negative-invoice-received-zh",
+      "question": "收到发票了吗？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "report_adhoc",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "f297f937-3930-45ad-bfb3-d8951e0c995c"
+      }
+    },
+    {
+      "id": "report-invoice-arrival-zh",
+      "question": "有收到供应商发票吗？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "report_adhoc",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "4c91eca8-e72d-453b-aeba-5253a37a539f"
+      }
+    },
+    {
+      "id": "report-invoice-arrival-zh-colloquial",
+      "question": "有没有收到发票？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "report_adhoc",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/invoices/scan",
+        "fastPathId": "workflow",
+        "source": "deterministic",
+        "llmFallback": false,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e81090d5-4aa3-48c6-9b49-66d977e17305"
+      }
+    },
+    {
+      "id": "product-count-zh-variant",
+      "question": "商品有几种？",
+      "status": "FAIL",
+      "expected": {
+        "intent": "product_count",
+        "route": "/products",
+        "query": null,
+        "noRoute": false,
+        "answerIncludes": [
+          "product"
+        ],
+        "answerRegex": "\\b\\d+\\b"
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "report_adhoc",
+        "route": null,
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "e514aef6-ab38-4832-9af4-792e03a4a660",
+        "answerChecks": [
+          true
+        ],
+        "answerRegex": "\\b\\d+\\b",
+        "answerRegexCheck": true
+      }
+    },
+    {
+      "id": "help-till",
+      "question": "How do I close the till?",
+      "status": "FAIL",
+      "expected": {
+        "intent": "qa",
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/close",
+        "fastPathId": "llm_classifier",
+        "source": "llm",
+        "llmFallback": true,
+        "writeRequests": [],
+        "writeRequestsCheck": true,
+        "correlationId": "ae6f3160-841a-4498-8f8d-2d930455c629"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 0,
+  "blocked": 0,
+  "failed": 8,
+  "status": "FAIL"
+}

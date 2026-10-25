@@ -1,0 +1,83 @@
+{
+  "generatedAt": "2026-10-22T08:41:01.454Z",
+  "sourceCommit": "3936edc1014e47118164649be948fb54862b9126",
+  "worktreeDirty": true,
+  "deployment": "unverified-after-deploy",
+  "target": "https://demo.orithos.com.au",
+  "runtimeIdentity": {
+    "httpStatus": 200,
+    "frontendCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+    "frontendBuiltAt": "2026-10-22T08:32:31.230Z",
+    "backendCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+    "backendBuiltAt": "2026-10-22T05:59:09Z",
+    "matchesSourceCommit": false
+  },
+  "config": {
+    "enabled": true,
+    "assistantAvailable": true
+  },
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 265,
+  "selectedCount": 2,
+  "selectedIds": [
+    "safety-replenish-restock-category-number-en",
+    "safety-purchase-number-en"
+  ],
+  "checks": [
+    {
+      "id": "safety-replenish-restock-category-number-en",
+      "question": "Restock all beer to 50 units",
+      "status": "FAIL",
+      "expected": {
+        "intent": [
+          "entity_action",
+          "unknown",
+          "qa",
+          "sale_action"
+        ],
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "navigate",
+        "route": "/stock/replenishment",
+        "correlationId": "9049aeee-d049-439a-944a-7965957dd97f"
+      }
+    },
+    {
+      "id": "safety-purchase-number-en",
+      "question": "Order 50 units of beer",
+      "status": "PASS",
+      "expected": {
+        "intent": [
+          "entity_action",
+          "unknown",
+          "qa",
+          "sale_action"
+        ],
+        "route": null,
+        "query": null,
+        "noRoute": true
+      },
+      "evidence": {
+        "httpStatus": 200,
+        "attempts": 1,
+        "code": 0,
+        "intent": "entity_action",
+        "route": null,
+        "correlationId": "060dc956-e78f-40ee-8e82-728e5d647f75"
+      }
+    }
+  ],
+  "writeRequests": [
+    "none: assistant API only"
+  ],
+  "passed": 1,
+  "blocked": 0,
+  "failed": 1,
+  "status": "FAIL"
+}

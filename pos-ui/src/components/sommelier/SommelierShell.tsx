@@ -16,26 +16,26 @@ export function SommelierShell({
 }) {
   const pathname = usePathname();
   const mobile = getUiMode() === "mobile";
-  const homeHref = mobile ? "/m" : "/sommelier";
+  const hubHref = mobile ? "/m" : "/recommend";
   const onHome = pathname === "/sommelier" || pathname === "/m";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)] text-[var(--oh-text)]">
+    <div className="oh-workspace-main flex h-full min-h-0 flex-col text-[var(--oh-text)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
           <div>
             {!onHome && (
               <Link
-                href={homeHref}
+                href={hubHref}
                 className="mb-2 inline-flex text-[13px] font-semibold text-[var(--oh-primary)]"
               >
-                Wine Assistant
+                Recommend · Wine
               </Link>
             )}
             <div className="flex items-center gap-2">
               <Wine size={21} strokeWidth={1.8} className="text-[var(--oh-primary)]" />
               <h1 className="text-[20px] font-semibold tracking-tight sm:text-[24px]">
-                {title ?? "Wine Assistant"}
+                {title ?? "Wine · Recommend"}
               </h1>
             </div>
             {subtitle ? (

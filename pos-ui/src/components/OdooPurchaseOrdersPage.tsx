@@ -102,7 +102,8 @@ function PurchaseOrdersEmptyState({ filtered, onReset }: { filtered: boolean; on
   );
 }
 
-export function OdooPurchaseOrdersPage() {
+export function OdooPurchaseOrdersPage({ embedded = false }: { embedded?: boolean }) {
+  const Container = embedded ? "section" : "main";
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab = tabParam === "transfer-new" ? "transfer-new" : tabParam === "transfers" ? "transfers" : "orders";
@@ -296,22 +297,32 @@ export function OdooPurchaseOrdersPage() {
     setOffset(0);
   }
 
+  const requestedOrder = searchParams.get("orderId");
+  const openedOrder = useRef<string | null>(null);
+  useEffect(() => {
+    if (connected && requestedOrder && /^[1-9]\d*$/.test(requestedOrder) && openedOrder.current !== requestedOrder) {
+      openedOrder.current = requestedOrder;
+      void openDetail(Number(requestedOrder));
+    }
+    // openDetail reads the current purchase; only URL identity triggers opening.
+  }, [connected, requestedOrder]);
+
   const hasActiveFilters = Boolean(debouncedQuery) || state !== "all";
 
   if (connected === false && !loading) return (
-    <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
+    <Container className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
       <section className="max-w-lg rounded-xl border border-[var(--oh-border)] bg-white p-8 text-center shadow-[var(--oh-shadow-card)]">
         <ShoppingCart className="mx-auto text-amber-600" size={30} />
         <h1 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to view purchases</h1>
         <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Purchase orders and supplier records come from the Odoo account connected to this workspace.</p>
         <Link href="/settings/integrations" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
       </section>
-    </main>
+    </Container>
   );
 
   return (
-    <main className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
-      <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <Container className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-[var(--oh-surface)] p-4 md:gap-5 md:p-6">
+      {!embedded && <header className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock management · Odoo</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Purchases</h1>
@@ -333,7 +344,8 @@ export function OdooPurchaseOrdersPage() {
           <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} aria-label="Refresh purchases" title="Refresh purchases" className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">{loading ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh</button>
         </div>
         )}
-      </header>
+      </header>}
+      {embedded && <button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="self-end rounded-lg border border-[var(--oh-border)] px-4 py-2 text-sm">Refresh orders</button>}
 
       {tab === "transfers" ? (
         <StockTransfersPage embedded />
@@ -480,6 +492,6 @@ export function OdooPurchaseOrdersPage() {
       </div>}
       </>
       )}
-    </main>
+    </Container>
   );
 }

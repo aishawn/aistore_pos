@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { AlertCircle, Gift, LoaderCircle, RefreshCw, Search } from "lucide-react";
 import { AdminPageLayout, AdminSecondaryButton } from "@/components/admin/AdminPageLayout";
@@ -8,12 +8,12 @@ import { getOdooGiftCards, getOdooSession, type OdooGiftCardRecord } from "@/lib
 import { useDebouncedValue } from "@/hooks/useApi";
 
 const PAGE_SIZE = 40;
-const money = (amount: number) => `$${Number(amount).toFixed(2)}`;
+const money = (amount: number, currency?: string | null) => `${currency ?? "Currency unknown"} ${Number(amount).toFixed(2)}`;
 
 export function OdooGiftCardsPage() {
+  const revision = useRef(0);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [available, setAvailable] = useState<boolean | null>(null);
-  const [moduleName, setModuleName] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [items, setItems] = useState<OdooGiftCardRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -30,19 +30,21 @@ export function OdooGiftCardsPage() {
 
   const load = useCallback(async () => {
     if (connected !== true) return;
+    const request = ++revision.current;
     setLoading(true);
     setError(null);
     try {
       const page = await getOdooGiftCards(debouncedQuery, offset, PAGE_SIZE);
+      if (request !== revision.current) return;
       setAvailable(page.available);
-      setModuleName(page.module);
       setMessage(page.message ?? null);
       setItems(page.items);
       setHasNext(page.hasNext);
     } catch (cause) {
+      if (request !== revision.current) return;
       setError(cause instanceof Error ? cause.message : "Could not load gift cards.");
     } finally {
-      setLoading(false);
+      if (request === revision.current) setLoading(false);
     }
   }, [connected, debouncedQuery, offset]);
 
@@ -64,7 +66,7 @@ export function OdooGiftCardsPage() {
   return (
     <AdminPageLayout
       title="Gift Cards"
-      subtitle="Odoo-backed gift card / loyalty balances when the matching module is installed"
+      subtitle="Gift card balances only. Issuing and redemption are managed in Odoo."
       count={available && !loading && !error ? items.length : undefined}
       countLabel="Cards on this page"
       actions={
@@ -86,9 +88,7 @@ export function OdooGiftCardsPage() {
             <Gift className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
             <div>
               <h2 className="font-semibold">Odoo Loyalty is not available yet</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6">
-                {message || "In Odoo Apps, clear the Apps-only filter and search “Coupons & Loyalty” (not “Gift Card”). Install loyalty, then Point of Sale - Coupons & Loyalty. Refresh this page after install."}
-              </p>
+              <p className="mt-2 text-sm">Gift cards are not enabled. A store administrator can configure them under Integrations.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link href="/customers/odoo" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Open customers</Link>
                 <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-4 text-sm font-medium">Integration status</Link>
@@ -100,11 +100,12 @@ export function OdooGiftCardsPage() {
 
       {available === true && (
         <>
-          {message && <p className="mb-4 text-sm text-[var(--oh-muted)]">{message}{moduleName ? ` · module ${moduleName}` : ""}</p>}
+          {message && <p className="mb-4 text-sm text-[var(--oh-muted)]">{message}</p>}
           <label className="mb-4 flex h-11 max-w-xl items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3">
             <Search size={16} className="text-[var(--oh-muted)]" />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search gift card code or customer" className="min-w-0 flex-1 bg-transparent text-sm outline-none" aria-label="Search gift cards" />
           </label>
+          {!error && items.length === 0 && <p role="status" className="mb-4 text-sm md:hidden">{loading ? "Loading gift cards…" : "No gift cards found"}</p>}
           <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white">
             <table className="hidden w-full text-left text-sm md:table">
               <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
@@ -121,7 +122,7 @@ export function OdooGiftCardsPage() {
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{card.partner ?? "—"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{card.program ?? "—"}</td>
                     <td className="px-4 py-3 text-[var(--oh-text-secondary)]">{card.status}{card.expiry ? ` · ${card.expiry}` : ""}</td>
-                    <td className="px-4 py-3 text-right font-semibold">{money(card.balance)}</td>
+                    <td className="px-4 py-3 text-right font-semibold">{money(card.balance, card.currency)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -134,13 +135,13 @@ export function OdooGiftCardsPage() {
                       <p className="font-semibold text-[var(--oh-text)]">{card.code}</p>
                       <p className="text-xs text-[var(--oh-muted)]">{card.partner ?? "No customer"} · {card.status}</p>
                     </div>
-                    <p className="font-semibold">{money(card.balance)}</p>
+                    <p className="font-semibold">{money(card.balance, card.currency)}</p>
                   </div>
                 </article>
               ))}
             </div>
           </section>
-          <footer className="mt-4 flex items-center justify-between gap-2 text-sm text-[var(--oh-muted)]">
+          <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 pr-32 text-sm text-[var(--oh-muted)]">
             <span>{items.length ? `Showing ${offset + 1}–${offset + items.length}` : "No records"}</span>
             <div className="flex gap-2">
               <button type="button" disabled={offset === 0 || loading} onClick={() => setOffset((value) => Math.max(0, value - PAGE_SIZE))} className="inline-flex h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 disabled:opacity-40">Previous</button>

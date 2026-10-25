@@ -1,0 +1,75 @@
+{
+  "generatedAt": "2026-10-22T17:00:49.204Z",
+  "sourceCommit": "73b2ec58ad87d460fd1195dda5e88d18e73ee07a",
+  "target": "https://demo.orithos.com.au",
+  "scope": "AI enablement gate + price suggestions surface; production AI flip still requires Dokploy secrets",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "local env AI_ENABLED",
+      "status": "INFO",
+      "evidence": "true"
+    },
+    {
+      "name": "local env DashScope key present",
+      "status": "PASS",
+      "evidence": "set"
+    },
+    {
+      "name": "checklist doc",
+      "status": "PASS",
+      "evidence": "docs/AI_PRODUCTION_ENABLEMENT.md"
+    },
+    {
+      "name": "remote AI enabled flag",
+      "status": "INFO",
+      "evidence": "enabled=true http=200"
+    },
+    {
+      "name": "price suggestions reachable",
+      "status": "PASS",
+      "evidence": "https://demo.orithos.com.au/stock/price-suggestions"
+    },
+    {
+      "name": "price suggestions read-only copy",
+      "status": "PASS",
+      "evidence": "orithos Overview Register Stock Customers Reporting Orithos AI Wine Assistant Find a Wine Identify Wine Label Price Suggestions Scan Supplier Invoice Setup ONLINE admin Skip to main content STOCK · PRICING Price suggesti"
+    },
+    {
+      "name": "price suggestions product search",
+      "status": "PASS",
+      "evidence": "Search control accepts product/SKU query"
+    },
+    {
+      "name": "price suggestions status filter",
+      "status": "PASS",
+      "evidence": "Status filter is available on the live page"
+    },
+    {
+      "name": "assistantAvailable flag",
+      "status": "INFO",
+      "evidence": "true"
+    },
+    {
+      "name": "enabled NLQ API",
+      "status": "PASS",
+      "evidence": "intent=search_product"
+    },
+    {
+      "name": "enabled chat composer",
+      "status": "PASS",
+      "evidence": "composer ready"
+    },
+    {
+      "name": "find wine with AI on",
+      "status": "PASS",
+      "evidence": "page loaded"
+    },
+    {
+      "name": "no product price writes observed",
+      "status": "PASS",
+      "evidence": "[]"
+    }
+  ],
+  "nextStep": "Run isolation model UAT with AI_ENABLED=true on a non-production stack, then Dokploy flip per AI_PRODUCTION_ENABLEMENT.md"
+}

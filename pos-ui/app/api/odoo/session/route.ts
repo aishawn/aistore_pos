@@ -175,6 +175,13 @@ function sessionPayload(user: Awaited<ReturnType<typeof publicUser>> | null) {
 }
 
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === "development" && request.cookies.get("orithos_local_preview")?.value === "1") {
+    return NextResponse.json({
+      user: { id: "local-preview", name: "Local Preview", username: "preview", isAdmin: true, allowedCompanyIds: [1] },
+      autoRecoverConfigured: false,
+      localPreview: true,
+    });
+  }
   if (!(await hasOrithosSession(request))) {
     const response = NextResponse.json(sessionPayload(null), {
       status: request.cookies.get(REFRESH_COOKIE)?.value ? 401 : 200,

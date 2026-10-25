@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-22T01:19:45.257Z",
+  "sourceCommit": "700abe24a74ccf32fa05a76b389d446d8fbc1263",
+  "worktreeDirty": true,
+  "target": "https://demo.orithos.com.au",
+  "scope": "authenticated natural-language workflow routing; assistant API only; no business writes",
+  "catalogTotal": 216,
+  "selectedCount": 216,
+  "selectedIds": "all",
+  "login": {
+    "status": 502,
+    "server": "cloudflare",
+    "contentType": "text/html; charset=UTF-8",
+    "correlationId": null,
+    "attempts": 3
+  },
+  "proxyHealth": [
+    {
+      "path": "/api/auth/me",
+      "status": 502
+    },
+    {
+      "path": "/api/ai/config/client",
+      "status": 502
+    },
+    {
+      "path": "/api/ai/assistant",
+      "status": 502
+    }
+  ],
+  "checks": [
+    {
+      "id": "setup",
+      "status": "BLOCKED",
+      "evidence": {
+        "error": "LOGIN_FAILED_502"
+      }
+    }
+  ],
+  "writeRequests": [],
+  "passed": 0,
+  "blocked": 1,
+  "failed": 0,
+  "status": "BLOCKED"
+}

@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-10-22T06:58:00Z",
+  "runtimeCommit": "582b92fb199e312e828a5169cde14105a091f41a",
+  "scope": "read-only tenant binding, Odoo company and product isolation; no business writes",
+  "status": "PASS",
+  "tenants": {
+    "demo": { "odooCompanyId": 1, "productCountSample": 20 },
+    "shawn": { "odooCompanyId": 2, "odooPosConfigId": 4, "odooWarehouseId": 2, "allowedCompanyIds": [2], "productCount": 1, "productIds": [5630] }
+  },
+  "productIdOverlap": [],
+  "forgedTenantHeader": { "status": 200, "resolvedSubdomain": "shawn", "resolvedOdooCompanyId": 2 },
+  "notes": [
+    "The shawn tenant has one isolated base product; the previous zero-product assertion was too strict.",
+    "A forged X-Orithos-Tenant-Slug=demo header did not change the trusted shawn host binding."
+  ]
+}

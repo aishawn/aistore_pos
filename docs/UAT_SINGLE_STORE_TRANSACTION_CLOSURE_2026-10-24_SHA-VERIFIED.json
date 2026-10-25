@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-10-24",
+  "sourceCommit": "7c5e981774e14ce7ebfc952799049cfdff6cbdb9",
+  "deploymentSha": "7c5e981774e14ce7ebfc952799049cfdff6cbdb9",
+  "scope": "Isolated tenant vendor 48, Odoo company 41; real transaction writes in isolated UAT only",
+  "status": "PASS",
+  "checks": [
+    { "name": "owner bootstrap and Odoo session", "status": "PASS", "allowedCompanyIds": [41] },
+    { "name": "open POS session", "status": "PASS", "configId": 85, "sessionId": 36 },
+    { "name": "cash sale", "status": "PASS", "saleId": 117663, "amount": 32 },
+    { "name": "close without counted cash is rejected", "status": "PASS", "httpStatus": 422 },
+    { "name": "close with expected cash", "status": "PASS", "sessionId": 36, "state": "closed", "difference": 0 },
+    { "name": "full refund", "status": "PASS", "refundId": 117664, "amount": -32 },
+    { "name": "refund register close", "status": "PASS", "sessionId": 42, "countedCash": 0, "difference": 32 },
+    { "name": "Odoo ledger readback", "status": "PASS", "saleState": "done", "refundState": "done", "saleTax": 0, "refundTax": 0 }
+  ],
+  "businessWrites": "isolated UAT tenant only"
+}

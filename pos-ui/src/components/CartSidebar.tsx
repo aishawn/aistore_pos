@@ -17,9 +17,9 @@ export function CartSidebar() {
   const muted = "text-[rgba(189,189,189,0.7)]";
 
   return (
-    <div className="flex w-full flex-col border-[0.667px] border-black bg-white font-sans lg:w-[419px]">
+    <div className="flex w-full flex-col border-[0.667px] border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] font-sans lg:w-[419px]">
       {/* Add Customer / selected customer */}
-      <div className="flex h-[75px] shrink-0 items-center border-b-[0.667px] border-black">
+      <div className="flex h-[75px] shrink-0 items-center border-b-[0.667px] border-[var(--oh-border-strong)]">
         {sell.customer ? (
           <>
             <button
@@ -31,7 +31,7 @@ export function CartSidebar() {
                 {sell.customer.name.charAt(0)}
               </span>
               <span className="mx-2">
-                <span className="block text-[18.72px] font-bold text-black">
+                <span className="block text-[18.72px] font-bold text-[var(--oh-text)]">
                   {sell.customer.name}
                 </span>
                 <span className="block text-[14px] text-[var(--sf-muted)]">
@@ -43,7 +43,7 @@ export function CartSidebar() {
               type="button"
               aria-label="Remove customer"
               onClick={() => sell.setCustomer(null)}
-              className="mr-4 flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-[var(--sf-muted)] outline-none hover:text-black focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
+              className="mr-4 flex h-11 w-11 cursor-pointer items-center justify-center rounded-md text-[var(--sf-muted)] outline-none hover:text-[var(--oh-text)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"
             >
               <XIcon size={20} />
             </button>
@@ -54,8 +54,8 @@ export function CartSidebar() {
             onClick={() => sell.setView("customers")}
             className="flex h-full flex-1 cursor-pointer items-center"
           >
-            <PlusIcon size={18} strokeWidth={1.5} className="ml-4 mr-2 text-black" />
-            <h3 className="text-[18.72px] font-bold text-black">Add Customer</h3>
+            <PlusIcon size={18} strokeWidth={1.5} className="ml-4 mr-2 text-[var(--oh-text)]" />
+            <h3 className="text-[18.72px] font-bold text-[var(--oh-text)]">Add Customer</h3>
           </button>
         )}
       </div>
@@ -79,19 +79,19 @@ export function CartSidebar() {
               }}
               className={cn(
                 "flex cursor-pointer items-center gap-3 border-b border-[#eee] px-4 py-3 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--oh-primary)]",
-                selected ? "bg-[rgb(206,229,252)]" : "bg-white hover:bg-black/5",
+                selected ? "bg-[rgb(206,229,252)]" : "bg-[var(--oh-surface-elevated)] hover:bg-black/5",
               )}
             >
-              <span className="w-6 shrink-0 text-[16px] text-black">{line.qty}</span>
+              <span className="w-6 shrink-0 text-[16px] text-[var(--oh-text)]">{line.qty}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] text-black">{line.name}</span>
+                <span className="block truncate text-[16px] text-[var(--oh-text)]">{line.name}</span>
                 {line.qty > 1 && (
                   <span className="block text-[13px] text-[var(--sf-muted)]">
                     Item price: ${line.unitPrice.toFixed(2)}
                   </span>
                 )}
               </span>
-              <span className="shrink-0 text-[16px] text-black">
+              <span className="shrink-0 text-[16px] text-[var(--oh-text)]">
                 ${lineTotal.whole}.{lineTotal.cents}
               </span>
               <button
@@ -135,7 +135,7 @@ export function CartSidebar() {
             )}
           </div>
           {/* Right: total */}
-          <div className={cn("flex flex-1 flex-col items-center justify-center p-2 text-center", hasItems ? "text-black" : muted)}>
+          <div className={cn("flex flex-1 flex-col items-center justify-center p-2 text-center", hasItems ? "text-[var(--oh-text)]" : muted)}>
             <p className="leading-none">
               <span className="text-[40px]">${whole}</span>
               <span className="align-top text-[24px]">.{cents}</span>

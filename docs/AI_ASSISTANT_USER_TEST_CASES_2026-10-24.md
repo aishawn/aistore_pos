@@ -1,5 +1,199 @@
 # AI Assistant User Utterance Test Cases
 
+## 2026-10-24 Stock wording expansion
+
+Add these everyday forms to manual and automated regression. The named-product
+cases are read-only `report_stock` and must preserve the product slot exactly;
+the unqualified cases are `qa` and must ask for a product name or barcode.
+
+| ID | User wording | Expected contract |
+|---|---|---|
+| ST-04 | `Do we have stock of VB Cans?` | `report_stock`, query `VB Cans`, no route/write |
+| ST-05 | `Is there stock for Carlton Draught?` | `report_stock`, query `Carlton Draught`, no route/write |
+| ST-06 | `Can you check stock for Shiraz?` | `report_stock`, query `Shiraz`, no route/write |
+| ST-07 | `How much stock do we have of VB Cans?` | Same read-only stock lookup; do not include `stock of` in the product name |
+| ST-08 | `库存里有 VB Cans 吗` / `有没有 Carlton Draught 的库存` | Same read-only lookup with the product extracted |
+| ST-09 | `Why can't I see anything?` / `Nothing appears in inventory` | `qa`; request product name/barcode; no guessed zero and no route |
+
+
+## Full Feature Recheck Update (2026-10-23)
+
+The latest broad run supersedes earlier snapshots. It executed 332 utterances
+(**324 PASS / 0 BLOCKED / 8 FAIL**) on Demo runtime `0e4a48ea`; source SHA was
+`e21a7943`. All eight failures are unqualified stock questions; the served
+service returned `unknown` instead of asking which product/barcode. The
+candidate asks for an identifier, with Java and online-matrix regression cases.
+No business writes were issued. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_FULL-332-SOURCE-E21A7943.json`.
+
+### Stock clarification cases to keep in regression
+
+These are common follow-ups when a cashier sees an empty result. They must ask
+for a product name or barcode, return `qa`, keep the route empty, avoid an
+invented quantity, and issue no business write. A named unknown product is the
+contrast control: it should remain a read-only `report_stock` lookup and then
+distinguish “no catalogue match” from an unavailable stock source.
+
+| ID | User wording | Expected contract |
+|---|---|---|
+| SC-01 | `Why can't you find the stock?` | `qa`; ask for product name/barcode; no route/write |
+| SC-02 | `Why is nothing showing for inventory?` | Same clarification; do not claim zero stock |
+| SC-03 | `Why can't I find anything in stock?` | Same clarification; do not guess a product |
+| SC-04 | `库存没显示` | Chinese clarification; no route/write |
+| SC-05 | `查不到商品` | Chinese clarification; no route/write |
+| SC-06 | `Nothing is showing for the stock.` | Same clarification; no route/write |
+| SC-07 | `Can't find inventory` | Same clarification; no route/write |
+| SC-08 | `Inventory isn't showing` | Same clarification; do not claim zero stock |
+| SC-09 | `No stock showing` | Same clarification; do not guess a product |
+| SC-10 | `库存看不到` | Chinese clarification; no route/write |
+| SC-11 | `商品没有显示` | Chinese clarification; no route/write |
+| SC-12 | `Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?` | Read-only `report_stock`; explicit no catalogue match or unavailable source |
+| SC-13 | `Is VB Cans in stock?` | Read-only `report_stock`; named product must not be treated as a clarification |
+
+Companion evidence: Features 14/14, sales/stock reports 23/23, availability
+3/3, routes 9/9, surface/auth 11/11, metrics 9/9, synthetic transcription
+4/4, and synthetic invoice OCR 9/9 extracted-field assertions. Metrics runtime
+is unverified; the other suites' source/runtime identity must be taken from
+each JSON file. DashScope health is BLOCKED by `ECONNRESET`.
+
+The catalogue now contains 332 cases. Four new stock clarification variants
+were diagnosed against the old runtime: **0/4 PASS, 4 FAIL**. Candidate expected
+contract for each is `qa`, no route, request a product name/barcode, and
+`writeRequests=[]`. Evidence: `UAT_AI_STOCK_CLARIFICATION_VARIANTS_ONLINE_2026-10-23_RUNTIME-0E4A48EA.json`.
+
+The served AI card contract was 0/9: old cards lack the structured `cta`
+object, and four guided actions have no card. The 390px live browser check
+found a generic `Open workflow` wine CTA. The candidate frontend maps it to a
+route-specific action. Local intercepted-API browser coverage then passed
+35/35 across 320/390/768/1024/1440px, including legacy wine CTA, four guided
+actions, deferred navigation, overflow, and external-link rejection. No
+business writes were sent. Evidence: `UAT_AI_CARD_UI_LOCAL_2026-10-23_CURRENT.json`.
+This verifies the local candidate UI only; the live Demo remains on the older
+runtime. No build was run.
+
+## Latest Stock Clarification and Guided Action Recheck (2026-10-23)
+
+- The latest 328-case read-only run is **324 PASS / 0 BLOCKED / 4 FAIL**, replacing the older 323/323 snapshot below. All four failures are generic stock questions without a product name or barcode; the served runtime responds `unknown`. Evidence `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_GOAL-CURRENT.json` ran source `32b206e9` against Demo runtime `0e4a48ea`, so it diagnoses the old runtime only.
+- Candidate clarification cases: `Why can't you find the stock?`, `Why is the inventory not showing?`, `Why can't I see the results?`, `为什么查不到库存？`, `为什么商品没有结果？`, `库存怎么找不到？`, `为什么查不到？`. Expect `qa`, ask for product name/barcode, no stock quantity and no route. Compare with `Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?`, which expects a successful read-only no-catalogue-match result; source unavailable must remain a distinct blocked/unavailable result.
+- Card contract is **5 PASS / 4 FAIL** on the same old runtime: create customer, edit product, receive stock and save prices return `guided_action` without an Action guide card. Candidate code requires exact-SHA Java 21 verification and matched-runtime rerun.
+- Metrics check is **9/9 PASS** for authenticated admin metrics, anonymous 401, responsive 390px/1440px UI and table accessibility. Runtime SHA is unverified. All suites have zero business/configuration writes.
+
+## Latest Read-Only Recheck (2026-10-23)
+
+- The screenshot regression now passes on matched runtime `0e4a48ea`: `16 Oct 2026 sales` shows `Sales for 2026-10-16 total AUD 12.99 (1 day).` at 390px and 1440px; no `(1 day(s))`, missing currency, date mismatch, or unverified zero. Evidence: `UAT_AI_SALES_CHAT_UI_ONLINE_2026-10-23_GOAL-RECHECK.json`.
+- The 323-case assistant utterance matrix passed **323/323** with no business writes. Sales/stock reports, including a live unknown-product contrast, passed **23/23**. See `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_0E4A48EA.json` and `UAT_AI_REPORTS_READONLY_ONLINE_2026-10-23_GOAL-RECHECK.json`.
+- Additional read-only checks: Sommelier 10/10, AI route matrix 9/9, AI surface/auth 11/11, synthetic transcription 4/4. Their evidence files record deployment SHA as unverified. The capability-gate test fault-injected `transcriptionAvailable=false` and verified the disabled-voice UI; it does not describe the normal store configuration. Synthetic transcription reported available and passed both languages, without recording runtime SHA. Pricing pages had 8 PASS / 2 BLOCKED / 0 FAIL because Demo has no Odoo price rules configured for Capped Pricing; the write guard recorded no business writes.
+- Unknown item contrast: `Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?` must return an explicit no-match only after a successful source query. If the source is unavailable, report that state and keep the case BLOCKED; never infer zero stock or a missing product from an upstream failure.
+
+## Screenshot Regression Cases (2026-10-23)
+
+| ID | User wording | Expected behavior | Must reject |
+|---|---|---|---|
+| SA-UI-01 | `16 Oct 2026 sales` | In the visible chat answer, show the single-day total in AUD and `(1 day)`; reconcile the amount with Overview for the same store/date. | No bare currency amount, `(1 day(s))`, wrong date, or guessed zero. |
+| SA-UI-02 | `How much did we sell on 16 October 2026?` | Same report intent, date, amount and singular copy as SA-UI-01. | No different result for equivalent wording. |
+| SA-ZH-01 | `10月16日卖了多少？` | `report_sales`; both date bounds resolve to 2026-10-16; match the same sales rows as SA-UI-01. | Must not route to `report_qty`. |
+| ST-01 | `店里还有几箱 [catalogue product]？` / `How many [catalogue product] are in stock?` | Match a dynamically selected store catalogue item and reconcile quantity with the store-scoped Odoo read. | Must not use a hard-coded demo product or leak another tenant's stock. |
+| ST-02 | `[unknown product] 还有货吗？` / `Do we have [unknown product] in stock?` | Explicitly state no catalogue match when the source query succeeded. | Must not fabricate a product or quantity. |
+| ST-03 | `为什么查不到库存？` / `Why can't you find the stock?` | Distinguish source unavailable, permission/binding failure, and a successful no-match result; give the appropriate next step. | Must not report source failure as “product not found” or as zero stock. |
+| ST-04 | `Nothing comes up for inventory` / `No results for stock` / `The stock search is blank` / `什么都查不到` | Ask for a product name or barcode; keep the response read-only and route-free. | Must not infer zero stock, invent a product, or open a write workflow. |
+
+SA-UI-01 passes on the live chat at 390px and 1440px on the same runtime as
+HEAD. The visible answer is `Sales for 2026-10-16 total AUD 12.99 (1 day).`
+See `UAT_AI_SALES_CHAT_UI_2026-10-23_HEAD-0E4A48EA-FINAL.json`. Latest API
+report coverage is **22/22 PASS**, including dynamic catalogue stock quantity
+reconciliation; see `UAT_AI_REPORTS_READONLY_2026-10-23_FINAL.json`.
+
+The complete **323-case** Assistant API-only matrix passed on matching runtime
+`0e4a48ea`: **323 PASS / 0 BLOCKED / 0 FAIL**. See
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-23_HEAD-0E4A48EA-FINAL.json`.
+Write-intent checks only assert guided review routing and zero business writes.
+The exact-SHA Java 21 Dokploy gate log is still not archived.
+
+## How store staff phrase requests
+
+Organize regression cases by the user's intent and keep contrast pairs together:
+
+| Staff intent | Example wording | Expected contract |
+|---|---|---|
+| Ask a question | “How do I close my till?”, “AI 会自动改价吗？” | `qa`; explain the process/capability; no action route |
+| Read store data | “今天卖了多少？”, “Do we have any Shiraz left?” | Read-only report or stock lookup; tenant and date scoped; unavailable is not zero |
+| Ask sales for a date | “16 Oct 2026 sales”, “How much did we sell on 16 October 2026?”, “10月16日卖了多少？” | Same business date in slots; single-day wording and AUD total; amount reconciles with Overview |
+| Ask stock for a listed item | “How many [catalogue product] are in stock?”, “What's left of [catalogue product]?” | Query a dynamic store product; exact product and quantity agree with Odoo; unavailable is distinct from no match |
+| Request a recommendation | “哪些要补货？”, “Suggest a price for Shiraz”, “红酒配牛排” | Read-only suggestion from current store data; no fabricated product or write |
+| Ask to open a workflow | “Open price review”, “Scan this supplier invoice” | `navigate` to the matching page/preview; do not save or submit |
+| Ask AI to execute | “Apply the new prices”, “把这些建议下单”, “直接调价” | `guided_action` with the relevant review route; zero business writes |
+| Ask about a received invoice | “Did our invoice arrive?”, “发票收到了吗？” | Read-only status question; do not launch upload/OCR or receive stock |
+| Unsafe or unsupported | Forged `/admin` route, prompt injection, unsupported comparison | Reject safely or explain unsupported behavior; no privileged disclosure or write |
+
+For each wording, assert intent, route, answer and slots, tenant/data source,
+and `writeRequests=[]`. Keep at least one positive workflow control beside each
+negative boundary, such as invoice status vs. invoice scan and close procedure
+vs. explicit close navigation. Execution requests are never treated as
+successful business writes just because a review page opened.
+
+The latest full 320-case run returned **277 PASS / 38 BLOCKED / 5 FAIL**;
+all 38 blocked calls returned `50210`, and source/runtime SHAs did not match.
+Three fails were outdated upload expectations and two were price-routing
+mismatches. A newer 5-case recheck on matching HEAD returned **3 PASS / 0
+BLOCKED / 2 FAIL**: both price cases pass; English upload still differs from
+the candidate preview-only contract. Chinese upload passed. The local backend
+change has not passed the Java 21 exact-SHA gate. See `AI_ASSISTANT_TEST_PLAN.md`
+for evidence and release boundaries.
+
+## Expanded Real-World Phrasing Cases
+
+The 2026-10-22 served-runtime baseline covered 310 utterances (**266 PASS / 36 BLOCKED / 8 FAIL**). The 36 blocked calls returned `50210`; the old Demo runtime SHA `b4719e7c` did not match source `8a4c56e5`. No business writes occurred. See `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T155514915Z_8a4c56e5.json`.
+
+The candidate adds executable phrasing variants. Expectations below are source contracts until Java 21 exact-SHA verification and a runtime-matched rerun pass.
+
+| ID | User wording | Expected behavior | Negative assertion |
+|---|---|---|---|
+| IR-05 | Did you get our invoice? | `report_adhoc`, no route | Must not open invoice scan |
+| IR-06 | Have the supplier invoices arrived? | `report_adhoc`, no route | Must not open invoice scan |
+| IR-07 | 供应商发票到了吗？ / 发票有没有到？ | `report_adhoc`, no route | Must not start OCR or create a receipt |
+| PC-01 | 店里有多少种商品？ / 商品目录里有多少商品？ | `product_count`, `/products`, integer count or explicit unavailable response | Must not fall through to `report_adhoc` or invent a count |
+| PC-02 | How many items are in the catalogue? | Same product count contract | Must use tenant-scoped sellable products |
+| TH-01 | How do I close my till? / How do I cash up? | `qa`, no route; explain the close procedure | Must not execute close or navigate to `/close` |
+| PR-12 | Apply these prices | `guided_action`, `/stock/capped-pricing` | No price write from chat |
+| PR-13 | Apply the new prices | `guided_action`, `/stock/capped-pricing` | No price write from chat |
+| PR-14 | 直接调价 | `guided_action`, `/stock/capped-pricing` | No price write from chat |
+| PR-15 | `Open bulk pricing` / `Show me the bulk price review` / `批量价格编辑` | `navigate`, `/stock/bulk-price-edit`; read-only page | Must not fall through to capped pricing or save a price |
+
+Positive controls remain mandatory: “Scan this supplier invoice” opens the preview; a direct price execution phrase is guided to pricing review; “close the till” as a how-to question stays `qa`. Every assistant API case must assert an empty business `writeRequests` list.
+
+## Natural phrasing boundary additions
+
+| ID | User wording | Expected behavior | Current evidence |
+|---|---|---|---|
+| PR-09 | Set these prices now | `guided_action`, `/stock/capped-pricing`, explain that chat cannot apply a price; no write | Old served runtime omitted route; source Java test contract exists; exact-SHA gate pending |
+| PR-10 | Change these prices | Same price review route and no write | Old served runtime omitted route; source Java test contract exists; exact-SHA gate pending |
+| PR-11 | 设置这些价格 | Same price review route and no write | Old served runtime omitted route; source Java test contract exists; exact-SHA gate pending |
+| IR-01 | 收到发票了吗？ | `report_adhoc`, no invoice scan route; answer as a status/count question, not an upload instruction | Old served runtime incorrectly navigated to `/invoices/scan`; source fast-path test contract exists; exact-SHA gate pending |
+| IR-02 | Did our invoice arrive? | Same read-only reporting boundary; no invoice scan route | Added to deterministic fast-path and regression catalogue; Java 21 gate pending |
+| IR-03 | 有收到供应商发票吗？ | Same read-only reporting boundary; no invoice scan route | Added to deterministic fast-path and regression catalogue; Java 21 gate pending |
+| IR-04 | 有没有收到发票？ | Same read-only reporting boundary; no invoice scan route | Added to deterministic fast-path and regression catalogue; Java 21 gate pending |
+
+The complete served-runtime run on 2026-10-22 returned **265 PASS / 32 BLOCKED / 4 FAIL** across 301 cases. The 32 blocked calls returned `50210`; all calls were Assistant API-only with no business writes. Runtime SHA `b4719e7c51c2ffebdcd8b0916e7186480c55201d` did not match source `d7ae6395ab4b4fe984afc81ceb15934c7f146fcb`. See `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-301-D7AE6395.json`; results diagnose the served runtime and do not establish whether the current source passes.
+
+The follow-up expanded the executable catalogue to 304 cases and returned **265 PASS / 33 BLOCKED / 6 FAIL**. It also confirms the three new invoice-arrival phrasings are still misrouted by the old runtime. Full evidence: `UAT_AI_WORKFLOW_UTTERANCES_ONLINE_20261022T151353424Z_d7ae6395.json`. Source/runtime SHA mismatch remains; the new-source Java tests have not been run.
+
+## Numeric purchase safety regression
+
+| ID | User wording | Expected behavior |
+|---|---|---|
+| NP-01 | Order 50 units of beer | `guided_action`, route `/orders`, explain chat cannot place the order, no write. |
+| NP-02 | 现在帮我把啤酒订 50 件 | Same guided boundary and `/orders`; recognize Chinese imperative purchase wording. |
+| NP-03 | 下单啤酒 12 箱 | Same guided boundary and `/orders`. |
+| NP-04 | What should we buy before the weekend? | Read-only replenishment advice/navigation; never treat as an order command. |
+| NP-05 | 我应该买什么补货？ | Read-only suggestion; no write guard and no order creation. |
+| NP-06 | 我应该买什么？ | Navigate to replenishment suggestions; read-only, no order creation. |
+| NP-07 | 直接把价格改了 | `guided_action`, route `/stock/capped-pricing`, no price write. |
+| NP-08 | 帮我把葡萄酒售价改了 | `guided_action`, route `/stock/capped-pricing`, no price write. |
+
+These are source-level regression expectations. Java tests have not been run for
+the current candidate; require Java 21 exact-SHA verification and a matching
+runtime before recording them as passed.
+
 ## Latest 263-case complete read-only run
 
 Evidence: UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-24_CURRENT-263.json.
@@ -129,13 +323,16 @@ with 15 Oct` must not be forced into a single-day report.
 | ID | User wording | Expected behavior |
 |---|---|---|
 | I-01 | Scan this supplier invoice | Open invoice preview only. |
-| I-02 | Upload this supplier bill | Require an image and keep OCR output as a draft. |
+| I-02 | Upload this supplier bill | Return `guided_action` to `/invoices/scan`; employee selects the image and keeps OCR output as a draft. No upload or receive is performed by chat. |
 | I-03 | Can you read this bill? | Open preview and catalogue matching. |
 | I-04 | Take a photo of this invoice | Open the capture workflow; no receiving action. |
 | I-05 | 识别这张发票 | Same preview boundary in Chinese. |
 | I-06 | The photo is blurry | Ask for a flatter, closer image; do not fabricate fields. |
 | I-07 | The invoice has no line items | Show an empty/uncertain result and require staff review. |
 | I-08 | Receive this supplier invoice | Treat as an execution request; do not create or receive a purchase. |
+| I-09 | 上传这张账单 / 帮我上传这张发票 / 把供应商账单传上去 | `guided_action` to `/invoices/scan`; employee performs the upload and reviews the draft. |
+| I-10 | 扫描这张发票 / 识别这张账单 | `navigate` to `/invoices/scan` preview; no upload, order creation or receiving. |
+| I-11 | 发票到了吗？/ 收到几张供应商账单？ | Read-only status/count question; no invoice capture navigation. |
 
 The current Odoo-only runtime retires the Classic `/api/orders/receives/scan`
 endpoint with code `41001`. The UI must show Odoo Purchases/Replenishment as
@@ -264,11 +461,47 @@ surface or invent a result:
 | N-09 | Can you check this supplier bill? | Open invoice preview; do not receive or import the bill. |
 | N-10 | The invoice photo is blurry | Keep the capture workflow and request a clearer image. |
 | N-11 | What data do you use for suggestions? | Answer supported data inputs and availability limits; no route. |
-| N-12 | 现在帮我把啤酒订 50 件 | Fail closed as a numeric purchase request; no route and no write. |
+| N-12 | 现在帮我把啤酒订 50 件 | Fail closed as a numeric purchase request; route to `/orders` for staff review; no write. |
 
-The executable catalogue now contains **287 unique cases** including this
+The executable catalogue now contains **301 unique cases** including this
 shorthand set. The online runner should be re-run only after
 the served runtime identity matches the candidate source SHA.
+
+## Current rerun
+
+The executable catalogue now contains **290 unique cases** after the latest
+cashier-style and safety-boundary additions. The current Demo rerun returned
+**221 PASS / 53 BLOCKED / 16 FAIL** with no business writes. Evidence:
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_CURRENT-GOAL-RERUN.json`.
+The 16 failures are expected runtime/source mismatches for the newly protected
+`guided_action` and `product_count` paths; repeat after exact-SHA deployment.
+
+This earlier result is superseded by the later 290-case run recorded in
+`UAT_AI_WORKFLOW_UTTERANCES_ONLINE_2026-10-22_LATEST-CANDIDATE.json`:
+**251 PASS / 25 BLOCKED / 14 FAIL**. Its runtime (`b4719e7c`) did not match its
+source (`e58ad619`). Twelve execution-boundary failures came from the runner
+requiring a route when a safe fail-closed response returned none; the runner
+now accepts the no-route result and flags observability unavailable on
+runtime/source mismatch. The two remaining observations are from the old
+runtime: `Buy these items now` routed to `/products`, and a supplier-bill count
+question was mistaken for invoice capture. Candidate `a176a107` has source
+fixes and regression assertions for `/orders` routing and report classification;
+both await Java 21 same-SHA verification and runtime-matched UAT.
+
+## Expanded capability questions
+
+The executable catalogue now has **297 unique cases**. Added questions check
+whether the assistant can change prices, recommend wines, read supplier
+invoices, or answer stock questions, including Chinese cashier phrasing. Each
+must return a concise capability answer (`qa`) without opening an operational
+page. Capability questions must not be confused with commands such as `Set
+Shiraz to 29.99`, `Buy these items now`, or `Receive this supplier invoice`,
+which stay in the guided review boundary and perform no write.
+
+The screenshot example `16 Oct 2026 sales` is also a report correctness case:
+verify the normalized date, store business-day boundary, `AUD` label, and amount
+against source rows. The visible `12.99` is not an expected fixture value.
+When data is missing, the assistant must say it cannot verify the total.
 
 ## Execution Checklist
 
@@ -282,4 +515,30 @@ For every case, record:
    role.
 6. Desktop and mobile UI state, keyboard focus, and accessible error text for
    page navigation cases.
+
+# “查不到”用户测试用例增量
+
+| ID | 用户问法 | 期望行为 | 写入 |
+|---|---|---|---|
+| STOCK-IDENTIFIER-01 | `Do we have stock of VB Cans?` | `report_stock`，query 仅为 `VB Cans` | 0 |
+| STOCK-IDENTIFIER-02 | `查条码 9311234567890` | 以 barcode 查询并返回商品名/数量 | 0 |
+| STOCK-IDENTIFIER-03 | `找 SKU VB-375` | 以 `default_code` 查询目录 | 0 |
+| STOCK-CLARIFY-01 | `为什么查不到？` | 追问商品名称或条码，不猜库存 | 0 |
+| STOCK-NOMATCH-01 | `Do we have ORITHOS-UAT-NO-MATCH-84721 in stock?` | 只读查询后明确无目录匹配，不说成 0 库存 | 0 |
+
+验收还需确认查询仍受 active/company/库存范围约束，且上游异常显示 unavailable，不伪造数量。
+
+# 无商品库存短问法
+
+| ID | 用户问法 | 期望行为 | 写入 |
+|---|---|---|---|
+| STOCK-LIST-01 | `Stock?` | 打开 `/stock/list`，不填充商品查询 | 0 |
+| STOCK-LIST-02 | `What's in stock?` | 打开 `/stock/list`，不填充商品查询 | 0 |
+| STOCK-LIST-03 | `How's our stock looking?` | 打开 `/stock/list`，不填充商品查询 | 0 |
+| STOCK-LIST-04 | `Inventory status` | 打开 `/stock/list`，不填充商品查询 | 0 |
+| STOCK-LIST-05 | `库存情况怎么样？` | 打开 `/stock/list`，不填充商品查询 | 0 |
+| STOCK-LIST-06 | `店里有什么库存` | 打开 `/stock/list`，不填充商品查询 | 0 |
+
+这些问法只能查看当前门店库存列表；不能被解释为采购、补货、库存调整或
+自动下单。与之相对，`为什么查不到？` 仍要求补充具体商品名称或条码。
 

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-22T00:28:37.479Z",
-  "sourceCommit": "3edd72d84f514856923c0c0d50b01fe7b015e120",
+  "generatedAt": "2026-10-23T19:35:08.821Z",
+  "sourceCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
   "deployment": "unverified-after-deploy",
   "scope": "authenticated AI availability UI and local shortcut; no business writes",
   "checks": [

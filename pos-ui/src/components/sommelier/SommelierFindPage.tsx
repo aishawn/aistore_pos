@@ -303,8 +303,8 @@ function chipClass(active: boolean) {
   return [
     "rounded-xl border px-3 py-3 text-left text-[14px] transition",
     active
-      ? "border-[var(--oh-primary)] bg-blue-50 text-blue-800 ring-1 ring-blue-100"
-      : "border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-blue-300 hover:bg-slate-50",
+      ? "border-[var(--oh-primary)] bg-[var(--oh-orange-light)] text-[var(--oh-primary)] ring-1 ring-[var(--oh-primary)]"
+      : "border-[var(--oh-border)] bg-white text-[var(--oh-text)] hover:border-[var(--oh-primary)] hover:bg-slate-50",
   ].join(" ");
 }
 

@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-10-23T10:26:52.846Z",
+  "sourceCommit": "c1dedadf58f70a54fc4593b760eedc3b53853aa0",
+  "runtimeCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only product-count chat UI, live answer, CTA navigation, and responsive layout; no business writes",
+  "results": [
+    {
+      "viewport": 390,
+      "status": "FAIL",
+      "visibleAnswer": "This store has 4491 sellable products in the catalogue. Open Products to browse.",
+      "productCountChecks": {
+        "hasLiveNumber": true,
+        "ctaVisible": true,
+        "deferredUntilClick": true,
+        "destinationPath": "/products/odoo",
+        "destinationCorrect": true,
+        "duplicateNavigationInAnswer": true,
+        "noHorizontalOverflow": true
+      }
+    },
+    {
+      "viewport": 1440,
+      "status": "FAIL",
+      "visibleAnswer": "This store has 4491 sellable products in the catalogue. Open Products to browse.",
+      "productCountChecks": {
+        "hasLiveNumber": true,
+        "ctaVisible": true,
+        "deferredUntilClick": true,
+        "destinationPath": "/products/odoo",
+        "destinationCorrect": true,
+        "duplicateNavigationInAnswer": true,
+        "noHorizontalOverflow": true
+      }
+    }
+  ],
+  "passed": 0,
+  "failed": 2,
+  "failures": [
+    {
+      "viewport": 390,
+      "reason": "PRODUCT_COUNT_CHAT_ASSERTION_FAILED"
+    },
+    {
+      "viewport": 1440,
+      "reason": "PRODUCT_COUNT_CHAT_ASSERTION_FAILED"
+    }
+  ]
+}

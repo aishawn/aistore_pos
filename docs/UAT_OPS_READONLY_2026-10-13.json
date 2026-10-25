@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T10:42:01.009Z",
-  "deployment": "5afdf2cb6816f76c82b43b028b4bfd019fff061f",
+  "generatedAt": "2026-10-22T07:16:30.870Z",
+  "deployment": "d54a9586f29250c87c4e853ebd30bf6431723cb5",
   "scope": "read-only production validation; no purchase order confirmed; close UI was cancelled; an invalid close request was rejected before any Odoo write",
   "checks": [
     {

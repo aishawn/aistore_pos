@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-10-23T01:55:20.091Z",
+  "sourceCommit": "1bc41771f6be6c28ccc0da84d2e8a7a73ae8b681",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.localhost:3101",
+  "environment": "local Next.js dev server; Playwright runner Node v24.19.0; browser API fixtures",
+  "routeCount": 1,
+  "routeFilter": [
+    "/pricelists"
+  ],
+  "viewports": [
+    390,
+    1440
+  ],
+  "checksPassed": 2,
+  "checksTotal": 2,
+  "failures": [],
+  "checks": [
+    {
+      "route": "/pricelists",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/pricelists",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    }
+  ],
+  "screenshots": [],
+  "interceptedWrites": [],
+  "interceptedReadOnlyRecordPosts": 0,
+  "productionBusinessWrites": 0,
+  "status": "PASS",
+  "screenshotDirectory": null
+}

@@ -22,8 +22,11 @@ const result = {
   worktreeDirty: Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim()),
   deploymentShaVerified: false,
   runtimeCommit: null,
+  frontendCommit: null,
+  backendCommit: null,
+  matchesSourceCommit: false,
   target: base,
-  scope: "read-only AI stock RPC diagnostic; no business writes",
+  scope: "read-only AI product-count and stock RPC diagnostic; no business writes",
   checks: [],
   writeBusinessData: false,
 };
@@ -33,6 +36,28 @@ const odooBase = env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
 const database = env.ODOO_DATABASE?.trim();
 const serviceUsername = env.ODOO_SERVICE_USERNAME?.trim();
 const servicePassword = env.ODOO_SERVICE_PASSWORD;
+
+try {
+  const versionResponse = await fetch(`${base}/api/public/version`, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(10000),
+  });
+  const version = await versionResponse.json().catch(() => ({}));
+  result.frontendCommit = version.frontend?.commit ?? null;
+  result.backendCommit = version.backend?.commit ?? null;
+  result.runtimeCommit = result.frontendCommit && result.frontendCommit === result.backendCommit
+    ? result.frontendCommit : null;
+  result.matchesSourceCommit = !result.worktreeDirty
+    && result.frontendCommit === result.sourceCommit
+    && result.backendCommit === result.sourceCommit;
+  check("runtime release identity", versionResponse.ok && result.runtimeCommit ? "PASS" : "BLOCKED", {
+    frontendCommit: result.frontendCommit,
+    backendCommit: result.backendCommit,
+    matchesSourceCommit: result.matchesSourceCommit,
+  });
+} catch {
+  check("runtime release identity", "BLOCKED", { detail: "Version endpoint is unavailable." });
+}
 
 if (!password || !odooBase || !database || !serviceUsername || !servicePassword) {
   check("diagnostic prerequisites", "BLOCKED", "Required local credentials/configuration are missing.");
@@ -51,6 +76,20 @@ if (!password || !odooBase || !database || !serviceUsername || !servicePassword)
     const sessionResponse = await context.request.get(`${base}/api/odoo/session`);
     const sessionBody = await sessionResponse.json().catch(() => ({}));
     const odooUser = sessionBody.data?.user ?? sessionBody.user;
+    const productsResponse = await context.request.post(`${base}/api/odoo/records`, {
+      data: { type: "products", limit: 20 },
+      headers: { Origin: base },
+    });
+    const productsPayload = await productsResponse.json().catch(() => ({}));
+    const storeProducts = Array.isArray(productsPayload.items) ? productsPayload.items : [];
+    const sampleProduct = storeProducts.find((item) =>
+      typeof (item.name ?? item.display_name) === "string" && (item.name ?? item.display_name).trim());
+    const sampleName = String(sampleProduct?.name ?? sampleProduct?.display_name ?? "").trim();
+    check("dynamic store product sample is available", productsResponse.ok && Boolean(sampleName) ? "PASS" : "BLOCKED", {
+      httpStatus: productsResponse.status(),
+      catalogueRows: storeProducts.length,
+      sampleNameOmitted: true,
+    });
     const companies = Array.isArray(odooUser?.allowedCompanyIds) ? odooUser.allowedCompanyIds : [];
     if (!sessionResponse.ok() || !odooUser || companies.length !== 1) {
       check("store Odoo company scope is available", "BLOCKED", {
@@ -91,6 +130,37 @@ if (!password || !odooBase || !database || !serviceUsername || !servicePassword)
             ? "No explicit warehouse id; application omits the warehouse context. Direct queries test both company and warehouse contexts."
             : undefined,
         });
+      let catalogueProductCount = null;
+      let catalogueCountAvailable = productsResponse.ok && Array.isArray(productsPayload.items);
+      if (catalogueCountAvailable) {
+        catalogueProductCount = storeProducts.length;
+        let hasNext = productsPayload.hasNext === true;
+        let offset = storeProducts.length;
+        while (hasNext) {
+          const pageResponse = await context.request.post(`${base}/api/odoo/records`, {
+            data: { type: "products", limit: 100, offset },
+            headers: { Origin: base },
+          });
+          const pagePayload = await pageResponse.json().catch(() => ({}));
+          if (!pageResponse.ok || !Array.isArray(pagePayload.items)) {
+            catalogueCountAvailable = false;
+            catalogueProductCount = null;
+            break;
+          }
+          catalogueProductCount += pagePayload.items.length;
+          hasNext = pagePayload.hasNext === true;
+          offset += pagePayload.items.length;
+          if (pagePayload.items.length === 0 || offset > 100000) {
+            catalogueCountAvailable = false;
+            catalogueProductCount = null;
+            break;
+          }
+        }
+      }
+      check("store product directory can be counted", catalogueCountAvailable ? "PASS" : "BLOCKED", {
+        productCount: catalogueProductCount,
+        companyIdentityOmitted: true,
+      });
       const authResponse = await fetch(`${odooBase}/web/session/authenticate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -109,6 +179,133 @@ if (!password || !odooBase || !database || !serviceUsername || !servicePassword)
         check("AI service account can authenticate to Odoo", "BLOCKED", { httpStatus: authResponse.status });
       } else {
         const contextValue = { allowed_company_ids: [companyId], force_company: companyId, tz: "Australia/Adelaide" };
+        const companyDomain = ["|", ["company_id", "=", false], ["company_id", "=", companyId]];
+        const tenantCompanyDomain = [["company_id", "=", companyId]];
+        const countPrefix = [["active", "=", true], ["available_in_pos", "=", true]];
+        const countByDomain = async (domain) => {
+          const response = await fetch(`${odooBase}/web/dataset/call_kw`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSessionId}` },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "call",
+              params: {
+                model: "product.product",
+                method: "search_count",
+                args: [domain],
+                kwargs: { context: contextValue },
+              },
+              id: Date.now(),
+            }),
+            signal: AbortSignal.timeout(20000),
+          });
+          const payload = await response.json().catch(() => ({}));
+          return {
+            response,
+            payload,
+            count: Number.isSafeInteger(payload.result) && payload.result >= 0 ? payload.result : null,
+          };
+        };
+        const [tenantCount, sharedCount, inclusiveCount] = await Promise.all([
+          countByDomain([...countPrefix, ...tenantCompanyDomain]),
+          countByDomain([...countPrefix, ["company_id", "=", false]]),
+          countByDomain([...countPrefix, ...companyDomain]),
+        ]);
+        const odooProductCount = tenantCount.count;
+        for (const [label, counted] of [
+          ["tenant company", tenantCount],
+          ["shared products", sharedCount],
+          ["tenant plus shared", inclusiveCount],
+        ]) {
+          check(`Odoo ${label} sellable product search_count`, counted.response.ok && !counted.payload.error
+            && counted.count !== null ? "PASS" : "BLOCKED", {
+            httpStatus: counted.response.status,
+            productCount: counted.count,
+            rpcErrorType: String(counted.payload.error?.data?.name ?? counted.payload.error?.name ?? "")
+              .split(".").at(-1).replace(/[^A-Za-z0-9_]/g, "").slice(0, 64) || null,
+            companyIdentityOmitted: true,
+          });
+        }
+        if (catalogueProductCount !== null && odooProductCount !== null) {
+          check("local Odoo service-account count matches the store directory",
+            catalogueProductCount === odooProductCount ? "PASS" : "INFO", {
+              storeDirectoryCount: catalogueProductCount,
+              localServiceAccountSearchCount: odooProductCount,
+              equal: catalogueProductCount === odooProductCount,
+              credentialContext: "Uses local ODOO_SERVICE_USERNAME; not asserted as the remote backend identity.",
+            });
+        } else {
+          check("local Odoo service-account count matches the store directory", "BLOCKED", {
+            storeDirectoryCountAvailable: catalogueProductCount !== null,
+            odooSearchCountAvailable: odooProductCount !== null,
+          });
+        }
+        const assistantResponse = await context.request.post(`${base}/api/ai/assistant`, {
+          data: { question: "How many products do we have?", surface: "chat" },
+          headers: { Origin: base },
+          timeout: 45000,
+        });
+        const assistantPayload = await assistantResponse.json().catch(() => ({}));
+        const assistantData = assistantPayload.data ?? {};
+        const answer = typeof assistantData.answer === "string" ? assistantData.answer : "";
+        const answerCount = answer.match(/\b\d+\b/)?.[0] ?? null;
+        const unavailable = /unavailable|暂不可用|无法获取|无法读取/i.test(answer);
+        check("Assistant product count returns a numeric result", assistantResponse.ok
+          && assistantPayload.code === 0 && answerCount !== null && !unavailable ? "PASS"
+            : unavailable ? "BLOCKED" : "FAIL", {
+          httpStatus: assistantResponse.status(),
+          intent: assistantData.intent ?? null,
+          answerCount: answerCount === null ? null : Number(answerCount),
+          matchesOdooCount: answerCount === null || odooProductCount === null
+            ? null : Number(answerCount) === odooProductCount,
+          matchesStoreDirectory: answerCount === null || catalogueProductCount === null
+            ? null : Number(answerCount) === catalogueProductCount,
+          runtimeCommit: result.runtimeCommit,
+          writeRequests: assistantData.writeRequests ?? [],
+          answerOmitted: true,
+        });
+        if (answerCount !== null && catalogueProductCount !== null) {
+          check("Assistant product count matches the store directory",
+            Number(answerCount) === catalogueProductCount ? "PASS" : "FAIL", {
+              assistantCount: Number(answerCount),
+              storeDirectoryCount: catalogueProductCount,
+              equal: Number(answerCount) === catalogueProductCount,
+              frontendCommit: result.frontendCommit,
+              backendCommit: result.backendCommit,
+            });
+        } else {
+          check("Assistant product count matches the store directory", "BLOCKED", {
+            assistantCountAvailable: answerCount !== null,
+            storeDirectoryCountAvailable: catalogueProductCount !== null,
+          });
+        }
+        const sampleResponse = await fetch(`${odooBase}/web/dataset/call_kw`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSessionId}` },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "call",
+            params: {
+              model: "product.product",
+              method: "search_read",
+              args: [[["active", "=", true], ...companyDomain]],
+              kwargs: { fields: ["id", "name", "display_name"], limit: 20, order: "id asc", context: contextValue },
+            },
+            id: Date.now(),
+          }),
+          signal: AbortSignal.timeout(20000),
+        });
+        const samplePayload = await sampleResponse.json().catch(() => ({}));
+        const serviceProducts = Array.isArray(samplePayload.result) ? samplePayload.result : [];
+        const serviceSample = serviceProducts.find((item) => String(item.id) === String(sampleProduct?.id));
+        const aiSampleName = sampleName;
+        check("AI service account has a tenant-scoped active product sample", sampleResponse.ok
+          && !samplePayload.error && Boolean(serviceSample) ? "PASS" : "BLOCKED", {
+          httpStatus: sampleResponse.status,
+          matchingRows: serviceProducts.length,
+          storeCatalogueSampleMatchesById: Boolean(serviceSample),
+          productNameOmitted: true,
+        });
         const companyResponse = await fetch(`${odooBase}/web/dataset/call_kw`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Cookie: `session_id=${odooSessionId}` },
@@ -135,24 +332,28 @@ if (!password || !odooBase || !database || !serviceUsername || !servicePassword)
           rpcErrorType: companyErrorName.split(".").at(-1).replace(/[^A-Za-z0-9_]/g, "").slice(0, 64) || null,
           companyIdentityOmitted: true,
         });
-        const catalogueDomain = [
-          ["available_in_pos", "=", true], ["company_id", "in", [companyId]],
-          "|", "|", ["name", "ilike", "VB Cans"], ["barcode", "ilike", "VB Cans"],
-          ["default_code", "ilike", "VB Cans"],
+        const sampleNameDomain = aiSampleName ? [["name", "ilike", aiSampleName]] : [];
+        const currentAiDomain = [
+          ["active", "=", true], ["available_in_pos", "=", true], ...companyDomain, ...sampleNameDomain,
         ];
-        const aiDomain = [
-          ["active", "=", true], ["available_in_pos", "=", true], "|",
-          ["company_id", "=", false], ["company_id", "=", companyId], ["name", "ilike", "VB Cans"],
+        const stockDomain = [["active", "=", true], ...companyDomain, ...sampleNameDomain];
+        const catalogueDomain = [
+          ["available_in_pos", "=", true], ...companyDomain, ...sampleNameDomain,
         ];
         const rpcCases = [
           { name: "minimal product read", domain: [], fields: ["id"], context: {} },
-          { name: "company-scoped product read", domain: [["company_id", "in", [companyId]]], fields: ["id"], context: contextValue },
+          { name: "active product filter", domain: [["active", "=", true]], fields: ["id"], context: contextValue },
+          { name: "POS product filter", domain: [["available_in_pos", "=", true]], fields: ["id"], context: contextValue },
+          { name: "tenant company visibility filter", domain: companyDomain, fields: ["id"], context: contextValue },
+          { name: "sample product name filter", domain: sampleNameDomain, fields: ["id", "display_name"], context: contextValue },
           { name: "store catalogue filter read", domain: catalogueDomain, fields: ["id", "name", "display_name", "qty_available", "free_qty"], context: contextValue },
-          { name: "AI product domain without stock fields", domain: aiDomain, fields: ["id", "display_name"], context: contextValue },
-          { name: "AI product domain with stock fields", domain: aiDomain, fields: ["id", "display_name", "free_qty", "qty_available"], context: contextValue },
+          { name: "current AI stock domain without stock fields", domain: currentAiDomain, fields: ["id", "display_name"], context: contextValue },
+          { name: "current AI stock domain with stock fields", domain: currentAiDomain, fields: ["id", "display_name", "free_qty", "qty_available"], context: contextValue },
+          { name: "tenant-scoped inventory domain without POS filter", domain: stockDomain, fields: ["id", "display_name"], context: contextValue },
+          { name: "tenant-scoped inventory domain with stock fields", domain: stockDomain, fields: ["id", "display_name", "free_qty", "qty_available"], context: contextValue },
           ...(boundWarehouseId ? [{
-            name: "AI product domain with bound warehouse context",
-            domain: aiDomain,
+            name: "tenant-scoped inventory domain with bound warehouse context",
+            domain: stockDomain,
             fields: ["id", "display_name", "free_qty", "qty_available"],
             context: { ...contextValue, warehouse: boundWarehouseId },
           }] : []),
@@ -232,6 +433,7 @@ if (!password || !odooBase || !database || !serviceUsername || !servicePassword)
             warehouseNamesAndIdsOmitted: true,
           });
           for (let index = 0; index < warehouses.length; index++) {
+            if (!aiSampleName) break;
             const warehouseId = Number(warehouses[index]?.id);
             if (!Number.isSafeInteger(warehouseId) || warehouseId <= 0) continue;
             const response = await fetch(`${odooBase}/web/dataset/call_kw`, {
@@ -243,7 +445,7 @@ if (!password || !odooBase || !database || !serviceUsername || !servicePassword)
                 params: {
                   model: "product.product",
                   method: "search_read",
-                  args: [aiDomain],
+                  args: [stockDomain],
                   kwargs: {
                     fields: ["id", "display_name", "free_qty", "qty_available"],
                     limit: 51,

@@ -186,6 +186,7 @@ services:
       # an optional least-privilege service account can restore sessions.
       ODOO_BASE_URL: ${ODOO_BASE_URL:-https://odoo.orithos.com.au}
       ODOO_DATABASE: ${ODOO_DATABASE:-aipos}
+      ODOO_CATEGORY_WRITE_ENABLED: ${ODOO_CATEGORY_WRITE_ENABLED:-false}
       ISOLATION_ODOO_DATABASE: ${ISOLATION_ODOO_DATABASE:-}
       ODOO_SERVICE_USERNAME: ${ODOO_SERVICE_USERNAME:-}
       ODOO_SERVICE_PASSWORD: ${ODOO_SERVICE_PASSWORD:-}

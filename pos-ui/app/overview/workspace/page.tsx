@@ -1,5 +1,5 @@
-import { OrithosOverviewWorkspacePage } from "@/components/OrithosOverviewWorkspacePage";
+import { redirect } from "next/navigation";
 
 export default function OverviewWorkspacePage() {
-  return <OrithosOverviewWorkspacePage />;
+  redirect("/dashboard/workspace");
 }

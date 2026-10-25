@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3035";
+if (!new URL(base).hostname.endsWith(".localhost")) throw new Error("LOCAL_TENANT_FIXTURE_TARGET_REQUIRED");
 const outputPath = path.resolve(root, process.env.PILOT_UAT_OUTPUT_PATH ?? "docs/UAT_VENDOR_CONNECTIONS_RESPONSIVE_LOCAL_2026-10-20.json");
 const screenshotDir = path.resolve(root, process.env.PILOT_SCREENSHOT_DIR ?? "docs/screenshots/2026-10-21-vendor-connections-responsive");
 fs.mkdirSync(screenshotDir, { recursive: true });
@@ -14,7 +15,10 @@ const vendor = { id: "vendor-1", name: "Demo EDI Vendor", senderCode: "SENDER-01
 const viewports = [320, 390, 768, 1024, 1440].map((width) => ({ width, height: width < 1280 ? 844 : 900 }));
 const checks = [];
 const blockedWrites = [];
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--no-proxy-server", "--host-resolver-rules=MAP demo.localhost 127.0.0.1"],
+});
 
 try {
   for (const viewport of viewports) {
@@ -82,6 +86,7 @@ const failures = checks.filter((check) => check.httpStatus !== 200 || !check.hea
 const output = {
   generatedAt: new Date().toISOString(),
   sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+  nodeVersion: process.version,
   environment: "local-dev-fixtures",
   target: base,
   scope: "Vendor Connections responsive cards/tables, sender/customer identifiers, edit/delete controls at 320/390/768/1024/1440; API requests intercepted; no business writes",

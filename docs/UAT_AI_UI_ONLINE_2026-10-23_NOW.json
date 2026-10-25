@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-22T21:03:10.174Z",
+  "sourceCommit": "e21a794356594de3aed15805664dc0fcac482c5f",
+  "deployment": "unverified-after-deploy",
+  "scope": "authenticated read-only AI UI regression; no sales, feedback, or configuration writes",
+  "checks": 1,
+  "passed": 0,
+  "failed": 1,
+  "failures": [
+    {
+      "failure": "SOMMELIER_CARD_CTA_LABEL_INVALID_390"
+    }
+  ],
+  "results": [
+    {
+      "failure": "SOMMELIER_CARD_CTA_LABEL_INVALID_390"
+    }
+  ]
+}

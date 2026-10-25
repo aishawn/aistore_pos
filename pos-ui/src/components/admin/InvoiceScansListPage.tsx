@@ -56,7 +56,8 @@ const STATUS_FILTERS = [
   { value: "failed", label: "Failed" },
 ] as const;
 
-export function InvoiceScansListPage() {
+export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean }) {
+  const Container = embedded ? "section" : "main";
   const [items, setItems] = useState<InvoiceScanSession[]>([]);
   const [total, setTotal] = useState(0);
   const [status, setStatus] = useState("");
@@ -96,12 +97,12 @@ export function InvoiceScansListPage() {
   }, [load]);
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
+    <Container className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
       <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Documents</p>
-            <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Supplier invoices</h1>
+            {!embedded && <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">Supplier invoices</h1>}
             <p className="mt-1 text-sm text-[var(--oh-muted)]">
               Capture → match to Products → confirm PO → receive stock. Scanning alone does not update inventory.
             </p>
@@ -183,7 +184,7 @@ export function InvoiceScansListPage() {
           )}
 
           {items.length > 0 && (
-            <section className="overflow-hidden rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+            <section className="overflow-x-auto rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
               <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                   <tr>
@@ -238,6 +239,6 @@ export function InvoiceScansListPage() {
           </section>
         </div>
       </div>
-    </main>
+    </Container>
   );
 }

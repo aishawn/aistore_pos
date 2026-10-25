@@ -1,87 +1,40 @@
-import { BarChart3, Info } from "lucide-react";
+"use client";
 
-interface Panel {
-  label: string;
-  value: string;
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BarChart3, Download, Info, LoaderCircle, RefreshCw, Search } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/lib/api";
 
-/** Shared read-only report preview for legacy report routes. */
-export function ReportBuilder({
-  title,
-  query,
-  panels,
-  columns,
-}: {
-  title: string;
-  query: React.ReactNode;
-  panels: Panel[];
-  columns: string[];
-  /** Accepted for compatibility with legacy route fixtures; previews contain no rows or totals. */
-  totals?: Array<string | null>;
-}) {
-  const tableMinWidth = Math.max(720, columns.length * 104);
+interface Panel { label: string; value: string; }
+interface ReportPayload { data?: { columns?: string[]; data?: Array<Record<string, unknown>>; totals?: Record<string, unknown> }; completed?: boolean; }
+const RANGE_OPTIONS = [
+  { value: "day", label: "Today", token: "RANGE DAY" },
+  { value: "week", label: "This week", token: "RANGE WEEK" },
+  { value: "month", label: "This month", token: "RANGE MONTH" },
+  { value: "last-month", label: "Last month", token: "LAST MONTH" },
+] as const;
+function csvValue(value: unknown) { return `"${String(value ?? "").replaceAll('"', '""')}"`; }
 
-  return (
-    <main className="h-full overflow-auto bg-[var(--oh-surface)] p-3 font-sans sm:p-4 lg:p-6">
-      <header className="mb-4">
-        <p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Reports</p>
-        <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{title}</h1>
-      </header>
-
-      <div role="status" className="mb-4 flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-950">
-        <Info size={18} className="mt-1 shrink-0 text-sky-700" aria-hidden="true" />
-        <div>
-          <p className="font-semibold">Static preview · no live Odoo data</p>
-          <p>Filters and report definitions are examples. This page does not load live sales, stock, purchase or transfer data.</p>
-        </div>
-      </div>
-
-      <section aria-label="Example filters" className="mb-4">
-        <h2 className="oh-type-label mb-2 font-semibold text-[var(--oh-text)]">Example filters</h2>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          {panels.map((panel) => (
-            <div key={panel.label} className="flex min-h-[68px] min-w-0 flex-col justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 py-2.5 shadow-[var(--oh-shadow-card)]">
-              <span className="oh-type-meta font-medium text-[var(--oh-muted)]">{panel.label}</span>
-              <span className="oh-type-body-strong mt-0.5 text-[var(--oh-text)]">{panel.value}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <details className="mb-4 rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-        <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-paper)]">
-          Example report definition
-        </summary>
-        <div className="border-t border-[var(--oh-border)] px-4 py-3">
-          <code className="block overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-5 text-[var(--oh-muted)]">{query}</code>
-        </div>
-      </details>
-
-      <section aria-label={`${title} results`} className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm" style={{ minWidth: `${tableMinWidth}px` }}>
-            <thead>
-              <tr className="border-b border-[var(--oh-border)] bg-[var(--oh-paper)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
-                {columns.map((column, index) => (
-                  <th key={column} scope="col" className={`px-3 py-3 ${index === 0 ? "text-left" : "text-right"}`}>
-                    {column}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={columns.length} className="h-36 border-b border-[var(--oh-border)] px-4 text-center text-[var(--oh-muted)]">
-                  <span className="inline-flex flex-col items-center gap-2 text-sm">
-                    <BarChart3 size={20} className="text-[var(--oh-border-strong)]" aria-hidden="true" />
-                    No sample rows are available in this preview.
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
-  );
+/** Shared Odoo-backed report surface for Sales, Inventory and legacy report routes. */
+export function ReportBuilder({ title, query, panels, columns }: { title: string; query: React.ReactNode; panels: Panel[]; columns: string[]; totals?: Array<string | null> }) {
+  const router = useRouter(); const pathname = usePathname(); const searchParams = useSearchParams();
+  const initialRange = searchParams.get("range") ?? (pathname.includes("weekly") ? "week" : pathname.includes("month") ? "month" : "day");
+  const initialSearch = searchParams.get("search") ?? "";
+  const [range, setRange] = useState(initialRange); const [search, setSearch] = useState(initialSearch); const [appliedSearch, setAppliedSearch] = useState(initialSearch);
+  const [payload, setPayload] = useState<ReportPayload | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const rangeConfig = RANGE_OPTIONS.find((option) => option.value === range) ?? RANGE_OPTIONS[0];
+  const baseQuery = useMemo(() => `${String(query)} ${rangeConfig.token}${appliedSearch ? ` SEARCH ${appliedSearch}` : ""}`, [query, rangeConfig.token, appliedSearch]);
+  const resultColumns = payload?.data?.columns?.length ? payload.data.columns : columns; const rows = payload?.data?.data ?? []; const totals = payload?.data?.totals ?? {};
+  const load = useCallback(async () => { setLoading(true); setError(null); try { const result = await api.post<ReportPayload>("/api/reports", { query: baseQuery, cache: { id: `${pathname}:${range}:${appliedSearch}` } }); setPayload(result); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not load this report."); setPayload(null); } finally { setLoading(false); } }, [baseQuery, pathname, range, appliedSearch]);
+  useEffect(() => { void load(); }, [load]);
+  function updateFilter(nextRange: string) { setRange(nextRange); const params = new URLSearchParams(searchParams.toString()); params.set("range", nextRange); router.replace(`${pathname}?${params.toString()}`, { scroll: false }); }
+  function submitSearch() { setAppliedSearch(search.trim()); const params = new URLSearchParams(searchParams.toString()); if (search.trim()) params.set("search", search.trim()); else params.delete("search"); router.replace(`${pathname}?${params.toString()}`, { scroll: false }); }
+  function exportCsv() { const header = resultColumns.map(csvValue).join(","); const body = rows.map((row) => resultColumns.map((column) => csvValue(row[column])).join(",")).join("\n"); const blob = new Blob([`${header}\n${body}\n`], { type: "text/csv;charset=utf-8" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${title.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}.csv`; link.click(); URL.revokeObjectURL(url); }
+  return <main className="h-full overflow-auto bg-[var(--oh-surface)] p-3 font-sans sm:p-4 lg:p-6">
+    <header className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="oh-type-meta font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Reports</p><h1 className="oh-type-title mt-1 text-[var(--oh-text)]">{title}</h1></div><div className="flex items-center gap-2"><button type="button" onClick={() => void load()} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)]"><RefreshCw size={15} /> Refresh</button><button type="button" onClick={exportCsv} disabled={!rows.length} className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white disabled:opacity-50"><Download size={15} /> Export</button></div></header>
+    <section aria-label="Report filters" className="mb-4 rounded-lg border border-[var(--oh-border)] bg-white p-3 shadow-[var(--oh-shadow-card)]"><div className="flex flex-wrap items-end gap-3"><label className="min-w-[180px] flex-1"><span className="oh-type-meta mb-1 block font-semibold text-[var(--oh-text-secondary)]">Search</span><span className="flex h-10 items-center gap-2 rounded-md border border-[var(--oh-border)] px-3"><Search size={15} className="text-[var(--oh-muted)]" /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submitSearch(); }} placeholder="Search report rows" className="min-w-0 flex-1 bg-transparent text-sm outline-none" /><button type="button" onClick={submitSearch} aria-label="Apply search" className="text-[var(--oh-primary)]"><Search size={15} /></button></span></label><div><span className="oh-type-meta mb-1 block font-semibold text-[var(--oh-text-secondary)]">Date range</span><div className="flex flex-wrap gap-1 rounded-md border border-[var(--oh-border)] p-1">{RANGE_OPTIONS.map((option) => <button key={option.value} type="button" aria-pressed={range === option.value} onClick={() => updateFilter(option.value)} className={`min-h-8 rounded px-2.5 text-xs font-semibold ${range === option.value ? "bg-[var(--oh-primary)] text-white" : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)]"}`}>{option.label}</button>)}</div></div><label className="min-w-[150px]"><span className="oh-type-meta mb-1 block font-semibold text-[var(--oh-text-secondary)]">Outlet</span><select className="h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm"><option>All outlets</option></select></label></div></section>
+    <section aria-label="Report summary" className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">{panels.slice(0, 5).map((panel) => <div key={panel.label} className="flex min-h-[68px] flex-col justify-center rounded-lg border border-[var(--oh-border)] bg-white px-4 py-2.5 shadow-[var(--oh-shadow-card)]"><span className="oh-type-meta font-medium text-[var(--oh-muted)]">{panel.label}</span><span className="oh-type-body-strong mt-0.5 text-[var(--oh-text)]">{panel.label in totals ? String(totals[panel.label]) : panel.value}</span></div>)}</section>
+    <details className="mb-4 rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]"><summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-paper)]"><Info size={16} /> Report definition</summary><div className="border-t border-[var(--oh-border)] px-4 py-3"><code className="block overflow-x-auto whitespace-pre-wrap break-words font-mono text-xs leading-5 text-[var(--oh-muted)]">{baseQuery}</code></div></details>
+    <section aria-label={`${title} results`} className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">{error ? <div role="alert" className="flex items-center justify-between gap-3 p-5 text-sm text-red-800"><span>{error}</span><button type="button" onClick={() => void load()} className="inline-flex min-h-10 items-center gap-1 rounded-md border border-red-300 px-3 font-semibold"><RefreshCw size={14} /> Retry</button></div> : loading ? <div className="grid min-h-40 place-items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle className="animate-spin" size={20} /> Loading live Odoo data…</div> : rows.length === 0 ? <div className="grid min-h-40 place-items-center gap-2 p-5 text-center text-sm text-[var(--oh-muted)]"><BarChart3 size={20} /><span>No rows match this report and date range.</span></div> : <div className="overflow-x-auto"><table className="w-full border-collapse text-sm" style={{ minWidth: `${Math.max(720, resultColumns.length * 104)}px` }}><thead><tr className="border-b border-[var(--oh-border)] bg-[var(--oh-paper)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">{resultColumns.map((column, index) => <th key={column} scope="col" className={`px-3 py-3 ${index === 0 ? "text-left" : "text-right"}`}>{column}</th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={String(row._unsorted_index ?? rowIndex)} className="border-b border-[var(--oh-border)] last:border-0 hover:bg-[var(--oh-surface)]">{resultColumns.map((column, columnIndex) => <td key={column} className={`px-3 py-2.5 tabular-nums ${columnIndex === 0 ? "text-left text-[var(--oh-text)]" : "text-right text-[var(--oh-text-secondary)]"}`}>{String(row[column] ?? "—")}</td>)}</tr>)}</tbody></table></div>}</section>
+  </main>;
 }

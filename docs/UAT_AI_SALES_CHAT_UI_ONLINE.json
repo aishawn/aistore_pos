@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-10-23T20:16:50.091Z",
+  "sourceCommit": "c4923c641669451fd72d36408327c6318e598c3f",
+  "runtimeCommit": "b36f35edc1d9bc4d3e9f0c69c2c1af50ff808b73",
+  "target": "https://demo.orithos.com.au",
+  "scope": "read-only screenshot regression for single-day sales wording; no business writes",
+  "results": [
+    {
+      "viewport": 390,
+      "status": "PASS",
+      "visibleAnswer": "Sales for 2026-10-16 total AUD 12.99 (1 day)."
+    },
+    {
+      "viewport": 1440,
+      "status": "PASS",
+      "visibleAnswer": "Sales for 2026-10-16 total AUD 12.99 (1 day)."
+    }
+  ],
+  "passed": 2,
+  "failed": 0,
+  "failures": []
+}

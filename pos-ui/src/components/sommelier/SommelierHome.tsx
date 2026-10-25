@@ -35,10 +35,16 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
 
   return (
     <SommelierShell
-      title="Wine Assistant"
+      title="Wine · Recommend"
       subtitle="Help the customer find the right bottle from this store — then help sell it."
     >
       <div className="grid gap-4">
+        <p className="text-[13px] text-[var(--oh-muted)]">
+          <Link href={mobile ? "/m" : "/recommend"} className="font-semibold text-[var(--oh-primary)]">
+            ← All recommendations
+          </Link>
+          {" "}(Wine and Grocery)
+        </p>
         {aiEnabled === false ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-5 text-amber-950">
             Store AI chat and label photos are off. Find a wine still matches this store&apos;s catalogue; name and barcode search still work on Identify.
@@ -46,7 +52,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
         ) : null}
         <Link
           href={findHref}
-          className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-blue-300 hover:shadow-md sm:p-6"
+          className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)] hover:shadow-md sm:p-6"
         >
           <div className="flex items-center gap-2 text-[var(--oh-primary)]">
             <Sparkles size={20} />
@@ -60,7 +66,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
 
         <Link
           href={identifyHref}
-          className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-blue-300 hover:shadow-md sm:p-6"
+          className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)] hover:shadow-md sm:p-6"
         >
           <div className="flex items-center gap-2 text-[var(--oh-primary)]">
             <Camera size={20} />
@@ -80,7 +86,7 @@ export function SommelierHome({ showPosAssistant = false }: { showPosAssistant?:
           <button
             type="button"
             onClick={() => ai?.setExpanded(true)}
-            className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left text-[14px] text-[var(--oh-text)] transition hover:border-blue-300 hover:bg-blue-50"
+            className="flex min-h-12 items-center gap-3 rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left text-[14px] text-[var(--oh-text)] transition hover:border-[var(--oh-primary)] hover:bg-[var(--oh-orange-light)]"
           >
             <Search size={18} className="text-[var(--oh-muted)]" />
             <span>
