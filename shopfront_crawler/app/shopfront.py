@@ -62,6 +62,7 @@ class ShopfrontClient:
     async def run_report(self, access_token: str, query: str) -> list[dict[str, Any]]:
         pages: list[dict[str, Any]] = []
         key: str | None = None
+        seen_keys: set[str] = set()
         while True:
             payload: dict[str, Any] = {"query": query, "disableFormat": False, "ignoreDivisionByZero": True}
             if key:
@@ -75,6 +76,11 @@ class ShopfrontClient:
             key = data.get("key")
             if not key:
                 raise ShopfrontError("Incomplete report has no continuation key")
+            if key in seen_keys:
+                raise ShopfrontError("Incomplete report repeated its continuation key")
+            seen_keys.add(key)
+            if len(seen_keys) >= 100:
+                raise ShopfrontError("Incomplete report exceeded 100 pages")
         rows: list[dict[str, Any]] = []
         for page in pages:
             report_data = (page.get("data") or {}).get("data", [])
