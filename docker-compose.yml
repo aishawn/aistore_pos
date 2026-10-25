@@ -25,8 +25,9 @@ services:
     build:
       context: ./pos-api
       dockerfile: Dockerfile
-      args:
-        SOURCE_COMMIT: ${SOURCE_COMMIT:-}
+      additional_contexts:
+        git_metadata: .git
+        build_metadata: ./build-metadata
     image: orithos-backend:latest
     restart: unless-stopped
     # The R2 worker owns the shared archive volume as UID 10001 / GID 1001.
@@ -127,8 +128,10 @@ services:
       context: ./pos-ui
       dockerfile: Dockerfile
       target: runner
+      additional_contexts:
+        git_metadata: .git
+        build_metadata: ./build-metadata
       args:
-        SOURCE_COMMIT: ${SOURCE_COMMIT:-}
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
         NEXT_PUBLIC_TENANT_BASE_DOMAIN: ${APP_TENANT_BASE_DOMAIN:-orithos.com.au}
         NEXT_PUBLIC_TENANT_SCHEME: ${APP_TENANT_SCHEME:-https}

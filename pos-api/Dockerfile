@@ -11,8 +11,10 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q dependency:go-offline
 
 # Build
 COPY src ./src
-ARG SOURCE_COMMIT=
-RUN printf 'commit=%s\nbuiltAt=%s\n' "$SOURCE_COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/main/resources/build-identity.properties
+RUN --mount=type=bind,from=git_metadata,target=/source-git,ro \
+  --mount=type=bind,from=build_metadata,target=/build-metadata,ro \
+  SOURCE_COMMIT="$(sh /build-metadata/read-source-commit.sh /source-git)" && \
+  printf 'commit=%s\nbuiltAt=%s\n' "$SOURCE_COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > src/main/resources/build-identity.properties
 # The exact Java 21 image candidate must pass the full Maven test suite before packaging.
 RUN --mount=type=cache,target=/root/.m2 mvn -B clean verify
 
