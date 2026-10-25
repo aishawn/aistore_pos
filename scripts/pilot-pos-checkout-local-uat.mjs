@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const base = process.env.PILOT_BASE_URL ?? "http://demo.localhost:3101";
+const base = process.env.PILOT_BASE_URL ?? "http://localhost:3101";
 const targetUrl = new URL(base);
 if (!/^(localhost|127\.0\.0\.1|[\w-]+\.localhost)$/.test(targetUrl.hostname)) {
   throw new Error("The POS checkout fixture only accepts a localhost target.");
@@ -14,8 +14,8 @@ if (!/^(localhost|127\.0\.0\.1|[\w-]+\.localhost)$/.test(targetUrl.hostname)) {
 
 const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
 const sourceTreeDirty = Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim());
-const screenshotDir = path.resolve(root, "docs/screenshots/2026-10-24-pos-checkout-local");
-const outputPath = path.resolve(root, "docs/UAT_POS_CHECKOUT_LOCAL_2026-10-24.json");
+const screenshotDir = path.resolve(root, "docs/screenshots/2026-10-26-pos-checkout-quote");
+const outputPath = path.resolve(root, "docs/UAT_POS_CHECKOUT_QUOTE_LOCAL_2026-10-26.json");
 fs.mkdirSync(screenshotDir, { recursive: true });
 
 const user = { id: "fixture-user", username: "pos-checkout-fixture", name: "POS Checkout Fixture", isAdmin: true, vendorId: 41, outletId: 1 };
@@ -26,15 +26,19 @@ function product() {
   return { id: 11, name: "Fixture Product", display_name: "Fixture Product", barcode: false, default_code: "FX-11", list_price: 12.5, taxes_id: [1], price_included: 12.5, price_tax: 1.14, qty_available: 8, free_qty: 8, uom_id: [1, "Units"], pos_categ_ids: [1], available_in_pos: true };
 }
 
-async function newRegister({ method = "cash", checkoutMode = "success" } = {}) {
+async function newRegister({ method = "cash", checkoutMode = "success", quoteMode = "success" } = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
   const writes = [];
   const checkoutBodies = [];
   let checkoutCount = 0;
+  let quoteCount = 0;
   let statusCount = 0;
   let releaseCheckout;
   const checkoutGate = new Promise((resolve) => { releaseCheckout = resolve; });
-  await context.addCookies([{ name: "orithos_access_token", value: "pos-checkout-fixture", url: base }]);
+  await context.addCookies([
+    { name: "orithos_access_token", value: "pos-checkout-fixture", url: base },
+    { name: "orithos_local_preview", value: "1", url: base },
+  ]);
   await context.addInitScript((fixtureUser) => {
     localStorage.setItem("sf_token", "pos-checkout-fixture");
     localStorage.setItem("sf_user", JSON.stringify(fixtureUser));
@@ -63,8 +67,10 @@ async function newRegister({ method = "cash", checkoutMode = "success" } = {}) {
       return fulfill({ items: [], limit: body.limit ?? 50, offset: body.offset ?? 0, hasNext: false });
     }
     if (url.pathname === "/api/odoo/checkout/quote" && methodName === "POST") {
+      quoteCount += 1;
+      if (quoteMode === "first-error" && quoteCount === 1) return fulfill({ message: "Orithos did not return a cart total in time. Retry quote before finalising." }, 504);
       const body = request.postDataJSON();
-      return fulfill({ subtotal: 11.36, tax: 1.14, total: 12.5, unroundedTotal: 12.5, lines: body.lines.map((line) => ({ productId: line.productId, quantity: line.quantity, uomFactor: line.uomFactor ?? 1, subtotal: 11.36, tax: 1.14, total: 12.5 })) });
+      return fulfill({ priceSource: "register", currency: "AUD", subtotal: 11.36, tax: 1.14, total: 12.5, unroundedTotal: 12.5, lines: body.lines.map((line) => ({ productId: line.productId, quantity: line.quantity, uomFactor: line.uomFactor ?? 1, subtotal: 11.36, tax: 1.14, total: 12.5 })) });
     }
     if (url.pathname === "/api/odoo/checkout" && methodName === "POST") {
       writes.push(`${methodName} ${url.pathname}`);
@@ -87,28 +93,29 @@ async function newRegister({ method = "cash", checkoutMode = "success" } = {}) {
     return fulfill({ items: [] });
   });
   await page.goto(`${base}/register/odoo`, { waitUntil: "domcontentloaded", timeout: 45000 });
-  await page.getByRole("combobox", { name: "Search products by name, barcode or code" }).waitFor({ state: "visible" });
+  const productSearch = page.getByRole("combobox", { name: "Search products by name, barcode or code" });
+  await productSearch.waitFor({ state: "visible" });
+  await productSearch.fill("Fixture");
   await page.getByRole("option", { name: /Fixture Product/ }).waitFor({ state: "visible" });
-  return { context, page, writes, checkoutBodies, releaseCheckout, get checkoutCount() { return checkoutCount; }, get statusCount() { return statusCount; }, pageErrors };
+  return { context, page, writes, checkoutBodies, releaseCheckout, get checkoutCount() { return checkoutCount; }, get quoteCount() { return quoteCount; }, get statusCount() { return statusCount; }, pageErrors };
 }
 
 try {
   const empty = await newRegister();
-  const finalise = empty.page.getByRole("button", { name: "Finalise" });
-  assert.equal(await finalise.isDisabled(), true, "empty cart must not be finalisable");
-  checks.push({ id: "empty-cart-disabled", status: "PASS" });
+  assert.equal(await empty.page.getByRole("button", { name: /Finalise Sale/ }).count(), 0, "empty cart must not show a finalise button");
+  checks.push({ id: "empty-cart-no-finalise-action", status: "PASS" });
   await empty.context.close();
 
   const cash = await newRegister();
   await cash.page.getByRole("option", { name: /Fixture Product/ }).click();
-  await cash.page.getByText("Due $12.50").waitFor();
+  await cash.page.getByText("Pricing: register · AUD", { exact: true }).waitFor();
   await cash.page.locator("#cash-tendered").fill("10.00");
-  assert.equal(await cash.page.getByRole("button", { name: "Finalise" }).isDisabled(), true, "cash shortfall must block checkout");
+  assert.equal(await cash.page.getByRole("button", { name: /Enter cash received/ }).isDisabled(), true, "cash shortfall must block checkout");
   checks.push({ id: "cash-shortfall-blocked", status: "PASS" });
   await cash.page.locator("#cash-tendered").fill("15.00");
   await cash.page.getByText("Change $2.50").waitFor();
-  assert.equal(await cash.page.getByRole("button", { name: "Finalise" }).isDisabled(), false);
-  await cash.page.getByRole("button", { name: "Finalise" }).click();
+  assert.equal(await cash.page.getByRole("button", { name: /Finalise Sale/ }).isDisabled(), false);
+  await cash.page.getByRole("button", { name: /Finalise Sale/ }).click();
   await cash.page.getByRole("dialog", { name: /Sale complete/ }).waitFor();
   assert.equal(cash.checkoutCount, 1);
   assert.equal(cash.checkoutBodies[0].tendered, 15);
@@ -117,13 +124,28 @@ try {
   checks.push({ id: "cash-change-checkout-and-receipt", status: "PASS", checkoutRequests: cash.checkoutCount });
   await cash.context.close();
 
+  const quoteRetry = await newRegister({ quoteMode: "first-error" });
+  await quoteRetry.page.getByRole("option", { name: /Fixture Product/ }).click();
+  await quoteRetry.page.getByRole("alert").getByText(/Retry quote before finalising/).waitFor();
+  assert.equal(await quoteRetry.page.getByRole("button", { name: /Waiting for tax/ }).isDisabled(), true, "quote failure must block checkout");
+  await quoteRetry.page.getByRole("button", { name: /Retry quote/ }).click();
+  await quoteRetry.page.getByText("Pricing: register · AUD", { exact: true }).waitFor();
+  assert.equal(quoteRetry.quoteCount, 2, "retry should issue one new quote request");
+  assert.equal(quoteRetry.checkoutCount, 0, "quote retry must not submit a sale");
+  checks.push({ id: "quote-timeout-error-and-retry", status: "PASS", quoteRequests: quoteRetry.quoteCount, checkoutRequests: quoteRetry.checkoutCount });
+  await quoteRetry.context.close();
+
   const card = await newRegister({ method: "card" });
   await card.page.getByRole("option", { name: /Fixture Product/ }).click();
-  await card.page.waitForFunction(() => { const checkbox = document.querySelector('input[type="checkbox"]'); return checkbox instanceof HTMLInputElement && !checkbox.disabled; });
-  assert.equal(await card.page.getByRole("button", { name: "Finalise" }).isDisabled(), true, "external payment must require confirmation");
-  await card.page.getByRole("checkbox", { name: /Payment approved on the external terminal/ }).check();
-  assert.equal(await card.page.getByRole("button", { name: "Finalise" }).isDisabled(), false);
-  await card.page.getByRole("button", { name: "Finalise" }).click();
+  await card.page.getByText("Pricing: register · AUD", { exact: true }).waitFor();
+  assert.equal(card.checkoutCount, 0, "a visible terminal approval control must not charge before confirmation");
+  const terminalApproval = card.page.getByRole("switch", { name: /Payment approved on the external terminal/ });
+  await terminalApproval.waitFor({ state: "visible" });
+  assert.equal(await terminalApproval.isEnabled(), true);
+  await terminalApproval.click();
+  assert.equal(await terminalApproval.getAttribute("aria-checked"), "true");
+  assert.equal(await card.page.getByRole("button", { name: /Finalise Sale/ }).isDisabled(), false);
+  await card.page.getByRole("button", { name: /Finalise Sale/ }).click();
   await card.page.getByRole("dialog", { name: /Sale complete/ }).waitFor();
   assert.equal(card.checkoutBodies[0].externalPaymentConfirmed, true);
   checks.push({ id: "external-payment-confirmation", status: "PASS" });
@@ -131,8 +153,8 @@ try {
 
   const unknown = await newRegister({ checkoutMode: "unknown" });
   await unknown.page.getByRole("option", { name: /Fixture Product/ }).click();
-  await unknown.page.getByText("Due $12.50").waitFor();
-  await unknown.page.getByRole("button", { name: "Finalise" }).click();
+  await unknown.page.getByText("Pricing: register · AUD", { exact: true }).waitFor();
+  await unknown.page.getByRole("button", { name: /Finalise Sale/ }).click();
   await unknown.page.getByRole("heading", { name: "Payment result pending confirmation" }).waitFor();
   assert.equal(unknown.checkoutCount, 1);
   assert.match(await unknown.page.locator("main [role='alert']").innerText(), /Do not take payment again/);
@@ -151,8 +173,8 @@ try {
 
   const duplicate = await newRegister({ checkoutMode: "gate" });
   await duplicate.page.getByRole("option", { name: /Fixture Product/ }).click();
-  await duplicate.page.getByText("Due $12.50").waitFor();
-  const submit = duplicate.page.getByRole("button", { name: "Finalise" });
+  await duplicate.page.getByText("Pricing: register · AUD", { exact: true }).waitFor();
+  const submit = duplicate.page.getByRole("button", { name: /Finalise Sale/ });
   const submitBox = await submit.boundingBox();
   assert.ok(submitBox, "finalise button should have a stable position before submission");
   const checkoutRequest = duplicate.page.waitForRequest("**/api/odoo/checkout");

@@ -1,4 +1,5 @@
 import { isLocalPreviewSession } from "./api";
+import { getOdooQuoteTimeoutMessage, ODOO_QUOTE_TIMEOUT_MS } from "./odoo-quote-timeout";
 
 export type OdooRecordType =
   | "products"
@@ -550,13 +551,21 @@ export async function submitOdooPosOrder(order: OdooCheckoutRequest): Promise<Od
 }
 
 export async function quoteOdooPosOrder(input: Pick<OdooCheckoutRequest, "configId" | "paymentMethodId" | "customerId" | "lines">): Promise<OdooCheckoutQuote> {
-  const response = await fetchOdooApi("/api/odoo/checkout/quote", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    cache: "no-store",
-    body: JSON.stringify(input),
-  }, true);
+  let response: Response;
+  try {
+    response = await fetchOdooApi("/api/odoo/checkout/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(ODOO_QUOTE_TIMEOUT_MS),
+    }, true);
+  } catch (error) {
+    const timeoutMessage = getOdooQuoteTimeoutMessage(error);
+    if (timeoutMessage) throw new OdooApiError(timeoutMessage, 504);
+    throw error;
+  }
   const payload = await response.json().catch(() => null) as (OdooCheckoutQuote & { message?: string }) | null;
   if (!response.ok || !payload || typeof payload.total !== "number") {
     throw new OdooApiError(payload?.message || `Odoo cart quote failed (${response.status})`, response.status);
