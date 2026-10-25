@@ -135,6 +135,11 @@ public class ShopfrontIntegrationController {
             }
             return ApiResult.ok(Map.of("id", id, "status", status, "type", type, "item_count", items.size(), "mapping_ready", mappingReady, "business_write", false));
         } catch (Exception e) {
+            Throwable root = e;
+            while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+            String sqlState = root instanceof java.sql.SQLException sql ? sql.getSQLState() : "";
+            log.error("SHOPFRONT_STAGING_DIAG type={} store={} exception={} sqlState={}", type, store,
+                    root.getClass().getSimpleName(), sqlState);
             log.error("Shopfront staging failed: type={}, store={}, message={}", type, store, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront import", e);
         }
