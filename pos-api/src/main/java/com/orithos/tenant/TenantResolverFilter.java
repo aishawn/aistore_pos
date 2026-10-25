@@ -71,6 +71,10 @@ public class TenantResolverFilter extends OncePerRequestFilter {
 
     private static boolean isServiceIntegrationEndpoint(HttpServletRequest request) {
         String path = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (contextPath != null && !contextPath.isBlank() && path.startsWith(contextPath)) {
+            path = path.substring(contextPath.length());
+        }
         return path.equals("/api/integrations/shopfront")
                 || path.startsWith("/api/integrations/shopfront/");
     }
