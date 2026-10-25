@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CircleAlert, LayoutGrid, List, LoaderCircle, Search } from "lucide-react";
+import { ArrowLeft, CircleAlert, LayoutGrid, List, LoaderCircle, Search, ShoppingCart } from "lucide-react";
 import { ProductImage } from "@/components/ProductImage";
 import type { OdooPosCategoryRecord, OdooProductRecord } from "@/lib/odoo-api";
 import { friendlyProductName } from "@/lib/product-display-name";
@@ -18,6 +18,8 @@ import {
 
 type OdooSellCatalogWorkspaceProps = {
   showCatalogHome: boolean;
+  showMobileCartButton?: boolean;
+  onViewCart?: () => void;
   categoriesError: string | null;
   categoriesLoading: boolean;
   categoryTiles: OdooPosCategoryRecord[];
@@ -50,6 +52,8 @@ type OdooSellCatalogWorkspaceProps = {
 
 export function OdooSellCatalogWorkspace({
   showCatalogHome,
+  showMobileCartButton = false,
+  onViewCart,
   categoriesError,
   categoriesLoading,
   categoryTiles,
@@ -80,7 +84,7 @@ export function OdooSellCatalogWorkspace({
   onAddProduct,
 }: OdooSellCatalogWorkspaceProps) {
   const lineQtyControls = (
-    <div>
+    <div className="hidden lg:block">
       <p className="mb-2 text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">Line quantity</p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -182,25 +186,44 @@ export function OdooSellCatalogWorkspace({
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={backToCatalogHome} className="min-h-11 cursor-pointer rounded-lg px-2 text-[13px] font-medium text-[var(--oh-orange)] hover:underline">
-          ← Back to Quick Keys
+        <button
+          type="button"
+          onClick={backToCatalogHome}
+          aria-label="Back to Quick Keys"
+          title="Back to Quick Keys"
+          className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-[13px] font-medium text-[var(--oh-orange)] hover:bg-[var(--oh-orange-light)] lg:flex lg:w-auto lg:px-2"
+        >
+          <ArrowLeft size={17} aria-hidden="true" />
+          <span className="sr-only lg:not-sr-only lg:ml-1">Back to Quick Keys</span>
         </button>
-        <span className="text-[15px] font-semibold text-[var(--oh-text)]">
+        <span className="shrink-0 text-[15px] font-semibold text-[var(--oh-text)]">
           {categoryId === null
             ? query.trim()
               ? `Search: ${query.trim()}`
               : "All products"
             : friendlyProductName(posCategories.find((item) => item.id === categoryId)?.name ?? "Products")}
         </span>
+        {showMobileCartButton && onViewCart && (
+          <button
+            type="button"
+            onClick={onViewCart}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)] lg:hidden"
+          >
+            <ShoppingCart size={15} aria-hidden="true" />
+            Cart
+          </button>
+        )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)]">
+          <label className="inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-xs font-semibold text-[var(--oh-text)]">
             <input
               type="checkbox"
+              aria-label="Hide out of stock"
               className="h-4 w-4 rounded border-[var(--oh-border)]"
               checked={hideOutOfStock}
               onChange={(event) => onHideOutOfStockChange(event.target.checked)}
             />
-            Hide out of stock
+            <span className="lg:hidden">Hide OOS</span>
+            <span className="hidden lg:inline">Hide out of stock</span>
           </label>
           <div className="inline-flex rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] p-0.5" role="group" aria-label="Catalogue density">
             <button
@@ -224,7 +247,7 @@ export function OdooSellCatalogWorkspace({
           </div>
         </div>
       </div>
-      <div id="pos-product-results" className="min-h-0 flex-1 overflow-y-auto rounded-lg bg-[var(--sf-pad-bg)] p-3">
+      <div id="pos-product-results" className="min-h-[144px] flex-1 overflow-y-auto rounded-lg bg-[var(--sf-pad-bg)] p-3 lg:min-h-0">
         {productsLoading && !products.length ? (
           <div aria-label="Loading products" className={cn(catalogDensity === "list" ? "grid gap-2" : "grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-4")}>
             {Array.from({ length: 8 }, (_, index) => (

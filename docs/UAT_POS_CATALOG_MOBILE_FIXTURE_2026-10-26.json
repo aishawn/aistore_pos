@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-10-26",
+  "target": "local Playwright fixture; not the deployed Demo runtime",
+  "observedDemoBaseline": {
+    "target": "https://demo.orithos.com.au",
+    "frontendCommit": "c7f5513e2df9be5be2eba0110de8b22ffe2b946d",
+    "backendCommit": "c7f5513e2df9be5be2eba0110de8b22ffe2b946d",
+    "viewport": 390,
+    "finding": "Register catalogue was approximately 24px high and product cards were clipped."
+  },
+  "scope": "Local frontend fixture interaction and responsive layout; no live business data was written.",
+  "candidate": "Local POS UI source changes reviewed with this fixture evidence",
+  "viewports": [320, 390, 768, 1024, 1440],
+  "checks": [
+    {
+      "name": "Responsive catalogue and category navigation",
+      "status": "PASS",
+      "result": "Catalogue remained usable at every listed viewport; mobile/tablet category selection opened the full-height product view and the Cart action returned to the register workspace.",
+      "screenshots": [
+        "screenshots/2026-10-26-catalog-mobile/catalog-overlay-390.png",
+        "screenshots/2026-10-26-catalog-mobile/catalog-multi-item-390.png"
+      ]
+    },
+    {
+      "name": "Fixture product quote loading",
+      "status": "PASS",
+      "result": "Two fixture products each triggered one quote request."
+    },
+    {
+      "name": "Checkout and business writes",
+      "status": "PASS",
+      "result": "Checkout requests: 0; business write requests: 0."
+    }
+  ],
+  "checksPassed": 3,
+  "checksTotal": 3,
+  "result": "PASS_LOCAL_FIXTURE_ONLY",
+  "limitations": [
+    "This fixture does not prove the updated UI is deployed or that the Demo runtime includes the candidate.",
+    "The Demo issue remains open until deployment identity matches the candidate and a read-only mobile recheck passes.",
+    "Odoo isolated-write attestation is not verified; transaction acceptance remains blocked and Pilot remains NO-GO."
+  ]
+}

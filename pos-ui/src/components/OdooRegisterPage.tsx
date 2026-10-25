@@ -191,6 +191,7 @@ export function OdooRegisterPage() {
   const [parkedLoaded, setParkedLoaded] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("keys");
   const [catalogHome, setCatalogHome] = useState(true);
+  const [mobileCatalogOpen, setMobileCatalogOpen] = useState(false);
   const [selectedLineKey, setSelectedLineKey] = useState<string | null>(null);
   const [exactCashArmed, setExactCashArmed] = useState(false);
   const [clearSaleConfirm, setClearSaleConfirm] = useState(false);
@@ -1153,6 +1154,7 @@ export function OdooRegisterPage() {
     setWorkspaceTab("keys");
     setQuery("");
     setProductActiveIndex(-1);
+    setMobileCatalogOpen(window.matchMedia("(max-width: 1023px)").matches);
   }
 
   function openQuickCategory(name: string) {
@@ -1167,6 +1169,7 @@ export function OdooRegisterPage() {
     setWorkspaceTab("keys");
     setQuery(name);
     setProductActiveIndex(-1);
+    setMobileCatalogOpen(window.matchMedia("(max-width: 1023px)").matches);
   }
 
   function backToCatalogHome() {
@@ -1174,6 +1177,7 @@ export function OdooRegisterPage() {
     setCategoryId(null);
     setQuery("");
     setProductActiveIndex(-1);
+    setMobileCatalogOpen(false);
   }
 
   const topCategories = posCategories.filter((category) => !category.parent_id);
@@ -1276,7 +1280,10 @@ export function OdooRegisterPage() {
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
-        <section className="relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2">
+        <section className={cn(
+          "relative order-2 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-2 lg:row-start-2",
+          mobileCatalogOpen && "fixed inset-x-0 top-[50px] bottom-0 z-50 rounded-none lg:static lg:inset-auto lg:z-auto lg:rounded-[var(--oh-radius)]",
+        )}>
           <div className="flex shrink-0 items-center gap-1 border-b border-[var(--oh-border)] px-3 py-2">
             <button
               type="button"
@@ -1349,6 +1356,8 @@ export function OdooRegisterPage() {
             ) : (
               <OdooSellCatalogWorkspace
                 showCatalogHome={showCatalogHome}
+                showMobileCartButton={mobileCatalogOpen}
+                onViewCart={() => setMobileCatalogOpen(false)}
                 categoriesError={categoriesError}
                 categoriesLoading={categoriesLoading}
                 categoryTiles={categoryTiles}
