@@ -19,7 +19,7 @@ public interface SupplierMapper {
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
             WHERE ps.supplier_id = s.id
         ))
-          AND (#{name} IS NULL OR s.name LIKE CONCAT('%', #{name}, '%'))
+          AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
         ORDER BY s.id DESC
         LIMIT #{size} OFFSET #{offset}
         """)
@@ -32,7 +32,7 @@ public interface SupplierMapper {
             INNER JOIN product p ON p.id = ps.product_id AND p.deleted_at IS NULL
             WHERE ps.supplier_id = s.id
         ))
-          AND (#{name} IS NULL OR s.name LIKE CONCAT('%', #{name}, '%'))
+          AND (CAST(#{name} AS TEXT) IS NULL OR s.name LIKE CONCAT('%', CAST(#{name} AS TEXT), '%'))
         """)
     long count(@Param("name") String name);
 

@@ -45,21 +45,13 @@ public class AiChatHistorySchemaMigrator implements CommandLineRunner {
 
     private void ensureReportIdColumn() throws SQLException {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            try {
-                statement.executeUpdate("ALTER TABLE ai_chat_message ADD COLUMN report_id BIGINT NULL");
-            } catch (SQLException e) {
-                if (e.getErrorCode() != 1060) throw e;
-            }
+            statement.executeUpdate("ALTER TABLE ai_chat_message ADD COLUMN IF NOT EXISTS report_id BIGINT NULL");
         }
     }
 
     private void ensureSlotsJsonColumn() throws SQLException {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-            try {
-                statement.executeUpdate("ALTER TABLE ai_chat_message ADD COLUMN slots_json TEXT NULL");
-            } catch (SQLException e) {
-                if (e.getErrorCode() != 1060) throw e;
-            }
+            statement.executeUpdate("ALTER TABLE ai_chat_message ADD COLUMN IF NOT EXISTS slots_json TEXT NULL");
         }
     }
 }

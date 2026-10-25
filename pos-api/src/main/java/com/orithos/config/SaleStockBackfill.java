@@ -40,15 +40,17 @@ public class SaleStockBackfill implements CommandLineRunner {
             }
             if (!columnExists(conn, "sale", "stock_applied")) {
                 try (Statement st = conn.createStatement()) {
-                    st.execute("ALTER TABLE sale ADD COLUMN stock_applied TINYINT NOT NULL DEFAULT 0");
+                    st.execute("ALTER TABLE sale ADD COLUMN stock_applied SMALLINT NOT NULL DEFAULT 0");
                 }
             }
             try (Statement st = conn.createStatement()) {
                 st.execute("""
                         UPDATE sale_item si
-                        JOIN product p ON p.deleted_at IS NULL AND p.name = si.note
-                        SET si.product_id = p.id
-                        WHERE si.product_id IS NULL
+                        SET product_id = p.id
+                        FROM product p
+                        WHERE p.deleted_at IS NULL
+                          AND p.name = si.note
+                          AND si.product_id IS NULL
                           AND si.note IS NOT NULL
                           AND si.note <> ''
                         """);
