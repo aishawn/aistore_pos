@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .models import DailySalesSummary, InventorySnapshot, Product, Sale, ShopfrontToken, Store, SyncRun
+from .models import DailySalesSummary, InventorySnapshot, Product, Sale, SaleItem, ShopfrontToken, Store, SyncRun
 from .shopfront import ShopfrontClient, ShopfrontError
 
 
@@ -133,8 +133,13 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
     try:
         token = await access_token(db, settings, store)
         rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
-        # Reporting returns transaction rows. Aggregate them by the transaction's
-        # local business date and outlet before writing the daily summary table.
+        sale_rows: list[dict[str, Any]] = []
+        try:
+            sale_rows = await client.fetch_sales_graphql(token, start.isoformat(), end.isoformat())
+        except ShopfrontError as exc:
+            counts["warnings"].append({"stage": "sales_detail", "message": str(exc)[:500]})
+        # Reporting rows are the authoritative source for daily aggregates. The
+        # GraphQL rows below are the authoritative source for complete sales.
         aggregates: dict[tuple[str, str | None], dict[str, Any]] = {}
         for row in rows:
             timestamp = first(row, "timestamp", "Timestamp", "created_at", "createdAt")
@@ -158,22 +163,23 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
             summary.source_range = {"start": start.isoformat(), "end": end.isoformat(), "rows": agg["count"]}
             summary.synced_at = datetime.now(timezone.utc)
             counts["summaries"] += 1
-        for row in rows:
+        for row in sale_rows:
             sale_id = first(row, "ID", "id", "Sale ID", "sale_id")
             if sale_id:
-                outlet = first(row, "by_name", "BY_NAME", "Name", "name", "outlet")
                 sale = db.scalar(select(Sale).where(Sale.store_key == store.store_key, Sale.shopfront_sale_id == str(sale_id)))
                 if sale is None:
                     sale = Sale(store_key=store.store_key, shopfront_sale_id=str(sale_id))
                     db.add(sale)
+                    db.flush()
                 sale.invoice_id = first(row, "Invoice ID", "invoice_id", "invoiceId")
                 sale.status = first(row, "Status", "status")
                 sale.created_at = parse_datetime(first(row, "createdAt", "created_at", "timestamp"))
                 sale.updated_at = parse_datetime(first(row, "updatedAt", "updated_at"))
-                sale.total_price = parse_decimal(first(row, "Total Price", "total_price", "Revenue", "revenue"))
-                sale.total_tax = parse_decimal(first(row, "Tax Amount", "total_tax", "tax"))
-                sale.total_discount = parse_decimal(first(row, "Discount Amount", "total_discount", "discount"))
-                sale.total_cost = parse_decimal(first(row, "Cost", "cost"))
+                sale.total_price = parse_decimal(first(row, "Total Price", "total_price", "totalPrice", "Revenue", "revenue"))
+                sale.total_tax = parse_decimal(first(row, "Tax Amount", "total_tax", "totalTax", "tax"))
+                sale.total_discount = parse_decimal(first(row, "Discount Amount", "total_discount", "totalDiscount", "discount"))
+                sale.total_cost = parse_decimal(first(row, "Cost", "cost", "totalCost"))
+                sale.customer_reference = first(row, "clientId", "client_id", "customerReference")
                 sale.raw_payload = row
                 if settings.shopfront_sale_detail_query:
                     try:
@@ -183,10 +189,27 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                     except ShopfrontError:
                         # The report remains usable when a tenant's GraphQL schema lacks the optional detail query.
                         pass
+                for item in row.get("items", []) if isinstance(row.get("items"), list) else []:
+                    item_id = first(item, "id", "ID")
+                    product = item.get("item") if isinstance(item.get("item"), dict) else {}
+                    if not item_id:
+                        continue
+                    product_id = str(product.get("id") or item_id)
+                    sale_item = db.scalar(select(SaleItem).where(SaleItem.sale_id == sale.id, SaleItem.shopfront_product_id == product_id))
+                    if sale_item is None:
+                        sale_item = SaleItem(sale_id=sale.id, shopfront_product_id=product_id)
+                        db.add(sale_item)
+                    sale_item.quantity = parse_decimal(first(item, "quantity", "Quantity"))
+                    sale_item.unit_price = parse_decimal(first(item, "basePrice", "unitPrice"))
+                    sale_item.line_total = parse_decimal(first(item, "totalPrice", "lineTotal"))
+                    sale_item.cost = parse_decimal(first(item, "cost", "Cost"))
+                    sale_item.tax = parse_decimal(first(item, "tax", "Tax"))
+                    sale_item.product_name = first(item, "productName", "name")
+                    sale_item.raw_payload = item
                 sale.synced_at = datetime.now(timezone.utc)
                 counts["sales"] += 1
-        if rows and counts["sales"] == 0:
-            counts["warnings"].append({"stage": "sales", "message": "Reporting rows did not include a stable Sale ID; saved summaries only."})
+        if rows and not sale_rows:
+            counts["warnings"].append({"stage": "sales", "message": "Complete Sale query returned no rows; saved summaries only."})
         products = []
         if include_catalog:
             try:
@@ -228,6 +251,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
         run.finished_at = datetime.now(timezone.utc)
         db.commit()
     except Exception as exc:
+        db.rollback()
         run.status, run.error, run.counts = "failed", str(exc)[:2000], counts
         run.finished_at = datetime.now(timezone.utc)
         db.commit()

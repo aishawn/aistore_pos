@@ -96,6 +96,34 @@ END '{end}'
 UNCONSOLIDATED'''
         return await self.run_report(access_token, query)
 
+    async def fetch_sales_graphql(self, access_token: str, start: str, end: str) -> list[dict[str, Any]]:
+        """Fetch complete sales; Reporting API rows do not include stable Sale IDs."""
+        query = """
+        query GetSales($startDate: DateTime, $endDate: DateTime, $after: Cursor) {
+          sales(startDate: $startDate, endDate: $endDate, after: $after) {
+            edges { node {
+              id clientId status invoiceId totalCost totalDiscount totalTax totalPrice createdAt updatedAt
+              items { id quantity cost basePrice tax totalPrice item { id } }
+              payments { id amount status subtype }
+            } }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+        """
+        start_value = f"{start}T00:00:00Z"
+        end_value = f"{end}T23:59:59Z"
+        result: list[dict[str, Any]] = []
+        after: str | None = None
+        while True:
+            data = await self.graphql(access_token, query, {"startDate": start_value, "endDate": end_value, "after": after})
+            connection = data.get("sales", {}) if isinstance(data, dict) else {}
+            edges = connection.get("edges", []) if isinstance(connection, dict) else []
+            result.extend(edge.get("node", {}) for edge in edges if isinstance(edge, dict) and isinstance(edge.get("node"), dict))
+            page_info = connection.get("pageInfo", {}) if isinstance(connection, dict) else {}
+            if not page_info.get("hasNextPage") or not page_info.get("endCursor"):
+                return result
+            after = page_info["endCursor"]
+
     async def fetch_products(self, access_token: str, query: str) -> list[dict[str, Any]]:
         return _extract_nodes(await self.graphql(access_token, query), "products")
 
