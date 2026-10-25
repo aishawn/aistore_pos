@@ -1,0 +1,166 @@
+{
+  "generatedAt": "2026-10-24T15:51:32.852Z",
+  "sourceCommit": "e8f363cac0ae6ebd355845330d1d5158138e9df2",
+  "sourceWorkingTreeDirty": true,
+  "target": "http://demo.lvh.me:3102",
+  "environment": "local Next.js dev server; Playwright runner Node v24.19.0; browser API fixtures",
+  "routeCount": 5,
+  "routeFilter": [
+    "/",
+    "/dashboard",
+    "/dashboard/workspace",
+    "/assistant",
+    "/recommend"
+  ],
+  "viewports": [
+    390,
+    768,
+    1440
+  ],
+  "checksPassed": 15,
+  "checksTotal": 15,
+  "failures": [],
+  "checks": [
+    {
+      "route": "/",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 390,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 768,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/assistant",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/dashboard/workspace",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    },
+    {
+      "route": "/recommend",
+      "viewport": 1440,
+      "status": 200,
+      "overflow": false,
+      "assistantControlOverlaps": [],
+      "pageErrors": [],
+      "navigationError": null
+    }
+  ],
+  "screenshots": [],
+  "interceptedWrites": [],
+  "interceptedReadOnlyRecordPosts": 3,
+  "productionBusinessWrites": 0,
+  "status": "PASS",
+  "screenshotDirectory": null
+}
