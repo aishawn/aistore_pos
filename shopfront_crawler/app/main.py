@@ -271,10 +271,22 @@ async def run_history_discovery(job_id: int) -> None:
         try:
             today = datetime.now(ZoneInfo(store.timezone)).date()
             found: list[str] = []
-            for year in range(settings.shopfront_history_start_year, today.year + 1):
-                rows = await client.fetch_sales(token, f"{year}-01-01", f"{year}-12-31")
-                found.extend(str(r.get("timestamp")) for r in rows if r.get("timestamp"))
-            job.payload = {"sample_count": len(found), "min_timestamp": min(found) if found else None, "max_timestamp": max(found) if found else None}
+            errors: list[dict[str, str]] = []
+            async def probe_range(start: date, end: date) -> None:
+                try:
+                    rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
+                    found.extend(str(r.get("timestamp")) for r in rows if r.get("timestamp"))
+                    return
+                except Exception as exc:
+                    if (end - start).days <= settings.history_chunk_days:
+                        errors.append({"from": start.isoformat(), "to": end.isoformat(), "error": str(exc)[:500]})
+                        return
+                midpoint = start + timedelta(days=(end - start).days // 2)
+                await probe_range(start, midpoint)
+                await probe_range(midpoint + timedelta(days=1), end)
+
+            await probe_range(date(settings.shopfront_history_start_year, 1, 1), today)
+            job.payload = {"sample_count": len(found), "min_timestamp": min(found) if found else None, "max_timestamp": max(found) if found else None, "errors": errors}
             job.status = "completed"
             job.finished_at = datetime.now(timezone.utc)
             db.commit()
