@@ -343,6 +343,14 @@ public class OdooTenantProvisioner {
         return names;
     }
 
+    /** Default retail price list label for a register POS config (one list per company is reused). */
+    static String retailPricelistName(String registerConfigName) {
+        String base = registerConfigName == null || registerConfigName.isBlank()
+                ? "Store Register"
+                : registerConfigName.trim();
+        return base + " Prices";
+    }
+
     /** Exposed for unit tests — keeps the richer dummy catalog sized as planned. */
     static int dummyCatalogSize() {
         return DUMMY_PRODUCTS.length;
@@ -725,6 +733,8 @@ public class OdooTenantProvisioner {
                 callKw(sessionId, "res.company", "write", List.of(List.of(companyId), values), kwargsWithCompany(companyId));
             }
         }
+
+        ensureCompanyCurrency(sessionId, companyId);
 
         ensureChartOfAccounts(sessionId, companyId);
 
@@ -1168,10 +1178,14 @@ public class OdooTenantProvisioner {
         JsonNode existing = callKwNode(sessionId, "pos.config", "search_read", List.of(domain), findKwargs);
         if (existing != null && existing.isArray() && !existing.isEmpty()) {
             long id = existing.get(0).path("id").asLong(0);
-            if (id > 0) return id;
+            if (id > 0) {
+                bindPosConfigPricelist(sessionId, companyId, id, configName);
+                return id;
+            }
         }
 
         List<Long> paymentMethodIds = ensurePaymentMethodsForPos(sessionId, companyId, configName);
+        long pricelistId = ensureRetailPricelist(sessionId, companyId, configName);
         long outTypeId = findWarehouseOutType(sessionId, companyId);
         if (outTypeId <= 0) {
             throw new IllegalStateException("No stock picking type available for the new Odoo company warehouse.");
@@ -1195,10 +1209,143 @@ public class OdooTenantProvisioner {
         replace.add(0);
         ArrayNode pmList = replace.addArray();
         for (Long paymentMethodId : paymentMethodIds) pmList.add(paymentMethodId);
+        values.put("pricelist_id", pricelistId);
+        ArrayNode pricelistCmds = values.putArray("available_pricelist_ids");
+        ArrayNode pricelistReplace = pricelistCmds.addArray();
+        pricelistReplace.add(6);
+        pricelistReplace.add(0);
+        ArrayNode pricelistList = pricelistReplace.addArray();
+        pricelistList.add(pricelistId);
 
         Number id = callKw(sessionId, "pos.config", "create", List.of(values), kwargsWithCompany(companyId));
         if (id == null) throw new IllegalStateException("pos.config.create returned no id");
         return id.longValue();
+    }
+
+    private void ensureCompanyCurrency(String sessionId, long companyId) throws Exception {
+        long currencyId = resolveCompanyCurrencyId(sessionId, companyId);
+        if (currencyId <= 0) return;
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("currency_id", currencyId);
+        callKw(sessionId, "res.company", "write", List.of(List.of(companyId), values), kwargsWithCompany(companyId));
+    }
+
+    private long resolveCompanyCurrencyId(String sessionId, long companyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(companyId));
+        ObjectNode findKwargs = kwargsWithCompany(companyId);
+        findKwargs.set("fields", objectMapper.createArrayNode()
+                .add("currency_id").add("country_id").add("account_fiscal_country_id"));
+        findKwargs.put("limit", 1);
+        JsonNode companies = callKwNode(sessionId, "res.company", "search_read", List.of(domain), findKwargs);
+        if (companies == null || !companies.isArray() || companies.isEmpty()) {
+            return findCurrencyId(sessionId, "AUD");
+        }
+        JsonNode company = companies.get(0);
+        long countryId = company.path("account_fiscal_country_id").path(0).asLong(
+                company.path("country_id").path(0).asLong(0));
+        String currencyCode = "AUD";
+        if (countryId > 0) {
+            ObjectNode countryKwargs = objectMapper.createObjectNode();
+            countryKwargs.set("fields", objectMapper.createArrayNode().add("code"));
+            JsonNode countries = callKwNode(sessionId, "res.country", "read", List.of(List.of(countryId)), countryKwargs);
+            if (countries != null && countries.isArray() && !countries.isEmpty()) {
+                String code = countries.get(0).path("code").asText("").trim();
+                if (!code.isEmpty()) currencyCode = mapCountryToCurrency(code);
+            }
+        }
+        long configuredCurrencyId = company.path("currency_id").path(0).asLong(0);
+        long targetCurrencyId = findCurrencyId(sessionId, currencyCode);
+        if (targetCurrencyId <= 0) return configuredCurrencyId;
+        if (configuredCurrencyId == targetCurrencyId) return configuredCurrencyId;
+        return targetCurrencyId;
+    }
+
+    private static String mapCountryToCurrency(String countryCode) {
+        return switch (countryCode.toUpperCase(Locale.ROOT)) {
+            case "AU" -> "AUD";
+            case "NZ" -> "NZD";
+            case "US" -> "USD";
+            case "GB" -> "GBP";
+            default -> "AUD";
+        };
+    }
+
+    private long findCurrencyId(String sessionId, String code) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("name").add("=").add(code));
+        ObjectNode kwargs = objectMapper.createObjectNode();
+        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.put("limit", 1);
+        JsonNode rows = callKwNode(sessionId, "res.currency", "search_read", List.of(domain), kwargs);
+        if (rows == null || !rows.isArray() || rows.isEmpty()) return 0;
+        return rows.get(0).path("id").asLong(0);
+    }
+
+    private long ensureRetailPricelist(String sessionId, long companyId, String configName) throws Exception {
+        long currencyId = resolveCompanyCurrencyId(sessionId, companyId);
+        if (currencyId <= 0) {
+            throw new IllegalStateException("No currency is configured for Odoo company " + companyId);
+        }
+        long existing = findActiveCompanyPricelist(sessionId, companyId, currencyId);
+        if (existing > 0) return existing;
+
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("name", retailPricelistName(configName));
+        values.put("company_id", companyId);
+        values.put("currency_id", currencyId);
+        values.put("active", true);
+        Number id = callKw(sessionId, "product.pricelist", "create", List.of(values), kwargsWithCompany(companyId));
+        if (id == null) throw new IllegalStateException("product.pricelist.create returned no id");
+        return id.longValue();
+    }
+
+    private long findActiveCompanyPricelist(String sessionId, long companyId, long currencyId) throws Exception {
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("company_id").add("=").add(companyId));
+        domain.add(objectMapper.createArrayNode().add("currency_id").add("=").add(currencyId));
+        domain.add(objectMapper.createArrayNode().add("active").add("=").add(true));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("id"));
+        kwargs.put("limit", 1);
+        kwargs.put("order", "id asc");
+        JsonNode rows = callKwNode(sessionId, "product.pricelist", "search_read", List.of(domain), kwargs);
+        if (rows == null || !rows.isArray() || rows.isEmpty()) return 0;
+        return rows.get(0).path("id").asLong(0);
+    }
+
+    private void bindPosConfigPricelist(String sessionId, long companyId, long configId, String configName) throws Exception {
+        long pricelistId = ensureRetailPricelist(sessionId, companyId, configName);
+        ArrayNode domain = objectMapper.createArrayNode();
+        domain.add(objectMapper.createArrayNode().add("id").add("=").add(configId));
+        ObjectNode kwargs = kwargsWithCompany(companyId);
+        kwargs.set("fields", objectMapper.createArrayNode().add("pricelist_id").add("available_pricelist_ids"));
+        kwargs.put("limit", 1);
+        JsonNode configs = callKwNode(sessionId, "pos.config", "search_read", List.of(domain), kwargs);
+        if (configs == null || !configs.isArray() || configs.isEmpty()) return;
+        JsonNode config = configs.get(0);
+        long currentPricelistId = config.path("pricelist_id").path(0).asLong(0);
+        boolean availableIncludes = false;
+        JsonNode available = config.get("available_pricelist_ids");
+        if (available != null && available.isArray()) {
+            for (JsonNode idNode : available) {
+                if (idNode.asLong(0) == pricelistId) {
+                    availableIncludes = true;
+                    break;
+                }
+            }
+        }
+        if (currentPricelistId == pricelistId && availableIncludes) return;
+
+        ObjectNode values = objectMapper.createObjectNode();
+        values.put("pricelist_id", pricelistId);
+        ArrayNode pricelistCmds = values.putArray("available_pricelist_ids");
+        ArrayNode pricelistReplace = pricelistCmds.addArray();
+        pricelistReplace.add(6);
+        pricelistReplace.add(0);
+        ArrayNode pricelistList = pricelistReplace.addArray();
+        pricelistList.add(pricelistId);
+        callKw(sessionId, "pos.config", "write", List.of(List.of(configId), values), kwargsWithCompany(companyId));
     }
 
     private void seedDummyExperience(String sessionId, long companyId, long stockLocationId, long posConfigId) throws Exception {

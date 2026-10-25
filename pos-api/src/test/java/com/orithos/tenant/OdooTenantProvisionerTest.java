@@ -15,6 +15,11 @@ class OdooTenantProvisionerTest {
     }
 
     @Test
+    void retailPricelistNameMatchesRegisterLabel() {
+        assertEquals("Main Store Register Prices", OdooTenantProvisioner.retailPricelistName("Main Store Register"));
+    }
+
+    @Test
     void namesEachRegisterForOutlet() {
         assertEquals(
                 List.of("Main Store Register 1", "Main Store Register 2", "Main Store Register 3"),
