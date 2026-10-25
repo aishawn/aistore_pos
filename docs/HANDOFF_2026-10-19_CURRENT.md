@@ -1,3 +1,28 @@
+## 2026-10-26 POS quote and Demo verification follow-up
+
+- Shared project context from the owner: POS repo `C:\shawn\1code\1project-new\aistore_pos\v1\orithopos-master`; Odoo repo `C:\shawn\1code\1project-new\aistore_pos\v1\orithos_odoo`; Shopfront crawler `C:\shawn\1code\1project-new\aistore_pos\v1\shopfront_crawler`. GitHub POS source is `aishawn/aistore_pos`, branch `main`; pushing to GitHub triggers Dokploy auto-deploy.
+- Main Demo shop: `https://demo.orithos.com.au/`, admin username `admin`; admin password comes from ignored local `.env` variable `INITIAL_ADMIN_PASSWORD`. Control plane: `https://app.orithos.com.au/` with the same username/password variable. Dokploy service dashboard: `https://dokploy.modkie.com/dashboard/project/6v8D8TDLvzJCQRH93Dx_z/environment/tm97Mlr4oIRKCExPqVucV/services/compose/WvcUddxTymK_K5RZPPtL`; credentials come from local environment variables `DOKPLOY_USER` and `DOKPLOY_PASS`. Never record credential values.
+- The owner describes Demo data as mock data and authorizes CRUD for testing provided all test records can be cleared. Preserve test record IDs, run cleanup, and verify cleanup afterward. For workflows where deletion or rollback cannot be validated, use the existing isolated Odoo UAT environment instead of leaving uncleared Demo records.
+- Dokploy history for Compose service `WvcUddxTymK_K5RZPPtL` reports deployment `Done` for POS commit `5eef55193d2ab1998b16bfd2c9823b8194f13c17` (and prior commits `977c4724`, `a93cffb8`). Repository binding is `aishawn/aistore_pos`, `main`, On Push. This establishes a successful build/deploy job, not active container identity.
+- Online static route matrix: 151 routes × 390/1440px = **302/302 PASS**; every checked route returned HTTP 200 with no horizontal overflow or browser page error. No expected-unavailable routes were recorded. Evidence: [UAT_ALL_STATIC_PAGES_2026-10-26_DOKPLOY-5EEF5519.json](UAT_ALL_STATIC_PAGES_2026-10-26_DOKPLOY-5EEF5519.json).
+- Authenticated live checkout quote passed from both the read-only API probe and the POS UI at 390px: one in-stock item, AUD 11.81 subtotal + AUD 1.18 GST = AUD 12.99 total; UI showed the quoted amount; page errors 0. Product was added only to an ephemeral Playwright cart. Checkout, payment and business writes: **0**.
+- Runtime identity remains unresolved: `/api/public/version` is `no-store` but still reports backend `bf98f83914e315b68373a052847ad7feb1c2780e` (`2026-10-25T17:35:18Z`). A served frontend bundle contains the quote-timeout message, but this does not establish the active backend SHA. See [UAT_POS_CHECKOUT_QUOTE_ONLINE_FOLLOWUP_2026-10-26.json](UAT_POS_CHECKOUT_QUOTE_ONLINE_FOLLOWUP_2026-10-26.json).
+- Local quote fix `a93cffb8` and evidence commits `977c4724` / `5eef5519` are on `main`. Node 24 tests 32/32, TypeScript, targeted ESLint and checkout fixture 10/10 passed as recorded in [HANDOFF_2026-10-26_POS_CHECKOUT_QUOTE.md](HANDOFF_2026-10-26_POS_CHECKOUT_QUOTE.md). Pilot is still **NO-GO**; broader write workflows require isolated Odoo acceptance and active backend runtime SHA confirmation.
+
+## 2026-10-26 Demo POS / Odoo retail addon
+
+- Odoo Compose service `trQzcdFfNnKqBpYNq6Izn` deployed `beee898253dfb87d0633be601c18d171b24e7e29` successfully through a normal Dokploy Deploy. No Fresh Volumes were used. The running Odoo process loads `/opt/orithos-addons`; module discovery reports `orithos_au_retail` 19.0.1.2.0.
+- Upgraded `orithos_au_retail` in `aipos_uat` first, then Demo database `aipos`. Both report installed/latest 19.0.1.2.0; `pos.category.company_id` is registered. Read-only `orithos_quote_prices` returned valid AUD prices in both databases. No business records were created or changed.
+- Authenticated read-only browser smoke on `https://demo.orithos.com.au/register/odoo`: POS bootstrap, category reads, and product reads returned 200; Beer filtering showed products; 390px and 1440px widths had no horizontal overflow; no page errors. Several image URLs returned 404 but fallback icons displayed. No sale, payment, stock, cash, or register-close write was sent or confirmed.
+- POS runtime `/api/public/version` is `bf98f83914e315b68373a052847ad7feb1c2780e`; local `main`/`origin/main` is `d97f28316db81969b7f9019cbee7036e2681ef8a` with a dirty shared worktree. No POS source was edited, committed, or deployed. A checkout panel showed `Calculating` once and its HTTP quote was not conclusively verified; automated login also behaved inconsistently across repeated runs. Do not treat this as full checkout acceptance.
+- Pilot remains **NO-GO** pending exact POS runtime/source alignment and broader isolated workflow acceptance. Full evidence: [UAT_ODOO_RETAIL_DEPLOYMENT_2026-10-26.json](UAT_ODOO_RETAIL_DEPLOYMENT_2026-10-26.json). Credential values remain only in ignored local environment variables.
+
+## 2026-10-25 Bootstrap 卡在 Opening your store
+
+- `/auth/bootstrap` 浏览器请求没有客户端截止时间，网络/代理一直 pending 时页面会永久停留在 Opening；一次性 token 也一直留在地址栏。
+- 前端现在在请求前从地址栏移除 token；请求超过 18 秒显示登录入口，错误文案说明重新登录。客户端存储或跳转异常也进入可见错误状态。
+- 仅本地源码变更，未部署、未重放一次性 token。项目 Node 要求 24+，当前环境为 22.22.2；typecheck/eslint 命令没有正常完成，`git diff --check` 通过。需在符合 Node 24 的运行环境验证并部署后，才能确认线上问题已解决。
+
 ## 2026-10-25 客户管理与定价优化（本地，尚未发布）
 
 - 客户档案与分组整合、价格表规则/客户查询、统一服务端报价、应收稳定分页和礼品卡类型/币种/到期修复已实现。Odoo 扩展目标 19.0.1.2.0，必须先升级扩展再发布前端。

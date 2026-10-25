@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-26T02:55:43+08:00",
+  "status": "PARTIAL_PASS",
+  "scope": "Authenticated Demo POS checkout quote and static page layout; read-only business scope",
+  "target": "https://demo.orithos.com.au",
+  "sourceCommit": "5eef55193d2ab1998b16bfd2c9823b8194f13c17",
+  "deployment": {
+    "dokploySource": "aishawn/aistore_pos main",
+    "dokployStatus": "Dokploy deployment history reports Done for 5eef55193d2ab1998b16bfd2c9823b8194f13c17",
+    "runtimeBackendCommit": "bf98f83914e315b68373a052847ad7feb1c2780e",
+    "runtimeBackendBuiltAt": "2026-10-25T17:35:18Z",
+    "runtimeIdentity": "UNRESOLVED_MISMATCH",
+    "frontendAsset": "The public /register/odoo page served a JavaScript bundle containing the quote timeout retry message."
+  },
+  "staticRoutes": {
+    "routes": 151,
+    "viewports": [390, 1440],
+    "checksPassed": 302,
+    "checksTotal": 302,
+    "failures": 0,
+    "expectedUnavailable": [
+      { "route": "/platform/operations", "status": 404, "reason": "Control-plane route is not served on the Demo tenant host." }
+    ],
+    "evidence": "UAT_ALL_STATIC_PAGES_2026-10-26_DOKPLOY-5EEF5519.json"
+  },
+  "liveQuote": {
+    "authenticatedLogin": "PASS",
+    "odooServiceSessionRecovery": "PASS",
+    "posBootstrap": "PASS; one register config and three payment methods returned",
+    "productSearch": "PASS; 40 in-stock products returned",
+    "browser": {
+      "viewport": 390,
+      "productAddedToTemporaryBrowserCart": true,
+      "quoteHttpStatus": 200,
+      "quoteTotal": 12.99,
+      "currency": "AUD",
+      "tax": 1.18,
+      "lineCount": 1,
+      "quotedTotalVisibleInCart": true,
+      "pageErrors": []
+    },
+    "directApiQuote": {
+      "httpStatus": 200,
+      "subtotal": 11.81,
+      "tax": 1.18,
+      "total": 12.99,
+      "currency": "AUD",
+      "priceSource": "Default",
+      "lineCount": 1
+    }
+  },
+  "businessWrites": {
+    "checkoutRequests": 0,
+    "sales": 0,
+    "payments": 0,
+    "stockCashOrRegisterClose": 0,
+    "note": "The browser cart existed only in a temporary Playwright context and was discarded on close. The quote endpoint performed Odoo reads only."
+  },
+  "limitations": [
+    "The public backend version endpoint is no-store and still reports the older backend image SHA; exact runtime identity is not aligned with the Dokploy Done record.",
+    "The live single-line quote and static route matrix do not constitute complete workflow acceptance. Refunds, sales, purchasing/receiving, inventory, price writes, cash movements, and register close remain unverified in an isolated Odoo environment."
+  ],
+  "pilotStatus": "NO-GO; quote and static layout passed, but runtime identity mismatch and broader isolated business workflow acceptance remain outstanding",
+  "secretHandling": "No credential values, auth tokens, or cookies were stored in this evidence."
+}
