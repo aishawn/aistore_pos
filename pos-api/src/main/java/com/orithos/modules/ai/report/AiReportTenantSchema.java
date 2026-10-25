@@ -28,12 +28,22 @@ public final class AiReportTenantSchema {
         String schema = schemaName(outletId);
         int q = primaryUrl.indexOf('?');
         String base = q >= 0 ? primaryUrl.substring(0, q) : primaryUrl;
-        String qs = q >= 0 ? primaryUrl.substring(q) : "";
-        int slash = base.lastIndexOf('/');
-        if (slash < 0) {
-            throw new IllegalArgumentException("JDBC URL has no database name");
+        String query = q >= 0 ? primaryUrl.substring(q + 1) : "";
+        String[] parts = query.isBlank() ? new String[0] : query.split("&");
+        StringBuilder result = new StringBuilder(base).append('?');
+        boolean wrote = false;
+        for (String part : parts) {
+            if (part.startsWith("currentSchema=")) {
+                part = "currentSchema=" + schema;
+            }
+            if (!part.isBlank()) {
+                if (wrote) result.append('&');
+                result.append(part);
+                wrote = true;
+            }
         }
-        return base.substring(0, slash + 1) + schema + qs;
+        if (wrote) result.append('&');
+        return result.append("currentSchema=").append(schema).toString();
     }
 
     static void requireOutletId(long outletId) {

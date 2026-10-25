@@ -52,7 +52,7 @@ public class OutletTenantSchemaMigrator implements CommandLineRunner {
     private boolean columnExists(String table, String column) throws Exception {
         String sql = """
                 SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ? AND COLUMN_NAME = ?
                 """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {

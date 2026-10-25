@@ -49,7 +49,7 @@ public class StorePermissionMigrator implements CommandLineRunner {
     private void seedPermissions() throws Exception {
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "INSERT IGNORE INTO permission (id, name, safe_name, section) VALUES (?, ?, ?, ?)")) {
+                    "INSERT INTO permission (id, name, safe_name, section) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING")) {
             for (Def def : StorePermissionCatalog.all()) {
                 ps.setInt(1, def.id());
                 ps.setString(2, def.name());
@@ -133,7 +133,7 @@ public class StorePermissionMigrator implements CommandLineRunner {
 
     private void insertMissingPermissions(Connection c, long roleId, List<Integer> permissionIds) throws Exception {
         try (PreparedStatement ps = c.prepareStatement(
-                "INSERT IGNORE INTO role_permission (role_id, permission_id) VALUES (?, ?)")) {
+                    "INSERT INTO role_permission (role_id, permission_id) VALUES (?, ?) ON CONFLICT DO NOTHING")) {
             for (Integer permissionId : permissionIds) {
                 if (permissionId == null) continue;
                 ps.setLong(1, roleId);

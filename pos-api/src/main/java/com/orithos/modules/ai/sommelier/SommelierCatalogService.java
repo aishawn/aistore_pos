@@ -35,7 +35,7 @@ public class SommelierCatalogService {
     public List<WineCandidate> listWines(Long outletId) {
         // Once Odoo is configured it is the business source of truth. An empty
         // result (including a temporary Odoo failure) must not expose stale
-        // legacy MySQL products as if they were current store inventory.
+        // legacy PostgreSQL products as if they were current store inventory.
         if (odooWineCatalogClient.isConfigured()) return odooCatalog();
         return toCandidates(mapper.listCatalog(outletId), true);
     }

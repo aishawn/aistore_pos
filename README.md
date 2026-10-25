@@ -2,7 +2,7 @@
 
 面向澳洲瓶装酒与精品零售的收银与进销存系统。收银员在同一套界面完成开单、结账、库存、采购和报表；店员还可以用自然语言问数、按酒标推荐在售葡萄酒，以及把供应商税票扫成收货单。
 
-前后端没有共享代码，只通过 HTTP 连接：浏览器访问 Next.js，业务与权限在 Spring Boot 里完成，数据落在 MySQL，会话与缓存落在 Redis。
+前后端没有共享代码，只通过 HTTP 连接：浏览器访问 Next.js，业务与权限在 Spring Boot 里完成，数据落在 PostgreSQL，会话与缓存落在 Redis。
 
 ## 项目背景
 
@@ -37,7 +37,7 @@ Spring Boot 3.3  (pos-api, :8080)
   AI Graph（可选，app.ai.enabled=true）
         │                         │
         ▼                         ▼
-     MySQL 8                   Redis 7
+     PostgreSQL 8                   Redis 7
   业务表 / 报表视图          访问令牌黑名单
   AI 意图配置                刷新令牌白名单
                              报表缓存
@@ -61,7 +61,7 @@ orithopos/
 │       ├── config/      安全、启动迁移、种子数据
 │       ├── security/    JWT、当前用户
 │       └── modules/     按业务划分的模块
-├── docker-compose.yml   MySQL + Redis + 后端 + 前端
+├── docker-compose.yml   PostgreSQL + Redis + 后端 + 前端
 ├── .env.example
 └── DEPLOYMENT.md
 ```
@@ -74,7 +74,7 @@ orithopos/
 |---|---|
 | 前端 | Next.js 16、React 19、TypeScript、Tailwind CSS 4 |
 | 后端 | Java 21、Spring Boot 3.3、Spring Security、MyBatis |
-| 数据 | MySQL 8.0（InnoDB / utf8mb4）、Redis 7 |
+| 数据 | PostgreSQL 8.0（InnoDB / utf8mb4）、Redis 7 |
 | 认证 | JWT HS256（jjwt），BCrypt 密码 |
 | AI | Spring AI Alibaba Graph 1.1.2.2 + 阿里云百炼 DashScope |
 | SQL 防护 | JSqlParser。问数只允许白名单视图上的 `SELECT` |
@@ -97,7 +97,7 @@ AI 默认关闭。未配置 `AI_ENABLED` 和百炼 API Key 时，收银、进销
 | `ProductRevisionSchemaMigrator` | 商品变更履历 |
 | `DataInitializer` | 无用户时创建管理员 `admin` / `123456` |
 
-`schema.sql` 是全量建库脚本，Docker 首次初始化 MySQL 时执行。已有库靠上面的迁移器补列，`SQL_INIT_MODE` 默认 `never`，避免重复灌入建表脚本。
+`schema.sql` 是全量建库脚本，Docker 首次初始化 PostgreSQL 时执行。已有库靠上面的迁移器补列，`SQL_INIT_MODE` 默认 `never`，避免重复灌入建表脚本。
 
 ### 模块地图
 
@@ -125,14 +125,14 @@ AI 默认关闭。未配置 `AI_ENABLED` 和百炼 API Key 时，收银、进销
 
 - `AppShell` 包住已登录页面：顶栏、侧栏、当前门店。
 - 首页 `/` 是 **Odoo 收银台**（`OdooRegisterPage`）：搜索/扫码、购物车、挂单、结账。
-- 侧栏只暴露 Odoo 业务入口（Register / Stock / Customers / Reporting / AI / Setup）。Classic MySQL 路由默认隐藏；调试时设 `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`。
+- 侧栏只暴露 Odoo 业务入口（Register / Stock / Customers / Reporting / AI / Setup）。Classic PostgreSQL 路由默认隐藏；调试时设 `NEXT_PUBLIC_SHOW_CLASSIC_POS=true`。
 - `/m` 是手机会话。`ui-mode.ts` 把手机限制在高频收银与库存面，避免小屏打开整棵设置树。
 - Classic JWT 存在 Cookie `sf_token`（历史命名）。401 或会话失效业务码会清会话并回到 `/login`。
 - Odoo 员工会话经 **Settings → Integrations** 登录后写入 HttpOnly Cookie；浏览器不接触 Odoo 会话令牌。
 
 ### Odoo 为唯一业务事实源
 
-试点与产品路线以 **Odoo** 为商品、销售、库存、采购的唯一可写源。Spring/MySQL Classic 栈保留作行为规格与 AI Graph 参考，**不再与 Odoo 双写**。
+试点与产品路线以 **Odoo** 为商品、销售、库存、采购的唯一可写源。Spring/PostgreSQL Classic 栈保留作行为规格与 AI Graph 参考，**不再与 Odoo 双写**。
 
 已接入的 Odoo 收银能力包括：价目表/客户价解析（经 Odoo 计价）、GST、现金凑整、瓶/箱包装系数、挂单（终端本地）、销售历史全单退款、关班（关闭 POS session）。跨币种价表与赊销仍拒绝或未做。能力三态见 [`docs/CAPABILITY_STATUS.md`](docs/CAPABILITY_STATUS.md)。
 
@@ -166,9 +166,9 @@ supplier ── purchase_order（含收货、调拨、退货、贷项）
 - 主键 `BIGINT AUTO_INCREMENT`。
 - 金额用 `DECIMAL`。成本与中间价 `DECIMAL(14,4)`，打印总额 `DECIMAL(14,2)`。
 - 枚举用 `VARCHAR`，合法值写在列注释里，由应用层校验。
-- 结构不稳定的载荷用 MySQL JSON。
+- 结构不稳定的载荷用 PostgreSQL JSON。
 - 软删除用 `deleted_at`。
-- 表之间是逻辑外键，由应用 JOIN，不建 MySQL `FOREIGN KEY`。这样迁移和导入更直接，完整性由 Service 事务保证。
+- 表之间是逻辑外键，由应用 JOIN，不建 PostgreSQL `FOREIGN KEY`。这样迁移和导入更直接，完整性由 Service 事务保证。
 
 `outlet_id` 出现在用户、商品库存、销售、采购等业务行上。当前实现里它既是门店，也是 SaaS 租户隔离列；`vendor` 仍表示公司主体，AI 问数的 `TenantContext.vendorId` 预留给以后的多公司部署，缺省为 `1`。
 
@@ -263,7 +263,7 @@ docker compose up -d --build
 只起数据库、后端在 IDE 里调试时：
 
 ```bash
-docker compose up -d mysql redis
+docker compose up -d PostgreSQL redis
 # pos-api：复制 pos-api/.env.example 为 pos-api/.env
 # pos-ui：复制 pos-ui/.env.local.example 为 pos-ui/.env.local
 # 前端目录 pos-ui 下：npm install && npm run dev

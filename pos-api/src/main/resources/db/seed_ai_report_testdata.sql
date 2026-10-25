@@ -1,7 +1,7 @@
 -- AI 报表测试数据（可重复执行）。
 -- 相对 CURDATE() 造单，保证「今天 / 昨天 / 上周五 / 上周 / 上个月」总能查到数。
 --
---   mysql -u root -p orithos < src/main/resources/db/seed_ai_report_testdata.sql
+--   psql "$POSTGRESQL_URL" -f src/main/resources/db/seed_ai_report_testdata.sql
 --
 -- 期望（outlet_id=1，只计 COMPLETED；单价 Carlton $6 / Coca Cola $3.50）：
 --   今天销售额     $33.50   3 笔  6 件   客单 $11.17
@@ -12,8 +12,6 @@
 --   Coca Cola 库存  200
 --   Carlton 库存     88
 --   滞销：Orithos Test Dead Stock Whisky（36）以及其它有库存无近期销售的商品
-
-SET NAMES utf8mb4;
 
 SET @outlet := 1;
 SET @today := CURDATE();

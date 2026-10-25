@@ -1,13 +1,12 @@
 -- Vendor ↔ Odoo company binding + optional per-store R2 prefix.
 ALTER TABLE vendor
-  ADD COLUMN odoo_company_id BIGINT NULL COMMENT 'res.company id in shared Odoo DB',
-  ADD COLUMN odoo_pos_config_id BIGINT NULL COMMENT 'pos.config id',
-  ADD COLUMN odoo_warehouse_id BIGINT NULL COMMENT 'stock.warehouse id',
-  ADD COLUMN odoo_stock_location_id BIGINT NULL COMMENT 'stock.location id (stock)',
-  ADD COLUMN odoo_provision_status VARCHAR(16) NOT NULL DEFAULT 'unmapped'
-    COMMENT 'unmapped|pending|ready|failed',
+  ADD COLUMN odoo_company_id BIGINT NULL,
+  ADD COLUMN odoo_pos_config_id BIGINT NULL,
+  ADD COLUMN odoo_warehouse_id BIGINT NULL,
+  ADD COLUMN odoo_stock_location_id BIGINT NULL,
+  ADD COLUMN odoo_provision_status VARCHAR(16) NOT NULL DEFAULT 'unmapped',
   ADD COLUMN odoo_provision_error VARCHAR(512) NULL,
-  ADD COLUMN r2_prefix VARCHAR(128) NULL COMMENT 'e.g. shopfront/{subdomain}/';
+  ADD COLUMN r2_prefix VARCHAR(128) NULL;
 
 -- Pilot operator store: map to company 1 when present (single-store demo).
 UPDATE vendor

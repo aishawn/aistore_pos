@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.util.Set;
 
 /**
- * Fail closed for the old MySQL POS API when a deployment is Odoo-only.
+ * Fail closed for the old PostgreSQL POS API when a deployment is Odoo-only.
  * Odoo routes are served by the Next BFF and are not affected. This prevents
  * unscoped reference controllers from becoming a second writable tenant store.
  */

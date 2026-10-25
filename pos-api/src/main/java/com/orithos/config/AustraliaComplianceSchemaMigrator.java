@@ -80,7 +80,7 @@ public class AustraliaComplianceSchemaMigrator implements CommandLineRunner {
         }
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT COUNT(*) FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sale' AND INDEX_NAME = 'idx_sale_business_date'
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = 'sale' AND INDEX_NAME = 'idx_sale_business_date'
                 """);
              ResultSet rs = ps.executeQuery()) {
             if (rs.next() && rs.getInt(1) > 0) {
@@ -169,7 +169,7 @@ public class AustraliaComplianceSchemaMigrator implements CommandLineRunner {
         }
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT COUNT(*) FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ?
                 """)) {
             ps.setString(1, table);
             try (ResultSet rs = ps.executeQuery()) {
@@ -181,7 +181,7 @@ public class AustraliaComplianceSchemaMigrator implements CommandLineRunner {
     private static boolean columnExists(Connection conn, String table, String column) throws Exception {
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ? AND COLUMN_NAME = ?
                 """)) {
             ps.setString(1, table);
             ps.setString(2, column);

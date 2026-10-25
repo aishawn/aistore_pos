@@ -50,7 +50,7 @@ public interface ProductMapper {
     // ---- inventory adjustment (upsert on composite PK product_id + outlet_id) ----
     @Update("INSERT INTO product_inventory (product_id, outlet_id, quantity) "
             + "VALUES (#{productId}, #{outletId}, #{quantity}) "
-            + "ON DUPLICATE KEY UPDATE quantity = quantity + #{quantity}")
+            + "ON CONFLICT (product_id, outlet_id) DO UPDATE SET quantity = product_inventory.quantity + EXCLUDED.quantity")
     int adjustInventory(@Param("productId") Long productId,
                         @Param("outletId") Long outletId,
                         @Param("quantity") BigDecimal quantity);
@@ -125,10 +125,10 @@ public interface ProductMapper {
             + "reorder_limit, max_quantity, reorder_rounding) "
             + "VALUES (#{productId}, #{row.outletId}, #{row.quantity}, #{row.reorderLevel}, #{row.reorderAmount}, "
             + "#{row.reorderLimit}, #{row.maxQuantity}, #{row.reorderRounding}) "
-            + "ON DUPLICATE KEY UPDATE quantity = #{row.quantity}, "
-            + "reorder_level = #{row.reorderLevel}, reorder_amount = #{row.reorderAmount}, "
-            + "reorder_limit = #{row.reorderLimit}, max_quantity = #{row.maxQuantity}, "
-            + "reorder_rounding = #{row.reorderRounding}")
+            + "ON CONFLICT (product_id, outlet_id) DO UPDATE SET quantity = EXCLUDED.quantity, "
+            + "reorder_level = EXCLUDED.reorder_level, reorder_amount = EXCLUDED.reorder_amount, "
+            + "reorder_limit = EXCLUDED.reorder_limit, max_quantity = EXCLUDED.max_quantity, "
+            + "reorder_rounding = EXCLUDED.reorder_rounding")
     int upsertInventory(@Param("productId") Long productId, @Param("row") ProductInventory row);
 
     /**

@@ -32,14 +32,14 @@ public interface PromotionMapper {
     List<PromotionCriteria> findCriteriaByPromotionId(Long promotionId);
 
     @Options(useGeneratedKeys = true, keyProperty = "id")
-    @Insert("INSERT INTO promotion (name, mdb_id, client_id, promotion_category_id, start, end, "
+    @Insert("INSERT INTO promotion (name, mdb_id, client_id, promotion_category_id, \"start\", \"end\", "
             + "express, mix_criteria, active, sale_max_application_count) "
             + "VALUES (#{name}, #{mdbId}, #{clientId}, #{promotionCategoryId}, #{start}, #{end}, "
             + "#{express}, #{mixCriteria}, #{active}, #{saleMaxApplicationCount})")
     int insert(Promotion p);
 
     @Update("UPDATE promotion SET name=#{name}, client_id=#{clientId}, "
-            + "promotion_category_id=#{promotionCategoryId}, start=#{start}, end=#{end}, "
+            + "promotion_category_id=#{promotionCategoryId}, \"start\"=#{start}, \"end\"=#{end}, "
             + "express=#{express}, mix_criteria=#{mixCriteria}, active=#{active}, "
             + "sale_max_application_count=#{saleMaxApplicationCount} WHERE id=#{id}")
     int update(Promotion p);

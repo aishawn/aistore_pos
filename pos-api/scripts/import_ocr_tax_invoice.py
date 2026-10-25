@@ -18,10 +18,10 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 try:
-    import pymysql
-    from pymysql.cursors import DictCursor
+    import psycopg
+    from psycopg.rows import dict_row
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("pymysql is required: pip install pymysql") from exc
+    raise SystemExit("psycopg is required: pip install psycopg[binary]") from exc
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 API_DIR = SCRIPT_DIR.parent
@@ -111,16 +111,12 @@ def qty(raw) -> Decimal:
 
 
 def connect():
-    return pymysql.connect(
-        host=os.environ.get("DB_HOST", "localhost"),
-        port=int(os.environ.get("DB_PORT", "3306")),
-        user=os.environ.get("DB_USER", "root"),
-        password=os.environ.get("DB_PASSWORD", "root"),
-        database=os.environ.get("DB_NAME", "orithos"),
-        charset="utf8mb4",
-        autocommit=False,
-        cursorclass=DictCursor,
-    )
+    return psycopg.connect(os.environ["POSTGRESQL_URL"], row_factory=dict_row)
+
+
+def last_id(cur, table: str) -> int:
+    cur.execute("SELECT currval(pg_get_serial_sequence(%s, 'id')) AS id", (table,))
+    return int(cur.fetchone()["id"])
 
 
 def fetch_id(cur, sql: str, args=()):
@@ -138,7 +134,7 @@ def ensure_named(cur, table: str, name: str, outlet_id: int) -> int:
     if existing:
         return existing
     cur.execute(f"INSERT INTO {table} (name, outlet_id) VALUES (%s, %s)", (name, outlet_id))
-    return int(cur.lastrowid)
+    return last_id(cur, table)
 
 
 def ensure_supplier(cur, invoice: dict, outlet_id: int) -> int:
@@ -179,7 +175,7 @@ def ensure_supplier(cur, invoice: dict, outlet_id: int) -> int:
         """,
         (invoice["website"], outlet_id),
     )
-    contact_id = int(cur.lastrowid)
+    contact_id = last_id(cur, "contact")
     cur.execute(
         """
         INSERT INTO supplier (
@@ -196,7 +192,7 @@ def ensure_supplier(cur, invoice: dict, outlet_id: int) -> int:
             outlet_id,
         ),
     )
-    return int(cur.lastrowid)
+    return last_id(cur, "supplier")
 
 
 def ensure_product(cur, line: dict, *, supplier_id: int, category_id: int, family_id: int,
@@ -239,7 +235,7 @@ def ensure_product(cur, line: dict, *, supplier_id: int, category_id: int, famil
                 tax_rate_id, tax_rate_id, unit_cost, case_qty, outlet_id,
             ),
         )
-        product_id = int(cur.lastrowid)
+        product_id = last_id(cur, "product")
         created = True
 
     cur.execute(
@@ -339,7 +335,7 @@ def import_invoice(apply: bool) -> int:
                     outlet_id,
                 ),
             )
-            order_id = int(cur.lastrowid)
+            order_id = last_id(cur, "purchase_order")
 
             created_products = []
             for line in invoice["lines"]:
@@ -383,7 +379,7 @@ def import_invoice(apply: bool) -> int:
                     """
                     INSERT INTO product_inventory (product_id, outlet_id, quantity)
                     VALUES (%s, %s, %s)
-                    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
+                    ON CONFLICT (product_id, outlet_id) DO UPDATE SET quantity = product_inventory.quantity + EXCLUDED.quantity
                     """,
                     (product_id, outlet_id, units),
                 )
@@ -392,7 +388,7 @@ def import_invoice(apply: bool) -> int:
                     """
                     INSERT INTO product_cost (product_id, outlet_id, cost, last_cost, average_cost)
                     VALUES (%s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE last_cost = VALUES(last_cost), cost = VALUES(cost)
+                    ON CONFLICT (product_id, outlet_id) DO UPDATE SET last_cost = EXCLUDED.last_cost, cost = EXCLUDED.cost
                     """,
                     (product_id, outlet_id, unit_cost, unit_cost, unit_cost),
                 )

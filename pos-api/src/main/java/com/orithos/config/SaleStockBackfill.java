@@ -105,7 +105,7 @@ public class SaleStockBackfill implements CommandLineRunner {
     private static boolean tableExists(Connection conn, String table) throws Exception {
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT COUNT(*) FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ?
                 """)) {
             ps.setString(1, table);
             try (ResultSet rs = ps.executeQuery()) {
@@ -117,7 +117,7 @@ public class SaleStockBackfill implements CommandLineRunner {
     private static boolean columnExists(Connection conn, String table, String column) throws Exception {
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ? AND COLUMN_NAME = ?
                 """)) {
             ps.setString(1, table);
             ps.setString(2, column);

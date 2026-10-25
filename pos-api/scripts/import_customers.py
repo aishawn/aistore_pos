@@ -28,10 +28,10 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 try:
-    import pymysql
-    from pymysql.cursors import DictCursor
+    import psycopg
+    from psycopg.rows import dict_row
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("pymysql is required: pip install pymysql") from exc
+    raise SystemExit("psycopg is required: pip install psycopg[binary]") from exc
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 API_DIR = SCRIPT_DIR.parent
@@ -295,16 +295,12 @@ def unique_code(base: str | None, source_id: str, used_lower: set[str]) -> str:
 
 
 def connect():
-    return pymysql.connect(
-        host=os.environ.get("DB_HOST", "localhost"),
-        port=int(os.environ.get("DB_PORT", "3306")),
-        user=os.environ.get("DB_USER", "root"),
-        password=os.environ.get("DB_PASSWORD", "root"),
-        database=os.environ.get("DB_NAME", "orithos"),
-        charset="utf8mb4",
-        autocommit=False,
-        cursorclass=DictCursor,
-    )
+    return psycopg.connect(os.environ["POSTGRESQL_URL"], row_factory=dict_row)
+
+
+def last_id(cur, table: str) -> int:
+    cur.execute("SELECT currval(pg_get_serial_sequence(%s, 'id')) AS id", (table,))
+    return int(cur.fetchone()["id"])
 
 
 def fetch_existing(cur, outlet_id: int):
@@ -362,7 +358,7 @@ def ensure_group(cur, name: str, outlet_id: int, cache: dict[str, int], apply: b
         "INSERT INTO customer_group (name, outlet_id) VALUES (%s, %s)",
         (name[:255], outlet_id),
     )
-    cache[key] = int(cur.lastrowid)
+    cache[key] = last_id(cur, "customer_group")
     return cache[key]
 
 
@@ -408,7 +404,7 @@ def upsert_contact(cur, existing_id, addr: Address, outlet_id: int) -> int | Non
         """,
         values,
     )
-    return int(cur.lastrowid)
+    return last_id(cur, "contact")
 
 
 def insert_customer(cur, src: SourceCustomer, code: str, group_id, billing_id, delivery_id, outlet_id: int) -> int:
@@ -461,7 +457,7 @@ def insert_customer(cur, src: SourceCustomer, code: str, group_id, billing_id, d
             outlet_id,
         ),
     )
-    return int(cur.lastrowid)
+    return last_id(cur, "customer")
 
 
 def update_customer(cur, customer_id: int, src: SourceCustomer, code: str, group_id, billing_id, delivery_id) -> None:

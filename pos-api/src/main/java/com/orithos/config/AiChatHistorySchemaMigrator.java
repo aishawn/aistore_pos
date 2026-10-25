@@ -56,7 +56,7 @@ public class AiChatHistorySchemaMigrator implements CommandLineRunner {
     private void ensureSlotsJsonColumn() throws SQLException {
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             try {
-                statement.executeUpdate("ALTER TABLE ai_chat_message ADD COLUMN slots_json MEDIUMTEXT NULL");
+                statement.executeUpdate("ALTER TABLE ai_chat_message ADD COLUMN slots_json TEXT NULL");
             } catch (SQLException e) {
                 if (e.getErrorCode() != 1060) throw e;
             }

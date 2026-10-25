@@ -2,8 +2,8 @@
 -- Step 2: Run migration_renumber_ids.sql to renumber existing rows to 1, 2, 3, ...
 --
 -- Usage (backup first):
---   mysql -u root -p orithos < migration_auto_increment.sql
---   mysql -u root -p orithos < migration_renumber_ids.sql
+--   psql "$POSTGRESQL_URL" -f migration_auto_increment.sql
+--   psql "$POSTGRESQL_URL" -f migration_renumber_ids.sql
 
 SET NAMES utf8mb4;
 

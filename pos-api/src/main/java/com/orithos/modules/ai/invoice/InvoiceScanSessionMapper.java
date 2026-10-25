@@ -177,9 +177,9 @@ public interface InvoiceScanSessionMapper {
     @Insert("""
             INSERT INTO invoice_supplier_abn_map (vendor_id, supplier_abn, odoo_supplier_id, supplier_name)
             VALUES (#{vendorId}, #{supplierAbn}, #{odooSupplierId}, #{supplierName})
-            ON DUPLICATE KEY UPDATE
-              odoo_supplier_id = VALUES(odoo_supplier_id),
-              supplier_name = VALUES(supplier_name),
+            ON CONFLICT (vendor_id, supplier_abn) DO UPDATE SET
+              odoo_supplier_id = EXCLUDED.odoo_supplier_id,
+              supplier_name = EXCLUDED.supplier_name,
               updated_at = CURRENT_TIMESTAMP
             """)
     int upsertAbnMap(@Param("vendorId") long vendorId,

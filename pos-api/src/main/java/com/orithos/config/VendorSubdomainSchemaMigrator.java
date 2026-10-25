@@ -54,7 +54,7 @@ public class VendorSubdomainSchemaMigrator implements CommandLineRunner {
     private boolean columnExists(String table, String column) throws Exception {
         String sql = """
                 SELECT COUNT(*) FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ? AND COLUMN_NAME = ?
                 """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -69,7 +69,7 @@ public class VendorSubdomainSchemaMigrator implements CommandLineRunner {
     private boolean indexExists(String table, String index) throws Exception {
         String sql = """
                 SELECT COUNT(*) FROM information_schema.STATISTICS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ? AND INDEX_NAME = ?
                 """;
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {

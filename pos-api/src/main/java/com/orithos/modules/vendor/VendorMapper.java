@@ -26,7 +26,7 @@ public interface VendorMapper {
             WHERE (#{q} IS NULL OR #{q} = ''
                    OR subdomain LIKE CONCAT('%', #{q}, '%')
                    OR name LIKE CONCAT('%', #{q}, '%')
-                   OR IFNULL(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
+            OR COALESCE(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
               AND (#{status} IS NULL OR #{status} = '' OR status = #{status})
             ORDER BY created_at DESC, id DESC
             LIMIT #{size} OFFSET #{offset}
@@ -41,7 +41,7 @@ public interface VendorMapper {
             WHERE (#{q} IS NULL OR #{q} = ''
                    OR subdomain LIKE CONCAT('%', #{q}, '%')
                    OR name LIKE CONCAT('%', #{q}, '%')
-                   OR IFNULL(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
+            OR COALESCE(contact_name, '') LIKE CONCAT('%', #{q}, '%'))
               AND (#{status} IS NULL OR #{status} = '' OR status = #{status})
             """)
     long countFiltered(@Param("q") String q, @Param("status") String status);

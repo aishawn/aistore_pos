@@ -1,4 +1,4 @@
-# Orithos Backend (Spring Boot 3 + MyBatis + MySQL 8.0 + Redis 7.0 + JWT)
+# Orithos Backend (Spring Boot 3 + MyBatis + PostgreSQL 16+ + Redis 7.0 + JWT)
 
 A reverse-engineered backend for the Orithos POS clone, implemented from
 `docs/research/API.md` and `docs/research/schema.sql`. It exposes a clean REST API
@@ -10,22 +10,21 @@ RBAC, and Redis for token state + report caching.
 ## Stack
 - Spring Boot 3.3 / Java 21
 - MyBatis (annotation mappers + one XML mapper for dynamic product filtering)
-- MySQL 8.0
+- PostgreSQL 16+
 - Redis 7.0 (JWT refresh whitelist + access-token denylist, report cache)
 - JWT (HS256, jjwt) + Spring Security (stateless)
 
 ## Prerequisites
 - JDK 21, Maven 3.9+
-- MySQL 8.0 with a database `orithos`
+- PostgreSQL database configured through `POSTGRESQL_URL`
 - Redis 7.0
 
 ## Setup
 ```bash
 # 1. Create DB and tables
-mysql -u root -p -e "CREATE DATABASE orithos CHARACTER SET utf8mb4;"
-mysql -u root -p orithos < src/main/resources/db/schema.sql
+psql "$POSTGRESQL_URL" -f src/main/resources/db/schema.sql
 # optional demo data:
-mysql -u root -p orithos < src/main/resources/db/seed.sql
+psql "$POSTGRESQL_URL" -f src/main/resources/db/seed.sql
 
 # 2. Configure (env vars override application.yml)
 export DB_HOST=localhost DB_PORT=3306 DB_NAME=orithos DB_USER=root DB_PASSWORD=root

@@ -3,7 +3,7 @@
 -- and junction tables whose PK already includes outlet_id.
 --
 -- Existing databases (Docker volume already initialized):
---   mysql -u root -p orithos < pos-api/src/main/resources/db/migration_outlet_id_tenant.sql
+--   psql "$POSTGRESQL_URL" -f pos-api/src/main/resources/db/migration_outlet_id_tenant.sql
 -- New Docker volumes: compose runs this as 03 after schema + seed.
 
 SET NAMES utf8mb4;

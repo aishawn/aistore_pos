@@ -1,6 +1,6 @@
 -- Renumber existing BIGINT primary keys to 1, 2, 3, ...
 -- Updates all known FK columns. Run once on a backup first.
--- Requires MySQL 8.0+ (ROW_NUMBER). Run after migration_auto_increment.sql.
+-- Requires PostgreSQL (ROW_NUMBER). Run after migration_auto_increment.sql.
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;

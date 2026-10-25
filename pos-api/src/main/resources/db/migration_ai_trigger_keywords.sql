@@ -1,16 +1,14 @@
 -- Add Sell UI AI-trigger keywords (safe to re-run).
 -- Existing installs: run after migration_ai_intent.sql / seed_ai_intent.sql.
 
-SET NAMES utf8mb4;
-
-INSERT IGNORE INTO `ai_slot`
+INSERT INTO `ai_slot`
   (`code`, `name`, `description`, `value_type`, `max_length`, `enabled`, `sort_order`)
 VALUES
 ('ai_trigger', 'AI trigger keyword',
  'Sell search-mode phrases that route to AI (UI only, not LLM slots)',
  'keyword', 64, 1, 60);
 
-INSERT IGNORE INTO `ai_slot_value`
+INSERT INTO `ai_slot_value`
   (`slot_code`, `value_key`, `value`, `label`, `enabled`, `sort_order`)
 VALUES
 ('ai_trigger', 'find',      'find',     'find',     1, 10),

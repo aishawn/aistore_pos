@@ -11,9 +11,9 @@ public interface PlatformAlertMapper {
           last_seen_at, occurrence_count, latest_correlation_id, runtime_commit, updated_at)
         VALUES (#{fingerprint}, #{environment}, #{service}, #{tenantId}, 'OPEN', #{occurredAt}, #{occurredAt},
           1, #{correlationId}, #{runtimeCommit}, #{occurredAt})
-        ON DUPLICATE KEY UPDATE last_seen_at=VALUES(last_seen_at), occurrence_count=occurrence_count+1,
-          latest_correlation_id=VALUES(latest_correlation_id), runtime_commit=VALUES(runtime_commit), updated_at=VALUES(updated_at),
-          status=IF(status='RESOLVED','OPEN',status)
+        ON CONFLICT (fingerprint) DO UPDATE SET last_seen_at=EXCLUDED.last_seen_at, occurrence_count=platform_alert.occurrence_count+1,
+          latest_correlation_id=EXCLUDED.latest_correlation_id, runtime_commit=EXCLUDED.runtime_commit, updated_at=EXCLUDED.updated_at,
+          status=CASE WHEN platform_alert.status='RESOLVED' THEN 'OPEN' ELSE platform_alert.status END
         """)
     int upsert(@Param("fingerprint") String fingerprint, @Param("environment") String environment,
                @Param("service") String service, @Param("tenantId") Long tenantId,

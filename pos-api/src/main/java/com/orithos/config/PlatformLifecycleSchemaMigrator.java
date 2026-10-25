@@ -60,7 +60,7 @@ public class PlatformLifecycleSchemaMigrator implements CommandLineRunner {
     private boolean tableExists(String table) throws Exception {
         String sql = """
                 SELECT COUNT(*) FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+                WHERE TABLE_SCHEMA = current_schema() AND TABLE_NAME = ?
                 """;
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {

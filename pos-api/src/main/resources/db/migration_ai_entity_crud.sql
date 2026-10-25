@@ -1,9 +1,7 @@
 -- Expand AI for Inventory + Customer menu lookup and guided writes (safe to re-run).
 -- Also covered by AiConfigInitializer.ensureEntityCrudConfig() on API startup.
 
-SET NAMES utf8mb4;
-
-INSERT IGNORE INTO `ai_intent`
+INSERT INTO `ai_intent`
   (`code`, `name`, `description`, `prompt_hint`, `default_panel`, `default_view`, `enabled`, `sort_order`)
 VALUES
 ('entity_action', 'Entity lookup',
@@ -11,7 +9,7 @@ VALUES
  'Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action; the assistant never writes business data.',
  'dialogue', NULL, 1, 45);
 
-INSERT IGNORE INTO `ai_intent`
+INSERT INTO `ai_intent`
   (`code`, `name`, `description`, `prompt_hint`, `default_panel`, `default_view`, `enabled`, `sort_order`)
 VALUES
 ('guided_action', 'Guided action', 'Explain a business change and open its confirmation page',
@@ -24,7 +22,7 @@ SET `name` = 'Entity lookup',
     `prompt_hint` = 'Use entity_action only for list/search/view. Any create, edit, delete, import, merge, receive, save, confirm, price change or inventory adjustment must use guided_action; the assistant never writes business data.'
 WHERE `code` = 'entity_action';
 
-INSERT IGNORE INTO `ai_slot`
+INSERT INTO `ai_slot`
   (`code`, `name`, `description`, `value_type`, `max_length`, `enabled`, `sort_order`)
 VALUES
 ('entity', 'Business entity', 'Inventory/Customer entity for read-only lookup', 'enum', 64, 1, 70),
@@ -40,7 +38,7 @@ SET `name` = 'Entity operation',
     `description` = 'list|search|view; legacy write values are normalized to guided_action'
 WHERE `code` = 'op';
 
-INSERT IGNORE INTO `ai_slot_value`
+INSERT INTO `ai_slot_value`
   (`slot_code`, `value_key`, `value`, `label`, `enabled`, `sort_order`)
 VALUES
 ('route', 'products_merge',    '/products/merge',                  'Merge products',          1, 31),

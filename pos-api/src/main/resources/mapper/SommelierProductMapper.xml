@@ -49,8 +49,8 @@
 
     <sql id="wineLike">
         AND (
-            LOWER(IFNULL(f.name, '')) LIKE '%wine%'
-            OR LOWER(IFNULL(c.name, '')) LIKE '%wine%'
+LOWER(COALESCE(f.name, '')) LIKE '%wine%'
+OR LOWER(COALESCE(c.name, '')) LIKE '%wine%'
             OR LOWER(p.name) LIKE '%wine%'
             OR LOWER(p.name) LIKE '%shiraz%'
             OR LOWER(p.name) LIKE '%syrah%'

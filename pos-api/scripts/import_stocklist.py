@@ -34,10 +34,10 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 try:
-    import pymysql
-    from pymysql.cursors import DictCursor
+    import psycopg
+    from psycopg.rows import dict_row
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("pymysql is required: pip install pymysql") from exc
+    raise SystemExit("psycopg is required: pip install psycopg[binary]") from exc
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 API_DIR = SCRIPT_DIR.parent
@@ -187,16 +187,12 @@ def unique_name(base: str, used_lower: set[str]) -> str:
 
 
 def connect():
-    return pymysql.connect(
-        host=os.environ.get("DB_HOST", "localhost"),
-        port=int(os.environ.get("DB_PORT", "3306")),
-        user=os.environ.get("DB_USER", "root"),
-        password=os.environ.get("DB_PASSWORD", "root"),
-        database=os.environ.get("DB_NAME", "orithos"),
-        charset="utf8mb4",
-        autocommit=False,
-        cursorclass=DictCursor,
-    )
+    return psycopg.connect(os.environ["POSTGRESQL_URL"], row_factory=dict_row)
+
+
+def last_id(cur, table: str) -> int:
+    cur.execute("SELECT currval(pg_get_serial_sequence(%s, 'id')) AS id", (table,))
+    return int(cur.fetchone()["id"])
 
 
 def fetch_existing(cur, outlet_id: int) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
@@ -237,7 +233,7 @@ def ensure_category(cur, name: str, outlet_id: int, cache: dict[str, int], apply
         "INSERT INTO category (name, outlet_id) VALUES (%s, %s)",
         (name[:255], outlet_id),
     )
-    cache[key] = int(cur.lastrowid)
+    cache[key] = last_id(cur, "category")
     return cache[key]
 
 
@@ -254,7 +250,7 @@ def ensure_price_set(cur, name: str, outlet_id: int, cache: dict[str, int], appl
         "INSERT INTO price_set (name, outlet_id) VALUES (%s, %s)",
         (name[:128], outlet_id),
     )
-    cache[key] = int(cur.lastrowid)
+    cache[key] = last_id(cur, "price_set")
     return cache[key]
 
 
@@ -268,7 +264,7 @@ def insert_product(cur, product: SourceProduct, name: str, category_id: int | No
         """,
         (name, category_id, product.unit_cost, product.case_quantity, outlet_id),
     )
-    return int(cur.lastrowid)
+    return last_id(cur, "product")
 
 
 def update_product(cur, product_id: int, product: SourceProduct, category_id: int | None) -> None:
@@ -287,7 +283,7 @@ def upsert_inventory(cur, product_id: int, outlet_id: int, quantity: Decimal) ->
         """
         INSERT INTO product_inventory (product_id, outlet_id, quantity)
         VALUES (%s, %s, %s)
-        ON DUPLICATE KEY UPDATE quantity = VALUES(quantity)
+        ON CONFLICT (product_id, outlet_id) DO UPDATE SET quantity = EXCLUDED.quantity
         """,
         (product_id, outlet_id, quantity),
     )

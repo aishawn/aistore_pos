@@ -45,11 +45,11 @@ public interface SupplierMapper {
           AND (
             (#{name} IS NOT NULL AND #{name} != '' AND LOWER(TRIM(name)) = LOWER(TRIM(#{name})))
             OR (#{abn} IS NOT NULL AND #{abn} != ''
-                AND REPLACE(IFNULL(business_number, ''), ' ', '') = REPLACE(#{abn}, ' ', ''))
+                    AND REPLACE(COALESCE(business_number, ''), ' ', '') = REPLACE(#{abn}, ' ', ''))
             OR (#{name} IS NOT NULL AND CHAR_LENGTH(TRIM(#{name})) >= 4
                 AND LOWER(name) LIKE CONCAT('%', LOWER(TRIM(#{name})), '%'))
           )
-        ORDER BY (LOWER(TRIM(name)) = LOWER(TRIM(IFNULL(#{name}, '')))) DESC, id
+            ORDER BY (LOWER(TRIM(name)) = LOWER(TRIM(COALESCE(#{name}, '')))) DESC, id
         LIMIT 1
         """)
     Supplier findByNameOrAbn(@Param("name") String name, @Param("abn") String abn);

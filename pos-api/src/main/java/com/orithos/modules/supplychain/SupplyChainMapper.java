@@ -271,10 +271,10 @@ public interface SupplyChainMapper {
     @Insert("""
             INSERT INTO sc_store_preference (outlet_id, supplier_id, priority, switch_threshold, channel)
             VALUES (#{outletId}, #{supplierId}, #{priority}, #{switchThreshold}, #{channel})
-            ON DUPLICATE KEY UPDATE
-              priority = VALUES(priority),
-              switch_threshold = VALUES(switch_threshold),
-              channel = VALUES(channel)
+            ON CONFLICT (outlet_id, supplier_id) DO UPDATE SET
+              priority = EXCLUDED.priority,
+              switch_threshold = EXCLUDED.switch_threshold,
+              channel = EXCLUDED.channel
             """)
     int upsertPref(@Param("outletId") long outletId,
                    @Param("supplierId") long supplierId,
@@ -316,7 +316,7 @@ public interface SupplyChainMapper {
     @Insert("""
             INSERT INTO sc_product_rule (outlet_id, product_id, supplier_mode, supplier_id)
             VALUES (#{outletId}, #{productId}, #{supplierMode}, #{supplierId})
-            ON DUPLICATE KEY UPDATE supplier_mode = VALUES(supplier_mode), supplier_id = VALUES(supplier_id)
+            ON CONFLICT (outlet_id, product_id) DO UPDATE SET supplier_mode = EXCLUDED.supplier_mode, supplier_id = EXCLUDED.supplier_id
             """)
     int upsertRule(@Param("outletId") long outletId,
                    @Param("productId") long productId,

@@ -22,7 +22,7 @@ public class Nl2SqlGenerateNode implements NodeAction {
     private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static final String FALLBACK_PROMPT = """
-            You write ONE MySQL SELECT for Orithos POS reporting.
+            You write ONE PostgreSQL SELECT for Orithos POS reporting.
             Allowed tables only:
             - ai_rpt_sale_item (completed sale lines): outlet_id, sold_at, business_date, product_id, qty, amount, customer_id, sale_id
             - ai_rpt_product (no purchase cost): id, outlet_id, name, status, category_id, category_name

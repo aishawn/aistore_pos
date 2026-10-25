@@ -27,10 +27,10 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 try:
-    import pymysql
-    from pymysql.cursors import DictCursor
+    import psycopg
+    from psycopg.rows import dict_row
 except ImportError as exc:  # pragma: no cover
-    raise SystemExit("pymysql is required: pip install pymysql") from exc
+    raise SystemExit("psycopg is required: pip install psycopg[binary]") from exc
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 API_DIR = SCRIPT_DIR.parent
@@ -112,16 +112,12 @@ class Line:
 
 
 def connect():
-    return pymysql.connect(
-        host=os.environ.get("DB_HOST", "localhost"),
-        port=int(os.environ.get("DB_PORT", "3306")),
-        user=os.environ.get("DB_USER", "root"),
-        password=os.environ.get("DB_PASSWORD", "root"),
-        database=os.environ.get("DB_NAME", "orithos"),
-        charset="utf8mb4",
-        autocommit=False,
-        cursorclass=DictCursor,
-    )
+    return psycopg.connect(os.environ["POSTGRESQL_URL"], row_factory=dict_row)
+
+
+def last_id(cur, table: str) -> int:
+    cur.execute("SELECT currval(pg_get_serial_sequence(%s, 'id')) AS id", (table,))
+    return int(cur.fetchone()["id"])
 
 
 def load_catalog(cur, outlet_id: int):
@@ -282,7 +278,7 @@ def insert_day(cur, day: str, day_lines: list[Line], register_id, payment_id, ou
             outlet_id,
         ),
     )
-    sale_id = int(cur.lastrowid)
+    sale_id = last_id(cur, "sale")
     item_rows = []
     for ln in day_lines:
         base = (ln.amount / ln.quantity).quantize(Decimal("0.0001")) if ln.quantity else ln.amount

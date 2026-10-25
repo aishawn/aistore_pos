@@ -65,9 +65,9 @@ public class InvoiceScanService {
 
     @Transactional
     public Order save(InvoiceScanResponse request) {
-        // Pilot SoT is Odoo. Do not write supplier receives into Classic MySQL.
+        // Pilot SoT is Odoo. Do not write supplier receives into Classic PostgreSQL.
         throw new BusinessException(50101,
-                "Saving invoice receives into Classic MySQL is disabled. Use Odoo Purchases or Replenishment to create a draft RFQ.");
+                "Saving invoice receives into Classic PostgreSQL is disabled. Use Odoo Purchases or Replenishment to create a draft RFQ.");
     }
 
     /** Retained for reference; Classic receive path must stay disabled while Odoo is SoT. */

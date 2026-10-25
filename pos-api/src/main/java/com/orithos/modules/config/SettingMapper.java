@@ -16,6 +16,6 @@ public interface SettingMapper {
 
     @Insert("INSERT INTO settings (scope_type, scope_id, name, value, datatype) "
             + "VALUES (#{scopeType}, #{scopeId}, #{name}, #{value}, #{datatype}) "
-            + "ON DUPLICATE KEY UPDATE value = VALUES(value), datatype = VALUES(datatype)")
+            + "ON CONFLICT (scope_type, scope_id, name) DO UPDATE SET value = EXCLUDED.value, datatype = EXCLUDED.datatype")
     int upsert(Setting s);
 }

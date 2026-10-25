@@ -16,8 +16,8 @@ class AiReportTenantSchemaTest {
 
     @Test
     void rewritesJdbcUrlDatabase() {
-        String url = "jdbc:mysql://localhost:3306/orithos?useUnicode=true";
-        assertEquals("jdbc:mysql://localhost:3306/orithos_o12?useUnicode=true",
+        String url = "jdbc:postgresql://localhost:5432/orithos?sslmode=disable";
+        assertEquals("jdbc:postgresql://localhost:5432/orithos?sslmode=disable&currentSchema=orithos_o12",
                 AiReportTenantSchema.jdbcUrl(url, 12L));
     }
 

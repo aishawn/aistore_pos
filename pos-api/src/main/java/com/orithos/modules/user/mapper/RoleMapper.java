@@ -46,7 +46,7 @@ public interface RoleMapper {
         """)
     List<Permission> permissionsOfRole(Long roleId);
 
-    @Insert("INSERT IGNORE INTO role_permission (role_id, permission_id) VALUES (#{roleId}, #{permissionId})")
+    @Insert("INSERT INTO role_permission (role_id, permission_id) VALUES (#{roleId}, #{permissionId}) ON CONFLICT DO NOTHING")
     int addPermission(@Param("roleId") Long roleId, @Param("permissionId") int permissionId);
 
     @Delete("DELETE FROM role_permission WHERE role_id = #{roleId}")

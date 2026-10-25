@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Creates {@code orithos_o{outletId}} schemas, views hardcoded to that outlet,
- * and a RO MySQL user that can SELECT only those views.
+ * and a PostgreSQL RO role that can SELECT only those views.
  */
 @Component
 public class AiReportTenantProvisioner {
@@ -70,25 +70,20 @@ public class AiReportTenantProvisioner {
         }
         String schema = AiReportTenantSchema.schemaName(outletId);
         String user = AiReportTenantSchema.username(props.getUsername(), outletId);
-        String pass = escapeMysqlString(props.getPassword());
+        String pass = escapeSqlString(props.getPassword());
         try (Connection c = adminDataSource.getConnection(); Statement st = c.createStatement()) {
-            String primary = c.getCatalog();
-            st.execute("CREATE DATABASE IF NOT EXISTS `" + schema
-                    + "` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            String primary = "public";
+            st.execute("CREATE SCHEMA IF NOT EXISTS \"" + schema + "\"");
             for (String view : VIEWS) {
                 String cols = VIEW_COLUMNS.get(view);
-                // TEMPTABLE + named columns so tenant views always read the current primary view.
-                st.execute("CREATE OR REPLACE ALGORITHM = TEMPTABLE SQL SECURITY DEFINER VIEW `"
-                        + schema + "`.`" + view + "` AS SELECT " + cols
-                        + " FROM `" + primary + "`.`" + view + "` WHERE outlet_id = " + outletId);
+                st.execute("CREATE OR REPLACE VIEW \"" + schema + "\".\"" + view + "\" AS SELECT " + cols
+                        + " FROM \"" + primary + "\".\"" + view + "\" WHERE outlet_id = " + outletId);
             }
-            ensureUser(st, user, pass, "%");
-            ensureUser(st, user, pass, "localhost");
+            ensureRole(st, user, pass);
+            st.execute("GRANT USAGE ON SCHEMA \"" + schema + "\" TO \"" + user + "\"");
             for (String view : VIEWS) {
-                st.execute("GRANT SELECT ON `" + schema + "`.`" + view + "` TO '" + user + "'@'%'");
-                st.execute("GRANT SELECT ON `" + schema + "`.`" + view + "` TO '" + user + "'@'localhost'");
+                st.execute("GRANT SELECT ON \"" + schema + "\".\"" + view + "\" TO \"" + user + "\"");
             }
-            st.execute("FLUSH PRIVILEGES");
             log.info("Ensured AI report tenant schema {} user={}", schema, user);
         } catch (SqlGuardException e) {
             throw e;
@@ -98,12 +93,15 @@ public class AiReportTenantProvisioner {
         }
     }
 
-    private static void ensureUser(Statement st, String user, String pass, String host) throws Exception {
-        st.execute("CREATE USER IF NOT EXISTS '" + user + "'@'" + host + "' IDENTIFIED BY '" + pass + "'");
-        st.execute("ALTER USER '" + user + "'@'" + host + "' IDENTIFIED BY '" + pass + "'");
+    private static void ensureRole(Statement st, String user, String pass) throws Exception {
+        try {
+            st.execute("CREATE ROLE \"" + user + "\" LOGIN PASSWORD '" + pass + "'");
+        } catch (Exception ignored) {
+            st.execute("ALTER ROLE \"" + user + "\" LOGIN PASSWORD '" + pass + "'");
+        }
     }
 
-    static String escapeMysqlString(String raw) {
+    static String escapeSqlString(String raw) {
         if (raw == null) {
             return "";
         }

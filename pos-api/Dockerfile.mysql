@@ -1,4 +1,0 @@
-FROM mysql:8.0
-
-COPY src/main/resources/db/schema.sql /docker-entrypoint-initdb.d/01-schema.sql
-COPY src/main/resources/db/seed.sql /docker-entrypoint-initdb.d/02-seed.sql

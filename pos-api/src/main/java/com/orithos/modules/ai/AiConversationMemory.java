@@ -140,7 +140,7 @@ public class AiConversationMemory {
     }
 
     /**
-     * Rebuild Redis short-term memory from durable MySQL history so a restored
+     * Rebuild Redis short-term memory from durable PostgreSQL history so a restored
      * thread can continue follow-ups after TTL expiry.
      */
     public void rehydrate(String threadId, List<Turn> turns) {
