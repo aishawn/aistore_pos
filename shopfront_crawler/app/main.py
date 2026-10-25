@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -20,6 +21,7 @@ from .sync import access_token, ensure_stores, get_client, is_after, make_state,
 
 settings = get_settings()
 app = FastAPI(title="Shopfront Crawler", version="0.1.0")
+logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone=settings.sync_timezone)
 sync_lock = __import__("asyncio").Lock()
 
@@ -234,10 +236,12 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                 chunk_end = min(cursor + timedelta(days=max(1, settings.history_chunk_days - 1)), end)
                 try:
                     await sync_store(db, settings, store, cursor, chunk_end, include_catalog=(cursor == start))
+                    if settings.pos_import_enabled:
+                        await push_pos_snapshot(db, store_key)
                 except Exception:
                     # Shopfront may reject a large historical report. Split the
                     # failed range into smaller requests before moving on.
-                    pass
+                    logger.exception("Shopfront chunk failed: store=%s from=%s to=%s", store_key, cursor, chunk_end)
                 cursor = chunk_end + timedelta(days=1)
                 if job_id is not None:
                     job = db.get(SyncJob, job_id)
@@ -248,6 +252,31 @@ async def _run_sync_background(store_key: str, start: date, end: date, job_id: i
                         db.commit()
     finally:
         db.close()
+
+
+async def push_pos_snapshot(db: Session, store_key: str) -> None:
+    """Push the current idempotent crawler snapshot to the POS boundary."""
+    products = db.scalars(select(Product).where(Product.store_key == store_key)).all()
+    inventory = db.scalars(select(InventorySnapshot).where(InventorySnapshot.store_key == store_key)).all()
+    sales = db.scalars(select(Sale).where(Sale.store_key == store_key)).all()
+    incomplete = [sale.shopfront_sale_id for sale in sales if not sale.shopfront_sale_id or not sale.items]
+    if incomplete:
+        logger.warning("POS sales push blocked: store=%s incomplete_sales=%s", store_key, len(incomplete))
+        return
+    payloads = {
+        "products": {"store_key": store_key, "items": [{"source_id": p.shopfront_product_id, "name": p.name, "sku": p.sku, "barcode": p.barcode, "category": p.category, "brand": p.brand, "cost": p.cost, "price": p.price} for p in products]},
+        "inventory": {"store_key": store_key, "replace": True, "items": [{"source_id": row.shopfront_product_id, "quantity": row.quantity, "timestamp": row.inventory_timestamp} for row in inventory]},
+        "sales": {"store_key": store_key, "items": [{"external_id": sale.shopfront_sale_id, "invoice_id": sale.invoice_id, "status": sale.status, "created_at": sale.created_at, "updated_at": sale.updated_at, "total_price": sale.total_price, "total_tax": sale.total_tax, "items": [{"source_product_id": item.shopfront_product_id, "name": item.product_name, "quantity": item.quantity, "unit_price": item.unit_price, "line_total": item.line_total} for item in sale.items]} for sale in sales]},
+    }
+    client = OrithosClient(settings.pos_api_base_url, settings.pos_api_token, settings.pos_import_enabled)
+    try:
+        await client.upsert_products(jsonable_encoder(payloads["products"]))
+        await client.replace_inventory(jsonable_encoder(payloads["inventory"]))
+        await client.upsert_sales(jsonable_encoder(payloads["sales"]))
+    except Exception:
+        logger.exception("POS snapshot push failed: store=%s", store_key)
+    finally:
+        await client.close()
 
 
 async def scheduled_sync() -> None:
