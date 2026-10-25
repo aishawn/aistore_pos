@@ -2,14 +2,27 @@ package com.orithos.modules.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -28,5 +41,43 @@ class ShopfrontIntegrationControllerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, failure.getStatusCode());
         assertEquals("Unable to stage Shopfront import", failure.getReason());
         assertFalse(failure.getMessage().contains("password=secret"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("mappingFlags")
+    void mappingFlagAcceptsOnlyKnownEnabledValues(Object flag, boolean expected) throws Exception {
+        JdbcTemplate jdbc = mock(JdbcTemplate.class);
+        DataSource dataSource = mock(DataSource.class);
+        Connection connection = mock(Connection.class);
+        DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+        when(jdbc.getDataSource()).thenReturn(dataSource);
+        when(dataSource.getConnection()).thenReturn(connection);
+        when(connection.getMetaData()).thenReturn(metadata);
+        when(metadata.getDatabaseProductName()).thenReturn("PostgreSQL");
+        when(jdbc.update(anyString())).thenReturn(0);
+        when(jdbc.queryForList(anyString(), any(Object[].class)))
+                .thenReturn(List.of(Map.of("enabled", flag)));
+        when(jdbc.queryForObject(contains("RETURNING id"), eq(Long.class), any(Object[].class)))
+                .thenReturn(12L);
+
+        var controller = new ShopfrontIntegrationController(jdbc, new ObjectMapper(), "token", true);
+        var body = new ObjectMapper().readTree("{\"store_key\":\"test\",\"items\":[]}");
+        var result = controller.products("token", body);
+
+        assertEquals(expected, result.data().get("mapping_ready"));
+        assertEquals(expected ? "STAGED" : "BLOCKED_MAPPING", result.data().get("status"));
+    }
+
+    private static Stream<Arguments> mappingFlags() {
+        return Stream.of(
+                Arguments.of(true, true),
+                Arguments.of(1, true),
+                Arguments.of("1", true),
+                Arguments.of(" true ", true),
+                Arguments.of(false, false),
+                Arguments.of(0, false),
+                Arguments.of("0", false),
+                Arguments.of("false", false),
+                Arguments.of("enabled", false));
     }
 }

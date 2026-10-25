@@ -155,7 +155,9 @@ public class ShopfrontIntegrationController {
     private boolean isEnabled(Object value) {
         if (value instanceof Boolean enabled) return enabled;
         if (value instanceof Number number) return number.intValue() != 0;
-        return value != null && !"0".equals(value.toString()) && !"false".equalsIgnoreCase(value.toString());
+        if (value == null) return false;
+        String text = value.toString().trim();
+        return "1".equals(text) || "true".equalsIgnoreCase(text);
     }
 
     private void authorize(String supplied) {
