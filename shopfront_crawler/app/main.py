@@ -182,6 +182,14 @@ async def retry_sync_run(run_id: int, background_tasks: BackgroundTasks, db: Ses
 
 @app.post("/api/sync/runs/{run_id}/cancel")
 def cancel_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
+    job = db.get(SyncJob, run_id)
+    if job is not None:
+        if job.status in {"queued", "running"}:
+            job.status = "cancelled"
+            job.error = "cancelled by operator"
+            job.finished_at = datetime.now(timezone.utc)
+            db.commit()
+        return {"status": job.status, "run_id": job.id, "type": "job"}
     run = db.get(SyncRun, run_id)
     if run is None:
         raise HTTPException(404, "Sync run not found")
@@ -239,6 +247,9 @@ async def run_history_job(job_id: int) -> None:
         job.started_at = datetime.now(timezone.utc)
         db.commit()
         await run_sync_background(job.store_key, date.fromisoformat(job.from_date), date.fromisoformat(job.to_date))
+        db.refresh(job)
+        if job.status == "cancelled":
+            return
         failed = db.scalar(select(SyncRun.id).where(SyncRun.store_key == job.store_key, SyncRun.started_at >= job.started_at, SyncRun.status == "failed"))
         job.status = "failed" if failed else "completed"
         if failed:
@@ -286,6 +297,9 @@ async def run_history_discovery(job_id: int) -> None:
                 await probe_range(midpoint + timedelta(days=1), end)
 
             await probe_range(date(settings.shopfront_history_start_year, 1, 1), today)
+            db.refresh(job)
+            if job.status == "cancelled":
+                return
             job.payload = {"sample_count": len(found), "min_timestamp": min(found) if found else None, "max_timestamp": max(found) if found else None, "errors": errors}
             job.status = "completed"
             job.finished_at = datetime.now(timezone.utc)
