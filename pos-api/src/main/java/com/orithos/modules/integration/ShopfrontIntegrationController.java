@@ -135,7 +135,8 @@ public class ShopfrontIntegrationController {
             return ApiResult.ok(Map.of("id", id, "status", status, "type", type, "item_count", items.size(), "mapping_ready", !mapping.isEmpty(), "business_write", false));
         } catch (Exception e) {
             log.error("Shopfront staging failed: type={}, store={}, message={}", type, store, e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront import", e);
+            String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getClass().getSimpleName() + ": " + e.getMessage();
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to stage Shopfront import: " + reason, e);
         }
     }
 
