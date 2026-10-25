@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orithos.common.ApiResult;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -67,7 +68,15 @@ public class ShopfrontIntegrationController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "store_key, company_id and outlet_id are required");
         }
         ensureMappingTable();
-        jdbc.update("INSERT INTO shopfront_store_mapping (store_key, shopfront_outlet, company_id, outlet_id, enabled) VALUES (?, ?, ?, ?, 1) ON DUPLICATE KEY UPDATE shopfront_outlet=VALUES(shopfront_outlet), company_id=VALUES(company_id), outlet_id=VALUES(outlet_id), enabled=1", storeKey, body.path("shopfront_outlet").asText(null), companyId, outletId);
+        String shopfrontOutlet = body.path("shopfront_outlet").asText(null);
+        int updated = jdbc.update("UPDATE shopfront_store_mapping SET shopfront_outlet=?, company_id=?, outlet_id=?, enabled=1 WHERE store_key=?", shopfrontOutlet, companyId, outletId, storeKey);
+        if (updated == 0) {
+            try {
+                jdbc.update("INSERT INTO shopfront_store_mapping (store_key, shopfront_outlet, company_id, outlet_id, enabled) VALUES (?, ?, ?, ?, 1)", storeKey, shopfrontOutlet, companyId, outletId);
+            } catch (DuplicateKeyException race) {
+                jdbc.update("UPDATE shopfront_store_mapping SET shopfront_outlet=?, company_id=?, outlet_id=?, enabled=1 WHERE store_key=?", shopfrontOutlet, companyId, outletId, storeKey);
+            }
+        }
         return ApiResult.ok(Map.of("store_key", storeKey, "company_id", companyId, "outlet_id", outletId, "enabled", true));
     }
 
