@@ -109,7 +109,7 @@ public class ShopfrontIntegrationController {
         try {
             ensureMappingTable();
             var mapping = jdbc.queryForList("SELECT company_id, outlet_id FROM shopfront_store_mapping WHERE store_key = ? AND enabled = 1", store);
-            jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_import_run (id BIGINT PRIMARY KEY AUTO_INCREMENT, store_key VARCHAR(64) NOT NULL, import_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, item_count INT NOT NULL, payload_json MEDIUMTEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
+            jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_import_run (id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, store_key VARCHAR(64) NOT NULL, import_type VARCHAR(32) NOT NULL, status VARCHAR(32) NOT NULL, item_count INT NOT NULL, payload_json MEDIUMTEXT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)");
             var json = objectMapper.writeValueAsString(body);
             String status = mapping.isEmpty() ? "BLOCKED_MAPPING" : "STAGED";
             jdbc.update("INSERT INTO shopfront_import_run (store_key, import_type, status, item_count, payload_json) VALUES (?, ?, ?, ?, ?)", store, type, status, items.size(), json);
@@ -122,7 +122,7 @@ public class ShopfrontIntegrationController {
     }
 
     private void ensureMappingTable() {
-        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_store_mapping (store_key VARCHAR(64) PRIMARY KEY, shopfront_outlet VARCHAR(255), company_id VARCHAR(128) NOT NULL, outlet_id VARCHAR(128) NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
+        jdbc.update("CREATE TABLE IF NOT EXISTS shopfront_store_mapping (store_key VARCHAR(64) NOT NULL PRIMARY KEY, shopfront_outlet VARCHAR(255), company_id VARCHAR(128) NOT NULL, outlet_id VARCHAR(128) NOT NULL, enabled TINYINT(1) NOT NULL DEFAULT 1)");
     }
 
     private void authorize(String supplied) {
