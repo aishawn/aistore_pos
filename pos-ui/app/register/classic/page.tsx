@@ -1,11 +1,5 @@
-import { SellPage } from "@/components/SellPage";
-import { SellModals } from "@/components/SellModals";
+import { redirect } from "next/navigation";
 
 export default function ClassicRegisterRoute() {
-  return (
-    <>
-      <SellPage />
-      <SellModals />
-    </>
-  );
+  redirect("/register/odoo");
 }

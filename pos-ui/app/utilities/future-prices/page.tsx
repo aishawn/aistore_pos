@@ -1,5 +1,5 @@
-import FuturePricesClient from "./client-page";
+import { redirect } from "next/navigation";
 
 export default function FuturePricesPage() {
-  return <FuturePricesClient />;
+  redirect("/products");
 }

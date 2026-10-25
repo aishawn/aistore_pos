@@ -1,8 +1,8 @@
-import FuturePricesClientPage from "../../../../app/utilities/future-prices/client-page";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default function FuturePricesPage() {
-  return <FuturePricesClientPage />;
+  redirect("/products");
 }
