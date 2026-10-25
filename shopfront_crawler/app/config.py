@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     shopfront_client_id: str = ""
     shopfront_client_secret: str = ""
     shopfront_redirect_uri: str = "http://localhost:8000/oauth/shopfront/callback"
-    shopfront_scopes: str = "run_advanced_reports run_sales_reports see_products see_sales see_webhooks create_webhooks"
+    shopfront_scopes: str = "run_advanced_reports run_sales_reports see_products see_history see_webhooks create_webhooks"
     shopfront_stores: str = "skr:skr"
     database_url: str = "sqlite:///./data/shopfront_crawler.db"
     token_encryption_key: str = ""
