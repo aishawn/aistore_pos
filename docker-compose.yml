@@ -98,6 +98,46 @@ services:
     volumes:
       - shopfront-archive:/var/lib/orithos/shopfront
 
+  # Independent Shopfront synchronization worker. Its database and OAuth
+  # credentials are isolated from the POS application and persist across
+  # redeployments.
+  shopfront-crawler:
+    build:
+      context: ./shopfront_crawler
+      dockerfile: Dockerfile
+    image: orithos-shopfront-crawler:latest
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      SHOPFRONT_CLIENT_ID: ${SHOPFRONT_CLIENT_ID:-}
+      SHOPFRONT_CLIENT_SECRET: ${SHOPFRONT_CLIENT_SECRET:-}
+      SHOPFRONT_REDIRECT_URI: ${SHOPFRONT_REDIRECT_URI:-https://shopfront.orithos.com.au/oauth/shopfront/callback}
+      SHOPFRONT_SCOPES: ${SHOPFRONT_SCOPES:-run_advanced_reports run_sales_reports see_products see_history see_webhooks create_webhooks}
+      SHOPFRONT_STORES: ${SHOPFRONT_STORES:-skr:skr}
+      DATABASE_URL: ${SHOPFRONT_DATABASE_URL:-sqlite:////data/shopfront_crawler.db}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      SYNC_TIMEZONE: ${SYNC_TIMEZONE:-Australia/Adelaide}
+      SYNC_DAILY_HOUR: ${SYNC_DAILY_HOUR:-2}
+      SYNC_DAILY_MINUTE: ${SYNC_DAILY_MINUTE:-0}
+      SYNC_LOOKBACK_DAYS: ${SYNC_LOOKBACK_DAYS:-3}
+      HISTORY_CHUNK_DAYS: ${HISTORY_CHUNK_DAYS:-14}
+      SHOPFRONT_HISTORY_START_YEAR: ${SHOPFRONT_HISTORY_START_YEAR:-2010}
+      POS_API_BASE_URL: ${SHOPFRONT_POS_API_BASE_URL:-http://backend:8080}
+      POS_API_TOKEN: ${SHOPFRONT_POS_API_TOKEN:-}
+      POS_IMPORT_ENABLED: ${SHOPFRONT_POS_IMPORT_ENABLED:-false}
+      SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR: ${SHOPFRONT_WEBHOOK_SIGNING_KEY_SKR:-}
+    volumes:
+      - shopfront-crawler-data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.shopfront-crawler-secure.rule=Host(`shopfront.orithos.com.au`)
+      - traefik.http.routers.shopfront-crawler-secure.entrypoints=websecure
+      - traefik.http.routers.shopfront-crawler-secure.priority=100
+      - traefik.http.routers.shopfront-crawler-secure.tls=true
+      - traefik.http.services.shopfront-crawler-svc.loadbalancer.server.port=8000
+
   r2-sync:
     build:
       context: ./r2-sync
@@ -185,3 +225,4 @@ services:
 volumes:
   redis-data:
   shopfront-archive:
+  shopfront-crawler-data:
