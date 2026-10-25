@@ -32,7 +32,8 @@ export async function scopedOdoo(request: NextRequest) {
       const detail = `${payload.error.data?.name ?? ""} ${payload.error.message ?? ""}`;
       if (/session|authenticate|log in/i.test(detail)) throw new OdooScopeError("Odoo session expired.", 401);
       if (/accesserror|access denied|permission/i.test(detail)) throw new OdooScopeError("Your account cannot perform this operation.", 403);
-      throw new OdooScopeError("Odoo rejected this operation. Review the record before retrying.", 422);
+      const odooMessage = payload.error.data?.message?.trim();
+      throw new OdooScopeError(odooMessage || "Odoo rejected this operation. Review the record before retrying.", 422);
     }
     if (payload.result === undefined) throw new OdooScopeError("Odoo returned no result.", 502);
     return payload.result;
