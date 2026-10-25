@@ -88,6 +88,11 @@ mybatis:
     default-fetch-size: 100
 
 app:
+  shopfront:
+    # Staging boundary only. Keep disabled until an isolated Odoo/test-company
+    # adapter and a dedicated integration token are configured.
+    integration-enabled: ${SHOPFRONT_INTEGRATION_ENABLED:false}
+    integration-token: ${SHOPFRONT_INTEGRATION_TOKEN:}
   invoice:
     # Reserved for future supplier-provided invoice APIs. Keep false until an adapter exists.
     supplier-ingest-enabled: ${SUPPLIER_INVOICE_INGEST_ENABLED:false}

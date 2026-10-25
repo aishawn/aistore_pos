@@ -30,7 +30,7 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
             "/api/capped-pricing", "/api/classifications", "/api/customer-displays",
             "/api/customer-payments", "/api/customers", "/api/external-stocktakes",
             "/api/future-costs", "/api/future-prices", "/api/gift-cards", "/api/host",
-            "/api/host-connections", "/api/integrations", "/api/kitchen-screens",
+            "/api/host-connections", "/api/kitchen-screens",
             "/api/mail-log", "/api/notifications", "/api/order-reviews", "/api/orders",
             "/api/outlets", "/api/payment-methods", "/api/price-lists", "/api/price-sets",
             "/api/product-backorders", "/api/products", "/api/promotion-categories",
@@ -65,6 +65,14 @@ public final class OdooOnlyModeFilter extends OncePerRequestFilter {
     }
 
     private static boolean isLegacy(String path) {
+        // Shopfront is an isolated, token-authenticated staging boundary. It
+        // never writes Odoo or Classic POS business tables.
+        if (path.equals("/api/integrations/shopfront") || path.startsWith("/api/integrations/shopfront/")) {
+            return false;
+        }
+        if (path.equals("/api/integrations") || path.startsWith("/api/integrations/")) {
+            return true;
+        }
         return LEGACY_PREFIXES.stream().anyMatch(prefix -> path.equals(prefix) || path.startsWith(prefix + "/"));
     }
 }

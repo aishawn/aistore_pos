@@ -111,6 +111,7 @@ public class SecurityConfig {
                         "/api/auth/reset-password",
                         "/api/auth/reset-token",
                         "/api/auth/bootstrap",
+                        "/api/integrations/shopfront/**",
                         "/api/public/**",
                         "/authorized").permitAll()
                 .requestMatchers("/actuator/**", "/error").permitAll()
