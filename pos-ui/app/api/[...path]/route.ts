@@ -14,6 +14,7 @@ const FORWARDED_REQUEST_HEADERS = [
   "if-none-match",
   "range",
   "x-correlation-id",
+  "x-shopfront-integration-token",
 ] as const;
 
 const FORWARDED_RESPONSE_HEADERS = [
