@@ -202,14 +202,14 @@ def cancel_sync_run(run_id: int, db: Session = Depends(get_db)) -> dict:
     return {"status": run.status, "run_id": run.id}
 
 
-async def run_sync_background(store_key: str, start: date, end: date) -> None:
+async def run_sync_background(store_key: str, start: date, end: date, job_id: int | None = None) -> None:
     if sync_lock.locked():
         return
     async with sync_lock:
-        await _run_sync_background(store_key, start, end)
+        await _run_sync_background(store_key, start, end, job_id)
 
 
-async def _run_sync_background(store_key: str, start: date, end: date) -> None:
+async def _run_sync_background(store_key: str, start: date, end: date, job_id: int | None = None) -> None:
     db = next(get_db())
     try:
         store = db.scalar(select(Store).where(Store.store_key == store_key))
@@ -226,6 +226,13 @@ async def _run_sync_background(store_key: str, start: date, end: date) -> None:
                     # failed range into smaller requests before moving on.
                     pass
                 cursor = chunk_end + timedelta(days=1)
+                if job_id is not None:
+                    job = db.get(SyncJob, job_id)
+                    if job is not None and job.status == "cancelled":
+                        break
+                    if job is not None:
+                        job.cursor_date = cursor.isoformat()
+                        db.commit()
     finally:
         db.close()
 
@@ -247,7 +254,7 @@ async def run_history_job(job_id: int) -> None:
         job.status = "running"
         job.started_at = datetime.now(timezone.utc)
         db.commit()
-        await run_sync_background(job.store_key, date.fromisoformat(job.from_date), date.fromisoformat(job.to_date))
+        await run_sync_background(job.store_key, date.fromisoformat(job.from_date), date.fromisoformat(job.to_date), job.id)
         db.refresh(job)
         if job.status == "cancelled":
             return
