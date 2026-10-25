@@ -192,7 +192,7 @@ services:
     # In Compose, escape regex end-anchors as $$ so they survive interpolation.
     labels:
       - traefik.enable=true
-      - traefik.http.routers.aistorepos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`)
+      - traefik.http.routers.aistorepos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`) && !Host(`shopfront.orithos.com.au`)
       - traefik.http.routers.aistorepos-tenant-secure.entrypoints=websecure
       - traefik.http.routers.aistorepos-tenant-secure.priority=1
       - traefik.http.routers.aistorepos-tenant-secure.tls=true
