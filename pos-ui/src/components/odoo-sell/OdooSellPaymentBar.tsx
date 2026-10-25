@@ -76,29 +76,29 @@ export function OdooSellPaymentBar({
     <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
       <div className="flex flex-wrap items-center gap-2">
         {eftposSelected ? (
-          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCard} disabled={!linesLength || !cardMethod}>
+          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCard} disabled={!cardMethod}>
             EFTPOS
           </AdminNavyButton>
         ) : (
           <AdminSecondaryButton
-            className={cn("min-h-11", (!linesLength || !cardMethod) && "opacity-45")}
+            className={cn("min-h-11", !cardMethod && "opacity-45")}
             onClick={onSelectCard}
-            disabled={!linesLength || !cardMethod}
-            title={!linesLength ? "Add items before choosing EFTPOS" : !cardMethod ? "No card payment method on this register" : cardMethod.name}
+            disabled={!cardMethod}
+            title={!cardMethod ? "No card payment method on this register" : cardMethod.name}
           >
             EFTPOS
           </AdminSecondaryButton>
         )}
         {cashSelected ? (
-          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCash} disabled={!linesLength || !cashMethod}>
+          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCash} disabled={!cashMethod}>
             Exact Cash
           </AdminNavyButton>
         ) : (
           <AdminSecondaryButton
-            className={cn("min-h-11", (!linesLength || !cashMethod) && "opacity-45")}
+            className={cn("min-h-11", !cashMethod && "opacity-45")}
             onClick={onSelectCash}
-            disabled={!linesLength || !cashMethod}
-            title={!linesLength ? "Add items before choosing Exact Cash" : !cashMethod ? "No cash payment method on this register" : "Select cash, prefill amount due — edit to give change"}
+            disabled={!cashMethod}
+            title={!cashMethod ? "No cash payment method on this register" : "Select cash, prefill amount due — edit to give change"}
           >
             Exact Cash
           </AdminSecondaryButton>

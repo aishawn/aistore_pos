@@ -251,7 +251,9 @@ export function OdooRegisterPage() {
       }
       const selected = active?.paymentMethods.some((method) => method.id === selectedPaymentMethodIdRef.current)
         ? selectedPaymentMethodIdRef.current
-        : active?.paymentMethods[0]?.id ?? null;
+        : active?.paymentMethods.find((method) => /card|eftpos|bank|terminal/i.test(method.name))?.id
+          ?? active?.paymentMethods[0]?.id
+          ?? null;
       selectedPaymentMethodIdRef.current = selected;
       setPaymentMethodId(selected);
       if (data.message) setError(data.message);
@@ -1056,7 +1058,9 @@ export function OdooRegisterPage() {
     setError(null);
     setDraftNotice(null);
     const config = bootstrap?.configs.find((item) => item.id === id);
-    const nextPaymentMethodId = config?.paymentMethods[0]?.id ?? null;
+    const nextPaymentMethodId = config?.paymentMethods.find((method) => /card|eftpos|bank|terminal/i.test(method.name))?.id
+      ?? config?.paymentMethods[0]?.id
+      ?? null;
     selectedPaymentMethodIdRef.current = nextPaymentMethodId;
     setPaymentMethodId(nextPaymentMethodId);
     setWorkspaceTab("keys");
@@ -1151,6 +1155,20 @@ export function OdooRegisterPage() {
     setProductActiveIndex(-1);
   }
 
+  function openQuickCategory(name: string) {
+    const match = posCategories.find((category) => friendlyProductName(category.name).toLowerCase() === name.toLowerCase())
+      ?? posCategories.find((category) => friendlyProductName(category.name).toLowerCase().includes(name.toLowerCase()));
+    if (match) {
+      openCategory(match.id);
+      return;
+    }
+    setCategoryId(null);
+    setCatalogHome(false);
+    setWorkspaceTab("keys");
+    setQuery(name);
+    setProductActiveIndex(-1);
+  }
+
   function backToCatalogHome() {
     setCatalogHome(true);
     setCategoryId(null);
@@ -1179,8 +1197,8 @@ export function OdooRegisterPage() {
     ?? nonCashMethods.find((item) => !/account|customer|credit|pay.?later/i.test(item.name))
     ?? nonCashMethods[0]
     ?? null;
-  const eftposSelected = Boolean(lines.length && cardMethod && paymentMethodId === cardMethod.id);
-  const cashSelected = Boolean(lines.length && cashMethod && paymentMethodId === cashMethod.id);
+  const eftposSelected = Boolean(cardMethod && paymentMethodId === cardMethod.id);
+  const cashSelected = Boolean(cashMethod && paymentMethodId === cashMethod.id);
 
   return (
     <main className="flex h-[calc(100dvh-50px)] min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] p-4 font-sans md:p-5">
@@ -1334,6 +1352,7 @@ export function OdooRegisterPage() {
                 categoriesError={categoriesError}
                 categoriesLoading={categoriesLoading}
                 categoryTiles={categoryTiles}
+                onOpenQuickCategory={openQuickCategory}
                 onRetryCategories={() => setCategoryRetryKey((value) => value + 1)}
                 onOpenCategory={openCategory}
                 linesLength={lines.length}

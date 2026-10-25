@@ -6,6 +6,7 @@ import { ProductImage } from "@/components/ProductImage";
 import type { OdooPosCategoryRecord, OdooProductRecord } from "@/lib/odoo-api";
 import { friendlyProductName } from "@/lib/product-display-name";
 import { cn } from "@/lib/utils";
+import { SALE_KEY_CATEGORIES } from "@/lib/sale-key-categories";
 import {
   CATEGORY_TILE_TONES,
   SALE_KEY_TILE_CLASS,
@@ -22,6 +23,7 @@ type OdooSellCatalogWorkspaceProps = {
   categoryTiles: OdooPosCategoryRecord[];
   onRetryCategories: () => void;
   onOpenCategory: (id: number | null) => void;
+  onOpenQuickCategory: (name: string) => void;
   linesLength: number;
   targetLineQuantity: number;
   onIncrementQty: () => void;
@@ -53,6 +55,7 @@ export function OdooSellCatalogWorkspace({
   categoryTiles,
   onRetryCategories,
   onOpenCategory,
+  onOpenQuickCategory,
   linesLength,
   targetLineQuantity,
   onIncrementQty,
@@ -130,6 +133,17 @@ export function OdooSellCatalogWorkspace({
             >
               All products
             </button>
+            {(!categoryTiles.length || categoriesError) && SALE_KEY_CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => onOpenQuickCategory("folder" in category ? category.folder : category.label)}
+                className={SALE_KEY_TILE_CLASS}
+                style={{ backgroundColor: category.bg, borderColor: category.border, color: category.color }}
+              >
+                {category.label}
+              </button>
+            ))}
             {categoryTiles.map((category, index) => {
               const tone = CATEGORY_TILE_TONES[index % CATEGORY_TILE_TONES.length];
               const label = friendlyProductName(category.name);
