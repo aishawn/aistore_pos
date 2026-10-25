@@ -110,6 +110,8 @@ services:
     depends_on:
       backend:
         condition: service_started
+    expose:
+      - "8000"
     environment:
       SHOPFRONT_CLIENT_ID: ${SHOPFRONT_CLIENT_ID:-}
       SHOPFRONT_CLIENT_SECRET: ${SHOPFRONT_CLIENT_SECRET:-}
