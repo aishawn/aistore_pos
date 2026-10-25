@@ -209,10 +209,10 @@ function entityLabel(entity: AiEntity): string {
 
 const CREATE_ROUTE: Partial<Record<AiEntity, string>> = {
   product: "/products/new",
-  classification: "/products/odoo?dialog=categories",
+  classification: "/products?dialog=categories",
   supplier: "/suppliers/new",
   order: "/orders/new",
-  stocktake: "/products/odoo?dialog=stocktake",
+  stocktake: "/products?dialog=stocktake",
   customer: "/customers/new",
   customer_group: "/customer-groups",
   price_list: "/pricelists",
@@ -441,7 +441,7 @@ export async function resolveEntityAction(
         await prepareClassificationCreatePrefill(query);
         return {
           kind: "navigate",
-          href: withAiCreateFlag("/products/odoo?dialog=categories"),
+          href: withAiCreateFlag("/products?dialog=categories"),
           note: noteReview,
         };
       }
@@ -463,7 +463,7 @@ export async function resolveEntityAction(
         await prepareStocktakeCreatePrefill(query);
         return {
           kind: "navigate",
-          href: withAiCreateFlag("/products/odoo?dialog=stocktake"),
+          href: withAiCreateFlag("/products?dialog=stocktake"),
           note: noteReview,
         };
       }

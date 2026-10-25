@@ -11,19 +11,19 @@ const searchBehaviors = [
   {
     title: "Products",
     value: "Name · barcode · SKU",
-    detail: "Product search matches the Odoo product name, barcode, or internal reference. The catalogue and register search Odoo directly.",
+    detail: "Product search matches the Orithos product name, barcode, or internal reference. The catalogue and register search Orithos directly.",
     icon: PackageSearch,
   },
   {
     title: "Customers",
     value: "Name · phone · email · reference",
-    detail: "Customer lookup searches Odoo by name, phone number, email, or customer reference, including the customer picker at checkout.",
+    detail: "Customer lookup searches Orithos by name, phone number, email, or customer reference, including the customer picker at checkout.",
     icon: UserRoundSearch,
   },
   {
     title: "Search storage",
-    value: "Live Odoo query",
-    detail: "Search requests are sent to Odoo when you search. The previous “Local Database” value was not connected to a saved cache preference.",
+    value: "Live Orithos query",
+    detail: "Search requests are sent to Orithos when you search. The previous “Local Database” value was not connected to a saved cache preference.",
     icon: Database,
   },
 ];
@@ -44,7 +44,7 @@ export default function SearchSettingsPage() {
           <div>
             <h2 className="text-sm font-semibold text-sky-950">Search preferences are not edited here</h2>
             <p className="mt-1 text-sm leading-5 text-sky-900/80">
-              The previous selectors were examples. Search fields and data source are defined by the live Odoo search used across Orithos.
+              The previous selectors were examples. Search fields and data source are defined by the live Orithos search used across Orithos.
             </p>
           </div>
         </section>
@@ -52,7 +52,7 @@ export default function SearchSettingsPage() {
         <section aria-labelledby="search-behavior-heading" className="mt-6">
           <div className="mb-3">
             <h2 id="search-behavior-heading" className="text-sm font-semibold text-[var(--oh-text)]">Current search behaviour</h2>
-            <p className="mt-1 text-sm text-[var(--oh-muted)]">Product and customer results come from your connected Odoo account</p>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">Product and customer results come from your connected Orithos account</p>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {searchBehaviors.map(({ title, value, detail, icon: Icon }) => (
@@ -74,13 +74,13 @@ export default function SearchSettingsPage() {
           </ul>
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">
             <Link
-              href="/products/odoo"
+              href="/products"
               className="inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               Browse products <ArrowRight size={15} aria-hidden="true" />
             </Link>
             <Link
-              href="/customers/odoo"
+              href="/customers"
               className="inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               Browse customers <ArrowRight size={15} aria-hidden="true" />

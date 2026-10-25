@@ -45,6 +45,39 @@ function defaultAnchor(): FloatAnchor {
   return { x: window.innerWidth - 24, y: window.innerHeight - bottomInset };
 }
 
+function mobileHeaderAnchor(width: number, height: number): FloatAnchor | null {
+  const header = Array.from(document.querySelectorAll<HTMLElement>("header, [role='banner']"))
+    .find((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.top >= 0 && rect.top <= 8 && rect.height >= 40 && rect.height <= 88;
+    });
+  if (!header) return null;
+
+  const rect = header.getBoundingClientRect();
+  const occupied = Array.from(header.querySelectorAll<HTMLElement>("a, button, [role='button'], img"))
+    .flatMap((element) => {
+      if (element.getClientRects().length === 0) return [];
+      const item = element.getBoundingClientRect();
+      if (item.width === 0 || item.height === 0 || item.right <= 0 || item.left >= window.innerWidth) return [];
+      return [{ left: Math.max(0, item.left - 8), right: Math.min(window.innerWidth, item.right + 8) }];
+    })
+    .sort((a, b) => a.left - b.left);
+
+  let bestGap: { left: number; right: number } | null = null;
+  let cursor = 8;
+  for (const item of [...occupied, { left: window.innerWidth - 8, right: window.innerWidth }]) {
+    if (item.left - cursor >= width + 12 && (!bestGap || item.left - cursor > bestGap.right - bestGap.left)) {
+      bestGap = { left: cursor, right: item.left };
+    }
+    cursor = Math.max(cursor, item.right);
+  }
+  if (!bestGap) return null;
+  return {
+    x: (bestGap.left + bestGap.right + width) / 2,
+    y: rect.bottom - Math.max(2, (height - 44) / 2),
+  };
+}
+
 function loadAnchor(): FloatAnchor {
   try {
     const raw = sessionStorage.getItem(FLOAT_POS_KEY);
@@ -57,16 +90,72 @@ function loadAnchor(): FloatAnchor {
   return defaultAnchor();
 }
 
-function clampAnchor(anchor: FloatAnchor, width: number, height: number): FloatAnchor {
+function clampAnchor(anchor: FloatAnchor, width: number, height: number, bottomInset = 8): FloatAnchor {
   const margin = 8;
   const minX = width + margin;
   const minY = height + margin;
   const maxX = Math.max(minX, window.innerWidth - margin);
-  const maxY = Math.max(minY, window.innerHeight - margin);
+  const maxY = Math.max(minY, window.innerHeight - bottomInset);
   return {
     x: Math.min(Math.max(minX, anchor.x), maxX),
     y: Math.min(Math.max(minY, anchor.y), maxY),
   };
+}
+
+function findClearAnchor(anchor: FloatAnchor, width: number, height: number, bottomInset = 8): FloatAnchor {
+  const preferred = clampAnchor(anchor, width, height, bottomInset);
+  const mobile = window.matchMedia("(max-width: 767px)").matches;
+
+  const margin = 8;
+  const minX = width + margin;
+  const maxX = Math.max(minX, window.innerWidth - margin);
+  const minY = height + (mobile ? 64 : margin);
+  const maxY = Math.max(minY, window.innerHeight - bottomInset);
+  const obstacles = Array.from(document.querySelectorAll<HTMLElement>(
+    "button, a, input, select, textarea, [role='button'], h1, h2, h3, p, label, dt, dd",
+  )).flatMap((element) => {
+    if (element.closest("[data-ai-fab]") || element.getClientRects().length === 0) return [];
+    const style = window.getComputedStyle(element);
+    if (style.visibility === "hidden" || style.display === "none") return [];
+    const rect = element.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0 || rect.right <= 0 || rect.bottom <= 0 || rect.left >= window.innerWidth || rect.top >= window.innerHeight) return [];
+    const interactive = element.matches("button, a, input, select, textarea, [role='button']");
+    if (!interactive && !element.textContent?.trim()) return [];
+    return [{ rect, weight: interactive ? 8 : 3 }];
+  });
+
+  const score = (candidate: FloatAnchor) => {
+    const left = candidate.x - width;
+    const top = candidate.y - height;
+    return obstacles.reduce((total, obstacle) => {
+      const overlapWidth = Math.max(0, Math.min(candidate.x, obstacle.rect.right + 6) - Math.max(left, obstacle.rect.left - 6));
+      const overlapHeight = Math.max(0, Math.min(candidate.y, obstacle.rect.bottom + 6) - Math.max(top, obstacle.rect.top - 6));
+      return total + overlapWidth * overlapHeight * obstacle.weight;
+    }, 0);
+  };
+
+  if (score(preferred) === 0) return preferred;
+  if (mobile) {
+    const headerAnchor = mobileHeaderAnchor(width, height);
+    if (headerAnchor && score(headerAnchor) === 0) return headerAnchor;
+  }
+
+  let best = preferred;
+  let bestScore = score(preferred);
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let y = minY; y <= maxY; y += 32) {
+    for (let x = minX; x <= maxX; x += 32) {
+      const candidate = { x, y };
+      const candidateScore = score(candidate);
+      const distance = (x - preferred.x) ** 2 + (y - preferred.y) ** 2;
+      if (candidateScore < bestScore || (candidateScore === bestScore && distance < bestDistance)) {
+        best = candidate;
+        bestScore = candidateScore;
+        bestDistance = distance;
+      }
+    }
+  }
+  return clampAnchor(best, width, height, bottomInset);
 }
 
 interface ChatCta {
@@ -140,7 +229,7 @@ function ChatActionLinks({
       )}
     >
       {links.map((link) => (
-        <button
+    <button
           key={`${link.href}-${link.label}`}
           type="button"
           aria-label={link.label}
@@ -161,9 +250,7 @@ function labelForHref(href: string): string {
   const known: Record<string, string> = {
     "/": "Open sell screen",
     "/products": "Open products",
-    "/products/odoo": "Open products",
     "/customers": "Open customers",
-    "/customers/odoo": "Open customers",
     "/promotions": "Open promotions",
     "/stock/list": "Open stock list",
     "/stock/replenishment": "Open replenishment",
@@ -176,9 +263,9 @@ function labelForHref(href: string): string {
     "/invoices": "Open supplier invoices",
     "/invoices/scan": "Open supplier invoices",
     "/invoices/new": "Scan supplier invoice",
-    "/history/odoo": "Open sales history",
-    "/purchases/odoo": "Open purchases",
-    "/suppliers/odoo": "Open suppliers",
+    "/history": "Open sales history",
+    "/purchases": "Open purchases",
+    "/suppliers": "Open suppliers",
     "/orders": "Open orders",
     "/stocktake": "Open stocktake",
     "/classifications": "Open classifications",
@@ -379,6 +466,7 @@ export function SellAiPanel({
   const suppressClickRef = useRef(false);
   const [mounted, setMounted] = useState(false);
   const [anchor, setAnchor] = useState<FloatAnchor>(defaultAnchor);
+  const [mobileViewport, setMobileViewport] = useState(false);
   const [dragging, setDragging] = useState(false);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const restoreFabRef = useRef(false);
@@ -559,18 +647,35 @@ export function SellAiPanel({
 
   useEffect(() => {
     setMounted(true);
-    setAnchor(loadAnchor());
+    const savedAnchor = loadAnchor();
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    setMobileViewport(mobile);
+    const compactRegister = pathname === "/register/classic" && mobile;
+    const size = mobile ? 44 : 64;
+    const safeAnchor = findClearAnchor(savedAnchor, size, size, compactRegister ? 108 : 8);
+    setAnchor(safeAnchor);
+    if (safeAnchor.x !== savedAnchor.x || safeAnchor.y !== savedAnchor.y) {
+      try {
+        sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(safeAnchor));
+      } catch {
+        // The route-specific position still applies for this mount.
+      }
+    }
     setStoreHost(window.location.hostname || null);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     // The expanded panel fills the viewport edge; its size must never move the orb.
     if (!mounted || expanded || pagePresentation || workspace || !launcherVisible) return;
     function reclamp() {
       const el = floatRef.current;
-      if (!el) return;
+      if (!el || dragRef.current) return;
+      const mobile = window.matchMedia("(max-width: 767px)").matches;
+      setMobileViewport(mobile);
       setAnchor((prev) => {
-        const next = clampAnchor(prev, el.offsetWidth, el.offsetHeight);
+        const compactRegister = pathname === "/register/classic" && mobile;
+        const size = mobile ? 44 : 64;
+        const next = findClearAnchor(prev, size, size, compactRegister ? 108 : 8);
         try {
           sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
         } catch {
@@ -579,10 +684,23 @@ export function SellAiPanel({
         return next;
       });
     }
+    let scrollFrame = 0;
+    function scheduleReposition() {
+      cancelAnimationFrame(scrollFrame);
+      scrollFrame = requestAnimationFrame(reclamp);
+    }
     reclamp();
     window.addEventListener("resize", reclamp);
-    return () => window.removeEventListener("resize", reclamp);
-  }, [mounted, expanded, pagePresentation, workspace, launcherVisible]);
+    document.addEventListener("scroll", scheduleReposition, true);
+    const contentObserver = new MutationObserver(scheduleReposition);
+    contentObserver.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.removeEventListener("resize", reclamp);
+      document.removeEventListener("scroll", scheduleReposition, true);
+      contentObserver.disconnect();
+      cancelAnimationFrame(scrollFrame);
+    };
+  }, [mounted, expanded, pagePresentation, workspace, launcherVisible, pathname]);
 
   function beginDrag(e: React.PointerEvent) {
     if (e.button !== 0 || !e.isPrimary || dragRef.current) return;
@@ -613,7 +731,8 @@ export function SellAiPanel({
     const el = floatRef.current;
     const w = el?.offsetWidth ?? 72;
     const h = el?.offsetHeight ?? 72;
-    setAnchor(clampAnchor({ x: drag.origX + dx, y: drag.origY + dy }, w, h));
+    const compactRegister = pathname === "/register/classic" && window.matchMedia("(max-width: 767px)").matches;
+    setAnchor(clampAnchor({ x: drag.origX + dx, y: drag.origY + dy }, w, h, compactRegister ? 108 : 8));
   }
 
   function endDrag(e: React.PointerEvent) {
@@ -632,7 +751,8 @@ export function SellAiPanel({
         const el = floatRef.current;
         if (!el) return;
         setAnchor((prev) => {
-          const next = clampAnchor(prev, el.offsetWidth, el.offsetHeight);
+          const compactRegister = pathname === "/register/classic" && window.matchMedia("(max-width: 767px)").matches;
+          const next = findClearAnchor(prev, el.offsetWidth, el.offsetHeight, compactRegister ? 108 : 8);
           try {
             sessionStorage.setItem(FLOAT_POS_KEY, JSON.stringify(next));
           } catch {
@@ -1110,7 +1230,7 @@ export function SellAiPanel({
     // Route sample questions through the assistant; keep direct navigation available when chat is off.
     if (action === "Today's sales") {
       if (aiEnabled === false) {
-        openWorkspace("/history/odoo", "Opened sales history.", { immediate: true });
+        openWorkspace("/history", "Opened sales history.", { immediate: true });
         return;
       }
       void runIntent("Today's sales");
@@ -1226,13 +1346,13 @@ export function SellAiPanel({
   ] as const;
 
   const workspaceUi = (
-    <div className="pointer-events-auto relative z-10 flex h-full w-full overflow-hidden bg-[var(--oh-surface)]">
+    <div className="ai-assistant-shell pointer-events-auto relative z-10 flex h-full w-full overflow-hidden bg-[var(--oh-surface)]">
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[url('/images/ai-assistant-background.webp')] bg-cover bg-[center_bottom] opacity-75"
+        className="ai-assistant-backdrop pointer-events-none absolute inset-0 z-0 bg-[url('/images/ai-assistant-background.webp')] bg-cover bg-[center_bottom] opacity-75"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[68%] bg-gradient-to-t from-[#edf2fa]/10 via-[#edf2fa]/38 to-transparent"
+        className="ai-assistant-wash pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[68%] bg-gradient-to-t from-[#edf2fa]/10 via-[#edf2fa]/38 to-transparent"
         aria-hidden="true"
       />
       <aside className="relative z-10 hidden w-[256px] shrink-0 flex-col border-r border-white/70 bg-[var(--oh-surface-elevated)]/55 px-4 py-5 backdrop-blur-xl md:flex">
@@ -1297,8 +1417,8 @@ export function SellAiPanel({
         <div ref={scrollRef} aria-live="polite" aria-atomic="false" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 pb-32 sm:px-8 lg:px-10">
           {historyOpen ? <HistoryView loading={historyLoading} error={historyError} threads={historyThreads} onBack={() => setHistoryOpen(false)} onSelect={(id) => void loadHistoryThread(id)} onRefresh={() => void openHistory()} /> : (
             <div className="mx-auto flex min-h-full w-full max-w-[1080px] -translate-y-7 flex-col justify-center py-8 sm:-translate-y-11 sm:py-12 lg:-translate-y-14">
-              <div className="mb-8 text-center sm:mb-10"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur"><Sparkles size={38} strokeWidth={1.7} /></div><h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#142239] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-2 text-[18px] text-[#52627a] sm:text-[22px]">How can I help with your store today?</p></div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[158px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-5 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)]"><span className={cn("mb-5 flex h-9 w-9 items-center justify-center rounded-xl", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", item.tone === "amber" && "bg-[#fff5df] text-[#ec9a22]")}><Icon size={20} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b]">{item.title}</span><span className="mt-1.5 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
+              <div className="mb-8 text-center sm:mb-10"><div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-white/80 bg-[var(--oh-surface-elevated)]/55 text-[#ef681b] shadow-[0_12px_40px_rgba(245,120,55,.16)] backdrop-blur"><Sparkles size={38} strokeWidth={1.7} /></div><h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#142239] dark:text-[var(--oh-text)] sm:text-[42px]">Hello, I’m <span className="text-[var(--oh-primary)]">Orithos AI</span></h1><p className="mt-2 text-[18px] text-[#52627a] dark:text-[var(--oh-text-secondary)] sm:text-[22px]">How can I help with your store today?</p></div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{workspaceActions.map((item) => { const Icon = item.icon; return <button key={item.title} type="button" onClick={() => runQuickAction(item.action)} className="group min-h-[158px] rounded-2xl border border-white/85 bg-[var(--oh-surface-elevated)]/70 p-5 text-left shadow-[0_8px_24px_rgba(77,101,145,.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-[var(--oh-surface-elevated)]/90 hover:shadow-[0_14px_32px_rgba(77,101,145,.14)]"><span className={cn("mb-5 flex h-9 w-9 items-center justify-center rounded-xl", item.tone === "orange" && "bg-[var(--oh-orange-light)] text-[var(--oh-primary)]", item.tone === "blue" && "bg-[#eaf1ff] text-[#3973dc]", item.tone === "green" && "bg-[#e7f8f3] text-[#209b7d]", item.tone === "amber" && "bg-[#fff5df] text-[#ec9a22]")}><Icon size={20} /></span><span className="flex items-start justify-between gap-2"><span><span className="block text-[15px] font-semibold text-[#18263b] dark:text-[var(--oh-text)]">{item.title}</span><span className="mt-1.5 block text-[13px] leading-5 text-[var(--oh-muted)]">{item.description}</span></span><span className="text-xl text-[#7c8796] dark:text-[var(--oh-muted)] transition group-hover:translate-x-0.5">›</span></span></button>; })}</div>
               {messages.length > 1 && <div className="mt-8"><DialogueView messages={messages} onOpenLink={followChatLink} onRetry={(question) => void runIntent(question, true)} onClear={clearChat} busy={busy} thinkingHint={thinkingHint} compact /></div>}
             </div>
           )}
@@ -1510,6 +1630,7 @@ export function SellAiPanel({
 
       {!expanded && launcherVisible && !pagePresentation && (
         <button
+          data-ai-fab
           type="button"
           onClick={onFabClick}
           onPointerDown={beginDrag}
@@ -1526,7 +1647,7 @@ export function SellAiPanel({
           )}
           style={{ boxShadow: FLOAT_SHADOW, borderRadius: "9999px" }}
         >
-          <AiFabIcon size={64} />
+          <AiFabIcon size={mobileViewport ? 44 : 64} />
         </button>
       )}
     </div>

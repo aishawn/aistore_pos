@@ -34,14 +34,14 @@ export function AsyncState({
   }
 
   if (loading) {
-    return <div role="status" aria-live="polite" aria-label={loadingLabel} className="py-16 text-center text-[16px] text-neutral-400">Loading…</div>;
+    return <div role="status" aria-live="polite" aria-label={loadingLabel} className="py-16 text-center text-[16px] text-[var(--oh-muted)]">Loading…</div>;
   }
   if (error) {
     return (
-      <div role="alert" aria-live="assertive" className="py-16 text-center text-[16px] text-[#e2231a]">
+      <div role="alert" aria-live="assertive" className="py-16 text-center text-[16px] text-[var(--brand-danger)]">
         {error}
         {onRetry ? (
-          <button type="button" onClick={() => void handleRetry()} disabled={retrying} aria-busy={retrying} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">
+          <button type="button" onClick={() => void handleRetry()} disabled={retrying} aria-busy={retrying} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60">
             {retrying ? <LoaderCircle size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} aria-hidden="true" />}
             {retrying ? "Retrying…" : "Retry"}
           </button>
@@ -50,7 +50,7 @@ export function AsyncState({
     );
   }
   if (empty) {
-    return <div role="status" aria-live="polite" className="py-16 text-center text-[16px] text-neutral-500">{emptyText}</div>;
+    return <div role="status" aria-live="polite" className="py-16 text-center text-[16px] text-[var(--oh-muted)]">{emptyText}</div>;
   }
   return <>{children}</>;
 }
@@ -66,7 +66,7 @@ export function AsyncDependencyNotice({
   const retrying = active.some((dependency) => dependency.loading);
 
   return (
-    <div role="alert" aria-live="assertive" aria-busy={retrying} className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+    <div role="alert" aria-live="assertive" aria-busy={retrying} className="mb-4 rounded-lg border border-[var(--brand-danger)] bg-[var(--brand-danger-tint)] px-4 py-3 text-sm text-[var(--brand-danger)]">
       <p className="font-semibold">Some lookup options could not be loaded.</p>
       <div className="mt-2 space-y-2">
         {active.map((dependency) => (
@@ -76,7 +76,7 @@ export function AsyncDependencyNotice({
               type="button"
               onClick={dependency.onRetry}
               disabled={dependency.loading}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700 disabled:cursor-wait disabled:opacity-60"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--brand-danger)] bg-[var(--oh-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--brand-danger)] hover:bg-[var(--brand-danger-tint)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-danger)] disabled:cursor-wait disabled:opacity-60"
             >
               {dependency.loading ? <LoaderCircle size={13} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={13} aria-hidden="true" />}
               {dependency.loading ? "Retrying…" : "Retry"}

@@ -51,14 +51,14 @@ function parseCustomerValues(body: Record<string, unknown>, { requireName }: { r
     } else if (typeof body.property_product_pricelist === "number" && Number.isSafeInteger(body.property_product_pricelist) && body.property_product_pricelist >= 1) {
       pricelistId = body.property_product_pricelist;
     } else {
-      return { error: NextResponse.json({ message: "Price list must be a valid Odoo id" }, { status: 400 }) };
+      return { error: NextResponse.json({ message: "Price list must be a valid Orithos id" }, { status: 400 }) };
     }
   }
 
   let categoryIds: number[] | undefined;
   if ("category_id" in body) {
     if (!Array.isArray(body.category_id) || body.category_id.some((id) => typeof id !== "number" || !Number.isSafeInteger(id) || id < 1)) {
-      return { error: NextResponse.json({ message: "Customer groups must be a list of Odoo ids" }, { status: 400 }) };
+      return { error: NextResponse.json({ message: "Customer groups must be a list of Orithos ids" }, { status: 400 }) };
     }
     if (body.category_id.length > 40) {
       return { error: NextResponse.json({ message: "Too many customer groups selected" }, { status: 400 }) };
@@ -100,10 +100,10 @@ export async function POST(request: NextRequest) {
   try {
     const scope = await customerWriteScope(request, values);
     const id = await scope.rpc<number>("res.partner", "create", [{ ...values, company_id: scope.companyIds[0] }]);
-    if (!Number.isSafeInteger(id) || id < 1) return NextResponse.json({ message: "Odoo did not confirm the new customer" }, { status: 502 });
+    if (!Number.isSafeInteger(id) || id < 1) return NextResponse.json({ message: "Orithos did not confirm the new customer" }, { status: 502 });
     return NextResponse.json({ id, name: parsed.name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

@@ -268,7 +268,7 @@ function CustomerBalancePanel({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
           <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Current Owing
           </p>
@@ -276,7 +276,7 @@ function CustomerBalancePanel({
             {money(customer.currentOwing)}
           </p>
         </div>
-        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
           <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Account Limit
           </p>
@@ -284,7 +284,7 @@ function CustomerBalancePanel({
             {money(customer.accountLimit)}
           </p>
         </div>
-        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+        <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
           <p className="text-[13px] font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
             Available Credit
           </p>
@@ -306,7 +306,7 @@ function CustomerBalancePanel({
         <button
           type="button"
           onClick={onViewStatement}
-          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] outline-none transition-colors hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
+          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] outline-none transition-colors hover:bg-[var(--oh-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
         >
           <StatementIcon size={16} />
           View Statement
@@ -314,7 +314,7 @@ function CustomerBalancePanel({
         <button
           type="button"
           onClick={() => window.print()}
-          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] outline-none transition-colors hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
+          className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-text)] outline-none transition-colors hover:bg-[var(--oh-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] focus-visible:ring-offset-2 sm:flex-none"
         >
           <PrinterIcon size={16} />
           Print
@@ -378,7 +378,7 @@ function CustomerBalancePanel({
                   key={`void-${p.id}`}
                   type="button"
                   onClick={() => onVoidPayment(p.id)}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-danger)] outline-none hover:bg-red-50 hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)]"
+                  className="inline-flex min-h-11 items-center justify-center rounded-md px-2 text-[13px] font-semibold text-[var(--oh-danger)] outline-none hover:bg-[var(--oh-tile-red-bg)] hover:underline focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)]"
                 >
                   Void
                 </button>
@@ -504,8 +504,8 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
   const title = customer?.name || customer?.firstName || "Customer";
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white font-sans">
-      <div className="relative flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] bg-white px-3 py-2.5 text-left sm:px-6 md:justify-center md:text-center">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+      <div className="relative flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-left sm:px-6 md:justify-center md:text-center">
         <button type="button" onClick={() => router.push("/customers")} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium text-[var(--oh-text-secondary)] outline-none hover:bg-[var(--oh-surface)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] md:absolute md:left-4">
           <ArrowLeftIcon size={16} /> <span>Customers</span>
         </button>
@@ -595,7 +595,7 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                   type="button"
                   onClick={() => setDeleteConfirmOpen(true)}
                   disabled={deleting}
-                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-danger)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] outline-none transition-colors hover:bg-[var(--oh-tile-red-bg)] focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)] focus-visible:ring-offset-2 disabled:opacity-60"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-danger)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] outline-none transition-colors hover:bg-[var(--oh-tile-red-bg)] focus-visible:ring-2 focus-visible:ring-[var(--oh-danger)] focus-visible:ring-offset-2 disabled:opacity-60"
                 >
                   <DeleteIcon size={16} />
                   {deleting ? "Deleting…" : "Delete"}
@@ -614,8 +614,8 @@ export function CustomerViewPage({ customerId }: { customerId: string }) {
                       className={cn(
                         "relative flex min-h-11 w-auto shrink-0 items-center gap-2 rounded-md px-3 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] lg:w-full lg:items-start lg:gap-2.5 lg:py-3",
                         active
-                          ? "bg-white text-[var(--oh-primary)] shadow-sm"
-                          : "text-[var(--oh-text-secondary)] hover:bg-white",
+                          ? "bg-[var(--oh-surface-elevated)] text-[var(--oh-primary)] shadow-sm"
+                          : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)]",
                       )}
                     >
                       {active && (

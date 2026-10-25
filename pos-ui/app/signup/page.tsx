@@ -376,7 +376,7 @@ export default function SignupPage() {
                 Add outlet
               </button>
               <p className="text-xs text-[var(--oh-muted)]">
-                Each outlet gets its own Odoo POS register on the shared company. Trial limit: 5 outlets.
+                Each outlet gets its own Orithos POS register on the shared company. Trial limit: 5 outlets.
               </p>
             </div>
           )}

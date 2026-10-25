@@ -105,16 +105,16 @@ export function OdooSellCartAside({
   totalCents,
 }: OdooSellCartAsideProps) {
   return (
-    <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
+    <aside className="order-3 flex w-full shrink-0 flex-col overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] lg:order-none lg:col-start-1 lg:row-start-2 lg:w-auto">
       <div className="border-b border-[var(--oh-border)] px-4 py-3">
         {customer ? (
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-navy)] text-[13px] font-bold text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--oh-surface-inverse)] text-[13px] font-bold text-white">
               {customer.name.charAt(0)}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[14px] font-medium text-[var(--oh-text)]">{customer.name}</p>
-              <p className="text-[13px] text-[var(--oh-muted)]">Odoo customer</p>
+              <p className="text-[13px] text-[var(--oh-muted)]">Orithos customer</p>
             </div>
             <button
               type="button"
@@ -264,7 +264,7 @@ export function OdooSellCartAside({
                         type="button"
                         aria-label={`Decrease ${label}`}
                         onClick={() => onChangeQuantity(product.id, factor, -1)}
-                        className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-white"
+                        className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]"
                       >
                         <Minus size={15} />
                       </button>
@@ -272,7 +272,7 @@ export function OdooSellCartAside({
                         type="button"
                         aria-label={`Increase ${label}`}
                         onClick={() => onChangeQuantity(product.id, factor, 1)}
-                        className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-white"
+                        className="grid h-11 w-11 place-items-center rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]"
                       >
                         <Plus size={15} />
                       </button>
@@ -282,7 +282,7 @@ export function OdooSellCartAside({
                           aria-label={`Pack size for ${label}`}
                           value={factor}
                           onChange={(event) => onSetPackFactor(product.id, factor, Number(event.target.value))}
-                          className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-[13px] font-semibold text-[var(--oh-text)]"
+                          className="h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 text-[13px] font-semibold text-[var(--oh-text)]"
                         >
                           {CASE_PACK_OPTIONS.map((size) => (
                             <option key={size} value={size}>
@@ -315,7 +315,7 @@ export function OdooSellCartAside({
             <button
               type="button"
               onClick={onRetryQuote}
-              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 hover:bg-red-50"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md border border-red-300 bg-[var(--oh-surface-elevated)] px-3 font-semibold text-red-900 hover:bg-red-50"
             >
               <RefreshCw size={14} /> Retry quote
             </button>

@@ -17,10 +17,10 @@ type RpcResult<T> = { result?: T; error?: { message?: string; data?: { message?:
 
 function getOdooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new Error("Odoo connection must use HTTPS");
+    throw new Error("Orithos connection must use HTTPS");
   }
   return value;
 }
@@ -40,11 +40,11 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error("Odoo reporting is unavailable");
+  if (!response.ok) throw new Error("Orithos reporting is unavailable");
   const payload = await response.json() as RpcResult<T>;
   if (payload.error) {
     if (/session|log in|authenticate/i.test(payload.error.message ?? "")) throw new OdooSessionExpiredError();
-    throw new Error("Odoo could not load reporting data");
+    throw new Error("Orithos could not load reporting data");
   }
   return payload.result;
 }
@@ -142,7 +142,7 @@ async function readSalesTrend(sessionId: string, domain: unknown[], rangeHours: 
     const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], [`date_order:${granularity}`]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity };
   } catch (error) {
-    // Older Odoo builds may lack hour/week date grouping — fall back to day.
+    // Older Orithos builds may lack hour/week date grouping — fall back to day.
     if (granularity === "day") throw error;
     const rows = await rpc<Array<Record<string, unknown>>>(sessionId, "pos.order", "read_group", [domain, ["amount_total:sum"], ["date_order:day"]], { lazy: false, context: { tz: timezone } }, correlationId);
     return { rows: rows ?? [], granularity: "day" };
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
   const correlationId = request.headers.get("x-correlation-id");
   if (!isSameOrigin(request)) return errorResponse("Cross-origin requests are not allowed", 403, correlationId);
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return errorResponse("Odoo session expired", 401, correlationId);
+  if (!sessionId) return errorResponse("Orithos session expired", 401, correlationId);
 
   const parsedRange = Number(request.nextUrl.searchParams.get("hours") ?? DEFAULT_RANGE_HOURS);
   const rangeHours = ALLOWED_RANGES.has(parsedRange) ? parsedRange : DEFAULT_RANGE_HOURS;
@@ -204,7 +204,7 @@ export async function GET(request: NextRequest) {
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) return errorResponse(forced.error, forced.status, correlationId);
     const companyId = forced.companyIds[0];
-    if (!companyId) return errorResponse("No Odoo companies are available to this user.", 403, correlationId);
+    if (!companyId) return errorResponse("No Orithos companies are available to this user.", 403, correlationId);
     const companies = await rpc<Array<{ name?: string; currency_id?: [number, string] | false; partner_id?: [number, string] | false }>>(sessionId, "res.company", "search_read", [[
       ["id", "=", companyId],
     ]], { fields: ["name", "currency_id", "partner_id"], limit: 1 }, correlationId);
@@ -327,11 +327,11 @@ export async function GET(request: NextRequest) {
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof OdooSessionExpiredError) {
-      const response = errorResponse("Odoo session expired", 401, correlationId);
+      const response = errorResponse("Orithos session expired", 401, correlationId);
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return errorResponse(message, status, correlationId);
   }

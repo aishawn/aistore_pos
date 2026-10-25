@@ -1132,6 +1132,140 @@
 .ov-workspace .ov-action-sell { color: #bb510f; background: #fff1e7; }
 .ov-workspace .ov-action-connections { color: #315dcc; background: #eaf0ff; }
 .ov-workspace .ov-action-icon svg { color: inherit; }
+
+/* Overview has a richer CSS surface than the Tailwind pages. Pair its cards
+ * and controls with the shared dark tokens so the dashboard does not retain
+ * light glass panels when the global theme changes. */
+.dark .ov-page,
+.dark .ov-workspace {
+  color: var(--brand-ink);
+}
+.dark .ov-page.ov-radial {
+  background-color: var(--brand-canvas);
+  background-image: linear-gradient(115deg, rgba(21, 28, 40, 0.86), rgba(28, 39, 56, 0.78)), url("/images/dashboard-background.webp");
+}
+.dark .ov-summary,
+.dark .ov-module,
+.dark .ov-briefing,
+.dark .ov-error,
+.dark .ov-ring-modal,
+.dark .ov-submenu,
+.dark .ov-pulse-panel,
+.dark .ov-insights-panel,
+.dark .ov-ai-bar,
+.dark .ov-workspace .ov-module,
+.dark .ov-workspace .ov-briefing,
+.dark .ov-workspace .ov-summary {
+  background: var(--brand-surface);
+  border-color: var(--brand-line);
+  box-shadow: var(--brand-shadow);
+}
+.dark .ov-ring-list {
+  background: var(--brand-surface);
+  border: 1px solid var(--brand-line);
+}
+.dark .ov-ring-list .ov-ring-node {
+  background: var(--brand-surface-muted);
+  border-color: var(--brand-line);
+}
+.dark .ov-ring-node > :is(button, a) {
+  color: var(--brand-ink);
+}
+.dark .ov-node-icon {
+  background: var(--brand-surface-muted);
+  border-color: var(--brand-line);
+  box-shadow: var(--brand-shadow);
+}
+.dark .ov-radial-main .ov-ring-center {
+  color: var(--brand-ink);
+  border-color: var(--brand-line);
+  background: linear-gradient(145deg, var(--brand-surface), var(--brand-surface-muted));
+  box-shadow: inset 0 0 0 1px var(--brand-line), var(--brand-shadow);
+}
+.dark .ov-radial-main .ov-ring-center::after {
+  opacity: 0.18;
+  filter: saturate(0.5) brightness(0.7) blur(0.9px);
+}
+.dark .ov-submenu :is(a, button),
+.dark .ov-inline-children a {
+  color: var(--brand-ink);
+}
+.dark .ov-submenu :is(a, button):hover,
+.dark .ov-inline-children a:hover {
+  background: var(--brand-tint);
+}
+.dark .ov-inline-children {
+  border-color: var(--brand-line);
+}
+.dark .ov-actions a,
+.dark .ov-ai-suggestions button {
+  background: var(--brand-surface-muted);
+  border-color: var(--brand-line);
+  color: var(--brand-ink);
+}
+.dark .ov-actions a:hover,
+.dark .ov-ai-suggestions button:hover,
+.dark .ov-insights-panel li a:hover,
+.dark .ov-workspace .ov-report-link:hover {
+  background: var(--brand-tint);
+}
+.dark .ov-page input,
+.dark .ov-page textarea {
+  color: var(--brand-ink);
+}
+.dark .ov-page input::placeholder,
+.dark .ov-page textarea::placeholder {
+  color: var(--brand-placeholder);
+}
+.dark .ov-workspace .ov-company,
+.dark .ov-workspace .ov-module p,
+.dark .ov-stat-note,
+.dark .ov-pulse-banner small {
+  color: var(--brand-muted);
+}
+.dark .ov-workspace .ov-report-link {
+  color: var(--brand-info);
+  border: 1px solid var(--brand-line);
+  background: var(--brand-surface-muted);
+  font-weight: 600;
+}
+.dark .ov-workspace .ov-report-link:hover {
+  background: var(--brand-tint);
+}
+.dark .ov-pulse-banner {
+  background: var(--brand-warning-tint);
+  color: var(--brand-warning);
+}
+
+.dark .ov-workspace {
+  background: linear-gradient(135deg, rgba(21, 28, 40, 0.94), rgba(28, 39, 56, 0.9)), url("/images/workspace/background.webp") center / cover no-repeat;
+}
+.dark .ov-skeleton > div {
+  background: var(--brand-surface-muted);
+  border-color: var(--brand-line);
+}
+
+.dark .ai-assistant-shell .ai-assistant-backdrop {
+  opacity: 0.3;
+  filter: saturate(0.65) brightness(0.5);
+}
+.dark .ai-assistant-shell .ai-assistant-wash {
+  background: linear-gradient(to top, rgba(21, 28, 40, 0.28), rgba(21, 28, 40, 0.72), transparent);
+}
+.dark .ai-assistant-shell aside {
+  border-color: var(--brand-line);
+  background: color-mix(in srgb, var(--brand-surface) 88%, transparent);
+}
+.dark .ai-assistant-shell section > div:first-child {
+  background: radial-gradient(circle at 50% 0%, rgba(56, 39, 31, 0.25), transparent 54%), linear-gradient(180deg, rgba(21, 28, 40, 0.08), rgba(21, 28, 40, 0.42));
+}
+.dark .ai-assistant-shell section button {
+  border-color: var(--brand-line);
+  background: color-mix(in srgb, var(--brand-surface) 90%, transparent);
+}
+.dark .ai-assistant-shell section button:hover {
+  background: var(--brand-surface-muted);
+}
 @media (max-width: 1199px) {
   .ov-workspace .ov-container { padding: 28px 32px 64px; }
   .ov-workspace .ov-header { flex-wrap: wrap; }
@@ -1158,6 +1292,9 @@
   .ov-workspace .ov-toolbar .oh-brand-wordmark { display: none; }
   .ov-workspace .ov-header h1 { font-size: 34px; max-width: 360px; }
   .ov-workspace .ov-header .ov-eyebrow { font-size: 14px; }
+  .ov-workspace .ov-summary dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-workspace .ov-summary dl > div { min-width: 0; }
+  .ov-workspace .ov-summary dl > div:first-child { grid-column: 1 / -1; }
   .ov-workspace .ov-modules { grid-template-columns: 1fr; gap: 14px; }
   .ov-workspace .ov-module { min-height: 170px; }
   .ov-workspace .ov-module-art { width: 70%; opacity: 0.3; }

@@ -8,8 +8,12 @@ export function isTheme(value: string | null): value is Theme {
 
 export function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "light";
-  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-  return isTheme(stored) ? stored : "light";
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return isTheme(stored) ? stored : "light";
+  } catch {
+    return "light";
+  }
 }
 
 export function applyTheme(theme: Theme, withTransition = false) {

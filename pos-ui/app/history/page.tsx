@@ -1,6 +1,8 @@
-import { redirect } from "next/navigation";
+import { OdooSalesHistoryPage } from "@/components/OdooSalesHistoryPage";
 
-/** Classic MySQL sales history is retired for the pilot; send users to Odoo History. */
-export default function HistoryRedirectPage() {
-  redirect("/history/odoo");
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
+export default function HistoryPage() {
+  return <OdooSalesHistoryPage />;
 }

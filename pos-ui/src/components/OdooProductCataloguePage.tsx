@@ -51,7 +51,7 @@ export function OdooProductCataloguePage() {
     if (dialogBusy) return;
     const next = new URLSearchParams(searchParams.toString());
     if (value) next.set("dialog", value); else next.delete("dialog");
-    router.replace(`/products/odoo${next.size ? `?${next}` : ""}`, { scroll: false });
+    router.replace(`/products${next.size ? `?${next}` : ""}`, { scroll: false });
   }
   useEffect(() => {
     const guardBack = (event: PopStateEvent) => { if (dialogBusy) { event.stopImmediatePropagation(); window.history.go(1); } };
@@ -157,7 +157,7 @@ export function OdooProductCataloguePage() {
     }).catch((cause) => {
       if (!cancelled) {
         setConnected(false);
-        setError(cause instanceof Error ? cause.message : "Could not check the Odoo connection.");
+        setError(cause instanceof Error ? cause.message : "Could not check the Orithos connection.");
       }
     }).finally(() => {
       if (!cancelled) setCheckingConnection(false);
@@ -193,7 +193,7 @@ export function OdooProductCataloguePage() {
     setExportBusy(true);
     setError(null);
     try {
-      // Keep exports on the same Odoo session recovery path as list reads.
+      // Keep exports on the same Orithos session recovery path as list reads.
       const response = await fetchOdooRoute("/api/odoo/products/export", { credentials: "same-origin", cache: "no-store" });
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { message?: string } | null;
@@ -233,7 +233,7 @@ export function OdooProductCataloguePage() {
       setHasNext(page.hasNext === true);
       setLastLoadedAt(Date.now());
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo products.");
+      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
@@ -314,7 +314,7 @@ export function OdooProductCataloguePage() {
       setEditingProduct(null);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setEditError(cause instanceof Error ? cause.message : "Could not update this Odoo product.");
+      setEditError(cause instanceof Error ? cause.message : "Could not update this Orithos product.");
     } finally {
       setSavingProduct(false);
     }
@@ -354,7 +354,7 @@ export function OdooProductCataloguePage() {
       setOffset(0);
       setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setCreateError(cause instanceof Error ? cause.message : "Could not create this Odoo product.");
+      setCreateError(cause instanceof Error ? cause.message : "Could not create this Orithos product.");
     } finally {
       setCreatingProduct(false);
     }
@@ -399,7 +399,7 @@ export function OdooProductCataloguePage() {
       setImportResult(result);
       if (result.created > 0) setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setImportErrors([cause instanceof Error ? cause.message : "Could not import these products into Odoo."]);
+      setImportErrors([cause instanceof Error ? cause.message : "Could not import these products into Orithos."]);
     } finally {
       setImportBusy(false);
     }
@@ -411,7 +411,7 @@ export function OdooProductCataloguePage() {
         <div className="min-w-0">
           <h1 className="oh-type-title text-[var(--oh-text)]">Products</h1>
           <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-            {tab === "stocktake" ? "Count physical stock and apply Odoo adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
+            {tab === "stocktake" ? "Count physical stock and apply Orithos adjustments when write is enabled." : "Manage your catalogue, check stock and resolve product issues."}
           </p>
           {tab === "catalogue" && showR2DisplayNote && (
             <p className="oh-type-meta mt-1 text-[var(--oh-muted)]">
@@ -437,23 +437,23 @@ export function OdooProductCataloguePage() {
       </header>
 
       {dialog === "categories" && hasPermission("stock.products.edit") && <StockWorkspaceDialog title="Manage Categories" busy={categoryBusy} onClose={() => setDialog(null)}><OdooCategoriesPanel onBusyChange={setCategoryBusy} onChanged={categoriesChanged} /></StockWorkspaceDialog>}
-      {dialog === "stocktake" && hasPermission("stock.stocktake") && <StockWorkspaceDialog title="Stocktake" busy={stockBusy} onClose={() => setDialog(null)} actions={<button type="button" disabled={stockBusy} onClick={() => { const next = new URLSearchParams(searchParams.toString()); next.delete("dialog"); next.set("tab", "stocktake"); router.replace(`/products/odoo?${next}`, { scroll: false }); }} className="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-50">Expand to full page</button>}><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></StockWorkspaceDialog>}
+      {dialog === "stocktake" && hasPermission("stock.stocktake") && <StockWorkspaceDialog title="Stocktake" busy={stockBusy} onClose={() => setDialog(null)} actions={<button type="button" disabled={stockBusy} onClick={() => { const next = new URLSearchParams(searchParams.toString()); next.delete("dialog"); next.set("tab", "stocktake"); router.replace(`/products?${next}`, { scroll: false }); }} className="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-50">Expand to full page</button>}><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></StockWorkspaceDialog>}
 
       {connected === false ? (
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
             <AlertCircle className="mx-auto text-amber-600" size={28} />
-            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view products</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Odoo staff account to view the POS catalogue and inventory available to that account.</p>
+            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view products</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect your Orithos staff account to view the POS catalogue and inventory available to that account.</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button type="button" onClick={() => setConnectionRetryKey((value) => value + 1)} disabled={checkingConnection} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-4 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60">{checkingConnection ? <LoaderCircle size={15} className="animate-spin" /> : <RefreshCw size={15} />} {checkingConnection ? "Retrying…" : "Retry connection"}</button>
-              <Link href="/settings/integrations" className="inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+              <Link href="/settings/integrations" className="inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link>
             </div>
           </div>
         </section>
       ) : tab === "stocktake" ? (
         <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] md:p-5">
-          {hasPermission("stock.stocktake") ? <><button type="button" disabled={stockBusy} onClick={() => router.replace("/products/odoo")} className="mb-4 inline-block text-sm underline disabled:opacity-50">Back to products · keep draft</button><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></> : <p role="alert">You do not have access to stocktake.</p>}
+          {hasPermission("stock.stocktake") ? <><button type="button" disabled={stockBusy} onClick={() => router.replace("/products")} className="mb-4 inline-block text-sm underline disabled:opacity-50">Back to products · keep draft</button><OdooStocktakePanel onBusyChange={setStockBusy} onApplied={stockApplied} /></> : <p role="alert">You do not have access to stocktake.</p>}
         </div>
       ) : (
         <>
@@ -483,14 +483,14 @@ export function OdooProductCataloguePage() {
           {(query || categoryId || catalogueView !== "all") && <button type="button" onClick={clearFilters} className="min-h-11 shrink-0 self-start rounded-lg px-3 text-xs font-semibold text-[var(--oh-primary)] focus-visible:outline-2 focus-visible:outline-[var(--oh-primary)] md:hidden">Clear filters</button>}
 
           <p className="oh-type-meta -mt-2 shrink-0 leading-5 text-[var(--oh-muted)]">
-            Stock quantities reflect the active Odoo inventory context. Use Odoo reports for location-specific counts.
+            Stock quantities reflect the active Orithos inventory context. Use Orithos reports for location-specific counts.
             {lastLoadedAt !== null && <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>}
           </p>
           {categoryError && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"><span>{categoryError} Category filtering and CSV import may be unavailable until it reloads.</span><button type="button" onClick={() => setCategoryRetryKey((value) => value + 1)} disabled={categoryLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold text-amber-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 disabled:opacity-60"><RefreshCw size={14} /> Retry categories</button></div>}
           {error && <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"><span>{error}{items.length > 0 && " The list below is the last successful result and may be out of date."}</span><button type="button" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-60">{loading ? <LoaderCircle size={14} className="animate-spin" /> : <RefreshCw size={14} />} Retry</button></div>}
 
           <section aria-busy={resultsPending} className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white pb-24 shadow-[var(--oh-shadow-card)]">
-            <table aria-label="Odoo product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
+            <table aria-label="Orithos product catalogue" className="hidden w-full min-w-[940px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Product</th>
@@ -585,7 +585,7 @@ export function OdooProductCataloguePage() {
       {editingProduct && createPortal(<div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingProduct) setEditingProduct(null); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="product-edit-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
-            <div><h2 id="product-edit-title" className="text-lg font-semibold text-[var(--oh-text)]">Edit product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingProduct.display_name || editingProduct.name} · Odoo #{editingProduct.id}</p></div>
+            <div><h2 id="product-edit-title" className="text-lg font-semibold text-[var(--oh-text)]">Edit product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">{editingProduct.display_name || editingProduct.name} · Orithos #{editingProduct.id}</p></div>
             <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form onSubmit={(event) => void saveProduct(event)} className="mt-5 grid gap-4">
@@ -600,7 +600,7 @@ export function OdooProductCataloguePage() {
             <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text)]">Barcode
               <input name="barcode" maxLength={64} defaultValue={editingProduct.barcode || ""} className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
             </label>
-            <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Product image <span className="text-xs font-normal text-[var(--oh-muted)]">Optional · saved to Odoo and compressed before upload</span>
+            <label className="grid gap-2 text-sm font-medium text-[var(--oh-text)]">Product image <span className="text-xs font-normal text-[var(--oh-muted)]">Optional · saved to Orithos and compressed before upload</span>
               <div className="flex items-center gap-3"><ProductImage productId={editingProduct.id} name={editingProduct.name} refreshToken={refreshKey} className="h-16 w-16 border border-[var(--oh-border)] bg-white" /><input name="product_image" type="file" accept="image/jpeg,image/png,image/webp" disabled={savingProduct} className="min-w-0 flex-1 text-xs file:mr-2 file:min-h-10 file:rounded-md file:border-0 file:bg-[var(--oh-surface)] file:px-3 file:font-semibold file:text-[var(--oh-text)]" /></div>
             </label>
             <fieldset className="grid gap-2">
@@ -614,7 +614,7 @@ export function OdooProductCataloguePage() {
               </div>
             </fieldset>
             <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked={editingProduct.available_in_pos} className="mt-0.5 accent-[var(--oh-primary)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Hide this product from register searches without deleting it.</span></span></label>
-            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The base price follows the product’s Odoo tax configuration. Stock is managed through receipts and inventory adjustments.</p>
+            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The base price follows the product’s Orithos tax configuration. Stock is managed through receipts and inventory adjustments.</p>
             {editError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{editError}</p>}
             <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setEditingProduct(null)} disabled={savingProduct} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">Cancel</button>
@@ -627,7 +627,7 @@ export function OdooProductCataloguePage() {
       {importOpen && createPortal(<div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !importBusy) setImportOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="product-import-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
-            <div><h2 id="product-import-title" className="text-lg font-semibold text-[var(--oh-text)]">Import products from CSV</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Preview and validate your catalogue before adding products to Odoo.</p></div>
+            <div><h2 id="product-import-title" className="text-lg font-semibold text-[var(--oh-text)]">Import products from CSV</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Preview and validate your catalogue before adding products to Orithos.</p></div>
             <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <div className="mt-5 grid gap-4">
@@ -650,8 +650,8 @@ export function OdooProductCataloguePage() {
                 {importRows.length > 30 && <p className="border-t border-[var(--oh-border)] px-3 py-2 text-xs text-[var(--oh-muted)]">Showing the first 30 rows; {importRows.length - 30} more will be imported.</p>}
               </div>
             </>}
-            {importResult && <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-950"><p className="font-semibold">Added {importResult.created} product{importResult.created === 1 ? "" : "s"} to Odoo; skipped {importResult.skipped.length} duplicate{importResult.skipped.length === 1 ? "" : "s"}.</p>{importResult.skipped.length > 0 && <ul className="mt-1 max-h-24 list-disc space-y-1 overflow-auto pl-5">{importResult.skipped.slice(0, 30).map((item) => <li key={`${item.line}-${item.reason}`}>Line {item.line}: {item.reason}.</li>)}</ul>}</div>}
-            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">This imports product details, sale prices and optional costs. It does not change on-hand stock; use an Odoo receipt or stock adjustment to load opening quantities. Products already matching an SKU or barcode are skipped.</p>
+            {importResult && <div role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-950"><p className="font-semibold">Added {importResult.created} product{importResult.created === 1 ? "" : "s"} to Orithos; skipped {importResult.skipped.length} duplicate{importResult.skipped.length === 1 ? "" : "s"}.</p>{importResult.skipped.length > 0 && <ul className="mt-1 max-h-24 list-disc space-y-1 overflow-auto pl-5">{importResult.skipped.slice(0, 30).map((item) => <li key={`${item.line}-${item.reason}`}>Line {item.line}: {item.reason}.</li>)}</ul>}</div>}
+            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">This imports product details, sale prices and optional costs. It does not change on-hand stock; use an Orithos receipt or stock adjustment to load opening quantities. Products already matching an SKU or barcode are skipped.</p>
             <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
               <button type="button" onClick={() => setImportOpen(false)} disabled={importBusy} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">{importResult ? "Done" : "Cancel"}</button>
               <button type="button" onClick={() => void runProductImport()} disabled={importBusy || importRows.length === 0 || Boolean(importResult)} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">{importBusy ? <LoaderCircle size={15} className="animate-spin" /> : <FileUp size={15} />} Import {importRows.length} product{importRows.length === 1 ? "" : "s"}</button>
@@ -663,7 +663,7 @@ export function OdooProductCataloguePage() {
       {newProductOpen && createPortal(<div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-950/40 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !creatingProduct) setNewProductOpen(false); }}>
         <section role="dialog" aria-modal="true" aria-labelledby="product-create-title" className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-6">
           <header className="flex items-start justify-between gap-4">
-            <div><h2 id="product-create-title" className="text-lg font-semibold text-[var(--oh-text)]">New product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Add a stock-tracked product to the Odoo POS catalogue.</p></div>
+            <div><h2 id="product-create-title" className="text-lg font-semibold text-[var(--oh-text)]">New product</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Add a stock-tracked product to the Orithos POS catalogue.</p></div>
             <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} aria-label="Close" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-[var(--oh-muted)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50"><X size={18} /></button>
           </header>
           <form key="new-product" onSubmit={(event) => void createProduct(event)} className="mt-4 grid gap-3 sm:mt-5 sm:gap-4">
@@ -695,7 +695,7 @@ export function OdooProductCataloguePage() {
               </div>
             </fieldset>
             <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-[var(--oh-text)]"><input type="checkbox" name="available_in_pos" defaultChecked className="mt-0.5 accent-[var(--oh-primary)]" /><span><span className="block font-medium">Available in POS</span><span className="mt-0.5 block text-xs text-[var(--oh-muted)]">Make the product searchable at the register.</span></span></label>
-            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">Odoo tracks stock quantities. Load opening stock through an Odoo receipt or adjustment.</p>
+            <p className="rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">Orithos tracks stock quantities. Load opening stock through an Orithos receipt or adjustment.</p>
             {createError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">{createError}</p>}
             <footer className="flex flex-col-reverse gap-2 border-t border-[var(--oh-border)] pt-4 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setNewProductOpen(false)} disabled={creatingProduct} className="h-11 w-full rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50 sm:w-auto">Cancel</button>

@@ -33,7 +33,7 @@ type PublicVersion = {
 const SERVICE_LABELS: Record<DependencyStatus["name"], string> = {
   database: "MySQL",
   redis: "Redis",
-  odoo: "Odoo",
+  odoo: "Orithos",
   ai: "AI provider",
 };
 

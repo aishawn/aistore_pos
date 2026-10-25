@@ -36,7 +36,7 @@ type PurgeResult = {
 function stateLabel(state: string) {
   if (state === "active") return "Sample data is active";
   if (state === "cleared") return "Sample data removed";
-  if (state === "unavailable") return "Sample data is unavailable until Odoo is ready";
+  if (state === "unavailable") return "Sample data is unavailable until Orithos is ready";
   return "No sample data";
 }
 
@@ -139,7 +139,7 @@ export default function SettingsDataPage() {
           <h2 className="text-base font-semibold text-[var(--oh-text)]">Sample data</h2>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
             Remove DEMO catalogue, customers, and open demo registers. Company, outlets, registers, and tax stay in place.
-            Demo seed orders stay in Odoo but are excluded from live Overview metrics after removal.
+            Demo seed orders stay in Orithos but are excluded from live Overview metrics after removal.
           </p>
           {loading ? (
               <p role="status" aria-live="polite" aria-busy="true" className="mt-4 inline-flex items-center gap-2 text-sm text-[var(--oh-muted)]">
@@ -150,7 +150,7 @@ export default function SettingsDataPage() {
               <p className="text-sm font-semibold text-[var(--oh-text)]">{stateLabel(status.state)}</p>
               {status.state === "unavailable" && (
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                  Odoo is still provisioning this store, or provisioning failed. Sample data cleanup becomes available after the store is connected.
+                  Orithos is still provisioning this store, or provisioning failed. Sample data cleanup becomes available after the store is connected.
                 </p>
               )}
               <ul className="grid gap-1 text-sm text-[var(--oh-text-secondary)] sm:grid-cols-2">
@@ -199,11 +199,11 @@ export default function SettingsDataPage() {
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
           <h2 className="text-base font-semibold text-[var(--oh-text)]">Catalogue</h2>
           <p className="mt-1 text-sm text-[var(--oh-muted)]">
-            Import or export Odoo products as CSV. Import does not set on-hand stock — use receive or stock adjustment afterward.
+            Import or export Orithos products as CSV. Import does not set on-hand stock — use receive or stock adjustment afterward.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
-              href="/products/odoo?import=1"
+              href="/products?import=1"
               className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <FileUp size={16} /> Import products
@@ -230,9 +230,9 @@ export default function SettingsDataPage() {
         <section className="rounded-lg border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
           <h2 className="text-base font-semibold text-[var(--oh-text)]">Next steps</h2>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--oh-text-secondary)]">
-            <li>Load opening stock with an Odoo receipt or stock adjustment after import.</li>
+            <li>Load opening stock with an Orithos receipt or stock adjustment after import.</li>
             <li>Create customers in Customers as needed (CSV import for partners comes later).</li>
-            <li>Trial teardown from the platform console deletes the store host; it does not wipe the Odoo company rows.</li>
+            <li>Trial teardown from the platform console deletes the store host; it does not wipe the Orithos company rows.</li>
           </ul>
         </section>
       </div>

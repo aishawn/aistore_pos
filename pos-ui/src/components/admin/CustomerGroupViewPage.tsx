@@ -110,7 +110,7 @@ function StatusItem({
 
 function SummaryBar({ group }: { group: CustomerGroupDetail }) {
   return (
-    <div className="mb-6 flex overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+    <div className="mb-6 flex overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
       <StatusItem label="Loyalty" enabled={group.loyaltyEnabled ?? false} />
       <StatusItem label="Promotions" enabled={!(group.disablePromotions ?? false)} />
       <StatusItem label="Account Sales" enabled={group.allowAccountSales ?? false} />
@@ -243,9 +243,9 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
   const groupName = group?.name?.trim() || "Customer Group";
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
       <div className="flex min-h-0 flex-1">
-        <aside className="flex w-[280px] shrink-0 flex-col border-r border-[var(--oh-border)] bg-[#f3f3f3]">
+        <aside className="flex w-[280px] shrink-0 flex-col border-r border-[var(--oh-border)] bg-[var(--oh-surface-muted)]">
           <div className="border-b border-[var(--oh-border)] px-5 py-5">
             <h1 className="text-[16px] font-bold leading-snug text-[var(--oh-text)]">
               View {groupName}
@@ -263,20 +263,20 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
                   className={cn(
                     "relative flex w-full items-start gap-2.5 rounded-md px-3 py-3 text-left transition-colors",
                     active
-                      ? "bg-white text-[#5cb3e0] shadow-sm"
-                      : "text-[var(--oh-text-secondary)] hover:bg-white/70",
+                      ? "bg-[var(--oh-surface-elevated)] text-[var(--oh-info)] shadow-sm"
+                      : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-elevated)]",
                   )}
                 >
                   {active && (
-                    <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-[#5cb3e0]" />
+                    <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-[var(--oh-info)]" />
                   )}
                   <Icon
                     size={16}
-                    className={cn("mt-0.5 shrink-0", active && "text-[#5cb3e0]")}
+                    className={cn("mt-0.5 shrink-0", active && "text-[var(--oh-info)]")}
                     strokeWidth={1.75}
                   />
                   <div className="min-w-0">
-                    <div className={cn("text-[13px] font-semibold", active && "text-[#5cb3e0]")}>
+                    <div className={cn("text-[13px] font-semibold", active && "text-[var(--oh-info)]")}>
                       {label}
                     </div>
                     <div className="mt-0.5 text-[13px] leading-snug text-[var(--oh-muted)]">
@@ -292,7 +292,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
             <button
               type="button"
               onClick={() => router.push(`/customer-groups/${groupId}/edit`)}
-              className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border-2 border-[var(--oh-success)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-success)] transition-colors hover:bg-[var(--oh-success)]/5"
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border-2 border-[var(--oh-success)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-success)] transition-colors hover:bg-[var(--oh-success)]/10"
             >
               <EditIcon size={16} />
               Edit
@@ -301,7 +301,7 @@ export function CustomerGroupViewPage({ groupId }: { groupId: string }) {
               type="button"
               onClick={() => setDeleteConfirmOpen(true)}
               disabled={deleting}
-              className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border-2 border-[var(--oh-danger)] bg-white px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] transition-colors hover:bg-[var(--oh-tile-red-bg)] disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--oh-radius)] border-2 border-[var(--oh-danger)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[13px] font-semibold text-[var(--oh-danger)] transition-colors hover:bg-[var(--oh-tile-red-bg)] disabled:opacity-60"
             >
               <DeleteIcon size={16} />
               {deleting ? "Deleting…" : "Delete"}

@@ -118,7 +118,7 @@ export function OdooPriceSuggestionsPage() {
       const session = await getOdooSessionStatus();
       if (!session.user) {
         setNeedsConnection(true);
-        throw new Error("Connect Odoo to review price suggestions.");
+        throw new Error("Connect Orithos to review price suggestions.");
       }
       if (revision !== requestRevision.current) return;
       const correlationId = crypto.randomUUID();
@@ -137,7 +137,7 @@ export function OdooPriceSuggestionsPage() {
         throw new Error(message || `Could not load price suggestions (${response.status}).`);
       }
       if (!payload || !("products" in payload) || !Array.isArray(payload.products)) {
-        throw new Error("Odoo returned an incomplete price suggestion list.");
+        throw new Error("Orithos returned an incomplete price suggestion list.");
       }
       setNeedsConnection(false);
       setData(payload);
@@ -197,8 +197,8 @@ export function OdooPriceSuggestionsPage() {
   if (needsConnection && !data) {
     return (
       <main className="mx-auto flex h-full max-w-lg flex-col items-start justify-center gap-3 px-4 py-10">
-        <h1 className="text-xl font-semibold text-[var(--oh-text)]">Connect Odoo to review price suggestions</h1>
-        <p className="text-sm text-[var(--oh-muted)]">Suggestions use this store&apos;s Odoo costs and shelf prices. Nothing is written from this page.</p>
+        <h1 className="text-xl font-semibold text-[var(--oh-text)]">Connect Orithos to review price suggestions</h1>
+        <p className="text-sm text-[var(--oh-muted)]">Suggestions use this store&apos;s Orithos costs and shelf prices. Nothing is written from this page.</p>
         <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
           Open Integrations
         </Link>
@@ -213,7 +213,7 @@ export function OdooPriceSuggestionsPage() {
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Pricing</p>
           <h1 className="mt-1 text-xl font-semibold text-[var(--oh-text)]">Price suggestions</h1>
           <p className="mt-1 max-w-2xl text-sm text-[var(--oh-muted)]">
-            Shelf suggestions use Odoo taxes and a target margin on net sales excluding GST.
+            Shelf suggestions use Orithos taxes and a target margin on net sales excluding GST.
             You apply any change in Products or Bulk Price Edit — this page never writes prices.
             {lastLoadedAt !== null && (
               <span className="ml-2">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</span>
@@ -246,7 +246,7 @@ export function OdooPriceSuggestionsPage() {
       </header>
 
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
-        Suggestions only. Orithos does not update Odoo list prices from this screen. Missing costs stay without a suggestion — costs are never invented.
+        Suggestions only. Orithos does not update Orithos list prices from this screen. Missing costs stay without a suggestion — costs are never invented.
       </p>
 
       {error && (
@@ -285,7 +285,7 @@ export function OdooPriceSuggestionsPage() {
             <Link href="/stock/bulk-price-edit" className="inline-flex min-h-11 items-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
               Bulk price edit
             </Link>
-            <Link href="/products/odoo" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+            <Link href="/products" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
               Open products
             </Link>
             <button
@@ -361,7 +361,7 @@ export function OdooPriceSuggestionsPage() {
                       {statusLabel(product.status)}
                     </span>
                     <Link
-                      href={`/products/odoo?q=${encodeURIComponent(product.sku || product.name)}`}
+                      href={`/products?q=${encodeURIComponent(product.sku || product.name)}`}
                       className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--oh-border)] px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
                     >
                       Open product

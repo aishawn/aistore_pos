@@ -59,7 +59,7 @@ export default function PlatformAiUsagePage() {
             id="platform-ai-window"
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
-            className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm"
+            className="h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm"
           >
             {windows.map((w) => (
               <option key={w.hours} value={w.hours}>{w.label}</option>
@@ -75,7 +75,7 @@ export default function PlatformAiUsagePage() {
       {error ? (
         <div role="alert" className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900">
           <span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span>
-            <button type="button" onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
+            <button type="button" onClick={() => void load(true)} disabled={refreshing || loading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-300 bg-[var(--oh-surface-elevated)] px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-50">
             <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} aria-hidden="true" />Retry
           </button>
         </div>
@@ -94,7 +94,7 @@ export default function PlatformAiUsagePage() {
             <Metric title="Est. tokens" value={data.summary.estimatedTokens.toLocaleString()} detail="Character-based estimate" />
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+          <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
             <div className="border-b border-[var(--oh-border)] px-4 py-4">
               <h2 className="text-base font-semibold text-[var(--oh-text)]">By store</h2>
               <p className="mt-1 text-xs text-[var(--oh-muted)]">Aggregates only — no questions or answers.</p>
@@ -151,7 +151,7 @@ export default function PlatformAiUsagePage() {
 
 function Metric({ title, value, detail }: { title: string; value: string; detail: string }) {
   return (
-    <article className="rounded-lg border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)]">
+    <article className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3.5 shadow-[var(--oh-shadow-card)]">
       <p className="text-xs font-medium uppercase tracking-wide text-[var(--oh-muted)]">{title}</p>
       <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--oh-text)]">{value}</p>
       <p className="mt-1 text-xs text-[var(--oh-muted)]">{detail}</p>

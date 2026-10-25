@@ -246,7 +246,7 @@ function SalesPurchasesChart({
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+<div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
       <h3 className="mb-3 text-[13px] font-semibold text-[var(--oh-text)]">{title}</h3>
       {children}
     </div>
@@ -549,7 +549,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
                     <button
                       type="button"
                       onClick={chart.reload}
-                      className="min-h-9 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-700"
+className="min-h-9 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--oh-danger-text)] hover:bg-[var(--oh-tile-red-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-danger)]"
                     >
                       Retry chart
                     </button>
@@ -699,7 +699,7 @@ export function ProductViewPage({ productId }: { productId: string }) {
             </div>
 
             <aside className="w-full shrink-0 lg:w-[260px]">
-              <div className="sticky top-4 space-y-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-3 shadow-[var(--oh-shadow-card)]">
+<div className="sticky top-4 space-y-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 shadow-[var(--oh-shadow-card)]">
                 <button
                   type="button"
                   onClick={() => router.push(`/products/${productId}/edit`)}

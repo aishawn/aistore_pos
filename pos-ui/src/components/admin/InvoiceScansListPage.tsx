@@ -27,11 +27,11 @@ function statusLabel(status: string) {
 
 function statusClass(status: string) {
   switch (status) {
-    case "draft": return "bg-amber-50 text-amber-950";
-    case "matched": return "bg-sky-50 text-sky-950";
+    case "draft": return "bg-[var(--oh-tile-orange-bg)] text-[var(--oh-tile-orange-text)]";
+    case "matched": return "bg-[var(--oh-tile-blue-bg)] text-[var(--oh-tile-blue-text)]";
     case "po_created": return "bg-indigo-50 text-indigo-950";
     case "received": return "bg-emerald-50 text-emerald-950";
-    case "failed": return "bg-rose-50 text-rose-900";
+    case "failed": return "bg-[var(--oh-tile-red-bg)] text-[var(--oh-tile-red-text)]";
     default: return "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]";
   }
 }
@@ -98,7 +98,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
 
   return (
     <Container className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Documents</p>
@@ -119,7 +119,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
-          <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
               <label className="relative min-w-0 flex-1">
                 <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
@@ -127,7 +127,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search supplier, invoice #, ABN…"
-                  className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white pl-9 pr-3 text-sm outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+                  className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] pl-9 pr-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
                 />
               </label>
               <button
@@ -164,16 +164,16 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
           </section>
 
           {loading && (
-            <div role="status" className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            <div role="status" className="flex items-center gap-2 rounded-lg border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] px-4 py-3 text-sm text-[var(--oh-tile-blue-text)]">
               <LoaderCircle size={17} className="animate-spin" /> Loading invoice history…
             </div>
           )}
           {error && (
-            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>
+            <div role="alert" className="rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-3 text-sm text-[var(--oh-tile-red-text)]">{error}</div>
           )}
 
           {!loading && !error && items.length === 0 && (
-            <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-white px-6 py-12 text-center">
+            <div className="rounded-xl border border-dashed border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-6 py-12 text-center">
               <ReceiptText className="mx-auto text-[var(--oh-primary)]" size={28} />
               <h2 className="mt-3 text-sm font-semibold text-[var(--oh-text)]">No scanned invoices yet</h2>
               <p className="mt-1 text-sm text-[var(--oh-muted)]">Upload a PDF or photograph to start a draft OCR review.</p>
@@ -184,7 +184,7 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
           )}
 
           {items.length > 0 && (
-            <section className="overflow-x-auto rounded-xl border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+            <section className="overflow-x-auto rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
               <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                   <tr>
@@ -226,12 +226,12 @@ export function InvoiceScansListPage({ embedded = false }: { embedded?: boolean 
             </section>
           )}
 
-          <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 text-sm text-[var(--oh-muted)]">
+          <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 text-sm text-[var(--oh-muted)]">
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">How stock updates</h2>
             <ol className="mt-2 list-decimal space-y-1 pl-5">
               <li>Scan PDF/photo → OCR draft (no stock change).</li>
               <li>Match each line to an existing product (or skip / create the product in Products first).</li>
-              <li>Confirm → Odoo PO → receive — then on-hand qty appears in Products.</li>
+              <li>Confirm → Orithos PO → receive — then on-hand qty appears in Products.</li>
             </ol>
             <p className="mt-3 text-xs">
               Supplier API ingest remains reserved (`SUPPLIER_INVOICE_INGEST_ENABLED`). Use PDF or camera until a vendor adapter is connected.

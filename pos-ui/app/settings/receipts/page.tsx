@@ -29,7 +29,7 @@ const receiptCapabilities = [
   },
   {
     title: "Tax breakdown",
-    detail: "Checkout calculates GST from Odoo. The printed receipt breakdown has not been verified.",
+    detail: "Checkout calculates GST from Orithos. The printed receipt breakdown has not been verified.",
     status: "Checkout ready",
     icon: Sparkles,
     tone: "green",
@@ -59,7 +59,7 @@ export default function ReceiptsPage() {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-amber-950">Receipt delivery is not connected</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-amber-900/80">
-            Earlier values on this page were examples. Orithos does not currently save receipt preferences or apply them to Odoo, a printer, or email delivery.
+            Earlier values on this page were examples. Orithos does not currently save receipt preferences or apply them to Orithos, a printer, or email delivery.
           </p>
         </div>
       </section>

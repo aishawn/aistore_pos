@@ -53,11 +53,11 @@ export function OdooGiftCardsPage() {
 
   if (connected === false) {
     return (
-      <AdminPageLayout title="Gift Cards" subtitle="Odoo loyalty / gift card balances">
+      <AdminPageLayout title="Gift Cards" subtitle="Orithos loyalty / gift card balances">
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-950">
           <AlertCircle className="mb-2" size={20} />
-          <p className="font-semibold">Connect Odoo to check gift cards</p>
-          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Odoo</Link>
+          <p className="font-semibold">Connect Orithos to check gift cards</p>
+          <Link href="/settings/integrations" className="mt-3 inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Connect Orithos</Link>
         </section>
       </AdminPageLayout>
     );
@@ -66,7 +66,7 @@ export function OdooGiftCardsPage() {
   return (
     <AdminPageLayout
       title="Gift Cards"
-      subtitle="Gift card balances only. Issuing and redemption are managed in Odoo."
+      subtitle="Gift card balances only. Issuing and redemption are managed in Orithos."
       count={available && !loading && !error ? items.length : undefined}
       countLabel="Cards on this page"
       actions={
@@ -87,10 +87,10 @@ export function OdooGiftCardsPage() {
           <div className="flex items-start gap-3">
             <Gift className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
             <div>
-              <h2 className="font-semibold">Odoo Loyalty is not available yet</h2>
+              <h2 className="font-semibold">Orithos Loyalty is not available yet</h2>
               <p className="mt-2 text-sm">Gift cards are not enabled. A store administrator can configure them under Integrations.</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link href="/customers/odoo" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Open customers</Link>
+                <Link href="/customers" className="inline-flex min-h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white">Open customers</Link>
                 <Link href="/settings/integrations" className="inline-flex min-h-11 items-center rounded-md border border-amber-300 bg-white px-4 text-sm font-medium">Integration status</Link>
               </div>
             </div>
@@ -152,7 +152,7 @@ export function OdooGiftCardsPage() {
       )}
 
       {loading && available === null && !error && (
-        <p className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Checking Odoo gift card capability…</p>
+        <p className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Checking Orithos gift card capability…</p>
       )}
     </AdminPageLayout>
   );

@@ -78,7 +78,7 @@ export function AdminSecondaryButton({
       disabled={disabled}
       title={title}
       className={cn(
-        "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-border-strong)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[14px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:border-[var(--oh-border-strong)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >
@@ -90,7 +90,7 @@ export function AdminSecondaryButton({
 /** Fixed form actions with space reserved for the floating assistant button. */
 export function AdminActionFooter({ children }: { children: React.ReactNode }) {
   return (
-    <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6">
+    <footer className="flex shrink-0 justify-end border-t border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-6">
       <div className="flex w-full flex-wrap justify-end gap-2 sm:mr-20">{children}</div>
     </footer>
   );
@@ -182,7 +182,7 @@ export function AdminPageLayout({
         <div className="flex flex-wrap items-center gap-2">
           {actions}
           {count !== undefined && (
-            <div className="ml-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
+            <div className="ml-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2 text-center shadow-[var(--oh-shadow-card)]">
               <div className="oh-type-kpi leading-none text-[var(--oh-text)]">{count}</div>
               <div className="oh-type-meta font-semibold uppercase tracking-wider text-[var(--oh-muted)]">
                 {countLabel}
@@ -197,13 +197,13 @@ export function AdminPageLayout({
       )}
 
       {search && (
-        <div className={cn("rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
+        <div className={cn("rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
           {search}
         </div>
       )}
 
       {filters && (
-        <div className={cn("flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
+        <div className={cn("flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 shadow-[var(--oh-shadow-card)]", compact ? "mb-2 py-2" : "mb-3 py-2.5")}>
           {filters}
         </div>
       )}
@@ -211,7 +211,7 @@ export function AdminPageLayout({
       {fullBleed ? (
         children
       ) : (
-        <div className={cn("rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)] print:border-0 print:p-0 print:shadow-none", compact ? "p-2 md:p-3" : "p-3 md:p-4")}>
+        <div className={cn("rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)] print:border-0 print:p-0 print:shadow-none", compact ? "p-2 md:p-3" : "p-3 md:p-4")}>
           {children}
         </div>
       )}
@@ -340,7 +340,7 @@ export function AdminStatCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+    <div className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-[15px] font-semibold text-[var(--oh-text)]">{title}</h3>
         {children}

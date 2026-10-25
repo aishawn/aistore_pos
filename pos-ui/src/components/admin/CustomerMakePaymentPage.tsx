@@ -64,8 +64,8 @@ function parseAmount(raw: string): number {
 }
 
 const fieldClass =
-  "h-[52px] w-full rounded-lg border border-neutral-300 px-3 text-[16px] text-black outline-none placeholder:text-neutral-400 focus:border-[#5cb3e0]";
-const labelClass = "mb-1 block text-[16px] text-black";
+  "h-[52px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[16px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)]";
+const labelClass = "mb-1 block text-[16px] text-[var(--oh-text)]";
 
 function FormField({
   label,
@@ -169,10 +169,10 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
   const customerName = customer?.name ?? customer?.firstName ?? "Customer";
 
   return (
-    <div className="flex h-full flex-col overflow-auto bg-white font-sans">
+    <div className="flex h-full flex-col overflow-auto bg-[var(--oh-surface)] font-sans">
       <div className="px-6 py-6 text-center">
-        <h1 className="text-[28px] font-semibold text-black">Make Payment</h1>
-        <p className="mx-auto mt-3 max-w-3xl text-[14px] text-neutral-600">
+        <h1 className="text-[28px] font-semibold text-[var(--oh-text)]">Make Payment</h1>
+        <p className="mx-auto mt-3 max-w-3xl text-[14px] text-[var(--oh-muted)]">
           Please note: if the payment time falls outside a register closure, this payment will not
           appear in any register closure.
         </p>
@@ -183,7 +183,7 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
           <div className="flex min-h-0 flex-1 flex-col px-6 pb-0">
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <FormField label="Customer">
-                <input readOnly value={customerName} className={`${fieldClass} bg-neutral-100`} />
+                <input readOnly value={customerName} className={`${fieldClass} bg-[var(--oh-surface)]`} />
               </FormField>
               <FormField label="Payment Date">
                 <input
@@ -208,7 +208,7 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
                   </select>
                   <SelectChevronIcon
                     size={18}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]"
                   />
                 </div>
               </FormField>
@@ -247,21 +247,22 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
                   </select>
                   <SelectChevronIcon
                     size={18}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500"
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]"
                   />
                 </div>
               </FormField>
             </div>
 
-            <p className="mt-8 text-[16px] text-black">
+            <p className="mt-8 text-[16px] text-[var(--oh-text)]">
               Please fill in the above details before continuing
             </p>
-            <p className="mt-2 text-[18px] font-semibold text-black">
+            <p className="mt-2 text-[18px] font-semibold text-[var(--oh-text)]">
               {money(outstanding)} Outstanding and {money(unallocated)} Unallocated
             </p>
 
-            <div className="mt-6 overflow-hidden border border-[#5cb3e0] text-[15px]">
-              <div className="flex bg-[#5cb3e0] font-semibold text-white">
+            <div className="mt-6 overflow-x-auto rounded-md border border-[var(--oh-border)] text-[15px]">
+              <div className="min-w-[670px]">
+              <div className="flex bg-[var(--brand-info)] font-semibold text-[var(--brand-on-info)]">
                 <div className="w-[170px] border-r border-white/40 px-3 py-3 text-center">Timestamp</div>
                 <div className="w-[110px] border-r border-white/40 px-3 py-3 text-center">Invoice</div>
                 <div className="w-[100px] border-r border-white/40 px-3 py-3 text-center">User</div>
@@ -280,48 +281,49 @@ export function CustomerMakePaymentPage({ customerId }: { customerId: string }) 
                 {outstandingSales.map((s, i) => (
                   <div
                     key={s.id}
-                    className={`flex items-center border-b border-neutral-200 last:border-b-0 ${i % 2 === 1 ? "bg-neutral-50" : "bg-white"}`}
+                    className={`flex min-w-[670px] items-center border-b border-[var(--oh-border)] last:border-b-0 ${i % 2 === 1 ? "bg-[var(--oh-surface-muted)]" : "bg-[var(--oh-surface-elevated)]"}`}
                   >
-                    <div className="w-[170px] border-r border-neutral-200 px-3 py-3 text-center text-black">
+                    <div className="w-[170px] border-r border-[var(--oh-border)] px-3 py-3 text-center text-[var(--oh-text)]">
                       {formatTimestamp(s.createdAt)}
                     </div>
-                    <div className="w-[110px] border-r border-neutral-200 px-3 py-3 text-center text-black">
+                    <div className="w-[110px] border-r border-[var(--oh-border)] px-3 py-3 text-center text-[var(--oh-text)]">
                       {s.invoiceId ?? "—"}
                     </div>
-                    <div className="w-[100px] border-r border-neutral-200 px-3 py-3 text-center text-black">
+                    <div className="w-[100px] border-r border-[var(--oh-border)] px-3 py-3 text-center text-[var(--oh-text)]">
                       {s.userName ?? "—"}
                     </div>
-                    <div className="w-[100px] border-r border-neutral-200 px-3 py-3 text-center text-black">
+                    <div className="w-[100px] border-r border-[var(--oh-border)] px-3 py-3 text-center text-[var(--oh-text)]">
                       {s.registerId ? registerMap.get(String(s.registerId)) ?? "Register" : "—"}
                     </div>
-                    <div className="w-[90px] border-r border-neutral-200 px-3 py-3 text-center text-black">
+                    <div className="w-[90px] border-r border-[var(--oh-border)] px-3 py-3 text-center text-[var(--oh-text)]">
                       {money(s.totalPrice)}
                     </div>
-                    <div className="w-[100px] border-r border-neutral-200 px-3 py-3 text-center text-black">
+                    <div className="w-[100px] border-r border-[var(--oh-border)] px-3 py-3 text-center text-[var(--oh-text)]">
                       {money(s.outstanding)}
                     </div>
                     <div className="flex flex-1 justify-center px-3 py-2">
                       <div className="relative w-full max-w-[140px]">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]">$</span>
                         <input
                           value={allocations[s.id] ?? ""}
                           onChange={(e) => setAllocation(s.id, e.target.value)}
-                          className="h-[40px] w-full rounded border border-neutral-300 pl-7 pr-2 text-[15px] outline-none focus:border-[#5cb3e0]"
+                          className="h-[40px] w-full rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] pl-7 pr-2 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
                         />
                       </div>
                     </div>
                   </div>
                 ))}
               </AsyncState>
+              </div>
             </div>
 
             {error && <p className="mt-4 text-[14px] text-[var(--oh-danger)]">{error}</p>}
 
-            <div className="mt-8 flex h-[56px] items-center justify-between bg-[#5cb3e0] px-6">
+            <div className="mt-8 flex h-[56px] items-center justify-between bg-[var(--brand-info)] px-6">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="rounded border border-neutral-400 bg-white px-8 py-2 text-[16px] text-black transition-colors hover:bg-neutral-50"
+                className="rounded border border-[var(--oh-border-strong)] bg-[var(--oh-surface-elevated)] px-8 py-2 text-[16px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)]"
               >
                 Cancel
               </button>

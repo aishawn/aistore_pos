@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const records = await scope.rpc<OdooCategory[]>("pos.category", "search_read", [[...categoryDomain(scope.companyIds), ...(query ? [["name", "ilike", query]] : [])]], { fields: ["id", "name", "parent_id", "company_id"], order: "name asc, id asc", limit: 101, offset });
     const page = records.slice(0, 100);
     const counts = page.length ? await scope.rpc<Record<string, { productCount: number; childCount: number }>>("pos.category", "orithos_category_counts", [page.map((record) => record.id)]) : {};
-    if (page.some((record) => !counts[String(record.id)] || !Number.isSafeInteger(counts[String(record.id)].productCount) || !Number.isSafeInteger(counts[String(record.id)].childCount))) throw new OdooScopeError("Odoo returned incomplete category counts. Reload before editing.", 502);
+    if (page.some((record) => !counts[String(record.id)] || !Number.isSafeInteger(counts[String(record.id)].productCount) || !Number.isSafeInteger(counts[String(record.id)].childCount))) throw new OdooScopeError("Orithos returned incomplete category counts. Reload before editing.", 502);
     const items = page.map((record) => ({ ...record,
       editable: !!record.company_id && scope.companyIds.includes(record.company_id[0]),
       productCount: counts[String(record.id)]?.productCount ?? 0,

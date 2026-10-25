@@ -7,8 +7,8 @@ const HREF = "/settings/company/miscellaneous";
 const companyBehaviors = [
   {
     title: "Sale keys and position",
-    status: "Not in Odoo pilot",
-    detail: "The pilot register uses the Odoo catalogue, search, and pack options. The old sale-key layout does not change this screen.",
+    status: "Not in Orithos pilot",
+    detail: "The pilot register uses the Orithos catalogue, search, and pack options. The old sale-key layout does not change this screen.",
     icon: Keyboard,
     action: { label: "Open Sell", href: "/" },
   },

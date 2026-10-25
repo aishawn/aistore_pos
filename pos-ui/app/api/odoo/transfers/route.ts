@@ -22,10 +22,10 @@ class TransferError extends Error {
 
 function baseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new TransferError("Odoo connection is not configured.", 503);
+  if (!value) throw new TransferError("Orithos connection is not configured.", 503);
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new TransferError("Odoo connection must use HTTPS.", 503);
+    throw new TransferError("Orithos connection must use HTTPS.", 503);
   }
   return value;
 }
@@ -56,13 +56,13 @@ async function rpc<T>(
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new TransferError("Odoo could not complete the transfer request.", 502);
+  if (!response.ok) throw new TransferError("Orithos could not complete the transfer request.", 502);
   const payload = await response.json() as { result?: T; error?: RpcError };
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new TransferError("Odoo session expired.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new TransferError("Your Odoo account cannot move stock.", 403);
-    throw new TransferError("Odoo rejected the transfer. Check locations, products, and quantities.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new TransferError("Orithos session expired.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new TransferError("Your Orithos account cannot move stock.", 403);
+    throw new TransferError("Orithos rejected the transfer. Check locations, products, and quantities.", 422);
   }
   return payload.result as T;
 }
@@ -76,17 +76,17 @@ async function tenantScope(request: NextRequest, sessionId: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new TransferError("Odoo session expired.", 401);
+  if (!response.ok) throw new TransferError("Orithos session expired.", 401);
   const payload = await response.json() as {
     result?: { uid?: number; user_context?: { allowed_company_ids?: number[] } };
     error?: RpcError;
   };
-  if (payload.error || !payload.result?.uid) throw new TransferError("Odoo session expired.", 401);
+  if (payload.error || !payload.result?.uid) throw new TransferError("Orithos session expired.", 401);
   const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new TransferError(forced.error, forced.status);
   const companyId = forced.companyIds[0];
-  if (!companyId) throw new TransferError("No Odoo company is available to this account.", 403);
+  if (!companyId) throw new TransferError("No Orithos company is available to this account.", 403);
   return { companyId, context: odooCompanyContext([companyId]), correlationId };
 }
 
@@ -96,7 +96,7 @@ function jsonError(error: unknown) {
     if (error.status === 401) response.cookies.delete(SESSION_COOKIE);
     return response;
   }
-  const message = error instanceof Error ? error.message : "Odoo is unavailable";
+  const message = error instanceof Error ? error.message : "Orithos is unavailable";
   const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
   return NextResponse.json({ message }, { status });
 }
@@ -133,7 +133,7 @@ async function loadWarehouses(sessionId: string, companyId: number, context: Rec
 export async function GET(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
 
   try {
     await requirePermission(request, "stock.receive");
@@ -179,8 +179,8 @@ export async function GET(request: NextRequest) {
       locations: warehouses.map((row) => ({ id: row.locationId, name: row.locationName, warehouseId: row.id, pickingTypeId: row.pickingTypeId })),
       items,
       note: locationIds.length < 2
-        ? "Need at least two stock locations (warehouses) in this Odoo company to transfer between outlets."
-        : "Same-company internal transfers only. Cross-company store moves stay in Odoo.",
+        ? "Need at least two stock locations (warehouses) in this Orithos company to transfer between outlets."
+        : "Same-company internal transfers only. Cross-company store moves stay in Orithos.",
     });
   } catch (error) {
     return jsonError(error);
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
         : moveFields && Object.hasOwn(moveFields, "quantity_done")
           ? "quantity_done"
           : null;
-      if (!qtyField) throw new TransferError("Odoo did not expose a writable done-quantity field.", 422);
+      if (!qtyField) throw new TransferError("Orithos did not expose a writable done-quantity field.", 422);
       const moves = await rpc<Array<{ id: number; product_uom_qty: number }>>(sessionId, "stock.move", "search_read", [[
         ["picking_id", "=", pickingId],
       ]], { fields: ["id", "product_uom_qty"], limit: MAX_LINES, context }, correlationId) ?? [];

@@ -29,9 +29,9 @@ class OdooImportError extends Error {
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -45,13 +45,13 @@ async function callOdoo<T>(sessionId: string, model: string, method: string, arg
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new OdooImportError("Odoo could not import these products.", 502);
+  if (!response.ok) throw new OdooImportError("Orithos could not import these products.", 502);
   const payload = await response.json() as { result?: T; error?: { message?: string; data?: { message?: string; name?: string } } };
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new OdooImportError("Your Odoo session has expired. Sign in again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooImportError("Your Odoo account does not have permission to import products or costs.", 403);
-    throw new OdooImportError("Odoo rejected this product import. Check product and category settings.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new OdooImportError("Your Orithos session has expired. Sign in again.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooImportError("Your Orithos account does not have permission to import products or costs.", 403);
+    throw new OdooImportError("Orithos rejected this product import. Check product and category settings.", 422);
   }
   return payload.result as T;
 }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     throw error;
   }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: { products?: unknown };
@@ -104,15 +104,15 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
       signal: AbortSignal.timeout(12_000),
     });
-    if (!infoResponse.ok) throw new OdooImportError("Your Odoo session has expired. Sign in again.", 401);
+    if (!infoResponse.ok) throw new OdooImportError("Your Orithos session has expired. Sign in again.", 401);
     const infoPayload = await infoResponse.json() as { result?: { uid?: number; user_context?: Record<string, unknown> }; error?: unknown };
     const info = infoPayload.result;
-    if (infoPayload.error || !info?.uid) throw new OdooImportError("Your Odoo session has expired. Sign in again.", 401);
+    if (infoPayload.error || !info?.uid) throw new OdooImportError("Your Orithos session has expired. Sign in again.", 401);
     const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info, correlationId);
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new OdooImportError(forced.error, forced.status);
     const companyIds = forced.companyIds;
-    if (!companyIds.length) throw new OdooImportError("No Odoo company is available to this account.", 403);
+    if (!companyIds.length) throw new OdooImportError("No Orithos company is available to this account.", 403);
     const companyId = companyIds[0];
     const context = { ...(info.user_context ?? {}), allowed_company_ids: companyIds, force_company: companyId };
 
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       const sku = product.default_code.trim().toLocaleLowerCase();
       const barcode = product.barcode.trim();
       const duplicateReason = (sku && existingSkus.has(sku)) || (barcode && existingBarcodes.has(barcode))
-        ? "SKU or barcode already exists in Odoo"
+        ? "SKU or barcode already exists in Orithos"
         : (sku && seenSkus.has(sku)) || (barcode && seenBarcodes.has(barcode))
           ? "SKU or barcode is duplicated in this file"
           : null;
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     const stockField = Object.hasOwn(availableFields ?? {}, "is_storable") ? "is_storable"
       : Object.hasOwn(availableFields ?? {}, "detailed_type") ? "detailed_type"
         : Object.hasOwn(availableFields ?? {}, "type") ? "type" : null;
-    if (!stockField) throw new OdooImportError("This Odoo product model does not expose an inventory product type.", 422);
+    if (!stockField) throw new OdooImportError("This Orithos product model does not expose an inventory product type.", 422);
 
     const values = toCreate.map((product) => ({
       name: product.name.trim(),
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
     await callOdoo<number[] | number>(sessionId, "product.template", "create", [values], { context }, correlationId);
     return NextResponse.json({ created: toCreate.length, skipped }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof OdooImportError || error instanceof OdooScopeError ? error.status : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }

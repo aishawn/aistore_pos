@@ -9,7 +9,7 @@ import { friendlyProductName } from "@/lib/product-display-name";
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" });
 type Outcome = { state: "confirmed" | "rejected" | "unknown"; message: string };
 
-/** Odoo shelf-price review. Quantity-break pricelists are a separate Odoo workflow. */
+/** Orithos shelf-price review. Quantity-break pricelists are a separate Orithos workflow. */
 export function OdooBulkPriceEditPage() {
   const params = useSearchParams();
   const [search, setSearch] = useState(params.get("search") ?? "");
@@ -44,7 +44,7 @@ export function OdooBulkPriceEditPage() {
         else setError("This suggestion is invalid or the original price has changed. Review the current price.");
       }
     } catch (cause) {
-      if (current === revision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo products.");
+      if (current === revision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos products.");
     } finally { if (current === revision.current) setLoading(false); }
   }, [search, offset, params]);
 
@@ -74,16 +74,16 @@ export function OdooBulkPriceEditPage() {
           if (!response.ok || payload?.ok !== true) {
             if (response.status >= 500 || payload?.resultState === "unknown") throw new Error("unconfirmed");
             outcome = { state: "rejected", message: payload?.message ?? "Price change rejected." };
-          } else outcome = { state: "confirmed", message: "Saved and read back from Odoo." };
+          } else outcome = { state: "confirmed", message: "Saved and read back from Orithos." };
         } catch {
           // Read only after an uncertain write. Never automatically replay PATCH.
           try {
             const response = await fetchOdooRoute(`/api/odoo/products/${product.id}`, { cache: "no-store" });
             const current = response.ok ? await response.json() : null;
             outcome = current && Math.abs(current.list_price - next) < 0.000001
-              ? { state: "confirmed", message: "Requested price confirmed by a fresh Odoo read." }
-              : { state: "unknown", message: "Result pending confirmation. Check Odoo before making another change." };
-          } catch { outcome = { state: "unknown", message: "Cannot confirm the result. Check Odoo before retrying." }; }
+              ? { state: "confirmed", message: "Requested price confirmed by a fresh Orithos read." }
+              : { state: "unknown", message: "Result pending confirmation. Check Orithos before making another change." };
+          } catch { outcome = { state: "unknown", message: "Cannot confirm the result. Check Orithos before retrying." }; }
         }
         setOutcomes((previous) => ({ ...previous, [product.id]: outcome }));
         if (outcome.state === "confirmed") setProducts((previous) => previous.map((item) => item.id === product.id ? { ...item, list_price: next } : item));
@@ -94,26 +94,26 @@ export function OdooBulkPriceEditPage() {
 
   return <main className="h-full overflow-y-auto p-4 pb-24 sm:p-6">
     <h1 className="text-2xl font-semibold">Bulk Price Edit</h1>
-    <p className="mt-2 text-sm text-neutral-600">Review Odoo list prices before saving. GST-inclusive shelf prices follow each product&apos;s tax configuration. Register pricelists may override these prices.</p>
+    <p className="mt-2 text-sm text-neutral-600">Review Orithos list prices before saving. GST-inclusive shelf prices follow each product&apos;s tax configuration. Register pricelists may override these prices.</p>
     <div className="my-4 flex flex-col gap-3 sm:flex-row sm:items-center">
       <input aria-label="Search bulk price products" value={search} disabled={busy || changed.length > 0 || unresolved} onChange={(event) => { ++revision.current; setSearch(event.target.value); setOffset(0); }} className="h-11 w-full min-w-0 rounded border px-3 sm:flex-1" placeholder="Search product or SKU" />
       <div className="flex w-full gap-3 sm:w-auto">
         {search.trim() ? <button type="button" aria-label="Clear product search" disabled={busy || changed.length > 0 || unresolved} onClick={() => { setSearch(""); setOffset(0); }} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:flex-none"><X size={15} aria-hidden="true" /> Clear search</button> : null}
         <button type="button" disabled={busy || loading} onClick={() => {
-          if ((changed.length || unresolved) && !window.confirm("Discard local edits and reload current Odoo prices? Check pending operations in Odoo first.")) return;
+          if ((changed.length || unresolved) && !window.confirm("Discard local edits and reload current Orithos prices? Check pending operations in Orithos first.")) return;
           void load();
         }} className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded border px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:flex-none"><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
       </div>
     </div>
     {error && <p role="alert" className="my-3 rounded bg-red-50 p-3 text-red-900">{error}</p>}
-    {loading ? <p role="status">Loading Odoo prices…</p> : <ul className="divide-y rounded border">
+    {loading ? <p role="status">Loading Orithos prices…</p> : <ul className="divide-y rounded border">
       {products.map((product) => {
         const productLabel = friendlyProductName(product.name);
         return <li key={product.id} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_180px]">
         <div><p className="font-semibold" title={product.name}>{productLabel}</p><p className="text-sm text-neutral-600">{product.default_code || "No SKU"} · Current list {money.format(product.list_price)}</p>
           {outcomes[product.id] && <p role="status" className={outcomes[product.id].state === "confirmed" ? "text-sm text-green-800" : "text-sm text-red-800"}>{outcomes[product.id].message}</p>}
         </div>
-        <label className="text-sm">New Odoo list price
+        <label className="text-sm">New Orithos list price
           <input aria-label={`Price for ${productLabel}`} type="number" min="0.01" step="0.01" value={draft[product.id] ?? String(product.list_price)} disabled={busy || unresolved} onChange={(event) => { setConfirm(false); setOutcomes((previous) => { const next = { ...previous }; delete next[product.id]; return next; }); setDraft((previous) => ({ ...previous, [product.id]: event.target.value })); }} className="mt-1 h-11 w-full rounded border px-3" />
         </label>
       </li>;

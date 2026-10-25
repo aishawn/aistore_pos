@@ -10,14 +10,14 @@ const HREF = "/settings/company/date-time";
 
 function timeBehaviors(timezone: string) {
   return [
-    { title: "Store business timezone", value: timezone, description: "Sales, receipts and operational dates use the active Odoo POS register timezone.", icon: Globe2 },
-    { title: "Date and time display", value: "Australian locale", description: "Receipts and reporting use the en-AU locale with the active Odoo store timezone. This page does not override each screen’s display format.", icon: Clock3 },
+    { title: "Store business timezone", value: timezone, description: "Sales, receipts and operational dates use the active Orithos POS register timezone.", icon: Globe2 },
+    { title: "Date and time display", value: "Australian locale", description: "Receipts and reporting use the en-AU locale with the active Orithos store timezone. This page does not override each screen’s display format.", icon: Clock3 },
     { title: "Start of the week", value: "Not configurable here", description: "The previous Monday selection was an example, not a saved company preference. Weekly reports use their defined date ranges.", icon: CalendarDays },
   ];
 }
 
 export default function DateTimeSettingsClient() {
-  const [timezone, setTimezone] = useState("Odoo POS configuration");
+  const [timezone, setTimezone] = useState("Orithos POS configuration");
 
   useEffect(() => {
     let active = true;
@@ -28,7 +28,7 @@ export default function DateTimeSettingsClient() {
         if (config?.timezone) setTimezone(config.timezone);
       })
       .catch(() => {
-        // Keep the honest source label when Odoo is disconnected.
+        // Keep the honest source label when Orithos is disconnected.
       });
     return () => { active = false; };
   }, []);

@@ -29,7 +29,7 @@ export function SaleKeysPanel({
         </p>
         <span className="text-[13px] text-[var(--oh-muted)]">{setName}</span>
       </div>
-      <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-gradient-to-b from-white to-[var(--oh-surface)] p-2.5 shadow-[var(--oh-shadow-card)]">
+      <div className="overflow-hidden rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-gradient-to-b from-[var(--oh-surface-elevated)] to-[var(--oh-surface)] p-2.5 shadow-[var(--oh-shadow-card)]">
         {loading ? (
           <div className="flex h-[160px] w-full items-center justify-center text-[13px] text-[var(--oh-muted)]">
             Loading sale keys…

@@ -22,7 +22,7 @@ const SECTIONS: ReportSection[] = [
     children: [
       { label: "Dashboard", href: "/reports/dashboard" },
       { label: "AI Insights", href: "/reports/ai/metrics" },
-      { label: "Recent Sales", href: "/history/odoo" },
+      { label: "Recent Sales", href: "/history" },
     ],
   },
   {

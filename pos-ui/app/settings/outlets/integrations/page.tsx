@@ -7,15 +7,15 @@ const HREF = "/settings/outlets/integrations";
 const outletBehaviors = [
   {
     title: "Cost source",
-    status: "Odoo data",
-    detail: "The previous “Use global cost” switch was not saved. Odoo is the source for pilot products; imports may include a product cost when supplied.",
+    status: "Orithos data",
+    detail: "The previous “Use global cost” switch was not saved. Orithos is the source for pilot products; imports may include a product cost when supplied.",
     icon: Database,
-    action: { label: "Open Odoo connection", href: "/settings/company/integrations" },
+    action: { label: "Open Orithos connection", href: "/settings/company/integrations" },
   },
   {
     title: "Receipt template",
     status: "Not connected",
-    detail: "This outlet does not load or save a receipt template. Receipt layout and delivery are not yet connected to the Odoo checkout.",
+    detail: "This outlet does not load or save a receipt template. Receipt layout and delivery are not yet connected to the Orithos checkout.",
     icon: ReceiptText,
     action: { label: "View receipt status", href: "/settings/receipts" },
   },

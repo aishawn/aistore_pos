@@ -27,11 +27,11 @@ export default function TaxRatesPage() {
     void (async () => {
       try {
         const session = await getOdooSession();
-        if (!session) throw new Error("Connect your Odoo staff account to view live tax rates.");
+        if (!session) throw new Error("Connect your Orithos staff account to view live tax rates.");
         const result = await searchOdooRecords<OdooTaxRecord>("taxes", { limit: 100 });
         if (active) setTaxes(result.items);
       } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not load Odoo tax rates.");
+        if (active) setError(cause instanceof Error ? cause.message : "Could not load Orithos tax rates.");
       } finally {
         if (active) setLoading(false);
       }
@@ -42,7 +42,7 @@ export default function TaxRatesPage() {
   return (
     <AdminPageLayout
       title="Tax Rates"
-      subtitle="Active sales taxes visible to your Odoo account"
+      subtitle="Active sales taxes visible to your Orithos account"
       count={loading || error ? undefined : taxes.length}
       countLabel="Rates"
       actions={
@@ -55,8 +55,8 @@ export default function TaxRatesPage() {
     >
       <section aria-label="Tax rate source" className="mb-4 flex items-start gap-3 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-4 py-3 text-sm text-[var(--oh-text-secondary)]">
         <Info size={18} className="mt-0.5 shrink-0 text-[var(--oh-primary)]" />
-        <div><p className="font-semibold text-[var(--oh-text)]">Live from Odoo <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
-          <p className="mt-1">Tax rates used in sales are controlled by Odoo. Orithos does not save a second copy.</p></div>
+        <div><p className="font-semibold text-[var(--oh-text)]">Live from Orithos <span className="ml-1 rounded-full bg-white px-2 py-0.5 text-xs font-medium text-[var(--oh-muted)]">Read only</span></p>
+          <p className="mt-1">Tax rates used in sales are controlled by Orithos. Orithos does not save a second copy.</p></div>
       </section>
       {error ? (
         <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -67,7 +67,7 @@ export default function TaxRatesPage() {
           </div>
         </div>
       ) : loading ? (
-      <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Odoo tax rates" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
+      <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading Orithos tax rates" className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white">
           <div className="h-12 animate-pulse bg-[var(--oh-surface)]" />
           <div className="divide-y divide-[var(--oh-border)]">
             {Array.from({ length: 5 }, (_, index) => <div key={index} className="grid gap-3 px-4 py-4 sm:grid-cols-4">
@@ -80,7 +80,7 @@ export default function TaxRatesPage() {
         </div>
       ) : taxes.length === 0 ? (
         <div className="rounded-lg border border-[var(--oh-border)] bg-white px-4 py-12 text-center text-sm text-[var(--oh-muted)]">
-          No active sales tax rates are visible to this Odoo account.
+          No active sales tax rates are visible to this Orithos account.
         </div>
       ) : (
         <>
@@ -97,7 +97,7 @@ export default function TaxRatesPage() {
             </article>)}
           </div>
           <div className="hidden overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white xl:block">
-            <table aria-label="Odoo tax rates" className="w-full border-collapse text-left text-sm">
+            <table aria-label="Orithos tax rates" className="w-full border-collapse text-left text-sm">
               <thead className="bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr><th scope="col" className="px-4 py-3">Tax</th><th scope="col" className="px-4 py-3">Rate</th><th scope="col" className="px-4 py-3">Calculation</th><th scope="col" className="px-4 py-3">Company</th></tr>
               </thead>

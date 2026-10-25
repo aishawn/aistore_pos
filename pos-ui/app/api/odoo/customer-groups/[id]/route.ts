@@ -43,10 +43,10 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!existing?.length) return NextResponse.json({ message: "Customer group was not found" }, { status: 404 });
 
     const ok = await scope.rpc<boolean>("res.partner.category", "write", [[groupId], { name }]);
-    if (ok !== true) return NextResponse.json({ message: "Odoo did not confirm the customer group update" }, { status: 502 });
+    if (ok !== true) return NextResponse.json({ message: "Orithos did not confirm the customer group update" }, { status: 502 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo customer groups are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos customer groups are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }
@@ -69,10 +69,10 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     const used = await scope.rpc<number>("res.partner", "search_count", [[["category_id", "in", [groupId]]]], { active_test: false });
     if (used > 0) return NextResponse.json({ message: "This group is assigned to customers. Remove those assignments before deleting it." }, { status: 409 });
     const ok = await scope.rpc<boolean>("res.partner.category", "unlink", [[groupId]]);
-    if (ok !== true) return NextResponse.json({ message: "Odoo did not confirm the customer group delete" }, { status: 502 });
+    if (ok !== true) return NextResponse.json({ message: "Orithos did not confirm the customer group delete" }, { status: 502 });
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo customer groups are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos customer groups are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

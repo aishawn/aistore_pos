@@ -30,7 +30,7 @@ export default function FavouriteReportsPage() {
       <div className="mt-6 rounded-lg border border-dashed border-[var(--oh-border-strong)] bg-white px-4 py-12 text-center">
         <Bookmark className="mx-auto text-[var(--oh-muted)]" size={24} aria-hidden="true" />
         <p className="mt-3 text-sm font-semibold text-[var(--oh-text)]">No saved report favourites</p>
-        <p className="mt-1 text-sm text-[var(--oh-muted)]">Use Overview to review live Odoo sales totals.</p>
+        <p className="mt-1 text-sm text-[var(--oh-muted)]">Use Overview to review live Orithos sales totals.</p>
       </div>
     </AdminPageLayout>
   );

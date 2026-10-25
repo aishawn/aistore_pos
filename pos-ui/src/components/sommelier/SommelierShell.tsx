@@ -21,7 +21,7 @@ export function SommelierShell({
 
   return (
     <div className="oh-workspace-main flex h-full min-h-0 flex-col text-[var(--oh-text)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 sm:px-6">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 sm:px-6">
         <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
           <div>
             {!onHome && (

@@ -256,7 +256,7 @@ function FormSelect({
         />
       </button>
       {open && !disabled && (
-        <ul className="absolute z-[200] mt-1 max-h-56 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+      <ul className="absolute z-[200] mt-1 max-h-56 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] py-1 shadow-[var(--oh-shadow-card)]">
           {uniqueOptions.length === 0 ? (
             <li className="px-3 py-2 text-[13px] text-[var(--oh-muted)]">No options available</li>
           ) : (
@@ -937,7 +937,7 @@ export function EditProductPage({ productId }: { productId: string }) {
 
       {/* Tabs */}
       <div className="mx-auto mt-5 max-w-5xl">
-        <div className="flex flex-wrap gap-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white/60 p-1 shadow-[var(--oh-shadow-card)]">
+        <div className="flex flex-wrap gap-1 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] p-1 shadow-[var(--oh-shadow-card)]">
           {TABS.map(({ id, label, Icon }) => {
             const active = tab === id;
             return (
@@ -947,8 +947,8 @@ export function EditProductPage({ productId }: { productId: string }) {
                 onClick={() => setTab(id)}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-[13px] font-medium transition-colors ${
                   active
-                    ? "bg-white text-[var(--oh-text)] shadow-sm"
-                    : "text-[var(--oh-muted)] hover:bg-white/80 hover:text-[var(--oh-text-secondary)]"
+                    ? "bg-[var(--oh-surface)] text-[var(--oh-text)] shadow-sm"
+                    : "text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] hover:text-[var(--oh-text-secondary)]"
                 }`}
               >
                 <Icon size={14} strokeWidth={1.75} />
@@ -960,7 +960,7 @@ export function EditProductPage({ productId }: { productId: string }) {
 
         <AsyncState loading={loading} error={error} empty={false} onRetry={reload}>
           {form && (
-            <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
+            <div className="mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] px-5 py-2 shadow-[var(--oh-shadow-card)] md:px-6">
               <AsyncDependencyNotice
                 dependencies={[
                   { label: "Brands", error: brands.error, loading: brands.loading, onRetry: brands.reload },

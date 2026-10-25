@@ -19,7 +19,7 @@ export default function MediaCentrePage() {
           Media storage is not connected in this pilot, so uploads and file changes are disabled. Check <Link href="/settings/integrations" className="font-semibold underline">Integrations</Link> for the current connection status.
         </p>
       </div>
-      <div className="flex min-h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white lg:flex-row">
+      <div className="flex min-h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] lg:flex-row">
         {/* Left sidebar */}
         <aside className="flex w-full shrink-0 flex-col border-b border-[var(--oh-border)] bg-[var(--oh-surface)] lg:w-[240px] lg:border-b-0 lg:border-r">
           <AdminPrimaryButton disabled className="rounded-none py-3">
@@ -45,7 +45,7 @@ export default function MediaCentrePage() {
             <div className="ml-auto flex items-center gap-3">
               <span title="Unavailable until media storage is connected" className="text-[var(--oh-muted)]"><RefreshIcon size={18} /></span>
               <span title="Unavailable until media storage is connected" className="text-[var(--oh-muted)]"><SortIcon size={18} /></span>
-              <span className="flex items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 py-1.5 text-[13px] text-[var(--oh-text)]">
+              <span className="flex items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-1.5 text-[13px] text-[var(--oh-text)]">
                 Created At <SelectChevronIcon size={14} />
               </span>
             </div>

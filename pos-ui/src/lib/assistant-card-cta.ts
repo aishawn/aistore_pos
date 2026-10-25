@@ -20,14 +20,14 @@ const workflowLabelsZh: Record<string, string> = {
   "/classifications": "打开商品分类",
   "/customer-groups": "打开客户分组",
   "/customers/balances": "打开客户余额",
-  "/customers/odoo": "打开客户目录",
+  "/customers": "打开客户目录",
   "/giftcards": "打开礼品卡",
   "/invoices": "打开供应商发票",
   "/invoices/scan": "打开供应商发票",
   "/invoices/new": "扫描供应商发票",
   "/orders": "打开采购订单",
   "/pricelists": "打开价目表",
-  "/products/odoo": "打开商品目录",
+  "/products": "打开商品目录",
   "/sommelier": "打开品鉴推荐",
   "/recommend": "打开商品推荐",
   "/recommend/grocery": "打开商品推荐",
@@ -38,7 +38,7 @@ const workflowLabelsZh: Record<string, string> = {
   "/stock/list": "打开库存列表",
   "/stocktake": "打开库存盘点",
   "/stock/stocktake": "打开库存盘点",
-  "/purchases/odoo": "打开采购记录",
+  "/purchases": "打开采购记录",
   "/stock/transfers": "打开库存调拨",
   "/stock/transfers/new": "创建库存调拨",
 };
@@ -57,14 +57,14 @@ const workflowLabels: Record<string, string> = {
   "/classifications": "Open classifications",
   "/customer-groups": "Open customer groups",
   "/customers/balances": "Open customer balances",
-  "/customers/odoo": "Open customers",
+  "/customers": "Open customers",
   "/giftcards": "Open gift cards",
   "/invoices": "Open supplier invoices",
   "/invoices/scan": "Open supplier invoices",
   "/invoices/new": "Scan supplier invoice",
   "/orders": "Open orders",
   "/pricelists": "Open price lists",
-  "/products/odoo": "Open products",
+  "/products": "Open products",
   "/sommelier": "Open wine recommendations",
   "/recommend": "Open recommendations",
   "/recommend/grocery": "Open grocery recommendations",
@@ -75,7 +75,7 @@ const workflowLabels: Record<string, string> = {
   "/stock/list": "Open stock list",
   "/stocktake": "Open stocktake",
   "/stock/stocktake": "Open stocktake",
-  "/purchases/odoo": "Open purchases",
+  "/purchases": "Open purchases",
   "/stock/transfers": "Open transfers",
   "/stock/transfers/new": "Create transfer",
 };
@@ -83,14 +83,14 @@ const workflowLabels: Record<string, string> = {
 const INTERNAL_ORIGIN = "https://orithos.invalid";
 const FORBIDDEN_ASSISTANT_ROOTS = new Set(["/admin", "/platform", "/internal", "/debug", "/api"]);
 const odooRouteByLegacyRoot: Record<string, string> = {
-  "/customers": "/customers/odoo",
-  "/products": "/products/odoo",
+  "/customers": "/customers",
+  "/products": "/products",
 };
 
 export function assistantSaleActionHref(action: string | null | undefined): string {
   const normalized = action?.trim().toLowerCase();
-  if (normalized === "create customer") return "/customers/odoo";
-  if (normalized === "create product") return "/products/odoo";
+  if (normalized === "create customer") return "/customers";
+  if (normalized === "create product") return "/products";
   return "/";
 }
 

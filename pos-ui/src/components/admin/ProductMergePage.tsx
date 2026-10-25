@@ -64,7 +64,7 @@ function ProductPickerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[85vh] w-full max-w-[580px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-[580px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[var(--oh-border)] bg-[var(--oh-tile-blue-bg)] px-5 py-4">
@@ -75,7 +75,7 @@ function ProductPickerModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] hover:bg-white/60"
+            className="flex h-9 w-9 items-center justify-center rounded-[var(--oh-radius)] text-[var(--oh-muted)] hover:bg-[var(--oh-surface-muted)]"
             aria-label="Close"
           >
             <XIcon size={20} />
@@ -93,7 +93,7 @@ function ProductPickerModal({
               }}
               placeholder="Search products…"
               ref={searchInputRef}
-              className="h-11 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white pl-10 pr-3 text-[14px] shadow-sm outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]"
+              className="h-11 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface)] pl-10 pr-3 text-[14px] text-[var(--oh-text)] shadow-sm outline-none focus:border-[var(--oh-orange)] focus:ring-2 focus:ring-[var(--oh-orange-muted)]"
             />
           </div>
         </div>
@@ -174,7 +174,7 @@ export function ProductMergePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-      <div className="shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-5 shadow-sm">
+      <div className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-6 py-5 shadow-sm">
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"
@@ -202,7 +202,7 @@ export function ProductMergePage() {
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-[720px] space-y-6">
-          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)]">
             <h2 className="text-[16px] font-semibold text-[var(--oh-text)]">Target product (keep)</h2>
             <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
               Sales history, barcodes, and inventory references will move to this product.
@@ -237,7 +237,7 @@ export function ProductMergePage() {
             </div>
           </section>
 
-          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)]">
             <h2 className="text-[16px] font-semibold text-[var(--oh-text)]">Products to merge (remove)</h2>
             <p className="mt-1 text-[13px] text-[var(--oh-muted)]">
               These products will be merged into the target and then deactivated.
@@ -286,7 +286,7 @@ export function ProductMergePage() {
               type="button"
               onClick={() => router.push("/products")}
               disabled={busy}
-              className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] px-5 py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-white disabled:opacity-60"
+              className="rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-5 py-2.5 text-[14px] font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] disabled:opacity-60"
             >
               Cancel
             </button>

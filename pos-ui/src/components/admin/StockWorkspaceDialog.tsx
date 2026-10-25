@@ -14,7 +14,7 @@ export function StockWorkspaceDialog({ title, busy, onClose, children, actions }
   }, []);
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/45 sm:p-4" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-      <section role="dialog" aria-modal="true" aria-label={title} aria-busy={busy} className="flex h-dvh w-full min-w-0 flex-col bg-white shadow-xl sm:h-auto sm:max-h-[90dvh] sm:max-w-5xl sm:rounded-xl">
+<section role="dialog" aria-modal="true" aria-label={title} aria-busy={busy} className="flex h-dvh w-full min-w-0 flex-col bg-[var(--oh-surface-elevated)] shadow-xl sm:h-auto sm:max-h-[90dvh] sm:max-w-5xl sm:rounded-xl">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] p-4">
           <h2 className="text-lg font-semibold">{title}</h2>
           <div className="flex flex-wrap gap-2">{actions}<button ref={closeRef} type="button" disabled={busy} onClick={onClose} className="min-h-11 rounded-lg border px-3 text-sm disabled:opacity-50">Close{title === "Stocktake" ? " & keep draft" : ""}</button></div>

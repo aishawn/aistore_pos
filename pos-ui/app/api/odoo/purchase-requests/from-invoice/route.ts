@@ -15,9 +15,9 @@ type OdooError = { message?: string; data?: { message?: string; name?: string } 
 
 function odooBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new Error("Odoo connection is not configured");
+  if (!value) throw new Error("Orithos connection is not configured");
   const parsed = new URL(value);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Odoo connection must use HTTPS");
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") throw new Error("Orithos connection must use HTTPS");
   return value;
 }
 
@@ -35,13 +35,13 @@ async function callOdoo<T>(sessionId: string, model: string, method: string, arg
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new OdooRequestError("Odoo purchase service is unavailable", 502);
+  if (!response.ok) throw new OdooRequestError("Orithos purchase service is unavailable", 502);
   const payload = await response.json() as { result?: T; error?: OdooError };
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooRequestError("Your Odoo account does not have permission to access purchase records.", 403);
-    throw new OdooRequestError("Odoo rejected the request. Check the vendor, product purchase settings and purchase permissions.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new OdooRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new OdooRequestError("Your Orithos account does not have permission to access purchase records.", 403);
+    throw new OdooRequestError("Orithos rejected the request. Check the vendor, product purchase settings and purchase permissions.", 422);
   }
   return payload.result as T;
 }
@@ -55,22 +55,22 @@ async function getSessionContext(request: NextRequest, sessionId: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+  if (!response.ok) throw new OdooRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
   const payload = await response.json() as {
     result?: { uid?: number; user_context?: { allowed_company_ids?: number[] } };
     error?: OdooError;
   };
-  if (payload.error || !payload.result?.uid) throw new OdooRequestError("Your Odoo session has expired. Sign in to Odoo again.", 401);
+  if (payload.error || !payload.result?.uid) throw new OdooRequestError("Your Orithos session has expired. Sign in to Orithos again.", 401);
   const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, payload.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
   if (forced.error) throw new OdooRequestError(forced.error, forced.status);
   const companyId = forced.companyIds[0];
-  if (!companyId) throw new OdooRequestError("No Odoo company is available to this account.", 403);
+  if (!companyId) throw new OdooRequestError("No Orithos company is available to this account.", 403);
   return { companyId };
 }
 
 function jsonError(error: unknown) {
-  const message = error instanceof Error ? error.message : "Odoo is unavailable";
+  const message = error instanceof Error ? error.message : "Orithos is unavailable";
   const status = error instanceof OdooRequestError
     ? error.status
     : message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return NextResponse.json({ message: "Cross-origin requests are not allowed" }, { status: 403 });
   try { await requirePermission(request, "stock.invoices"); } catch (error) { return NextResponse.json({ message: error instanceof Error ? error.message : "Permission check failed." }, { status: error instanceof StoreAccessError ? error.status : 503 }); }
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!sessionId) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
@@ -162,16 +162,16 @@ export async function POST(request: NextRequest) {
       callOdoo<Record<string, { type?: string }>>(sessionId, "purchase.order.line", "fields_get", [["product_uom", "product_uom_id", "price_unit"]], { attributes: ["type"] }, correlationId),
     ]);
     const supplier = suppliers?.[0];
-    if (!supplier) return NextResponse.json({ message: "This supplier is unavailable to your Odoo account" }, { status: 404 });
-    if ((products?.length ?? 0) !== lineMap.size) return NextResponse.json({ message: "One or more selected products are not available in Odoo" }, { status: 422 });
+    if (!supplier) return NextResponse.json({ message: "This supplier is unavailable to your Orithos account" }, { status: 404 });
+    if ((products?.length ?? 0) !== lineMap.size) return NextResponse.json({ message: "One or more selected products are not available in Orithos" }, { status: 422 });
     const unitField = orderLineFields && Object.hasOwn(orderLineFields, "product_uom") ? "product_uom" : orderLineFields && Object.hasOwn(orderLineFields, "product_uom_id") ? "product_uom_id" : null;
-    if (!unitField) throw new OdooRequestError("Odoo did not expose a purchase unit field for RFQ lines.", 422);
+    if (!unitField) throw new OdooRequestError("Orithos did not expose a purchase unit field for RFQ lines.", 422);
     const supportsPrice = Boolean(orderLineFields && Object.hasOwn(orderLineFields, "price_unit"));
 
     const productById = new Map((products ?? []).map((product) => [product.id, product]));
     const orderLines = Array.from(lineMap, ([productId, line]) => {
       const product = productById.get(productId);
-      if (!product || product.purchase_ok !== true) throw new OdooRequestError("One or more selected products are not available for purchasing in Odoo.", 422);
+      if (!product || product.purchase_ok !== true) throw new OdooRequestError("One or more selected products are not available for purchasing in Orithos.", 422);
       if (!Array.isArray(product.uom_id)) throw new OdooRequestError("A selected product has no unit of measure configured.", 422);
       const vals: Record<string, unknown> = {
         product_id: productId,
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     const orderId = await callOdoo<number>(sessionId, "purchase.order", "create", [createVals], {
       context: { allowed_company_ids: [companyId], force_company: companyId },
     }, correlationId);
-    if (!Number.isSafeInteger(orderId) || orderId < 1) throw new OdooRequestError("Odoo did not confirm the draft RFQ", 502);
+    if (!Number.isSafeInteger(orderId) || orderId < 1) throw new OdooRequestError("Orithos did not confirm the draft RFQ", 502);
 
     const approvalNote = makeInvoiceNotes(
       invoiceNumber || null,
@@ -215,9 +215,9 @@ export async function POST(request: NextRequest) {
       try {
         await callOdoo<boolean>(sessionId, "purchase.order", "unlink", [[orderId]], { context: { allowed_company_ids: [companyId], force_company: companyId } }, correlationId);
       } catch {
-        throw new OdooRequestError("The invoice audit could not be saved and the draft RFQ could not be cleaned up. Do not retry; check Odoo before continuing.", 502);
+        throw new OdooRequestError("The invoice audit could not be saved and the draft RFQ could not be cleaned up. Do not retry; check Orithos before continuing.", 502);
       }
-      throw new OdooRequestError("The invoice audit could not be saved. No draft RFQ was kept; you can retry after checking Odoo.", 502);
+      throw new OdooRequestError("The invoice audit could not be saved. No draft RFQ was kept; you can retry after checking Orithos.", 502);
     }
 
     let orderName = `RFQ #${orderId}`;
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
         supplier: supplier.name,
         url: `${odooBaseUrl()}/web#id=${orderId}&model=purchase.order&view_type=form`,
         auditSaved,
-        warning: "The draft was created and the audit was saved, but its reference could not be read back. Open it in Odoo; do not retry creation.",
+        warning: "The draft was created and the audit was saved, but its reference could not be read back. Open it in Orithos; do not retry creation.",
       }, { status: 201, headers: { "Cache-Control": "no-store" } });
     }
     return NextResponse.json({

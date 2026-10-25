@@ -8,10 +8,10 @@ export default function SaleKeysPage() {
       subtitle="Quick-key layout status for the Orithos pilot"
     >
       <section role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-        <h2 className="font-semibold">Sale keys are not part of the Odoo pilot register</h2>
+        <h2 className="font-semibold">Sale keys are not part of the Orithos pilot register</h2>
         <p className="mt-1 leading-6">
-          This page previously managed Classic MySQL sale-key sets. The pilot Sell screen uses the Odoo
-          product catalogue, search, and pack factors instead. Changes here would not affect Odoo POS.
+          This page previously managed Classic MySQL sale-key sets. The pilot Sell screen uses the Orithos
+          product catalogue, search, and pack factors instead. Changes here would not affect Orithos POS.
         </p>
       </section>
 
@@ -23,7 +23,7 @@ export default function SaleKeysPage() {
             <Link href="/" className="font-semibold text-[var(--oh-primary)] underline">
               Sell
             </Link>{" "}
-            with Odoo products
+            with Orithos products
           </dd>
         </div>
         <div className="grid gap-1 py-3 sm:grid-cols-[220px_1fr] sm:gap-4">

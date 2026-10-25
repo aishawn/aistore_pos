@@ -14,12 +14,12 @@ interface Named {
 }
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70";
+  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface-muted)] disabled:opacity-70";
 const readOnlyFieldClass =
   "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text-secondary)] outline-none";
 const labelClass = "mb-1.5 block text-sm font-semibold text-[var(--oh-text-secondary)]";
 const textareaClass =
-  "min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
+  "min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
 
 function formatToday(): string {
   const d = new Date();
@@ -97,7 +97,7 @@ function FormSelect({
         </select>
         <SelectChevronIcon
           size={16}
-          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500"
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]"
         />
       </div>
     </FormField>
@@ -203,20 +203,20 @@ export function CreateCreditNotePage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 sm:px-6">
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">Create Credit Note</h1>
           <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Record a supplier credit for reporting</p>
         </div>
-        <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+        <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
           <ArrowLeft size={16} aria-hidden="true" /> <span className="hidden sm:inline">Back to orders</span><span className="sm:hidden">Back</span>
         </button>
       </header>
 
       <main aria-busy={busy} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
-          <div className="flex items-start gap-3 rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2.5 text-sm leading-5 text-sky-950">
-            <Info size={17} className="mt-0.5 shrink-0 text-sky-700" aria-hidden="true" />
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
+          <div className="flex items-start gap-3 rounded-lg border border-[var(--oh-tile-blue-border)] bg-[var(--oh-tile-blue-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--oh-tile-blue-text)]">
+            <Info size={17} className="mt-0.5 shrink-0 text-[var(--oh-tile-blue-text)]" aria-hidden="true" />
             <p>Credit notes adjust reporting only. They do not change product cost or inventory.</p>
           </div>
 
@@ -234,9 +234,9 @@ export function CreateCreditNotePage() {
             </FormField>
           </section>
           {(suppliers.error || outlets.error || (!outlets.loading && outletOptions.length === 0)) && (
-              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--oh-tile-orange-text)]">
                 <span>{outlets.error ? "The destination outlet could not be loaded. Refresh and try again before creating a credit note." : !outlets.loading && outletOptions.length === 0 ? "No destination outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before creating a credit note."}</span>
-                {(suppliers.error || outlets.error) && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Retry</button>}
+                {(suppliers.error || outlets.error) && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold hover:bg-[var(--oh-tile-orange-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Retry</button>}
               </div>
           )}
 
@@ -296,7 +296,7 @@ export function CreateCreditNotePage() {
             </FormField>
           </section>
 
-          {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-800">{error}</p>}
+          {error && <p role="alert" className="rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--oh-tile-red-text)]">{error}</p>}
         </div>
       </main>
 

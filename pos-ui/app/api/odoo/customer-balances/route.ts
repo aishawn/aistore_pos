@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const query = request.nextUrl.searchParams.get("query")?.trim().slice(0, 120) ?? "";
     const owingOnly = request.nextUrl.searchParams.get("owingOnly") === "true";
 
-    // `credit` is a non-stored monetary field in Odoo 19 — usable in domain on some
+    // `credit` is a non-stored monetary field in Orithos 19 — usable in domain on some
     // builds, but never as SQL ORDER BY. Keep a stable stored-field order for every page.
     const domain: unknown[] = [["customer_rank", ">", 0], ...companyDomain(scope.companyIds)];
     if (owingOnly) domain.push(["credit", ">", 0]);
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     }));
     return NextResponse.json({ items, limit, offset, hasNext: rows.length > limit }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo customer balances are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos customer balances are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

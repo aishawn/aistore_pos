@@ -44,7 +44,7 @@ function num(v?: number | null) {
 
 function cellInput(className?: string) {
   return cn(
-    "h-10 w-full rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20",
+    "h-10 w-full rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2.5 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20",
     className,
   );
 }
@@ -71,7 +71,7 @@ function Toggle({
         }`}
       >
         <span
-          className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+          className={`h-5 w-5 rounded-full bg-[var(--oh-surface-elevated)] shadow-sm transition-transform ${
             checked ? "translate-x-5" : "translate-x-0"
           }`}
         />
@@ -120,7 +120,7 @@ function StockListRowEditor({
       return;
     }
     if (costNum !== row.cost) {
-      setSaveError("Cost is managed by Odoo purchasing and cannot be edited here.");
+      setSaveError("Cost is managed by Orithos purchasing and cannot be edited here.");
       return;
     }
     if (
@@ -156,7 +156,7 @@ function StockListRowEditor({
 
   return (
     <>
-    <div className="hidden items-center border-b border-[var(--oh-border)] bg-white py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface)]/60 xl:flex">
+    <div className="hidden items-center border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1.5 text-[13px] text-[var(--oh-text)] transition-colors hover:bg-[var(--oh-surface-muted)] xl:flex">
       <div className="w-[22%] shrink-0 px-2">
         <input
           className={cellInput()}
@@ -246,7 +246,7 @@ function StockListRowEditor({
             className={cn(
               cellInput("pr-6 text-right"),
               Number(profit) < 0
-                ? "border-red-200 bg-red-50 font-semibold text-[var(--oh-danger)]"
+                ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] font-semibold text-[var(--oh-danger)]"
                 : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]",
             )}
             aria-label={`Profit margin for ${productLabel}`}
@@ -258,7 +258,7 @@ function StockListRowEditor({
         </div>
       </div>
     </div>
-    <article className="grid gap-3 border-b border-[var(--oh-border)] bg-white p-3 text-[13px] text-[var(--oh-text)] xl:hidden">
+    <article className="grid gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 text-[13px] text-[var(--oh-text)] xl:hidden">
       <div>
         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]" htmlFor={`stock-name-${row.id}`}>Product</label>
         <input
@@ -284,10 +284,10 @@ function StockListRowEditor({
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-quantity-${row.id}`}>Price quantity</label><input id={`stock-quantity-${row.id}`} type="number" min="1" step="1" className={cellInput("text-center")} aria-label={`Price quantity for ${productLabel}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled value={quantity} readOnly /></div>
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-cost-${row.id}`}>Cost</label><div className="relative">{row.cost != null ? <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span> : null}<input id={`stock-cost-${row.id}`} className={cellInput(row.cost != null ? "pl-5" : "px-1")} aria-label={`Cost for ${productLabel}`} aria-describedby={row.cost == null ? `stock-cost-managed-mobile-${row.id}` : undefined} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving || row.cost == null} readOnly={row.cost == null} placeholder={row.cost == null ? "Managed" : undefined} title={row.cost == null ? "Managed in purchasing" : saveError ?? undefined} value={cost} onChange={(e) => { setCost(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div>{row.cost == null ? <span id={`stock-cost-managed-mobile-${row.id}`} className="sr-only">Cost is managed in purchasing.</span> : null}</div>
         <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-price-${row.id}`}>Price</label><div className="relative"><span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500">$</span><input id={`stock-price-${row.id}`} className={cellInput("pl-5")} aria-label={`Price for ${productLabel}`} aria-busy={saving} aria-invalid={saveError ? true : undefined} disabled={saving} value={price} onChange={(e) => { setPrice(e.target.value); if (saveError) setSaveError(null); }} onBlur={() => void save()} /></div></div>
-        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-profit-${row.id}`}>Profit %</label><div className="relative"><input id={`stock-profit-${row.id}`} className={cn(cellInput("pr-6 text-right"), Number(profit) < 0 ? "border-red-200 bg-red-50 font-semibold text-[var(--oh-danger)]" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]")} aria-label={`Profit margin for ${productLabel}`} value={profit} readOnly /><span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500">%</span></div></div>
+        <div><label className="mb-1 block text-xs font-semibold text-[var(--oh-muted)]" htmlFor={`stock-profit-${row.id}`}>Profit %</label><div className="relative"><input id={`stock-profit-${row.id}`} className={cn(cellInput("pr-6 text-right"), Number(profit) < 0 ? "border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] font-semibold text-[var(--oh-danger)]" : "bg-[var(--oh-surface)] text-[var(--oh-text-secondary)]")} aria-label={`Profit margin for ${productLabel}`} value={profit} readOnly /><span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]">%</span></div></div>
       </div>
     </article>
-    {saveError && <p role="alert" className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs font-medium text-red-800">{saveError}</p>}
+    {saveError && <p role="alert" className="border-b border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-2 text-xs font-medium text-[var(--oh-tile-red-text)]">{saveError}</p>}
     </>
   );
 }
@@ -345,7 +345,7 @@ function StockListPageInner() {
         productId: product.id,
         name: product.display_name || product.name,
         categoryName: product.pos_categ_ids?.map((id) => categoryData.find((category) => category.id === id)?.name).filter(Boolean).join(", ") || null,
-        priceSetName: "Odoo list price",
+        priceSetName: "Orithos list price",
         caseQuantity: null,
         casesOnHand: null,
         itemsOnHand: product.free_qty ?? product.qty_available ?? 0,
@@ -356,11 +356,11 @@ function StockListPageInner() {
       }));
       setItems(rows);
       setHasNext(Boolean(result.hasNext));
-      // Odoo exposes a cursor-style next-page signal rather than an expensive
+      // Orithos exposes a cursor-style next-page signal rather than an expensive
       // count query. Keep the count label honest until the last page is known.
       setTotal((page - 1) * PAGE_SIZE + rows.length + (result.hasNext ? 1 : 0));
     }).catch((cause) => {
-      if (current === request.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo stock.");
+      if (current === request.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos stock.");
     }).finally(() => {
       if (current === request.current) setLoading(false);
     });
@@ -369,7 +369,7 @@ function StockListPageInner() {
   const reloadCategories = useCallback(() => {
     setCategoriesLoading(true);
     setCategoryError(null);
-    void searchOdooRecords<OdooProductCategoryRecord>("posCategories", { limit: 100 }).then((result) => setCategoryData(result.items)).catch((cause) => setCategoryError(cause instanceof Error ? cause.message : "Could not load Odoo categories.")).finally(() => setCategoriesLoading(false));
+    void searchOdooRecords<OdooProductCategoryRecord>("posCategories", { limit: 100 }).then((result) => setCategoryData(result.items)).catch((cause) => setCategoryError(cause instanceof Error ? cause.message : "Could not load Orithos categories.")).finally(() => setCategoriesLoading(false));
   }, []);
 
   useEffect(() => { reloadCategories(); }, [reloadCategories]);
@@ -395,7 +395,7 @@ function StockListPageInner() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 md:px-6">
         <h1 className="oh-type-title text-[var(--oh-text)]">Stock List</h1>
         <AdminPrimaryButton onClick={() => void onExport()} disabled={exporting} className="min-h-11">
           <ExportIcon size={16} />
@@ -407,24 +407,24 @@ function StockListPageInner() {
       </div>
 
       {exportError && (
-        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-800 md:px-6">
+        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-2.5 text-sm text-[var(--oh-tile-red-text)] md:px-6">
           <span>{exportError}</span>
-          <button type="button" onClick={() => void onExport()} disabled={exporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-rose-300 bg-white px-3 font-semibold text-rose-900 hover:bg-rose-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
+          <button type="button" onClick={() => void onExport()} disabled={exporting} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-tile-red-text)] hover:bg-[var(--oh-tile-red-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
             <ExportIcon size={15} /> Retry export
           </button>
         </div>
       )}
 
       {categoryError && (
-        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950 md:px-6">
+        <div role="alert" className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-4 py-2.5 text-sm text-[var(--oh-tile-orange-text)] md:px-6">
           <span>Could not load categories: {categoryError}</span>
-          <button type="button" onClick={reloadCategories} disabled={categoriesLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
+          <button type="button" onClick={reloadCategories} disabled={categoriesLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold hover:bg-[var(--oh-tile-orange-bg)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60">
             <RefreshCw size={15} /> Retry categories
           </button>
         </div>
       )}
 
-      <div className="shrink-0 space-y-2 border-b border-[var(--oh-border)] bg-white px-4 py-3 md:px-6">
+      <div className="shrink-0 space-y-2 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 md:px-6">
         <div className="flex flex-wrap items-center gap-3">
           <input
             aria-label="Search stock products"
@@ -434,7 +434,7 @@ function StockListPageInner() {
               setPage(1);
             }}
             placeholder="Search name, SKU or barcode"
-            className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border)] bg-white px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20"
+            className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-base text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)] focus:ring-1 focus:ring-[var(--oh-primary)]/20"
           />
           <div className="w-full shrink-0 sm:w-[240px]">
             <FilterSelect
@@ -458,7 +458,7 @@ function StockListPageInner() {
                 setInStockOnly(false);
                 setPage(1);
               }}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
             >
               <X size={15} aria-hidden="true" />
               Clear filters

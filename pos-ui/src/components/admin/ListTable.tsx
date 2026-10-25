@@ -75,7 +75,7 @@ export function ListTable({
               rowLayout,
               "items-center border-b border-[var(--oh-border)] px-3 transition-colors hover:bg-[var(--oh-paper)]",
               compact ? "py-1.5" : "py-2.5",
-              r % 2 === 1 ? "bg-[var(--oh-surface)]" : "bg-white",
+r % 2 === 1 ? "bg-[var(--oh-surface)]" : "bg-[var(--oh-surface-elevated)]",
               headerRight && "pr-24",
               rowClassName,
             )}

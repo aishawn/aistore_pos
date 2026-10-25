@@ -8,22 +8,22 @@ const invoiceBehaviors = [
   {
     title: "Tax invoice creation",
     status: "Not created by POS",
-    detail: "Orithos submits POS orders to Odoo without requesting an invoice. Create tax invoices through the Odoo accounting workflow when needed.",
+    detail: "Orithos submits POS orders to Orithos without requesting an invoice. Create tax invoices through the Orithos accounting workflow when needed.",
     icon: FileText,
   },
   {
     title: "Order reference",
-    status: "Odoo generated",
-    detail: "Odoo returns the POS order reference shown in Sales History. The previous “Incremental” mode did not change its numbering.",
+    status: "Orithos generated",
+    detail: "Orithos returns the POS order reference shown in Sales History. The previous “Incremental” mode did not change its numbering.",
     icon: Hash,
-    action: { label: "View Sales History", href: "/history/odoo" },
+    action: { label: "View Sales History", href: "/history" },
   },
   {
     title: "Offline numbering",
     status: "Not supported",
-    detail: "Checkout requires an open Odoo POS session and a live quote. The previous suffix field did not enable offline sales or offline invoice numbers.",
+    detail: "Checkout requires an open Orithos POS session and a live quote. The previous suffix field did not enable offline sales or offline invoice numbers.",
     icon: WifiOff,
-    action: { label: "Check Odoo connection", href: "/settings/company/integrations" },
+    action: { label: "Check Orithos connection", href: "/settings/company/integrations" },
   },
 ];
 
@@ -52,7 +52,7 @@ export default function RegisterInvoicesSettingsPage() {
         <section aria-labelledby="invoice-behavior-heading" className="mt-6">
           <div className="mb-3">
             <h2 id="invoice-behavior-heading" className="text-sm font-semibold text-[var(--oh-text)]">Invoice behaviour</h2>
-            <p className="mt-1 text-sm text-[var(--oh-muted)]">How the Odoo pilot creates and identifies completed sales</p>
+            <p className="mt-1 text-sm text-[var(--oh-muted)]">How the Orithos pilot creates and identifies completed sales</p>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {invoiceBehaviors.map(({ title, status, detail, icon: Icon, action }) => (

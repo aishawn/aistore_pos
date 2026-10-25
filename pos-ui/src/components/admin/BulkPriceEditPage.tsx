@@ -45,7 +45,7 @@ function qtyKey(q: number) {
 
 function cellInput(className?: string) {
   return cn(
-    "h-11 w-full min-w-[72px] rounded border border-neutral-300 bg-white px-2 text-[13px] text-black outline-none focus:border-[#6eb5e0]",
+    "h-11 w-full min-w-[72px] rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 text-[13px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]",
     className,
   );
 }
@@ -60,7 +60,7 @@ function Toggle({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-2.5 text-[13px] text-neutral-700">
+    <div className="flex items-center gap-2.5 text-[13px] text-[var(--oh-text-secondary)]">
       <button
         type="button"
         role="switch"
@@ -69,12 +69,12 @@ function Toggle({
         onClick={() => onChange(!checked)}
         className={cn(
           "flex h-11 w-12 shrink-0 items-center rounded-full p-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]",
-          checked ? "bg-[#6eb5e0]" : "bg-neutral-300",
+          checked ? "bg-[var(--oh-primary)]" : "bg-[var(--oh-border-strong)]",
         )}
       >
         <span
           className={cn(
-            "h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform",
+            "h-[18px] w-[18px] rounded-full bg-[var(--oh-surface-elevated)] shadow-sm transition-transform",
             checked ? "translate-x-4" : "translate-x-0",
           )}
         />
@@ -141,9 +141,9 @@ function PriceCell({
 
   return (
     <div className="relative flex min-w-0 flex-col xl:block xl:w-[88px] xl:shrink-0 xl:px-1">
-      <span className="mb-1 text-[11px] text-neutral-500 xl:hidden">Quantity {quantity}</span>
+      <span className="mb-1 text-[11px] text-[var(--oh-muted)] xl:hidden">Quantity {quantity}</span>
       <div className="relative">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500">$</span>
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]">$</span>
         <input
           type="number"
           min="0"
@@ -171,7 +171,7 @@ function PriceCell({
         />
       </div>
       {saveError ? (
-        <span role="alert" className="mt-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] leading-4 text-red-800 shadow-sm xl:absolute xl:left-1 xl:top-full xl:z-20 xl:w-48">
+        <span role="alert" className="mt-1 rounded border border-[var(--brand-danger)] bg-[var(--brand-danger-tint)] px-2 py-1 text-[11px] leading-4 text-[var(--brand-danger)] shadow-sm xl:absolute xl:left-1 xl:top-full xl:z-20 xl:w-48">
           {saveError}
         </span>
       ) : null}
@@ -197,13 +197,13 @@ function BulkPriceRowLine({
   }, [row.prices]);
 
   return (
-    <div data-testid="bulk-price-card" className="mb-3 grid grid-cols-2 gap-3 rounded border border-neutral-200 bg-white p-3 text-[13px] text-black xl:mb-0 xl:flex xl:items-center xl:gap-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-1.5">
+    <div data-testid="bulk-price-card" className="mb-3 grid grid-cols-2 gap-3 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3 text-[13px] text-[var(--oh-text)] xl:mb-0 xl:flex xl:items-center xl:gap-0 xl:rounded-none xl:border-0 xl:border-b xl:px-0 xl:py-1.5">
       <div className="col-span-2 min-w-0 font-medium xl:w-[220px] xl:shrink-0 xl:px-2">{row.productName}</div>
       <div className="min-w-0 xl:w-[72px] xl:shrink-0 xl:px-2 xl:text-center">
-        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Case Qty</div>{num(row.caseQuantity)}
+        <div className="mb-1 text-[11px] text-[var(--oh-muted)] xl:hidden">Case Qty</div>{num(row.caseQuantity)}
       </div>
       <div className="min-w-0 xl:w-[88px] xl:shrink-0 xl:px-2">
-        <div className="mb-1 text-[11px] text-neutral-500 xl:hidden">Price Set</div>{row.priceSetName ?? "Default"}
+        <div className="mb-1 text-[11px] text-[var(--oh-muted)] xl:hidden">Price Set</div>{row.priceSetName ?? "Default"}
       </div>
       {quantities.map((q) => (
         <PriceCell
@@ -253,11 +253,11 @@ export function BulkPriceEditPage() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="flex shrink-0 items-center gap-3 border-b border-neutral-200 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
-        <h1 className="text-xl font-normal text-black sm:text-[28px]">Bulk Price Edit</h1>
-        <div className="ml-auto text-sm text-neutral-700 sm:text-[15px]">
-          <span data-testid="bulk-price-product-count" className="font-semibold text-black">{total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+      <div className="flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
+        <h1 className="text-xl font-normal text-[var(--oh-text)] sm:text-[28px]">Bulk Price Edit</h1>
+        <div className="ml-auto text-sm text-[var(--oh-text-secondary)] sm:text-[15px]">
+          <span data-testid="bulk-price-product-count" className="font-semibold text-[var(--oh-text)]">{total.toLocaleString()}</span> {total === 1 ? "Product" : "Products"}
         </div>
       </div>
 
@@ -265,7 +265,7 @@ export function BulkPriceEditPage() {
         dependencies={[{ label: "Categories", error: categories.error, loading: categories.loading, onRetry: categories.reload }]}
       />
 
-      <div className="shrink-0 space-y-3 border-b border-neutral-200 px-4 py-3 sm:px-6 sm:py-4">
+      <div className="shrink-0 space-y-3 border-b border-[var(--oh-border)] px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex flex-col gap-3 md:flex-row">
           <input
             aria-label="Search bulk price products"
@@ -275,7 +275,7 @@ export function BulkPriceEditPage() {
               setPage(1);
             }}
             placeholder="Search for Product or Classification..."
-            className="h-11 min-w-0 flex-1 rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
+            className="h-11 min-w-0 flex-1 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)]"
           />
           <div className="w-full md:w-[220px] md:shrink-0">
             <FilterSelect
@@ -306,7 +306,7 @@ export function BulkPriceEditPage() {
               value={newQuantity}
               onChange={(e) => setNewQuantity(e.target.value)}
               placeholder="New Quantity"
-              className="h-11 w-[140px] rounded border border-neutral-300 px-3 text-[14px] outline-none focus:border-[#6eb5e0]"
+              className="h-11 w-[140px] rounded border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-primary)]"
               onKeyDown={(e) => {
                 if (e.key === "Enter") addQuantity();
               }}
@@ -314,7 +314,7 @@ export function BulkPriceEditPage() {
             <button
               type="button"
               onClick={addQuantity}
-              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded border border-neutral-300 bg-neutral-100 px-4 py-2 text-[14px] text-neutral-700 transition-colors hover:bg-neutral-200"
+              className="flex min-h-11 cursor-pointer items-center gap-1.5 rounded border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] px-4 py-2 text-[14px] text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface-elevated)]"
             >
               <PlusIcon size={14} />
               Add
@@ -325,7 +325,7 @@ export function BulkPriceEditPage() {
 
       <div className="min-h-0 flex-1 overflow-auto px-4 pb-6 sm:px-6">
         <div data-testid="bulk-price-edit-table" className="w-full min-w-0 xl:inline-block xl:min-w-[1170px]">
-          <div className="sticky top-0 z-10 hidden items-center rounded-md bg-black py-2 text-[13px] font-bold text-white xl:flex">
+          <div className="sticky top-0 z-10 hidden items-center rounded-md bg-[var(--oh-surface-inverse)] py-2 text-[13px] font-bold text-[var(--oh-on-inverse)] xl:flex">
             <div className="w-[220px] shrink-0 px-2">Product</div>
             <div className="w-[72px] shrink-0 px-2 text-center">Case Qty</div>
             <div className="w-[88px] shrink-0 px-2">Price Set</div>

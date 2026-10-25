@@ -47,7 +47,7 @@ export function OdooPosConnectionCard() {
     } catch (error) {
       if (revision === requestRevision.current) {
         setState("error");
-        setMessage(error instanceof Error ? error.message : "Could not connect to Odoo.");
+        setMessage(error instanceof Error ? error.message : "Could not connect to Orithos.");
       }
     } finally {
       if (revision === requestRevision.current) setBusy(false);
@@ -68,7 +68,7 @@ export function OdooPosConnectionCard() {
       const sessionUser = await loginToOdoo(username.trim(), password);
       if (revision !== requestRevision.current) return;
       setPassword("");
-      if (!sessionUser) throw new Error("Odoo did not return a valid user session.");
+      if (!sessionUser) throw new Error("Orithos did not return a valid user session.");
       setUser(sessionUser);
       const pos = await getOdooPosBootstrap();
       if (revision !== requestRevision.current) return;
@@ -79,8 +79,8 @@ export function OdooPosConnectionCard() {
       if (revision === requestRevision.current) {
         setState("error");
         setMessage(error instanceof OdooApiError && error.status === 503
-          ? "Odoo connection is not configured on the POS server."
-          : error instanceof Error ? error.message : "Could not connect to Odoo.");
+          ? "Orithos connection is not configured on the POS server."
+          : error instanceof Error ? error.message : "Could not connect to Orithos.");
       }
     } finally {
       if (revision === requestRevision.current) setBusy(false);
@@ -101,7 +101,7 @@ export function OdooPosConnectionCard() {
     } catch (error) {
       if (revision === requestRevision.current) {
         setState("error");
-        setMessage(error instanceof Error ? error.message : "Could not disconnect from Odoo.");
+        setMessage(error instanceof Error ? error.message : "Could not disconnect from Orithos.");
       }
     } finally {
       if (revision === requestRevision.current) setBusy(false);
@@ -113,7 +113,7 @@ export function OdooPosConnectionCard() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="min-w-0 break-words text-base font-semibold text-[var(--oh-text)]">Odoo point of sale</h2>
+            <h2 className="min-w-0 break-words text-base font-semibold text-[var(--oh-text)]">Orithos point of sale</h2>
             {state === "connected" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800"><CheckCircle2 size={14} /> Connected</span>
             ) : state === "error" ? (
@@ -121,7 +121,7 @@ export function OdooPosConnectionCard() {
             ) : null}
           </div>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--oh-muted)]">
-            Connect your Odoo staff account to check the stores, open POS sessions and payment methods available to this user.
+            Connect your Orithos staff account to check the stores, open POS sessions and payment methods available to this user.
           </p>
         </div>
         {state === "connected" && (
@@ -132,10 +132,10 @@ export function OdooPosConnectionCard() {
       </div>
 
       {state === "loading" ? (
-        <div role="status" aria-label="Checking Odoo connection" className="mt-5 space-y-3">
+        <div role="status" aria-label="Checking Orithos connection" className="mt-5 space-y-3">
           <div className="flex items-center gap-3"><div className="h-11 w-11 animate-pulse rounded-md bg-[var(--oh-border)]" /><div className="flex-1"><div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="mt-2 h-3 w-64 max-w-full animate-pulse rounded bg-[var(--oh-border)]" /></div></div>
           <div className="h-11 w-full max-w-md animate-pulse rounded-md bg-[var(--oh-border)]" />
-          <p className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Checking Odoo connection…</p>
+          <p className="flex items-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={16} className="animate-spin" /> Checking Orithos connection…</p>
         </div>
       ) : state === "connected" ? (
         <div className="mt-5">
@@ -168,7 +168,7 @@ export function OdooPosConnectionCard() {
               </article>
             ))}
             {bootstrap?.configs.length === 0 && (
-              <p className="rounded-lg border border-dashed border-[var(--oh-border)] px-4 py-5 text-sm text-[var(--oh-muted)]">This Odoo user cannot access a POS configuration. Check Odoo company and Point of Sale permissions.</p>
+              <p className="rounded-lg border border-dashed border-[var(--oh-border)] px-4 py-5 text-sm text-[var(--oh-muted)]">This Orithos user cannot access a POS configuration. Check Orithos company and Point of Sale permissions.</p>
             )}
           </div>
         </div>
@@ -180,15 +180,15 @@ export function OdooPosConnectionCard() {
         </div>}
         <form onSubmit={connect} className="mt-5 grid max-w-3xl gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
-            Odoo username
+            Orithos backend username
             <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" required maxLength={120} className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
           </label>
           <label className="grid gap-1.5 text-sm font-medium text-[var(--oh-text-secondary)]">
-            Odoo password
+            Orithos backend password
             <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required maxLength={256} className="h-11 w-full max-w-md rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-base font-normal text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15" />
           </label>
           <button type="submit" disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] disabled:cursor-wait disabled:opacity-60">
-            {busy ? <LoaderCircle size={16} className="animate-spin" /> : <LogIn size={16} />} Connect Odoo
+            {busy ? <LoaderCircle size={16} className="animate-spin" /> : <LogIn size={16} />} Connect backend
           </button>
         </form>
         </>
@@ -197,8 +197,8 @@ export function OdooPosConnectionCard() {
       {message && <p role={state === "error" ? "alert" : "status"} className={`mt-4 rounded-md border px-3 py-2 text-sm ${state === "error" ? "border-red-200 bg-red-50 text-red-900" : "border-amber-200 bg-amber-50 text-amber-950"}`}>{message}</p>}
       <p className="mt-4 text-xs leading-5 text-[var(--oh-muted)]">
         {autoRecoverConfigured
-          ? "Odoo auto-reconnect is on for signed-in Orithos users when the session cookie expires."
-          : "Odoo auto-reconnect is off. Ask an admin to configure the dedicated Odoo service account on the server if sessions keep dropping."}
+          ? "Orithos auto-reconnect is on for signed-in Orithos users when the session cookie expires."
+          : "Orithos auto-reconnect is off. Ask an admin to configure the dedicated Orithos service account on the server if sessions keep dropping."}
       </p>
     </section>
   );

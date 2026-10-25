@@ -40,7 +40,7 @@ function delta(expected: number, counted: string) {
   return Number(counted) - expected;
 }
 
-/** Count / adjust Odoo on-hand qty. Used inside Products (tab), not a Stock sidebar item. */
+/** Count / adjust Orithos on-hand qty. Used inside Products (tab), not a Stock sidebar item. */
 export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?: (busy: boolean) => void; onApplied?: () => void }) {
   const { user, ready } = useAuth();
   const [draftReady, setDraftReady] = useState(false);
@@ -165,7 +165,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
       .catch((error) => {
         if (revision === searchRevision.current) {
           setProducts([]);
-          setProductsError(error instanceof Error ? error.message : "Could not search Odoo products.");
+          setProductsError(error instanceof Error ? error.message : "Could not search Orithos products.");
         }
       })
       .finally(() => {
@@ -236,7 +236,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
       });
       setReviewOpen(false);
       const references = result.adjustmentReferenceIds?.filter((id) => Number.isSafeInteger(id) && id > 0) ?? [];
-      setSuccess(`Applied ${result.applied} stock ${result.applied === 1 ? "adjustment" : "adjustments"} at ${result.locationName}${references.length ? ` (Odoo quant ${references.join(", ")})` : ""}.`);
+      setSuccess(`Applied ${result.applied} stock ${result.applied === 1 ? "adjustment" : "adjustments"} at ${result.locationName}${references.length ? ` (Orithos quant ${references.join(", ")})` : ""}.`);
       setCountLines([]);
       setQuery("");
       try { if (draftKey) localStorage.removeItem(draftKey); } catch { setDraftError("Adjustment confirmed. Browser storage could not be cleared; discard the old draft before starting again."); }
@@ -255,8 +255,8 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
   return (
     <>
         <fieldset disabled={applying} className="min-w-0 space-y-5" aria-busy={applying}>
-          {draftNotice && <p role="status" className="rounded-md bg-amber-50 p-3 text-sm text-amber-950">{draftNotice}</p>}
-          {draftError && <div role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-900">{draftError}<button type="button" onClick={() => setDraftRetry((value) => value + 1)} className="ml-3 underline">Retry draft</button><button type="button" onClick={() => setClearCountOpen(true)} className="ml-3 underline">Discard draft</button></div>}
+          {draftNotice && <p role="status" className="rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] p-3 text-sm text-[var(--oh-tile-orange-text)]">{draftNotice}</p>}
+          {draftError && <div role="alert" className="rounded-md border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] p-3 text-sm text-[var(--oh-tile-red-text)]">{draftError}<button type="button" onClick={() => setDraftRetry((value) => value + 1)} className="ml-3 underline">Retry draft</button><button type="button" onClick={() => setClearCountOpen(true)} className="ml-3 underline">Discard draft</button></div>}
           {!draftReady && !draftError && locationId && <p role="status">Restoring count…</p>}
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[min(100%,280px)] flex-1">
@@ -266,27 +266,27 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
                 value={locationId}
                 onChange={(event) => changeLocation(event.target.value)}
                 disabled={locationLoading || countLines.length > 0 || locations.length < 2}
-                className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:bg-[var(--oh-surface)]"
+                className="h-11 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)] disabled:bg-[var(--oh-surface-muted)]"
               >
                 <option value="">{locationLoading ? "Loading locations…" : "Choose a location"}</option>
                 {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
               </select>
               {locationSource === "single-warehouse-fallback" && (
-                <p role="status" className="mt-1.5 text-xs text-[var(--oh-muted)]">Location derived from the store&apos;s only Odoo warehouse. Ask an administrator to save an explicit store binding before enabling stock adjustments.</p>
+                <p role="status" className="mt-1.5 text-xs text-[var(--oh-muted)]">Location derived from the store&apos;s only Orithos warehouse. Ask an administrator to save an explicit store binding before enabling stock adjustments.</p>
               )}
-              {countUnconfirmed && <p role="alert" className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-900">{applyError} This count is preserved. Reconcile it in Odoo, then clear it and start a fresh count.</p>}
+              {countUnconfirmed && <p role="alert" className="mt-3 rounded border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] p-3 text-sm text-[var(--oh-tile-red-text)]">{applyError} This count is preserved. Reconcile it in Orithos, then clear it and start a fresh count.</p>}
             </div>
             {countLines.length > 0 && (
-              <button type="button" onClick={() => setClearCountOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+              <button type="button" onClick={() => setClearCountOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
                 <Trash2 size={16} aria-hidden="true" /> Clear count
               </button>
             )}
           </div>
 
           {locationError ? (
-            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] p-4 text-sm text-[var(--oh-tile-orange-text)]">
               <span>{locationError}</span>
-              <button type="button" onClick={() => setLocationRetryKey((value) => value + 1)} disabled={locationLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
+              <button type="button" onClick={() => setLocationRetryKey((value) => value + 1)} disabled={locationLoading} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-wait disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
             </div>
           ) : locationLoading ? (
         <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading stock locations" className="h-12 animate-pulse rounded-md bg-[var(--oh-border)]" />
@@ -321,18 +321,18 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
                   aria-controls="stocktake-search-results"
                   aria-expanded={resultsVisible}
                   aria-busy={searchPending}
-                  className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-white pl-10 pr-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
+                  className="h-12 w-full rounded-md border border-[var(--oh-border-strong)] bg-[var(--oh-surface)] pl-10 pr-3 text-base text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15"
                 />
                 {searchPending && <LoaderCircle size={17} role="status" aria-label="Searching products" className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-[var(--oh-primary)]" />}
               </div>
               {productsError && (
-                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] p-3 text-sm text-[var(--oh-tile-orange-text)]">
                   <span>{productsError}</span>
-                  <button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={productsLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-amber-300 bg-white px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
+                  <button type="button" onClick={() => setRetryKey((value) => value + 1)} disabled={productsLoading} className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--oh-tile-orange-border)] bg-[var(--oh-surface-elevated)] px-3 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:opacity-60"><RefreshCw size={15} /> Retry</button>
                 </div>
               )}
               {resultsVisible && (
-                <div id="stocktake-search-results" role="listbox" aria-label="Stocktake product results" className="divide-y divide-[var(--oh-border)] overflow-hidden rounded-md border border-[var(--oh-border)] bg-white">
+                <div id="stocktake-search-results" role="listbox" aria-label="Stocktake product results" className="divide-y divide-[var(--oh-border)] overflow-hidden rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
                   {products.length === 0 ? (
                     <p role="status" className="px-4 py-6 text-center text-sm text-[var(--oh-muted)]">No matching products.</p>
                   ) : products.map((product) => (
@@ -354,13 +354,13 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
                       <div className="min-w-0">
                         <p className="break-words text-sm font-medium text-[var(--oh-text)]">{product.name}</p>
                         <p className="mt-1 text-xs text-[var(--oh-muted)]">{product.sku || product.barcode || product.uom} · On hand {quantity(product.expectedQty)} {product.uom}</p>
-                        {!product.eligible && <p className="mt-1 flex items-center gap-1 text-xs text-amber-800"><AlertTriangle size={13} />{product.ineligibleReason}</p>}
+                        {!product.eligible && <p className="mt-1 flex items-center gap-1 text-xs text-[var(--oh-tile-orange-text)]"><AlertTriangle size={13} />{product.ineligibleReason}</p>}
                       </div>
                       <button
                         type="button"
                         onClick={() => addProduct(product)}
                         disabled={!product.eligible || countLines.some((line) => line.id === product.id) || countLines.length >= MAX_COUNT_LINES}
-                        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Plus size={15} aria-hidden="true" />{countLines.some((line) => line.id === product.id) ? "Added" : countLines.length >= MAX_COUNT_LINES ? "Limit reached" : "Add to count"}
                       </button>
@@ -375,9 +375,9 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
             </section>
           )}
 
-          {success && <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">{success}</p>}
+          {success && <p role="status" className="rounded-md border border-[var(--oh-tile-green-border)] bg-[var(--oh-tile-green-bg)] px-4 py-3 text-sm font-medium text-[var(--oh-tile-green-text)]">{success}</p>}
 
-          <section aria-label="Counted products" className="overflow-hidden rounded-md border border-[var(--oh-border)] bg-white">
+          <section aria-label="Counted products" className="overflow-hidden rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--oh-border)] px-4 py-3">
               <div><h2 className="text-sm font-semibold text-[var(--oh-text)]">Count review</h2><p className="mt-1 text-xs text-[var(--oh-muted)]">{selectedLocation?.name ?? "No location selected"}</p></div>
               <span className="text-sm tabular-nums text-[var(--oh-muted)]">{countLines.length} {countLines.length === 1 ? "product" : "products"}</span>
@@ -396,8 +396,8 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
                           <td className="max-w-[320px] px-4 py-3"><p className="break-words font-medium text-[var(--oh-text)]">{line.name}</p><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></td>
                           <td className="whitespace-nowrap px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{quantity(line.expectedQty)} {line.uom}</td>
                           <td className="px-4 py-2"><label><span className="sr-only">Counted quantity for {line.name}</span><input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="h-11 w-32 rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></label></td>
-                          <td className={`whitespace-nowrap px-4 py-3 tabular-nums ${variance == null ? "text-[var(--oh-muted)]" : variance < 0 ? "text-rose-700" : variance > 0 ? "text-emerald-700" : "text-[var(--oh-text-secondary)]"}`}>{variance == null ? "—" : `${variance > 0 ? "+" : ""}${quantity(variance)}`}</td>
-                          <td className="px-2 py-2"><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><Trash2 size={17} /></button></td>
+                          <td className={`whitespace-nowrap px-4 py-3 tabular-nums ${variance == null ? "text-[var(--oh-muted)]" : variance < 0 ? "text-[var(--oh-danger)]" : variance > 0 ? "text-[var(--oh-success)]" : "text-[var(--oh-text-secondary)]"}`}>{variance == null ? "—" : `${variance > 0 ? "+" : ""}${quantity(variance)}`}</td>
+                          <td className="px-2 py-2"><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><Trash2 size={17} /></button></td>
                         </tr>;
                       })}
                     </tbody>
@@ -407,7 +407,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
                   {countLines.map((line) => {
                     const variance = delta(line.expectedQty, line.countedQty);
                     return <article key={line.id} className="space-y-3 p-4">
-                      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></div><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-rose-50 hover:text-rose-700 focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><Trash2 size={17} /></button></div>
+                      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold text-[var(--oh-text)]">{line.name}</h3><p className="mt-1 text-xs text-[var(--oh-muted)]">{line.sku || line.barcode || line.uom}</p></div><button type="button" onClick={() => setCountLines((current) => current.filter((item) => item.id !== line.id))} aria-label={`Remove ${line.name}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-tile-red-bg)] hover:text-[var(--oh-danger)] focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]"><Trash2 size={17} /></button></div>
                       <div className="grid grid-cols-2 gap-3"><p className="text-xs text-[var(--oh-muted)]">Expected<span className="mt-1 block text-sm font-medium tabular-nums text-[var(--oh-text)]">{quantity(line.expectedQty)} {line.uom}</span></p><label className="text-xs text-[var(--oh-muted)]">Counted<span className="sr-only"> quantity for {line.name}</span><input aria-label={`Counted quantity for ${line.name}`} type="number" min="0" max="1000000" step="any" inputMode="decimal" value={line.countedQty} onChange={(event) => setCountLines((current) => current.map((item) => item.id === line.id ? { ...item, countedQty: event.target.value } : item))} className="mt-1 h-11 w-full rounded-md border border-[var(--oh-border-strong)] px-3 text-base tabular-nums text-[var(--oh-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--oh-primary)]" /></label></div>
                       <p className="text-xs text-[var(--oh-muted)]">Variance <span className="font-semibold tabular-nums text-[var(--oh-text)]">{variance == null ? "—" : `${variance > 0 ? "+" : ""}${quantity(variance)}`}</span></p>
                     </article>;
@@ -425,7 +425,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
       <ConfirmDialog
         open={clearCountOpen}
         title="Clear this count?"
-        message={`Discard all ${countLines.length} products and their counted quantities? Odoo stock will not change.`}
+        message={`Discard all ${countLines.length} products and their counted quantities? Orithos stock will not change.`}
         confirmLabel="Discard draft"
         busy={applying}
         onConfirm={() => {
@@ -439,7 +439,7 @@ export function OdooStocktakePanel({ onBusyChange, onApplied }: { onBusyChange?:
       <ConfirmDialog
         open={reviewOpen}
         title="Apply stock adjustments?"
-        message={`Apply ${changedLines.length} inventory adjustment${changedLines.length === 1 ? "" : "s"} at ${selectedLocation?.name ?? "this location"}? This updates Odoo on-hand quantities. Increase ${quantity(totalIncrease)}; decrease ${quantity(totalDecrease)}.`}
+        message={`Apply ${changedLines.length} inventory adjustment${changedLines.length === 1 ? "" : "s"} at ${selectedLocation?.name ?? "this location"}? This updates Orithos on-hand quantities. Increase ${quantity(totalIncrease)}; decrease ${quantity(totalDecrease)}.`}
         confirmLabel="Apply adjustments"
         busy={applying}
         busyLabel="Applying…"

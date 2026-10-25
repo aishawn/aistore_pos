@@ -14,12 +14,12 @@ interface Named {
 }
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70";
+  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70";
 const readOnlyFieldClass =
   "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-sm text-[var(--oh-text-secondary)] outline-none";
 const labelClass = "mb-1.5 block text-sm font-semibold text-[var(--oh-text-secondary)]";
 const textareaClass =
-  "min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
+  "min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
 
 function formatToday(): string {
   const d = new Date();
@@ -193,18 +193,18 @@ export function CreateReceiveStockPage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 sm:px-6">
         <div>
           <h1 className="oh-type-title text-[var(--oh-text)]">Receive Stock</h1>
           <p className="oh-type-meta mt-0.5 text-[var(--oh-muted)]">Record a supplier invoice and receive stock into an outlet</p>
         </div>
-        <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
+        <button type="button" onClick={() => router.push("/orders")} className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-semibold text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">
           <ArrowLeft size={16} aria-hidden="true" /> <span className="hidden sm:inline">Back to orders</span><span className="sm:hidden">Back</span>
         </button>
       </header>
 
       <main aria-busy={busy} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
           <section aria-label="Supplier and outlet" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormSelect
               label="From"
@@ -219,9 +219,9 @@ export function CreateReceiveStockPage() {
             </FormField>
           </section>
           {(suppliers.error || outlets.error || (!outlets.loading && !outlets.error && outletOptions.length === 0)) && (
-              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+              <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--brand-warning)] bg-[var(--brand-warning-tint)] px-3 py-2.5 text-sm leading-5 text-[var(--brand-warning)]">
                 <span>{outlets.error ? "The destination outlet could not be loaded. Refresh and try again before receiving stock." : !outlets.loading && outletOptions.length === 0 ? "No destination outlets are available for this account." : "Suppliers could not be loaded. Refresh and try again before receiving stock."}</span>
-                {(suppliers.error || outlets.error) && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-amber-300 bg-white px-3 font-semibold hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500">Retry</button>}
+                {(suppliers.error || outlets.error) && <button type="button" onClick={reloadDependencies} className="min-h-11 rounded-md border border-[var(--brand-warning)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--oh-text)] hover:bg-[var(--brand-warning-tint)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-warning)]">Retry</button>}
               </div>
           )}
 

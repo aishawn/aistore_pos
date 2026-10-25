@@ -128,7 +128,7 @@ export function CustomerStatementsViewPage() {
           {statements.map((statement, index) => (
             <section
               key={String(statement.customerId ?? index)}
-              className="break-inside-avoid rounded-lg border border-[var(--oh-border)] bg-white p-4 sm:p-6 print:rounded-none print:border-0 print:p-0 print:[break-after:page]"
+className="break-inside-avoid rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 sm:p-6 print:bg-white print:rounded-none print:border-0 print:p-0 print:[break-after:page]"
             >
               <div className="border-b border-[var(--oh-border)] pb-4">
                 <p className="text-[13px] font-semibold uppercase tracking-wide text-[var(--oh-muted)] print:text-black">

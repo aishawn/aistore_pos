@@ -62,7 +62,7 @@ export default function HardwarePage() {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-sky-950">Hardware setup is local to this terminal</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-sky-900/80">
-            Orithos has not detected or verified these devices. Connect and test peripherals on the POS terminal; this page does not configure them through Odoo.
+            Orithos has not detected or verified these devices. Connect and test peripherals on the POS terminal; this page does not configure them through Orithos.
           </p>
         </div>
       </section>

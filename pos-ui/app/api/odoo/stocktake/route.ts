@@ -48,10 +48,10 @@ class StocktakeError extends Error {
 
 function baseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new StocktakeError("Odoo connection is not configured.", 503);
+  if (!value) throw new StocktakeError("Orithos connection is not configured.", 503);
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new StocktakeError("Odoo connection must use HTTPS.", 503);
+    throw new StocktakeError("Orithos connection must use HTTPS.", 503);
   }
   return value;
 }
@@ -71,13 +71,13 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new StocktakeError("Odoo could not complete the stocktake request.", 502);
+  if (!response.ok) throw new StocktakeError("Orithos could not complete the stocktake request.", 502);
   const payload = await response.json() as RpcEnvelope<T>;
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.name ?? ""} ${payload.error.data?.message ?? ""}`;
-    if (/session|authenticate|log in/i.test(detail)) throw new StocktakeError("Odoo session expired.", 401);
-    if (/accesserror|access denied|permission/i.test(detail)) throw new StocktakeError("Your Odoo account cannot adjust inventory.", 403);
-    throw new StocktakeError("Odoo rejected the stocktake. Review the quantities and location.", 422);
+    if (/session|authenticate|log in/i.test(detail)) throw new StocktakeError("Orithos session expired.", 401);
+    if (/accesserror|access denied|permission/i.test(detail)) throw new StocktakeError("Your Orithos account cannot adjust inventory.", 403);
+    throw new StocktakeError("Orithos rejected the stocktake. Review the quantities and location.", 422);
   }
   return payload.result as T;
 }
@@ -108,9 +108,9 @@ async function tenantScope(request: NextRequest, sessionId: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new StocktakeError("Odoo session expired.", 401);
+  if (!response.ok) throw new StocktakeError("Orithos session expired.", 401);
   const info = await response.json() as RpcEnvelope<{ uid?: number }>;
-  if (info.error || !info.result?.uid) throw new StocktakeError("Odoo session expired.", 401);
+  if (info.error || !info.result?.uid) throw new StocktakeError("Orithos session expired.", 401);
 
   const sessionCompanies = await resolveOdooAllowedCompanyIds(sessionId, info.result, correlationId);
   const forced = await resolveTenantForcedCompanyIds(request, sessionCompanies);
@@ -123,7 +123,7 @@ async function tenantScope(request: NextRequest, sessionId: string) {
     : null;
   const rootLocationId = configuredLocationId ?? derived?.id ?? null;
   if (!companyId || !rootLocationId) {
-    throw new StocktakeError("This store has no unambiguous Odoo stock location configured.", 409);
+    throw new StocktakeError("This store has no unambiguous Orithos stock location configured.", 409);
   }
   return { companyId, rootLocationId, context, correlationId, locationSource: configuredLocationId ? "tenant-binding" as const : derived?.source ?? "tenant-binding" as const };
 }
@@ -197,11 +197,11 @@ async function readProducts(
     const productQuants = quants.filter((quant) => relationId(quant.product_id) === product.id);
     const expectedQty = productQuants.reduce((sum, quant) => sum + Number(quant.quantity || 0), 0);
     let ineligibleReason: string | null = null;
-    if (product.tracking && product.tracking !== "none") ineligibleReason = "Tracked products must be counted in Odoo.";
+    if (product.tracking && product.tracking !== "none") ineligibleReason = "Tracked products must be counted in Orithos.";
     else if (productQuants.some((quant) => relationId(quant.lot_id) || relationId(quant.package_id) || relationId(quant.owner_id))) {
-      ineligibleReason = "Products in lots, packages, or consignment must be counted in Odoo.";
+      ineligibleReason = "Products in lots, packages, or consignment must be counted in Orithos.";
     } else if (productQuants.some((quant) => quant.inventory_quantity_set)) {
-      ineligibleReason = "An Odoo inventory count is already pending for this product.";
+      ineligibleReason = "An Orithos inventory count is already pending for this product.";
     }
     return {
       id: product.id,
@@ -218,13 +218,13 @@ async function readProducts(
 
 function sessionCookie(request: NextRequest) {
   const sessionId = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!sessionId) throw new StocktakeError("Odoo session expired.", 401);
+  if (!sessionId) throw new StocktakeError("Orithos session expired.", 401);
   return sessionId;
 }
 
 function responseError(error: unknown) {
   const status = error instanceof StocktakeError || error instanceof StoreAccessError ? error.status : 502;
-  const message = error instanceof Error ? error.message : "Odoo stocktake is unavailable.";
+  const message = error instanceof Error ? error.message : "Orithos stocktake is unavailable.";
   const response = NextResponse.json({ code: status * 100, message, data: null }, { status, headers: { "Cache-Control": "no-store" } });
   if (status === 401) response.cookies.delete(SESSION_COOKIE);
   return response;
@@ -307,7 +307,7 @@ export async function POST(request: NextRequest) {
   try {
     const sessionId = sessionCookie(request);
     const scope = await tenantScope(request, sessionId);
-    if (scope.locationSource !== "tenant-binding") throw new StocktakeError("Bind this store to an explicit Odoo stock location before applying a count.", 409);
+    if (scope.locationSource !== "tenant-binding") throw new StocktakeError("Bind this store to an explicit Orithos stock location before applying a count.", 409);
     const locations = await leafLocations(sessionId, scope);
     const location = selectLocation(locations, Number(body.locationId));
     const productIds = body.lines.map((line) => line.productId);
@@ -340,7 +340,7 @@ export async function POST(request: NextRequest) {
       const productQuants = quants.filter((quant) => relationId(quant.product_id) === line.productId);
       if (!product || (product.tracking && product.tracking !== "none")
         || productQuants.some((quant) => relationId(quant.lot_id) || relationId(quant.package_id) || relationId(quant.owner_id) || quant.inventory_quantity_set)) {
-        throw new StocktakeError("A selected product now requires a lot, package, consignment, or pending-count workflow in Odoo.", 409);
+        throw new StocktakeError("A selected product now requires a lot, package, consignment, or pending-count workflow in Orithos.", 409);
       }
       const currentQty = productQuants.reduce((sum, quant) => sum + Number(quant.quantity || 0), 0);
       // An uncertain prior request may already have reached the requested quantity.
@@ -370,7 +370,7 @@ export async function POST(request: NextRequest) {
     const adjustmentReferenceIds = (Array.isArray(createdQuantIds) ? createdQuantIds : [createdQuantIds])
       .filter((id): id is number => Number.isSafeInteger(id) && id > 0);
     if (adjustmentReferenceIds.length !== adjustments.length) {
-      throw new StocktakeError("Odoo did not return all inventory adjustment references. Reconcile the count in Odoo before continuing.", 502);
+      throw new StocktakeError("Orithos did not return all inventory adjustment references. Reconcile the count in Orithos before continuing.", 502);
     }
 
     const verification = await rpc<StockQuant[]>(sessionId, "stock.quant", "search_read", [[
@@ -383,7 +383,7 @@ export async function POST(request: NextRequest) {
         .filter((quant) => relationId(quant.product_id) === line.productId)
         .reduce((sum, quant) => sum + Number(quant.quantity || 0), 0);
       if (Math.abs(actualQty - line.countedQty) > QUANTITY_EPSILON) {
-        throw new StocktakeError("Odoo applied the adjustment but the refreshed quantity did not match. Reconcile this product in Odoo before continuing.", 502);
+        throw new StocktakeError("Orithos applied the adjustment but the refreshed quantity did not match. Reconcile this product in Orithos before continuing.", 502);
       }
       return { productId: line.productId, beforeQty: line.expectedQty, countedQty: line.countedQty, actualQty };
     });
@@ -394,7 +394,7 @@ export async function POST(request: NextRequest) {
       lines,
     } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    if (writeAttempted) return NextResponse.json({ code: 50290, resultState: "unknown", message: "Stock adjustment result is pending confirmation. Reconcile the count in Odoo before retrying.", data: null }, { status: 502, headers: { "Cache-Control": "no-store" } });
+    if (writeAttempted) return NextResponse.json({ code: 50290, resultState: "unknown", message: "Stock adjustment result is pending confirmation. Reconcile the count in Orithos before retrying.", data: null }, { status: 502, headers: { "Cache-Control": "no-store" } });
     return responseError(error);
   }
 }

@@ -3,8 +3,8 @@ import test from "node:test";
 import { assistantCardCtaLabel, assistantCardTitle, assistantSaleActionHref, normalizeAssistantHref, resolveAssistantCardCta } from "./assistant-card-cta.ts";
 
 test("keeps legacy sale actions inside their page workflow", () => {
-  assert.equal(assistantSaleActionHref("Create Customer"), "/customers/odoo");
-  assert.equal(assistantSaleActionHref("Create Product"), "/products/odoo");
+  assert.equal(assistantSaleActionHref("Create Customer"), "/customers");
+  assert.equal(assistantSaleActionHref("Create Product"), "/products");
   assert.equal(assistantSaleActionHref("Complete Sale"), "/");
   assert.equal(assistantSaleActionHref("Refund Sale"), "/");
 });
@@ -110,10 +110,10 @@ test("keeps safe internal routes with query and hash", () => {
 });
 
 test("routes assistant product and customer links to Odoo source-of-truth pages", () => {
-  assert.equal(normalizeAssistantHref("/products"), "/products/odoo");
-  assert.equal(normalizeAssistantHref("/products?q=shiraz#results"), "/products/odoo?q=shiraz#results");
-  assert.equal(normalizeAssistantHref("/customers"), "/customers/odoo");
-  assert.equal(normalizeAssistantHref("/customers?query=retailer"), "/customers/odoo?query=retailer");
+  assert.equal(normalizeAssistantHref("/products"), "/products");
+  assert.equal(normalizeAssistantHref("/products?q=shiraz#results"), "/products?q=shiraz#results");
+  assert.equal(normalizeAssistantHref("/customers"), "/customers");
+  assert.equal(normalizeAssistantHref("/customers?query=retailer"), "/customers?query=retailer");
 });
 
 test("rejects external, protocol-relative, and ambiguous routes", () => {

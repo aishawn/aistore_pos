@@ -80,7 +80,7 @@ export default function ManageCashPage() {
       subtitle="Cash in / cash out while a POS session is open. End-of-day counted cash still uses Close Register."
     >
       {loading ? (
-      <div role="status" aria-live="polite" aria-label="Loading cash register" aria-busy="true" className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+      <div role="status" aria-live="polite" aria-label="Loading cash register" aria-busy="true" className="mx-auto w-full max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start gap-3"><div className="h-11 w-11 animate-pulse rounded-full bg-[var(--oh-border)]" /><div className="flex-1"><div className="h-4 w-44 animate-pulse rounded bg-[var(--oh-border)]" /><div className="mt-2 h-3 w-full max-w-md animate-pulse rounded bg-[var(--oh-border)]" /></div></div>
           <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
           <div className="h-11 w-full animate-pulse rounded-lg bg-[var(--oh-border)]" />
@@ -89,14 +89,14 @@ export default function ManageCashPage() {
           <p className="flex items-center justify-center gap-2 text-sm text-[var(--oh-muted)]"><LoaderCircle size={15} className="animate-spin" />Loading register session…</p>
         </div>
       ) : error && !bootstrap ? (
-        <section role="alert" className="mx-auto w-full max-w-xl rounded-xl border border-rose-200 bg-white p-7 text-center shadow-[var(--oh-shadow-card)]">
+        <section role="alert" className="mx-auto w-full max-w-xl rounded-xl border border-rose-200 bg-[var(--oh-surface-elevated)] p-7 text-center shadow-[var(--oh-shadow-card)]">
           <AlertCircle className="mx-auto text-rose-700" size={30} />
           <h2 className="mt-4 text-xl font-semibold text-[var(--oh-text)]">Could not load cash register details</h2>
           <p className="mt-2 text-sm leading-6 text-rose-800">{error}</p>
           <button type="button" onClick={() => setRetryKey((value) => value + 1)} className="mt-5 inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={16} /> Retry</button>
         </section>
       ) : (
-        <div className="mx-auto max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)]">
+        <div className="mx-auto max-w-xl space-y-4 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)]">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]">
               <Wallet size={20} aria-hidden="true" />
@@ -104,14 +104,14 @@ export default function ManageCashPage() {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[var(--oh-text)]">Open session required</p>
               <p className="mt-1 text-sm text-[var(--oh-muted)]">
-                Mid-shift drawer adjustments write to Odoo. Closing the register still requires a counted cash amount.
+                Mid-shift drawer adjustments write to Orithos. Closing the register still requires a counted cash amount.
               </p>
             </div>
           </div>
 
           {!bootstrap?.configs.length ? (
             <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-              No Odoo registers are available. <Link href="/settings/integrations" className="font-semibold text-[var(--oh-primary)] hover:underline">Connect Odoo</Link>
+              No Orithos registers are available. <Link href="/settings/integrations" className="font-semibold text-[var(--oh-primary)] hover:underline">Connect Orithos</Link>
             </p>
           ) : (
             <>
@@ -120,7 +120,7 @@ export default function ManageCashPage() {
                 <select
                   value={configId ?? ""}
                   onChange={(event) => setConfigId(Number(event.target.value))}
-                  className="h-11 rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
+                  className="h-11 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)] outline-none focus:border-[var(--oh-primary)]"
                 >
                   {bootstrap.configs.map((config) => (
                     <option key={config.id} value={config.id}>
@@ -175,7 +175,7 @@ export default function ManageCashPage() {
                     {busy ? "Recording…" : `Record cash ${direction}`}
                   </button>
                   <p className="text-xs text-[var(--oh-muted)]">
-                    End of day: use <Link href="/close/odoo" className="font-semibold text-[var(--oh-primary)] hover:underline">Close Register</Link> with counted cash.
+                    End of day: use <Link href="/close" className="font-semibold text-[var(--oh-primary)] hover:underline">Close Register</Link> with counted cash.
                   </p>
                 </>
               )}

@@ -21,11 +21,11 @@ function getOdooConfig() {
   const baseUrl = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
   const database = process.env.ODOO_DATABASE?.trim();
   if (!baseUrl || !database) {
-    throw new Error("Odoo connection is not configured");
+    throw new Error("Orithos connection is not configured");
   }
   const parsed = new URL(baseUrl);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new Error("Odoo connection must use HTTPS");
+    throw new Error("Orithos connection must use HTTPS");
   }
   return { baseUrl, database };
 }
@@ -46,13 +46,13 @@ async function callOdoo(
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error("Odoo request failed");
+  if (!response.ok) throw new Error("Orithos request failed");
   const payload = (await response.json()) as {
     result?: OdooSessionInfo;
     error?: { message?: string; data?: { message?: string } };
   };
   if (payload.error) {
-    throw new Error(payload.error.data?.message || payload.error.message || "Odoo request failed");
+    throw new Error(payload.error.data?.message || payload.error.message || "Orithos request failed");
   }
   return payload.result ?? {};
 }
@@ -71,19 +71,19 @@ async function authenticateOdoo(username: string, password: string) {
     cache: "no-store",
     signal: AbortSignal.timeout(12_000),
   });
-  if (!response.ok) throw new Error("Odoo login failed");
+  if (!response.ok) throw new Error("Orithos login failed");
 
   const payload = (await response.json()) as {
     result?: OdooSessionInfo;
     error?: { message?: string; data?: { message?: string } };
   };
   if (payload.error || !payload.result?.uid) {
-    throw new Error("Odoo username or password is incorrect");
+    throw new Error("Orithos username or password is incorrect");
   }
 
   const sessionCookie = response.headers.getSetCookie().find((value) => /(?:^|;\s*)session_id=/.test(value));
   const sessionId = sessionCookie?.match(/(?:^|;\s*)session_id=([^;]+)/)?.[1];
-  if (!sessionId) throw new Error("Odoo did not return a session");
+  if (!sessionId) throw new Error("Orithos did not return a session");
 
   return { info: payload.result, sessionId };
 }
@@ -113,7 +113,7 @@ function cookieOptions() {
 }
 
 async function publicUser(info: OdooSessionInfo, sessionId: string, request?: NextRequest) {
-  if (!info.uid || !info.username) throw new Error("Odoo session is not authenticated");
+  if (!info.uid || !info.username) throw new Error("Orithos session is not authenticated");
   const sessionCompanyIds = await resolveOdooAllowedCompanyIds(sessionId, info);
   let allowedCompanyIds = sessionCompanyIds;
   if (request) {
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     nextResponse.cookies.set(SESSION_COOKIE, session.sessionId, cookieOptions());
     return nextResponse;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = message.includes("not configured") || message.includes("must use HTTPS") ? 503 : 502;
     return NextResponse.json({ message }, { status });
   }
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const info = await callOdoo("/web/session/get_session_info", {}, sessionId);
-    if (!info.uid) throw new Error("Odoo session has expired");
+    if (!info.uid) throw new Error("Orithos session has expired");
     return NextResponse.json(sessionPayload(await publicUser(info, sessionId, request)), { status: 200 });
   } catch {
     try {
@@ -236,7 +236,7 @@ export async function DELETE(request: NextRequest) {
     try {
       await callOdoo("/web/session/destroy", {}, sessionId);
     } catch {
-      // The browser session is still cleared even if Odoo is already unreachable.
+      // The browser session is still cleared even if Orithos is already unreachable.
     }
   }
   const response = NextResponse.json({ ok: true }, { status: 200 });

@@ -90,8 +90,8 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
         lines: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
       });
       router.push(embedded
-        ? `/purchases/odoo?tab=transfers&created=${encodeURIComponent(created.name)}`
-        : `/purchases/odoo?tab=transfers&created=${encodeURIComponent(created.name)}`);
+        ? `/purchases?tab=transfers&created=${encodeURIComponent(created.name)}`
+        : `/purchases?tab=transfers&created=${encodeURIComponent(created.name)}`);
     } catch (cause) {
       setError(cause instanceof OdooApiError ? cause.message : "Could not create transfer.");
     } finally {
@@ -110,27 +110,27 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
   const body = (
         <div className={`flex flex-col gap-4 ${embedded ? "" : "mx-auto w-full max-w-3xl"}`}>
           {!embedded && <p className="text-sm text-[var(--oh-muted)]">Same-company warehouse move. Does not invent products or GST.</p>}
-          {noteHint && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">{noteHint}</div>}
-          {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</div>}
+          {noteHint && <div className="rounded-lg border border-[var(--oh-tile-orange-border)] bg-[var(--oh-tile-orange-bg)] px-4 py-3 text-sm text-[var(--oh-tile-orange-text)]">{noteHint}</div>}
+          {error && <div role="alert" className="rounded-lg border border-[var(--oh-tile-red-border)] bg-[var(--oh-tile-red-bg)] px-4 py-3 text-sm text-[var(--oh-tile-red-text)]">{error}</div>}
 
-          <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-sm">
                 <span className="mb-1.5 block font-medium">From</span>
-                <select value={fromId} onChange={(e) => setFromId(e.target.value)} className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3">
+                <select value={fromId} onChange={(e) => setFromId(e.target.value)} className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[var(--oh-text)]">
                   {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
                 </select>
               </label>
               <label className="text-sm">
                 <span className="mb-1.5 block font-medium">To</span>
-                <select value={toId} onChange={(e) => setToId(e.target.value)} className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3">
+                <select value={toId} onChange={(e) => setToId(e.target.value)} className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[var(--oh-text)]">
                   {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
                 </select>
               </label>
             </div>
             <label className="mt-3 block text-sm">
               <span className="mb-1.5 block font-medium">Note</span>
-              <input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 w-full rounded-lg border border-[var(--oh-border)] px-3" placeholder="Optional origin / reason" />
+              <input value={note} onChange={(e) => setNote(e.target.value)} className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[var(--oh-text)] placeholder:text-[var(--oh-muted)]" placeholder="Optional origin / reason" />
             </label>
             <label className="mt-3 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={validate} onChange={(e) => setValidate(e.target.checked)} />
@@ -138,7 +138,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
             </label>
           </section>
 
-          <section className="rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)]">
+          <section className="rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)]">
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">Products</h2>
             <label className="relative mt-3 block">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]" />
@@ -146,7 +146,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search POS products…"
-                className="h-11 w-full rounded-lg border border-[var(--oh-border)] pl-9 pr-3 text-sm"
+                className="h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] pl-9 pr-3 text-sm text-[var(--oh-text)] placeholder:text-[var(--oh-muted)]"
               />
             </label>
             {hits.length > 0 && (
@@ -155,7 +155,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
                   <li key={hit.id}>
                     <button
                       type="button"
-                      className="block w-full px-3 py-2 text-left text-sm hover:bg-white"
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--oh-surface-muted)]"
                       onClick={() => {
                         setLines((current) => {
                           if (current.some((line) => line.productId === hit.id)) return current;
@@ -184,7 +184,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
                       const quantity = Number(e.target.value);
                       setLines((current) => current.map((row, i) => (i === index ? { ...row, quantity } : row)));
                     }}
-                    className="h-10 w-24 rounded-lg border border-[var(--oh-border)] px-2 text-right tabular-nums"
+                    className="h-10 w-24 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-2 text-right text-[var(--oh-text)] tabular-nums"
                   />
                   <button type="button" aria-label="Remove line" onClick={() => setLines((current) => current.filter((_, i) => i !== index))} className="rounded-md border border-[var(--oh-border)] p-2 text-[var(--oh-muted)] hover:bg-[var(--oh-surface)]">
                     <Trash2 size={15} />
@@ -195,7 +195,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
             </ul>
           </section>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-            <Link href="/purchases/odoo?tab=transfers" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</Link>
+            <Link href="/purchases?tab=transfers" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--oh-border)] px-4 text-sm font-semibold">Cancel</Link>
             <button
               type="button"
               onClick={() => void onSubmit()}
@@ -212,7 +212,7 @@ export function CreateStockTransferPage({ embedded = false }: { embedded?: boole
 
   return (
     <main className="flex h-full min-h-0 flex-col bg-[var(--oh-surface)]">
-      <header className="shrink-0 border-b border-[var(--oh-border)] bg-white px-4 py-4 md:px-6">
+      <header className="shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--oh-muted)]">Stock · Transfers</p>
           <h1 className="oh-type-title mt-1 text-[var(--oh-text)]">New transfer</h1>

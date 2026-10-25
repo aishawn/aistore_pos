@@ -116,16 +116,16 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-white font-sans">
-      <div className="shrink-0 border-b border-neutral-200 px-6 py-4">
+    <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
+      <div className="shrink-0 border-b border-[var(--oh-border)] px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-[28px] font-bold text-black">Modify Sale Key —</h1>
+          <h1 className="text-[28px] font-bold text-[var(--oh-text)]">Modify Sale Key —</h1>
           <div className="relative min-w-[220px]">
             <select
               value={String(id)}
               onChange={(e) => switchSet(e.target.value)}
               disabled={allSetsLoading || !!allSetsError}
-              className="h-[44px] w-full appearance-none rounded-lg border border-neutral-300 bg-white pl-4 pr-10 text-[16px] text-black outline-none focus:border-[#5cb3e0]"
+              className="h-[44px] w-full appearance-none rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] pl-4 pr-10 text-[16px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
             >
               {(allSets ?? []).map((set) => (
                 <option key={set.id} value={set.id}>
@@ -135,7 +135,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
             </select>
             <SelectChevronIcon
               size={18}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500"
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--oh-muted)]"
             />
           </div>
         </div>
@@ -162,12 +162,12 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
             </div>
           </div>
 
-          <aside className="flex w-[300px] shrink-0 flex-col border-l border-neutral-200 bg-white">
-            <div className="space-y-3 border-b border-neutral-200 p-4">
+          <aside className="flex w-[300px] shrink-0 flex-col border-l border-[var(--oh-border)] bg-[var(--oh-surface-elevated)]">
+            <div className="space-y-3 border-b border-[var(--oh-border)] p-4">
               <button
                 type="button"
                 onClick={addKey}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-[#3cb44b] px-4 py-2.5 text-[15px] font-semibold text-white transition-colors hover:bg-[#35a042]"
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-success)] px-4 py-2.5 text-[15px] font-semibold text-white transition-colors hover:opacity-90"
               >
                 <PlusIcon size={18} /> Add Sale Key
               </button>
@@ -175,7 +175,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                 type="button"
                 onClick={removeSelected}
                 disabled={!selectedKey}
-                className="flex w-full items-center justify-center gap-2 rounded-md border border-neutral-300 px-4 py-2.5 text-[15px] font-semibold text-neutral-500 transition-colors enabled:hover:border-neutral-400 enabled:hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-2.5 text-[15px] font-semibold text-[var(--oh-text-secondary)] transition-colors enabled:hover:border-[var(--oh-border-strong)] enabled:hover:text-[var(--oh-text)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <DeleteIcon size={18} /> Remove Sale Key
               </button>
@@ -184,32 +184,32 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
             <div className="min-h-0 flex-1 overflow-y-auto p-4">
               {selectedKey ? (
                 <div className="space-y-4">
-                  <h2 className="text-[16px] font-bold text-black">Key Properties</h2>
+                  <h2 className="text-[16px] font-bold text-[var(--oh-text)]">Key Properties</h2>
                   <label className="block">
-                    <span className="mb-1 block text-[14px] font-medium text-neutral-600">Set name</span>
+                    <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Set name</span>
                     <input
                       value={name}
                       onChange={(e) => {
                         setName(e.target.value);
                         setDirty(true);
                       }}
-                      className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                      className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-[14px] font-medium text-neutral-600">Label</span>
+                    <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Label</span>
                     <input
                       value={selectedKey.label ?? ""}
                       onChange={(e) => updateKey(selectedKey.id, { label: e.target.value })}
-                      className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                      className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-[14px] font-medium text-neutral-600">Background</span>
+                    <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Background</span>
                     <select
                       value={selectedKey.bg}
                       onChange={(e) => updateKey(selectedKey.id, { bg: e.target.value })}
-                      className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                      className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                     >
                       {BG_PRESETS.map((preset) => (
                         <option key={preset.value} value={preset.value}>
@@ -220,7 +220,7 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-1 block text-[14px] font-medium text-neutral-600">Column</span>
+                      <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Column</span>
                       <input
                         type="number"
                         min={1}
@@ -229,11 +229,11 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                         onChange={(e) =>
                           updateKey(selectedKey.id, { colStart: Number(e.target.value) || 1 })
                         }
-                        className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                        className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-[14px] font-medium text-neutral-600">Row</span>
+                      <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Row</span>
                       <input
                         type="number"
                         min={1}
@@ -242,11 +242,11 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                         onChange={(e) =>
                           updateKey(selectedKey.id, { rowStart: Number(e.target.value) || 1 })
                         }
-                        className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                        className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-[14px] font-medium text-neutral-600">Width</span>
+                      <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Width</span>
                       <input
                         type="number"
                         min={1}
@@ -255,11 +255,11 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                         onChange={(e) =>
                           updateKey(selectedKey.id, { colSpan: Number(e.target.value) || 1 })
                         }
-                        className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                        className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1 block text-[14px] font-medium text-neutral-600">Height</span>
+                      <span className="mb-1 block text-[14px] font-medium text-[var(--oh-text-secondary)]">Height</span>
                       <input
                         type="number"
                         min={1}
@@ -268,35 +268,35 @@ export function EditSaleKeysPage({ setId }: { setId: string }) {
                         onChange={(e) =>
                           updateKey(selectedKey.id, { rowSpan: Number(e.target.value) || 1 })
                         }
-                        className="h-[44px] w-full rounded-lg border border-neutral-300 px-3 text-[15px] outline-none focus:border-[#5cb3e0]"
+                        className="h-[44px] w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface)] px-3 text-[15px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-info)] focus:ring-2 focus:ring-[var(--oh-info)]/25"
                       />
                     </label>
                   </div>
-                  <p className="text-[13px] leading-relaxed text-neutral-500">
+                  <p className="text-[13px] leading-relaxed text-[var(--oh-muted)]">
                     Row 1 (columns 1–5) is reserved for Beer, Wines, Spirits, Products, and Promotions.
                     Custom keys start from row 2. Width and Height are grid cells (1–10).
                   </p>
                 </div>
               ) : (
-                <div className="flex h-full min-h-[200px] items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 px-4 text-center text-[14px] text-neutral-500">
+                <div className="flex h-full min-h-[200px] items-center justify-center rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-muted)] px-4 text-center text-[14px] text-[var(--oh-muted)]">
                   Select a sale key on the grid to edit its properties, or add a new key.
                 </div>
               )}
             </div>
 
-            <div className="flex gap-3 border-t border-neutral-200 p-4">
+            <div className="flex gap-3 border-t border-[var(--oh-border)] p-4">
               <button
                 type="button"
                 onClick={save}
                 disabled={saving}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#2c8fe0] px-4 py-3 text-[16px] font-medium text-white transition-colors hover:bg-[#2680cc] disabled:opacity-60"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[var(--oh-info)] px-4 py-3 text-[16px] font-medium text-white transition-colors hover:opacity-90 disabled:opacity-60"
               >
                 <SaveIcon size={18} /> Save
               </button>
               <button
                 type="button"
                 onClick={cancel}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-neutral-300 px-4 py-3 text-[16px] font-medium text-neutral-600 transition-colors hover:bg-neutral-50"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 text-[16px] font-medium text-[var(--oh-text-secondary)] transition-colors hover:bg-[var(--oh-surface-muted)]"
               >
                 <XIcon size={18} /> Cancel
               </button>

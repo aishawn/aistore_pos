@@ -8,7 +8,7 @@ const sellBehaviors = [
   {
     title: "Login after sale and training mode",
     status: "Not configured",
-    detail: "The Odoo register does not prompt for a new Orithos login after checkout or provide a training-mode switch.",
+    detail: "The Orithos register does not prompt for a new Orithos login after checkout or provide a training-mode switch.",
     icon: ShieldCheck,
   },
   {
@@ -42,7 +42,7 @@ const sellBehaviors = [
   {
     title: "Promotion calculation",
     status: "No background setting",
-    detail: "The Odoo checkout quote gets product prices and taxes from Odoo. There is no separate register preference for running promotion calculations in a thread.",
+    detail: "The Orithos checkout quote gets product prices and taxes from Orithos. There is no separate register preference for running promotion calculations in a thread.",
     icon: BellOff,
   },
 ];
@@ -64,7 +64,7 @@ export default function RegisterSellScreenSettingsPage() {
           <div>
             <h2 className="text-sm font-semibold text-sky-950">Register behaviour is not configured with these switches</h2>
             <p className="mt-1 text-sm leading-5 text-sky-900/80">
-              The previous options were static examples. These cards describe the current Odoo Sell experience and the controls that are available.
+              The previous options were static examples. These cards describe the current Orithos Sell experience and the controls that are available.
             </p>
           </div>
         </section>

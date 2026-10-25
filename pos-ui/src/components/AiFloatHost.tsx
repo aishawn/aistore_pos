@@ -38,7 +38,7 @@ export function AiFloatHost() {
     <SellAiPanel
       expanded={expanded}
       onExpandedChange={setExpanded}
-      launcherVisible={shouldShowAiFloat(pathname) && pathname !== "/dashboard" && !pathname.startsWith("/dashboard/") && pathname !== "/overview" && !pathname.startsWith("/overview/")}
+      launcherVisible={shouldShowAiFloat(pathname) && pathname !== "/m" && pathname !== "/dashboard" && !pathname.startsWith("/dashboard/") && pathname !== "/overview" && !pathname.startsWith("/overview/")}
     />
   );
 }

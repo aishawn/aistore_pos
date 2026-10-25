@@ -7,14 +7,14 @@ const HREF = "/settings/outlets/transfers";
 const transferBehaviors = [
   {
     title: "Internal stock transfers",
-    status: "Managed in Odoo",
-    detail: "The Orithos Odoo pilot does not currently create or receive internal stock transfers. The available transfer form belongs to the legacy workflow.",
+    status: "Managed in Orithos",
+    detail: "The Orithos Orithos pilot does not currently create or receive internal stock transfers. The available transfer form belongs to the legacy workflow.",
     icon: Boxes,
   },
   {
     title: "Update last cost on receipt",
     status: "Not configured here",
-    detail: "The previous enabled switch was a static example. It does not change cost values when stock is received; use the inventory valuation and costing rules configured for the product in Odoo.",
+    detail: "The previous enabled switch was a static example. It does not change cost values when stock is received; use the inventory valuation and costing rules configured for the product in Orithos.",
     icon: SlidersHorizontal,
   },
 ];
@@ -34,7 +34,7 @@ export default function OutletTransfersSettingsPage() {
             <CircleAlert size={18} aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-sky-950">Transfer preferences are not connected to Odoo</h2>
+            <h2 className="text-sm font-semibold text-sky-950">Transfer preferences are not connected to Orithos</h2>
             <p className="mt-1 text-sm leading-5 text-sky-900/80">
               The previous toggle did not set receiving or costing behaviour. Current pilot support is shown below.
             </p>
@@ -68,7 +68,7 @@ export default function OutletTransfersSettingsPage() {
             href="/settings/company/integrations"
             className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-semibold text-[var(--oh-primary)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
-            Check Odoo connection <ArrowRight size={15} aria-hidden="true" />
+            Check Orithos connection <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </section>
       </div>

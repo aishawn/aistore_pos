@@ -7,10 +7,10 @@ const HREF = "/settings/company/general-display";
 const displaySources = [
   {
     title: "Product unit name",
-    source: "Odoo product data",
-    description: "Sell reads each product’s unit of measure from its Odoo product record. The old “Single text” example did not override it.",
+    source: "Orithos product data",
+    description: "Sell reads each product’s unit of measure from its Orithos product record. The old “Single text” example did not override it.",
     icon: Package,
-    link: { label: "Review product catalogue", href: "/products/odoo" },
+    link: { label: "Review product catalogue", href: "/products" },
   },
   {
     title: "Each and case options",

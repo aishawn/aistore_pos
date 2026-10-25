@@ -51,7 +51,7 @@ export function AiMetricsPage() {
   if (!isAdmin) {
     return (
       <main className="grid h-full place-items-center bg-[var(--oh-surface)] p-6">
-        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <div className="max-w-md rounded-lg border border-[var(--brand-warning)] bg-[var(--brand-warning-tint)] px-4 py-3 text-sm text-[var(--brand-warning)]">
           Only store administrators can view AI query health (volume, latency, and guard rates). This is an ops dashboard — not a Q&amp;A quality review.
         </div>
       </main>
@@ -71,16 +71,16 @@ export function AiMetricsPage() {
         </div>
         <div className="flex items-center gap-2">
           <label className="sr-only" htmlFor="ai-metrics-window">Metrics window</label>
-          <select id="ai-metrics-window" value={hours} onChange={(event) => setHours(Number(event.target.value))} className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)]">
+          <select id="ai-metrics-window" value={hours} onChange={(event) => setHours(Number(event.target.value))} className="h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)]">
             {windows.map((item) => <option key={item.hours} value={item.hours}>{item.label}</option>)}
           </select>
-          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-white px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-paper)] disabled:opacity-60">
+          <button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm font-medium text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] disabled:opacity-60">
             {refreshing ? <LoaderCircle size={16} className="animate-spin" /> : <RefreshCw size={16} />} Refresh
           </button>
         </div>
       </header>
 
-      {error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-900"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-red-300 bg-white px-3 font-semibold text-red-900 disabled:opacity-60"><RefreshCw size={14} /> Retry</button></div> : null}
+      {error ? <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--brand-danger)] bg-[var(--brand-danger-tint)] px-3 py-2.5 text-sm text-[var(--brand-danger)]"><span className="flex items-start gap-2"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</span><button type="button" onClick={() => void load(true)} disabled={refreshing} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--brand-danger)] bg-[var(--oh-surface-elevated)] px-3 font-semibold text-[var(--brand-danger)] disabled:opacity-60"><RefreshCw size={14} /> Retry</button></div> : null}
 
       {data ? <>
         <section aria-label="AI summary" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -98,7 +98,7 @@ export function AiMetricsPage() {
               value={data.highlights.last24hRequests.toLocaleString()}
               detail={`${data.highlights.last24hRejected} rejected · ${data.highlights.last24hRejectedRate.toFixed(1)}% fail`}
             />
-            <article className="rounded-lg border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)] md:col-span-2">
+            <article className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3.5 shadow-[var(--oh-shadow-card)] md:col-span-2">
               <p className="oh-type-label text-[var(--oh-muted)]">Top intents / paths</p>
               {data.highlights.topIntents.length ? (
                 <ul className="mt-3 space-y-1.5 text-sm">
@@ -118,7 +118,7 @@ export function AiMetricsPage() {
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
+        <section className="overflow-hidden rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-[var(--oh-shadow-card)]">
           <div className="border-b border-[var(--oh-border)] px-4 py-4 md:px-5"><h2 className="oh-type-title text-[var(--oh-text)]">By AI path</h2><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">Assistant intents and report paths are aggregate only.</p></div>
           {data.byPath.length ? <div className="overflow-x-auto"><table className="min-w-[900px] w-full text-left text-sm"><caption className="sr-only">AI requests grouped by assistant intent and report path</caption><thead className="bg-[var(--oh-surface)] text-xs uppercase tracking-wide text-[var(--oh-muted)]"><tr><th scope="col" className="px-4 py-3 font-semibold md:px-5">Path</th><th scope="col" className="px-4 py-3 font-semibold">Requests</th><th scope="col" className="px-4 py-3 font-semibold">Allowed</th><th scope="col" className="px-4 py-3 font-semibold">Rate</th><th scope="col" className="px-4 py-3 font-semibold">Avg latency</th><th scope="col" className="px-4 py-3 font-semibold">P50</th><th scope="col" className="px-4 py-3 font-semibold">P95</th><th scope="col" className="px-4 py-3 font-semibold">Est. tokens</th></tr></thead><tbody className="divide-y divide-[var(--oh-border)]">{data.byPath.map((item) => <tr key={item.path}><td className="px-4 py-3 font-medium text-[var(--oh-text)] md:px-5">{item.path}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.requests}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowed}</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.allowedRate.toFixed(1)}%</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{Math.round(item.averageLatencyMs)} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.p50LatencyMs ?? "—"} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.p95LatencyMs ?? "—"} ms</td><td className="px-4 py-3 tabular-nums text-[var(--oh-text-secondary)]">{item.estimatedTokens.toLocaleString()}</td></tr>)}</tbody></table></div> : <p className="px-4 py-8 text-center text-sm text-[var(--oh-muted)]">No AI audit events in this period.</p>}
         </section>
@@ -129,5 +129,5 @@ export function AiMetricsPage() {
 }
 
 function Metric({ title, value, detail, icon }: { title: string; value: string; detail: string; icon?: React.ReactNode }) {
-  return <article className="rounded-lg border border-[var(--oh-border)] bg-white p-3.5 shadow-[var(--oh-shadow-card)]"><div className="flex items-center justify-between gap-2"><p className="oh-type-label text-[var(--oh-muted)]">{title}</p>{icon ? <span className="text-[var(--oh-primary)]">{icon}</span> : null}</div><p className="oh-type-kpi mt-3 text-[var(--oh-text)]">{value}</p><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{detail}</p></article>;
+  return <article className="rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-3.5 shadow-[var(--oh-shadow-card)]"><div className="flex items-center justify-between gap-2"><p className="oh-type-label text-[var(--oh-muted)]">{title}</p>{icon ? <span className="text-[var(--oh-primary)]">{icon}</span> : null}</div><p className="oh-type-kpi mt-3 text-[var(--oh-text)]">{value}</p><p className="oh-type-meta mt-1 text-[var(--oh-muted)]">{detail}</p></article>;
 }

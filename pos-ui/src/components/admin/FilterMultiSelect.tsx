@@ -89,17 +89,17 @@ export function FilterMultiSelect({
           aria-haspopup="listbox"
           aria-controls={listboxId}
           onClick={() => setOpen((v) => !v)}
-          className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-md border border-[var(--oh-border)] bg-white px-2.5 text-[13px] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
+          className="flex min-h-11 min-w-0 flex-1 items-center justify-between rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2.5 text-[13px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         >
-        <span className={values.length === 0 ? "text-neutral-400" : "text-[var(--oh-text)]"}>{display}</span>
-          <SelectChevronIcon size={14} className="shrink-0 text-neutral-500" />
+        <span className={values.length === 0 ? "text-[var(--oh-muted)]" : "text-[var(--oh-text)]"}>{display}</span>
+          <SelectChevronIcon size={14} className="shrink-0 text-[var(--oh-muted)]" />
         </button>
         {values.length > 0 && (
           <button
             type="button"
             aria-label={`Clear ${label}`}
             onClick={() => onChange([])}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-neutral-400 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:text-[var(--oh-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"
           >
             <XIcon size={14} />
           </button>
@@ -107,13 +107,13 @@ export function FilterMultiSelect({
       </div>
 
       {open && (
-        <div id={listboxId} role="listbox" aria-label={label} aria-multiselectable="true" className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-md border border-[var(--oh-border)] bg-white py-1 shadow-lg">
+        <div id={listboxId} role="listbox" aria-label={label} aria-multiselectable="true" className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-auto rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-lg">
           {uniqueOptions.map((o, index) => (
             <label
               key={o.value}
               role="option"
               aria-selected={values.includes(o.value)}
-              className="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--oh-text)] hover:bg-neutral-50 focus-within:bg-neutral-50"
+              className="flex min-h-11 cursor-pointer items-center gap-2.5 px-3 py-2 text-[13px] text-[var(--oh-text)] hover:bg-[var(--oh-surface-muted)] focus-within:bg-[var(--oh-surface-muted)]"
             >
               <input
                 type="checkbox"

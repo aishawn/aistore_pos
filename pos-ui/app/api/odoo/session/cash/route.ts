@@ -21,10 +21,10 @@ class CashError extends Error {
 
 function getBaseUrl() {
   const value = process.env.ODOO_BASE_URL?.trim().replace(/\/+$/, "");
-  if (!value) throw new CashError("Odoo connection is not configured on the POS server.", 503);
+  if (!value) throw new CashError("Orithos connection is not configured on the POS server.", 503);
   const parsed = new URL(value);
   if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new CashError("Odoo connection must use HTTPS.", 503);
+    throw new CashError("Orithos connection must use HTTPS.", 503);
   }
   return value;
 }
@@ -44,7 +44,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
     cache: "no-store",
     signal: AbortSignal.timeout(20_000),
   });
-  if (!response.ok) throw new CashError("Odoo did not accept the cash request.", 502);
+  if (!response.ok) throw new CashError("Orithos did not accept the cash request.", 502);
   const payload = (await response.json()) as RpcResult<T>;
   if (payload.error) {
     const detail = `${payload.error.message ?? ""} ${payload.error.data?.message ?? ""} ${payload.error.data?.name ?? ""}`;
@@ -53,7 +53,7 @@ async function rpc<T>(sessionId: string, model: string, method: string, args: un
       && !/pos\.session/i.test(detail)) {
       throw new SessionExpiredError();
     }
-    throw new CashError(payload.error.data?.message || payload.error.message || "Odoo rejected the cash request.", 422);
+    throw new CashError(payload.error.data?.message || payload.error.message || "Orithos rejected the cash request.", 422);
   }
   return payload.result;
 }
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     throw error;
   }
   const odooSession = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!odooSession) return NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+  if (!odooSession) return NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
   const correlationId = request.headers.get("x-correlation-id");
 
   let body: { configId?: number; direction?: string; amount?: number; reason?: string };
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!Number.isInteger(body.configId)) {
-    return NextResponse.json({ message: "Choose an Odoo register." }, { status: 400 });
+    return NextResponse.json({ message: "Choose an Orithos register." }, { status: 400 });
   }
   const direction = (body.direction || "").toLowerCase();
   if (direction !== "in" && direction !== "out") {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     const forced = await resolveTenantForcedCompanyIds(request, sessionCompanyIds);
     if (forced.error) throw new CashError(forced.error, forced.status);
     const companyIds = forced.companyIds;
-    if (!companyIds.length) throw new CashError("This Odoo user has no accessible company.", 403);
+    if (!companyIds.length) throw new CashError("This Orithos user has no accessible company.", 403);
     const companyContext = { allowed_company_ids: companyIds, force_company: companyIds[0] };
 
     const configs = await rpc<Array<{
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       ["company_id", "in", companyIds],
     ]], { fields: ["id", "name", "current_session_id", "company_id"], limit: 1, context: companyContext }, correlationId);
     const config = configs?.[0];
-    if (!config) throw new CashError("This register is not available to your Odoo user.", 403);
+    if (!config) throw new CashError("This register is not available to your Orithos user.", 403);
     if (!config.current_session_id) throw new CashError("Open a POS session before managing cash.", 409);
 
     const sessionId = config.current_session_id[0];
@@ -154,8 +154,8 @@ export async function POST(request: NextRequest) {
 
     const note = reason || (direction === "in" ? "Orithos cash in" : "Orithos cash out");
 
-    // Live Odoo (18): try_cash_in_out(type, amount, reason, partner_id, extras)
-    // extras must include translatedType + formattedAmount or Odoo raises KeyError.
+    // Live Orithos (18): try_cash_in_out(type, amount, reason, partner_id, extras)
+    // extras must include translatedType + formattedAmount or Orithos raises KeyError.
     const extras = {
       translatedType: direction === "in" ? "Cash In" : "Cash Out",
       formattedAmount: amount.toFixed(2),
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       const message = lastError instanceof Error ? lastError.message : "Cash adjustment failed";
       if (/try_cash_in_out|set_cashbox_pos|AttributeError|does not exist|TypeError/i.test(message)) {
         throw new CashError(
-          "This Odoo build does not expose cash in/out over RPC. Use Open in Odoo POS for drawer adjustments, then Close Register for end-of-day count.",
+          "This Orithos build does not expose cash in/out over RPC. Use Open in Orithos POS for drawer adjustments, then Close Register for end-of-day count.",
           501,
         );
       }
@@ -199,11 +199,11 @@ export async function POST(request: NextRequest) {
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof SessionExpiredError) {
-      const response = NextResponse.json({ message: "Odoo session expired" }, { status: 401 });
+      const response = NextResponse.json({ message: "Orithos session expired" }, { status: 401 });
       response.cookies.delete(SESSION_COOKIE);
       return response;
     }
-    const message = error instanceof Error ? error.message : "Odoo is unavailable";
+    const message = error instanceof Error ? error.message : "Orithos is unavailable";
     const status = error instanceof CashError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

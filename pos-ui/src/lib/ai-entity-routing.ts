@@ -16,14 +16,14 @@ export type AiEntity =
   | "bulk_price_edit";
 
 export const AI_ENTITY_LIST_ROUTE: Readonly<Record<AiEntity, string>> = {
-  product: "/products/odoo",
-  classification: "/products/odoo?dialog=categories",
-  supplier: "/suppliers/odoo",
-  order: "/purchases/odoo",
-  stocktake: "/products/odoo?dialog=stocktake",
+  product: "/products",
+  classification: "/products?dialog=categories",
+  supplier: "/suppliers",
+  order: "/purchases",
+  stocktake: "/products?dialog=stocktake",
   stock_list: "/stock/list",
   stock_more: "/stock/more",
-  customer: "/customers/odoo",
+  customer: "/customers",
   customer_group: "/customer-groups",
   price_list: "/pricelists",
   balance: "/customers/balances",

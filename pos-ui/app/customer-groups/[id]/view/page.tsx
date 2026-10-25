@@ -1,2 +1,2 @@
 import { redirect } from "next/navigation";
-export default function LegacyCustomerRoute() { redirect("/customers/odoo?manage=groups"); }
+export default function LegacyCustomerRoute() { redirect("/customers?manage=groups"); }

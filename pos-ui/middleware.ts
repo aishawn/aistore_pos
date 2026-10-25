@@ -154,7 +154,9 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  const onControlPlane = tenantSlug === null;
+  // Local preview uses localhost/127.0.0.1 with a fixture cookie. Do not
+  // apply control-plane host routing to that development-only session.
+  const onControlPlane = tenantSlug === null && !localPreview;
   if (onControlPlane && !isControlPlanePageAllowed(pathname)) {
     const consoleHome = request.nextUrl.clone();
     consoleHome.pathname = "/platform/stores";

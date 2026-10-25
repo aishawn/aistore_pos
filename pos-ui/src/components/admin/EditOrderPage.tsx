@@ -35,10 +35,10 @@ interface OrderDetail {
 }
 
 const fieldClass =
-  "h-11 w-full rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70";
+"h-11 w-full rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15 disabled:cursor-not-allowed disabled:bg-[var(--oh-surface)] disabled:opacity-70";
 const labelClass = "mb-1.5 block text-sm font-semibold text-[var(--oh-text-secondary)]";
 const textareaClass =
-  "min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-white px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
+"min-h-[140px] w-full flex-1 resize-y rounded-lg border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-sm text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-muted)] focus:border-[var(--oh-primary)] focus:ring-2 focus:ring-[var(--oh-primary)]/15";
 
 function FormField({
   label,
@@ -209,7 +209,7 @@ function EditOrderForm({
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[var(--oh-surface)] font-sans">
-      <header className="flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] bg-white px-4 py-3 sm:px-6">
+<header className="flex shrink-0 items-center gap-3 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 sm:px-6">
         <button
           type="button"
           onClick={() => router.push(`/orders/${orderId}/view`)}
@@ -229,7 +229,7 @@ function EditOrderForm({
       <main aria-busy={loading || busy} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
         <AsyncState loading={loading} error={error} empty={!order} onRetry={reload}>
           {order && (
-            <div className="mx-auto w-full max-w-4xl rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
+<div className="mx-auto w-full max-w-4xl rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-4 shadow-[var(--oh-shadow-card)] sm:p-6">
               <div className="space-y-6">
                 <section aria-labelledby="edit-order-locations" className="space-y-3">
                   <div>

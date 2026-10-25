@@ -5,7 +5,7 @@ import { globalIgnores } from "eslint/config";
 const config = [
   ...nextVitals,
   ...nextTypeScript,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", ".next-*/**", ".local/**", "temp/**", "out/**", "build/**", "next-env.d.ts"]),
   {
     rules: {
       // Keep existing React 18 effect patterns visible while we modernize pages incrementally.

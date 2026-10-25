@@ -19,8 +19,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   function setTheme(nextTheme: Theme) {
     setThemeState(nextTheme);
-    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme, true);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch {
+      // Keep the in-memory theme usable when browser storage is unavailable.
+    }
   }
 
   const value = useMemo(() => ({ theme, setTheme }), [theme]);

@@ -76,29 +76,29 @@ export function OdooSellPaymentBar({
     <div className="order-1 shrink-0 lg:order-none lg:col-span-2 lg:col-start-1 lg:row-start-1">
       <div className="flex flex-wrap items-center gap-2">
         {eftposSelected ? (
-          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCard} disabled={!linesLength || !cardMethod}>
+          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCard} disabled={!cardMethod}>
             EFTPOS
           </AdminNavyButton>
         ) : (
           <AdminSecondaryButton
-            className={cn("min-h-11", (!linesLength || !cardMethod) && "opacity-45")}
+            className={cn("min-h-11", !cardMethod && "opacity-45")}
             onClick={onSelectCard}
-            disabled={!linesLength || !cardMethod}
-            title={!linesLength ? "Add items before choosing EFTPOS" : !cardMethod ? "No card payment method on this register" : cardMethod.name}
+            disabled={!cardMethod}
+            title={!cardMethod ? "No card payment method on this register" : cardMethod.name}
           >
             EFTPOS
           </AdminSecondaryButton>
         )}
         {cashSelected ? (
-          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCash} disabled={!linesLength || !cashMethod}>
+          <AdminNavyButton className="min-h-11 ring-2 ring-[var(--oh-primary)] ring-offset-1" onClick={onSelectCash} disabled={!cashMethod}>
             Exact Cash
           </AdminNavyButton>
         ) : (
           <AdminSecondaryButton
-            className={cn("min-h-11", (!linesLength || !cashMethod) && "opacity-45")}
+            className={cn("min-h-11", !cashMethod && "opacity-45")}
             onClick={onSelectCash}
-            disabled={!linesLength || !cashMethod}
-            title={!linesLength ? "Add items before choosing Exact Cash" : !cashMethod ? "No cash payment method on this register" : "Select cash, prefill amount due — edit to give change"}
+            disabled={!cashMethod}
+            title={!cashMethod ? "No cash payment method on this register" : "Select cash, prefill amount due — edit to give change"}
           >
             Exact Cash
           </AdminSecondaryButton>
@@ -139,7 +139,7 @@ export function OdooSellPaymentBar({
         >
           Clear Sale
         </AdminSecondaryButton>
-        <div className="ml-auto flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-1.5 shadow-sm">
+        <div className="ml-auto flex flex-wrap items-center gap-3 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-1.5 shadow-sm">
           <span className={cn("text-[22px] font-bold leading-none tabular-nums", linesLength ? "text-[var(--oh-text)]" : "text-[var(--oh-border-strong)]")}>
             ${totalWhole}
             <span className="text-[14px]">.{totalCents}</span>
@@ -152,7 +152,7 @@ export function OdooSellPaymentBar({
       {(isCashPayment || (!isCashPayment && paymentMethodId)) && linesLength > 0 && (
         <div
           className={cn(
-            "mt-2 flex flex-wrap items-end gap-3 rounded-lg border bg-white px-3 py-2",
+            "mt-2 flex flex-wrap items-end gap-3 rounded-lg border bg-[var(--oh-surface-elevated)] px-3 py-2",
             awaitingCardConfirm ? "border-amber-300 ring-1 ring-amber-200" : "border-[var(--oh-border)]",
           )}
         >
@@ -169,7 +169,7 @@ export function OdooSellPaymentBar({
                 value={cashTendered}
                 onChange={(event) => onCashTenderedChange(event.target.value)}
                 placeholder={amountToCollect.toFixed(2)}
-                className="h-11 rounded-md border border-[var(--oh-border)] bg-white px-2 text-sm font-semibold tabular-nums outline-none focus:border-[var(--oh-primary)]"
+                className="h-11 rounded-md border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-2 text-sm font-semibold tabular-nums outline-none focus:border-[var(--oh-primary)]"
               />
               <span className="text-[12px] font-normal text-[var(--oh-muted)]">Edit amount to give change</span>
               {Number.isFinite(tenderedAmount) && tenderedAmount + 0.001 >= amountToCollect && (
@@ -205,7 +205,7 @@ export function OdooSellPaymentBar({
                     confirmedMatches ? "bg-emerald-600" : "bg-amber-500",
                   )}
                 >
-                  <span className={cn("h-6 w-6 rounded-full bg-white shadow transition-transform", confirmedMatches && "translate-x-5")} />
+                  <span className={cn("h-6 w-6 rounded-full bg-[var(--oh-surface-elevated)] shadow transition-transform", confirmedMatches && "translate-x-5")} />
                 </span>
                 <span>
                   <span className="block font-semibold">
@@ -213,7 +213,7 @@ export function OdooSellPaymentBar({
                   </span>
                   <span className="mt-0.5 block text-xs leading-5 opacity-90">
                     {confirmedMatches
-                      ? "Use Finalise Sale in the cart to record this payment in Odoo."
+                      ? "Use Finalise Sale in the cart to record this payment in Orithos."
                       : "After the customer pays, confirm the terminal result here. Orithos records only — it does not charge the card."}
                   </span>
                 </span>

@@ -7,12 +7,12 @@ test("resolves legacy write intents to the correct page CTA by entity", () => {
     ["customer_group", "/customer-groups"],
     ["balance", "/customers/balances"],
     ["price_list", "/pricelists"],
-    ["stocktake", "/products/odoo?dialog=stocktake"],
+    ["stocktake", "/products?dialog=stocktake"],
     ["buying_period", "/stock/buying-periods"],
     ["gift_card", "/giftcards"],
     ["bulk_price_edit", "/stock/bulk-price-edit"],
-    ["product", "/products/odoo"],
-    ["customer", "/customers/odoo"],
+    ["product", "/products"],
+    ["customer", "/customers"],
   ]);
 
   for (const [entity, route] of expected) {

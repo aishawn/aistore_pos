@@ -1,11 +1,5 @@
-import { FinaliseSalePage } from "@/components/FinaliseSalePage";
-import { SellModals } from "@/components/SellModals";
+import { redirect } from "next/navigation";
 
 export default function FinaliseRoute() {
-  return (
-    <>
-      <FinaliseSalePage />
-      <SellModals />
-    </>
-  );
+  redirect("/");
 }

@@ -79,7 +79,7 @@ function R2ArchivePanel({ query, overlayZClass = "z-[70]" }: { query: string; ov
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold text-[var(--oh-text)]">Shopfront R2 source archive</h2>
-            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only crawl snapshot. Not the sales ledger — use the Odoo table below for refunds and reporting.</p>
+            <p className="mt-0.5 text-xs text-[var(--oh-muted)]">Read-only crawl snapshot. Not the sales ledger — use the Orithos table below for refunds and reporting.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900">R2 · TEST</span>
@@ -118,7 +118,7 @@ function R2ArchivePanel({ query, overlayZClass = "z-[70]" }: { query: string; ov
               </table>
             </div>
             <div className="ml-auto mt-4 grid max-w-xs grid-cols-2 gap-y-2 text-sm"><span className="text-[var(--oh-muted)]">GST (receipt total)</span><span className="text-right tabular-nums">{money(selected.tax)}</span><span className="border-t border-[var(--oh-border)] pt-2 font-semibold">Receipt total</span><span className="border-t border-[var(--oh-border)] pt-2 text-right font-bold tabular-nums">{money(selected.total)}</span></div>
-            <p className="mt-3 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The archive provides GST at receipt level only. Matching Completed receipts are also imported as Odoo POS orders for the demo store; refunds must use the Odoo history rows, not this archive panel.</p>
+            <p className="mt-3 rounded-md bg-[var(--oh-surface)] px-3 py-2 text-xs leading-5 text-[var(--oh-muted)]">The archive provides GST at receipt level only. Matching Completed receipts are also imported as Orithos POS orders for the demo store; refunds must use the Orithos history rows, not this archive panel.</p>
             <section className="mt-4 border-t border-[var(--oh-border)] pt-4"><h3 className="text-sm font-semibold">Payments</h3>{selected.payments.length ? <ul className="mt-2 space-y-1.5 text-sm">{selected.payments.map((payment) => <li key={payment.id} className="flex justify-between gap-4"><span>{payment.method}{payment.status ? ` · ${payment.status}` : ""}</span><span className="tabular-nums">{money(payment.amount)}</span></li>)}</ul> : <p className="mt-2 text-sm text-[var(--oh-muted)]">No payment details in this receipt.</p>}</section>
           </section>
         </div>
@@ -132,7 +132,7 @@ function SalesEmptyState({ searching, onClear }: { searching: boolean; onClear: 
     <div role="status" className="flex min-h-64 flex-col items-center justify-center px-5 py-12 text-center">
       <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--oh-orange-light)] text-[var(--oh-primary)]"><FileText size={20} aria-hidden="true" /></span>
       <h2 className="mt-4 text-sm font-semibold text-[var(--oh-text)]">{searching ? "No matching sales" : "No sales yet"}</h2>
-      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{searching ? "Try another search or filter." : "Sales available to this Odoo account will appear here."}</p>
+      <p className="mt-1 max-w-sm text-sm leading-5 text-[var(--oh-muted)]">{searching ? "Try another search or filter." : "Sales available to this Orithos account will appear here."}</p>
       {searching && <button type="button" onClick={onClear} className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-[var(--oh-border)] bg-white px-3 text-sm font-semibold text-[var(--oh-primary)] transition-colors hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Clear filters</button>}
     </div>
   );
@@ -238,7 +238,7 @@ export function OdooSalesHistoryPage({
         setStoreTimezone(pos.configs.find((config) => config.session)?.timezone ?? pos.configs[0]?.timezone ?? "UTC");
       }
     } catch (cause) {
-      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Odoo sales.");
+      if (revision === requestRevision.current) setError(cause instanceof Error ? cause.message : "Could not load Orithos sales.");
     } finally {
       if (revision === requestRevision.current) setLoading(false);
     }
@@ -334,7 +334,7 @@ export function OdooSalesHistoryPage({
       refundLock.current = true; setRefundBusy(true);
       try {
         const result = await recoverOdooPosOrder(pendingRefund.current);
-        if (!result) { setRefundMessage("Refund result is still pending. Do not return funds again; check Odoo."); return; }
+        if (!result) { setRefundMessage("Refund result is still pending. Do not return funds again; check Orithos."); return; }
         pendingRefund.current = null;
         try { sessionStorage.removeItem(`orithos-pending-refund:${saleDetail.order.id}`); } catch { /* Keep the confirmed result visible. */ }
         setRefundMessage(`Refund confirmed as ${result.receipt}. Total ${money(result.total)}.`);
@@ -350,7 +350,7 @@ export function OdooSalesHistoryPage({
     const openConfig = refundConfig;
     const paymentMethodId = refundPaymentMethodId ?? openConfig?.paymentMethods[0]?.id;
     if (!openConfig?.session || !paymentMethodId) {
-      setRefundMessage("Open an Odoo POS session with a payment method before refunding.");
+      setRefundMessage("Open an Orithos POS session with a payment method before refunding.");
       return;
     }
     if (!canRefund) {
@@ -423,7 +423,7 @@ export function OdooSalesHistoryPage({
     if (pendingRefund.current) { void refundSale(); return; }
     if (!saleDetail) return;
     if (!refundConfig) {
-      setRefundMessage("Open the original Odoo register session before issuing this refund.");
+      setRefundMessage("Open the original Orithos register session before issuing this refund.");
       return;
     }
     const originalPayment = saleDetail.payments.find((payment) => payment.amount > 0 && Array.isArray(payment.payment_method_id));
@@ -445,7 +445,7 @@ export function OdooSalesHistoryPage({
           <h1 className={isPanel ? "text-lg font-semibold text-[var(--oh-text)]" : "oh-type-title text-[var(--oh-text)]"}>Sales History</h1>
           {!isPanel && (
             <p className="oh-type-label mt-1 text-[var(--oh-muted)]">
-              Formal ledger is Odoo POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Odoo rows, not the archive.
+              Formal ledger is Orithos POS orders below (demo includes imported R2 history). The amber panel is a read-only Shopfront archive for cross-check only — refunds use Orithos rows, not the archive.
             </p>
           )}
           {lastLoadedAt !== null && <p className="mt-1 text-xs text-[var(--oh-muted)]">Last refreshed {formatStoreEpoch(lastLoadedAt, storeTimezone)}.</p>}
@@ -476,9 +476,9 @@ export function OdooSalesHistoryPage({
         <section className="grid flex-1 place-items-center rounded-lg border border-[var(--oh-border)] bg-white p-8 text-center">
           <div className="max-w-md">
             <AlertCircle className="mx-auto text-amber-600" size={28} />
-            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Odoo to view sales</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect with your Odoo staff account to view the sales available to that account.</p>
-            <Link href="/settings/integrations" className="mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Odoo</Link>
+            <h2 className="mt-3 text-lg font-semibold text-[var(--oh-text)]">Connect Orithos to view sales</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--oh-muted)]">Connect with your Orithos staff account to view the sales available to that account.</p>
+            <Link href="/settings/integrations" className="mt-4 inline-flex h-11 items-center rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Connect Orithos</Link>
           </div>
         </section>
       ) : (
@@ -519,7 +519,7 @@ export function OdooSalesHistoryPage({
           <R2ArchivePanel query={debouncedQuery} overlayZClass={r2OverlayZ} />
 
           <section className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--oh-border)] bg-white shadow-[var(--oh-shadow-card)]">
-            <table aria-label="Odoo sales history" className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
+            <table aria-label="Orithos sales history" className="hidden w-full min-w-[850px] border-collapse text-left text-sm xl:table">
               <thead className="sticky top-0 bg-[var(--oh-surface)] text-xs font-semibold uppercase tracking-wide text-[var(--oh-muted)]">
                 <tr>
                   <th scope="col" className="px-4 py-3">Receipt</th>
@@ -609,7 +609,7 @@ export function OdooSalesHistoryPage({
         {saleDetailError && <section role="alertdialog" aria-modal="true" className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"><h2 className="text-lg font-semibold text-[var(--oh-text)]">Could not open receipt</h2><p className="mt-2 text-sm text-red-800">{saleDetailError}</p><div className="mt-5 flex flex-wrap justify-end gap-2"><button type="button" onClick={closeSale} className="h-11 rounded-md border border-[var(--oh-border)] px-4 text-sm font-semibold text-[var(--oh-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]">Close</button>{saleDetailId !== null && <button type="button" onClick={() => void openSale(saleDetailId)} className="inline-flex h-11 items-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><RefreshCw size={15} /> Retry</button>}</div></section>}
         {saleDetail && <section role="dialog" aria-modal="true" aria-labelledby="receipt-title" className="receipt-print my-auto max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-2xl overflow-y-auto rounded-xl border border-[var(--oh-border)] bg-white p-4 shadow-2xl sm:p-5 md:p-7">
           <header className="receipt-print-hidden mb-4 flex items-start justify-between gap-4 border-b border-[var(--oh-border)] pb-4">
-            <div><h2 id="receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale receipt</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Review this Odoo order or print a copy.</p></div>
+            <div><h2 id="receipt-title" className="text-lg font-semibold text-[var(--oh-text)]">Sale receipt</h2><p className="mt-1 text-sm text-[var(--oh-muted)]">Review this Orithos order or print a copy.</p></div>
             <button type="button" onClick={closeSale} aria-label="Close receipt" className="grid h-11 w-11 shrink-0 place-items-center rounded-md text-[var(--oh-muted)] hover:bg-[var(--oh-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)]"><X size={18} /></button>
           </header>
           <div className="text-center">
@@ -671,7 +671,7 @@ export function OdooSalesHistoryPage({
             )}
             {canRefund && !refundConfig && (
               <p role="status" className="receipt-print-hidden mr-auto self-center text-sm text-amber-800">
-                Open the original Odoo register session to refund this sale.
+                Open the original Orithos register session to refund this sale.
               </p>
             )}
             <button type="button" onClick={() => window.print()} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-[var(--oh-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--oh-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--oh-primary)] sm:w-auto"><Printer size={16} /> Print receipt</button>
@@ -691,7 +691,7 @@ export function OdooSalesHistoryPage({
             <h2 id="refund-sale-title" className="text-lg font-semibold text-[var(--oh-text)]">Confirm full refund</h2>
             <p id="refund-sale-description" className="mt-2 text-sm leading-6 text-[var(--oh-text-secondary)]">
               Record a refund against <strong>{saleDetail.order.pos_reference || saleDetail.order.name}</strong> for <strong>{money(Math.abs(saleDetail.order.amount_total), receiptCurrency)}</strong>?
-              This creates a financial transaction in Odoo and cannot be undone from this page.
+              This creates a financial transaction in Orithos and cannot be undone from this page.
               For a non-cash refund, return the funds on the external terminal first. Confirming here records that refund and does not send funds to the card.
             </p>
             {refundConfig && refundConfig.paymentMethods.length > 1 && (

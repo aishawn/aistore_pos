@@ -36,5 +36,5 @@ test("Stock includes price lists and Purchasing is visible with any one of its p
 });
 
 test("purchasing tabs and product dialogs remain available in mobile mode", () => {
-  for (const href of ["/products/odoo?dialog=categories", "/products/odoo?dialog=stocktake", "/purchases/odoo?tab=replenishment", "/purchases/odoo?tab=invoices", "/invoices/new"]) assert.ok(isMobileAllowedHref(href), href);
+  for (const href of ["/products?dialog=categories", "/products?dialog=stocktake", "/purchases?tab=replenishment", "/purchases?tab=invoices", "/invoices/new"]) assert.ok(isMobileAllowedHref(href), href);
 });

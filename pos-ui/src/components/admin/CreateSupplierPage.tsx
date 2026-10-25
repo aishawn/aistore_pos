@@ -222,10 +222,10 @@ const TAX_ID_MAP: Record<string, number> = { GST: 1, NONE: 2 };
 const TAX_ID_REVERSE: Record<number, string> = { 1: "GST", 2: "NONE" };
 
 const inputClass =
-  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
+  "h-10 w-full rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 
 const textareaClass =
-  "min-h-[100px] w-full resize-y rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
+  "min-h-[100px] w-full resize-y rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 py-2.5 text-[14px] text-[var(--oh-text)] outline-none placeholder:text-[var(--oh-placeholder)] focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]";
 
 function numStr(v?: number | null) {
   return v === null || v === undefined ? "" : String(v);
@@ -374,7 +374,7 @@ function FormSection({
     <div
       id={`section-${id}`}
       ref={sectionRef}
-      className="relative scroll-mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white shadow-sm has-[[data-select-open=true]]:z-30"
+      className="relative scroll-mt-4 rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] shadow-sm has-[[data-select-open=true]]:z-30"
     >
       <button
         type="button"
@@ -428,7 +428,7 @@ function FormSelect({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
+          className="flex h-10 w-full items-center justify-between rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-3 text-[14px] text-[var(--oh-text)] outline-none focus:border-[var(--oh-orange)] focus:ring-1 focus:ring-[var(--oh-orange)]"
         >
           <span className={selected ? "text-[var(--oh-text)]" : "text-[var(--oh-placeholder)]"}>
             {selected?.label ?? placeholder}
@@ -439,7 +439,7 @@ function FormSelect({
           />
         </button>
         {open && (
-          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-white py-1 shadow-[var(--oh-shadow-card)]">
+          <ul className="absolute z-[200] mt-1 max-h-48 w-full overflow-auto rounded-[var(--oh-radius)] border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] py-1 shadow-[var(--oh-shadow-card)]">
             {options.map((o) => (
               <li key={o.value}>
                 <button
@@ -703,14 +703,14 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
   const displayName = form.name.trim() || "New Supplier";
 
   return (
-    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-slate-950/35 p-4 font-sans md:p-6">
+    <div className="absolute inset-0 z-50 flex items-stretch justify-center bg-[var(--oh-scrim)] p-4 font-sans md:p-6">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-white shadow-2xl"
+        className="relative flex min-h-0 w-full max-w-[1100px] flex-col overflow-hidden rounded-[var(--oh-radius)] bg-[var(--oh-surface-elevated)] shadow-2xl"
       >
-        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-white px-6 py-4">
+        <div className="relative shrink-0 border-b border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-6 py-4">
           <h1 id={titleId} className="text-center text-[18px] font-semibold text-[var(--oh-text)] md:text-[20px]">
             {displayName}
           </h1>
@@ -725,7 +725,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
         </div>
 
         <div className="flex min-h-0 flex-1 overflow-hidden">
-          <nav className="hidden w-[220px] shrink-0 overflow-y-auto border-r border-[var(--oh-border)] bg-[#eef3f8] md:block">
+          <nav className="hidden w-[220px] shrink-0 overflow-y-auto border-r border-[var(--oh-border)] bg-[var(--oh-surface-muted)] md:block">
             <ul className="py-2">
               {SECTIONS.map(({ id, label, Icon }) => (
                 <li key={id}>
@@ -735,8 +735,8 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                     className={cn(
                       "flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[13px] font-medium transition-colors",
                       activeSection === id
-                        ? "bg-[#d4e4f4] text-[var(--oh-text)]"
-                        : "text-[var(--oh-text-secondary)] hover:bg-[#e4edf5] hover:text-[var(--oh-text)]",
+                        ? "bg-[var(--oh-orange-light)] text-[var(--oh-text)]"
+                        : "text-[var(--oh-text-secondary)] hover:bg-[var(--oh-surface-elevated)] hover:text-[var(--oh-text)]",
                     )}
                   >
                     <Icon size={16} strokeWidth={1.75} />
@@ -1100,7 +1100,7 @@ export function CreateSupplierPage({ supplierId }: { supplierId?: string } = {})
                   />
                 </FormSection>
 
-                {error && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[14px] text-rose-800">{error}</p>}
+                {error && <p role="alert" className="rounded-lg border border-[var(--brand-danger)] bg-[var(--brand-danger-tint)] px-3 py-2.5 text-[14px] text-[var(--brand-danger)]">{error}</p>}
               </div>
             )}
           </div>

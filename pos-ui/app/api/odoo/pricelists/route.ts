@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     }));
     return NextResponse.json({ items, limit, offset, hasNext: (rows?.length ?? 0) > limit }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo price lists are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos price lists are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }
@@ -80,11 +80,11 @@ export async function POST(request: NextRequest) {
     if (!companyId) return NextResponse.json({ message: "No company is available for this store" }, { status: 422 });
     const id = await scope.rpc<number>("product.pricelist", "create", [{ name, company_id: companyId }]);
     if (!Number.isSafeInteger(id) || id < 1) {
-      return NextResponse.json({ message: "Odoo did not confirm the new price list" }, { status: 502 });
+      return NextResponse.json({ message: "Orithos did not confirm the new price list" }, { status: 502 });
     }
     return NextResponse.json({ id, name }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Odoo price lists are unavailable";
+    const message = error instanceof Error ? error.message : "Orithos price lists are unavailable";
     const status = error instanceof OdooScopeError || error instanceof StoreAccessError ? error.status : 502;
     return NextResponse.json({ message }, { status });
   }

@@ -6,11 +6,10 @@ import { Package, Sparkles, Wine } from "lucide-react";
 import { RecommendShell } from "@/components/recommend/RecommendShell";
 import { useOptionalAiAssistant } from "@/lib/ai-assistant";
 import { fetchAiClientConfig } from "@/lib/api";
-import { getUiMode } from "@/lib/ui-mode";
 
 export function RecommendHome({ showPosAssistant = false }: { showPosAssistant?: boolean }) {
   const ai = useOptionalAiAssistant();
-  const mobile = getUiMode() === "mobile";
+  const mobile = showPosAssistant;
   const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export function RecommendHome({ showPosAssistant = false }: { showPosAssistant?:
 
         <Link
           href="/sommelier"
-          className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)] hover:shadow-md sm:p-6"
+          className="group rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)] hover:shadow-md sm:p-6"
         >
           <div className="flex items-center gap-2 text-[var(--oh-primary)]">
             <Wine size={20} />
@@ -60,7 +59,7 @@ export function RecommendHome({ showPosAssistant = false }: { showPosAssistant?:
 
         <Link
           href="/recommend/grocery"
-          className="group rounded-xl border border-[var(--oh-border)] bg-white p-5 shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)] hover:shadow-md sm:p-6"
+          className="group rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] p-5 shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)] hover:shadow-md sm:p-6"
         >
           <div className="flex items-center gap-2 text-[var(--oh-primary)]">
             <Package size={20} />
@@ -81,7 +80,7 @@ export function RecommendHome({ showPosAssistant = false }: { showPosAssistant?:
           <button
             type="button"
             onClick={() => ai?.openAssistant()}
-            className="min-h-12 rounded-xl border border-[var(--oh-border)] bg-white px-4 py-3 text-left text-[14px] font-semibold text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)]"
+            className="min-h-12 rounded-xl border border-[var(--oh-border)] bg-[var(--oh-surface-elevated)] px-4 py-3 text-left text-[14px] font-semibold text-[var(--oh-text)] shadow-[var(--oh-shadow-card)] transition hover:border-[var(--oh-primary)]"
           >
             Open POS Assistant
           </button>

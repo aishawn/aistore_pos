@@ -71,17 +71,17 @@ export const SIDEBAR_MAIN: (SidebarItem | SidebarGroup)[] = [
     label: "Stock",
     icon: "inventory",
     items: [
-      { label: "Products", href: "/products/odoo", permission: "stock.products.view" },
+      { label: "Products", href: "/products", permission: "stock.products.view" },
       { label: "Price Lists", href: "/pricelists", permission: "customers.pricelists" },
-      { label: "Purchasing", href: "/purchases/odoo", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
-      { label: "Suppliers", href: "/suppliers/odoo", permission: "stock.suppliers" },
+      { label: "Purchasing", href: "/purchases", matchHrefs: ["/invoices", "/stock/replenishment"], anyPermissions: ["stock.purchases", "stock.replenishment", "stock.invoices"] },
+      { label: "Suppliers", href: "/suppliers", permission: "stock.suppliers" },
     ],
   },
   {
     label: "Customers",
     icon: "customers",
     items: [
-      { label: "Customer Directory", href: "/customers/odoo", matchHrefs: ["/customer-groups"], permission: "customers.view" },
+      { label: "Customer Directory", href: "/customers", matchHrefs: ["/customer-groups"], permission: "customers.view" },
       { label: "Receivables", href: "/customers/balances", permission: "customers.balances" },
       { label: "Gift Cards", href: "/giftcards", permission: "customers.gift_cards" },
     ],
