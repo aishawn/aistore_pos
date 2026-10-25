@@ -161,17 +161,21 @@ services:
       - backend
     expose:
       - "3000"
-    # Dokploy Domains UI rejects "*.orithos.com.au". Route tenant hosts to this
-    # frontend ahead of stale per-store Dokploy host rules. Exclude reserved
-    # infrastructure hosts so their dedicated routers continue to own them.
+    # Dokploy Domains UI rejects "*.orithos.com.au". The wildcard router serves
+    # tenant hosts; the explicit skr route overrides a stale Dokploy host rule.
     # In Compose, escape regex end-anchors as $$ so they survive interpolation.
     labels:
       - traefik.enable=true
-      - traefik.http.routers.orithos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`) && !Host(`app.orithos.com.au`) && !Host(`odoo.orithos.com.au`) && !Host(`www.orithos.com.au`) && !Host(`api.orithos.com.au`) && !Host(`cdn.orithos.com.au`) && !Host(`support.orithos.com.au`) && !Host(`mail.orithos.com.au`) && !Host(`status.orithos.com.au`)
+      - traefik.http.routers.orithos-tenant-secure.rule=HostRegexp(`^[a-z0-9-]+\.orithos\.com\.au$$`)
       - traefik.http.routers.orithos-tenant-secure.entrypoints=websecure
-      - traefik.http.routers.orithos-tenant-secure.priority=1000
+      - traefik.http.routers.orithos-tenant-secure.priority=1
       - traefik.http.routers.orithos-tenant-secure.tls=true
       - traefik.http.routers.orithos-tenant-secure.service=orithos-tenant-svc
+      - traefik.http.routers.orithos-skr-secure.rule=Host(`skr.orithos.com.au`)
+      - traefik.http.routers.orithos-skr-secure.entrypoints=websecure
+      - traefik.http.routers.orithos-skr-secure.priority=100
+      - traefik.http.routers.orithos-skr-secure.tls=true
+      - traefik.http.routers.orithos-skr-secure.service=orithos-tenant-svc
       - traefik.http.services.orithos-tenant-svc.loadbalancer.server.port=3000
       - traefik.http.services.orithos-tenant-svc.loadbalancer.passhostheader=true
     environment:
