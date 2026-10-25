@@ -129,7 +129,7 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
     db.add(run)
     db.commit()
     client = get_client(settings, store)
-    counts = {"summaries": 0, "sales": 0, "products": 0, "inventory": 0}
+    counts = {"summaries": 0, "sales": 0, "products": 0, "inventory": 0, "warnings": []}
     try:
         token = await access_token(db, settings, store)
         rows = await client.fetch_sales(token, start.isoformat(), end.isoformat())
@@ -185,13 +185,16 @@ async def sync_store(db: Session, settings: Settings, store: Store, start: date,
                         pass
                 sale.synced_at = datetime.now(timezone.utc)
                 counts["sales"] += 1
+        if rows and counts["sales"] == 0:
+            counts["warnings"].append({"stage": "sales", "message": "Reporting rows did not include a stable Sale ID; saved summaries only."})
         products = []
         if include_catalog:
             try:
                 products = await client.fetch_products(token, settings.shopfront_products_query)
-            except ShopfrontError:
+            except ShopfrontError as exc:
                 # Catalog schema/permission problems must not discard successful sales data.
                 products = []
+                counts["warnings"].append({"stage": "products", "message": str(exc)[:500]})
         for item in products:
             product_id = first(item, "id", "ID")
             if not product_id:
