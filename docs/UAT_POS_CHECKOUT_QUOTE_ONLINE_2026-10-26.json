@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-26T02:35:00+08:00",
+  "status": "PARTIAL_PASS",
+  "scope": "Public Demo POS page and checkout quote deployment smoke; read-only only",
+  "target": "https://demo.orithos.com.au",
+  "githubMain": "977c4724d6f8bd4ef85130efd1634d93b7c64f5b",
+  "runtimeVersion": {
+    "frontendCommit": "bf98f83914e315b68373a052847ad7feb1c2780e",
+    "backendCommit": "bf98f83914e315b68373a052847ad7feb1c2780e",
+    "frontendBuiltAt": "2026-10-25T18:31:12.977Z",
+    "backendBuiltAt": "2026-10-25T17:35:18Z",
+    "matchesGithubMain": false
+  },
+  "publicChecks": {
+    "registerPageHttpStatus": 200,
+    "scriptReferences": 17,
+    "bundleContainingNewQuoteTimeoutMessage": "https://demo.orithos.com.au/_next/static/chunks/0k8y389ke91v4.js",
+    "newQuoteTimeoutMessagePresent": true
+  },
+  "authenticatedChecks": {
+    "login": "inconsistent across automated attempts; a stable authenticated quote run was not completed",
+    "productSelection": "not confirmed",
+    "checkoutQuoteRequests": 0,
+    "checkoutSaleRequests": 0,
+    "businessWrites": 0
+  },
+  "deploymentAccess": {
+    "dokployHostDns": "could not resolve dokploy.modkie.com.au from this runner",
+    "deploymentHistory": "not directly inspected",
+    "runtimeSha": "not confirmed; public version endpoint still reports bf98f839"
+  },
+  "limitations": [
+    "The unique new timeout message is present in a JavaScript bundle served by the Demo page, but the public version endpoint reports the previous source commit. Full runtime identity is therefore unverified.",
+    "No authenticated checkout quote response was observed. The local fixture UAT is not live Odoo acceptance.",
+    "No sale, payment, stock, cash, or register-close request was sent."
+  ],
+  "pilotStatus": "NO-GO; exact runtime identity and authenticated isolated business acceptance remain outstanding"
+}
